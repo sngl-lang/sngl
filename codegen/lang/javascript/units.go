@@ -147,3 +147,58 @@ func multiBaseUnitEqualJS(ud *ir.UnitDef, op ast.BinaryOp, left, right string) s
 	}
 	return eq
 }
+
+// colorEqualJS renders == or != between two colors channel by channel: a
+// color is an object in JS, and `===` on two objects is reference identity.
+// An operand that is not a literal is bound once, as color.hex binds its own.
+func colorEqualJS(n *ir.Binary, left, right string) (string, bool) {
+	if n.Op != ast.BinEq && n.Op != ast.BinNeq || !ir.IsColorStruct(n.Left.ExprType()) || !ir.IsColorStruct(n.Right.ExprType()) {
+		return "", false
+	}
+	var params, args []string
+	side := func(e ir.Expr, js, name string) func(string) string {
+		if ch, ok := colorLiteralChannels(e); ok {
+			return func(c string) string { return ch[c] }
+		}
+		params, args = append(params, name), append(args, js)
+		return func(c string) string { return name + "." + c }
+	}
+	l, r := side(n.Left, left, "a"), side(n.Right, right, "b")
+	parts := make([]string, 0, 4)
+	for _, c := range []string{"r", "g", "b", "a"} {
+		parts = append(parts, l(c)+" === "+r(c))
+	}
+	eq := strings.Join(parts, " && ")
+	if len(params) > 0 {
+		eq = "((" + strings.Join(params, ", ") + ") => " + eq + ")(" + strings.Join(args, ", ") + ")"
+	} else {
+		eq = "(" + eq + ")"
+	}
+	if n.Op == ast.BinNeq {
+		return "!" + eq, true
+	}
+	return eq, true
+}
+
+// colorLiteralChannels reads a color literal's four channels, an omitted one
+// at its declared default.
+func colorLiteralChannels(e ir.Expr) (map[string]string, bool) {
+	sl, ok := e.(*ir.StructLit)
+	if !ok || sl.Def == nil {
+		return nil, false
+	}
+	ch := map[string]string{}
+	for _, f := range sl.Def.Fields {
+		if lit, ok := f.Default.(*ir.Literal); ok {
+			ch[f.Name] = lit.Value
+		}
+	}
+	for _, f := range sl.Fields {
+		lit, ok := f.Value.(*ir.Literal)
+		if !ok {
+			return nil, false
+		}
+		ch[f.Name] = lit.Value
+	}
+	return ch, len(ch) == 4
+}

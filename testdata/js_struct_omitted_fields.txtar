@@ -1,10 +1,18 @@
 What a JavaScript struct literal writes for a field it leaves out, and how
 two colors compare.
 
-Today neither is right. An absent property reads undefined, where Go and
-Kotlin read the field's zero, so `p.y + 1` is NaN and `p.c.r` throws. And a
-color is an object in JavaScript, where `===` is reference identity, so
-`tint == #000000` is false for every pair, black included.
+Two colors compare channel by channel, each operand evaluated once: a color
+is an object in JavaScript, where `===` is reference identity, so
+`tint == #000000` was false for every pair, black included.
+
+An omitted field is still wrong: an absent property reads undefined, where Go
+and Kotlin read the field's zero, so `p.y + 1` is NaN and `p.c.r` throws.
+Comparing such a field as a color throws as `p.c.r` does, where `===` used to
+answer false. An `option[color]` compared with a color is still `===`.
+html's run-time style helper reads a field's presence as having been set, so
+writing every field waits on a Style that can say "unset" (TODO.md).
+
+deny out/none/html/index.html `tint === \{` -- a color is compared channel by channel, never by identity
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -73,19 +81,19 @@ body { font-family: system-ui, sans-serif; }
   $0.addEventListener("click", function() {
     state.p = { x: 2, w: 1.5 };
     __n1.textContent = String(state.p.y + 1) + " " + String(state.p.w) + " " + String(state.p.c.r);
-    __n3.textContent = state.tint !== state.p.c ? "apart" : "same";
+    __n3.textContent = !((a, b) => a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a)(state.tint, state.p.c) ? "apart" : "same";
     state.tint = { r: 0, g: 0, b: 0, a: 255 };
-    __n2.textContent = state.tint === { r: 0, g: 0, b: 0, a: 255 } ? "black" : "tinted";
-    __n3.textContent = state.tint !== state.p.c ? "apart" : "same";
+    __n2.textContent = ((a) => a.r === 0 && a.g === 0 && a.b === 0 && a.a === 255)(state.tint) ? "black" : "tinted";
+    __n3.textContent = !((a, b) => a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a)(state.tint, state.p.c) ? "apart" : "same";
   });
   function __sngl_init() {
     __n1.textContent = String(state.p.y + 1) + " " + String(state.p.w) + " " + String(state.p.c.r);
-    __n2.textContent = state.tint === { r: 0, g: 0, b: 0, a: 255 } ? "black" : "tinted";
-    __n3.textContent = state.tint !== state.p.c ? "apart" : "same";
+    __n2.textContent = ((a) => a.r === 0 && a.g === 0 && a.b === 0 && a.a === 255)(state.tint) ? "black" : "tinted";
+    __n3.textContent = !((a, b) => a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a)(state.tint, state.p.c) ? "apart" : "same";
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6af9e67e82c35b92bafa0594cb377da1
+pass sha256:d706a2cc30dbefe31757e2d487d48e09
