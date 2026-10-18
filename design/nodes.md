@@ -169,7 +169,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   list -- which is what a select's arms are, two levels down. So the widget
   writes in a tick reached the emitter untranslated: a bare `__n0.Text =`, which
   is neither a field any Fyne widget has nor a name in scope. The same blind
-  spot recorded above for the lowering passes, one layer out.
+  spot design/language.md records for the lowering passes, one layer out.
 
   **The hand-over it also held is `async.do`**, which a platform package may
   name: `#[intrinsic("async.do")] func do(f func())` dispatches through
@@ -208,8 +208,8 @@ Jonathan's call). A node in a component the instance renders is that
 component's ref and is reached through the id of the instance holding it —
 `badge #inbox(…)`, then `c.inbox.lbl` — so two instances never share a ref and
 a recursive component's `c.step` is this level's alone. Children written bare
-are the writer's wherever the callee inserts them, which the rest-slot rule
-above makes a single rendering. A slot population is a declaration with a scope
+are the writer's wherever the callee inserts them, which the rest-slot rule in
+design/slots.md makes a single rendering. A slot population is a declaration with a scope
 of its own, so its ids are reached through the node it populates, wrapped by
 that slot's insertion count. How many nodes the read names is where the node is
 written: `T`, `option[T]` behind a conditional (an `if`, a for-else, a slot
@@ -346,25 +346,6 @@ bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
 `ui_event_params.txtar` and `canvas_click.txtar` are the code,
 `cmd/sngl/testdata/toggle_change_payload_runs.txt` and
 `ui_event_params_runs.txt` the answer.
-
-**A slot population is a scope**, as a component declaration's body is --
-it reads like one and is scoped like one. Its node ids are hoisted there
-through every node's children, so a sibling reads a `#id` written inside a
-`vbox` or a `canvas` in the population as it would in a body, and they are not
-the enclosing component's: not in its scope, and not claims in its namespace
-(`collectElementRefIDs` does not descend into a population), so the same `#id`
-inside and beside one is two nodes. The population's parameters are its head,
-which an id gives way to (`slot_population_node_ids`).
-
-From outside, a population's node is reached **through the node it
-populates**: `c.card.title` for `card #card { component title… }`
-(`populationHost`), as an instance's own ids are reached through its handle.
-It resolves to the node `c` renders, `c.title` in the IR, which is the reach
-every target answers; the test emitters read an event trigger's target off
-that IR receiver (`codegen.EventTriggerTarget`) and never off the source's
-spelling. Every target reaches a node from outside by the id it renders, so a
-read where the component renders two nodes of that id is refused at the read
-(`refuseAmbiguousReach`, `error_slot_population_ambiguous_reach.sngl`).
 
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the

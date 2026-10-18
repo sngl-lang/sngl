@@ -349,3 +349,22 @@ A component type parses wherever a type is written, and `...` wherever a type
 prefix could go; `resolveType` refuses both outside a slot. That is deliberate
 — a permissive production plus a specific diagnostic, the same trade `ArgList`
 makes.
+
+**A slot population is a scope**, as a component declaration's body is --
+it reads like one and is scoped like one. Its node ids are hoisted there
+through every node's children, so a sibling reads a `#id` written inside a
+`vbox` or a `canvas` in the population as it would in a body, and they are not
+the enclosing component's: not in its scope, and not claims in its namespace
+(`collectElementRefIDs` does not descend into a population), so the same `#id`
+inside and beside one is two nodes. The population's parameters are its head,
+which an id gives way to (`slot_population_node_ids`).
+
+From outside, a population's node is reached **through the node it
+populates**: `c.card.title` for `card #card { component title… }`
+(`populationHost`), as an instance's own ids are reached through its handle.
+It resolves to the node `c` renders, `c.title` in the IR, which is the reach
+every target answers; the test emitters read an event trigger's target off
+that IR receiver (`codegen.EventTriggerTarget`) and never off the source's
+spelling. Every target reaches a node from outside by the id it renders, so a
+read where the component renders two nodes of that id is refused at the read
+(`refuseAmbiguousReach`, `error_slot_population_ambiguous_reach.sngl`).

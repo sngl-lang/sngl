@@ -363,3 +363,35 @@ makes a package exist, macro-only ones included. `sngl:internal/<name>` is
 the compiler's own tier: a package there may contribute macros, declarations,
 or both. `internal/marks` declares only macros; `internal/ir` declares `Macro`,
 the type a macro returns, and the flag enums the marks take.
+
+Notable stdlib packages:
+
+- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
+
+  **A translation's arguments are a struct**, a field per placeholder:
+  `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
+  take them as a type parameter constrained to a struct, `[A struct {}]`,
+  which an anonymous struct literal binds and which refuses anything else;
+  `$"..."` builds
+  the same literal. Every runtime takes a string-keyed map, which only the
+  emitted code holds: the IR keeps the record, and each language spells its
+  runtime's map from the literal's fields (`codegen.RegisterRecordSpeller`,
+  reached through `codegen.EmitIntrinsicCall`). `lower.RecordArgs` -- at the
+  start of `optimize.Optimize`, and as the always-on `RecordArgs` pass --
+  makes the argument of each intrinsic `ir.RecordArg` names a literal: any
+  operand that is not one is read a field at a time with a spread site, so
+  passSpreadOnce evaluates a computed one once. Such a literal names no
+  declaration for the shake (`walkNames`), since nothing declares a struct
+  for it. The interpreter reads a struct as the map.
+  **A template is written in backticks**, or with its braces escaped: a
+  double-quoted string is interpolated where it is written, so `{name}` was
+  gone before i18n read it and the arguments were read by nothing. An
+  interpolated `tr` key or `format` template is a positioned error for that
+  reason (`error_i18n_args.sngl`, `i18n_struct_args.txtar`,
+  `cmd/sngl/testdata/i18n_struct_args_runs.txt`). `select` keeps a
+  `map[string, string]` -- its keys are data matched at run time -- and
+  `PluralKey` stays a declared type, so the predeclared keys and
+  `i18n.exactly` are the only ways to write one. html publishes its i18n
+  runtime on `window` in test mode, as it does the page's functions: a test
+  module is bundled beside the page, and an i18n call the optimizer inlined
+  into a test body named nothing there.

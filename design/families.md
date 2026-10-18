@@ -539,3 +539,14 @@ handler would replace the rest of the statement, so the call has nothing to
 evaluate to. And a call through a **func value** with no `@error` of its own is
 never fallible, since nothing about a func type says whether it raises; a
 lambda body's raise leaves the lambda.
+
+The facts land on `ir.Component.Family` at registration and on
+`ir.Package.FamilyKinds` — keyed by declaration — for the lowering passes to gate
+on. A family may carry a rule of its own for its members: `#[family.eventless]`
+(`sngl:family`) says they raise no events, and `checkFamilyMember` refuses one
+that declares any, an `#[intrinsic]` primitive excepted since its event is the
+target calling in. `sngl:ui/draw`'s `shape` says it, because a painted shape is
+pixels and has nothing to raise one from; the checker knows no more about
+drawing than that. Nothing
+about a mark reaches the AST: the source carries the `#[...]` as written and the
+checker applies it where it registers the declaration.

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Start with `testdata/`.** Every language feature in SNGL has at least one fixture in `testdata/*.sngl` that exercises it. Reading those fixtures is the fastest way to understand what a change is meant to do and to spot gaps. When proposing a feature, write the fixture first and let the test framework drive the implementation. Fixtures use directives like `// ERROR(check) "msg"` and `// FOLD(...)` to assert behavior at specific compiler phases — see `internal/testutil/sample.go` for the framework. A fixture written ahead of the lowering that would let a backend emit it carries `// SKIP(codegen) "reason"` (see `design/testing.md`).
 
 Every fixture is written the way `sngl fmt` writes it, and
-`TestTestdataIsFormatted` says so, so add one with `sngl fmt` rather than by
+`TestFixtures` says so, so add one with `sngl fmt` rather than by
 hand. A fixture whose exact layout is the thing under test opts out with
 `// NOFMT "reason"`; the directive exempts it from that test only, so do not
 run `sngl fmt` over the tree while one is in it. An `// ERROR(...)` directive
@@ -31,9 +31,9 @@ spec instead.
 
 - `design/language.md` — `const`; bodyless components and overrides; events; loops and for-else; view walks (`ir.ViewBlocks`, `blocks.go`); lambda bodies; contexts
 - `design/architecture.md` — codegen registry and models, per-platform details, `ir`/`checker`/`optimize`/`lower` packages and the always-on passes, runtime `pkg/` packages, AST
-- `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros
+- `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros, i18n
 - `design/families.md` — families, data components and records, generated families (`gen.emit`), family inference and membership, `#[family.crosses]`, boundaries and raises
-- `design/windows.md` — `root`, windows, view-block state, root components, `output` and `@run`, how each platform shows windows
+- `design/windows.md` — `root`, windows, prop reads through an `#id`, self-reference and declarative cycles, view-block state, root components, `output` and `@run`, how each platform shows windows, unavailable targets
 - `design/slots.md` — slot types and counts, spreads and variadics, rest slots, entries, fallbacks, `.empty`, slots in runtime instances, populations
 - `design/nodes.md` — `#[intrinsic]` and native marks, `go.chan`/`go.select`, element refs and presence, event parameters, handles and prop writes, `#[foreign]`, pure funcs
 - `design/instances.md` — body-scoped declarations, `__instN`, override bodies and helpers, runtime instances, render slots, unbound two-way props, bubbletea state/focus, nested funcs
@@ -124,7 +124,8 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
 ## Tests
 
 - `testdata/*.sngl` — language fixtures, run by the root `TestFixtures`
-  (not by `go test ./internal/checker/`).
+  (not by `go test ./internal/checker/`); their test functions run on the
+  interpreter in `TestRunFixtures`, `SKIP(codegen)` fixtures included.
 - `testdata/*.txtar` — codegen goldens (`go test . -run TestGolden -update`).
   Assert generated code with a golden, and absence with a `deny` line, never a
   grep.

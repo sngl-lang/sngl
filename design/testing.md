@@ -74,7 +74,7 @@ command runs over, its arguments, and the source of every package of this
 module those files import, transitively -- so an edit to `gtk4rt` asks for a
 run as an edit to the codegen does, and only a run that succeeded is recorded.
 The program never depends on the host's GIR, because no test reads one (see
-the gtk4 platform above).
+gtk4 in design/architecture.md).
 
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are

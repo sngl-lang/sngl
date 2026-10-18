@@ -237,17 +237,6 @@ choose a window, and went with a window's `href` since
 which destination a build opens at is a stack's question -- the page at `/`,
 or its first.
 
-The facts land on `ir.Component.Family` at registration and on
-`ir.Package.FamilyKinds` — keyed by declaration — for the lowering passes to gate
-on. A family may carry a rule of its own for its members: `#[family.eventless]`
-(`sngl:family`) says they raise no events, and `checkFamilyMember` refuses one
-that declares any, an `#[intrinsic]` primitive excepted since its event is the
-target calling in. `sngl:ui/draw`'s `shape` says it, because a painted shape is
-pixels and has nothing to raise one from; the checker knows no more about
-drawing than that. Nothing
-about a mark reaches the AST: the source carries the `#[...]` as written and the
-checker applies it where it registers the declaration.
-
 Two consequences of a built-in being identified by its mark: a kind classifies
 *one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark
@@ -478,35 +467,3 @@ check does not have rather than a name nobody serves, and from a partial
 registry the two are indistinguishable. Everyone else gets a stand-in node with
 the right family and no schema, which is the tolerance `mergedOptions` returning
 nil used to give per lookup.
-
-Notable stdlib packages:
-
-- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
-
-  **A translation's arguments are a struct**, a field per placeholder:
-  `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
-  take them as a type parameter constrained to a struct, `[A struct {}]`,
-  which an anonymous struct literal binds and which refuses anything else;
-  `$"..."` builds
-  the same literal. Every runtime takes a string-keyed map, which only the
-  emitted code holds: the IR keeps the record, and each language spells its
-  runtime's map from the literal's fields (`codegen.RegisterRecordSpeller`,
-  reached through `codegen.EmitIntrinsicCall`). `lower.RecordArgs` -- at the
-  start of `optimize.Optimize`, and as the always-on `RecordArgs` pass --
-  makes the argument of each intrinsic `ir.RecordArg` names a literal: any
-  operand that is not one is read a field at a time with a spread site, so
-  passSpreadOnce evaluates a computed one once. Such a literal names no
-  declaration for the shake (`walkNames`), since nothing declares a struct
-  for it. The interpreter reads a struct as the map.
-  **A template is written in backticks**, or with its braces escaped: a
-  double-quoted string is interpolated where it is written, so `{name}` was
-  gone before i18n read it and the arguments were read by nothing. An
-  interpolated `tr` key or `format` template is a positioned error for that
-  reason (`error_i18n_args.sngl`, `i18n_struct_args.txtar`,
-  `cmd/sngl/testdata/i18n_struct_args_runs.txt`). `select` keeps a
-  `map[string, string]` -- its keys are data matched at run time -- and
-  `PluralKey` stays a declared type, so the predeclared keys and
-  `i18n.exactly` are the only ways to write one. html publishes its i18n
-  runtime on `window` in test mode, as it does the page's functions: a test
-  module is bundled beside the page, and an i18n call the optimizer inlined
-  into a test body named nothing there.
