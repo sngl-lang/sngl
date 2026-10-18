@@ -657,7 +657,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 		args := jc.evalCallArgs(n.Args)
 		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		call := fname + "(" + strings.Join(args, ", ") + ")"
-		if n.Func.IsAsync {
+		if n.Func.IsAsync && !n.Detached {
 			call = "await " + call
 		}
 		return call
@@ -702,7 +702,7 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	default:
 		call = name + "(" + strings.Join(args, ", ") + ")"
 	}
-	if n.Func.IsAsync {
+	if n.Func.IsAsync && !n.Detached {
 		call = "await " + call
 	}
 	return call
@@ -730,6 +730,9 @@ func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {
 	args := jc.evalCallArgs(n.Args)
 	call := calleeJS + "(" + strings.Join(args, ", ") + ")"
 
+	if n.Detached {
+		return call
+	}
 	if ir.CallsAsyncValue(n) {
 		return "await " + call
 	}
@@ -804,7 +807,7 @@ func (jc *JsIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	// A native import JavaScript does not call here: named through its alias.
 	codegen.RequireIntrinsicFallback(langJS, n.Func)
 	call := qualName + "(" + strings.Join(args, ", ") + ")"
-	if n.Func.IsAsync {
+	if n.Func.IsAsync && !n.Detached {
 		call = "await " + call
 	}
 	return call, true
@@ -851,7 +854,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		} else {
 			call = receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 		}
-		if n.Func.IsAsync {
+		if n.Func.IsAsync && !n.Detached {
 			call = "await " + call
 		}
 		return call
@@ -904,7 +907,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if jc.Ctx != nil && jc.Ctx.ClosureMethods && jc.Ctx.Component != nil &&
 		slices.Contains(jc.Ctx.Component.Funcs, n.Func) && len(args) > 0 {
 		call := method + "(" + strings.Join(args[1:], ", ") + ")"
-		if n.Func.IsAsync {
+		if n.Func.IsAsync && !n.Detached {
 			call = "await " + call
 		}
 		return call

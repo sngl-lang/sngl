@@ -181,11 +181,6 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	if len(unbound) == 0 {
 		return nil, nil
 	}
-	// A gap no component in sngl:ui reaches: its two-way props are one per
-	// component.
-	if len(n.Bindings) > 0 {
-		return nil, fmt.Errorf("%s: %s binds :%s and leaves :%s unbound, which is not supported yet; bind both, or neither", nodePos(n), comp.DisplayName(), n.Bindings[0].PropName, unbound[0].Name)
-	}
 	rest := comp.RestSlot()
 	if len(n.Children) > 0 && rest == nil || slices.ContainsFunc(ir.SlotNames(n.Slots), func(name string) bool { return slotDeclOf(comp, name) == nil }) {
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
@@ -206,26 +201,48 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		// The node is what renders, and the wrapper only holds its cells: a
 		// surface marked the document stays marked where it now stands.
 		Document: n.Document,
+		TypeArgs: n.TypeArgs,
 	}
+	// The wrapper is no generic: what it declares is at the types the call
+	// site bound.
+	bound := ir.ComponentBindings(n)
 	cells := map[string]*ir.Var{}
 	for _, p := range unbound {
-		start := p.Default
+		typ := p.Type.Substitute(bound)
+		start := ir.InstantiateExpr(p.Default, bound)
 		if start == nil {
-			start = ir.DeclaredDefault(p.Type)
+			start = ir.DeclaredDefault(typ)
 		}
-		init := &ir.Prop{Name: cellStartProp(p.Name), Type: p.Type, Default: start}
-		init.Sym = &ir.Param{Name: init.Name, Type: p.Type}
+		init := &ir.Prop{Name: cellStartProp(p.Name), Type: typ, Default: start}
+		init.Sym = &ir.Param{Name: init.Name, Type: typ}
 		w.Props = append(w.Props, init)
 		cell := &ir.Var{
 			Name: p.Name,
-			Type: p.Type,
-			Init: &ir.Ident{Name: init.Name, Type: p.Type, Sym: init.Sym},
+			Type: typ,
+			Init: &ir.Ident{Name: init.Name, Type: typ, Sym: init.Sym},
 			Cell: true,
 		}
 		w.Vars = append(w.Vars, cell)
 		cells[p.Name] = cell
 		inner.Props = append(inner.Props, ir.Arg{Name: p.Name, Value: &ir.Ident{Name: cell.Name, Type: cell.Type, Sym: cell}})
 		inner.Bindings = append(inner.Bindings, ir.PropBinding{PropName: p.Name, Target: &ir.Ident{Name: cell.Name, Type: cell.Type, Sym: cell}})
+	}
+	// A two-way prop the call site did bind is the wrapper's own, bound to
+	// what the call site bound and bound through to the node, as an override
+	// binds a prop of its base through to the primitive it renders.
+	through := map[string]bool{}
+	for _, b := range n.Bindings {
+		decl := declaredPropOf(comp, b.PropName)
+		if decl == nil {
+			continue
+		}
+		typ := decl.Type.Substitute(bound)
+		wp := &ir.Prop{Name: decl.Name, Type: typ, Bidirectional: true}
+		wp.Sym = &ir.Param{Name: wp.Name, Type: typ}
+		w.Props = append(w.Props, wp)
+		through[decl.Name] = true
+		inner.Props = append(inner.Props, ir.Arg{Name: decl.Name, Value: &ir.Ident{Name: wp.Name, Type: typ, Sym: wp.Sym}})
+		inner.Bindings = append(inner.Bindings, ir.PropBinding{PropName: decl.Name, Target: &ir.Ident{Name: wp.Name, Type: typ, Sym: wp.Sym}})
 	}
 
 	// What the call site gave every other prop travels in as a prop of the
@@ -236,6 +253,10 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 			site = append(site, ir.Arg{Name: cellStartProp(a.Name), NamePos: a.NamePos, Value: a.Value})
 			continue
 		}
+		if through[a.Name] {
+			site = append(site, a)
+			continue
+		}
 		decl := declaredPropOf(comp, a.Name)
 		if decl == nil {
 			// A wildcard's entries, or a positional arg the checker already
@@ -243,7 +264,7 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 			inner.Props = append(inner.Props, a)
 			continue
 		}
-		p := &ir.Prop{Name: a.Name, Type: decl.Type, Construct: decl.Construct}
+		p := &ir.Prop{Name: a.Name, Type: decl.Type.Substitute(bound), Construct: decl.Construct}
 		p.Sym = &ir.Param{Name: p.Name, Type: p.Type}
 		w.Props = append(w.Props, p)
 		inner.Props = append(inner.Props, ir.Arg{Name: a.Name, Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p.Sym}})
@@ -261,8 +282,9 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		relay := &ir.Func{Synthesized: true}
 		emit := &ir.Emit{Name: decl.Name}
 		for j, p := range decl.Params {
-			fp := &ir.Param{Name: "__" + decl.Name + strconv.Itoa(j), Type: p.Type}
-			fwd.Params = append(fwd.Params, &ir.Param{Name: p.Name, Type: p.Type})
+			pt := p.Type.Substitute(bound)
+			fp := &ir.Param{Name: "__" + decl.Name + strconv.Itoa(j), Type: pt}
+			fwd.Params = append(fwd.Params, &ir.Param{Name: p.Name, Type: pt})
 			relay.Params = append(relay.Params, fp)
 			emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: fp.Name, Type: fp.Type, Sym: fp}})
 		}
@@ -317,6 +339,7 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		Name:      w.Name,
 		Component: w,
 		Props:     site,
+		Bindings:  n.Bindings,
 		Handlers:  n.Handlers,
 		Children:  n.Children,
 		Slots:     n.Slots,
@@ -485,9 +508,12 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 // neither: left alone it came out as `m.details.open()`, a field and a method
 // no emitted type has. A handle whose node was rendered more than once cannot
 // say which copy the call means, the rule repointCellReads holds a read to.
+//
+// What no splice answered is refused by refuseUnsplicedHandleCalls, once the
+// components nothing renders are gone.
 func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func) error {
 	if len(methods) == 0 {
-		return refuseUnsplicedHandleCalls(pkg)
+		return nil
 	}
 	var bad error
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
@@ -514,17 +540,16 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 	if err != nil {
 		return err
 	}
-	if bad != nil {
-		return bad
-	}
-	return refuseUnsplicedHandleCalls(pkg)
+	return bad
 }
 
 // refuseUnsplicedHandleCalls reports a method called through a node's `#id`
 // that no splice answered: the node is built at run time, or the target
 // renders it as the builtin it is marked -- a window on html -- and in neither
 // case is there one instance's method to call. Emitted, it was
-// `details.open()` against nothing on html.
+// `details.open()` against nothing on html. Asked of what is rendered: a test
+// build rooted at one component leaves its siblings' bodies unrendered, and
+// a call in one of those is emitted nowhere.
 func refuseUnsplicedHandleCalls(pkg *ir.Package) error {
 	var bad error
 	_ = ir.Walk(pkg, func(n ir.Node) error {

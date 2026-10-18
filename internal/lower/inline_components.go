@@ -58,6 +58,9 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	if err := refuseUnsplicedHandleCalls(pkg); err != nil {
+		return err
+	}
 	for _, c := range pkg.Components {
 		if c != main {
 			contextProps(c)

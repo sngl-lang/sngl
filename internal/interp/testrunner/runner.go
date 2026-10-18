@@ -98,6 +98,22 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 			})
 			break
 		}
+		// A statement that fired an event or called a method has run a
+		// handler, and the effects it calls for run before the next
+		// statement, as a compiled test settles after each write: a read of
+		// package state goes through no instance to settle it.
+		if cVal != nil {
+			cVal.settle()
+			if err := cVal.settleErr; err != nil {
+				cVal.settleErr = nil
+				r.Failures = append(r.Failures, codegen.TestFailure{
+					Line:    errorLine(err, stmt),
+					Message: err.Error(),
+					Fatal:   true,
+				})
+				break
+			}
+		}
 	}
 
 	composeFailures(r)

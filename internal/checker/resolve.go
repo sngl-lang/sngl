@@ -309,6 +309,11 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 				}
 			}
 		}
+		if typ != nil && typ.Kind == ir.TypeEnum {
+			if ed, ok := typ.Decl.(*ir.EnumDef); ok && len(ed.TypeParams) > 0 {
+				return c.applyEnumTypeArgs(t.Pos, typ, ed, args)
+			}
+		}
 		if len(args) > 0 {
 			c.error(ast.Pos{}, "type %q in namespace %q takes no type arguments", name, pkg)
 		}

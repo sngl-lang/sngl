@@ -91,11 +91,11 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 	case *Call:
 		// Direct call to a known async func, or through a value whose
 		// signature is coloured async.
-		if x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x) {
+		if !x.Detached && (x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x)) {
 			return true
 		}
 		// Funcvar call: Func is nil, Callee carries the funcvar expression.
-		if x.Func == nil && x.Callee != nil {
+		if !x.Detached && x.Func == nil && x.Callee != nil {
 			if k, ok := CalleeSlotKey(x.Callee); ok {
 				if color, present := pts.SlotColor[k]; present {
 					if color == ColorAsync {
@@ -204,7 +204,7 @@ func ExprHasAsyncCall(e Expr) bool {
 	}
 	switch x := e.(type) {
 	case *Call:
-		if x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x) {
+		if !x.Detached && (x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x)) {
 			return true
 		}
 		for _, a := range x.Args {
@@ -257,9 +257,23 @@ func ExprHasAsyncCall(e Expr) bool {
 // CallsAsyncValue reports whether call is a call through a func value whose
 // signature the checker coloured async: an async function may flow into the
 // slot it reads (checker.colorAsyncSlots).
+//
+// A function literal called where it stands -- a func-typed prop's argument
+// substituted for the parameter its component calls -- waits where its own
+// function does.
 func CallsAsyncValue(call *Call) bool {
 	if call.Func != nil || call.Callee == nil {
 		return false
+	}
+	switch x := call.Callee.(type) {
+	case *Lambda:
+		if x.Func != nil && x.Func.IsAsync {
+			return true
+		}
+	case *Closure:
+		if x.Func != nil && x.Func.IsAsync {
+			return true
+		}
 	}
 	t := call.Callee.ExprType()
 	return t != nil && t.Sig != nil && t.Sig.Color == ColorAsync

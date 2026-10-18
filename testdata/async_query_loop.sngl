@@ -1,0 +1,55 @@
+// SKIP(codegen) "bubbletea refuses an effect reading state in a component built per copy of a loop; async_query_go.txtar pins the Go code"
+// A query under a `for` is one per copy: each copy is an instance of its own,
+// asking for its own key, and one the tree drops is asked again when it
+// returns.
+
+import async "sngl:async"
+import . "sngl:test"
+import . "sngl:ui"
+
+var asked list[string] = []
+
+func lookup(name string) async.Result[int] {
+    asked.push(name)
+    return {ok=name.length()}
+}
+
+// Each copy is an instance of its own: the instance is the key, so nothing
+// caches per argument.
+component card(name string) node {
+    var length option[int] = null
+    async.query(on=name, fetch=lookup, :value=length)
+    text #len(value=length != null ? "{name} {length}" : name)
+}
+
+component cards node {
+    var names = ["bulbasaur", "mew"]
+    var shown = true
+
+    if shown {
+        for var n = names {
+            card #c(name=n)
+        }
+    }
+    button #add(text="Add", @click { names.push("ditto") })
+    button #toggle(text="Toggle", @click { shown = !shown })
+}
+
+func testEachCopyAsksForItsOwn(t Test, c cards) {
+    t.assert(c.c[0].len.value == "bulbasaur 9")
+    t.assert(c.c[1].len.value == "mew 3")
+    c.add.click()
+    t.assert(c.c[2].len.value == "ditto 5")
+}
+
+func testAnUnmountedQueryIsAskedAgainWhenItReturns(t Test, c cards) {
+    var before = asked.length()
+    c.toggle.click()
+    t.assert(asked.length() == before)
+    c.toggle.click()
+    t.assert(asked.length() == before + 2)
+}
+
+window {
+    cards
+}

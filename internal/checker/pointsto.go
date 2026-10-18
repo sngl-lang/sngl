@@ -103,10 +103,14 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 		w.walkExpr(x.Call)
 	case *ir.NodeInst:
 		// A component's func-typed prop is a parameter its body reads, so
-		// what a call site hands it flows there as an argument does.
+		// what a call site hands it flows there as an argument does. Not a
+		// library's: its declaration is every check's, and colouring the
+		// prop's signature would write it. Nothing needs the colour there --
+		// the body is spliced where it is written, and the call through the
+		// prop becomes a call of what the call site handed it.
 		if x.Component != nil {
 			for _, a := range x.Props {
-				if !exprIsFuncTyped(a.Value) {
+				if !exprIsFuncTyped(a.Value) || x.Component.Frozen {
 					w.walkExpr(a.Value)
 					continue
 				}

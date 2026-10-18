@@ -1,0 +1,106 @@
+// What a request answered: the value it asked for, or the failure that kept it
+// from arriving. Never both and never neither, which is why it is a payload
+// enum rather than a struct of two options.
+//
+// An adapter returns its failure rather than raising it: a 404 is a response
+// that arrived, and the request did not fail to run. A raise out of an adapter
+// is a bug in the adapter, and reaches the nearest boundary like any other.
+enum Result[T any] {
+    ok     T
+    failed Failure
+}
+
+// Why an attempt failed. `kind` is what a handler dispatches on, `message` is
+// for a human, and `code` is the adapter's own.
+//
+// Not an `error`: that is raised and unwinds to the nearest `boundary`, where a
+// failed request is a value a screen renders beside the stale answer it still
+// has. A program that wants the boundary raises from `@fail`.
+struct Failure {
+    kind    FailureKind
+    message string
+    // The adapter's own code, verbatim: an HTTP status, a SQLSTATE, a gRPC
+    // status name. Carried untouched, because only code that knows which
+    // adapter produced it can read it.
+    code    string
+}
+
+// The failure classes every adapter can produce, split by what a program
+// should do next: retrying a `request` fails identically, retrying a `server`
+// may work.
+//
+//   - `transport` -- never reached the peer
+//   - `timeout` -- reached it, no answer in time
+//   - `auth` -- a credential is missing, expired or rejected
+//   - `request` -- the peer rejected what was sent
+//   - `server` -- the peer failed on its own side
+//   - `decode` -- the answer arrived and did not match the declared type
+enum FailureKind { transport, timeout, auth, request, server, decode }
+
+// A request bracketed by the tree: asked when the node mounts and whenever
+// `on` changes, abandoned when it unmounts. `fetch` is the adapter's call, and
+// it is handed the key it asks for.
+//
+// The three two-way props are independent facts, each a cell the call site
+// binds or leaves to the instance:
+//
+//   - `value` -- the last answer, kept through a refresh and through a failure
+//   - `pending` -- an attempt is in flight
+//   - `failure` -- how the last attempt failed, cleared by a success
+//
+// **The latest attempt wins.** An answer to a key asked before the current one
+// writes nothing, and nor does one arriving after the node unmounts, so a
+// screen never shows what it is no longer asking about.
+//
+// It renders nothing, so it goes in any tree: a layout, a drawing or a menu.
+component query[K any, T any, F any](
+    // What the request is about. A change asks again.
+    on       K,
+    // The adapter's call, handed the key.
+    fetch    func(K) Result[T],
+    // The last answer.
+    :value   option[T] = null,
+    // An attempt is in flight.
+    :pending bool = false,
+    // How the last attempt failed.
+    :failure option[Failure] = null,
+    // An answer arrived.
+    @load(value T),
+    // An attempt failed.
+    @fail(f Failure),
+) F {
+    var attempt = 0
+    var refreshes = 0
+
+    // Asks again without a change of key: a retry button, a poll from a
+    // timer. The value stays, and `pending` says an attempt is in flight.
+    func refresh() {
+        refreshes += 1
+    }
+
+    effect(
+        on = {key=on, n=refreshes},
+        @mount(k) {
+            attempt += 1
+            var mine = attempt
+            pending = true
+            var r = fetch(k.key)
+            if mine != attempt {
+                return
+            }
+            pending = false
+            match var got = r {
+                ok {
+                    value = got
+                    failure = null
+                    load(got)
+                }
+                failed {
+                    failure = got
+                    fail(got)
+                }
+            }
+        },
+        @unmount { attempt += 1 },
+    )
+}
