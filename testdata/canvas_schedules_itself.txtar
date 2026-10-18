@@ -38,7 +38,7 @@ Both are fixed in the lowering, and the IR now carries `__canvasRedraw` in the
 mount and in the tick on all three targets -- `sngl dump --stage lowered
 --after CanvasReactivity` shows it for fyne, gtk4 and html alike. **Only fyne
 emits it.** Both of the others drop a redraw that sits inside a lambda body,
-which is the same blind spot `CLAUDE.md` records for the lowering passes, one
+which is the same blind spot `design/language.md` records for the lowering passes, one
 layer further out. html drops the one at the top of an effect's body too, for a
 reason of its own: `translateBlockWithJC` lifts a redraw out of a handler and
 resolves it against `canvasSetups`, and `emitJSFunc` -- which is what writes an
