@@ -62,9 +62,12 @@ for what the host adds and removes with the node, such as a CssProvider.
 **Silence is an error, as a repo test.** Each platform declares the fields it
 cannot express, with a reason, in a `const` list. A test in `lib/` holds the
 fields its style functions read, together with that list, to every field of
-`ui.Style`, so adding a field fails each platform until it answers. (Still to
-confirm with Jonathan: whether a program's write of a field its target lists
-should also warn at the write.)
+`ui.Style`, so adding a field fails each platform until it answers. A
+program's write of a field its target lists does not warn (Jonathan's call):
+only a literal shows the write, a multi-target build would warn per target
+with no way to say it is meant for one, and a field not answered yet is the
+compiler's gap rather than the program's. A lint the build opts into may come
+later.
 
 When a platform's translation is SNGL, the Go it replaces goes: the field
 switches, the held-Style helpers, and the per-node routing that the overrides
