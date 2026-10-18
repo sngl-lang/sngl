@@ -6,12 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
-	"duckfam.us/sngl/internal/checker"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/internal/parser"
-	"duckfam.us/sngl/ir"
 )
 
 // effectRunSrc is testdata/effect_on_recreates.sngl with the test funcs
@@ -111,42 +106,7 @@ func TestTeardownEndsTheRunningBracket(t *testing.T) {
 // it either: the interpreter evaluates their assertions and the interpreter
 // does not lower.
 func TestEffectMountsAndRekeysInTheEmittedProgram(t *testing.T) {
-	doc, err := parser.Parse("t.sngl", []byte(effectRunSrc))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	var plats []ir.Platform
-	if p := codegen.LookupPlatform("bubbletea"); p != nil {
-		plats = append(plats, p)
-	}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain:    true,
-		Platforms: plats,
-		Languages: []ir.Language{lang},
-		Targets:   []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}},
-	})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check: %s: %s", d.Pos, d.Msg)
-		}
-	}
-	g := &Generator{}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
-	if !ok {
-		t.Fatalf("model.go not among generated files %v", mem.Files())
-	}
+	modelSrc := []byte(generateBubbleteaModel(t, effectRunSrc))
 
 	// Under the main module, so charm.land/bubbletea resolves through the
 	// project's own go.mod.
