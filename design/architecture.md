@@ -24,6 +24,8 @@ Every target is a `lib/` directory registered from the layout; its Go generator 
 
 **The release CLI reaches no reflective method call either**, and `cmd/sngl`'s `TestBinaryReachesNoReflectiveMethodCall` holds it to that by reading the linker's dependency dump (`-ldflags=-dumpdep`), which marks each reached call `<ReflectMethod>`. Whether `text/template` is linked is the wrong question for the CLI: cobra imports it and runs it only for a custom help template, which sngl never sets. glamour ran every style's `Format` through it, so `sngl doc`'s renderer cost a third of the binary (66.6 MB stripped, 44.8 MB without). sngl uses glamour from the fork `github.com/sngl-lang/glamour` (a `replace` in `go.mod`), where a `Format` substitutes `{{.text}}` and nothing else; every built-in style says no more.
 
+**Two more forks trim what the CLI embeds.** `github.com/sngl-lang/typescript-go` (branch `sngl-rename`) carries no translated diagnostics, since SNGL reports in English and all thirteen catalogues were linked (1.1 MB). `github.com/sngl-lang/chroma` (branch `sngl-v2`, from v2.27.0) keeps only the lexers SNGL shows -- the repository's fences, its targets and import schemes, and the config formats beside them -- for 1.9 MB. A fence in any other language, in the docs or in a program's `md:` markdown, renders as plain text; a lexer comes back by restoring its file from upstream in the fork.
+
 ## Codegen Models
 
 Platforms choose between two intermediate representations based on their rendering approach:

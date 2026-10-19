@@ -8,7 +8,7 @@ require (
 	charm.land/glamour/v2 v2.0.1
 	charm.land/lipgloss/v2 v2.0.4
 	fyne.io/fyne/v2 v2.7.4
-	github.com/alecthomas/chroma/v2 v2.14.0
+	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/charmbracelet/x/cellbuf v0.0.15
 	github.com/davecgh/go-spew v1.1.1
 	github.com/evanw/esbuild v0.28.0
@@ -64,6 +64,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/efficientgo/tools/core v0.0.0-20210609125236-d73259166f20 // indirect
 	github.com/efficientgo/tools/extkingpin v0.0.0-20210609125236-d73259166f20 // indirect
@@ -172,3 +173,5 @@ tool (
 replace modernc.org/egg => gitlab.com/duckbrain/egg v1.4.2-0.20261013225253-e774f1de7b2e
 
 replace charm.land/glamour/v2 => github.com/sngl-lang/glamour/v2 v2.0.0-20261019211257-b6317f6a9e05
+
+replace github.com/alecthomas/chroma/v2 => github.com/sngl-lang/chroma/v2 v2.0.0-20261019223722-bb737884b464
