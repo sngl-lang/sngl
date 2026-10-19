@@ -1706,6 +1706,9 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if lb, ok := left.(bool); ok && (e.Op == ast.BinAnd && !lb || e.Op == ast.BinOr && lb) {
+		return lb, nil
+	}
 	right, err := env.Eval(e.Right)
 	if err != nil {
 		return nil, err

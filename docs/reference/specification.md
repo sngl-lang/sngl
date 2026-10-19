@@ -1402,7 +1402,8 @@ ArgExprCont =
 ### Operator semantics
 
 - The logical operators `&&`, `||`, `!` require `bool` operands and yield
-  `bool`.
+  `bool`. `&&` and `||` evaluate their right operand only when the left does
+  not decide the result.
 - Equality `==` / `!=` applies when the operands have the same kind, when both
   are numeric, or when one is `null`; it yields `bool`.
 - The relational operators `<`, `<=`, `>`, `>=` apply to two numbers, to two
