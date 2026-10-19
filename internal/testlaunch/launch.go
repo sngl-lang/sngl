@@ -91,6 +91,13 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 		// root is.
 		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
 		build.IsolateRootComponent(groupPkg, group.Component)
+		if group.Component == "" && !groupPkg.IsProgram() {
+			// Tests taking no component, in a package whose body renders
+			// nothing, render nothing either. Left in, every component was
+			// an entry point of its own, and the Go targets emitted its view
+			// against a Model holding none of its state.
+			groupPkg.Components = nil
+		}
 		assets, err := prepareForLaunch(groupPkg, cfg, group.Component)
 		if err != nil {
 			return results, err
