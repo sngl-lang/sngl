@@ -482,8 +482,8 @@ function buildLeaf(value) {
 // Load WASM
 async function initWasm() {
     const go = new Go();
-    const result = await WebAssembly.instantiateStreaming(
-        fetch(window.__sngl_wasm_url),
+    const result = await WebAssembly.instantiate(
+        await loadSnglWasm(window.__sngl_wasm_url),
         go.importObject,
     );
     go.run(result.instance);

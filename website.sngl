@@ -262,8 +262,9 @@ component PlaygroundContent() ui.node {
             }
         }
         html.div(id="playground-sources")
-        html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
+        html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm.gz") + "\";")
         html.script(src=pgAssets.path("wasm_exec.js"))
+        html.script(src=pgAssets.path("wasm_load.js"))
         html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js")
         html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
         html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
@@ -309,8 +310,9 @@ component TutorialContent() ui.node {
             }
         }
         html.div(id="lesson-sources")
-        html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
+        html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm.gz") + "\";")
         html.script(src=pgAssets.path("wasm_exec.js"))
+        html.script(src=pgAssets.path("wasm_load.js"))
         html.script(type="module", src=pgAssets.path("tutorial.js"))
     } else {
         ui.text(value="Interactive tutorial — available in browser only.")

@@ -28,7 +28,7 @@ targets in parallel) is not a saving.
   and is tuned to one machine besides.
 - **The docs site (`go tool docsgen`) is the stress case**: one html build
   writing ~1200 files, where per-page costs dominate. Its compile step is
-  `sngl generate --allow-eval=go:duckfam.us/sngl/docs --allow-eval=go:duckfam.us/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm` is
+  `sngl generate --allow-eval=go:duckfam.us/sngl/docs --allow-eval=go:duckfam.us/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm.gz` is
   staged.
 - **What another process produces is SNGL, and it is stored.** A step
   whose output the compiler reads but did not write -- the compile-time
