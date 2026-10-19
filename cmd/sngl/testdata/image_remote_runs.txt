@@ -57,7 +57,7 @@ sha256:41d39020035e840aa7fe46dd504f3020
   ]
 }
 -- testrun/fyne/go/app.sngl/pictures/1 --
-sha256:21ceab2749b7172ffe2f9f7bf078be19
+sha256:4ccbf4a11cfead436392f620ad5489bc
 {
   "results": [
     {
