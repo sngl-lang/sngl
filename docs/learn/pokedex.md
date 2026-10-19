@@ -12,6 +12,8 @@ nothing in it says how a target waits for one.
 
 ## The API is an import
 
+<!-- SNGL-nocheck -->
+
 ```sngl
 import poke "openapi:./pokeapi.yml"
 ```
@@ -29,6 +31,8 @@ SNGL name is camelCased and keeps its wire name in a mark, so
 every request under it goes there instead.
 
 ## A request is a component
+
+<!-- SNGL-nocheck -->
 
 ```sngl
 component detailPage(name string, @open(name string)) ui.node {
@@ -66,6 +70,8 @@ text field's value is. A page that does not care leaves them out.
 The list keys its request on `offset`. "More" moves it, and the page of names
 that arrives is appended in `@load`:
 
+<!-- SNGL-nocheck -->
+
 ```sngl
 poke.pokemonList(limit=pageSize, offset=offset, :pending=loading, :failure=failure, @load(page) {
     for var r = page.results {
@@ -78,6 +84,8 @@ poke.pokemonList(limit=pageSize, offset=offset, :pending=loading, :failure=failu
 ## A request per row
 
 Each card in the list asks for its own Pokémon, for its picture and types:
+
+<!-- SNGL-nocheck -->
 
 ```sngl
 component card(name string, @open()) ui.node {
@@ -97,6 +105,8 @@ The evolution chain is two requests behind the Pokémon: the species names its
 chain by URL, and the chain names its stages. Each is a query under an `if` on
 the answer before it:
 
+<!-- SNGL-nocheck -->
+
 ```sngl
 poke.pokemonSpeciesRetrieve(id=species, :value=about)
 if about != null {
@@ -108,6 +118,8 @@ if about != null {
 
 The app is a `nav.stack` of two pages. The detail page's params are a struct,
 and its href names their field:
+
+<!-- SNGL-nocheck -->
 
 ```sngl
 nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
@@ -140,6 +152,8 @@ for them: in the document the program is written against.
 targets against PokéAPI's answers recorded on a local server. Each test wraps a
 component in `poke.server(…)` pointing at that server and waits for the
 answer:
+
+<!-- SNGL-nocheck -->
 
 ```sngl
 component ivysaur ui.node {

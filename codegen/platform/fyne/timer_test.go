@@ -67,7 +67,7 @@ window {
 		"case <-stopped:",
 		// The tick reaches the drawing thread, since a widget touched from any
 		// other goroutine is a data race.
-		"fyne.Do(func() {",
+		"__snglDo(func() {",
 		"m.seconds += 1",
 		// Tick body's reactive widget update must use the fyne widget API,
 		// qualified with the receiver — not a raw, unqualified field write.
