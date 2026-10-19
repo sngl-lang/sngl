@@ -11,7 +11,7 @@ import (
 // names hands out SNGL names in one namespace, each once. A name SNGL's
 // grammar refuses, or one already taken, is changed, and the change is said.
 // Two names differing only in their first letter's case are one name: Go
-// exports both, `pokemonList` and `PokemonList`, as the same identifier.
+// exports both, `petList` and `PetList`, as the same identifier.
 type names struct {
 	taken map[string]bool
 	// fields are each struct's own namespace.

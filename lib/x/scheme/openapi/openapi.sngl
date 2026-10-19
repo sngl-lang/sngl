@@ -4,7 +4,7 @@ import marks "sngl:internal/marks"
 // `openapi:` imports an OpenAPI 3 document, YAML or JSON, as a package of
 // the types it declares and the requests it describes:
 //
-//     import poke "openapi:./pokeapi.yml"
+//     import pets "openapi:./petstore.yml"
 //
 // The path is the project's own file, relative to the import root, read
 // through the project: one outside it, or a symlink out of it, is refused.
@@ -19,7 +19,7 @@ import marks "sngl:internal/marks"
 //     A field's name is its key in camelCase, with `#[json.identifier]`
 //     naming the key where the two differ.
 //   - **A function per operation**, named for its `operationId` with `Call`
-//     after it, `pokemonRetrieveCall`: its path parameters, then its query's
+//     after it, `petRetrieveCall`: its path parameters, then its query's
 //     -- with the spec's default, or as an option -- then a JSON body. It
 //     answers `async.Result` of the response's type: the value, or the
 //     failure that kept it from arriving, the status said, or its JSON did

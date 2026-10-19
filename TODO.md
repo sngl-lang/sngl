@@ -37,15 +37,15 @@ The `openapi:` scheme's fixtures run on a trimmed copy of PokéAPI's document.
 Replace it with a small hand-written one in a neutral domain (a petstore,
 OpenAPI's own sample) that keeps every feature the trimmed copy exercised.
 
-- [ ] List what `testdata/openapi_pokeapi.txtar` exercises before deleting
+- [X] List what `testdata/openapi_pokeapi.txtar` exercises before deleting
   it: 3.1 null unions in both spellings, `allOf` wrapping a `$ref`, a paged
   list, path and query parameters, `readOnly`, fields the import leaves out
   with a warning, operation-name casing (`codegen/scheme/openapi/names.go`).
-- [ ] `testdata/openapi_petstore.txtar` (or one golden per feature) covering
+- [X] `testdata/openapi_petstore.txtar` (or one golden per feature) covering
   all of it.
-- [ ] `cmd/sngl/testdata/openapi_runs.txt` against the neutral document;
+- [X] `cmd/sngl/testdata/openapi_runs.txt` against the neutral document;
   the harness's `/api/v2/pokemon/` routes become neutral ones.
-- [ ] `cmd/sngl/testdata/error_openapi_oneof.txt`'s comment,
+- [X] `cmd/sngl/testdata/error_openapi_oneof.txt`'s comment,
   `lib/x/scheme/openapi/openapi.sngl`'s doc, `codegen/scheme/openapi/{names,spec}.go`
   comments, `design/import-schemes.md`'s examples.
 

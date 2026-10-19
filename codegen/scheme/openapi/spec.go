@@ -84,8 +84,8 @@ type Operation struct {
 	Method    string // a member of http.Method
 	PathText  string // the path as the spec writes it
 	Path      []Segment
-	Func      string // the function's name, `pokemonRetrieveCall`
-	Component string // the adapter's name, `pokemonRetrieve`; "" for none
+	Func      string // the function's name, `petRetrieveCall`
+	Component string // the adapter's name, `petRetrieve`; "" for none
 	Summary   string
 	Doc       string
 	Params    []Param

@@ -45,10 +45,10 @@ func startTestHTTP(t *testing.T) {
 //	/echo                   what the request was: method, query, body, X-Sngl header
 //	/status/{code}          that status, with "status {code}" as the body
 //	/dot.png                a 2x2 PNG, for an image a program fetches
-//	/api/v2/pokemon/        a page of names, `limit` (default 20) from `offset`, as PokéAPI pages
-//	/api/v2/pokemon/{name}/ a Pokémon as PokéAPI's spec declares one, or a 404
-//	/pokeapi/api/v2/…       PokéAPI as examples/pokedex reads it: the page of
-//	                        names above, and each Pokémon, species and
+//	/api/v1/pets/           a page of names, `limit` (default 20) from `offset`
+//	/api/v1/pets/{name}/    a pet as the petstore of openapi_runs.txt declares one, or a 404
+//	/pokeapi/api/v2/…       PokéAPI as examples/pokedex reads it: a page of
+//	                        testPokemonNames, and each Pokémon, species and
 //	                        evolution chain recorded in testdata/pokeapi
 //
 // Every answer carries the CORS headers a page served from elsewhere needs
@@ -67,7 +67,7 @@ func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/pokeapi/api/v2/pokemon/":
 		h.Set("Content-Type", "application/json")
-		w.Write(testPokemonPage(r, "/pokeapi"))
+		w.Write(testPage(r, "/pokeapi/api/v2/pokemon/", testPokemonNames))
 	case strings.HasPrefix(path, "/pokeapi/api/v2/"):
 		h.Set("Content-Type", "application/json")
 		body, err := testPokeAPI.ReadFile("testdata/pokeapi/" + strings.TrimSuffix(strings.TrimPrefix(path, "/pokeapi/api/v2/"), "/") + ".json")
@@ -77,19 +77,19 @@ func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Write(body)
-	case path == "/api/v2/pokemon/":
+	case path == "/api/v1/pets/":
 		h.Set("Content-Type", "application/json")
-		w.Write(testPokemonPage(r, ""))
-	case strings.HasPrefix(path, "/api/v2/pokemon/"):
-		name := strings.TrimSuffix(strings.TrimPrefix(path, "/api/v2/pokemon/"), "/")
-		mon, ok := testPokemonDetail[name]
+		w.Write(testPage(r, "/api/v1/pets/", testPetNames))
+	case strings.HasPrefix(path, "/api/v1/pets/"):
+		name := strings.TrimSuffix(strings.TrimPrefix(path, "/api/v1/pets/"), "/")
+		pet, ok := testPetDetail[name]
 		h.Set("Content-Type", "application/json")
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			io.WriteString(w, `{"detail": "Not found."}`)
 			return
 		}
-		io.WriteString(w, mon)
+		io.WriteString(w, pet)
 	case strings.HasPrefix(path, "/pokemon/"):
 		name := strings.TrimPrefix(path, "/pokemon/")
 		mon, ok := testPokemon[name]
@@ -145,7 +145,7 @@ var testPokemon = map[string]string{
 		"types": [{"slot": 1, "type": {"name": "psychic", "url": "https://pokeapi.co/api/v2/type/14/"}}]}`,
 }
 
-// testPokemonNames are what /api/v2/pokemon/ pages through.
+// testPokemonNames are what /pokeapi/api/v2/pokemon/ pages through.
 var testPokemonNames = []string{"bulbasaur", "ivysaur", "venusaur", "charmander", "charmeleon"}
 
 // testPokeAPI is PokéAPI's answers for the Pokémon testPokemonNames names,
@@ -156,9 +156,9 @@ var testPokemonNames = []string{"bulbasaur", "ivysaur", "venusaur", "charmander"
 //go:embed testdata/pokeapi
 var testPokeAPI embed.FS
 
-// testPokemonPage is the page r asks for, its next and previous links as
-// PokéAPI writes them under prefix: absolute, or null at either end.
-func testPokemonPage(r *http.Request, prefix string) []byte {
+// testPage is the page of names r asks for from the collection at path, its
+// next and previous links absolute, or null at either end.
+func testPage(r *http.Request, path string, names []string) []byte {
 	limit, offset := 20, 0
 	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil {
 		limit = v
@@ -175,15 +175,16 @@ func testPokemonPage(r *http.Request, prefix string) []byte {
 		Next     *string   `json:"next"`
 		Previous *string   `json:"previous"`
 		Results  []summary `json:"results"`
-	}{Count: len(testPokemonNames), Results: []summary{}}
+	}{Count: len(names), Results: []summary{}}
+	base := "http://" + testHTTPAddr + path
 	link := func(off int) *string {
-		s := "http://" + testHTTPAddr + prefix + "/api/v2/pokemon/?offset=" + strconv.Itoa(off) + "&limit=" + strconv.Itoa(limit)
+		s := base + "?offset=" + strconv.Itoa(off) + "&limit=" + strconv.Itoa(limit)
 		return &s
 	}
-	for i := offset; i < offset+limit && i < len(testPokemonNames); i++ {
-		page.Results = append(page.Results, summary{testPokemonNames[i], "http://" + testHTTPAddr + prefix + "/api/v2/pokemon/" + testPokemonNames[i] + "/"})
+	for i := offset; i < offset+limit && i < len(names); i++ {
+		page.Results = append(page.Results, summary{names[i], base + names[i] + "/"})
 	}
-	if offset+limit < len(testPokemonNames) {
+	if offset+limit < len(names) {
 		page.Next = link(offset + limit)
 	}
 	if offset > 0 {
@@ -193,11 +194,14 @@ func testPokemonPage(r *http.Request, prefix string) []byte {
 	return out
 }
 
-var testPokemonDetail = map[string]string{
-	"bulbasaur": `{"id": 1, "name": "bulbasaur", "base_experience": 64, "height": 7, "is_default": true,
-		"species": {"name": "bulbasaur", "url": "https://pokeapi.co/api/v2/pokemon-species/1/"},
-		"sprites": {"front_default": "https://example.com/1.png"},
-		"stats": [{"base_stat": 45, "effort": 0, "stat": {"name": "hp", "url": "https://pokeapi.co/api/v2/stat/1/"}}],
-		"types": [{"slot": 1, "type": {"name": "grass", "url": "https://pokeapi.co/api/v2/type/12/"}},
-		          {"slot": 2, "type": {"name": "poison", "url": "https://pokeapi.co/api/v2/type/4/"}}]}`,
+// testPetNames are what /api/v1/pets/ pages through.
+var testPetNames = []string{"rex", "bella", "milo", "luna", "coco"}
+
+var testPetDetail = map[string]string{
+	"rex": `{"id": 1, "name": "rex", "adoption_fee": 120, "age": 3, "is_available": true,
+		"breed": {"name": "beagle", "url": "https://petstore.example/api/v1/pet-breeds/1/"},
+		"photos": {"thumbnail_url": "https://example.com/1.png"},
+		"measurements": [{"base_value": 45, "margin": 0, "measure": {"name": "weight", "url": "https://petstore.example/api/v1/measures/1/"}}],
+		"tags": [{"slot": 1, "type": {"name": "friendly", "url": "https://petstore.example/api/v1/tags/12/"}},
+		         {"slot": 2, "type": {"name": "small", "url": "https://petstore.example/api/v1/tags/4/"}}]}`,
 }

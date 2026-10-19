@@ -3,18 +3,21 @@ An `openapi:` import resolves through the library's own plugin,
 which reads it and writes the package in Go -- a declaration per
 schema, a `…Call` function per operation and a component over `async.query`
 per GET, and `server`, the context the spec's first server defaults. The spec
-is PokéAPI's own, trimmed: its 3.1 null unions in both spellings, an `allOf`
-of one `$ref`, and a map of any value, which is left out and said.
+is a small petstore: 3.1 null unions in both spellings (`type: [T, 'null']`
+and 3.0's `nullable`), a `oneOf` of a `$ref` and null, an `allOf` of one
+`$ref` beside `readOnly`, a paged list, a field named `type`, snake_case keys
+and operation ids written in camelCase, and a map of any value, which is left
+out and said.
 
 The program uses each: a component keyed on two parameters, which is an
 anonymous struct, one keyed on its one, a function from a handler, and
 `server` provided around a subtree.
 
-written openapi:./pokeapi.yml
+written openapi:./petstore.yml
 -- app.sngl --
 import async "sngl:async"
 import ui "sngl:ui"
-import poke "openapi:./pokeapi.yml"
+import pets "openapi:./petstore.yml"
 
 output {
     none {
@@ -32,8 +35,8 @@ output {
 // A page of names, a page further each time More is pressed.
 component names ui.node {
     var offset = 0
-    var page option[poke.PaginatedPokemonSummaryList] = null
-    poke.pokemonList(limit=20, offset=offset, :value=page)
+    var page option[pets.PaginatedPetSummaryList] = null
+    pets.petList(limit=20, offset=offset, :value=page)
     if page != null {
         for var p = page.results {
             ui.text(value=p.name)
@@ -42,57 +45,57 @@ component names ui.node {
     ui.button(text="More", @click { offset += 20 })
 }
 
-// One Pokémon, asked again whenever name changes.
+// One pet, asked again whenever name changes.
 component detail(name string) ui.node {
-    var mon option[poke.PokemonDetail] = null
+    var pet option[pets.PetDetail] = null
     var loading = false
     var failure option[async.Failure] = null
-    poke.pokemonRetrieve(id=name, :value=mon, :pending=loading, :failure=failure)
+    pets.petRetrieve(id=name, :value=pet, :pending=loading, :failure=failure)
     if loading {
         ui.spinner()
     }
     if failure != null {
         ui.text(value="Could not load {name}: {failure.message}")
     }
-    if mon != null {
-        ui.text(value="#{mon.id} {mon.name}")
-        for var t = mon.types {
+    if pet != null {
+        ui.text(value="#{pet.id} {pet.name}")
+        for var t = pet.tags {
             ui.badge(value=t.type.name)
         }
     }
 }
 
-// The species, asked from a handler rather than a component.
-component species(name string) ui.node {
+// The breed, asked from a handler rather than a component.
+component breed(name string) ui.node {
     var from = "-"
-    ui.button(text="Evolves from", @click {
-        match var r = poke.pokemonSpeciesRetrieveCall(id=name) {
-            ok { from = r.evolvesFromSpecies != null ? r.evolvesFromSpecies.name : "nothing" }
+    ui.button(text="Bred from", @click {
+        match var r = pets.petBreedRetrieveCall(id=name) {
+            ok { from = r.parentBreed != null ? r.parentBreed.name : "nothing" }
             failed { from = r.message }
         }
     })
     ui.text(value=from)
 }
 
-ui.window(title="Pokédex") {
+ui.window(title="Petstore") {
     names
-    poke.server("https://mirror.example") {
-        detail(name="pikachu")
-        species(name="pikachu")
+    pets.server("https://mirror.example") {
+        detail(name="rex")
+        breed(name="beagle")
     }
 }
--- pokeapi.yml --
+-- petstore.yml --
 openapi: 3.1.0
 info:
-  title: PokéAPI
-  version: 2.10.0
+  title: Petstore
+  version: 1.0.0
 servers:
-- url: https://pokeapi.co
+- url: https://petstore.example
 paths:
-  /api/v2/pokemon/:
+  /api/v1/pets/:
     get:
-      operationId: pokemon_list
-      summary: List pokemon
+      operationId: pet_list
+      summary: List pets
       parameters:
       - name: limit
         required: false
@@ -111,12 +114,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPokemonSummaryList'
+                $ref: '#/components/schemas/PaginatedPetSummaryList'
           description: ''
-  /api/v2/pokemon/{id}/:
+  /api/v1/pets/{id}/:
     get:
-      operationId: pokemon_retrieve
-      summary: Get pokemon
+      operationId: pet_retrieve
+      summary: Get pet
       parameters:
       - in: path
         name: id
@@ -129,12 +132,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PokemonDetail'
+                $ref: '#/components/schemas/PetDetail'
           description: ''
-  /api/v2/pokemon-species/{id}/:
+  /api/v1/pet-breeds/{id}/:
     get:
-      operationId: pokemon_species_retrieve
-      summary: Get pokemon species
+      operationId: pet_breed_retrieve
+      summary: Get pet breed
       parameters:
       - in: path
         name: id
@@ -146,14 +149,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PokemonSpeciesDetail'
+                $ref: '#/components/schemas/PetBreedDetail'
           description: ''
 components:
   schemas:
-    PaginatedPokemonSummaryList:
+    PaginatedPetSummaryList:
       type: object
       required:
       - count
+      - next
+      - previous
       - results
       properties:
         count:
@@ -170,8 +175,8 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/PokemonSummary'
-    PokemonSummary:
+            $ref: '#/components/schemas/PetSummary'
+    PetSummary:
       type: object
       properties:
         name:
@@ -184,7 +189,7 @@ components:
       required:
       - name
       - url
-    PokemonDetail:
+    PetDetail:
       type: object
       properties:
         id:
@@ -193,62 +198,62 @@ components:
         name:
           type: string
           maxLength: 200
-        base_experience:
+        adoption_fee:
           type:
           - integer
           - 'null'
-        height:
+        age:
           type:
           - integer
           - 'null'
-        is_default:
+        is_available:
           type: boolean
-        species:
-          $ref: '#/components/schemas/PokemonSpeciesSummary'
-        sprites:
+        breed:
+          $ref: '#/components/schemas/PetBreedSummary'
+        photos:
           allOf:
-          - $ref: '#/components/schemas/PokemonSprites'
+          - $ref: '#/components/schemas/PetPhotos'
           readOnly: true
-        stats:
+        measurements:
           type: array
           items:
-            $ref: '#/components/schemas/PokemonStat'
+            $ref: '#/components/schemas/PetMeasurement'
           readOnly: true
-        types:
+        tags:
           type: array
           items:
-            $ref: '#/components/schemas/PokemonType'
+            $ref: '#/components/schemas/PetTag'
           readOnly: true
       required:
       - id
       - name
-      - species
-      - sprites
-      - stats
-      - types
-    PokemonSprites:
+      - breed
+      - photos
+      - measurements
+      - tags
+    PetPhotos:
       type: object
       properties:
-        front_default:
+        thumbnail_url:
           type:
           - string
           - 'null'
       required:
-      - front_default
-    PokemonStat:
+      - thumbnail_url
+    PetMeasurement:
       type: object
       properties:
-        base_stat:
+        base_value:
           type: integer
-        effort:
+        margin:
           type: integer
-        stat:
-          $ref: '#/components/schemas/StatSummary'
+        measure:
+          $ref: '#/components/schemas/MeasureSummary'
       required:
-      - base_stat
-      - effort
-      - stat
-    StatSummary:
+      - base_value
+      - margin
+      - measure
+    MeasureSummary:
       type: object
       properties:
         name:
@@ -259,17 +264,17 @@ components:
       required:
       - name
       - url
-    PokemonType:
+    PetTag:
       type: object
       properties:
         slot:
           type: integer
         type:
-          $ref: '#/components/schemas/TypeSummary'
+          $ref: '#/components/schemas/TagSummary'
       required:
       - slot
       - type
-    TypeSummary:
+    TagSummary:
       type: object
       properties:
         name:
@@ -280,7 +285,7 @@ components:
       required:
       - name
       - url
-    PokemonSpeciesSummary:
+    PetBreedSummary:
       type: object
       properties:
         name:
@@ -291,24 +296,24 @@ components:
       required:
       - name
       - url
-    PokemonSpeciesDetail:
+    PetBreedDetail:
       type: object
       properties:
         id:
           type: integer
         name:
           type: string
-        evolves_from_species:
+        parent_breed:
           oneOf:
-          - $ref: '#/components/schemas/PokemonSpeciesSummary'
+          - $ref: '#/components/schemas/PetBreedSummary'
           - type: 'null'
-        evolution_chain:
+        breed_lineage:
           type: object
           additionalProperties: {}
       required:
       - id
       - name
-      - evolves_from_species
+      - parent_breed
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -351,21 +356,21 @@ type Result__Response struct {
 	Failed Failure
 }
 
-type Result__PaginatedPokemonSummaryList struct {
+type Result__PaginatedPetSummaryList struct {
 	tag    int
-	Ok     PaginatedPokemonSummaryList
+	Ok     PaginatedPetSummaryList
 	Failed Failure
 }
 
-type Result__PokemonDetail struct {
+type Result__PetDetail struct {
 	tag    int
-	Ok     PokemonDetail
+	Ok     PetDetail
 	Failed Failure
 }
 
-type Result__PokemonSpeciesDetail struct {
+type Result__PetBreedDetail struct {
 	tag    int
-	Ok     PokemonSpeciesDetail
+	Ok     PetBreedDetail
 	Failed Failure
 }
 
@@ -375,64 +380,64 @@ type Failure struct {
 	Code    string
 }
 
-type PaginatedPokemonSummaryList struct {
+type PaginatedPetSummaryList struct {
 	Count    int
 	Next     *string
 	Previous *string
-	Results  []PokemonSummary
+	Results  []PetSummary
 }
 
-type PokemonSummary struct {
+type PetSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonDetail struct {
-	Id             int
-	Name           string
-	BaseExperience *int
-	Height         *int
-	IsDefault      *bool
-	Species        PokemonSpeciesSummary
-	Sprites        PokemonSprites
-	Stats          []PokemonStat
-	Types          []PokemonType
+type PetDetail struct {
+	Id           int
+	Name         string
+	AdoptionFee  *int
+	Age          *int
+	IsAvailable  *bool
+	Breed        PetBreedSummary
+	Photos       PetPhotos
+	Measurements []PetMeasurement
+	Tags         []PetTag
 }
 
-type PokemonSprites struct {
-	FrontDefault *string
+type PetPhotos struct {
+	ThumbnailUrl *string
 }
 
-type PokemonStat struct {
-	BaseStat int
-	Effort   int
-	Stat     StatSummary
+type PetMeasurement struct {
+	BaseValue int
+	Margin    int
+	Measure   MeasureSummary
 }
 
-type StatSummary struct {
+type MeasureSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonType struct {
+type PetTag struct {
 	Slot int
-	Type TypeSummary
+	Type TagSummary
 }
 
-type TypeSummary struct {
+type TagSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonSpeciesSummary struct {
+type PetBreedSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonSpeciesDetail struct {
-	Id                 int
-	Name               string
-	EvolvesFromSpecies *PokemonSpeciesSummary
+type PetBreedDetail struct {
+	Id          int
+	Name        string
+	ParentBreed *PetBreedSummary
 }
 
 type __anon_limit_offset_7e7555 struct {
@@ -459,8 +464,8 @@ type Response struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	offset__inst0       int
-	page__inst0         *PaginatedPokemonSummaryList
-	mon__inst0          *PokemonDetail
+	page__inst0         *PaginatedPetSummaryList
+	pet__inst0          *PetDetail
 	loading__inst0      bool
 	failure__inst0      *Failure
 	from__inst0         string
@@ -503,7 +508,7 @@ func New() *Model {
 	m := &Model{}
 	m.offset__inst0 = 0
 	m.page__inst0 = nil
-	m.mon__inst0 = nil
+	m.pet__inst0 = nil
 	m.loading__inst0 = false
 	m.failure__inst0 = nil
 	m.from__inst0 = "-"
@@ -548,9 +553,9 @@ func __snglDo(f func()) {
 	fyne.Do(f)
 }
 
-func PokemonSpeciesRetrieveCall(id string, __ctx_server string) Result__PokemonSpeciesDetail {
+func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail {
 	__match2 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v2/pokemon-species/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
@@ -562,24 +567,24 @@ func PokemonSpeciesRetrieveCall(id string, __ctx_server string) Result__PokemonS
 	switch {
 	case (__match2.tag == 1):
 		r := __match2.Failed
-		return Result__PokemonSpeciesDetail{tag: 1, Failed: r}
+		return Result__PetBreedDetail{tag: 1, Failed: r}
 	default:
 		r := __match2.Ok
-		return func() Result__PokemonSpeciesDetail {
-			__snglV, __snglMsg := sngljson.Decode[PokemonSpeciesDetail](r.Body, func() *sngljson.Codec {
+		return func() Result__PetBreedDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetBreedDetail](r.Body, func() *sngljson.Codec {
 				c0 := &sngljson.Codec{Kind: sngljson.Struct}
 				c1 := &sngljson.Codec{Kind: sngljson.Struct}
-				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "evolves_from_species", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: c1}}}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "parent_breed", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: c1}}}
 				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PokemonSpeciesDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
 			}
-			return Result__PokemonSpeciesDetail{tag: 0, Ok: __snglV}
+			return Result__PetBreedDetail{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PokemonSpeciesDetail{tag: 0, Ok: PokemonSpeciesDetail{}}
+	return Result__PetBreedDetail{tag: 0, Ok: PetBreedDetail{}}
 }
 
 func _answered(r Result__Response) Result__Response {
@@ -594,9 +599,9 @@ func _answered(r Result__Response) Result__Response {
 	return Result__Response{tag: 0, Ok: Response{}}
 }
 
-func PokemonListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPokemonSummaryList {
+func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
 	__match0 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v2/pokemon/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
+		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c0.Fields = []sngljson.Field{{Wire: "limit", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "offset", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}}
 			return c0
@@ -612,11 +617,11 @@ func PokemonListCall(limit *int, offset *int, __ctx_server string) Result__Pagin
 	switch {
 	case (__match0.tag == 1):
 		r := __match0.Failed
-		return Result__PaginatedPokemonSummaryList{tag: 1, Failed: r}
+		return Result__PaginatedPetSummaryList{tag: 1, Failed: r}
 	default:
 		r := __match0.Ok
-		return func() Result__PaginatedPokemonSummaryList {
-			__snglV, __snglMsg := sngljson.Decode[PaginatedPokemonSummaryList](r.Body, func() *sngljson.Codec {
+		return func() Result__PaginatedPetSummaryList {
+			__snglV, __snglMsg := sngljson.Decode[PaginatedPetSummaryList](r.Body, func() *sngljson.Codec {
 				c0 := &sngljson.Codec{Kind: sngljson.Struct}
 				c1 := &sngljson.Codec{Kind: sngljson.Struct}
 				c0.Fields = []sngljson.Field{{Wire: "count", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "next", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "previous", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "results", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c1}}}
@@ -624,17 +629,17 @@ func PokemonListCall(limit *int, offset *int, __ctx_server string) Result__Pagin
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PaginatedPokemonSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
 			}
-			return Result__PaginatedPokemonSummaryList{tag: 0, Ok: __snglV}
+			return Result__PaginatedPetSummaryList{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PaginatedPokemonSummaryList{tag: 0, Ok: PaginatedPokemonSummaryList{}}
+	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{}}
 }
 
-func PokemonRetrieveCall(id string, __ctx_server string) Result__PokemonDetail {
+func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
 	__match1 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v2/pokemon/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
@@ -646,11 +651,11 @@ func PokemonRetrieveCall(id string, __ctx_server string) Result__PokemonDetail {
 	switch {
 	case (__match1.tag == 1):
 		r := __match1.Failed
-		return Result__PokemonDetail{tag: 1, Failed: r}
+		return Result__PetDetail{tag: 1, Failed: r}
 	default:
 		r := __match1.Ok
-		return func() Result__PokemonDetail {
-			__snglV, __snglMsg := sngljson.Decode[PokemonDetail](r.Body, func() *sngljson.Codec {
+		return func() Result__PetDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetDetail](r.Body, func() *sngljson.Codec {
 				c0 := &sngljson.Codec{Kind: sngljson.Struct}
 				c1 := &sngljson.Codec{Kind: sngljson.Struct}
 				c2 := &sngljson.Codec{Kind: sngljson.Struct}
@@ -658,22 +663,22 @@ func PokemonRetrieveCall(id string, __ctx_server string) Result__PokemonDetail {
 				c4 := &sngljson.Codec{Kind: sngljson.Struct}
 				c5 := &sngljson.Codec{Kind: sngljson.Struct}
 				c6 := &sngljson.Codec{Kind: sngljson.Struct}
-				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "base_experience", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "height", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "is_default", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Bool}}}, {Wire: "species", Codec: c1}, {Wire: "sprites", Codec: c2}, {Wire: "stats", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c3}}, {Wire: "types", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c5}}}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "adoption_fee", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "age", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "is_available", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Bool}}}, {Wire: "breed", Codec: c1}, {Wire: "photos", Codec: c2}, {Wire: "measurements", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c3}}, {Wire: "tags", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c5}}}
 				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
-				c2.Fields = []sngljson.Field{{Wire: "front_default", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}}
-				c3.Fields = []sngljson.Field{{Wire: "base_stat", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "effort", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "stat", Codec: c4}}
+				c2.Fields = []sngljson.Field{{Wire: "thumbnail_url", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}}
+				c3.Fields = []sngljson.Field{{Wire: "base_value", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "margin", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "measure", Codec: c4}}
 				c4.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
 				c5.Fields = []sngljson.Field{{Wire: "slot", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "type", Codec: c6}}
 				c6.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PokemonDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
 			}
-			return Result__PokemonDetail{tag: 0, Ok: __snglV}
+			return Result__PetDetail{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PokemonDetail{tag: 0, Ok: PokemonDetail{}}
+	return Result__PetDetail{tag: 0, Ok: PetDetail{}}
 }
 
 func ResponseChecked(r Response) Result__Response {
@@ -701,8 +706,8 @@ func (m *Model) __effect0_mount() {
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
 	go func() {
-		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPokemonSummaryList {
-			return PokemonListCall(k.Limit, k.Offset, "https://pokeapi.co")
+		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPetSummaryList {
+			return PetListCall(k.Limit, k.Offset, "https://petstore.example")
 		}(__async_arg0)
 		__snglDo(func() {
 			if mine != m.attempt__inst1 {
@@ -780,9 +785,7 @@ func (m *Model) __effect1_mount() {
 	m.__renderSlot1(m.__n2.Container)
 	__async_arg1 := m.__effect1_key.Key
 	go func() {
-		r := func(__ctxArg0 string) Result__PokemonDetail {
-			return PokemonRetrieveCall(__ctxArg0, "https://mirror.example")
-		}(__async_arg1)
+		r := func(__ctxArg0 string) Result__PetDetail { return PetRetrieveCall(__ctxArg0, "https://mirror.example") }(__async_arg1)
 		__snglDo(func() {
 			if mine != m.attempt__inst0 {
 				return
@@ -792,7 +795,7 @@ func (m *Model) __effect1_mount() {
 			switch {
 			case (r.tag == 0):
 				got := r.Ok
-				m.mon__inst0 = snglSome(got)
+				m.pet__inst0 = snglSome(got)
 				m.__renderSlot3(m.__n2.Container)
 				m.failure__inst0 = nil
 				m.__renderSlot2(m.__n2.Container)
@@ -817,7 +820,7 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []__anon_key_n_a1dba7{}
-	m.__effect1_desired = append(m.__effect1_desired, __anon_key_n_a1dba7{Key: "pikachu", N: m.refreshes__inst0})
+	m.__effect1_desired = append(m.__effect1_desired, __anon_key_n_a1dba7{Key: "rex", N: m.refreshes__inst0})
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
@@ -955,16 +958,16 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 	m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
 	__inst1_next := []*__child1Instance{}
 	var __inst1_i int = 0
-	if m.mon__inst0 != nil {
+	if m.pet__inst0 != nil {
 		var __n7 *__child1Instance
 		if len(m.__inst1_live) > __inst1_i {
 			__n7 = m.__inst1_live[__inst1_i]
-			__n7.Set__p0(m.mon__inst0)
+			__n7.Set__p0(m.pet__inst0)
 		} else {
 			if len(m.__inst1_live) > __inst1_i {
 				m.__inst1_live[__inst1_i].Destroy()
 			}
-			__n7__new := new__child1Instance(m, m.mon__inst0)
+			__n7__new := new__child1Instance(m, m.pet__inst0)
 			__n7 = __n7__new
 		}
 		__inst1_next = append(__inst1_next, __n7)
@@ -972,7 +975,7 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 		__n7__el := __n7.Root
 		fynelayout.InsertBefore(__parent, m.__slot3_at, __n7__el)
 		m.__slot3 = append(m.__slot3, __n7__el)
-		for _, t := range (*(m.mon__inst0)).Types {
+		for _, t := range (*(m.pet__inst0)).Tags {
 			__n8 := widget.NewLabel("")
 			__n8.SetText(t.Type.Name)
 			fynelayout.InsertBefore(__parent, m.__slot3_at, container.NewThemeOverride(__n8, _snglTheme0))
@@ -1003,14 +1006,14 @@ func (m *Model) __n9_click_handler() {
 
 func (m *Model) __n10_click_handler() {
 	go func() {
-		__match0 := PokemonSpeciesRetrieveCall("pikachu", "https://mirror.example")
+		__match0 := PetBreedRetrieveCall("beagle", "https://mirror.example")
 		__snglDo(func() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
 				var __lt0 string
-				if r.EvolvesFromSpecies != nil {
-					__lt0 = (*(r.EvolvesFromSpecies)).Name
+				if r.ParentBreed != nil {
+					__lt0 = (*(r.ParentBreed)).Name
 				} else {
 					__lt0 = "nothing"
 				}
@@ -1033,20 +1036,20 @@ func (m *Model) SetOffset__inst0(v int) {
 	m.offset__inst0 = v
 }
 
-func (m *Model) Page__inst0() *PaginatedPokemonSummaryList {
+func (m *Model) Page__inst0() *PaginatedPetSummaryList {
 	return m.page__inst0
 }
 
-func (m *Model) SetPage__inst0(v *PaginatedPokemonSummaryList) {
+func (m *Model) SetPage__inst0(v *PaginatedPetSummaryList) {
 	m.page__inst0 = v
 }
 
-func (m *Model) Mon__inst0() *PokemonDetail {
-	return m.mon__inst0
+func (m *Model) Pet__inst0() *PetDetail {
+	return m.pet__inst0
 }
 
-func (m *Model) SetMon__inst0(v *PokemonDetail) {
-	m.mon__inst0 = v
+func (m *Model) SetPet__inst0(v *PetDetail) {
+	m.pet__inst0 = v
 }
 
 func (m *Model) Loading__inst0() bool {
@@ -1136,7 +1139,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n2 = fynelayout.NewToplevel()
-	m.__n2.SetTitle("Pokédex")
+	m.__n2.SetTitle("Petstore")
 	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
@@ -1149,7 +1152,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot2(m.__n2.Container)
 	m.__renderSlot3(m.__n2.Container)
 	m.__n10 = widget.NewButton("", nil)
-	m.__n10.SetText("Evolves from")
+	m.__n10.SetText("Bred from")
 	m.__n10.OnTapped = m.__n10_click_handler
 	m.__n2.Add(m.__n10)
 	m.__n3 = widget.NewLabel("")
@@ -1187,14 +1190,14 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(("Could not load pikachu: " + (*(c.__prop___p0)).Message))
+	c.__n0.SetText(("Could not load rex: " + (*(c.__prop___p0)).Message))
 	c.Root = c.__n0
 	return c
 }
 
 func (c *__child0Instance) Set__p0(__v *Failure) {
 	c.__prop___p0 = __v
-	c.__n0.SetText(("Could not load pikachu: " + (*(c.__prop___p0)).Message))
+	c.__n0.SetText(("Could not load rex: " + (*(c.__prop___p0)).Message))
 }
 
 func (c *__child0Instance) Destroy() {}
@@ -1203,7 +1206,7 @@ func (c *__child0Instance) Destroy() {}
 type __child1Instance struct {
 	Root        fyne.CanvasObject
 	__model     *Model
-	__prop___p0 *PokemonDetail
+	__prop___p0 *PetDetail
 	__root      *fyne.Container
 	__slot0     []fyne.CanvasObject
 	__slot0_at  fyne.CanvasObject
@@ -1216,7 +1219,7 @@ type __child1Instance struct {
 	__n1        *widget.Label
 }
 
-func new__child1Instance(__model *Model, __a___p0 *PokemonDetail) *__child1Instance {
+func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance {
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -1231,7 +1234,7 @@ func new__child1Instance(__model *Model, __a___p0 *PokemonDetail) *__child1Insta
 	return c
 }
 
-func (c *__child1Instance) Set__p0(__v *PokemonDetail) {
+func (c *__child1Instance) Set__p0(__v *PetDetail) {
 	c.__prop___p0 = __v
 	c.__n1.SetText(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
 }
@@ -1470,21 +1473,21 @@ type Result__Response struct {
 	Failed Failure
 }
 
-type Result__PaginatedPokemonSummaryList struct {
+type Result__PaginatedPetSummaryList struct {
 	tag    int
-	Ok     PaginatedPokemonSummaryList
+	Ok     PaginatedPetSummaryList
 	Failed Failure
 }
 
-type Result__PokemonDetail struct {
+type Result__PetDetail struct {
 	tag    int
-	Ok     PokemonDetail
+	Ok     PetDetail
 	Failed Failure
 }
 
-type Result__PokemonSpeciesDetail struct {
+type Result__PetBreedDetail struct {
 	tag    int
-	Ok     PokemonSpeciesDetail
+	Ok     PetBreedDetail
 	Failed Failure
 }
 
@@ -1494,64 +1497,64 @@ type Failure struct {
 	Code    string
 }
 
-type PaginatedPokemonSummaryList struct {
+type PaginatedPetSummaryList struct {
 	Count    int
 	Next     *string
 	Previous *string
-	Results  []PokemonSummary
+	Results  []PetSummary
 }
 
-type PokemonSummary struct {
+type PetSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonDetail struct {
-	Id             int
-	Name           string
-	BaseExperience *int
-	Height         *int
-	IsDefault      *bool
-	Species        PokemonSpeciesSummary
-	Sprites        PokemonSprites
-	Stats          []PokemonStat
-	Types          []PokemonType
+type PetDetail struct {
+	Id           int
+	Name         string
+	AdoptionFee  *int
+	Age          *int
+	IsAvailable  *bool
+	Breed        PetBreedSummary
+	Photos       PetPhotos
+	Measurements []PetMeasurement
+	Tags         []PetTag
 }
 
-type PokemonSprites struct {
-	FrontDefault *string
+type PetPhotos struct {
+	ThumbnailUrl *string
 }
 
-type PokemonStat struct {
-	BaseStat int
-	Effort   int
-	Stat     StatSummary
+type PetMeasurement struct {
+	BaseValue int
+	Margin    int
+	Measure   MeasureSummary
 }
 
-type StatSummary struct {
+type MeasureSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonType struct {
+type PetTag struct {
 	Slot int
-	Type TypeSummary
+	Type TagSummary
 }
 
-type TypeSummary struct {
+type TagSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonSpeciesSummary struct {
+type PetBreedSummary struct {
 	Name string
 	Url  string
 }
 
-type PokemonSpeciesDetail struct {
-	Id                 int
-	Name               string
-	EvolvesFromSpecies *PokemonSpeciesSummary
+type PetBreedDetail struct {
+	Id          int
+	Name        string
+	ParentBreed *PetBreedSummary
 }
 
 type __anon_limit_offset_7e7555 struct {
@@ -1578,8 +1581,8 @@ type Response struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	offset__inst0       int
-	page__inst0         *PaginatedPokemonSummaryList
-	mon__inst0          *PokemonDetail
+	page__inst0         *PaginatedPetSummaryList
+	pet__inst0          *PetDetail
 	loading__inst0      bool
 	failure__inst0      *Failure
 	from__inst0         string
@@ -1622,7 +1625,7 @@ func New() *Model {
 	m := &Model{}
 	m.offset__inst0 = 0
 	m.page__inst0 = nil
-	m.mon__inst0 = nil
+	m.pet__inst0 = nil
 	m.loading__inst0 = false
 	m.failure__inst0 = nil
 	m.from__inst0 = "-"
@@ -1655,9 +1658,9 @@ func New() *Model {
 	return m
 }
 
-func PokemonSpeciesRetrieveCall(id string, __ctx_server string) Result__PokemonSpeciesDetail {
+func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail {
 	__match2 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v2/pokemon-species/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
@@ -1669,24 +1672,24 @@ func PokemonSpeciesRetrieveCall(id string, __ctx_server string) Result__PokemonS
 	switch {
 	case (__match2.tag == 1):
 		r := __match2.Failed
-		return Result__PokemonSpeciesDetail{tag: 1, Failed: r}
+		return Result__PetBreedDetail{tag: 1, Failed: r}
 	default:
 		r := __match2.Ok
-		return func() Result__PokemonSpeciesDetail {
-			__snglV, __snglMsg := sngljson.Decode[PokemonSpeciesDetail](r.Body, func() *sngljson.Codec {
+		return func() Result__PetBreedDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetBreedDetail](r.Body, func() *sngljson.Codec {
 				c0 := &sngljson.Codec{Kind: sngljson.Struct}
 				c1 := &sngljson.Codec{Kind: sngljson.Struct}
-				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "evolves_from_species", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: c1}}}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "parent_breed", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: c1}}}
 				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PokemonSpeciesDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
 			}
-			return Result__PokemonSpeciesDetail{tag: 0, Ok: __snglV}
+			return Result__PetBreedDetail{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PokemonSpeciesDetail{tag: 0, Ok: PokemonSpeciesDetail{}}
+	return Result__PetBreedDetail{tag: 0, Ok: PetBreedDetail{}}
 }
 
 func _answered(r Result__Response) Result__Response {
@@ -1701,9 +1704,9 @@ func _answered(r Result__Response) Result__Response {
 	return Result__Response{tag: 0, Ok: Response{}}
 }
 
-func PokemonListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPokemonSummaryList {
+func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
 	__match0 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v2/pokemon/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
+		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c0.Fields = []sngljson.Field{{Wire: "limit", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "offset", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}}
 			return c0
@@ -1719,11 +1722,11 @@ func PokemonListCall(limit *int, offset *int, __ctx_server string) Result__Pagin
 	switch {
 	case (__match0.tag == 1):
 		r := __match0.Failed
-		return Result__PaginatedPokemonSummaryList{tag: 1, Failed: r}
+		return Result__PaginatedPetSummaryList{tag: 1, Failed: r}
 	default:
 		r := __match0.Ok
-		return func() Result__PaginatedPokemonSummaryList {
-			__snglV, __snglMsg := sngljson.Decode[PaginatedPokemonSummaryList](r.Body, func() *sngljson.Codec {
+		return func() Result__PaginatedPetSummaryList {
+			__snglV, __snglMsg := sngljson.Decode[PaginatedPetSummaryList](r.Body, func() *sngljson.Codec {
 				c0 := &sngljson.Codec{Kind: sngljson.Struct}
 				c1 := &sngljson.Codec{Kind: sngljson.Struct}
 				c0.Fields = []sngljson.Field{{Wire: "count", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "next", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "previous", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "results", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c1}}}
@@ -1731,17 +1734,17 @@ func PokemonListCall(limit *int, offset *int, __ctx_server string) Result__Pagin
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PaginatedPokemonSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
 			}
-			return Result__PaginatedPokemonSummaryList{tag: 0, Ok: __snglV}
+			return Result__PaginatedPetSummaryList{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PaginatedPokemonSummaryList{tag: 0, Ok: PaginatedPokemonSummaryList{}}
+	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{}}
 }
 
-func PokemonRetrieveCall(id string, __ctx_server string) Result__PokemonDetail {
+func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
 	__match1 := _answered(func() Result__Response {
-		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v2/pokemon/") + sngljson.Escape(id)) + "/"), nil, nil)
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
 				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
@@ -1753,11 +1756,11 @@ func PokemonRetrieveCall(id string, __ctx_server string) Result__PokemonDetail {
 	switch {
 	case (__match1.tag == 1):
 		r := __match1.Failed
-		return Result__PokemonDetail{tag: 1, Failed: r}
+		return Result__PetDetail{tag: 1, Failed: r}
 	default:
 		r := __match1.Ok
-		return func() Result__PokemonDetail {
-			__snglV, __snglMsg := sngljson.Decode[PokemonDetail](r.Body, func() *sngljson.Codec {
+		return func() Result__PetDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetDetail](r.Body, func() *sngljson.Codec {
 				c0 := &sngljson.Codec{Kind: sngljson.Struct}
 				c1 := &sngljson.Codec{Kind: sngljson.Struct}
 				c2 := &sngljson.Codec{Kind: sngljson.Struct}
@@ -1765,22 +1768,22 @@ func PokemonRetrieveCall(id string, __ctx_server string) Result__PokemonDetail {
 				c4 := &sngljson.Codec{Kind: sngljson.Struct}
 				c5 := &sngljson.Codec{Kind: sngljson.Struct}
 				c6 := &sngljson.Codec{Kind: sngljson.Struct}
-				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "base_experience", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "height", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "is_default", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Bool}}}, {Wire: "species", Codec: c1}, {Wire: "sprites", Codec: c2}, {Wire: "stats", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c3}}, {Wire: "types", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c5}}}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "adoption_fee", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "age", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "is_available", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Bool}}}, {Wire: "breed", Codec: c1}, {Wire: "photos", Codec: c2}, {Wire: "measurements", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c3}}, {Wire: "tags", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c5}}}
 				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
-				c2.Fields = []sngljson.Field{{Wire: "front_default", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}}
-				c3.Fields = []sngljson.Field{{Wire: "base_stat", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "effort", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "stat", Codec: c4}}
+				c2.Fields = []sngljson.Field{{Wire: "thumbnail_url", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}}
+				c3.Fields = []sngljson.Field{{Wire: "base_value", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "margin", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "measure", Codec: c4}}
 				c4.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
 				c5.Fields = []sngljson.Field{{Wire: "slot", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "type", Codec: c6}}
 				c6.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
 				return c0
 			}())
 			if __snglMsg != "" {
-				return Result__PokemonDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
 			}
-			return Result__PokemonDetail{tag: 0, Ok: __snglV}
+			return Result__PetDetail{tag: 0, Ok: __snglV}
 		}()
 	}
-	return Result__PokemonDetail{tag: 0, Ok: PokemonDetail{}}
+	return Result__PetDetail{tag: 0, Ok: PetDetail{}}
 }
 
 func ResponseChecked(r Response) Result__Response {
@@ -1808,8 +1811,8 @@ func (m *Model) __effect0_mount() {
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
 	go func() {
-		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPokemonSummaryList {
-			return PokemonListCall(k.Limit, k.Offset, "https://pokeapi.co")
+		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPetSummaryList {
+			return PetListCall(k.Limit, k.Offset, "https://petstore.example")
 		}(__async_arg0)
 		gtk4rt.Post(func() {
 			if mine != m.attempt__inst1 {
@@ -1887,9 +1890,7 @@ func (m *Model) __effect1_mount() {
 	m.__renderSlot1(m.__n2)
 	__async_arg1 := m.__effect1_key.Key
 	go func() {
-		r := func(__ctxArg0 string) Result__PokemonDetail {
-			return PokemonRetrieveCall(__ctxArg0, "https://mirror.example")
-		}(__async_arg1)
+		r := func(__ctxArg0 string) Result__PetDetail { return PetRetrieveCall(__ctxArg0, "https://mirror.example") }(__async_arg1)
 		gtk4rt.Post(func() {
 			if mine != m.attempt__inst0 {
 				return
@@ -1899,7 +1900,7 @@ func (m *Model) __effect1_mount() {
 			switch {
 			case (r.tag == 0):
 				got := r.Ok
-				m.mon__inst0 = snglSome(got)
+				m.pet__inst0 = snglSome(got)
 				m.__renderSlot3(m.__n2)
 				m.failure__inst0 = nil
 				m.__renderSlot2(m.__n2)
@@ -1924,7 +1925,7 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []__anon_key_n_a1dba7{}
-	m.__effect1_desired = append(m.__effect1_desired, __anon_key_n_a1dba7{Key: "pikachu", N: m.refreshes__inst0})
+	m.__effect1_desired = append(m.__effect1_desired, __anon_key_n_a1dba7{Key: "rex", N: m.refreshes__inst0})
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
@@ -2063,16 +2064,16 @@ func (m *Model) __renderSlot3(parent *C.GtkBox) {
 	m.__slot3_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at)
 	__inst1_next := []*__child1Instance{}
 	var __inst1_i int = 0
-	if m.mon__inst0 != nil {
+	if m.pet__inst0 != nil {
 		var __n7 *__child1Instance
 		if len(m.__inst1_live) > __inst1_i {
 			__n7 = m.__inst1_live[__inst1_i]
-			__n7.Set__p0(m.mon__inst0)
+			__n7.Set__p0(m.pet__inst0)
 		} else {
 			if len(m.__inst1_live) > __inst1_i {
 				m.__inst1_live[__inst1_i].Destroy()
 			}
-			__n7__new := new__child1Instance(m, m.mon__inst0)
+			__n7__new := new__child1Instance(m, m.pet__inst0)
 			__n7 = __n7__new
 		}
 		__inst1_next = append(__inst1_next, __n7)
@@ -2080,7 +2081,7 @@ func (m *Model) __renderSlot3(parent *C.GtkBox) {
 		__n7__el := __n7.Root
 		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
 		m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
-		for _, t := range (*(m.mon__inst0)).Types {
+		for _, t := range (*(m.pet__inst0)).Tags {
 			__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 			C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n8)), C.CString(t.Type.Name))
 			C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n8)))
@@ -2110,14 +2111,14 @@ func (m *Model) __n9_clicked_handler() {
 
 func (m *Model) __n10_clicked_handler() {
 	go func() {
-		__match0 := PokemonSpeciesRetrieveCall("pikachu", "https://mirror.example")
+		__match0 := PetBreedRetrieveCall("beagle", "https://mirror.example")
 		gtk4rt.Post(func() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
 				var __lt0 string
-				if r.EvolvesFromSpecies != nil {
-					__lt0 = (*(r.EvolvesFromSpecies)).Name
+				if r.ParentBreed != nil {
+					__lt0 = (*(r.ParentBreed)).Name
 				} else {
 					__lt0 = "nothing"
 				}
@@ -2159,7 +2160,7 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("Could not load pikachu: " + (*(c.__prop___p0)).Message)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message)))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -2167,7 +2168,7 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v *Failure) {
 	c.__prop___p0 = __v
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("Could not load pikachu: " + (*(c.__prop___p0)).Message)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message)))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -2193,7 +2194,7 @@ func (c *__child0Instance) Destroy() {
 type __child1Instance struct {
 	Root        *C.GtkWidget
 	__model     *Model
-	__prop___p0 *PokemonDetail
+	__prop___p0 *PetDetail
 	__root      *C.GtkBox
 	__slot0     []*C.GtkWidget
 	__slot0_at  *C.GtkWidget
@@ -2206,7 +2207,7 @@ type __child1Instance struct {
 	__n1        *C.GtkLabel
 }
 
-func new__child1Instance(__model *Model, __a___p0 *PokemonDetail) *__child1Instance {
+func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance {
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -2222,7 +2223,7 @@ func new__child1Instance(__model *Model, __a___p0 *PokemonDetail) *__child1Insta
 	return c
 }
 
-func (c *__child1Instance) Set__p0(__v *PokemonDetail) {
+func (c *__child1Instance) Set__p0(__v *PetDetail) {
 	c.__prop___p0 = __v
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name)))
 }
@@ -2254,20 +2255,20 @@ func (m *Model) SetOffset__inst0(v int) {
 	m.offset__inst0 = v
 }
 
-func (m *Model) Page__inst0() *PaginatedPokemonSummaryList {
+func (m *Model) Page__inst0() *PaginatedPetSummaryList {
 	return m.page__inst0
 }
 
-func (m *Model) SetPage__inst0(v *PaginatedPokemonSummaryList) {
+func (m *Model) SetPage__inst0(v *PaginatedPetSummaryList) {
 	m.page__inst0 = v
 }
 
-func (m *Model) Mon__inst0() *PokemonDetail {
-	return m.mon__inst0
+func (m *Model) Pet__inst0() *PetDetail {
+	return m.pet__inst0
 }
 
-func (m *Model) SetMon__inst0(v *PokemonDetail) {
-	m.mon__inst0 = v
+func (m *Model) SetPet__inst0(v *PetDetail) {
+	m.pet__inst0 = v
 }
 
 func (m *Model) Loading__inst0() bool {
@@ -2366,7 +2367,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot2(m.__n2)
 	m.__renderSlot3(m.__n2)
 	m.__n10 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n10)), C.CString("Evolves from"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n10)), C.CString("Bred from"))
 	snglCallbacks = append(snglCallbacks, m.__n10_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n10), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
@@ -2382,7 +2383,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString("Pokédex"))
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString("Petstore"))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -2415,64 +2416,64 @@ data class Failure(
     var code: String = ""
 )
 
-data class PaginatedPokemonSummaryList(
+data class PaginatedPetSummaryList(
     var count: Int = 0,
     var next: String? = null,
     var previous: String? = null,
-    var results: List<PokemonSummary> = listOf()
+    var results: List<PetSummary> = listOf()
 )
 
-data class PokemonSummary(
+data class PetSummary(
     var name: String = "",
     var url: String = ""
 )
 
-data class PokemonDetail(
+data class PetDetail(
     var id: Int = 0,
     var name: String = "",
-    var baseExperience: Int? = null,
-    var height: Int? = null,
-    var isDefault: Boolean? = null,
-    var species: PokemonSpeciesSummary = PokemonSpeciesSummary(),
-    var sprites: PokemonSprites = PokemonSprites(),
-    var stats: List<PokemonStat> = listOf(),
-    var types: List<PokemonType> = listOf()
+    var adoptionFee: Int? = null,
+    var age: Int? = null,
+    var isAvailable: Boolean? = null,
+    var breed: PetBreedSummary = PetBreedSummary(),
+    var photos: PetPhotos = PetPhotos(),
+    var measurements: List<PetMeasurement> = listOf(),
+    var tags: List<PetTag> = listOf()
 )
 
-data class PokemonSprites(
-    var frontDefault: String? = null
+data class PetPhotos(
+    var thumbnailUrl: String? = null
 )
 
-data class PokemonStat(
-    var baseStat: Int = 0,
-    var effort: Int = 0,
-    var stat: StatSummary = StatSummary()
+data class PetMeasurement(
+    var baseValue: Int = 0,
+    var margin: Int = 0,
+    var measure: MeasureSummary = MeasureSummary()
 )
 
-data class StatSummary(
+data class MeasureSummary(
     var name: String = "",
     var url: String = ""
 )
 
-data class PokemonType(
+data class PetTag(
     var slot: Int = 0,
-    var type: TypeSummary = TypeSummary()
+    var type: TagSummary = TagSummary()
 )
 
-data class TypeSummary(
+data class TagSummary(
     var name: String = "",
     var url: String = ""
 )
 
-data class PokemonSpeciesSummary(
+data class PetBreedSummary(
     var name: String = "",
     var url: String = ""
 )
 
-data class PokemonSpeciesDetail(
+data class PetBreedDetail(
     var id: Int = 0,
     var name: String = "",
-    var evolvesFromSpecies: PokemonSpeciesSummary? = null
+    var parentBreed: PetBreedSummary? = null
 )
 
 data class __anon_limit_offset_7e7555(
@@ -2518,27 +2519,27 @@ sealed class SnglResult__Response {
     data class Failed(val value: Failure) : SnglResult__Response()
 }
 
-sealed class SnglResult__PaginatedPokemonSummaryList {
-    data class Ok(val value: PaginatedPokemonSummaryList) : SnglResult__PaginatedPokemonSummaryList()
-    data class Failed(val value: Failure) : SnglResult__PaginatedPokemonSummaryList()
+sealed class SnglResult__PaginatedPetSummaryList {
+    data class Ok(val value: PaginatedPetSummaryList) : SnglResult__PaginatedPetSummaryList()
+    data class Failed(val value: Failure) : SnglResult__PaginatedPetSummaryList()
 }
 
-sealed class SnglResult__PokemonDetail {
-    data class Ok(val value: PokemonDetail) : SnglResult__PokemonDetail()
-    data class Failed(val value: Failure) : SnglResult__PokemonDetail()
+sealed class SnglResult__PetDetail {
+    data class Ok(val value: PetDetail) : SnglResult__PetDetail()
+    data class Failed(val value: Failure) : SnglResult__PetDetail()
 }
 
-sealed class SnglResult__PokemonSpeciesDetail {
-    data class Ok(val value: PokemonSpeciesDetail) : SnglResult__PokemonSpeciesDetail()
-    data class Failed(val value: Failure) : SnglResult__PokemonSpeciesDetail()
+sealed class SnglResult__PetBreedDetail {
+    data class Ok(val value: PetBreedDetail) : SnglResult__PetBreedDetail()
+    data class Failed(val value: Failure) : SnglResult__PetBreedDetail()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     var offset__inst0 by remember { mutableStateOf(0) }
-    var page__inst0 by remember { mutableStateOf<PaginatedPokemonSummaryList?>(null) }
-    var mon__inst0 by remember { mutableStateOf<PokemonDetail?>(null) }
+    var page__inst0 by remember { mutableStateOf<PaginatedPetSummaryList?>(null) }
+    var pet__inst0 by remember { mutableStateOf<PetDetail?>(null) }
     var loading__inst0 by remember { mutableStateOf(false) }
     var failure__inst0 by remember { mutableStateOf<Failure?>(null) }
     var from__inst0 by remember { mutableStateOf("-") }
@@ -2567,23 +2568,23 @@ fun MainScreen() {
                     	attempt__inst1 += 1
                     	var mine = attempt__inst1
                     	pending__inst0 = true
-                    	var r: SnglResult__PaginatedPokemonSummaryList = run {
+                    	var r: SnglResult__PaginatedPetSummaryList = run {
 	val __arg0 = k.key
 	val k = __arg0
-	return@run pokemonListCall(k.limit, k.offset, "https://pokeapi.co")
+	return@run petListCall(k.limit, k.offset, "https://petstore.example")
 }
                     	if ((mine != attempt__inst1)) {
                     		return@start
                     	}
                     	pending__inst0 = false
                     	when {
-                    		(r is SnglResult__PaginatedPokemonSummaryList.Ok) -> {
-                    			var got = (r as SnglResult__PaginatedPokemonSummaryList.Ok).value
+                    		(r is SnglResult__PaginatedPetSummaryList.Ok) -> {
+                    			var got = (r as SnglResult__PaginatedPetSummaryList.Ok).value
                     			page__inst0 = got
                     			failure__inst1 = null
                     		}
                     		else -> {
-                    			var got = (r as SnglResult__PaginatedPokemonSummaryList.Failed).value
+                    			var got = (r as SnglResult__PaginatedPetSummaryList.Failed).value
                     			failure__inst1 = got?.let { _o1 -> _o1.copy() }
                     		}
                     	}
@@ -2603,31 +2604,31 @@ fun MainScreen() {
             }, modifier = Modifier.safeDrawingPadding()) {
                 Text(text = "More", modifier = Modifier)
             }
-            DisposableEffect(__anon_key_n_a1dba7(key = "pikachu", n = refreshes__inst0)) {
-                val __snglEffectKey = __anon_key_n_a1dba7(key = "pikachu", n = refreshes__inst0)
+            DisposableEffect(__anon_key_n_a1dba7(key = "rex", n = refreshes__inst0)) {
+                val __snglEffectKey = __anon_key_n_a1dba7(key = "rex", n = refreshes__inst0)
                 run {
                     val k = __snglEffectKey
                     SnglCodec.start {
                     	attempt__inst0 += 1
                     	var mine = attempt__inst0
                     	loading__inst0 = true
-                    	var r: SnglResult__PokemonDetail = run {
+                    	var r: SnglResult__PetDetail = run {
 	val __arg0 = k.key
 	val __ctxArg0 = __arg0
-	return@run pokemonRetrieveCall(__ctxArg0, "https://mirror.example")
+	return@run petRetrieveCall(__ctxArg0, "https://mirror.example")
 }
                     	if ((mine != attempt__inst0)) {
                     		return@start
                     	}
                     	loading__inst0 = false
                     	when {
-                    		(r is SnglResult__PokemonDetail.Ok) -> {
-                    			var got = (r as SnglResult__PokemonDetail.Ok).value
-                    			mon__inst0 = got
+                    		(r is SnglResult__PetDetail.Ok) -> {
+                    			var got = (r as SnglResult__PetDetail.Ok).value
+                    			pet__inst0 = got
                     			failure__inst0 = null
                     		}
                     		else -> {
-                    			var got = (r as SnglResult__PokemonDetail.Failed).value
+                    			var got = (r as SnglResult__PetDetail.Failed).value
                     			failure__inst0 = got?.let { _o1 -> _o1.copy() }
                     		}
                     	}
@@ -2641,11 +2642,11 @@ fun MainScreen() {
                 CircularProgressIndicator(modifier = Modifier.safeDrawingPadding())
             }
             if ((failure__inst0 != null)) {
-                Text(text = ("Could not load pikachu: " + failure__inst0!!.message), modifier = Modifier.safeDrawingPadding())
+                Text(text = ("Could not load rex: " + failure__inst0!!.message), modifier = Modifier.safeDrawingPadding())
             }
-            if ((mon__inst0 != null)) {
-                Text(text = ((("#" + mon__inst0!!.id.toString()) + " ") + mon__inst0!!.name), modifier = Modifier.safeDrawingPadding())
-                for (t in mon__inst0!!.types) {
+            if ((pet__inst0 != null)) {
+                Text(text = ((("#" + pet__inst0!!.id.toString()) + " ") + pet__inst0!!.name), modifier = Modifier.safeDrawingPadding())
+                for (t in pet__inst0!!.tags) {
                     Badge(modifier = Modifier.safeDrawingPadding()) {
                         Text(text = t.type.name, modifier = Modifier)
                     }
@@ -2653,39 +2654,39 @@ fun MainScreen() {
             }
             Button(onClick = {
                 SnglCodec.start {
-                	var __match0: SnglResult__PokemonSpeciesDetail = pokemonSpeciesRetrieveCall("pikachu", "https://mirror.example")
+                	var __match0: SnglResult__PetBreedDetail = petBreedRetrieveCall("beagle", "https://mirror.example")
                 	when {
-                		(__match0 is SnglResult__PokemonSpeciesDetail.Ok) -> {
-                			var r = (__match0 as SnglResult__PokemonSpeciesDetail.Ok).value
-                			from__inst0 = (if ((r.evolvesFromSpecies != null)) r.evolvesFromSpecies!!.name else "nothing")
+                		(__match0 is SnglResult__PetBreedDetail.Ok) -> {
+                			var r = (__match0 as SnglResult__PetBreedDetail.Ok).value
+                			from__inst0 = (if ((r.parentBreed != null)) r.parentBreed!!.name else "nothing")
                 		}
                 		else -> {
-                			var r = (__match0 as SnglResult__PokemonSpeciesDetail.Failed).value
+                			var r = (__match0 as SnglResult__PetBreedDetail.Failed).value
                 			from__inst0 = r.message
                 		}
                 	}
                 }
             }, modifier = Modifier.safeDrawingPadding()) {
-                Text(text = "Evolves from", modifier = Modifier)
+                Text(text = "Bred from", modifier = Modifier)
             }
             Text(text = from__inst0, modifier = Modifier.safeDrawingPadding())
         }
     }
 }
 
-suspend fun pokemonSpeciesRetrieveCall(id: String, __ctx_server: String): SnglResult__PokemonSpeciesDetail {
-    var __match2: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v2/pokemon-species/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+suspend fun petBreedRetrieveCall(id: String, __ctx_server: String): SnglResult__PetBreedDetail {
+    var __match2: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pet-breeds/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match2 is SnglResult__Response.Failed) -> {
     		var r = (__match2 as SnglResult__Response.Failed).value
-    		return SnglResult__PokemonSpeciesDetail.Failed(r.copy())
+    		return SnglResult__PetBreedDetail.Failed(r.copy())
     	}
     	else -> {
     		var r = (__match2 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("evolves_from_species", SnglCodec.of(SnglCodec.OPTION, c1))); c0.make = { a -> PokemonSpeciesDetail(id = a[0] as Int, name = a[1] as String, evolvesFromSpecies = a[2] as PokemonSpeciesSummary?) }; c0.read = { v -> (v as PokemonSpeciesDetail).let { listOf<Any?>(it.id, it.name, it.evolvesFromSpecies) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PokemonSpeciesSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PokemonSpeciesSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PokemonSpeciesDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PokemonSpeciesDetail.Ok((__r.value as PokemonSpeciesDetail)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("parent_breed", SnglCodec.of(SnglCodec.OPTION, c1))); c0.make = { a -> PetBreedDetail(id = a[0] as Int, name = a[1] as String, parentBreed = a[2] as PetBreedSummary?) }; c0.read = { v -> (v as PetBreedDetail).let { listOf<Any?>(it.id, it.name, it.parentBreed) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetBreedDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PetBreedDetail.Ok((__r.value as PetBreedDetail)) }
     	}
     }
-    return SnglResult__PokemonSpeciesDetail.Ok(PokemonSpeciesDetail())
+    return SnglResult__PetBreedDetail.Ok(PetBreedDetail())
 }
 
 fun _answered(r: SnglResult__Response): SnglResult__Response {
@@ -2702,34 +2703,34 @@ fun _answered(r: SnglResult__Response): SnglResult__Response {
     return SnglResult__Response.Ok(Response())
 }
 
-suspend fun pokemonListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglResult__PaginatedPokemonSummaryList {
-    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v2/pokemon/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("offset", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT)))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a[0] as Int?, offset = a[1] as Int?) }; c0.read = { v -> (v as __anon_limit_offset_7e7555).let { listOf<Any?>(it.limit, it.offset) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglResult__PaginatedPetSummaryList {
+    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("offset", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT)))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a[0] as Int?, offset = a[1] as Int?) }; c0.read = { v -> (v as __anon_limit_offset_7e7555).let { listOf<Any?>(it.limit, it.offset) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match0 is SnglResult__Response.Failed) -> {
     		var r = (__match0 as SnglResult__Response.Failed).value
-    		return SnglResult__PaginatedPokemonSummaryList.Failed(r.copy())
+    		return SnglResult__PaginatedPetSummaryList.Failed(r.copy())
     	}
     	else -> {
     		var r = (__match0 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.of(SnglCodec.INT)), SnglCodecField("next", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("previous", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("results", SnglCodec.of(SnglCodec.LIST, c1))); c0.make = { a -> PaginatedPokemonSummaryList(count = a[0] as Int, next = a[1] as String?, previous = a[2] as String?, results = a[3] as List<PokemonSummary>) }; c0.read = { v -> (v as PaginatedPokemonSummaryList).let { listOf<Any?>(it.count, it.next, it.previous, it.results) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PokemonSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PokemonSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PaginatedPokemonSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PaginatedPokemonSummaryList.Ok((__r.value as PaginatedPokemonSummaryList)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.of(SnglCodec.INT)), SnglCodecField("next", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("previous", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("results", SnglCodec.of(SnglCodec.LIST, c1))); c0.make = { a -> PaginatedPetSummaryList(count = a[0] as Int, next = a[1] as String?, previous = a[2] as String?, results = a[3] as List<PetSummary>) }; c0.read = { v -> (v as PaginatedPetSummaryList).let { listOf<Any?>(it.count, it.next, it.previous, it.results) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PaginatedPetSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PaginatedPetSummaryList.Ok((__r.value as PaginatedPetSummaryList)) }
     	}
     }
-    return SnglResult__PaginatedPokemonSummaryList.Ok(PaginatedPokemonSummaryList())
+    return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList())
 }
 
-suspend fun pokemonRetrieveCall(id: String, __ctx_server: String): SnglResult__PokemonDetail {
-    var __match1: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v2/pokemon/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDetail {
+    var __match1: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pets/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
     when {
     	(__match1 is SnglResult__Response.Failed) -> {
     		var r = (__match1 as SnglResult__Response.Failed).value
-    		return SnglResult__PokemonDetail.Failed(r.copy())
+    		return SnglResult__PetDetail.Failed(r.copy())
     	}
     	else -> {
     		var r = (__match1 as SnglResult__Response.Ok).value
-    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); val c2 = SnglCodec(SnglCodec.STRUCT); val c3 = SnglCodec(SnglCodec.STRUCT); val c4 = SnglCodec(SnglCodec.STRUCT); val c5 = SnglCodec(SnglCodec.STRUCT); val c6 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("base_experience", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("height", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("is_default", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.BOOL))), SnglCodecField("species", c1), SnglCodecField("sprites", c2), SnglCodecField("stats", SnglCodec.of(SnglCodec.LIST, c3)), SnglCodecField("types", SnglCodec.of(SnglCodec.LIST, c5))); c0.make = { a -> PokemonDetail(id = a[0] as Int, name = a[1] as String, baseExperience = a[2] as Int?, height = a[3] as Int?, isDefault = a[4] as Boolean?, species = a[5] as PokemonSpeciesSummary, sprites = a[6] as PokemonSprites, stats = a[7] as List<PokemonStat>, types = a[8] as List<PokemonType>) }; c0.read = { v -> (v as PokemonDetail).let { listOf<Any?>(it.id, it.name, it.baseExperience, it.height, it.isDefault, it.species, it.sprites, it.stats, it.types) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PokemonSpeciesSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PokemonSpeciesSummary).let { listOf<Any?>(it.name, it.url) } }; c2.fields = listOf(SnglCodecField("front_default", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING)))); c2.make = { a -> PokemonSprites(frontDefault = a[0] as String?) }; c2.read = { v -> (v as PokemonSprites).let { listOf<Any?>(it.frontDefault) } }; c3.fields = listOf(SnglCodecField("base_stat", SnglCodec.of(SnglCodec.INT)), SnglCodecField("effort", SnglCodec.of(SnglCodec.INT)), SnglCodecField("stat", c4)); c3.make = { a -> PokemonStat(baseStat = a[0] as Int, effort = a[1] as Int, stat = a[2] as StatSummary) }; c3.read = { v -> (v as PokemonStat).let { listOf<Any?>(it.baseStat, it.effort, it.stat) } }; c4.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c4.make = { a -> StatSummary(name = a[0] as String, url = a[1] as String) }; c4.read = { v -> (v as StatSummary).let { listOf<Any?>(it.name, it.url) } }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.of(SnglCodec.INT)), SnglCodecField("type", c6)); c5.make = { a -> PokemonType(slot = a[0] as Int, type = a[1] as TypeSummary) }; c5.read = { v -> (v as PokemonType).let { listOf<Any?>(it.slot, it.type) } }; c6.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c6.make = { a -> TypeSummary(name = a[0] as String, url = a[1] as String) }; c6.read = { v -> (v as TypeSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PokemonDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PokemonDetail.Ok((__r.value as PokemonDetail)) }
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); val c2 = SnglCodec(SnglCodec.STRUCT); val c3 = SnglCodec(SnglCodec.STRUCT); val c4 = SnglCodec(SnglCodec.STRUCT); val c5 = SnglCodec(SnglCodec.STRUCT); val c6 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("adoption_fee", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("age", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("is_available", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.BOOL))), SnglCodecField("breed", c1), SnglCodecField("photos", c2), SnglCodecField("measurements", SnglCodec.of(SnglCodec.LIST, c3)), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, c5))); c0.make = { a -> PetDetail(id = a[0] as Int, name = a[1] as String, adoptionFee = a[2] as Int?, age = a[3] as Int?, isAvailable = a[4] as Boolean?, breed = a[5] as PetBreedSummary, photos = a[6] as PetPhotos, measurements = a[7] as List<PetMeasurement>, tags = a[8] as List<PetTag>) }; c0.read = { v -> (v as PetDetail).let { listOf<Any?>(it.id, it.name, it.adoptionFee, it.age, it.isAvailable, it.breed, it.photos, it.measurements, it.tags) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c2.fields = listOf(SnglCodecField("thumbnail_url", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING)))); c2.make = { a -> PetPhotos(thumbnailUrl = a[0] as String?) }; c2.read = { v -> (v as PetPhotos).let { listOf<Any?>(it.thumbnailUrl) } }; c3.fields = listOf(SnglCodecField("base_value", SnglCodec.of(SnglCodec.INT)), SnglCodecField("margin", SnglCodec.of(SnglCodec.INT)), SnglCodecField("measure", c4)); c3.make = { a -> PetMeasurement(baseValue = a[0] as Int, margin = a[1] as Int, measure = a[2] as MeasureSummary) }; c3.read = { v -> (v as PetMeasurement).let { listOf<Any?>(it.baseValue, it.margin, it.measure) } }; c4.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c4.make = { a -> MeasureSummary(name = a[0] as String, url = a[1] as String) }; c4.read = { v -> (v as MeasureSummary).let { listOf<Any?>(it.name, it.url) } }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.of(SnglCodec.INT)), SnglCodecField("type", c6)); c5.make = { a -> PetTag(slot = a[0] as Int, type = a[1] as TagSummary) }; c5.read = { v -> (v as PetTag).let { listOf<Any?>(it.slot, it.type) } }; c6.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c6.make = { a -> TagSummary(name = a[0] as String, url = a[1] as String) }; c6.read = { v -> (v as TagSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PetDetail.Ok((__r.value as PetDetail)) }
     	}
     }
-    return SnglResult__PokemonDetail.Ok(PokemonDetail())
+    return SnglResult__PetDetail.Ok(PetDetail())
 }
 
 fun Response.checked(): SnglResult__Response {
@@ -3085,7 +3086,7 @@ class SnglCodecField(val wire: String, val codec: SnglCodec)
 <html><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pokédex</title>
+  <title>Petstore</title>
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; }
@@ -3100,7 +3101,7 @@ body { font-family: system-ui, sans-serif; }
 <span data-sngl-slot="2" style="display:contents"></span>
 <span data-sngl-slot="3" style="display:contents"></span>
 <button id="$1">
-  <span>Evolves from</span>
+  <span>Bred from</span>
 </button>
 <span id="__n5" data-sngl-id="__n5">
 </span>
@@ -3108,9 +3109,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { offset__inst0: 0, page__inst0: null, mon__inst0: null, loading__inst0: false, failure__inst0: null, from__inst0: "-", visible__inst0: true, pending__inst0: false, failure__inst1: null, attempt__inst0: 0, refreshes__inst0: 0, attempt__inst1: 0, refreshes__inst1: 0 };
-  async function pokemonSpeciesRetrieveCall(id, __ctx_server) {
-    let __match2 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v2/pokemon-species/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
+  var state = { offset__inst0: 0, page__inst0: null, pet__inst0: null, loading__inst0: false, failure__inst0: null, from__inst0: "-", visible__inst0: true, pending__inst0: false, failure__inst1: null, attempt__inst0: 0, refreshes__inst0: 0, attempt__inst1: 0, refreshes__inst1: 0 };
+  async function petBreedRetrieveCall(id, __ctx_server) {
+    let __match2 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pet-breeds/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
     if (__match2.tag === "failed") {
       ;
       let r = __match2.value;
@@ -3121,7 +3122,7 @@ body { font-family: system-ui, sans-serif; }
       return ((__r) => __r.e !== void 0 ? { tag: "failed", value: { kind: "decode", message: __r.e, code: "" } } : { tag: "ok", value: __r.v })(_snglJSONDecode(r.body, (() => {
         const c0 = { k: "s" };
         const c1 = { k: "s" };
-        c0.f = [["id", "id", { k: "i" }], ["name", "name", { k: "str" }], ["evolvesFromSpecies", "evolves_from_species", { k: "o", e: c1 }]];
+        c0.f = [["id", "id", { k: "i" }], ["name", "name", { k: "str" }], ["parentBreed", "parent_breed", { k: "o", e: c1 }]];
         c1.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
         return c0;
       })()));
@@ -3142,8 +3143,8 @@ body { font-family: system-ui, sans-serif; }
     ;
     return { tag: "ok", value: {} };
   }
-  async function pokemonListCall(limit, offset, __ctx_server) {
-    let __match0 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery(__ctx_server + "/api/v2/pokemon/", { limit, offset }, (() => {
+  async function petListCall(limit, offset, __ctx_server) {
+    let __match0 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery(__ctx_server + "/api/v1/pets/", { limit, offset }, (() => {
       const c0 = { k: "s" };
       c0.f = [["limit", "limit", { k: "o", e: { k: "i" } }], ["offset", "offset", { k: "o", e: { k: "i" } }]];
       return c0;
@@ -3166,8 +3167,8 @@ body { font-family: system-ui, sans-serif; }
     ;
     return { tag: "ok", value: {} };
   }
-  async function pokemonRetrieveCall(id, __ctx_server) {
-    let __match1 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v2/pokemon/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
+  async function petRetrieveCall(id, __ctx_server) {
+    let __match1 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pets/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
     if (__match1.tag === "failed") {
       ;
       let r = __match1.value;
@@ -3183,10 +3184,10 @@ body { font-family: system-ui, sans-serif; }
         const c4 = { k: "s" };
         const c5 = { k: "s" };
         const c6 = { k: "s" };
-        c0.f = [["id", "id", { k: "i" }], ["name", "name", { k: "str" }], ["baseExperience", "base_experience", { k: "o", e: { k: "i" } }], ["height", "height", { k: "o", e: { k: "i" } }], ["isDefault", "is_default", { k: "o", e: { k: "b" } }], ["species", "species", c1], ["sprites", "sprites", c2], ["stats", "stats", { k: "l", e: c3 }], ["types", "types", { k: "l", e: c5 }]];
+        c0.f = [["id", "id", { k: "i" }], ["name", "name", { k: "str" }], ["adoptionFee", "adoption_fee", { k: "o", e: { k: "i" } }], ["age", "age", { k: "o", e: { k: "i" } }], ["isAvailable", "is_available", { k: "o", e: { k: "b" } }], ["breed", "breed", c1], ["photos", "photos", c2], ["measurements", "measurements", { k: "l", e: c3 }], ["tags", "tags", { k: "l", e: c5 }]];
         c1.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
-        c2.f = [["frontDefault", "front_default", { k: "o", e: { k: "str" } }]];
-        c3.f = [["baseStat", "base_stat", { k: "i" }], ["effort", "effort", { k: "i" }], ["stat", "stat", c4]];
+        c2.f = [["thumbnailUrl", "thumbnail_url", { k: "o", e: { k: "str" } }]];
+        c3.f = [["baseValue", "base_value", { k: "i" }], ["margin", "margin", { k: "i" }], ["measure", "measure", c4]];
         c4.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
         c5.f = [["slot", "slot", { k: "i" }], ["type", "type", c6]];
         c6.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
@@ -3228,7 +3229,7 @@ body { font-family: system-ui, sans-serif; }
     state.attempt__inst1 += 1;
     let mine = state.attempt__inst1;
     state.pending__inst0 = true;
-    let r = await (async (k) => await pokemonListCall(k.limit, k.offset, "https://pokeapi.co"))(__effect0_key.key);
+    let r = await (async (k) => await petListCall(k.limit, k.offset, "https://petstore.example"))(__effect0_key.key);
     if (mine !== state.attempt__inst1) {
       ;
       return;
@@ -3256,7 +3257,7 @@ body { font-family: system-ui, sans-serif; }
     let mine = state.attempt__inst0;
     state.loading__inst0 = true;
     __renderSlot1(__slotAnchor_1);
-    let r = await (async (__ctxArg0) => await pokemonRetrieveCall(__ctxArg0, "https://mirror.example"))(__effect1_key.key);
+    let r = await (async (__ctxArg0) => await petRetrieveCall(__ctxArg0, "https://mirror.example"))(__effect1_key.key);
     if (mine !== state.attempt__inst0) {
       ;
       return;
@@ -3267,7 +3268,7 @@ body { font-family: system-ui, sans-serif; }
     if (r.tag === "ok") {
       ;
       let got = r.value;
-      state.mon__inst0 = got;
+      state.pet__inst0 = got;
       __renderSlot3(__slotAnchor_3);
       state.failure__inst0 = null;
       __renderSlot2(__slotAnchor_2);
@@ -3297,10 +3298,10 @@ body { font-family: system-ui, sans-serif; }
     let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n0.textContent = "Could not load pikachu: " + __prop___p0.message;
+      __n0.textContent = "Could not load rex: " + __prop___p0.message;
     }
     let __n0 = document.createElement("span");
-    __n0.textContent = "Could not load pikachu: " + __prop___p0.message;
+    __n0.textContent = "Could not load rex: " + __prop___p0.message;
     __root.appendChild(__n0);
     return {
       __root,
@@ -3436,7 +3437,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function __effect1_down() {
     __effect1_desired = [];
-    __effect1_desired.push({ key: "pikachu", n: state.refreshes__inst0 });
+    __effect1_desired.push({ key: "rex", n: state.refreshes__inst0 });
     for (const [__effect1_i, _] of __effect1_live.entries()) {
       let __effect1_j = __effect1_live.length - 1 - __effect1_i;
       if (__effect1_j >= __effect1_desired.length) {
@@ -3622,16 +3623,16 @@ body { font-family: system-ui, sans-serif; }
     let __inst6_i = 0;
     let __inst7_next = [];
     let __inst7_i = 0;
-    if (state.mon__inst0 !== null) {
+    if (state.pet__inst0 !== null) {
       let __n11 = null;
       if (__inst6_live.length > __inst6_i) {
         __n11 = __inst6_live[__inst6_i];
-        __n11.__set___p0(state.mon__inst0);
+        __n11.__set___p0(state.pet__inst0);
       } else {
         if (__inst6_live.length > __inst6_i) {
           __inst6_live[__inst6_i].__destroy();
         }
-        let __n11__new = __cf___child1({ __p0: state.mon__inst0 });
+        let __n11__new = __cf___child1({ __p0: state.pet__inst0 });
         __n11 = __n11__new;
       }
       __inst6_next.push(__n11);
@@ -3647,7 +3648,7 @@ body { font-family: system-ui, sans-serif; }
         parent.insertBefore(__n11__el, __place5_i_ref0);
       }
       __slot3.push(__n11__el);
-      for (const t of state.mon__inst0.types) {
+      for (const t of state.pet__inst0.tags) {
         let __n12 = null;
         if (__inst7_live.length > __inst7_i) {
           __n12 = __inst7_live[__inst7_i];
@@ -3898,11 +3899,11 @@ body { font-family: system-ui, sans-serif; }
     __effects0_settle();
   });
   $1.addEventListener("click", async function() {
-    let __match0 = await pokemonSpeciesRetrieveCall("pikachu", "https://mirror.example");
+    let __match0 = await petBreedRetrieveCall("beagle", "https://mirror.example");
     if (__match0.tag === "ok") {
       ;
       let r = __match0.value;
-      state.from__inst0 = r.evolvesFromSpecies !== null ? r.evolvesFromSpecies.name : "nothing";
+      state.from__inst0 = r.parentBreed !== null ? r.parentBreed.name : "nothing";
       __n5.textContent = state.from__inst0;
     } else {
       ;
@@ -3922,81 +3923,81 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- written/openapi/notes --
-field evolution_chain of PokemonSpeciesDetail is left out: a map of any value
--- written/openapi/pokeapi.sngl --
-// Code generated by the openapi: scheme from ./pokeapi.yml. DO NOT EDIT.
+field breed_lineage of PetBreedDetail is left out: a map of any value
+-- written/openapi/petstore.sngl --
+// Code generated by the openapi: scheme from ./petstore.yml. DO NOT EDIT.
 
 import async "sngl:async"
 import http "sngl:http"
 import json "sngl:json"
 
-// Where PokéAPI is: the spec's first server. Provide another to
+// Where Petstore is: the spec's first server. Provide another to
 // point a subtree, or a test, somewhere else.
-context #server("https://pokeapi.co")
+context #server("https://petstore.example")
 
-struct PaginatedPokemonSummaryList {
+struct PaginatedPetSummaryList {
     count    int
     next     option[string]
     previous option[string]
-    results  list[PokemonSummary]
+    results  list[PetSummary]
 }
 
-struct PokemonSummary {
+struct PetSummary {
     name string
     url  string
 }
 
-struct PokemonDetail {
-    id             int
-    name           string
-    #[json.identifier("base_experience")]
-    baseExperience option[int]
-    height         option[int]
-    #[json.identifier("is_default")]
-    isDefault      option[bool]
-    species        PokemonSpeciesSummary
-    sprites        PokemonSprites
-    stats          list[PokemonStat]
-    types          list[PokemonType]
+struct PetDetail {
+    id           int
+    name         string
+    #[json.identifier("adoption_fee")]
+    adoptionFee  option[int]
+    age          option[int]
+    #[json.identifier("is_available")]
+    isAvailable  option[bool]
+    breed        PetBreedSummary
+    photos       PetPhotos
+    measurements list[PetMeasurement]
+    tags         list[PetTag]
 }
 
-struct PokemonSprites {
-    #[json.identifier("front_default")]
-    frontDefault option[string]
+struct PetPhotos {
+    #[json.identifier("thumbnail_url")]
+    thumbnailUrl option[string]
 }
 
-struct PokemonStat {
-    #[json.identifier("base_stat")]
-    baseStat int
-    effort   int
-    stat     StatSummary
+struct PetMeasurement {
+    #[json.identifier("base_value")]
+    baseValue int
+    margin    int
+    measure   MeasureSummary
 }
 
-struct StatSummary {
+struct MeasureSummary {
     name string
     url  string
 }
 
-struct PokemonType {
+struct PetTag {
     slot int
-    type TypeSummary
+    type TagSummary
 }
 
-struct TypeSummary {
+struct TagSummary {
     name string
     url  string
 }
 
-struct PokemonSpeciesSummary {
+struct PetBreedSummary {
     name string
     url  string
 }
 
-struct PokemonSpeciesDetail {
-    id                 int
-    name               string
-    #[json.identifier("evolves_from_species")]
-    evolvesFromSpecies option[PokemonSpeciesSummary]
+struct PetBreedDetail {
+    id          int
+    name        string
+    #[json.identifier("parent_breed")]
+    parentBreed option[PetBreedSummary]
 }
 
 // What a request answered, where it arrived with a 2xx status: the response,
@@ -4008,46 +4009,46 @@ func _answered(r async.Result[http.Response]) async.Result[http.Response] {
     }
 }
 
-// GET /api/v2/pokemon/
+// GET /api/v1/pets/
 //
-// List pokemon
-func pokemonListCall(limit option[int] = null, offset option[int] = null) async.Result[PaginatedPokemonSummaryList] {
-    match var r = _answered(http.get(url="{server}/api/v2/pokemon/", query={limit=limit, offset=offset})) {
+// List pets
+func petListCall(limit option[int] = null, offset option[int] = null) async.Result[PaginatedPetSummaryList] {
+    match var r = _answered(http.get(url="{server}/api/v1/pets/", query={limit=limit, offset=offset})) {
         failed { return {failed=r} }
-        ok { return json.decode[PaginatedPokemonSummaryList](r.body) }
+        ok { return json.decode[PaginatedPetSummaryList](r.body) }
     }
 }
 
-// GET /api/v2/pokemon/{id}/
+// GET /api/v1/pets/{id}/
 //
-// Get pokemon
-func pokemonRetrieveCall(id string) async.Result[PokemonDetail] {
-    match var r = _answered(http.get(url="{server}/api/v2/pokemon/{http.pathEscape(id)}/")) {
+// Get pet
+func petRetrieveCall(id string) async.Result[PetDetail] {
+    match var r = _answered(http.get(url="{server}/api/v1/pets/{http.pathEscape(id)}/")) {
         failed { return {failed=r} }
-        ok { return json.decode[PokemonDetail](r.body) }
+        ok { return json.decode[PetDetail](r.body) }
     }
 }
 
-// GET /api/v2/pokemon-species/{id}/
+// GET /api/v1/pet-breeds/{id}/
 //
-// Get pokemon species
-func pokemonSpeciesRetrieveCall(id string) async.Result[PokemonSpeciesDetail] {
-    match var r = _answered(http.get(url="{server}/api/v2/pokemon-species/{http.pathEscape(id)}/")) {
+// Get pet breed
+func petBreedRetrieveCall(id string) async.Result[PetBreedDetail] {
+    match var r = _answered(http.get(url="{server}/api/v1/pet-breeds/{http.pathEscape(id)}/")) {
         failed { return {failed=r} }
-        ok { return json.decode[PokemonSpeciesDetail](r.body) }
+        ok { return json.decode[PetBreedDetail](r.body) }
     }
 }
 
-// GET /api/v2/pokemon/, asked again whenever limit or offset changes.
+// GET /api/v1/pets/, asked again whenever limit or offset changes.
 //
-// List pokemon
-component pokemonList[F any](
+// List pets
+component petList[F any](
     limit    option[int] = null,
     offset   option[int] = null,
-    :value   option[PaginatedPokemonSummaryList] = null,
+    :value   option[PaginatedPetSummaryList] = null,
     :pending bool = false,
     :failure option[async.Failure] = null,
-    @load(value PaginatedPokemonSummaryList),
+    @load(value PaginatedPetSummaryList),
     @fail(f async.Failure),
 ) F {
     async.query(
@@ -4055,7 +4056,7 @@ component pokemonList[F any](
         fetch = func(k struct {
             limit  option[int]
             offset option[int]
-        }) => pokemonListCall(limit=k.limit, offset=k.offset),
+        }) => petListCall(limit=k.limit, offset=k.offset),
         :value = value,
         :pending = pending,
         :failure = failure,
@@ -4064,20 +4065,20 @@ component pokemonList[F any](
     )
 }
 
-// GET /api/v2/pokemon/{id}/, asked again whenever id changes.
+// GET /api/v1/pets/{id}/, asked again whenever id changes.
 //
-// Get pokemon
-component pokemonRetrieve[F any](
+// Get pet
+component petRetrieve[F any](
     id       string,
-    :value   option[PokemonDetail] = null,
+    :value   option[PetDetail] = null,
     :pending bool = false,
     :failure option[async.Failure] = null,
-    @load(value PokemonDetail),
+    @load(value PetDetail),
     @fail(f async.Failure),
 ) F {
     async.query(
         on = id,
-        fetch = pokemonRetrieveCall,
+        fetch = petRetrieveCall,
         :value = value,
         :pending = pending,
         :failure = failure,
@@ -4086,20 +4087,20 @@ component pokemonRetrieve[F any](
     )
 }
 
-// GET /api/v2/pokemon-species/{id}/, asked again whenever id changes.
+// GET /api/v1/pet-breeds/{id}/, asked again whenever id changes.
 //
-// Get pokemon species
-component pokemonSpeciesRetrieve[F any](
+// Get pet breed
+component petBreedRetrieve[F any](
     id       string,
-    :value   option[PokemonSpeciesDetail] = null,
+    :value   option[PetBreedDetail] = null,
     :pending bool = false,
     :failure option[async.Failure] = null,
-    @load(value PokemonSpeciesDetail),
+    @load(value PetBreedDetail),
     @fail(f async.Failure),
 ) F {
     async.query(
         on = id,
-        fetch = pokemonSpeciesRetrieveCall,
+        fetch = petBreedRetrieveCall,
         :value = value,
         :pending = pending,
         :failure = failure,
@@ -4108,10 +4109,10 @@ component pokemonSpeciesRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:183cad137ae09b61fa18dd90bab22086
+pass sha256:f7bd58e3b91d418c1b81e02f463158e2
 -- run/go/gtk4 --
-pass sha256:95b2029f2392c9228557d4166c56c407
+pass sha256:b68fdbe7ae9b8a6e4048957fcd7c42a9
 -- run/kotlin/android --
-pass sha256:1f7220f22565bfb98908f093031c8785
+pass sha256:1deb57a9d00d920e8abaf68963d7adfd
 -- run/none/html --
-pass sha256:63775d2d42de44dcba11936a26eb3f0a
+pass sha256:8c1e6f0029f4639f77aca015fa893758

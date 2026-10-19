@@ -1,5 +1,5 @@
 # A oneOf of two schemas is a union no struct spells: left out. A oneOf of
-# one schema and null is an option, which openapi_pokeapi.txtar writes.
+# one schema and null is an option, which openapi_petstore.txtar writes.
 env SNGL_GENCACHE=off
 
 ! sngl check app.sngl

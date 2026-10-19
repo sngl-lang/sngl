@@ -64,7 +64,7 @@ arguments are to C's.
 
 ## The `openapi:` scheme
 
-**`import poke "openapi:./pokeapi.yml"` writes a package from an OpenAPI 3
+**`import pets "openapi:./petstore.yml"` writes a package from an OpenAPI 3
 document**, YAML or JSON: a declaration per schema, a `…Call` function per
 operation answering `async.Result`, a component over `async.query` per `GET`,
 and `server`, a context defaulting to the spec's first server
@@ -105,7 +105,7 @@ list parameter keeps its function and has no adapter, since a list cannot be
 an effect's key. A Swagger 2 or OpenAPI 4 document, and text that is not
 YAML, are errors at the import.
 
-**What the package composes** (`testdata/openapi_pokeapi.txtar`, its
+**What the package composes** (`testdata/openapi_petstore.txtar`, its
 `written` package shown in the archive): each function is
 `_answered(http.get(…))` -- the package's one helper, the response where it
 arrived with a 2xx status -- then `json.decode[T]` of its body. The
