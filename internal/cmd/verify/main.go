@@ -50,6 +50,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/headless"
+	"duckfam.us/sngl/internal/testhttp"
 )
 
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
@@ -156,6 +157,10 @@ func main() {
 	// machine, which is exactly when it runs and costs.
 	if !*full {
 		testArgs = append(testArgs, "--skip-platform=android")
+	}
+	// An example's tests ask the server the script harness runs.
+	if err := testhttp.Start(root); err != nil {
+		log.Printf("test HTTP server not started: %v", err)
 	}
 	testArgs = append(testArgs, "./...")
 	sc, sargs, senv := wrapHeadless("go", testArgs)

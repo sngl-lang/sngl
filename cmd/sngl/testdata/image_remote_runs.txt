@@ -1,5 +1,5 @@
 # An image fetched while the program runs, from the local server the script
-# harness runs at 127.0.0.1:47819 (cmd/sngl/httpserver_test.go): the image
+# harness runs at 127.0.0.1:47819 (internal/testhttp): the image
 # reports @load when its picture arrives and @error when the fetch fails, on
 # every target that fetches one. android ships its own loader for it.
 

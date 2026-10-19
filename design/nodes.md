@@ -179,7 +179,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   goroutine (`agentPosts`): fyne's test driver runs `fyne.Do` on the goroutine
   that calls it, so a request's answer rebuilt a list's widgets while the test
   clicked others, and fyne crashed laying them out
-  (`cmd/sngl/testdata/pokedex_runs.txt`). So a callback that must reach the drawing
+  (`examples/pokedex`'s tests, in `cmd/sngl/testdata/examples_runs.txt`). So a callback that must reach the drawing
   thread asks for that in one word instead of a package re-spelling it. The id
   is also the second thing `nativeCallbackFuncs` treats as scheduling, for the
   reason the `schedules` flag exists: a post runs its closure from the loop the

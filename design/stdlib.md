@@ -472,7 +472,7 @@ too (gtk4 pumping its loop meanwhile and bubbletea running what was posted,
 `cmd/sngl/testdata/http_runs.txt` runs requests, a waiting handler and an
 `async.query` over a request on six targets against the
 server the script harness runs at `127.0.0.1:47819`
-(`cmd/sngl/httpserver_test.go`), and `testdata/http_json.txtar` is the code.
+(`internal/testhttp`), and `testdata/http_json.txtar` is the code.
 
 Three general things it needed. A method a library declares on a struct of
 its own is promoted into the program like a library helper (`passLibFuncs`),

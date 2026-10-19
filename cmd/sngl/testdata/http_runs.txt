@@ -1,5 +1,5 @@
 # sngl:http against the local server the script harness runs at
-# 127.0.0.1:47819 (cmd/sngl/httpserver_test.go), decoded with sngl:json, on
+# 127.0.0.1:47819 (internal/testhttp), decoded with sngl:json, on
 # every target.
 
 sngl test --platform=none app.sngl

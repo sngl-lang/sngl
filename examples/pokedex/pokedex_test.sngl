@@ -1,0 +1,80 @@
+import poke "openapi:./pokeapi.yml"
+import test "sngl:test"
+import ui "sngl:ui"
+
+const local = "http://127.0.0.1:47819/examples/pokedex"
+
+var opened = ""
+
+component listed ui.node {
+    poke.server(local) {
+        listPage #page(pageSize=2, @open(n) { opened = n })
+    }
+}
+
+component bulbasaur ui.node {
+    poke.server(local) {
+        card #one(name="bulbasaur", @open { opened = "bulbasaur" })
+    }
+}
+
+component ivysaur ui.node {
+    poke.server(local) {
+        detailPage #detail(name="ivysaur", @open(n) { opened = n })
+    }
+}
+
+component chain ui.node {
+    poke.server(local) {
+        evolution #evo(species="ivysaur", @open(n) { opened = n })
+    }
+}
+
+func testTheListLoadsAPageAndMore(t test.Test, c listed) {
+    t.wait(func() => c.page.names.length() == 2, 5000)
+    t.assert(c.page.count == 5)
+    t.assert(c.page.names[0].name == "bulbasaur")
+    t.assert(c.page.more != null)
+    if c.page.more != null {
+        c.page.more.click()
+    }
+    t.wait(func() => c.page.names.length() == 4, 5000)
+    t.assert(c.page.names[3].name == "charmander")
+}
+
+func testTheSearchFiltersWhatLoaded(t test.Test, c listed) {
+    t.wait(func() => c.page.names.length() == 2, 5000)
+    t.assert(c.page.more != null)
+    if c.page.more != null {
+        c.page.more.click()
+    }
+    t.wait(func() => c.page.names.length() == 4, 5000)
+    c.page.searchBox.input("SAUR")
+    t.assert(c.page.matching().length() == 3)
+}
+
+func testACardAsksForItsOwn(t test.Test, c bulbasaur) {
+    t.wait(func() => c.one.mon != null, 5000)
+    t.assert(c.one.mon != null && c.one.mon.types.length() == 2)
+}
+
+func testTheDetailPageShowsThePokemon(t test.Test, c ivysaur) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.mon != null && c.detail.mon.id == 2)
+    t.assert(c.detail.mon != null && c.detail.mon.stats[0].baseStat == 60)
+    t.assert(!c.detail.loading)
+}
+
+func testTheChainIsTwoRequestsBehind(t test.Test, c chain) {
+    t.wait(func() => c.evo.chain != null, 5000)
+    t.assert(c.evo.about != null && idOf(c.evo.about.evolutionChain.url) == "1")
+    t.assert(c.evo.chain != null && stages(c.evo.chain.chain).join(",") == "bulbasaur,ivysaur,venusaur")
+}
+
+// Takes a component as every test here does: on html a group of tests that
+// take none builds the package with no root, and a component built at run
+// time in it has no setter for the prop a reactive `if` hands it.
+func testNames(t test.Test, c listed) {
+    t.assert(display("mr-mime") == "Mr Mime")
+    t.assert(idOf("http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/2/") == "2")
+}

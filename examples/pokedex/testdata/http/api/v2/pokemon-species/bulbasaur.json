@@ -3,16 +3,16 @@
  "capture_rate": 45,
  "color": {
   "name": "green",
-  "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-color/5/"
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-color/5/"
  },
  "egg_groups": [
   {
    "name": "monster",
-   "url": "http://127.0.0.1:47819/pokeapi/api/v2/egg-group/1/"
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/1/"
   }
  ],
  "evolution_chain": {
-  "url": "http://127.0.0.1:47819/pokeapi/api/v2/evolution-chain/1/"
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/1/"
  },
  "evolves_from_species": null,
  "flavor_text_entries": [
@@ -20,11 +20,11 @@
    "flavor_text": "A strange seed was\nplanted on its\nback at birth.\fThe plant sprouts\nand grows with\nthis POKéMON.",
    "language": {
     "name": "en",
-    "url": "http://127.0.0.1:47819/pokeapi/api/v2/language/9/"
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
    },
    "version": {
     "name": "red",
-    "url": "http://127.0.0.1:47819/pokeapi/api/v2/version/1/"
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
    }
   }
  ],
@@ -36,21 +36,21 @@
    "genus": "たねポケモン",
    "language": {
     "name": "ja-hrkt",
-    "url": "http://127.0.0.1:47819/pokeapi/api/v2/language/1/"
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
    }
   }
  ],
  "generation": {
   "name": "generation-i",
-  "url": "http://127.0.0.1:47819/pokeapi/api/v2/generation/1/"
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
  },
  "growth_rate": {
   "name": "medium-slow",
-  "url": "http://127.0.0.1:47819/pokeapi/api/v2/growth-rate/4/"
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/growth-rate/4/"
  },
  "habitat": {
   "name": "grassland",
-  "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-habitat/3/"
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-habitat/3/"
  },
  "has_gender_differences": false,
  "hatch_counter": 20,
@@ -63,7 +63,7 @@
   {
    "language": {
     "name": "ja-hrkt",
-    "url": "http://127.0.0.1:47819/pokeapi/api/v2/language/1/"
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
    },
    "name": "フシギダネ"
   }
@@ -73,7 +73,7 @@
   {
    "area": {
     "name": "field",
-    "url": "http://127.0.0.1:47819/pokeapi/api/v2/pal-park-area/2/"
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pal-park-area/2/"
    },
    "base_score": 50,
    "rate": 30
@@ -84,20 +84,20 @@
    "entry_number": 1,
    "pokedex": {
     "name": "national",
-    "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokedex/1/"
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
    }
   }
  ],
  "shape": {
   "name": "quadruped",
-  "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-shape/8/"
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-shape/8/"
  },
  "varieties": [
   {
    "is_default": true,
    "pokemon": {
     "name": "bulbasaur",
-    "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon/1/"
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/1/"
    }
   }
  ]

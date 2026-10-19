@@ -35,13 +35,13 @@
       "trade_species": null,
       "trigger": {
        "name": "level-up",
-       "url": "http://127.0.0.1:47819/pokeapi/api/v2/evolution-trigger/1/"
+       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-trigger/1/"
       },
       "turn_upside_down": false,
       "used_move": null,
       "version_group": {
        "name": "red-blue",
-       "url": "http://127.0.0.1:47819/pokeapi/api/v2/version-group/1/"
+       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/1/"
       }
      }
     ],
@@ -63,7 +63,7 @@
         "min_beauty": null,
         "min_damage_taken": null,
         "min_happiness": null,
-        "min_level": 32,
+        "min_level": 36,
         "min_move_count": null,
         "min_steps": null,
         "near_special_rock": false,
@@ -78,36 +78,36 @@
         "trade_species": null,
         "trigger": {
          "name": "level-up",
-         "url": "http://127.0.0.1:47819/pokeapi/api/v2/evolution-trigger/1/"
+         "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-trigger/1/"
         },
         "turn_upside_down": false,
         "used_move": null,
         "version_group": {
          "name": "red-blue",
-         "url": "http://127.0.0.1:47819/pokeapi/api/v2/version-group/1/"
+         "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/1/"
         }
        }
       ],
       "evolves_to": [],
       "is_baby": false,
       "species": {
-       "name": "venusaur",
-       "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-species/3/"
+       "name": "charizard",
+       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/6/"
       }
      }
     ],
     "is_baby": false,
     "species": {
-     "name": "ivysaur",
-     "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-species/2/"
+     "name": "charmeleon",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/5/"
     }
    }
   ],
   "is_baby": false,
   "species": {
-   "name": "bulbasaur",
-   "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-species/1/"
+   "name": "charmander",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/4/"
   }
  },
- "id": 1
+ "id": 2
 }

@@ -1,5 +1,5 @@
 # The package an openapi: import writes, run against the local server the
-# script harness runs at 127.0.0.1:47819 (cmd/sngl/httpserver_test.go) on
+# script harness runs at 127.0.0.1:47819 (internal/testhttp) on
 # every target.
 
 sngl test --platform=none app.sngl

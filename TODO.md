@@ -73,18 +73,19 @@ OpenAPI's own sample) that keeps every feature the trimmed copy exercised.
 `cmd/sngl/testdata/pokeapi/**` and `pokedex_runs.txt` move into the example.
 The harness gains one generic feature in place of PokéAPI routes.
 
-- [ ] Recorded answers move to `examples/pokedex/testdata/http/`, and the
+- [X] Recorded answers move to `examples/pokedex/testdata/http/`, and the
   tests to `examples/pokedex/pokedex_test.sngl`.
-- [ ] The harness serves each `examples/<name>/testdata/http/` as static
+- [X] The harness serves each `examples/<name>/testdata/http/` as static
   files under `/examples/<name>/`.
-- [ ] One `cmd/sngl/testdata/examples_runs.txt` runs `sngl test` on every
-  example that has tests, on all six targets (html in route mode where the
-  example needs it). No example is named in it.
-- [ ] `docs/learn/pokedex.md` folds into `examples/pokedex/README.md`;
+- [X] One `cmd/sngl/testdata/examples_runs.txt` runs `sngl test` on every
+  example that has tests, on all six targets. No example is named in it.
+  html runs each component a test takes as a static page: `sngl test` has
+  no route-mode launcher (`--platform=html --language=go` never connects).
+- [X] `docs/learn/pokedex.md` folds into `examples/pokedex/README.md`;
   `docs/learn/index.md` and `internal/cmd/docsgen/examples.go` stop naming it.
-- [ ] `cmd/sngl/script_test.go`'s comment on copying the repository stops
+- [X] `cmd/sngl/script_test.go`'s comment on copying the repository stops
   naming `examples/pokedex` once every example is copied alike.
-- [ ] `design/import-schemes.md` and `design/nodes.md`: one sentence each
+- [X] `design/import-schemes.md` and `design/nodes.md`: one sentence each
   pointing at `examples/pokedex` where a rule came from it; the rest moves to
   the README. These are the goal-1 grep's only hits.
 
