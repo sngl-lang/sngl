@@ -608,7 +608,12 @@ member's name, compared by an expression written out from the type
 member holding `value` and a `data object` per atom, a `mutableStateOf` and a
 local of one given the sealed type. **The interpreter** an `interp.EnumValue`.
 Go and Kotlin copy a generic enum per instantiation, a library's into the
-program, on each side of the struct pass (`monomorphizeEnums`).
+program, on each side of the struct pass (`monomorphizeEnums`). A payload is
+a use of its type for the shake, and a library struct one carries is promoted
+as a field's is (`promoteForeignStructs`): `async.Result[http.Response]` held
+or handed where nothing held a `Response` left Go's `Result__Response` naming
+an undeclared `Response` and `Failure`
+(`cmd/sngl/testdata/async_result_payload_struct_runs.txt`).
 `testdata/enum_payload.sngl`, `error_enum_payload.sngl`,
 `error_enum_payload_value.sngl`, `enum_payload.txtar` and
 `cmd/sngl/testdata/enum_payload_runs.txt`.
