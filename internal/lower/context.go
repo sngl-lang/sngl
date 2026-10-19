@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/ir"
@@ -1038,11 +1039,15 @@ func funcValueUnder(id *ir.Ident, fn *ir.Func, active map[*ir.Context]ir.Expr, p
 	}
 	wrapper := &ir.Func{Return: fn.Return, Purity: fn.Purity, CanError: fn.CanError, IsAsync: fn.IsAsync}
 	call := &ir.Call{Type: fn.Return, Func: fn}
-	for _, p := range fn.Params {
+	for i, p := range fn.Params {
 		if hidden[p] {
 			continue
 		}
-		np := &ir.Param{Name: p.Name, Type: p.Type}
+		// A name of its own: the lambda stands where the function was taken,
+		// and a prop of the component it is spliced into named like the
+		// parameter -- an adapter's `id`, pokemonRetrieveCall's `id` -- was read
+		// in its place.
+		np := &ir.Param{Name: "__ctxArg" + strconv.Itoa(i), Type: p.Type}
 		wrapper.Params = append(wrapper.Params, np)
 		call.Args = append(call.Args, ir.CallArg{Name: p.Name, Value: &ir.Ident{Name: np.Name, Type: np.Type, Sym: np}})
 	}

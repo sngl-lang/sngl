@@ -698,7 +698,10 @@ interpreter would answer the default; after, the call folds from its argument.
 **A function value is bound where it is taken.** `var f = show` and a lambda
 are what the program holds, and a call through one cannot know which function
 it holds, so it has nothing to pass: `funcValueUnder` wraps a named function
-taken as a value in a lambda passing the values active there, and a lambda's
+taken as a value in a lambda passing the values active there -- its
+parameters named afresh (`__ctxArgN`), since spliced into a component with a
+prop named like one the lambda read the prop for its argument
+(`cmd/sngl/testdata/context_func_value_param_runs.txt`) -- and a lambda's
 body is lowered where it is written. The interpreter agrees by capturing the
 provided values when a `LambdaValue` is made. Passing the invoker's values
 instead would need every function type to carry the contexts, which a host
