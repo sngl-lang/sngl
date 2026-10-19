@@ -536,6 +536,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func PokemonSpeciesRetrieveCall(id string, __ctx_server string) Result__PokemonSpeciesDetail {
 	__match2 := _answered(func() Result__Response {
 		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v2/pokemon-species/") + sngljson.Escape(id)) + "/"), nil, nil)
@@ -692,7 +704,7 @@ func (m *Model) __effect0_mount() {
 		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPokemonSummaryList {
 			return PokemonListCall(k.Limit, k.Offset, "https://pokeapi.co")
 		}(__async_arg0)
-		fyne.Do(func() {
+		__snglDo(func() {
 			if mine != m.attempt__inst1 {
 				return
 			}
@@ -769,7 +781,7 @@ func (m *Model) __effect1_mount() {
 	__async_arg1 := m.__effect1_key.Key
 	go func() {
 		r := func(id string) Result__PokemonDetail { return PokemonRetrieveCall("pikachu", "https://mirror.example") }(__async_arg1)
-		fyne.Do(func() {
+		__snglDo(func() {
 			if mine != m.attempt__inst0 {
 				return
 			}
@@ -990,7 +1002,7 @@ func (m *Model) __n9_click_handler() {
 func (m *Model) __n10_click_handler() {
 	go func() {
 		__match0 := PokemonSpeciesRetrieveCall("pikachu", "https://mirror.example")
-		fyne.Do(func() {
+		__snglDo(func() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
@@ -4092,7 +4104,7 @@ component pokemonSpeciesRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:85a313842f90f68c3aabccc77925a215
+pass sha256:d113207cc3979a8563a979fcdeda9e8d
 -- run/go/gtk4 --
 pass sha256:9ea7de3d4b786fc1212361c9e976a3ba
 -- run/kotlin/android --

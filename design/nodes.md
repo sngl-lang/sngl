@@ -174,7 +174,12 @@ declaration itself. Two things about the name that are easy to get wrong:
   **The hand-over it also held is `async.do`**, which a platform package may
   name: `#[intrinsic("async.do")] func do(f func())` dispatches through
   `LookupPlatformIntrinsic` exactly as a blocking call's posted tail does, and
-  emits `fyne.Do` with the import. So a callback that must reach the drawing
+  on fyne emits `__snglDo`, the model's helper calling `fyne.Do` -- or, in a
+  test build, queueing the closure for `t.wait` to run on the test's own
+  goroutine (`agentPosts`): fyne's test driver runs `fyne.Do` on the goroutine
+  that calls it, so a request's answer rebuilt a list's widgets while the test
+  clicked others, and fyne crashed laying them out
+  (`cmd/sngl/testdata/pokedex_runs.txt`). So a callback that must reach the drawing
   thread asks for that in one word instead of a package re-spelling it. The id
   is also the second thing `nativeCallbackFuncs` treats as scheduling, for the
   reason the `schedules` flag exists: a post runs its closure from the loop the

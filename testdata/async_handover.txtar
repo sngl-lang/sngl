@@ -71,6 +71,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -81,7 +93,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_click_handler() {
 	go func() {
-		fyne.Do(func() {
+		__snglDo(func() {
 			m.n = (m.n + 1)
 		})
 	}()
@@ -225,6 +237,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:135c988cbc78a080e8555c18f549e10c
+pass sha256:8be61c9d47851461b1e416e5db30046b
 -- run/go/gtk4 --
 pass sha256:100ab37187953dd33d9c22530e746b4e

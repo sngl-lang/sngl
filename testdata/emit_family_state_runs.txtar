@@ -202,6 +202,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func Encode(members []Entry) string {
 	parts__r0 := []string{}
 	for _, e := range members {
@@ -220,7 +232,7 @@ func ReadClicks(members func() []Entry) {
 	in := bufio.NewScanner(os.Stdin)
 	for in.Scan() {
 		fields := strings.Split(strings.TrimSpace(in.Text()), " ")
-		fyne.Do(func() {
+		__snglDo(func() {
 			ms := slices.Clone(members())
 			var i int = func() int { __v, _ := strconv.ParseInt(fields[0], 10, 64); return int(__v) }()
 			if i < len(ms) {
@@ -228,7 +240,7 @@ func ReadClicks(members func() []Entry) {
 			}
 		})
 	}
-	fyne.Do(func() {
+	__snglDo(func() {
 		os.Exit(0)
 	})
 }
@@ -641,6 +653,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:beea0a7c3dba1ff3a46e7d9c4a10755b
+pass sha256:28fc10b90421132aff1404830b1b9fc0
 -- run/go/gtk4 --
 pass sha256:b3229189689d74dd85ca713982eb701e
