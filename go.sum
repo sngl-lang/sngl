@@ -681,8 +681,8 @@ github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1
 github.com/smartystreets/goconvey v1.6.4/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
 github.com/sngl-lang/glamour/v2 v2.0.0-20261019211257-b6317f6a9e05 h1:LUF1z/eFO4uvTUl0Csuirw7oYPedZ5gxEbTc67RJMBo=
 github.com/sngl-lang/glamour/v2 v2.0.0-20261019211257-b6317f6a9e05/go.mod h1:wqGcmrnBmbunm0/LszemUKpYwWxvPPBkEno7KusMy6s=
-github.com/sngl-lang/typescript-go v0.0.0-20260430031617-3cc44b40b555 h1:geqiOSKqMZYD2JrLLO1pvx7i+LMpjLP6CzEoJ6AkeJM=
-github.com/sngl-lang/typescript-go v0.0.0-20260430031617-3cc44b40b555/go.mod h1:W5b9saujOGsCrNcys4vJlDDtdWEPbY+JG6EsiBpsVsI=
+github.com/sngl-lang/typescript-go v0.0.0-20261019222931-62ec3aa63ead h1:t0rVOt6qQImK/l9jLuFxAF+TFLoWB+shafBPQy7y1uQ=
+github.com/sngl-lang/typescript-go v0.0.0-20261019222931-62ec3aa63ead/go.mod h1:W5b9saujOGsCrNcys4vJlDDtdWEPbY+JG6EsiBpsVsI=
 github.com/soheilhy/cmux v0.1.4/go.mod h1:IM3LyeVVIOuxMH7sFAkER9+bJ4dT7Ms6E4xg4kGIyLM=
 github.com/sony/gobreaker v0.4.1/go.mod h1:ZKptC7FHNvhBz7dN2LGjPVBz2sZJmc0/PkyDJOjmxWY=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
