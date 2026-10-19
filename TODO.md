@@ -91,12 +91,12 @@ The harness gains one generic feature in place of PokéAPI routes.
 
 ## Part 4: the document and the recordings
 
-- [ ] Correct `pokeapi.yml` where the redesign reads what it does not
+- [X] Correct `pokeapi.yml` where the redesign reads what it does not
   declare, each listed in the README: `PokemonSprites` (back, shiny, female,
   `other.official-artwork`, `other.home`), species fields (`genera`,
   `flavor_text_entries`, `egg_groups`, `gender_rate`, `capture_rate`,
   `varieties`, `habitat`), and whatever `PokedexDetail` needs.
-- [ ] Record answers: `pokedexList`; Kanto and one other regional dex; and
+- [X] Record answers: `pokedexList`; Kanto and one other regional dex; and
   Pokémon, species and chain for a three-stage line (Bulbasaur), a branching
   one (Eevee), one with a female sprite (Pikachu), one with forms (Vulpix's
   Alolan form or Charizard's Megas). Each decodes.
