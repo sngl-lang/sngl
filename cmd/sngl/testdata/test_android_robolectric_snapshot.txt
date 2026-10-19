@@ -28,7 +28,7 @@ func testGreeterSnapshot(t Test, c greeter) {
 window {
 }
 -- testrun/android/kotlin/app.sngl/greeter/1 --
-sha256:5bd8b484a3b6805245942078d4e652af
+sha256:136563098bec6066752f63b5ceb8d734
 {
   "results": [
     {
@@ -41,7 +41,7 @@ sha256:5bd8b484a3b6805245942078d4e652af
   }
 }
 -- testrun/android/kotlin/app.sngl/greeter/2 --
-sha256:d9e5c7634474fdd1b122af7299bdc44e
+sha256:bfe369f7f7025688b7b341d24781cafd
 {
   "results": [
     {

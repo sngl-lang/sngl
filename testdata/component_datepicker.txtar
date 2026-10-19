@@ -330,7 +330,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -475,7 +474,6 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
 import (
 	"strconv"
 	"time"
@@ -871,7 +869,7 @@ pass sha256:4c0af4220760b1b381b136ac2d5b831e
 -- run/go/fyne --
 pass sha256:2737a66ac82ec597753e3303fcab2e47
 -- run/go/gtk4 --
-pass sha256:1e5d7e762464ce7bbe00d6a00a08a37f
+pass sha256:dd7d9bc0e5ff0f71eeee8a9c9facfae0
 -- run/kotlin/android --
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --

@@ -514,7 +514,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -659,7 +658,6 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
 import (
 	"fmt"
 	"unsafe"
@@ -1023,7 +1021,7 @@ pass sha256:194eb8e87cf2927e1c40666982c3b77e
 -- run/go/fyne --
 pass sha256:40ebe27760c9a1ecb25870601de61d4f
 -- run/go/gtk4 --
-pass sha256:2c7a1890ee177f43c6a877ff9c369780
+pass sha256:e695d70104215b878116ebde806ee721
 -- run/go/html --
 pass sha256:299fd0606c3b9b7f1c96605654863c50
 -- run/kotlin/android --

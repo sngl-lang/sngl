@@ -1,7 +1,5 @@
 package gtk4
 
-import "embed"
-
 // Config controls GTK4 code generation. Fields are populated via --opt flags.
 type Config struct {
 	Package string `option:"package"` // default: "main"
@@ -26,11 +24,8 @@ func (c Config) withDefaults() Config {
 	return c
 }
 
-//go:embed templates/*
-var templateFS embed.FS
-
-// templateData is passed to model.go.tmpl and callbacks.go.tmpl.
-type templateData struct {
+// scaffoldData is what model.go's and callbacks.go's heads are written from.
+type scaffoldData struct {
 	Package        string
 	Main           bool
 	UnitDecls      string // pre-rendered `type X float64 / struct {...}` decls
@@ -40,8 +35,8 @@ type templateData struct {
 	Computeds      []computedData
 	WidgetFields   []widgetFieldData
 	FunctionCode   string
-	Imports        map[string]bool
-	NeedsBoolToInt bool // emit boolToInt helper only when boolToGoInt was used
+	Imports        []string // model.go's; repeats are fine, the FileEmitter dedupes
+	NeedsBoolToInt bool     // emit boolToInt helper only when boolToGoInt was used
 	// NeedsGObjectSet emits the g_object_set_property helpers, for the GTK
 	// properties that have no C setter of their own.
 	NeedsGObjectSet bool

@@ -124,7 +124,7 @@ func testNames(t test.Test, c listed) {
     t.assert(idOf("http://127.0.0.1:47819/pokeapi/api/v2/evolution-chain/2/") == "2")
 }
 -- testrun/android/kotlin/app.sngl/bulbasaur/1 --
-sha256:5e0114755c0887b780b564d74b9d2534
+sha256:cb0ae784d968fbb8aa8ee1bf771765d2
 {
   "results": [
     {
@@ -134,7 +134,7 @@ sha256:5e0114755c0887b780b564d74b9d2534
   ]
 }
 -- testrun/android/kotlin/app.sngl/chain/1 --
-sha256:c0ffa2118698a527a50bd2e71752275f
+sha256:e181826ed564cd70eb82abe144413326
 {
   "results": [
     {
@@ -144,7 +144,7 @@ sha256:c0ffa2118698a527a50bd2e71752275f
   ]
 }
 -- testrun/android/kotlin/app.sngl/ivysaur/1 --
-sha256:258dc6392d56ff0e23187e884edb24b5
+sha256:5545d056b497c4ed2527070687f36043
 {
   "results": [
     {
@@ -154,7 +154,7 @@ sha256:258dc6392d56ff0e23187e884edb24b5
   ]
 }
 -- testrun/android/kotlin/app.sngl/listed/1 --
-sha256:7e907b8c1e8000b9e07680830f5e2514
+sha256:3c209446e5ad53aefb778df6acea859b
 {
   "results": [
     {
@@ -288,7 +288,7 @@ sha256:52cea889e76b1920288edb5f292047fd
   ]
 }
 -- testrun/gtk4/go/app.sngl/ivysaur/1 --
-sha256:504938c204e02b8014e4507acf5c767f
+sha256:13cb86c52d745c7f59548924b8a3f196
 {
   "results": [
     {
@@ -298,7 +298,7 @@ sha256:504938c204e02b8014e4507acf5c767f
   ]
 }
 -- testrun/gtk4/go/app.sngl/listed/1 --
-sha256:3700f6ff16db75f9acf47f0a22e8bbb7
+sha256:42e65428e22c523a8245467909849a6a
 {
   "results": [
     {

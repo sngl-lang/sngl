@@ -234,7 +234,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -379,10 +378,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
-import (
-	"unsafe"
-)
+import "unsafe"
 
 func boolToInt(b bool) int {
 	if b {
@@ -534,7 +530,7 @@ pass sha256:241e7b8af09cefebcf08bec448d8e270
 -- run/go/fyne --
 pass sha256:7d934b8493e0d0bec13b43c9c2d5007b
 -- run/go/gtk4 --
-pass sha256:9438cb48ea36f8e88682ef5b8962c0c2
+pass sha256:c30fccace3d2261b7001eb14b80f6456
 -- run/kotlin/android --
 pass sha256:729e274cc33069789c622a2e6495ef18
 -- run/none/html --

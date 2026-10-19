@@ -215,9 +215,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Measurement struct {
 	Px  float64
@@ -405,6 +403,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:c8b70784c7b976fcb994df92ca2ee6fc
 -- run/go/gtk4 --
-pass sha256:869db807bb02e2ef31c289fa3ca81e4b
+pass sha256:9bd2133bed90128766ee8b8498aa3a06
 -- run/none/html --
 pass sha256:711c59bbb6e33f3d05ae8607762739c1

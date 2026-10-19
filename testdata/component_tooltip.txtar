@@ -270,7 +270,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -415,10 +414,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
-import (
-	"unsafe"
-)
+import "unsafe"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -594,7 +590,7 @@ pass sha256:28d0f1f52c3fbe2813aea4b9f6d0ee04
 -- run/go/fyne --
 pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
-pass sha256:210aff9c468ebd577aaf15958fdaece2
+pass sha256:47a5ae71d42f8415dd6ab3bbabc797db
 -- run/kotlin/android --
 pass sha256:2e89414007758dd41fcc074e1dc48687
 -- run/none/html --

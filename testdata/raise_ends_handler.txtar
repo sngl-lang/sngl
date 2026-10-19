@@ -729,9 +729,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type ErrorEvent struct {
 	Message string
@@ -1176,7 +1174,7 @@ pass sha256:aaeb7addad16c2a715609d528d55eb9f
 -- run/go/fyne --
 pass sha256:7cf6ae210c084f9c66b3062cdb71cc7f
 -- run/go/gtk4 --
-pass sha256:32150185c336a7ec2174a4df8b69cc2f
+pass sha256:00ed8fe5eb4cdcc0dd67a124df2860ec
 -- run/go/html --
 pass sha256:ac1a4a2e7c194d1db76d29036bd9a3bb
 -- run/kotlin/android --

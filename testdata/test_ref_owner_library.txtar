@@ -49,7 +49,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -218,7 +217,6 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
 import (
 	"strconv"
 	"time"
@@ -448,4 +446,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:6e6339abf901cca5bd3d5d638ad6b82f
+pass sha256:22fcf8f4d465d7f55dfe08edfc62a5ef

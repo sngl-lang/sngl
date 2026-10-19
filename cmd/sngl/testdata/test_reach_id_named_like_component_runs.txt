@@ -44,7 +44,7 @@ ui.window {
     main()
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:87e40f98386d3a6eaa0c6e909f2f7d07
+sha256:9b25df470db58806e11e302c775b00ee
 {
   "results": [
     {
@@ -74,7 +74,7 @@ sha256:34541f02c7b638bc3bf7fe1ccbdee705
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:c6ba2106eadaffd252e6a3f2b6c2787c
+sha256:a68ef318a421b1806077d7546e06377c
 {
   "results": [
     {

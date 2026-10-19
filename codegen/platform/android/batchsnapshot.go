@@ -1,8 +1,10 @@
 package android
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -70,9 +72,8 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 			return nil, fmt.Errorf("writing %s: %w", screenPath, err)
 		}
 
-		actSrc := renderBatchActivity(batchSnapshotPackage, p)
 		actPath := filepath.Join(tmpDir, p.activityName+".kt")
-		if err := os.WriteFile(actPath, []byte(actSrc), 0o644); err != nil {
+		if err := writeBatchActivity(actPath, p); err != nil {
 			return nil, fmt.Errorf("writing %s: %w", actPath, err)
 		}
 
@@ -93,10 +94,8 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 			return nil, fmt.Errorf("creating %s: %w", path, err)
 		}
 		_, writeErr := f.WriteTo(out)
-		out.Close()
-		if errors.Is(writeErr, codegen.ErrSkip) {
-			os.Remove(path)
-			continue
+		if cerr := out.Close(); writeErr == nil {
+			writeErr = cerr
 		}
 		if writeErr != nil {
 			return nil, fmt.Errorf("writing %s: %w", path, writeErr)
@@ -201,30 +200,25 @@ func generateDocMainScreen(g *Generator, p docPlan) ([]byte, error) {
 	return nil, fmt.Errorf("codegen produced no MainScreen.kt")
 }
 
-// renderBatchActivity produces the wrapper Activity source for one doc.
-// Each Activity lives in the base manifest package and imports the doc's
+// writeBatchActivity writes the wrapper Activity for one doc to path. Each
+// Activity lives in the base manifest package and imports the doc's
 // MainScreen from its sub-package under a unique alias.
-func renderBatchActivity(basePkg string, p docPlan) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "package %s\n\n", basePkg)
-	b.WriteString("import android.os.Bundle\n")
-	b.WriteString("import androidx.activity.ComponentActivity\n")
-	b.WriteString("import androidx.activity.compose.setContent\n")
-	b.WriteString("import androidx.activity.enableEdgeToEdge\n")
-	fmt.Fprintf(&b, "import %s.ui.theme.AppTheme\n", basePkg)
-	fmt.Fprintf(&b, "import %s.MainScreen as %s\n\n", p.subPackage, p.screenAlias)
-	fmt.Fprintf(&b, "class %s : ComponentActivity() {\n", p.activityName)
-	b.WriteString("    override fun onCreate(savedInstanceState: Bundle?) {\n")
-	b.WriteString("        super.onCreate(savedInstanceState)\n")
-	b.WriteString("        enableEdgeToEdge()\n")
-	b.WriteString("        setContent {\n")
-	b.WriteString("            AppTheme {\n")
-	fmt.Fprintf(&b, "                %s()\n", p.screenAlias)
-	b.WriteString("            }\n")
-	b.WriteString("        }\n")
-	b.WriteString("    }\n")
-	b.WriteString("}\n")
-	return b.String()
+func writeBatchActivity(path string, p docPlan) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	w := bufio.NewWriter(f)
+	writeBatchActivityKt(w, p)
+	if err := w.Flush(); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+func writeBatchActivityKt(w io.Writer, p docPlan) {
+	writeActivityKt(w, scaffoldData{Package: batchSnapshotPackage}, p.activityName, p.subPackage+".MainScreen as "+p.screenAlias)
 }
 
 // sanitizeDocID converts an arbitrary doc identifier into a Kotlin-safe
