@@ -48,14 +48,36 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). Only a literal written
   there: a named function or a func value handed instead runs on the shared
   state (#273), and so does a func value kept in state that such work calls
-  (#274). What such work writes
-  reaches nothing the program shows, since this target answers no `async.do`
-  to post it back with (#272). `codegen/platform/bubbletea/async_run_test.go`
-  runs both halves under `-race`.
+  (#274). What such work writes reaches nothing the program shows; it
+  reaches the program by **posting back**: `async.do` is a closure sent on
+  `__snglPosts`, which Init and every Update after one listen on with a
+  `tea.Cmd` and Update runs as a `__snglPostMsg` (`bubbletea/post.go`). The
+  closure carries the Model it writes: inside an off-loop literal that is the
+  Model the literal was made from, kept beside the snapshot as `__live`
+  (`GoIRContext.LiveModel`, `evalPost`), so a post writes the state the loop
+  shows and never the copy the work read. A test's `t.wait` runs the posts as
+  they arrive, on the goroutine that owns the Model as Update does, and a post
+  a finished test left behind writes only that test's Model. Posting touches
+  neither #273 nor #274: a post from such work carries the shared Model it
+  already wrote. `codegen/platform/bubbletea/async_run_test.go` runs the
+  snapshot halves under `-race`.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
 - **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`). A method on a type that reads the page's state is a function of the page taking its receiver first (`pageTypeMethods`, `Pt_sum(p)`), since that state is MainScreen's locals or its test state class's members; one that reads none is an extension (`testdata/type_method_receiver.txtar`).
+
+  **An android app asks for what it reaches.** `#[android.permission("…")]`
+  (`lib/platform/android/http.sngl`) is written on the native an override
+  calls -- `SnglRemoteImage` for `ui.remote` -- and lands on
+  `ir.DeclInfo.Permissions`; the manifest asks for each one on a function
+  the program calls or a component it renders (`permissions`), so a program
+  that reaches no network asks for no `INTERNET`
+  (`cmd/sngl/testdata/android_internet_permission.txt`). A call the language
+  answers by intrinsic id has no android declaration to mark, so android
+  **restates the id** -- `#[permission(…)] #[marks.intrinsic("http.send")] func send(…)` -- which `ir.Builtins.RegisterIntrinsic` allows a target
+  package alone, where the parameters agree by name: the declaring package's
+  signature stays, and the restatement adds its permissions to the
+  `IntrinsicDef` a call's id finds.
 
   **The screen imports every name explicitly, and never a star**
   (`kotlin.KtIRContext.Name`, the counterpart of Go's `AliasFor`). In Kotlin

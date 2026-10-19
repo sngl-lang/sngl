@@ -665,9 +665,12 @@ Three general things it needed, each of its own:
   declaration, and the call through it is a direct or a literal call by the
   time it is emitted.
 
-bubbletea answers no `async.do` (#272), so a fetch that waits is refused at
-the call that waits (`cmd/sngl/testdata/async_query_bubbletea_refused.txt`);
-one that answers at once runs there as everywhere. Kotlin declares no async
+On bubbletea the mount's tail is posted back through Update like any other
+`async.do` (see the bubbletea platform), so a fetch that waits runs there too
+(`testdata/async_query_bubbletea.txtar`,
+`cmd/sngl/testdata/async_query_bubbletea_runs.txt`); a query in a component
+built per copy of a loop is still refused there, an effect reading that
+component's state. Kotlin declares no async
 native, so on android a fetch answers at once. The interpreter runs `fetch` at
 mount, so a test reads the answer as there (`testdata/async_query.sngl`,
 and `async_query_loop.sngl` for a query per copy of a loop).

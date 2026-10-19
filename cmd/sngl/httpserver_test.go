@@ -1,7 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
 	"io"
 	"net"
 	"net/http"
@@ -38,6 +43,7 @@ func startTestHTTP(t *testing.T) {
 //	/pokemon/{name}         a Pokémon as PokéAPI writes one, or a 404
 //	/echo                   what the request was: method, query, body, X-Sngl header
 //	/status/{code}          that status, with "status {code}" as the body
+//	/dot.png                a 2x2 PNG, for an image a program fetches
 //	/api/v2/pokemon/        a page of names, `limit` (default 20) from `offset`, as PokéAPI pages
 //	/api/v2/pokemon/{name}/ a Pokémon as PokéAPI's spec declares one, or a 404
 //
@@ -89,6 +95,9 @@ func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
 			"header": r.Header.Get("X-Sngl"),
 		})
 		w.Write(out)
+	case path == "/dot.png":
+		h.Set("Content-Type", "image/png")
+		w.Write(testDotPNG)
 	case strings.HasPrefix(path, "/status/"):
 		code, err := strconv.Atoi(strings.TrimPrefix(path, "/status/"))
 		if err != nil {
@@ -100,6 +109,15 @@ func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}
 }
+
+// testDotPNG is a 2x2 opaque red PNG.
+var testDotPNG = func() []byte {
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{R: 0xff, A: 0xff}}, image.Point{}, draw.Src)
+	var b bytes.Buffer
+	_ = png.Encode(&b, img)
+	return b.Bytes()
+}()
 
 var testPokemon = map[string]string{
 	"bulbasaur": `{"id": 1, "name": "bulbasaur", "base_experience": 64, "height": 7, "weight": 69,

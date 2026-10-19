@@ -30,6 +30,9 @@ type templateData struct {
 	// HasAssets is true when the program reads pictures out of the app's
 	// assets, and MainActivity hands SnglAssets the context to read them with.
 	HasAssets bool
+	// Permissions are what the manifest asks for: what the program reaches
+	// asks (permissions), and INTERNET for the on-device test agent.
+	Permissions []string
 	// TestMode is true when generating the project for the test
 	// runner. Adds Robolectric + Compose UI test deps and the
 	// testOptions block to app/build.gradle.kts.
@@ -103,12 +106,19 @@ func newTemplateData(cfg Config) templateData {
 // Templates that call {{skip}} are automatically omitted.
 // hasI18n causes the MainActivity template to emit I18n.init(this).
 // hasAssets causes it to emit SnglAssets.init(this).
+// perms are the permissions the manifest asks for.
 // bootstrap causes MainActivity to call TestAgentBootstrap.start(this);
 // set under testMode=agent && testRunner=device.
-func scaffoldFiles(cfg Config, hasI18n, hasAssets, bootstrap bool, testAgentInclude string, testMode bool) []*codegen.OutputFile {
+func scaffoldFiles(cfg Config, hasI18n, hasAssets bool, perms []string, bootstrap bool, testAgentInclude string, testMode bool) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.HasI18n = hasI18n
 	data.HasAssets = hasAssets
+	data.Permissions = perms
+	if bootstrap {
+		// The on-device test agent listens on a loopback ServerSocket the
+		// host driver adb-forwards a TCP port to.
+		data.Permissions = withPermission(perms, internetPermission)
+	}
 	data.HasTestAgentBootstrap = bootstrap
 	data.HasTestAgent = testAgentInclude != ""
 	data.TestAgentInclude = testAgentInclude
@@ -154,13 +164,20 @@ func scaffoldFiles(cfg Config, hasI18n, hasAssets, bootstrap bool, testAgentIncl
 // Uses the same templates but with Gradle=false so gradle files are skipped.
 // hasI18n causes the MainActivity template to emit I18n.init(this).
 // hasAssets causes it to emit SnglAssets.init(this).
+// perms are the permissions the manifest asks for.
 // bootstrap causes MainActivity to call TestAgentBootstrap.start(this);
 // set under testMode=agent && testRunner=device.
-func directBuildFiles(cfg Config, hasI18n, hasAssets, bootstrap bool) []*codegen.OutputFile {
+func directBuildFiles(cfg Config, hasI18n, hasAssets bool, perms []string, bootstrap bool) []*codegen.OutputFile {
 	data := newTemplateData(cfg)
 	data.Gradle = false
 	data.HasI18n = hasI18n
 	data.HasAssets = hasAssets
+	data.Permissions = perms
+	if bootstrap {
+		// The on-device test agent listens on a loopback ServerSocket the
+		// host driver adb-forwards a TCP port to.
+		data.Permissions = withPermission(perms, internetPermission)
+	}
 	data.HasTestAgentBootstrap = bootstrap
 	return codegen.RenderTemplates(templateFS, "templates", data)
 }

@@ -598,6 +598,11 @@ type DeclInfo struct {
 	// one target spells and SNGL cannot describe (`go:chan`). Namespaced by
 	// that target in both of the latter.
 	Intrinsic string `json:",omitempty"`
+	// Permissions are what an app the declaration is reached in asks its host
+	// for, written by a target's own mark (`#[android.permission(…)]`) on the
+	// native a target's override calls, and collected by that target's build
+	// from every declaration the program reaches.
+	Permissions []string `json:",omitempty"`
 	// Foreign is what the declaration corresponds to outside SNGL. The tag is
 	// load-bearing: without it Foreign.Name and Name collide in the encoder
 	// and neither is written.

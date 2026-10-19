@@ -72,6 +72,11 @@ type GoIRContext struct {
 	// event loop owns it.
 	OffLoop *OffLoopSnapshots
 
+	// LiveModel, inside an off-loop literal's body, names the Model the
+	// literal was made from -- the one the event loop owns -- where `m` is
+	// the snapshot. An async.do there posts a closure that runs against it.
+	LiveModel string
+
 	// ExtraParam is appended verbatim to the signature EmitFuncDef writes, for
 	// a parameter whose Go type no ir.Type spells -- today the `m *Model` a
 	// lifted type method takes. Cleared for the body, which is a scope of its
@@ -963,7 +968,56 @@ const (
 	SnapshotRefMethod = "snapshotRef"
 )
 
+// liveModelVar is the local an off-loop literal keeps the Model it was made
+// from in, beside the snapshot it reads (OffLoopSnapshots).
+const liveModelVar = "__live"
+
+// withLiveModel translates an off-loop literal's body with LiveModel naming
+// the Model it was made from, and returns that name and the body.
+func (gc *GoIRContext) withLiveModel(n *ir.Lambda) (string, string) {
+	prev := gc.LiveModel
+	gc.LiveModel = liveModelVar
+	defer func() { gc.LiveModel = prev }()
+	return liveModelVar, gc.evalLambda(n)
+}
+
+// PostFunc is what a platform whose event loop owns the Model
+// (OffLoopSnapshots) declares to answer async.do: it hands a closure to the
+// loop, which runs it there.
+const PostFunc = "__snglPost"
+
+// RunPostsFunc is what such a platform declares for a test waiting on what
+// was posted: it runs the posts that arrive within a duration.
+const RunPostsFunc = "__snglRunPosts"
+
+// evalPost spells async.do inside an off-loop literal where the event loop
+// owns the Model: the closure runs against the Model the literal was made
+// from rather than the snapshot the literal reads, since what it writes is
+// what the loop shows. Anywhere else the platform's registered emitter
+// spells the post.
+func (gc *GoIRContext) evalPost(n *ir.Call) (string, bool) {
+	if gc.OffLoop == nil || gc.LiveModel == "" || n.Func == nil || n.Func.Intrinsic != lower.AsyncDoIntrinsic || len(n.Args) != 1 {
+		return "", false
+	}
+	l, ok := n.Args[0].Value.(*ir.Lambda)
+	if !ok {
+		return "", false
+	}
+	inner := *gc
+	inner.LiveModel = ""
+	body := inner.evalLambda(l)
+	m := codegen.ModelReceiver
+	head, rest, ok := strings.Cut(body, "{")
+	if !ok || head != "func() " {
+		return PostFunc + "(" + body + ")", true
+	}
+	return PostFunc + "(func() {\n\t\t" + m + " := " + gc.LiveModel + "\n\t\t_ = " + m + rest + ")", true
+}
+
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
+	if out, ok := gc.evalPost(n); ok {
+		return out
+	}
 	if gc.OffLoop != nil && lower.LeavesTheLoop(n.Func) {
 		if gc.OffLoop.lambdas == nil {
 			gc.OffLoop.lambdas = map[*ir.Lambda]bool{}
@@ -1934,7 +1988,14 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		}
 		ft := "func(" + strings.Join(params, ", ") + ")" + goReturnType(n.Func.Return)
 		m := codegen.ModelReceiver
-		return "func() " + ft + " {\n\t\t" + m + " := " + m + "." + snap + "()\n\t\treturn " + gc.evalLambda(n) + "\n\t}()"
+		live, body := gc.withLiveModel(n)
+		snapshot := m + " := " + m + "." + snap + "()\n\t\t"
+		// Only a body that posts reads the Model it was made from, and its
+		// post may be all that names the Model, which it shadows.
+		if strings.Contains(body, live) {
+			snapshot = live + " := " + m + "\n\t\t" + snapshot + "_ = " + m + "\n\t\t"
+		}
+		return "func() " + ft + " {\n\t\t" + snapshot + "return " + body + "\n\t}()"
 	}
 	params := make([]string, len(n.Func.Params))
 	for i, p := range n.Func.Params {
@@ -1994,6 +2055,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
 		OffLoop:            gc.OffLoop,
+		LiveModel:          gc.LiveModel,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -2017,6 +2079,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
 		OffLoop:            gc.OffLoop,
+		LiveModel:          gc.LiveModel,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }

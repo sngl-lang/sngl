@@ -465,12 +465,12 @@ function literal that waits, called where it stands -- an adapter's
 `fetch=func(k) => call(k.a, k.b)` spliced into the mount -- is written in
 place as a `run` block binding its parameters (`waitingLiteralCall`), since a
 Kotlin lambda is no suspend function; and a test build's wait for idle also
-waits for what `start` began. bubbletea answers no
-`async.do` (#272) and refuses the request at the call that waits. A test
+waits for what `start` began. A test
 waits for what a handler's request writes with `t.wait`, which Go now lowers
-too (gtk4 pumping its loop meanwhile, `golang.LowerTestFile` being handed the
-platform). `cmd/sngl/testdata/http_runs.txt` runs requests, a waiting
-handler and an `async.query` over a request on five targets against the
+too (gtk4 pumping its loop meanwhile and bubbletea running what was posted,
+`golang.LowerTestFile` being handed the platform).
+`cmd/sngl/testdata/http_runs.txt` runs requests, a waiting handler and an
+`async.query` over a request on six targets against the
 server the script harness runs at `127.0.0.1:47819`
 (`cmd/sngl/httpserver_test.go`), and `testdata/http_json.txtar` is the code.
 

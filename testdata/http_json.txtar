@@ -1452,6 +1452,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:c41fce6783825607ba23bd69f327e550
 -- run/kotlin/android --
-pass sha256:98eb7f312f8fc1642e871a6d3d4f4e32
+pass sha256:0993bb11753a151db8a7c4f722e06839
 -- run/none/html --
 pass sha256:89b0dd3ce830178e4c0c7be72720447a

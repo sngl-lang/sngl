@@ -46,17 +46,25 @@ does with it is each target's:
 - bubbletea: a drawing is a canvas; a URL is half-block cells fitted into a
   fixed box (`tui.Picture`), and a fetch arriving sends the program a message
   (`snglimage.OnArrive`).
-- android: a file is `SnglAssetImage`, shipped Kotlin reading the app's
-  assets; a drawing is a `Canvas`; a URL draws nothing, no loader shipping.
+- android: shipped Kotlin (`codegen/platform/android/assets.kt`). An image
+  is `SnglImage`, a box that hands its source `@load` and `@error` through a
+  CompositionLocal; a file is `SnglAssetImage`, read out of the app's assets;
+  a URL is `SnglRemoteImage`, fetched with `HttpURLConnection` on
+  `Dispatchers.IO` and kept once it arrives, and counted in
+  `SnglAssets.active` while it is fetched, which a Robolectric test's wait for
+  idle waits on as it does `SnglCodec.active` (`activeCounters`). A URL in a
+  `canvasImage` still paints nothing. A drawing is a `Canvas`. The manifest's
+  permissions are android's own mark (see *An android app asks for what it
+  reaches* in [architecture.md](architecture.md)).
 - none: the image holds its source, which a snapshot prints.
 
 **An avatar is a wrapper on `ui.image` that does the fallback**: its
 `fallback` slot -- the initials in a styled box unless the call site writes
 its own -- stands in where `src.empty` or the image reported `@error`. A
 failed load is remembered until the avatar renders again, since the image
-that would say a later source loaded is no longer on screen. html, bubbletea,
-android and none do not yet report an image's `@error`, so there only an empty
-source shows the fallback.
+that would say a later source loaded is no longer on screen. html, bubbletea
+and none do not yet report an image's `@error`, so there only an empty source
+shows the fallback.
 
 `canvasImage` paints its source through a shape primitive whose rest slot is
 the source family (`ir.IsImageSourceHost`): `passShapeDraw` runs its `@url`
@@ -65,5 +73,6 @@ handler with the URL in the payload, or brackets a drawing's shapes between
 so a drawing in a drawing is painted in place. `pkg/go/snglimage` is where
 the Go targets load bytes: embedded, from the working directory, or fetched
 once per URL. `testdata/image_sources.txtar`,
-`codegen/platform/html/image_browser_test.go` and
-`cmd/sngl/testdata/image_sources_runs.txt`.
+`codegen/platform/html/image_browser_test.go`,
+`cmd/sngl/testdata/image_sources_runs.txt` and `image_remote_runs.txt`, which
+fetches from the script harness's server on android, fyne and gtk4.

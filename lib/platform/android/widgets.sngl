@@ -70,19 +70,35 @@ const component ui.button[platform](text, style, @click) {
 }
 
 // An image is a box holding the source it shows, or the placeholder where it
-// holds none. A file the program carries is SnglAssetImage, Kotlin the
-// platform ships with the app, which reads the picture out of the app's
-// assets; a drawing is a Canvas. Compose has no image loader in the box, so a
-// picture a URL names draws nothing.
-const component ui.image[platform](style, src) {
-    Box(modifier={...style}) {
-        #[family.crosses]
+// holds none, and it hands its source the two events it reports: a picture
+// arriving and one failing. A file the program carries is SnglAssetImage, and
+// a picture a URL names SnglRemoteImage, Kotlin the platform ships with the
+// app (codegen/platform/android/assets.kt) -- the first reads the app's
+// assets, the second fetches off the main thread, since Compose has no image
+// loader in the box. A drawing is a Canvas, and reports neither.
+const component ui.image[platform](style, @load, @error, src) {
+    SnglImage(modifier={...style}, onLoad=func() { load() }, onError=func(m string) {
+        error({message=m, kind="image"})
+    }) {
         src
     }
 }
 
+#[gen.renders(identity)]
+#[intrinsic("android:SnglImage")]
+component SnglImage(
+    modifier ui.Style,
+    onLoad   func(),
+    onError  func(message string),
+    src      ...component option[ui.imageSource],
+) ui.node
+
 #[intrinsic("android:SnglAssetImage")]
 component SnglAssetImage(url string) ui.imageSource
+
+#[permission("android.permission.INTERNET")]
+#[intrinsic("android:SnglRemoteImage")]
+component SnglRemoteImage(url string) ui.imageSource
 
 #[intrinsic("android:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
@@ -92,7 +108,7 @@ const component ui.file[platform](path) {
 }
 
 const component ui.remote[platform](url) {
-    SnglAssetImage(url=url)
+    SnglRemoteImage(url=url)
 }
 
 const component shapes.image[platform](width, height, shapes) {

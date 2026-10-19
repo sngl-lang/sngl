@@ -17,28 +17,54 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	// sngl:builtin's private copies, which keep the package free of imports.
-	{"builtin", "_builtin"}:       markBuiltin,
-	{"builtin", "_intrinsic"}:     markIntrinsic,
-	{"family", "crosses"}:         markFamilyCrosses,
-	{"family", "eventless"}:       markFamilyEventless,
-	{"macro", "wildcard"}:         markWildcard,
-	{"macro", "construct"}:        markConstruct,
-	{"macro", "foreign"}:          markForeign,
-	{"macro", "cnative"}:          markCNative,
-	{"macro", "unusable"}:         markUnusable,
-	{"language/kotlin", "native"}: markKotlinNative,
-	{"language/go", "native"}:     markGoNative,
-	{"language/go", "async"}:      markGoAsync,
-	{"language/js", "native"}:     markJSNative,
-	{"x/gen", "can"}:              markGenCan,
-	{"x/gen", "cannot"}:           markGenCannot,
-	{"x/gen", "wants"}:            markGenWants,
-	{"x/gen", "renders"}:          markGenRenders,
-	{"x/gen", "name"}:             markGenName,
-	{"x/gen", "native"}:           markGenNative,
-	{"ui/markup/md", "order"}:     markMdOrder,
-	{"json", "identifier"}:        markJSONIdentifier,
-	{"http", "identifier"}:        markHTTPIdentifier,
+	{"builtin", "_builtin"}:            markBuiltin,
+	{"builtin", "_intrinsic"}:          markIntrinsic,
+	{"family", "crosses"}:              markFamilyCrosses,
+	{"family", "eventless"}:            markFamilyEventless,
+	{"macro", "wildcard"}:              markWildcard,
+	{"macro", "construct"}:             markConstruct,
+	{"macro", "foreign"}:               markForeign,
+	{"macro", "cnative"}:               markCNative,
+	{"macro", "unusable"}:              markUnusable,
+	{"language/kotlin", "native"}:      markKotlinNative,
+	{"language/go", "native"}:          markGoNative,
+	{"language/go", "async"}:           markGoAsync,
+	{"language/js", "native"}:          markJSNative,
+	{"x/gen", "can"}:                   markGenCan,
+	{"x/gen", "cannot"}:                markGenCannot,
+	{"x/gen", "wants"}:                 markGenWants,
+	{"x/gen", "renders"}:               markGenRenders,
+	{"x/gen", "name"}:                  markGenName,
+	{"x/gen", "native"}:                markGenNative,
+	{"ui/markup/md", "order"}:          markMdOrder,
+	{"json", "identifier"}:             markJSONIdentifier,
+	{"http", "identifier"}:             markHTTPIdentifier,
+	{"platform/android", "permission"}: markAndroidPermission,
+}
+
+// markAndroidPermission implements #[android.permission("…")]: a permission
+// an android app asks for wherever the declaration is reached, written on the
+// native or primitive that needs it -- the one an override calls -- so the
+// build collects what the program uses rather than guessing from what it
+// imports.
+func markAndroidPermission(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[android.permission] requires a non-empty name")
+	}
+	var info *ir.DeclInfo
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		info = &d.DeclInfo
+	case *ir.Component:
+		info = &d.DeclInfo
+	default:
+		return fmt.Errorf("#[android.permission] cannot mark %s; only a function or a component is reached", ast.DeclFormName(m.decl))
+	}
+	if !slices.Contains(info.Permissions, name) {
+		info.Permissions = append(info.Permissions, name)
+	}
+	return nil
 }
 
 // markJSONIdentifier implements #[json.identifier("name")]: the name a struct

@@ -171,7 +171,7 @@ func TestBatchCodegen(t *testing.T) {
 // canonical single-MainActivity manifest.
 func TestSingleActivityManifestUnchanged(t *testing.T) {
 	noGradle2 := false
-	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: &noGradle2}.withDefaults(), false, false, false)
+	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: &noGradle2}.withDefaults(), false, false, nil, false)
 	var manifest string
 	var sawMainActivity bool
 	for _, f := range files {

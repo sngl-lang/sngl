@@ -1,0 +1,96 @@
+# bubbletea answers async.do by posting the closure back through Update
+# (#272), so a query whose fetch waits runs there: the wait is on a goroutine,
+# and what the mount writes after it lands in the Model the loop owns. The
+# latest attempt wins and an unmounted query's answer lands nowhere, as on
+# every other target.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import . "sngl:test"
+import . "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("time", "time.Sleep")]
+#[go.async]
+func sleep(ns int)
+
+// A slow name answers after the quick one asked behind it.
+func lookup(name string) async.Result[int] {
+    if name == "slow" {
+        sleep(400000000)
+    } else {
+        sleep(10000000)
+    }
+    return {ok=name.length()}
+}
+
+component detail node {
+    var name = "pikachu"
+    var length option[int] = null
+    var loading = false
+    async.query(on=name, fetch=lookup, :value=length, :pending=loading)
+    button #mew(text="mew", @click { name = "mew" })
+    button #slow(text="slow", @click { name = "slow" })
+}
+
+component dropped node {
+    var shown = true
+    var answer option[int] = null
+    if shown {
+        async.query(on="slow", fetch=lookup, :value=answer)
+    }
+    button #hide(text="hide", @click { shown = false })
+}
+
+func testAnswerArrives(t Test, c detail) {
+    t.assert(c.loading)
+    t.wait(func() => c.length != null, 5000)
+    t.assert(c.length == 7)
+    t.assert(!c.loading)
+}
+
+func testLatestWins(t Test, c detail) {
+    c.slow.click()
+    c.mew.click()
+    t.wait(func() => c.length == 3, 5000)
+    t.wait(func() => false, 800)
+    t.assert(c.length == 3)
+}
+
+func testUnmountDrops(t Test, c dropped) {
+    c.hide.click()
+    t.wait(func() => false, 800)
+    t.assert(c.answer == null)
+}
+
+window {
+    detail
+    dropped
+}
+-- testrun/bubbletea/go/app.sngl/detail/1 --
+sha256:e57bd89914d721b2122a210d37f75319
+{
+  "results": [
+    {
+      "Desc": "AnswerArrives",
+      "Passed": true
+    },
+    {
+      "Desc": "LatestWins",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/dropped/1 --
+sha256:b3bec52b019d319069cd103973c7dc52
+{
+  "results": [
+    {
+      "Desc": "UnmountDrops",
+      "Passed": true
+    }
+  ]
+}

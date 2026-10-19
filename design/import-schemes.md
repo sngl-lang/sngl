@@ -117,6 +117,6 @@ the function as `fetch`, or an anonymous struct of several with a lambda
 spreading it back out; it renders nothing, so its family is `F`.
 
 The runs are `cmd/sngl/testdata/openapi_runs.txt`, against the script
-harness's server on all five targets that answer a request; the refusals
+harness's server on all six targets; the refusals
 `cmd/sngl/testdata/error_openapi_*.txt`, the renames `openapi_renamed.txt`
 and the store `openapi_store.txt`.

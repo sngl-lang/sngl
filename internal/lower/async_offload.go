@@ -15,9 +15,8 @@ import (
 // AsyncDoIntrinsic runs its one argument back on the thread the target
 // draws on. The *platform* answers that one, because there is no such thread
 // in general and no two toolkits reach theirs the same way: fyne queues onto
-// the driver and gtk4 onto a GLib idle tick. Those two are the whole list --
-// Bubble Tea owns its loop and lets nothing outside Update touch the model,
-// which is the same reason it cannot take an effect timer.
+// the driver, gtk4 onto a GLib idle tick, and Bubble Tea, which lets nothing
+// outside Update touch the model, sends the closure to Update as a message.
 //
 // Both are declared in sngl:async, which is what separates them from
 // ir.NodeOps: those name nobody's contract, and these name a platform
