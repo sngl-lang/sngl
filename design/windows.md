@@ -84,9 +84,10 @@ that carries an id are held to it — a window, an element-ref call
 (`text #t(value = t.value)`), and the `context` declaration, whose id *is* its
 own declaration, so `context #depth(depth)` is the same error rather than an
 `undefined` naming the context on the line declaring it. Matched by *symbol*:
-`declareNodeID` declines to bind an id an outer scope already holds, so a
-`#foo` written beside an existing `foo` reads that one, which is an ordinary
-read of something that does exist. A handler is untouched — `@click` is split
+an id is a declaration in its component's scope and shadows an outer `foo`,
+so `text #foo(value=foo)` beside a package's `foo` reads the node and is this
+error, and beside a var of the component is a redeclaration (see
+design/nodes.md). A handler is untouched — `@click` is split
 off before the rule is asked, and a handler runs after mount.
 
 What it does not cover is a cycle through *other* declarations, which is the

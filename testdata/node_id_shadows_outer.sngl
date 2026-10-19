@@ -1,0 +1,26 @@
+// A node's #id is a declaration hoisted to its component's scope, and
+// shadows what an enclosing scope binds as any declaration does: in `main`,
+// `card` is the node, while a node position still names the component. A
+// test reaches through it (`c.card.hits`), which every target used to miss.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+component card ui.node {
+    var hits = 0
+    ui.button #btn(text="hit", @click { hits = hits + 1 })
+}
+
+component main ui.node {
+    card #card()
+    card()
+}
+
+func testReadsThroughAnIDNamedLikeItsComponent(t test.Test, c main) {
+    c.card.btn.click()
+    t.assert(c.card.hits == 1)
+}
+
+ui.window {
+    main()
+}

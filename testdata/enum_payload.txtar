@@ -89,7 +89,7 @@ component panel node {
     var shape Shape = Shape.empty
     var result = half(4)
 
-    text #area(value="{area(shape)}")
+    text #shownArea(value="{area(shape)}")
     text #outcome(value=label(result))
     text #facts(value="{area(held)} {orZero(result)} {describe(shape)} {result == Result[int]{ok=2}}")
     text #radius(value=match var r = shape {
@@ -483,14 +483,14 @@ type Model struct {
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*__child0Instance
 
-	__n0    *fynelayout.Toplevel
-	area__1 *widget.Label
-	outcome *widget.Label
-	facts   *widget.Label
-	radius  *widget.Label
-	grow    *widget.Button
-	odd     *widget.Button
-	__built bool
+	__n0      *fynelayout.Toplevel
+	shownArea *widget.Label
+	outcome   *widget.Label
+	facts     *widget.Label
+	radius    *widget.Label
+	grow      *widget.Button
+	odd       *widget.Button
+	__built   bool
 }
 
 // New creates a Model with default values.
@@ -588,7 +588,7 @@ func (m *Model) grow_click_handler() {
 		__lt3 = Shape{tag: 0}
 	}
 	m.shape__inst0 = __lt3
-	m.area__1.SetText(fmt.Sprint(Area(m.shape__inst0)))
+	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
 	var __lt4 string
 	if m.shape__inst0.tag == 1 {
 		__lt4 = "round"
@@ -680,9 +680,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.area__1 = widget.NewLabel("")
-	m.area__1.SetText(fmt.Sprint(Area(m.shape__inst0)))
-	m.__n0.Add(m.area__1)
+	m.shownArea = widget.NewLabel("")
+	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
+	m.__n0.Add(m.shownArea)
 	var __lt0 string
 	if m.result__inst0.tag == 0 {
 		__lt0 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
@@ -815,7 +815,7 @@ type Model struct {
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__child0Instance
 	__n0           gtk4rt.Handle
-	area__1        gtk4rt.Handle
+	shownArea      gtk4rt.Handle
 	outcome        gtk4rt.Handle
 	facts          gtk4rt.Handle
 	radius         gtk4rt.Handle
@@ -920,7 +920,7 @@ func (m *Model) grow_clicked_handler() {
 		__lt3 = Shape{tag: 0}
 	}
 	m.shape__inst0 = __lt3
-	gtk4rt.LabelSetText(m.area__1, fmt.Sprint(Area(m.shape__inst0)))
+	gtk4rt.LabelSetText(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
 	var __lt4 string
 	if m.shape__inst0.tag == 1 {
 		__lt4 = "round"
@@ -1036,9 +1036,9 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.area__1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.area__1, fmt.Sprint(Area(m.shape__inst0)))
-	gtk4rt.BoxAppend(m.__n0, m.area__1)
+	m.shownArea = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
+	gtk4rt.BoxAppend(m.__n0, m.shownArea)
 	var __lt0 string
 	if m.result__inst0.tag == 0 {
 		__lt0 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
@@ -1159,7 +1159,7 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = _snglFloatStr(area(shape__inst0)), modifier = Modifier.testTag("area__1").safeDrawingPadding())
+            Text(text = _snglFloatStr(area(shape__inst0)), modifier = Modifier.testTag("shownArea").safeDrawingPadding())
             Text(text = (when { (result__inst0 is Result__int.Ok) -> ("ok " + (result__inst0 as Result__int.Ok).value.toString()); else -> ("failed: " + (result__inst0 as Result__int.Failed).value.message) }), modifier = Modifier.testTag("outcome").safeDrawingPadding())
             Text(text = ((((((_snglFloatStr(area(held)) + " ") + orZero(result__inst0).toString()) + " ") + (when { (shape__inst0 is Shape.Circle) -> "round"; else -> "not round" })) + " ") + (result__inst0 == Result__int.Ok(2)).toString()), modifier = Modifier.testTag("facts").safeDrawingPadding())
             Text(text = (when { (shape__inst0 is Shape.Circle) -> _snglFloatStr((shape__inst0 as Shape.Circle).value); else -> "none" }), modifier = Modifier.testTag("radius").safeDrawingPadding())
@@ -1395,10 +1395,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:097d9fdb28ec3feb8205bfc469d1dc5f
 -- run/go/fyne --
-pass sha256:b3dee89f89e4be2048e71f5cffe3d6d2
+pass sha256:02a604a52aafda4cf81b7b41bb2110b6
 -- run/go/gtk4 --
-pass sha256:add0b4277e613cc55e1283fc666a04bb
+pass sha256:364a5ed156c585b3c805db13683dc72c
 -- run/kotlin/android --
-pass sha256:d5615a804eab7a7580290a4f309b2519
+pass sha256:8a6241909f5178c7cbed0e825a445865
 -- run/none/html --
 pass sha256:f77f085c1f76f94c530ccfa6093eaa8a

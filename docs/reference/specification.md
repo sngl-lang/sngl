@@ -1976,8 +1976,16 @@ labeled with an element reference, `Name #id(args)`, naming it for later use.
 ### Element references
 
 Attaching `#id` to a node (`ui.button #id(…)`) names it within the component and
-introduces `id` as a component-scoped binding: an opaque, immutable handle to
-that node (it does not shadow an existing name). The node is reached either by
+declares `id` in the component's scope: an opaque, immutable handle to that
+node. The declaration is hoisted there from wherever the node is written, and
+binds the name as any declaration does: it shadows a name an enclosing scope
+declares (`card #card` beside a package's `component card` makes `card` the
+node throughout the component), and another declaration of the name in the
+component's scope -- a var, a prop, a method -- is a redeclaration. A node
+position names a component whatever the scope binds, so `card #card()` still
+renders `card`. Read from outside an `if` or a `for` the node is written in,
+the handle is an `option` or a `list` of the node, and the program reads it
+inside instead. The node is reached either by
 that bare name or, from a handle to its container, by ordinary field
 selection — `c.id.value` reads the node's state and `c.id.click()` drives its
 events (event invocation through a reference is an ordinary call on the event
