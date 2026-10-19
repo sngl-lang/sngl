@@ -1,0 +1,33 @@
+import poke "openapi:./pokeapi.yml"
+
+// The last segment of a PokéAPI resource URL, which is the resource's id:
+// "https://pokeapi.co/api/v2/evolution-chain/1/" is "1". A summary names
+// what it points at by URL alone, and an id is what the next request asks.
+func idOf(url string) string {
+    var parts = string.split(url, "/").filter(func(p string) => p != "")
+    return parts[parts.length() - 1]
+}
+
+// A name as the games print it: "mr-mime" is "Mr Mime".
+func display(name string) string {
+    var words = string.split(name, "-")
+    var out list[string] = []
+    for var w = words {
+        if string.length(w) > 0 {
+            out.push(string.upper(string.substring(w, 0, 1)) + string.substring(w, 1, string.length(w)))
+        }
+    }
+    return out.join(" ")
+}
+
+// The species of an evolution chain, each stage once, in the order the
+// chain walks them: a parent before what it evolves into.
+func stages(link poke.EvolutionChainLink) list[string] {
+    var out = [link.species.name]
+    for var next = link.evolvesTo {
+        for var s = stages(next) {
+            out.push(s)
+        }
+    }
+    return out
+}

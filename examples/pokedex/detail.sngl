@@ -1,0 +1,75 @@
+import async "sngl:async"
+import poke "openapi:./pokeapi.yml"
+import ui "sngl:ui"
+
+// The highest base stat any Pokémon has, which a stat's bar is measured
+// against.
+const maxStat = 255
+
+// One Pokémon: its picture, its types, its base stats as bars, and the
+// Pokémon it evolves from and into. The evolution chain is two requests
+// behind the first -- the species names its chain, and the chain names its
+// stages -- each a query under an `if` on the answer before it, keyed on
+// what that answer said.
+component detailPage(name string, @open(name string)) ui.node {
+    var mon option[poke.PokemonDetail] = null
+    var loading = false
+    var failure option[async.Failure] = null
+
+    poke.pokemonRetrieve(id=name, :value=mon, :pending=loading, :failure=failure)
+
+    ui.vbox(style={gap=8px, padding=8px}) {
+        ui.text #title(value=display(name), style={fontSize=24px, fontWeight=bold})
+        if mon == null && loading {
+            ui.spinner(label="Loading {name}")
+        }
+        if failure != null {
+            ui.text #failed(value="Could not load {name}: {failure.message}")
+        }
+        if mon != null {
+            if mon.sprites.frontDefault != null {
+                ui.image(alt=name, style={width=96px, height=96px}) {
+                    ui.remote(url=mon.sprites.frontDefault)
+                }
+            }
+            ui.text #number(value="No. {mon.id}")
+            ui.hbox(style={gap=4px}) {
+                for var t = mon.types {
+                    ui.badge(value=t.type.name)
+                }
+            }
+            for var s = mon.stats {
+                ui.hbox(style={gap=8px, alignItems=center}) {
+                    ui.text(value=s.stat.name, style={width=120px})
+                    ui.progress(value=float(s.baseStat), max=float(maxStat), label=s.stat.name, style={flex=1})
+                    ui.text(value="{s.baseStat}")
+                }
+            }
+            evolution(species=mon.species.name, @open(n) { open(n) })
+        }
+    }
+}
+
+// The stages of the evolution chain `species` belongs to, each a link to
+// its own page but the one showing.
+component evolution(species string, @open(name string)) ui.node {
+    var about option[poke.PokemonSpeciesDetail] = null
+    var chain option[poke.EvolutionChainDetail] = null
+
+    poke.pokemonSpeciesRetrieve(id=species, :value=about)
+    if about != null {
+        poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=chain)
+    }
+    if chain != null {
+        ui.hbox #chainRow(style={gap=8px, alignItems=center}) {
+            ui.text(value="Evolution:")
+            for var stage = stages(chain.chain) {
+                if stage == species {
+                    ui.text(value=display(stage), style={fontWeight=bold})
+                } else {
+                    ui.button(text=display(stage), @click { open(stage) })
+                }
+            }
+        }
+    }
+}

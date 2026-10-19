@@ -1,0 +1,165 @@
+{
+ "abilities": [
+  {
+   "ability": {
+    "name": "blaze",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/ability/66/"
+   },
+   "is_hidden": false,
+   "slot": 1
+  },
+  {
+   "ability": {
+    "name": "solar-power",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/ability/94/"
+   },
+   "is_hidden": true,
+   "slot": 3
+  }
+ ],
+ "base_experience": 62,
+ "cries": {
+  "latest": null,
+  "legacy": null
+ },
+ "forms": [
+  {
+   "name": "charmander",
+   "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-form/4/"
+  }
+ ],
+ "game_indices": [
+  {
+   "game_index": 176,
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/version/1/"
+   }
+  },
+  {
+   "game_index": 176,
+   "version": {
+    "name": "blue",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/version/2/"
+   }
+  }
+ ],
+ "height": 6,
+ "held_items": [],
+ "id": 4,
+ "is_default": true,
+ "location_area_encounters": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon/4/encounters",
+ "moves": [
+  {
+   "move": {
+    "name": "mega-punch",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/move/5/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "red-blue",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/version-group/1/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "fire-punch",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/move/7/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "gold-silver",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/version-group/3/"
+     }
+    }
+   ]
+  }
+ ],
+ "name": "charmander",
+ "order": 5,
+ "past_abilities": [
+  {
+   "abilities": [
+    {
+     "ability": null,
+     "is_hidden": true,
+     "slot": 3
+    }
+   ],
+   "generation": {
+    "name": "generation-iv",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/generation/4/"
+   }
+  }
+ ],
+ "past_stats": [
+  {
+   "generation": {
+    "name": "generation-i",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/generation/1/"
+   },
+   "stats": [
+    {
+     "base_stat": 50,
+     "effort": 0,
+     "stat": {
+      "name": "special",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/stat/9/"
+     }
+    }
+   ]
+  }
+ ],
+ "past_types": [],
+ "species": {
+  "name": "charmander",
+  "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-species/4/"
+ },
+ "sprites": {
+  "front_default": "http://127.0.0.1:47819/dot.png"
+ },
+ "stats": [
+  {
+   "base_stat": 39,
+   "effort": 0,
+   "stat": {
+    "name": "hp",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/stat/1/"
+   }
+  },
+  {
+   "base_stat": 52,
+   "effort": 0,
+   "stat": {
+    "name": "attack",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/stat/2/"
+   }
+  }
+ ],
+ "types": [
+  {
+   "slot": 1,
+   "type": {
+    "name": "fire",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/type/10/"
+   }
+  }
+ ],
+ "weight": 85
+}

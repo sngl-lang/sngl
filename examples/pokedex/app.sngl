@@ -1,0 +1,40 @@
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+// html is served by a Go program (--lang go): a detail page is
+// /pokemon/{name}, a pattern a static site cannot serve.
+output {
+    go {
+        html
+        bubbletea(package="pokedex")
+        fyne(package="pokedex")
+        gtk4(package="pokedex")
+    }
+    kotlin { android }
+}
+
+// Which Pokémon a detail page shows.
+struct Mon {
+    name string
+}
+
+// The list and a page per Pokémon. The detail page is written first because
+// the list's handler names it, and a page is named below where it is
+// written; the stack starts at "/" wherever that is.
+component Pokedex ui.node {
+    nav.stack #pages {
+        nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
+            component content(p) {
+                ui.button(text="Back", @click { pages.back() })
+                detailPage(name=p.name, @open(name) { pages.go(detail, Mon{name=name}) })
+            }
+        }
+        nav.page #home(href="/", title="Pokédex") {
+            listPage(@open(name) { pages.go(detail, Mon{name=name}) })
+        }
+    }
+}
+
+ui.window #pokedex(title="Pokédex") {
+    Pokedex()
+}
