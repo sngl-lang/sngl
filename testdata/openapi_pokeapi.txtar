@@ -536,6 +536,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func PokemonSpeciesRetrieveCall(id string, __ctx_server string) Result__PokemonSpeciesDetail {
 	__match2 := _answered(func() Result__Response {
 		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v2/pokemon-species/") + sngljson.Escape(id)) + "/"), nil, nil)
@@ -692,7 +704,7 @@ func (m *Model) __effect0_mount() {
 		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPokemonSummaryList {
 			return PokemonListCall(k.Limit, k.Offset, "https://pokeapi.co")
 		}(__async_arg0)
-		fyne.Do(func() {
+		__snglDo(func() {
 			if mine != m.attempt__inst1 {
 				return
 			}
@@ -768,8 +780,10 @@ func (m *Model) __effect1_mount() {
 	m.__renderSlot1(m.__n2.Container)
 	__async_arg1 := m.__effect1_key.Key
 	go func() {
-		r := func(id string) Result__PokemonDetail { return PokemonRetrieveCall("pikachu", "https://mirror.example") }(__async_arg1)
-		fyne.Do(func() {
+		r := func(__ctxArg0 string) Result__PokemonDetail {
+			return PokemonRetrieveCall(__ctxArg0, "https://mirror.example")
+		}(__async_arg1)
+		__snglDo(func() {
 			if mine != m.attempt__inst0 {
 				return
 			}
@@ -990,7 +1004,7 @@ func (m *Model) __n9_click_handler() {
 func (m *Model) __n10_click_handler() {
 	go func() {
 		__match0 := PokemonSpeciesRetrieveCall("pikachu", "https://mirror.example")
-		fyne.Do(func() {
+		__snglDo(func() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
@@ -1873,7 +1887,9 @@ func (m *Model) __effect1_mount() {
 	m.__renderSlot1(m.__n2)
 	__async_arg1 := m.__effect1_key.Key
 	go func() {
-		r := func(id string) Result__PokemonDetail { return PokemonRetrieveCall("pikachu", "https://mirror.example") }(__async_arg1)
+		r := func(__ctxArg0 string) Result__PokemonDetail {
+			return PokemonRetrieveCall(__ctxArg0, "https://mirror.example")
+		}(__async_arg1)
 		gtk4rt.Post(func() {
 			if mine != m.attempt__inst0 {
 				return
@@ -2597,8 +2613,8 @@ fun MainScreen() {
                     	loading__inst0 = true
                     	var r: SnglResult__PokemonDetail = run {
 	val __arg0 = k.key
-	val id = __arg0
-	return@run pokemonRetrieveCall("pikachu", "https://mirror.example")
+	val __ctxArg0 = __arg0
+	return@run pokemonRetrieveCall(__ctxArg0, "https://mirror.example")
 }
                     	if ((mine != attempt__inst0)) {
                     		return@start
@@ -3240,7 +3256,7 @@ body { font-family: system-ui, sans-serif; }
     let mine = state.attempt__inst0;
     state.loading__inst0 = true;
     __renderSlot1(__slotAnchor_1);
-    let r = await (async (id) => await pokemonRetrieveCall("pikachu", "https://mirror.example"))(__effect1_key.key);
+    let r = await (async (__ctxArg0) => await pokemonRetrieveCall(__ctxArg0, "https://mirror.example"))(__effect1_key.key);
     if (mine !== state.attempt__inst0) {
       ;
       return;
@@ -4092,10 +4108,10 @@ component pokemonSpeciesRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:85a313842f90f68c3aabccc77925a215
+pass sha256:183cad137ae09b61fa18dd90bab22086
 -- run/go/gtk4 --
-pass sha256:9ea7de3d4b786fc1212361c9e976a3ba
+pass sha256:95b2029f2392c9228557d4166c56c407
 -- run/kotlin/android --
-pass sha256:c4ca350ac4926aadeb1840fc61002b22
+pass sha256:1f7220f22565bfb98908f093031c8785
 -- run/none/html --
-pass sha256:aeb440dc8251cbf4d5f71b85bbcbd513
+pass sha256:63775d2d42de44dcba11936a26eb3f0a

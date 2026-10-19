@@ -166,19 +166,20 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func (m *Model) __effect0_mount() {
+	__copyKey := m.__effect0_key
 	var __cell1_seen__inst0 int = func() int {
-		if __v, __ok := m.seen__inst0[m.__effect0_key]; __ok {
+		if __v, __ok := m.seen__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}()
 	__cell1_seen__inst0 = (func() int {
-		if __v, __ok := m.seen__inst0[m.__effect0_key]; __ok {
+		if __v, __ok := m.seen__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}() + 1)
-	m.seen__inst0[m.__effect0_key] = __cell1_seen__inst0
+	m.seen__inst0[__copyKey] = __cell1_seen__inst0
 	m.total = (m.total + 1)
 }
 
@@ -227,21 +228,22 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effect2_mount() {
+	__copyKey := m.__effect2_key
 	var __cell1_held__inst0 int = func() int {
-		if __v, __ok := m.held__inst0[m.__effect2_key]; __ok {
+		if __v, __ok := m.held__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}()
 	__cell1_held__inst0 = (func() int {
-		if __v, __ok := m.held__inst0[m.__effect2_key]; __ok {
+		if __v, __ok := m.held__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}() + 1)
-	m.held__inst0[m.__effect2_key] = __cell1_held__inst0
+	m.held__inst0[__copyKey] = __cell1_held__inst0
 	m.total = (m.total + func() int {
-		if __v, __ok := m.held__inst0[m.__effect2_key]; __ok {
+		if __v, __ok := m.held__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
@@ -293,21 +295,22 @@ func (m *Model) __effect3_up() {
 }
 
 func (m *Model) __effect4_mount() {
+	__copyKey := m.__effect4_key
 	var __cell1_kept__inst0 int = func() int {
-		if __v, __ok := m.kept__inst0[m.__effect4_key]; __ok {
+		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}()
 	__cell1_kept__inst0 = (func() int {
-		if __v, __ok := m.kept__inst0[m.__effect4_key]; __ok {
+		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}() + 1)
-	m.kept__inst0[m.__effect4_key] = __cell1_kept__inst0
+	m.kept__inst0[__copyKey] = __cell1_kept__inst0
 	m.total = (m.total + func() int {
-		if __v, __ok := m.kept__inst0[m.__effect4_key]; __ok {
+		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
@@ -2190,7 +2193,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e242263dff7f302abf9ed24389d1e84e
+pass sha256:3b08685dbb187b6be924c427157d0980
 -- run/go/fyne --
 pass sha256:ea55d2503e95304c59a0cc4ce1266d72
 -- run/go/gtk4 --

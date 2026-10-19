@@ -28,7 +28,6 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 		return "", false
 	}
 	t, format, _ := ir.CodecCall(n)
-	gc.RequireImport(jsonRuntime)
 	// The type is spelled at the call, and a date is a time.Time.
 	if t.Any(func(x *ir.Type) bool { return ir.IsDateStruct(x) || ir.IsDateTimeStruct(x) }) {
 		gc.RequireImport("time")
@@ -43,8 +42,10 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 	str := ir.TypString
 	switch n.Func.Intrinsic {
 	case ir.JSONEncodeIntrinsic:
+		gc.RequireImport(jsonRuntime)
 		return fmt.Sprintf("sngljson.Encode[%s](%s, %s)", IRTypeToGo(t), arg("value"), goCodec(ir.PlanCodec(t, format))), true
 	case ir.JSONDecodeIntrinsic:
+		gc.RequireImport(jsonRuntime)
 		var b strings.Builder
 		fmt.Fprintf(&b, "func() %s { __snglV, __snglMsg := sngljson.Decode[%s](%s, %s); ", rt, IRTypeToGo(t), arg("text"), goCodec(ir.PlanCodec(t, format)))
 		fmt.Fprintf(&b, "if __snglMsg != \"\" { return %s }; ", gc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__snglMsg", str))))
@@ -61,6 +62,9 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 	// binding passAsyncOffload made of it is used.
 	keep := ""
 	if t != nil && len(ir.PlanCodec(t, format).Root.Fields) > 0 {
+		// Only a query writes through sngljson: a request with none is
+		// snglhttp's alone, and Go refuses an import nothing uses.
+		gc.RequireImport(jsonRuntime)
 		url = fmt.Sprintf("sngljson.WithQuery(%s, sngljson.Query(%s, %s))", url, arg("query"), goCodec(ir.PlanCodec(t, format)))
 	} else if _, ok := n.ArgFor("query").(*ir.Ident); ok {
 		keep = "_ = " + arg("query") + "; "

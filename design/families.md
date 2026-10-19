@@ -151,11 +151,17 @@ reimplemented on it.
 
 Two general fixes it needed. A lambda handed to a generic method takes an
 unannotated parameter's type from what the call has bound
-(`inferArgExpr`, `testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
-hoists a `map` or `filter` out of a node's prop: the Go emitter writes the call
-as an expression of its own, and hoisted, fyne and gtk4 made the accumulator a
-render slot appending to a list it could not see
-(`testdata/list_map_in_view_body.txtar`).
+(`inferArgExpr`, `testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` hoists a `map` or
+`filter` only out of code -- a function's body, a handler's -- and never out
+of a view's own expressions, a node's prop or a loop's iterable or an `if`'s
+condition: the Go emitter writes the call as an expression of its own, and
+hoisted, fyne and gtk4 made the accumulator a render slot appending to a
+list it could not see (`testdata/list_map_in_view_body.txtar`), or one
+attaching no node at all (`cmd/sngl/testdata/view_list_lambda_runs.txt`).
+What the function a `const` call is handed reads is what the call reads
+(`gatherLambdaReads`): a const callee cannot keep it for later, so
+`xs.filter(func(x) => x.startsWith(prefix))` re-renders when `prefix`
+changes.
 
 **A family registers before what names it.** A component is bound only once its
 own signature resolves, so a member declared above its family would name

@@ -1437,7 +1437,10 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 		case nil:
 			return
 		case *ir.Call:
-			if x.Func != nil {
+			// A call writing through its receiver is judged by the receiver,
+			// where the caller's direct effects are (analyzeEffects): its own
+			// purity says only that it writes one.
+			if x.Func != nil && !x.Func.MutatesReceiver {
 				// A callee nothing says anything about -- a native not
 				// declared const, whose body is the host's -- may depend on
 				// anything, so a call to it is not a pure one. It cannot write

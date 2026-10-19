@@ -96,11 +96,20 @@ func (w *effectWalker) visit(n ir.Node) error {
 		// receiver is named by the intrinsic's own MutatesReceiver, which is
 		// what passReactivity reads for the same question -- so the two agree
 		// on what a write is without either of them listing method names.
+		//
+		// The call is judged here, by what its receiver is, and the call-graph
+		// fixed point does not lift the caller to the callee's own purity
+		// (highestCalledPurity): a list the function built itself is a write
+		// nothing outside the call sees, and anything else -- a parameter, a
+		// loop variable, a field -- may be a value the caller holds.
 		if x.Func != nil && x.Func.Intrinsic != "" && len(x.Args) > 0 {
 			if def, ok := w.lib.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
-				if v := w.rootVar(x.Args[0].Value); v != nil {
+				recv := x.Args[0].Value
+				if v := w.rootVar(recv); v != nil {
 					w.mutates = true
 					w.write(v)
+				} else if !w.freshLocal(recv) {
+					w.mutates = true
 				}
 			}
 		}
@@ -211,6 +220,20 @@ func (w *effectWalker) rootLocal(target ir.Expr) bool {
 	}
 	_, local := w.locals[v]
 	return local
+}
+
+// freshLocal reports whether e names a var the function declared fresh, or
+// one field or element of one (rootLocal).
+func (w *effectWalker) freshLocal(e ir.Expr) bool {
+	if id, ok := e.(*ir.Ident); ok {
+		v, ok := id.Sym.(*ir.Var)
+		if !ok {
+			return false
+		}
+		_, local := w.locals[v]
+		return local
+	}
+	return w.rootLocal(e)
 }
 
 // rootVar peels a Select/Index chain to the reactive var it is rooted at, or

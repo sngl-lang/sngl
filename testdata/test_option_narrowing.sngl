@@ -14,6 +14,18 @@ func valueOf(n Node) int {
     return n.value
 }
 
+// Builds its answer by pushing onto a list of its own, which writes nothing
+// a caller holds: a call of it leaves a narrowing of state standing.
+func upTo(n int) list[int] {
+    var out list[int] = []
+    for var i = [1, 2, 3, 4] {
+        if i <= n {
+            out.push(i)
+        }
+    }
+    return out
+}
+
 component main node {
     var maybe option[int] = 3
     var absent option[int] = null
@@ -29,6 +41,11 @@ component main node {
         }
         if maybe != null && maybe > 2 {
             text #chained(value=string(double(maybe)))
+        }
+        if maybe != null {
+            for var i = upTo(maybe) {
+                text(value=string(i))
+            }
         }
     }
 }
@@ -53,6 +70,22 @@ func testNarrowsAFieldPath(t Test) {
         got = valueOf(head.next)
     }
     t.assert(got == 4)
+}
+
+// A path through an option narrowed already is a path too: `head.next`
+// below the test on `head` reads through the unwrap that test made.
+func testNarrowsAFieldPathUnderANarrowedOption(t Test) {
+    var head option[Node] = Node{value=1, next=Node{value=4}}
+    var got = 0
+    if head != null && head.next != null {
+        got = valueOf(head.next)
+    }
+    if head != null {
+        if head.next != null {
+            got += valueOf(head.next)
+        }
+    }
+    t.assert(got == 8)
 }
 
 func testNarrowsATernaryArm(t Test) {

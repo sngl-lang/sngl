@@ -42,12 +42,13 @@ func init() {
 }
 
 // usesPosts reports whether anything in the lowered program posts back to
-// the loop: a program's own async.do, or the tail passAsyncOffload moved
-// after a blocking call.
+// the loop -- a program's own async.do, or the tail passAsyncOffload moved
+// after a blocking call -- or a test waits, which runs what was posted
+// whether or not anything can be.
 func usesPosts(pkg *ir.Package) bool {
 	found := false
 	_ = ir.Walk(pkg, func(node ir.Node) error {
-		if c, ok := node.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == lower.AsyncDoIntrinsic {
+		if c, ok := node.(*ir.Call); ok && c.Func != nil && (c.Func.Intrinsic == lower.AsyncDoIntrinsic || c.Func.Intrinsic == ir.TestWaitID) {
 			found = true
 			return ir.SkipAll
 		}

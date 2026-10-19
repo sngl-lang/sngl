@@ -36,24 +36,57 @@ func lowerListLambdas(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
+	// Const-context exprs (initializers, defaults) get folded by the
+	// optimizer before lower runs; if a filter/map slips through one there is
+	// no statement to hoist before, so it is left for codegen.
 	st := &listLambdaState{}
-	walkPackage(pkg, walkFuncs{
-		stmts: func(stmts []ir.Stmt) []ir.Stmt { return st.transformBlock(stmts) },
-		expr: func(e ir.Expr) ir.Expr {
-			// Const-context exprs (initializers, defaults) get folded by
-			// the optimizer before lower runs; if a filter/map slips
-			// through here there's no statement to hoist before, so
-			// leave it for codegen (which will fall back to the generic
-			// path).
-			return e
-		},
-	})
+	for _, f := range pkg.Funcs {
+		f.Block = st.transformBlock(f.Block)
+	}
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			f.Block = st.transformBlock(f.Block)
+		}
+		c.Stmts = st.viewBlock(c.Stmts)
+	}
+	pkg.Body = st.viewBlock(pkg.Body)
 	return nil
 }
 
 type listLambdaState struct {
 	listCounter int
 	itemCounter int
+	// view says the block being transformed is a view's: a component's
+	// body, the package's, a node's children. A statement hoisted there is a
+	// statement of the view, which reactivity makes a render slot when the
+	// list read state -- a slot attaching no node -- so a view's own
+	// expressions are left for the emitter, which writes the call as an
+	// expression of its own; a handler's body is code again.
+	view bool
+}
+
+// viewBlock transforms a view's block, and code is what its handlers hold.
+func (st *listLambdaState) viewBlock(block []ir.Stmt) []ir.Stmt {
+	prev := st.view
+	st.view = true
+	defer func() { st.view = prev }()
+	return st.transformBlock(block)
+}
+
+// codeBlock transforms a block of code: a handler's body, under a view.
+func (st *listLambdaState) codeBlock(block []ir.Stmt) []ir.Stmt {
+	prev := st.view
+	st.view = false
+	defer func() { st.view = prev }()
+	return st.transformBlock(block)
+}
+
+// hoist is transformExpr, or e as written in a view.
+func (st *listLambdaState) hoist(e ir.Expr) ([]ir.Stmt, ir.Expr) {
+	if st.view {
+		return nil, e
+	}
+	return st.transformExpr(e)
 }
 
 func (st *listLambdaState) freshList() string {
@@ -87,25 +120,25 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		pre, n.Value = st.transformExpr(n.Value)
 	case *ir.LocalVar:
 		if n.Init != nil {
-			pre, n.Init = st.transformExpr(n.Init)
+			pre, n.Init = st.hoist(n.Init)
 		}
 	case *ir.Return:
 		if n.Value != nil {
 			pre, n.Value = st.transformExpr(n.Value)
 		}
 	case *ir.If:
-		pre, n.Cond = st.transformExpr(n.Cond)
+		pre, n.Cond = st.hoist(n.Cond)
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
 	case *ir.Match:
 		if n.Subject != nil {
-			pre, n.Subject = st.transformExpr(n.Subject)
+			pre, n.Subject = st.hoist(n.Subject)
 		}
 		for _, arm := range n.Arms {
 			arm.Body = st.transformBlock(arm.Body)
 		}
 	case *ir.For:
-		pre, n.Iter = st.transformExpr(n.Iter)
+		pre, n.Iter = st.hoist(n.Iter)
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
 	case *ir.NodeInst:
@@ -117,7 +150,7 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		n.Children = st.transformBlock(n.Children)
 		for i := range n.Handlers {
 			if n.Handlers[i].Func != nil {
-				n.Handlers[i].Func.Block = st.transformBlock(n.Handlers[i].Func.Block)
+				n.Handlers[i].Func.Block = st.codeBlock(n.Handlers[i].Func.Block)
 			}
 		}
 	case *ir.SlotInst:
@@ -125,7 +158,7 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 	case *ir.ErrorBoundary:
 		n.Children = st.transformBlock(n.Children)
 		if n.Handler != nil && n.Handler.Func != nil {
-			n.Handler.Func.Block = st.transformBlock(n.Handler.Func.Block)
+			n.Handler.Func.Block = st.codeBlock(n.Handler.Func.Block)
 		}
 	case *ir.Emit:
 		for i := range n.Args {
@@ -149,7 +182,7 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 	case *ir.Toggle:
 		pre, n.Target = st.transformExpr(n.Target)
 	case *ir.ContextProvider:
-		pre, n.Value = st.transformExpr(n.Value)
+		pre, n.Value = st.hoist(n.Value)
 		n.Children = st.transformBlock(n.Children)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no list lambda.

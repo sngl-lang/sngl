@@ -72,6 +72,10 @@ func emitFyneModel(b *strings.Builder, td *templateData, gc *golang.GoIRContext)
 	}
 	b.WriteString("\treturn m\n}\n\n")
 
+	if usesPosts(gc.Ctx.Pkg) {
+		emitPostDecls(b, gc)
+	}
+
 	if td.NeedsToast {
 		// Toast methods reference fyne.Do and time.*; register both.
 		gc.RequireImport("fyne.io/fyne/v2")

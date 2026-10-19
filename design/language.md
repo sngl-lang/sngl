@@ -668,9 +668,9 @@ Three general things it needed, each of its own:
 On bubbletea the mount's tail is posted back through Update like any other
 `async.do` (see the bubbletea platform), so a fetch that waits runs there too
 (`testdata/async_query_bubbletea.txtar`,
-`cmd/sngl/testdata/async_query_bubbletea_runs.txt`); a query in a component
-built per copy of a loop is still refused there, an effect reading that
-component's state. Kotlin declares no async
+`cmd/sngl/testdata/async_query_bubbletea_runs.txt`), and so does a query in a
+component built per copy of a loop, its effect keyed on the copy and its own
+key together (see *Runtime instances* in `design/instances.md`). Kotlin declares no async
 native, so on android a fetch answers at once. The interpreter runs `fetch` at
 mount, so a test reads the answer as there (`testdata/async_query.sngl`,
 and `async_query_loop.sngl` for a query per copy of a loop).
@@ -698,7 +698,10 @@ interpreter would answer the default; after, the call folds from its argument.
 **A function value is bound where it is taken.** `var f = show` and a lambda
 are what the program holds, and a call through one cannot know which function
 it holds, so it has nothing to pass: `funcValueUnder` wraps a named function
-taken as a value in a lambda passing the values active there, and a lambda's
+taken as a value in a lambda passing the values active there -- its
+parameters named afresh (`__ctxArgN`), since spliced into a component with a
+prop named like one the lambda read the prop for its argument
+(`cmd/sngl/testdata/context_func_value_param_runs.txt`) -- and a lambda's
 body is lowered where it is written. The interpreter agrees by capturing the
 provided values when a `LambdaValue` is made. Passing the invoker's values
 instead would need every function type to carry the contexts, which a host

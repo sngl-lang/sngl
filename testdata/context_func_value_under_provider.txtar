@@ -110,13 +110,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) ask__reach0_click_handler() {
-	f := func(n int) string { return ("mirror " + fmt.Sprint(n)) }
+	f := func(__ctxArg0 int) string { return ("mirror " + fmt.Sprint(__ctxArg0)) }
 	m.got__inst0 = f(1)
 	m.__n1.SetText(m.got__inst0)
 }
 
 func (m *Model) ask__reach1_click_handler() {
-	f := func(n int) string { return ("default " + fmt.Sprint(n)) }
+	f := func(__ctxArg0 int) string { return ("default " + fmt.Sprint(__ctxArg0)) }
 	m.got__inst1 = f(1)
 	m.__n2.SetText(m.got__inst1)
 }
@@ -271,14 +271,14 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         }
         Column {
             Button(onClick = {
-                var f = { n: Int -> ("mirror " + n.toString()) }
+                var f = { __ctxArg0: Int -> ("mirror " + __ctxArg0.toString()) }
                 state.got__inst0 = f(1)
             }, modifier = Modifier.testTag("ask__reach0").safeDrawingPadding()) {
                 Text(text = "ask", modifier = Modifier)
             }
             Text(text = state.got__inst0, modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
-                var f = { n: Int -> ("default " + n.toString()) }
+                var f = { __ctxArg0: Int -> ("default " + __ctxArg0.toString()) }
                 state.got__inst1 = f(1)
             }, modifier = Modifier.testTag("ask__reach1").safeDrawingPadding()) {
                 Text(text = "ask", modifier = Modifier)
@@ -391,12 +391,12 @@ window.__sngl_boot = () => {
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $0.addEventListener("click", function() {
-    let f = (n) => "mirror " + String(n);
+    let f = (__ctxArg0) => "mirror " + String(__ctxArg0);
     state.got__inst0 = f(1);
     __n1.textContent = state.got__inst0;
   });
   $1.addEventListener("click", function() {
-    let f = (n) => "default " + String(n);
+    let f = (__ctxArg0) => "default " + String(__ctxArg0);
     state.got__inst1 = f(1);
     __n2.textContent = state.got__inst1;
   });
@@ -411,8 +411,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7fecd85630135b9e09c0a811beaac2ce
+pass sha256:8cd09471285950c268790128b5d75744
 -- run/kotlin/android --
-pass sha256:32045af17a3cb4a83e81ce4817de0323
+pass sha256:9eef5c3dd9a2048a069821690df0cffe
 -- run/none/html --
-pass sha256:8e7addde4cdda6ae57fed9f64944b77c
+pass sha256:8fd67c5ab3fd71ee018eb404550bb9b2

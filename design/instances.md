@@ -307,7 +307,12 @@ what the call site bound and through to the node, as an override binds its
 base's prop through to a primitive -- `async.query(:value=v)` keeps `pending`
 and `failure` and hands `value` on. A generic node's wrapper declares
 everything at the types its call site bound (`ir.ComponentBindings`,
-`ir.InstantiateExpr` for a default). One shape is refused, which no `sngl:ui`
+`ir.InstantiateExpr` for a default), and is a member of the family it was
+bound, or, for a node whose family is a type parameter the call site leaves
+to the position -- `async.query`'s `F` -- of the family that position takes
+(`wrapperFamily`): with none, a wrapper built at run time holding the query's
+effect was a root no pass could type
+(`cmd/sngl/testdata/async_query_under_if_in_built_instance_runs.txt`). One shape is refused, which no `sngl:ui`
 component reaches: a call site populating a named slot the node does not
 declare.
 
@@ -368,7 +373,14 @@ handed -- and under a `for` gives each of its vars one cell per copy
 target a function a splice hoists out of loops takes the loop variables it
 reads as parameters (`passLoopVars`), since a prop bound to one is substituted
 into it as that variable, and one taken as a value is a lambda passing them
-(`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
+(`testdata/component_func_reads_loop_prop.txtar`). An effect reading a
+copy's cells is keyed on the copy (`keyEffectsByCopy`), and its handlers are
+handed the key; one keyed `on` something already -- `async.query` in a card
+per row -- is keyed on the pair `{copy, on}`, and each handler reads both
+halves into locals where it starts, since a mount that waits writes its cells
+after the wait, when the settle may have handed a later copy's mount another
+key (`testdata/async_query_loop.sngl`,
+`cmd/sngl/testdata/async_query_bubbletea_runs.txt`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same

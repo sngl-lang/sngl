@@ -11,5 +11,6 @@ This section walks you through SNGL from a clean install to your first running a
 - **[Installation](installation.html)** — get the `sngl` CLI on your machine.
 - **[Getting Started](getting-started.html)** — core concepts: components, reactive state, and the built-in visual primitives.
 - **[Tour](/tutorial.html)** — an interactive, lesson-by-lesson walkthrough you can drive from your browser.
+- **[A Pokédex](pokedex.html)** — an app over a real API, from its OpenAPI document to six targets.
 
 If you'd rather skim than read, head straight to the [Tour](/tutorial.html) — every lesson is a working SNGL program you can edit live.

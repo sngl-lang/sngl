@@ -116,6 +116,16 @@ component reaches its request. The adapter's key is its one parameter, with
 the function as `fetch`, or an anonymous struct of several with a lambda
 spreading it back out; it renders nothing, so its family is `F`.
 
+`examples/pokedex` is the scheme over PokéAPI's whole document, vendored and
+corrected where PokéAPI's answers disagree with it -- a `null` where the
+document requires an object, a map of anything where the answer is the
+schema itself -- each correction listed in its README; as published, a
+Pokémon, a species and an evolution chain fail to decode. An importer
+believes the document, so the correction belongs in the document.
+`cmd/sngl/testdata/pokedex_runs.txt` runs the example on all six targets
+against answers recorded from PokéAPI (`cmd/sngl/testdata/pokeapi`, served
+under `/pokeapi`), copying the example in from `$SNGL_ROOT`.
+
 The runs are `cmd/sngl/testdata/openapi_runs.txt`, against the script
 harness's server on all six targets; the refusals
 `cmd/sngl/testdata/error_openapi_*.txt`, the renames `openapi_renamed.txt`
