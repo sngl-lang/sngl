@@ -635,6 +635,37 @@ spelling as it is today; only the encoding asks the mark.
 - #273 and #274 are untouched: a post from such work carries the shared Model
   it already wrote.
 
+### What step 6 left
+
+- **A program var named like a local of a library body** still reads the var
+  on the Go targets (`ExprCtx.Resolve` resolves by name, design/plugins.md):
+  the example avoids `got`. Resolving an identifier by its symbol in Go
+  codegen is the fix.
+- **PokéAPI's document is corrected beside it**, not upstream: as published, a
+  Pokémon, a species and an evolution chain fail to decode
+  (`examples/pokedex/README.md` lists each correction).
+- **html serves the example in route mode only**: `--lang none` refuses the
+  detail page's `/pokemon/{name}`, and `sngl test --platform html --lang go`
+  never connects a page, so the script runs the components as static pages.
+- **On Go, an `#id` named like its component** (`card #card`) spells a test's
+  read through it as `c.cardHits`, which nothing declares.
+- **On Go, `http.Response` reached only as `async.Result[http.Response]`'s
+  payload**, read by nothing, is not declared (`undefined: Response`): the
+  prune reads a body that holds no enum declaration.
+- **On android, a component built at run time writing a package var** does
+  not compile (`state.said = …`, `Unresolved reference 'state'`).
+- **On html, a test group taking no component** builds without a root, and a
+  component built at run time in it has no setter for a prop a reactive `if`
+  hands it -- the html counterpart of step 1's bubbletea note.
+- **On fyne, a test reading a node prop whose value inlines a `filter`**
+  (`c.count.value`) reads `c.countValue`, which nothing declares; and a
+  looped primitive's prop (`c.row[1].value`) does not index.
+- **A package declaration named like a builtin type** (`component list`)
+  shadows it for the whole package, which reads as "cannot infer element type
+  of empty list literal" at an unrelated `[]`.
+- `sngl dump --format sngl` of lowered IR panics in the formatter
+  (`writeFuncDef`) for these programs.
+
 ## Deliverables
 
 Six, in this order, each its own MR and each complete on its own: it lands
@@ -649,7 +680,7 @@ never finishes one of them.
 | ✓ | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                                           |
 | ✓ | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                                             |
 | ✓ | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                                   |
-| 6 | `pokedex-6-example`       | *The example*: `examples/pokedex` over the vendored spec, `cmd/sngl/testdata/pokedex_runs.txt` against a recorded local server on every target, and a page on the docs site.                                                                                                                                                       |
+| ✓ | `pokedex-6-example`       | *The example*: `examples/pokedex` over the vendored spec, `cmd/sngl/testdata/pokedex_runs.txt` against a recorded local server on every target, and a page on the docs site.                                                                                                                                                       |
 
 ## Working this plan
 
