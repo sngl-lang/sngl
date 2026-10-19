@@ -46,10 +46,10 @@
 // **`query` is the two bracketed by the tree.** A request asked when its node
 // mounts and again whenever its key changes, abandoned when the node leaves:
 //
-//	var mon option[Pokemon] = null
+//	var book option[Book] = null
 //	var loading = false
 //	var failure option[async.Failure] = null
-//	async.query(on=name, fetch=pokemon, :value=mon, :pending=loading, :failure=failure)
+//	async.query(on=title, fetch=fetchBook, :value=book, :pending=loading, :failure=failure)
 //
 // It is ordinary SNGL over `effect`, and what it keeps are three independent
 // facts, each a two-way prop the call site binds or leaves to the instance:

@@ -1045,7 +1045,7 @@ func funcValueUnder(id *ir.Ident, fn *ir.Func, active map[*ir.Context]ir.Expr, p
 		}
 		// A name of its own: the lambda stands where the function was taken,
 		// and a prop of the component it is spliced into named like the
-		// parameter -- an adapter's `id`, pokemonRetrieveCall's `id` -- was read
+		// parameter -- an adapter's `id`, petRetrieveCall's `id` -- was read
 		// in its place.
 		np := &ir.Param{Name: "__ctxArg" + strconv.Itoa(i), Type: p.Type}
 		wrapper.Params = append(wrapper.Params, np)

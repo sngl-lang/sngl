@@ -38,26 +38,26 @@ struct Resource {
     url  string
 }
 
-struct Slot {
-    slot int
+struct Genre {
+    rank int
     #[json.identifier("type")]
     kind Resource
 }
 
-struct Sprites {
-    #[json.identifier("front_default")]
-    frontDefault option[string]
-    #[json.identifier("front_shiny")]
-    frontShiny   option[string]
+struct Covers {
+    #[json.identifier("front_url")]
+    front option[string]
+    #[json.identifier("back_url")]
+    back  option[string]
 }
 
-struct Pokemon {
-    id             int
-    name           string
-    #[json.identifier("base_experience")]
-    baseExperience option[int]
-    sprites        Sprites
-    types          list[Slot]
+struct Book {
+    id        int
+    title     string
+    #[json.identifier("page_count")]
+    pageCount option[int]
+    covers    Covers
+    genres    list[Genre]
 }
 
 struct Echo {
@@ -75,13 +75,13 @@ struct Page {
     q     string
 }
 
-func fetchPokemon(name string) async.Result[Pokemon] {
-    match var r = http.get(url="{server}/pokemon/{http.pathEscape(name)}") {
+func fetchBook(title string) async.Result[Book] {
+    match var r = http.get(url="{server}/books/{http.pathEscape(title)}") {
         failed { return {failed=r} }
         ok {
             match var checked = r.checked() {
                 failed { return {failed=checked} }
-                ok { return json.decode[Pokemon](checked.body) }
+                ok { return json.decode[Book](checked.body) }
             }
         }
     }
@@ -100,32 +100,32 @@ func echoOf(r async.Result[http.Response]) Echo {
 }
 
 func testGetDecodes(t Test) {
-    match var p = fetchPokemon("bulbasaur") {
+    match var b = fetchBook("dune") {
         ok {
-            t.assert(p.id == 1)
-            t.assert(p.baseExperience == 64)
-            t.assert(p.types.length() == 2)
-            t.assert(p.types[1].kind.name == "poison")
-            t.assert(p.sprites.frontDefault == "https://example.com/1.png")
-            t.assert(p.sprites.frontShiny == null)
+            t.assert(b.id == 1)
+            t.assert(b.pageCount == 412)
+            t.assert(b.genres.length() == 2)
+            t.assert(b.genres[1].kind.name == "adventure")
+            t.assert(b.covers.front == "https://example.com/1.png")
+            t.assert(b.covers.back == null)
         }
-        failed { t.assert(p.message == "") }
+        failed { t.assert(b.message == "") }
     }
 }
 
 func testPathEscape(t Test) {
-    t.assert(http.pathEscape("mr mime/2") == "mr%20mime%2F2")
-    match var p = fetchPokemon("mr mime") {
+    t.assert(http.pathEscape("war and peace/2") == "war%20and%20peace%2F2")
+    match var b = fetchBook("war and peace") {
         ok {
-            t.assert(p.name == "mr-mime")
-            t.assert(p.baseExperience == null)
+            t.assert(b.title == "war-and-peace")
+            t.assert(b.pageCount == null)
         }
-        failed { t.assert(p.message == "") }
+        failed { t.assert(b.message == "") }
     }
 }
 
 func testNotFound(t Test) {
-    match var f = fetchPokemon("missingno") {
+    match var f = fetchBook("no such book") {
         ok { t.assert(false) }
         failed {
             t.assert(f.kind == async.FailureKind.request)
@@ -257,7 +257,7 @@ window {
     adapter
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:4c592dc56d4a09683cf80cea4a9b3e6a
+sha256:39cb02aded3981c554e8ac503b6ed445
 {
   "results": [
     {
@@ -291,7 +291,7 @@ sha256:4c592dc56d4a09683cf80cea4a9b3e6a
   ]
 }
 -- testrun/android/kotlin/app.sngl/adapter/1 --
-sha256:37c3c38c59b9b40675d41d3622c0237e
+sha256:14047c898fc87625d0fa9826ac84044a
 {
   "results": [
     {
@@ -301,7 +301,7 @@ sha256:37c3c38c59b9b40675d41d3622c0237e
   ]
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:640e7773a3635b51aea953b5c3ca9d4b
+sha256:dd28671663b53da724d8e54907c7a497
 {
   "results": [
     {
@@ -315,7 +315,7 @@ sha256:640e7773a3635b51aea953b5c3ca9d4b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:47a765021c34ff8eeebf698eab9ef79d
+sha256:97f86acbacb321433bd5fcc50b7eb581
 {
   "results": [
     {
@@ -349,7 +349,7 @@ sha256:47a765021c34ff8eeebf698eab9ef79d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/adapter/1 --
-sha256:966b0fd470a934cde60c8edac84ee380
+sha256:096dfa1078488e3ae97eb415324d8004
 {
   "results": [
     {
@@ -359,7 +359,7 @@ sha256:966b0fd470a934cde60c8edac84ee380
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:99c98b45b25e7ae7092a5aae0868daf8
+sha256:858cdd392c3043f8b303d00fc7f45aa8
 {
   "results": [
     {
@@ -373,7 +373,7 @@ sha256:99c98b45b25e7ae7092a5aae0868daf8
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:cef966859f85e1b0d2725cdf2d0d74e2
+sha256:b58f0ac124f54f5afa1748d51e370343
 {
   "results": [
     {
@@ -407,7 +407,7 @@ sha256:cef966859f85e1b0d2725cdf2d0d74e2
   ]
 }
 -- testrun/fyne/go/app.sngl/adapter/1 --
-sha256:d1e068ef71f84d552259d548f5fe33b8
+sha256:f07aed8aa6915dcee18e02bcfd78581d
 {
   "results": [
     {
@@ -417,7 +417,7 @@ sha256:d1e068ef71f84d552259d548f5fe33b8
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:75521851492aa22b80f3b69eaade3de1
+sha256:a63c2afc6a5590e4f9c63d6986286cc7
 {
   "results": [
     {
@@ -431,7 +431,7 @@ sha256:75521851492aa22b80f3b69eaade3de1
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:5f1cc0bdc4ff3935902bf5d8197e9f27
+sha256:9fe9d25ea42d7d60d4808349302397d0
 {
   "results": [
     {
@@ -465,7 +465,7 @@ sha256:5f1cc0bdc4ff3935902bf5d8197e9f27
   ]
 }
 -- testrun/gtk4/go/app.sngl/adapter/1 --
-sha256:c413444f6e83712d10e22be5b5072825
+sha256:840efdb2216c2209d40a3561d703689a
 {
   "results": [
     {
@@ -475,7 +475,7 @@ sha256:c413444f6e83712d10e22be5b5072825
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:4a8821c6fff21197517282bc15e474d2
+sha256:9b9fa1c54998ec338b03d0d5c37e5228
 {
   "results": [
     {
@@ -489,7 +489,7 @@ sha256:4a8821c6fff21197517282bc15e474d2
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:5d34799fcb9789d055a4d7927e09a1ab
+sha256:4933b0907aac1de1c69057327ddf7f3c
 {
   "results": [
     {
@@ -523,7 +523,7 @@ sha256:5d34799fcb9789d055a4d7927e09a1ab
   ]
 }
 -- testrun/html/none/app.sngl/adapter/1 --
-sha256:3bbbd1528b7c5a28ca0c5e345e3f583f
+sha256:83d1222fd2a08f905a7847b354a59925
 {
   "results": [
     {
@@ -533,7 +533,7 @@ sha256:3bbbd1528b7c5a28ca0c5e345e3f583f
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:e12b9b217af968fb564db675f3728ccc
+sha256:299f3d6f19d962010a3e750367b2050e
 {
   "results": [
     {

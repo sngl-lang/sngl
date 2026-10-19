@@ -2,7 +2,7 @@
 # scope, is a lambda passing the provided value (passContext's
 # funcValueUnder). Its parameters kept the function's own names, so spliced
 # into a component with a prop of one of them -- an openapi: adapter's `id`
-# beside pokemonRetrieveCall's `id` -- the lambda read the prop for its
+# beside petRetrieveCall's `id` -- the lambda read the prop for its
 # argument: here `pick(name="b")` answered "b!" for every key. Under a loop
 # the prop was the loop variable, and the effect calling the lambda refused
 # a read of a loop variable it does not run inside.

@@ -41,7 +41,7 @@ func startTestHTTP(t *testing.T) {
 
 // The routes:
 //
-//	/pokemon/{name}         a Pokémon as PokéAPI writes one, or a 404
+//	/books/{title}          a book from testBooks, or a 404
 //	/echo                   what the request was: method, query, body, X-Sngl header
 //	/status/{code}          that status, with "status {code}" as the body
 //	/dot.png                a 2x2 PNG, for an image a program fetches
@@ -90,16 +90,15 @@ func testHTTPHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		io.WriteString(w, pet)
-	case strings.HasPrefix(path, "/pokemon/"):
-		name := strings.TrimPrefix(path, "/pokemon/")
-		mon, ok := testPokemon[name]
+	case strings.HasPrefix(path, "/books/"):
+		book, ok := testBooks[strings.TrimPrefix(path, "/books/")]
 		h.Set("Content-Type", "application/json")
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			io.WriteString(w, `{"detail": "Not found."}`)
 			return
 		}
-		io.WriteString(w, mon)
+		io.WriteString(w, book)
 	case path == "/echo":
 		body, _ := io.ReadAll(r.Body)
 		h.Set("Content-Type", "application/json")
@@ -135,14 +134,14 @@ var testDotPNG = func() []byte {
 	return b.Bytes()
 }()
 
-var testPokemon = map[string]string{
-	"bulbasaur": `{"id": 1, "name": "bulbasaur", "base_experience": 64, "height": 7, "weight": 69,
-		"sprites": {"front_default": "https://example.com/1.png", "front_shiny": null},
-		"types": [{"slot": 1, "type": {"name": "grass", "url": "https://pokeapi.co/api/v2/type/12/"}},
-		          {"slot": 2, "type": {"name": "poison", "url": "https://pokeapi.co/api/v2/type/4/"}}]}`,
-	"mr mime": `{"id": 122, "name": "mr-mime", "base_experience": null, "height": 13, "weight": 545,
-		"sprites": {"front_default": null, "front_shiny": null},
-		"types": [{"slot": 1, "type": {"name": "psychic", "url": "https://pokeapi.co/api/v2/type/14/"}}]}`,
+var testBooks = map[string]string{
+	"dune": `{"id": 1, "title": "dune", "page_count": 412, "year": 1965, "edition": 3,
+		"covers": {"front_url": "https://example.com/1.png", "back_url": null},
+		"genres": [{"rank": 1, "type": {"name": "fiction", "url": "https://example.com/genres/12/"}},
+		           {"rank": 2, "type": {"name": "adventure", "url": "https://example.com/genres/4/"}}]}`,
+	"war and peace": `{"id": 122, "title": "war-and-peace", "page_count": null, "year": 1869, "edition": 1,
+		"covers": {"front_url": null, "back_url": null},
+		"genres": [{"rank": 1, "type": {"name": "history", "url": "https://example.com/genres/14/"}}]}`,
 }
 
 // testPokemonNames are what /pokeapi/api/v2/pokemon/ pages through.

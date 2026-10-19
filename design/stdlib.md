@@ -410,11 +410,11 @@ and `time.date` RFC 3339 text. A key the type does not name is ignored, a
 field that is no option and has no key fails, writing leaves an absent
 option's key out and visits a map's keys in order. A failure is a `decode`
 `async.Failure` whose message every target words alike: `not JSON`,
-`$.types[0].slot: want an integer`, `$.name: missing`
+`$.genres[0].rank: want an integer`, `$.name: missing`
 (`testdata/json.sngl`, `cmd/sngl/testdata/json_runs.txt` on all six).
 
 **A name on the wire is a fact about the format**, so it is the format's
-mark: `#[json.identifier("base_experience")]` on a struct field or an enum
+mark: `#[json.identifier("page_count")]` on a struct field or an enum
 member, `#[http.identifier("page-size")]` on a query struct's field, landing
 on `ir.StructField.JSON`/`.HTTP` and `ir.EnumMember.JSON` and read by an
 encoder alone (`WireName`). An enum member takes marks as a struct field does

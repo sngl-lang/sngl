@@ -1,15 +1,15 @@
 // Reading and writing JSON as the declared types a program already has.
 //
-//	struct Pokemon {
-//	    id   int
-//	    name string
-//	    #[json.identifier("base_experience")]
-//	    baseExperience option[int]
+//	struct Book {
+//	    id        int
+//	    title     string
+//	    #[json.identifier("page_count")]
+//	    pageCount option[int]
 //	}
 //
-//	match var p = json.decode[Pokemon](text) {
+//	match var b = json.decode[Book](text) {
 //	    ok { … }
-//	    failed { … }   // p.kind is decode
+//	    failed { … }   // b.kind is decode
 //	}
 //
 // `decode` answers an `async.Result`, the value or the failure that kept it
@@ -27,7 +27,7 @@
 // `decode` or `encode` that reaches them.
 //
 // **A name on the wire is a fact about the format**, so it is this package's
-// mark: `#[json.identifier("base_experience")]` on a struct field or an enum
+// mark: `#[json.identifier("page_count")]` on a struct field or an enum
 // member, and no mark means the SNGL name. The field keeps its own name
 // everywhere else, on every host.
 //

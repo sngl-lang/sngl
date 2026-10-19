@@ -26,7 +26,7 @@ func lookup(name string) async.Result[int] {
 }
 
 component detail node {
-    var name = "pikachu"
+    var name = "apricot"
     var length option[int] = null
     var loading = false
     var failure option[async.Failure] = null
@@ -36,7 +36,7 @@ component detail node {
     text(value=length != null ? "{length}" : "-")
     text(value="{loading}")
     text(value=failure != null ? failure.message : "")
-    button(text="mew", @click { name = "mew" })
+    button(text="fig", @click { name = "fig" })
     button(text="again", @click { q.refresh() })
 }
 
@@ -47,11 +47,11 @@ component card(name string) node {
 }
 
 component cards node {
-    var names = ["bulbasaur", "mew"]
+    var names = ["blueberry", "fig"]
     for var n = names {
         card(name=n)
     }
-    button(text="add", @click { names.push("ditto") })
+    button(text="add", @click { names.push("grape") })
 }
 
 window {
@@ -141,11 +141,11 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.name__inst0 = "pikachu"
+	m.name__inst0 = "apricot"
 	m.length__inst0 = nil
 	m.loading__inst0 = false
 	m.failure__inst0 = nil
-	m.names__inst0 = []string{"bulbasaur", "mew"}
+	m.names__inst0 = []string{"blueberry", "fig"}
 	m.visible__inst0 = true
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
@@ -352,7 +352,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n6_click_handler() {
-	m.name__inst0 = "mew"
+	m.name__inst0 = "fig"
 	m.__effects0_settle()
 }
 
@@ -361,7 +361,7 @@ func (m *Model) __n7_click_handler() {
 }
 
 func (m *Model) __n8_click_handler() {
-	m.names__inst0 = append(m.names__inst0, "ditto")
+	m.names__inst0 = append(m.names__inst0, "grape")
 	m.__renderSlot0(m.__n1.Container)
 }
 
@@ -461,7 +461,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4.SetText(__lt7)
 	m.__n1.Add(m.__n4)
 	m.__n6 = widget.NewButton("", nil)
-	m.__n6.SetText("mew")
+	m.__n6.SetText("fig")
 	m.__n6.OnTapped = m.__n6_click_handler
 	m.__n1.Add(m.__n6)
 	m.__n7 = widget.NewButton("", nil)
@@ -746,11 +746,11 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.name__inst0 = "pikachu"
+	m.name__inst0 = "apricot"
 	m.length__inst0 = nil
 	m.loading__inst0 = false
 	m.failure__inst0 = nil
-	m.names__inst0 = []string{"bulbasaur", "mew"}
+	m.names__inst0 = []string{"blueberry", "fig"}
 	m.visible__inst0 = true
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
@@ -945,7 +945,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n6_clicked_handler() {
-	m.name__inst0 = "mew"
+	m.name__inst0 = "fig"
 	m.__effects0_settle()
 }
 
@@ -954,7 +954,7 @@ func (m *Model) __n7_clicked_handler() {
 }
 
 func (m *Model) __n8_clicked_handler() {
-	m.names__inst0 = append(m.names__inst0, "ditto")
+	m.names__inst0 = append(m.names__inst0, "grape")
 	m.__renderSlot0(m.__n1)
 }
 
@@ -1240,7 +1240,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetText(m.__n4, __lt7)
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	m.__n6 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n6, "mew")
+	gtk4rt.ButtonSetLabel(m.__n6, "fig")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n6)
 	m.__n7 = gtk4rt.ButtonNew()
@@ -1263,6 +1263,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:0c913d329a9e613928d6bc65e56b04f1
+pass sha256:892dff846fa52a4390d647574e850b8a
 -- run/go/gtk4 --
-pass sha256:7c0fc8f608e456a34cff4b8286971c87
+pass sha256:e5d1f92593f5c3bccbff4e33d0397fc6

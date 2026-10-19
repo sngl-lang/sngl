@@ -75,7 +75,7 @@ func (n *names) field(decl *Schema, wire, owner string, r *reader) string {
 }
 
 // camel is a wire name as a SNGL identifier: each run of letters and digits
-// after the first starts upper case, `front_default` → `frontDefault`, and
+// after the first starts upper case, `page_count` → `pageCount`, and
 // the first keeps its case. A name starting with a digit is given a letter
 // to start with, since `_` would make it unexported.
 func camel(s string) string {

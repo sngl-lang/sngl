@@ -21,10 +21,11 @@ Two goals:
 - The check for goal 1, run before every push:
 
   ```
-  git grep -niE 'pok[eé]|pikachu|bulbasaur|charmander|ditto|missingno|pichu|raichu|eevee' -- ':!examples/pokedex'
+  git grep -niE 'pok[eé](mon|api|dex)|base_experience|base_stat|front_default|\b(pikachu|bulbasaur|ivysaur|venusaur|charmander|charmeleon|squirtle|ditto|mew|missingno|pichu|raichu|eevee)\b' -- ':!examples/pokedex' ':!TODO.md'
   ```
 
-  Its only hits are the pointers listed under part 3.
+  Its only hits are the pointers listed under part 3. It matches whole
+  names, so `bespoke`, `spoken` and a `poke()` stay out of it.
 
 - `go tool verify` passes at the end of each part; recorded runs are
   `-update`d after any codegen change.
@@ -51,16 +52,21 @@ OpenAPI's own sample) that keeps every feature the trimmed copy exercised.
 
 ## Part 2: neutral `http`, `json` and `async` fixtures and docs
 
-- [ ] `cmd/sngl/httpserver_test.go`: `/pokemon/{name}` and the rest become
-  neutral resources; `cmd/sngl/testdata/http_runs.txt` follows.
-- [ ] `testdata/async_query.sngl`, `async_query_loop.sngl`,
+- [X] `cmd/sngl/httpserver_test.go`: `/pokemon/{name}` becomes
+  `/books/{title}` ("dune", and "war and peace" with null fields);
+  `cmd/sngl/testdata/http_runs.txt` follows.
+- [X] `testdata/async_query.sngl`, `async_query_loop.sngl`,
   `async_query_go.txtar`, `async_query_bubbletea.txtar`,
-  `cmd/sngl/testdata/async_query_bubbletea_runs.txt`,
-  `effect_changes_runs.txt`: neutral sample strings; regenerate goldens.
-- [ ] `cmd/sngl/testdata/context_func_value_param_runs.txt` and the comment in
-  `internal/lower/context.go` name a neutral call.
-- [ ] `lib/async/doc.sngl`, `lib/http/doc.sngl`, `lib/json/doc.sngl`: neutral
-  examples.
+  `cmd/sngl/testdata/async_query_bubbletea_runs.txt`: fruit names of the
+  same lengths; goldens and records regenerated. `effect_changes_runs.txt`
+  only had a `poke()`.
+- [X] `testdata/json.sngl`, `cmd/sngl/testdata/json_runs.txt`,
+  `testdata/http_json.txtar`: a book in place of a Pokémon.
+- [X] `cmd/sngl/testdata/context_func_value_param_runs.txt` and the comment in
+  `internal/lower/context.go` name `petRetrieveCall`.
+- [X] `lib/async/doc.sngl`, `lib/http/doc.sngl`, `lib/json/doc.sngl`,
+  `lib/json/json.sngl`, `design/stdlib.md`: neutral examples;
+  `front_default` leaves `openapi_renamed.txt` and `codegen/scheme/openapi/names.go`.
 
 ## Part 3: the example tests itself
 
@@ -76,6 +82,8 @@ The harness gains one generic feature in place of PokéAPI routes.
   example needs it). No example is named in it.
 - [ ] `docs/learn/pokedex.md` folds into `examples/pokedex/README.md`;
   `docs/learn/index.md` and `internal/cmd/docsgen/examples.go` stop naming it.
+- [ ] `cmd/sngl/script_test.go`'s comment on copying the repository stops
+  naming `examples/pokedex` once every example is copied alike.
 - [ ] `design/import-schemes.md` and `design/nodes.md`: one sentence each
   pointing at `examples/pokedex` where a rule came from it; the rest moves to
   the README. These are the goal-1 grep's only hits.

@@ -30,9 +30,9 @@ output {
 const server = "http://127.0.0.1:47819"
 
 enum Kind {
-    #[json.identifier("fire-type")]
-    fire
-    water
+    #[json.identifier("hard-cover")]
+    hardcover
+    paperback
 }
 
 struct Echo {
@@ -67,7 +67,7 @@ component panel node {
     async.query(on=key, fetch=lookup, :value=answer)
     text(value=answer != null ? json.encode(answer) : "-")
     button(text="Send", @click {
-        match var r = http.send(method=http.Method.post, url="{server}/echo", headers={"X-Sngl"="on"}, body=json.encode(Echo{method="m", query=null, kind=Kind.fire})) {
+        match var r = http.send(method=http.Method.post, url="{server}/echo", headers={"X-Sngl"="on"}, body=json.encode(Echo{method="m", query=null, kind=Kind.hardcover})) {
             ok { sent = r.status }
             failed { sent = -1 }
         }
@@ -231,7 +231,7 @@ func Lookup(name string) Result__Echo {
 			return func() Result__Echo {
 				__snglV, __snglMsg := sngljson.Decode[Echo](checked.Body, func() *sngljson.Codec {
 					c0 := &sngljson.Codec{Kind: sngljson.Struct}
-					c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"fire-type", "water"}, Names: []string{"fire", "water"}}
+					c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 					c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 					return c0
 				}())
@@ -284,7 +284,7 @@ func (m *Model) __effect0_mount() {
 				if m.answer__inst0 != nil {
 					__lt0 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 						c0 := &sngljson.Codec{Kind: sngljson.Struct}
-						c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"fire-type", "water"}, Names: []string{"fire", "water"}}
+						c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 						c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 						return c0
 					}())
@@ -387,9 +387,9 @@ func (m *Model) __n2_click_handler() {
 	__async_arg1 := "post"
 	__async_arg2 := __anon_e3b0c4{}
 	__async_arg3 := map[string]string{"X-Sngl": "on"}
-	__async_arg4 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Query: nil, Kind: "fire"}, func() *sngljson.Codec {
+	__async_arg4 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Query: nil, Kind: "hardcover"}, func() *sngljson.Codec {
 		c0 := &sngljson.Codec{Kind: sngljson.Struct}
-		c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"fire-type", "water"}, Names: []string{"fire", "water"}}
+		c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 		c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 		return c0
 	}()))
@@ -495,7 +495,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.answer__inst0 != nil {
 		__lt1 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
-			c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"fire-type", "water"}, Names: []string{"fire", "water"}}
+			c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 			c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 			return c0
 		}())
@@ -546,7 +546,7 @@ import androidx.compose.material3.Button
 data class Echo(
     var method: String = "",
     var query: String? = null,
-    var kind: Kind = Kind.FIRE
+    var kind: Kind = Kind.HARDCOVER
 )
 
 data class Page(
@@ -578,8 +578,8 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 enum class Kind(private val sngl: String) {
-    FIRE("fire"),
-    WATER("water");
+    HARDCOVER("hardcover"),
+    PAPERBACK("paperback");
 
     override fun toString(): String = sngl
 }
@@ -667,10 +667,10 @@ fun MainScreen() {
                     attempt__inst0 += 1
                 }
             }
-            Text(text = (if ((answer__inst0 != null)) SnglCodec.encode(answer__inst0!!, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("fire-type", "water"); c1.values = listOf(Kind.FIRE, Kind.WATER); c0 }) else "-"), modifier = Modifier.safeDrawingPadding())
+            Text(text = (if ((answer__inst0 != null)) SnglCodec.encode(answer__inst0!!, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }) else "-"), modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
                 SnglCodec.start {
-                	var __match2: SnglResult__Response = run { val __r = SnglCodec.send(SnglMethod.POST.toString(), "http://127.0.0.1:47819/echo", mapOf("X-Sngl" to "on"), SnglCodec.encode(Echo(method = "m", query = null, kind = Kind.FIRE), run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("fire-type", "water"); c1.values = listOf(Kind.FIRE, Kind.WATER); c0 })); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
+                	var __match2: SnglResult__Response = run { val __r = SnglCodec.send(SnglMethod.POST.toString(), "http://127.0.0.1:47819/echo", mapOf("X-Sngl" to "on"), SnglCodec.encode(Echo(method = "m", query = null, kind = Kind.HARDCOVER), run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 })); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
                 	when {
                 		(__match2 is SnglResult__Response.Ok) -> {
                 			var r = (__match2 as SnglResult__Response.Ok).value
@@ -705,7 +705,7 @@ suspend fun lookup(name: String): SnglResult__Echo {
     			}
     			else -> {
     				var checked = (__match1 as SnglResult__Response.Ok).value
-    				return run { val __r = SnglCodec.decode(checked.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("fire-type", "water"); c1.values = listOf(Kind.FIRE, Kind.WATER); c0 }); if (__r.error != null) SnglResult__Echo.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__Echo.Ok((__r.value as Echo)) }
+    				return run { val __r = SnglCodec.decode(checked.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }); if (__r.error != null) SnglResult__Echo.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__Echo.Ok((__r.value as Echo)) }
     			}
     		}
     	}
@@ -1105,7 +1105,7 @@ body { font-family: system-ui, sans-serif; }
         let checked = __match1.value;
         return ((__r) => __r.e !== void 0 ? { tag: "failed", value: { kind: "decode", message: __r.e, code: "" } } : { tag: "ok", value: __r.v })(_snglJSONDecode(checked.body, (() => {
           const c0 = { k: "s" };
-          const c1 = { k: "e", w: ["fire-type", "water"], n: ["fire", "water"] };
+          const c1 = { k: "e", w: ["hard-cover", "paperback"], n: ["hardcover", "paperback"] };
           c0.f = [["method", "method", { k: "str" }], ["query", "raw_query", { k: "o", e: { k: "str" } }], ["kind", "kind", c1]];
           return c0;
         })()));
@@ -1160,7 +1160,7 @@ body { font-family: system-ui, sans-serif; }
       state.answer__inst0 = got;
       __n1.textContent = state.answer__inst0 !== null ? _snglJSONEncode(state.answer__inst0, (() => {
         const c0 = { k: "s" };
-        const c1 = { k: "e", w: ["fire-type", "water"], n: ["fire", "water"] };
+        const c1 = { k: "e", w: ["hard-cover", "paperback"], n: ["hardcover", "paperback"] };
         c0.f = [["method", "method", { k: "str" }], ["query", "raw_query", { k: "o", e: { k: "str" } }], ["kind", "kind", c1]];
         return c0;
       })()) : "-";
@@ -1431,9 +1431,9 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", async function() {
-    let __match2 = ((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("post", "http://127.0.0.1:47819/echo", /* @__PURE__ */ new Map([["X-Sngl", "on"]]), _snglJSONEncode({ method: "m", query: null, kind: "fire" }, (() => {
+    let __match2 = ((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("post", "http://127.0.0.1:47819/echo", /* @__PURE__ */ new Map([["X-Sngl", "on"]]), _snglJSONEncode({ method: "m", query: null, kind: "hardcover" }, (() => {
       const c0 = { k: "s" };
-      const c1 = { k: "e", w: ["fire-type", "water"], n: ["fire", "water"] };
+      const c1 = { k: "e", w: ["hard-cover", "paperback"], n: ["hardcover", "paperback"] };
       c0.f = [["method", "method", { k: "str" }], ["query", "raw_query", { k: "o", e: { k: "str" } }], ["kind", "kind", c1]];
       return c0;
     })())));
@@ -1450,7 +1450,7 @@ body { font-family: system-ui, sans-serif; }
   function __sngl_init() {
     __n1.textContent = state.answer__inst0 !== null ? _snglJSONEncode(state.answer__inst0, (() => {
       const c0 = { k: "s" };
-      const c1 = { k: "e", w: ["fire-type", "water"], n: ["fire", "water"] };
+      const c1 = { k: "e", w: ["hard-cover", "paperback"], n: ["hardcover", "paperback"] };
       c0.f = [["method", "method", { k: "str" }], ["query", "raw_query", { k: "o", e: { k: "str" } }], ["kind", "kind", c1]];
       return c0;
     })()) : "-";
@@ -1462,8 +1462,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4080251fe409ff97a7f8f29152ba0ae0
+pass sha256:eab6cf432c3fa80c7195534f80bda09c
 -- run/kotlin/android --
-pass sha256:0993bb11753a151db8a7c4f722e06839
+pass sha256:d5e37f355d2e1247a05fd650be790346
 -- run/none/html --
-pass sha256:89b0dd3ce830178e4c0c7be72720447a
+pass sha256:0484664a8aa0ea5c2dcd5423c0aef7a9

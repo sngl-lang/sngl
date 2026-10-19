@@ -36,11 +36,11 @@ func lookup(name string) async.Result[int] {
 }
 
 component detail node {
-    var name = "pikachu"
+    var name = "apricot"
     var length option[int] = null
     var loading = false
     async.query(on=name, fetch=lookup, :value=length, :pending=loading)
-    button #mew(text="mew", @click { name = "mew" })
+    button #fig(text="fig", @click { name = "fig" })
     button #slow(text="slow", @click { name = "slow" })
 }
 
@@ -62,7 +62,7 @@ func testAnswerArrives(t Test, c detail) {
 
 func testLatestWins(t Test, c detail) {
     c.slow.click()
-    c.mew.click()
+    c.fig.click()
     t.wait(func() => c.length == 3, 5000)
     t.wait(func() => false, 800)
     t.assert(c.length == 3)
@@ -77,11 +77,11 @@ component row(name string) node {
 var picked = 0
 
 component rows node {
-    var names = ["mew", "pikachu"]
+    var names = ["fig", "apricot"]
     for var n = names {
         row #r(name=n)
     }
-    button #swap(text="swap", @click { names = ["ditto", "mew"] })
+    button #swap(text="swap", @click { names = ["grape", "fig"] })
 }
 
 func testEachRowAsksForItsOwn(t Test, c rows) {
@@ -109,7 +109,7 @@ component quickRow(name string) node {
 }
 
 component quickRows node {
-    var names = ["mew", "pikachu"]
+    var names = ["fig", "apricot"]
     for var n = names {
         quickRow #r(name=n)
     }
@@ -133,7 +133,7 @@ window {
     quickRows
 }
 -- testrun/bubbletea/go/app.sngl/detail/1 --
-sha256:8d17ec98fab63c64866b08c3608dfde0
+sha256:2544d7044331d93cc6e24a8793c25880
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:5c3caae9b24167d8338fa6ec8b9802d7
   ]
 }
 -- testrun/bubbletea/go/app.sngl/quickRows/1 --
-sha256:12cbfd4383eef5842cd5ce99654d48ba
+sha256:5addb5ac35d91841abc2c1c16c6a3358
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:12cbfd4383eef5842cd5ce99654d48ba
   ]
 }
 -- testrun/bubbletea/go/app.sngl/rows/1 --
-sha256:accd0a701ecf1cd7fa6b2bddf0b19559
+sha256:b5d7129601991fc281cd4d778b2f21ef
 {
   "results": [
     {
