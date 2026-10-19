@@ -373,7 +373,14 @@ handed -- and under a `for` gives each of its vars one cell per copy
 target a function a splice hoists out of loops takes the loop variables it
 reads as parameters (`passLoopVars`), since a prop bound to one is substituted
 into it as that variable, and one taken as a value is a lambda passing them
-(`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
+(`testdata/component_func_reads_loop_prop.txtar`). An effect reading a
+copy's cells is keyed on the copy (`keyEffectsByCopy`), and its handlers are
+handed the key; one keyed `on` something already -- `async.query` in a card
+per row -- is keyed on the pair `{copy, on}`, and each handler reads both
+halves into locals where it starts, since a mount that waits writes its cells
+after the wait, when the settle may have handed a later copy's mount another
+key (`testdata/async_query_loop.sngl`,
+`cmd/sngl/testdata/async_query_bubbletea_runs.txt`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same

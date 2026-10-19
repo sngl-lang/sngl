@@ -668,9 +668,9 @@ Three general things it needed, each of its own:
 On bubbletea the mount's tail is posted back through Update like any other
 `async.do` (see the bubbletea platform), so a fetch that waits runs there too
 (`testdata/async_query_bubbletea.txtar`,
-`cmd/sngl/testdata/async_query_bubbletea_runs.txt`); a query in a component
-built per copy of a loop is still refused there, an effect reading that
-component's state. Kotlin declares no async
+`cmd/sngl/testdata/async_query_bubbletea_runs.txt`), and so does a query in a
+component built per copy of a loop, its effect keyed on the copy and its own
+key together (see *Runtime instances* in `design/instances.md`). Kotlin declares no async
 native, so on android a fetch answers at once. The interpreter runs `fetch` at
 mount, so a test reads the answer as there (`testdata/async_query.sngl`,
 and `async_query_loop.sngl` for a query per copy of a loop).
