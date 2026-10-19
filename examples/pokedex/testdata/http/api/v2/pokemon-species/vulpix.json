@@ -1,0 +1,227 @@
+{
+ "base_happiness": 70,
+ "capture_rate": 190,
+ "color": {
+  "name": "brown",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-color/3/"
+ },
+ "egg_groups": [
+  {
+   "name": "ground",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/5/"
+  }
+ ],
+ "evolution_chain": {
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/15/"
+ },
+ "evolves_from_species": null,
+ "flavor_text_entries": [
+  {
+   "flavor_text": "At the time of\nbirth, it has\njust one tail.\fThe tail splits\nfrom its tip as\nit grows older.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
+   }
+  },
+  {
+   "flavor_text": "In its belly burns a fire, which Vulpix spits out in the form of\nfireballs. When young, this Pokémon has but one white tail.\nAs the Pokémon matures, this single tail splits into six.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "legends-arceus",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/39/"
+   }
+  }
+ ],
+ "form_descriptions": [],
+ "forms_switchable": false,
+ "gender_rate": 6,
+ "genera": [
+  {
+   "genus": "Fox Pokémon",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-i",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+ },
+ "growth_rate": {
+  "name": "medium",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/growth-rate/2/"
+ },
+ "habitat": {
+  "name": "grassland",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-habitat/3/"
+ },
+ "has_gender_differences": false,
+ "hatch_counter": 20,
+ "id": 37,
+ "is_baby": false,
+ "is_legendary": false,
+ "is_mythical": false,
+ "name": "vulpix",
+ "names": [
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Vulpix"
+  }
+ ],
+ "order": 39,
+ "pal_park_encounters": [
+  {
+   "area": {
+    "name": "field",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pal-park-area/2/"
+   },
+   "base_score": 70,
+   "rate": 20
+  }
+ ],
+ "pokedex_numbers": [
+  {
+   "entry_number": 37,
+   "pokedex": {
+    "name": "national",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
+   }
+  },
+  {
+   "entry_number": 37,
+   "pokedex": {
+    "name": "kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/2/"
+   }
+  },
+  {
+   "entry_number": 125,
+   "pokedex": {
+    "name": "original-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/3/"
+   }
+  },
+  {
+   "entry_number": 153,
+   "pokedex": {
+    "name": "hoenn",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/4/"
+   }
+  },
+  {
+   "entry_number": 127,
+   "pokedex": {
+    "name": "updated-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/7/"
+   }
+  },
+  {
+   "entry_number": 248,
+   "pokedex": {
+    "name": "updated-unova",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/9/"
+   }
+  },
+  {
+   "entry_number": 160,
+   "pokedex": {
+    "name": "updated-hoenn",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/15/"
+   }
+  },
+  {
+   "entry_number": 253,
+   "pokedex": {
+    "name": "original-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/16/"
+   }
+  },
+  {
+   "entry_number": 125,
+   "pokedex": {
+    "name": "original-ulaula",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/19/"
+   }
+  },
+  {
+   "entry_number": 330,
+   "pokedex": {
+    "name": "updated-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/21/"
+   }
+  },
+  {
+   "entry_number": 151,
+   "pokedex": {
+    "name": "updated-ulaula",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/24/"
+   }
+  },
+  {
+   "entry_number": 37,
+   "pokedex": {
+    "name": "letsgo-kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/26/"
+   }
+  },
+  {
+   "entry_number": 68,
+   "pokedex": {
+    "name": "galar",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/27/"
+   }
+  },
+  {
+   "entry_number": 168,
+   "pokedex": {
+    "name": "hisui",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/30/"
+   }
+  },
+  {
+   "entry_number": 37,
+   "pokedex": {
+    "name": "kitakami",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/32/"
+   }
+  },
+  {
+   "entry_number": 157,
+   "pokedex": {
+    "name": "blueberry",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/33/"
+   }
+  }
+ ],
+ "shape": {
+  "name": "quadruped",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-shape/8/"
+ },
+ "varieties": [
+  {
+   "is_default": true,
+   "pokemon": {
+    "name": "vulpix",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/37/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "vulpix-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10103/"
+   }
+  }
+ ]
+}

@@ -130,22 +130,29 @@ so what it reads is one instance deep: a compiled test reaches into the
 instance its component renders, and no further.
 
 ```sngl
-component ivysaur ui.node {
+component aPage ui.node {
     poke.server(local) {
         detailPage #detail(name="ivysaur", @open(n) { opened = n })
     }
 }
 
-func testTheDetailPageShowsThePokemon(t test.Test, c ivysaur) {
+func testTheDetailPageLoadsByName(t test.Test, c aPage) {
     t.wait(func() => c.detail.mon != null, 5000)
     t.assert(c.detail.mon != null && c.detail.mon.id == 2)
 }
 ```
 
-`testdata/http` is PokéAPI's answers for five Pokémon, recorded from
-https://pokeapi.co and trimmed: each long list cut to its first entries,
-every link pointed at the harness's server, and every sprite at its
-`/dot.png`, so nothing a test runs reaches the network. A request's path
+`testdata/http` is PokéAPI's answers, recorded from https://pokeapi.co: the
+list of Pokédexes; the list of Pokémon, two at a time; the National, Kanto and Johto dexes; and the Pokémon, its
+species and its evolution chain for Bulbasaur's and Charmander's lines,
+Eevee, Pikachu, Vulpix and Alolan Vulpix. Each is trimmed so nothing a test
+runs reaches the network and no file is longer than the app reads: every
+link points at the harness's server and every picture at its `/dot.png`; the
+dex list keeps the three dexes recorded, and a dex its first 40
+entries; a Pokémon's moves are Scarlet and Violet's, every one learned by
+level and four of each other method; a species keeps its English genus,
+names and first and last English descriptions; and every other long list is
+cut to its first entries. A request's path
 names its file with the trailing slash dropped, then `@` and the query in key
 order where there is one, then `.json`: `/api/v2/pokemon/ivysaur/` is
 `api/v2/pokemon/ivysaur.json`, and the list's second page,
@@ -181,6 +188,17 @@ with these corrections:
   `null` in most answers.
 - `PokemonHeldItem.pokemon` and `TypePokemon.pokemon` are not required: the
   answers carry neither.
+- `PokemonSprites` declares every picture an answer carries, not only
+  `front_default`: front and back, each normal, shiny, female and shiny
+  female, and `other` (`PokemonOtherSprites`), holding `official-artwork` (`PokemonArtworkSprites`,
+  normal and shiny) and `home` (`PokemonHomeSprites`, normal, shiny and both
+  female). Each picture may be `null`, as a female one is for a Pokémon that
+  looks the same either way.
+- `PokedexDetail.region` may be `null`: the National dex has none.
+
+The species' genus, descriptions, egg groups, gender and capture rates and
+varieties were declared already, and decode as published; its habitat is the
+correction above.
 
 The import still says, at every build, that it leaves out `sprites` on
 `PokemonFormSprites` and `TypeSprite`, which the document gives no type.

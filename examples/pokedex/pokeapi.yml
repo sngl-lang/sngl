@@ -7061,7 +7061,9 @@ components:
             $ref: '#/components/schemas/PokemonDexNumber'
           readOnly: true
         region:
-          $ref: '#/components/schemas/RegionSummary'
+          oneOf:
+          - $ref: '#/components/schemas/RegionSummary'
+          - type: 'null'
         version_groups:
           type: array
           items:
@@ -8049,8 +8051,94 @@ components:
           type:
           - string
           - 'null'
+        front_shiny:
+          type:
+          - string
+          - 'null'
+        front_female:
+          type:
+          - string
+          - 'null'
+        front_shiny_female:
+          type:
+          - string
+          - 'null'
+        back_default:
+          type:
+          - string
+          - 'null'
+        back_shiny:
+          type:
+          - string
+          - 'null'
+        back_female:
+          type:
+          - string
+          - 'null'
+        back_shiny_female:
+          type:
+          - string
+          - 'null'
+        other:
+          $ref: '#/components/schemas/PokemonOtherSprites'
+      required:
+      - back_default
+      - back_female
+      - back_shiny
+      - back_shiny_female
+      - front_default
+      - front_female
+      - front_shiny
+      - front_shiny_female
+      - other
+    PokemonOtherSprites:
+      type: object
+      properties:
+        official-artwork:
+          $ref: '#/components/schemas/PokemonArtworkSprites'
+        home:
+          $ref: '#/components/schemas/PokemonHomeSprites'
+      required:
+      - home
+      - official-artwork
+    PokemonArtworkSprites:
+      type: object
+      properties:
+        front_default:
+          type:
+          - string
+          - 'null'
+        front_shiny:
+          type:
+          - string
+          - 'null'
       required:
       - front_default
+      - front_shiny
+    PokemonHomeSprites:
+      type: object
+      properties:
+        front_default:
+          type:
+          - string
+          - 'null'
+        front_shiny:
+          type:
+          - string
+          - 'null'
+        front_female:
+          type:
+          - string
+          - 'null'
+        front_shiny_female:
+          type:
+          - string
+          - 'null'
+      required:
+      - front_default
+      - front_female
+      - front_shiny
+      - front_shiny_female
     PokemonStat:
       type: object
       properties:

@@ -12,13 +12,13 @@ component listed ui.node {
     }
 }
 
-component bulbasaur ui.node {
+component aCard ui.node {
     poke.server(local) {
         card #one(name="bulbasaur", @open { opened = "bulbasaur" })
     }
 }
 
-component ivysaur ui.node {
+component aPage ui.node {
     poke.server(local) {
         detailPage #detail(name="ivysaur", @open(n) { opened = n })
     }
@@ -28,6 +28,80 @@ component chain ui.node {
     poke.server(local) {
         evolution #evo(species="ivysaur", @open(n) { opened = n })
     }
+}
+
+// Every recorded Pokédex, Pokémon, species and chain, each its own query, so a
+// recording the document cannot decode leaves its `got` null.
+component dexes ui.node {
+    var list option[poke.PaginatedPokedexSummaryList] = null
+
+    poke.server(local) {
+        poke.pokedexList(:value=list)
+        dex #national(name="national")
+        dex #kanto(name="kanto")
+        dex #johto(name="original-johto")
+    }
+}
+
+component dex(name string) ui.node {
+    var got option[poke.PokedexDetail] = null
+
+    poke.pokedexRetrieve(id=name, :value=got)
+}
+
+component mons ui.node {
+    poke.server(local) {
+        mon #bulbasaur(name="bulbasaur")
+        mon #ivysaur(name="ivysaur")
+        mon #venusaur(name="venusaur")
+        mon #charmander(name="charmander")
+        mon #charmeleon(name="charmeleon")
+        mon #eevee(name="eevee")
+        mon #pikachu(name="pikachu")
+        mon #vulpix(name="vulpix")
+        mon #alola(name="vulpix-alola")
+    }
+}
+
+component mon(name string) ui.node {
+    var got option[poke.PokemonDetail] = null
+
+    poke.pokemonRetrieve(id=name, :value=got)
+}
+
+component species ui.node {
+    poke.server(local) {
+        kind #bulbasaur(name="bulbasaur")
+        kind #ivysaur(name="ivysaur")
+        kind #venusaur(name="venusaur")
+        kind #charmander(name="charmander")
+        kind #charmeleon(name="charmeleon")
+        kind #eevee(name="eevee")
+        kind #pikachu(name="pikachu")
+        kind #vulpix(name="vulpix")
+    }
+}
+
+component kind(name string) ui.node {
+    var got option[poke.PokemonSpeciesDetail] = null
+
+    poke.pokemonSpeciesRetrieve(id=name, :value=got)
+}
+
+component chains ui.node {
+    poke.server(local) {
+        line #bulbasaur(id="1")
+        line #charmander(id="2")
+        line #pikachu(id="10")
+        line #vulpix(id="15")
+        line #eevee(id="67")
+    }
+}
+
+component line(id string) ui.node {
+    var got option[poke.EvolutionChainDetail] = null
+
+    poke.evolutionChainRetrieve(id=id, :value=got)
 }
 
 func testTheListLoadsAPageAndMore(t test.Test, c listed) {
@@ -53,12 +127,12 @@ func testTheSearchFiltersWhatLoaded(t test.Test, c listed) {
     t.assert(c.page.matching().length() == 3)
 }
 
-func testACardAsksForItsOwn(t test.Test, c bulbasaur) {
+func testACardAsksForItsOwn(t test.Test, c aCard) {
     t.wait(func() => c.one.mon != null, 5000)
     t.assert(c.one.mon != null && c.one.mon.types.length() == 2)
 }
 
-func testTheDetailPageShowsThePokemon(t test.Test, c ivysaur) {
+func testTheDetailPageLoadsByName(t test.Test, c aPage) {
     t.wait(func() => c.detail.mon != null, 5000)
     t.assert(c.detail.mon != null && c.detail.mon.id == 2)
     t.assert(c.detail.mon != null && c.detail.mon.stats[0].baseStat == 60)
@@ -69,6 +143,41 @@ func testTheChainIsTwoRequestsBehind(t test.Test, c chain) {
     t.wait(func() => c.evo.chain != null, 5000)
     t.assert(c.evo.about != null && idOf(c.evo.about.evolutionChain.url) == "1")
     t.assert(c.evo.chain != null && stages(c.evo.chain.chain).join(",") == "bulbasaur,ivysaur,venusaur")
+}
+
+func testEveryDexDecodes(t test.Test, c dexes) {
+    t.wait(func() => c.list != null && c.national.got != null && c.kanto.got != null && c.johto.got != null, 5000)
+    t.assert(c.list != null && c.list.results.map(func(d poke.PokedexSummary) => d.name).join(",") == "national,kanto,original-johto")
+    t.assert(c.national.got != null && c.national.got.region == null)
+    t.assert(c.kanto.got != null && c.kanto.got.region != null && c.kanto.got.region.name == "kanto")
+    t.assert(c.kanto.got != null && c.kanto.got.pokemonEntries.length() == 40)
+    t.assert(c.johto.got != null && c.johto.got.pokemonEntries[0].pokemonSpecies.name == "chikorita")
+}
+
+func testEveryMonDecodes(t test.Test, c mons) {
+    t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null && c.alola.got != null, 5000)
+    t.assert(c.pikachu.got != null && c.pikachu.got.sprites.frontFemale != null)
+    t.assert(c.bulbasaur.got != null && c.bulbasaur.got.sprites.frontFemale == null)
+    t.assert(c.eevee.got != null && c.eevee.got.sprites.other.officialArtwork.frontShiny != null)
+    t.assert(c.eevee.got != null && c.eevee.got.sprites.other.home.frontDefault != null)
+    t.assert(c.alola.got != null && c.alola.got.types[0].type.name == "ice")
+    t.assert(c.vulpix.got != null && c.vulpix.got.abilities[1].isHidden == true)
+}
+
+func testEverySpeciesDecodes(t test.Test, c species) {
+    t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null, 5000)
+    t.assert(c.eevee.got != null && c.eevee.got.genera[0].genus == "Evolution Pokémon")
+    t.assert(c.pikachu.got != null && c.pikachu.got.genderRate == 4)
+    t.assert(c.vulpix.got != null && c.vulpix.got.varieties[1].pokemon.name == "vulpix-alola")
+    t.assert(c.bulbasaur.got != null && c.bulbasaur.got.eggGroups.length() == 2)
+    t.assert(c.bulbasaur.got != null && c.bulbasaur.got.habitat != null && c.bulbasaur.got.habitat.name == "grassland")
+}
+
+func testEveryChainDecodes(t test.Test, c chains) {
+    t.wait(func() => c.bulbasaur.got != null && c.charmander.got != null && c.pikachu.got != null && c.vulpix.got != null && c.eevee.got != null, 5000)
+    t.assert(c.pikachu.got != null && stages(c.pikachu.got.chain).join(",") == "pichu,pikachu,raichu")
+    t.assert(c.eevee.got != null && c.eevee.got.chain.evolvesTo.length() == 8)
+    t.assert(c.vulpix.got != null && c.vulpix.got.chain.evolvesTo[0].evolutionDetails[0].item != null)
 }
 
 // Takes a component as every test here does: on html a group of tests that

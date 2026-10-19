@@ -9,6 +9,10 @@
   {
    "name": "monster",
    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/1/"
+  },
+  {
+   "name": "dragon",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/14/"
   }
  ],
  "evolution_chain": {
@@ -29,6 +33,17 @@
     "name": "red",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
    }
+  },
+  {
+   "flavor_text": "If it becomes agitated during battle, it spouts\nintense flames, incinerating its surroundings.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
   }
  ],
  "form_descriptions": [],
@@ -36,10 +51,10 @@
  "gender_rate": 1,
  "genera": [
   {
-   "genus": "かえんポケモン",
+   "genus": "Flame Pokémon",
    "language": {
-    "name": "ja-hrkt",
-    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
    }
   }
  ],
@@ -65,10 +80,10 @@
  "names": [
   {
    "language": {
-    "name": "ja-hrkt",
-    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
    },
-   "name": "リザード"
+   "name": "Charmeleon"
   }
  ],
  "order": 5,
@@ -88,6 +103,69 @@
    "pokedex": {
     "name": "national",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
+   }
+  },
+  {
+   "entry_number": 5,
+   "pokedex": {
+    "name": "kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/2/"
+   }
+  },
+  {
+   "entry_number": 230,
+   "pokedex": {
+    "name": "original-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/3/"
+   }
+  },
+  {
+   "entry_number": 235,
+   "pokedex": {
+    "name": "updated-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/7/"
+   }
+  },
+  {
+   "entry_number": 110,
+   "pokedex": {
+    "name": "conquest-gallery",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/11/"
+   }
+  },
+  {
+   "entry_number": 84,
+   "pokedex": {
+    "name": "kalos-central",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/12/"
+   }
+  },
+  {
+   "entry_number": 5,
+   "pokedex": {
+    "name": "letsgo-kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/26/"
+   }
+  },
+  {
+   "entry_number": 379,
+   "pokedex": {
+    "name": "galar",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/27/"
+   }
+  },
+  {
+   "entry_number": 168,
+   "pokedex": {
+    "name": "blueberry",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/33/"
+   }
+  },
+  {
+   "entry_number": 152,
+   "pokedex": {
+    "name": "lumiose-city",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/34/"
    }
   }
  ],

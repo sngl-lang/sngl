@@ -6,32 +6,32 @@
 # html runs each component a test takes as a page of its own, so an example
 # whose window is served in route mode is tested as a static page there too.
 #
-# 30 is every example's tests together, so one dropping out of the walk fails.
+# 34 is every example's tests together, so one dropping out of the walk fails.
 
 exec cp -r $SNGL_ROOT/examples .
 
 sngl test --platform=none ./examples/...
-stdout '^ok +30 tests, 0 failures$'
+stdout '^ok +34 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=html ./examples/...
-stdout '^ok +30 tests, 0 failures$'
+stdout '^ok +34 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=fyne --language=go ./examples/...
-stdout '^ok +30 tests, 0 failures$'
+stdout '^ok +34 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=gtk4 --language=go ./examples/...
-stdout '^ok +30 tests, 0 failures$'
+stdout '^ok +34 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=bubbletea --language=go ./examples/...
-stdout '^ok +30 tests, 0 failures$'
+stdout '^ok +34 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=android --language=kotlin ./examples/...
-stdout '^ok +30 tests, 0 failures$'
+stdout '^ok +34 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
 sha256:0e2b28a53ff0f0e70fb93352ffaaa099
@@ -147,8 +147,8 @@ sha256:c01ddd36fa679c1073332705982638cb
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/bulbasaur/1 --
-sha256:3dcb81411266f45f5d4f81bd5d2d19b5
+-- testrun/android/kotlin/app.sngl/aCard/1 --
+sha256:dae8a45386a782489be7c5ffc4b05e51
 {
   "results": [
     {
@@ -157,8 +157,18 @@ sha256:3dcb81411266f45f5d4f81bd5d2d19b5
     }
   ]
 }
+-- testrun/android/kotlin/app.sngl/aPage/1 --
+sha256:fb6e266164d53657051dee6b02662566
+{
+  "results": [
+    {
+      "Desc": "TheDetailPageLoadsByName",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/app.sngl/chain/1 --
-sha256:7d023ed3c6bd695da1ce1b5c6ab29b75
+sha256:9c3f182261e667c9b26a57a9fb27abf4
 {
   "results": [
     {
@@ -167,18 +177,28 @@ sha256:7d023ed3c6bd695da1ce1b5c6ab29b75
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/ivysaur/1 --
-sha256:5208035338df36ba19744d0370eb000f
+-- testrun/android/kotlin/app.sngl/chains/1 --
+sha256:43f61c1b8512208cf8929fe95c8ed16a
 {
   "results": [
     {
-      "Desc": "TheDetailPageShowsThePokemon",
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/dexes/1 --
+sha256:6ab76f5ddbf78d1facdc4b3604177a07
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
       "Passed": true
     }
   ]
 }
 -- testrun/android/kotlin/app.sngl/listed/1 --
-sha256:346d15126dcc690fc8f0e708951ba1f7
+sha256:146eb893be45ec9a097f6030b915c1e4
 {
   "results": [
     {
@@ -191,6 +211,26 @@ sha256:346d15126dcc690fc8f0e708951ba1f7
     },
     {
       "Desc": "TheSearchFiltersWhatLoaded",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/mons/1 --
+sha256:ff2f878867f1bbeea40c2432ddc54098
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/species/1 --
+sha256:62319be9ba7d0afe6d25f31c132c8876
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
       "Passed": true
     }
   ]
@@ -309,8 +349,8 @@ sha256:0813353cfea9008d3012a4661f9e7d02
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/bulbasaur/1 --
-sha256:f86f8ed58bd33c9c4cb46deef1da64f0
+-- testrun/bubbletea/go/app.sngl/aCard/1 --
+sha256:68d3753487545062832a52deb4eebdb1
 {
   "results": [
     {
@@ -319,8 +359,18 @@ sha256:f86f8ed58bd33c9c4cb46deef1da64f0
     }
   ]
 }
+-- testrun/bubbletea/go/app.sngl/aPage/1 --
+sha256:4768bff2e97233ce74024c06d3775978
+{
+  "results": [
+    {
+      "Desc": "TheDetailPageLoadsByName",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/app.sngl/chain/1 --
-sha256:5af472d172762f2e3b3eb980ed045b99
+sha256:e14c690c5de8b092fa3e13ed63a7876c
 {
   "results": [
     {
@@ -329,18 +379,28 @@ sha256:5af472d172762f2e3b3eb980ed045b99
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/ivysaur/1 --
-sha256:dea958b0a83cb34455a2b91dcc016605
+-- testrun/bubbletea/go/app.sngl/chains/1 --
+sha256:0f7bd35c9ad7f90b7b051673719d8e83
 {
   "results": [
     {
-      "Desc": "TheDetailPageShowsThePokemon",
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/dexes/1 --
+sha256:020ab0d6e775a57310f910c54720f2f5
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/listed/1 --
-sha256:20560fb5e2ac65c1f6c3d09af03dd659
+sha256:baaf2c5cb380b73e8886e0a6d13ebd81
 {
   "results": [
     {
@@ -353,6 +413,26 @@ sha256:20560fb5e2ac65c1f6c3d09af03dd659
     },
     {
       "Desc": "TheSearchFiltersWhatLoaded",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/mons/1 --
+sha256:a8aa33c77dcfc004c3f0881ac88188d1
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/species/1 --
+sha256:b1dc9f5f03190d969bda686fffcbef2c
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
       "Passed": true
     }
   ]
@@ -471,8 +551,8 @@ sha256:c40aee0e020edefcaee43f0cb7d66c68
     }
   ]
 }
--- testrun/fyne/go/app.sngl/bulbasaur/1 --
-sha256:4ac1ee664740bbce6d512bf8ffcc51f1
+-- testrun/fyne/go/app.sngl/aCard/1 --
+sha256:5706a56c29946a8675de2372b47bc5aa
 {
   "results": [
     {
@@ -481,8 +561,18 @@ sha256:4ac1ee664740bbce6d512bf8ffcc51f1
     }
   ]
 }
+-- testrun/fyne/go/app.sngl/aPage/1 --
+sha256:40d55e7654ad05688d957cc9f02bab0a
+{
+  "results": [
+    {
+      "Desc": "TheDetailPageLoadsByName",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/chain/1 --
-sha256:cdc1c173a3a1415627dad159ceb162b0
+sha256:d53f422f8e4d3ed4171002a58158b859
 {
   "results": [
     {
@@ -491,18 +581,28 @@ sha256:cdc1c173a3a1415627dad159ceb162b0
     }
   ]
 }
--- testrun/fyne/go/app.sngl/ivysaur/1 --
-sha256:9e801c093a71b11eb70ebc39a15bb5b4
+-- testrun/fyne/go/app.sngl/chains/1 --
+sha256:231f214b256fd6882e95bc2d6af927e2
 {
   "results": [
     {
-      "Desc": "TheDetailPageShowsThePokemon",
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/dexes/1 --
+sha256:8c9bde18816240da61b75b923a37ddd2
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/listed/1 --
-sha256:6112568e6aa880f65a901cdf6c7cf039
+sha256:fecfc41b15079db6da53022ba9522e6a
 {
   "results": [
     {
@@ -515,6 +615,26 @@ sha256:6112568e6aa880f65a901cdf6c7cf039
     },
     {
       "Desc": "TheSearchFiltersWhatLoaded",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/mons/1 --
+sha256:30a3c2d7b62359ab556bc3f628f44902
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/species/1 --
+sha256:b774c0fd51048b5d709a1183b59db28d
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
       "Passed": true
     }
   ]
@@ -633,8 +753,8 @@ sha256:0242a26e7dc826323b4b8acadb391e47
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/bulbasaur/1 --
-sha256:d002d0a7d403407065eda04628a589b1
+-- testrun/gtk4/go/app.sngl/aCard/1 --
+sha256:2c82677fbb23c0657f4e612e6f3d3cf7
 {
   "results": [
     {
@@ -643,8 +763,18 @@ sha256:d002d0a7d403407065eda04628a589b1
     }
   ]
 }
+-- testrun/gtk4/go/app.sngl/aPage/1 --
+sha256:4d8eec61d90130d7c5f3c940093c58c8
+{
+  "results": [
+    {
+      "Desc": "TheDetailPageLoadsByName",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/chain/1 --
-sha256:03c027c04835c017e095038aaa7b3307
+sha256:8678052f579fb4466a191cd3b4a173e8
 {
   "results": [
     {
@@ -653,18 +783,28 @@ sha256:03c027c04835c017e095038aaa7b3307
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/ivysaur/1 --
-sha256:fb008bbcff84d7c0f4ba064364ec8032
+-- testrun/gtk4/go/app.sngl/chains/1 --
+sha256:cb2457bcc7a7cf5e6c527d26114eda12
 {
   "results": [
     {
-      "Desc": "TheDetailPageShowsThePokemon",
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/dexes/1 --
+sha256:427a7d89c19e09eb9776daa1354c0cf1
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/listed/1 --
-sha256:7d80ec6b694d55def2baa1cc0f1ea67d
+sha256:2c1d8106bb524cffd6c13760285d8965
 {
   "results": [
     {
@@ -677,6 +817,26 @@ sha256:7d80ec6b694d55def2baa1cc0f1ea67d
     },
     {
       "Desc": "TheSearchFiltersWhatLoaded",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/mons/1 --
+sha256:560f92a11c3e2433ef8dac2ab318c913
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/species/1 --
+sha256:f4e8523ad9a72aed85659427ba768128
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
       "Passed": true
     }
   ]
@@ -795,8 +955,8 @@ sha256:1fea06e955445b85cb584bf1d6fc14cf
     }
   ]
 }
--- testrun/html/none/app.sngl/bulbasaur/1 --
-sha256:577215a12ba88f7cbf9c28e4e19b9235
+-- testrun/html/none/app.sngl/aCard/1 --
+sha256:575d98590aa927835894e24310a9d255
 {
   "results": [
     {
@@ -805,8 +965,18 @@ sha256:577215a12ba88f7cbf9c28e4e19b9235
     }
   ]
 }
+-- testrun/html/none/app.sngl/aPage/1 --
+sha256:ffb098c2fc63b6bfca3c14c3efcd34dd
+{
+  "results": [
+    {
+      "Desc": "TheDetailPageLoadsByName",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/chain/1 --
-sha256:d67bcb7c2695f78709dd9aaac6552141
+sha256:bd1b7705894639bb2dae264650fa4363
 {
   "results": [
     {
@@ -815,18 +985,28 @@ sha256:d67bcb7c2695f78709dd9aaac6552141
     }
   ]
 }
--- testrun/html/none/app.sngl/ivysaur/1 --
-sha256:3e8c3a7c6a19aecca4de4d13f2ed8626
+-- testrun/html/none/app.sngl/chains/1 --
+sha256:49b7958ea9d2a0491829e355440757a2
 {
   "results": [
     {
-      "Desc": "TheDetailPageShowsThePokemon",
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/dexes/1 --
+sha256:7f5d487c310b9ae5615c76e0e0eb250a
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/listed/1 --
-sha256:c2c18153715098807b4ee53671ad7be0
+sha256:edcab60bb075b85def37fc491c48b885
 {
   "results": [
     {
@@ -839,6 +1019,26 @@ sha256:c2c18153715098807b4ee53671ad7be0
     },
     {
       "Desc": "TheSearchFiltersWhatLoaded",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/mons/1 --
+sha256:28e9691489b43fda504d97ca678bbeb7
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/species/1 --
+sha256:2f91ab73584957e1bf40495feb37632c
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
       "Passed": true
     }
   ]

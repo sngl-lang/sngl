@@ -1,0 +1,319 @@
+{
+ "descriptions": [
+  {
+   "description": "Gold/Silver/Crystal Johto dex—called the \"New\" Pokédex in-game",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  }
+ ],
+ "id": 3,
+ "is_main_series": true,
+ "name": "original-johto",
+ "names": [
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Original Johto"
+  }
+ ],
+ "pokemon_entries": [
+  {
+   "entry_number": 1,
+   "pokemon_species": {
+    "name": "chikorita",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/152/"
+   }
+  },
+  {
+   "entry_number": 2,
+   "pokemon_species": {
+    "name": "bayleef",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/153/"
+   }
+  },
+  {
+   "entry_number": 3,
+   "pokemon_species": {
+    "name": "meganium",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/154/"
+   }
+  },
+  {
+   "entry_number": 4,
+   "pokemon_species": {
+    "name": "cyndaquil",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/155/"
+   }
+  },
+  {
+   "entry_number": 5,
+   "pokemon_species": {
+    "name": "quilava",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/156/"
+   }
+  },
+  {
+   "entry_number": 6,
+   "pokemon_species": {
+    "name": "typhlosion",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/157/"
+   }
+  },
+  {
+   "entry_number": 7,
+   "pokemon_species": {
+    "name": "totodile",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/158/"
+   }
+  },
+  {
+   "entry_number": 8,
+   "pokemon_species": {
+    "name": "croconaw",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/159/"
+   }
+  },
+  {
+   "entry_number": 9,
+   "pokemon_species": {
+    "name": "feraligatr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/160/"
+   }
+  },
+  {
+   "entry_number": 10,
+   "pokemon_species": {
+    "name": "pidgey",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/16/"
+   }
+  },
+  {
+   "entry_number": 11,
+   "pokemon_species": {
+    "name": "pidgeotto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/17/"
+   }
+  },
+  {
+   "entry_number": 12,
+   "pokemon_species": {
+    "name": "pidgeot",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/18/"
+   }
+  },
+  {
+   "entry_number": 13,
+   "pokemon_species": {
+    "name": "spearow",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/21/"
+   }
+  },
+  {
+   "entry_number": 14,
+   "pokemon_species": {
+    "name": "fearow",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/22/"
+   }
+  },
+  {
+   "entry_number": 15,
+   "pokemon_species": {
+    "name": "hoothoot",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/163/"
+   }
+  },
+  {
+   "entry_number": 16,
+   "pokemon_species": {
+    "name": "noctowl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/164/"
+   }
+  },
+  {
+   "entry_number": 17,
+   "pokemon_species": {
+    "name": "rattata",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/19/"
+   }
+  },
+  {
+   "entry_number": 18,
+   "pokemon_species": {
+    "name": "raticate",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/20/"
+   }
+  },
+  {
+   "entry_number": 19,
+   "pokemon_species": {
+    "name": "sentret",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/161/"
+   }
+  },
+  {
+   "entry_number": 20,
+   "pokemon_species": {
+    "name": "furret",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/162/"
+   }
+  },
+  {
+   "entry_number": 21,
+   "pokemon_species": {
+    "name": "pichu",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/172/"
+   }
+  },
+  {
+   "entry_number": 22,
+   "pokemon_species": {
+    "name": "pikachu",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/25/"
+   }
+  },
+  {
+   "entry_number": 23,
+   "pokemon_species": {
+    "name": "raichu",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/26/"
+   }
+  },
+  {
+   "entry_number": 24,
+   "pokemon_species": {
+    "name": "caterpie",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/10/"
+   }
+  },
+  {
+   "entry_number": 25,
+   "pokemon_species": {
+    "name": "metapod",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/11/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokemon_species": {
+    "name": "butterfree",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/12/"
+   }
+  },
+  {
+   "entry_number": 27,
+   "pokemon_species": {
+    "name": "weedle",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/13/"
+   }
+  },
+  {
+   "entry_number": 28,
+   "pokemon_species": {
+    "name": "kakuna",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/14/"
+   }
+  },
+  {
+   "entry_number": 29,
+   "pokemon_species": {
+    "name": "beedrill",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/15/"
+   }
+  },
+  {
+   "entry_number": 30,
+   "pokemon_species": {
+    "name": "ledyba",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/165/"
+   }
+  },
+  {
+   "entry_number": 31,
+   "pokemon_species": {
+    "name": "ledian",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/166/"
+   }
+  },
+  {
+   "entry_number": 32,
+   "pokemon_species": {
+    "name": "spinarak",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/167/"
+   }
+  },
+  {
+   "entry_number": 33,
+   "pokemon_species": {
+    "name": "ariados",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/168/"
+   }
+  },
+  {
+   "entry_number": 34,
+   "pokemon_species": {
+    "name": "geodude",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/74/"
+   }
+  },
+  {
+   "entry_number": 35,
+   "pokemon_species": {
+    "name": "graveler",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/75/"
+   }
+  },
+  {
+   "entry_number": 36,
+   "pokemon_species": {
+    "name": "golem",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/76/"
+   }
+  },
+  {
+   "entry_number": 37,
+   "pokemon_species": {
+    "name": "zubat",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/41/"
+   }
+  },
+  {
+   "entry_number": 38,
+   "pokemon_species": {
+    "name": "golbat",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/42/"
+   }
+  },
+  {
+   "entry_number": 39,
+   "pokemon_species": {
+    "name": "crobat",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/169/"
+   }
+  },
+  {
+   "entry_number": 40,
+   "pokemon_species": {
+    "name": "cleffa",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/173/"
+   }
+  }
+ ],
+ "region": {
+  "name": "johto",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/region/2/"
+ },
+ "version_groups": [
+  {
+   "name": "gold-silver",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/3/"
+  },
+  {
+   "name": "crystal",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+  }
+ ]
+}

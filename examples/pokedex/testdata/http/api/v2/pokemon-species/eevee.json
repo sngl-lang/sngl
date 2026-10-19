@@ -1,0 +1,248 @@
+{
+ "base_happiness": 70,
+ "capture_rate": 45,
+ "color": {
+  "name": "brown",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-color/3/"
+ },
+ "egg_groups": [
+  {
+   "name": "ground",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/5/"
+  }
+ ],
+ "evolution_chain": {
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/67/"
+ },
+ "evolves_from_species": null,
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Its genetic code\nis irregular.\nIt may mutate if\fit is exposed to\nradiation from\nelement STONEs.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
+   }
+  },
+  {
+   "flavor_text": "Harbors the potential to evolve into manifold forms.\nWithin Eevee lies the key to the mysteries of Pokémon\nevolution—I'm certain of it.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "legends-arceus",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/39/"
+   }
+  }
+ ],
+ "form_descriptions": [],
+ "forms_switchable": false,
+ "gender_rate": 1,
+ "genera": [
+  {
+   "genus": "Evolution Pokémon",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-i",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+ },
+ "growth_rate": {
+  "name": "medium",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/growth-rate/2/"
+ },
+ "habitat": {
+  "name": "urban",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-habitat/8/"
+ },
+ "has_gender_differences": true,
+ "hatch_counter": 35,
+ "id": 133,
+ "is_baby": false,
+ "is_legendary": false,
+ "is_mythical": false,
+ "name": "eevee",
+ "names": [
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Eevee"
+  }
+ ],
+ "order": 157,
+ "pal_park_encounters": [
+  {
+   "area": {
+    "name": "field",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pal-park-area/2/"
+   },
+   "base_score": 90,
+   "rate": 3
+  }
+ ],
+ "pokedex_numbers": [
+  {
+   "entry_number": 133,
+   "pokedex": {
+    "name": "national",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
+   }
+  },
+  {
+   "entry_number": 133,
+   "pokedex": {
+    "name": "kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/2/"
+   }
+  },
+  {
+   "entry_number": 180,
+   "pokedex": {
+    "name": "original-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/3/"
+   }
+  },
+  {
+   "entry_number": 163,
+   "pokedex": {
+    "name": "extended-sinnoh",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/6/"
+   }
+  },
+  {
+   "entry_number": 184,
+   "pokedex": {
+    "name": "updated-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/7/"
+   }
+  },
+  {
+   "entry_number": 91,
+   "pokedex": {
+    "name": "updated-unova",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/9/"
+   }
+  },
+  {
+   "entry_number": 1,
+   "pokedex": {
+    "name": "conquest-gallery",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/11/"
+   }
+  },
+  {
+   "entry_number": 77,
+   "pokedex": {
+    "name": "kalos-coastal",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/13/"
+   }
+  },
+  {
+   "entry_number": 123,
+   "pokedex": {
+    "name": "original-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/16/"
+   }
+  },
+  {
+   "entry_number": 50,
+   "pokedex": {
+    "name": "original-akala",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/18/"
+   }
+  },
+  {
+   "entry_number": 153,
+   "pokedex": {
+    "name": "updated-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/21/"
+   }
+  },
+  {
+   "entry_number": 54,
+   "pokedex": {
+    "name": "updated-akala",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/23/"
+   }
+  },
+  {
+   "entry_number": 133,
+   "pokedex": {
+    "name": "letsgo-kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/26/"
+   }
+  },
+  {
+   "entry_number": 196,
+   "pokedex": {
+    "name": "galar",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/27/"
+   }
+  },
+  {
+   "entry_number": 74,
+   "pokedex": {
+    "name": "crown-tundra",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/29/"
+   }
+  },
+  {
+   "entry_number": 25,
+   "pokedex": {
+    "name": "hisui",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/30/"
+   }
+  },
+  {
+   "entry_number": 179,
+   "pokedex": {
+    "name": "paldea",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/31/"
+   }
+  },
+  {
+   "entry_number": 100,
+   "pokedex": {
+    "name": "lumiose-city",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/34/"
+   }
+  }
+ ],
+ "shape": {
+  "name": "quadruped",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-shape/8/"
+ },
+ "varieties": [
+  {
+   "is_default": true,
+   "pokemon": {
+    "name": "eevee",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/133/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "eevee-starter",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10159/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "eevee-gmax",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10205/"
+   }
+  }
+ ]
+}
