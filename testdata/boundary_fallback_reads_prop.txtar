@@ -222,9 +222,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type ErrorEvent struct {
 	Message string
@@ -424,6 +422,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1652cd54d2cc7c27d4bf21bfb5fd30c2
 -- run/go/gtk4 --
-pass sha256:44c142da16c8465f7679933e851bcdac
+pass sha256:9d320d9b643d0a8d4b527ccca6ce06d2
 -- run/none/html --
 pass sha256:d714f611d400dab9b62029144a21b7d9

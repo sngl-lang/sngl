@@ -20,6 +20,8 @@ Every target is a `lib/` directory registered from the layout; its Go generator 
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
 
+**A generated file is written through its language's `FileEmitter`, and a scaffold file straight to its writer; neither goes through `text/template`.** The emitter owns the package clause, the cgo preamble and the import block, so a platform writes only a body and requires each import (`RequireImport`); gtk4's `model.go`/`callbacks.go` and Android's `MainScreen.kt`, `MainActivity.kt` and `Theme.kt` are written that way. Gradle files and the manifest, which no translator speaks, are `codegen.WriterFile`s. `text/template` looks names up with `reflect.Value.MethodByName`, and a binary that can reach that call keeps every exported method of every type it holds, since the linker can no longer tell which go unused. With Android's scaffold written as templates that was half the playground's wasm (100 MB, over GitHub's file limit for the pages deploy, to 52 MB without), most of it typescript-go's AST. `internal/playground`'s `TestWasmLinksNoTemplatePackage` holds the wasm to it.
+
 ## Codegen Models
 
 Platforms choose between two intermediate representations based on their rendering approach:

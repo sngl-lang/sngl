@@ -86,7 +86,7 @@ func testNoComponent(t test.Test) {
     t.assert(double(2) == 4)
 }
 -- testrun/android/kotlin/built.sngl/_/1 --
-sha256:3a088b597542e8196ceb1bc73851f84b
+sha256:7db06e751e9200d8be8d732ef717eba5
 {
   "results": [
     {
@@ -96,7 +96,7 @@ sha256:3a088b597542e8196ceb1bc73851f84b
   ]
 }
 -- testrun/android/kotlin/focus.sngl/_/1 --
-sha256:3a088b597542e8196ceb1bc73851f84b
+sha256:7db06e751e9200d8be8d732ef717eba5
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:3a088b597542e8196ceb1bc73851f84b
   ]
 }
 -- testrun/android/kotlin/focus.sngl/panel/1 --
-sha256:16f6934d08f11b75f2ed6e5d3db92e0d
+sha256:00e2461a77c344a057879e9079ced3fa
 {
   "results": [
     {
@@ -176,7 +176,7 @@ sha256:a34fe3075b675efa874ba1e7c3e10763
   ]
 }
 -- testrun/gtk4/go/built.sngl/_/1 --
-sha256:5ebf53f76c156c8332e9fb2cbbf50855
+sha256:aae7e8b5f93bd0593c734368234d77a0
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:5ebf53f76c156c8332e9fb2cbbf50855
   ]
 }
 -- testrun/gtk4/go/focus.sngl/_/1 --
-sha256:5ebf53f76c156c8332e9fb2cbbf50855
+sha256:aae7e8b5f93bd0593c734368234d77a0
 {
   "results": [
     {

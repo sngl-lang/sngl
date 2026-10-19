@@ -1258,7 +1258,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -1433,7 +1432,6 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglhttp"
@@ -4110,7 +4108,7 @@ component pokemonSpeciesRetrieve[F any](
 -- run/go/fyne --
 pass sha256:183cad137ae09b61fa18dd90bab22086
 -- run/go/gtk4 --
-pass sha256:95b2029f2392c9228557d4166c56c407
+pass sha256:83e513ae19b6adb8b335d243857f164e
 -- run/kotlin/android --
 pass sha256:1f7220f22565bfb98908f093031c8785
 -- run/none/html --

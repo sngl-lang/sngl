@@ -11,6 +11,7 @@ _site/
 /todo
 /_examples/todo/todo
 *.wasm
+*.wasm.gz
 /internal/playground/assets/wasm_exec.js
 
 # Gradle build artifacts from pkg/kotlin/testagent

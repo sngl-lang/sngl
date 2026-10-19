@@ -59,7 +59,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -204,10 +203,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
-import (
-	"unsafe"
-)
+import "unsafe"
 
 func boolToInt(b bool) int {
 	if b {
@@ -295,4 +291,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:8317c3e2973c92cb3d2570328086d829
+pass sha256:715ddf082c01898638904020f5a5b772

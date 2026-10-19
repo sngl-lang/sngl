@@ -334,7 +334,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -551,7 +550,6 @@ static void sngl_emit_pressed(void* gesture) {
 }
 */
 import "C"
-
 import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
@@ -1068,6 +1066,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:90fb4e6f842c2e9b8095dffe3d6e1227
 -- run/go/gtk4 --
-pass sha256:3a24061fe5e5927e3ff533b661377181
+pass sha256:4cc3dd991a988c81ac4234ad8d9684f1
 -- run/none/html --
 pass sha256:e9358f99455f373d0d95c86e9afea71f
