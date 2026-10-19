@@ -7,10 +7,13 @@
 # A query in a component built per copy of a loop -- a card per row -- keeps
 # its state in a cell per copy, and its effect is keyed on the pair of the
 # copy and its own key, so each row asks for its own and a row whose key
-# changes asks again.
+# changes asks again. A fetch that answers at once keeps the mount's writes in
+# one function, where the two writes of `pending` -- each a copy of the
+# write the wrapper of query's unbound props rewrote -- once declared one
+# temporary twice.
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 -- app.sngl --
 import async "sngl:async"
@@ -95,6 +98,28 @@ func testEachRowAsksForItsOwn(t Test, c rows) {
     t.assert(picked == 3)
 }
 
+func quick(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component quickRow(name string) node {
+    var length option[int] = null
+    async.query(on=name, fetch=quick, :value=length)
+    button #pick(text=name, @click { picked = length != null ? length : -1 })
+}
+
+component quickRows node {
+    var names = ["mew", "pikachu"]
+    for var n = names {
+        quickRow #r(name=n)
+    }
+}
+
+func testEachRowAnswersAtOnce(t Test, c quickRows) {
+    c.r[1].pick.click()
+    t.assert(picked == 7)
+}
+
 func testUnmountDrops(t Test, c dropped) {
     c.hide.click()
     t.wait(func() => false, 800)
@@ -105,9 +130,10 @@ window {
     detail
     dropped
     rows
+    quickRows
 }
 -- testrun/bubbletea/go/app.sngl/detail/1 --
-sha256:ffbc40d28d9197f456896e8258e43555
+sha256:8d17ec98fab63c64866b08c3608dfde0
 {
   "results": [
     {
@@ -121,7 +147,7 @@ sha256:ffbc40d28d9197f456896e8258e43555
   ]
 }
 -- testrun/bubbletea/go/app.sngl/dropped/1 --
-sha256:de3f84c69e3e6cc7f7b3deaa965a6125
+sha256:5c3caae9b24167d8338fa6ec8b9802d7
 {
   "results": [
     {
@@ -130,8 +156,18 @@ sha256:de3f84c69e3e6cc7f7b3deaa965a6125
     }
   ]
 }
+-- testrun/bubbletea/go/app.sngl/quickRows/1 --
+sha256:12cbfd4383eef5842cd5ce99654d48ba
+{
+  "results": [
+    {
+      "Desc": "EachRowAnswersAtOnce",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/app.sngl/rows/1 --
-sha256:b45a5fb30ecc4cf50064fa52d6e324ba
+sha256:accd0a701ecf1cd7fa6b2bddf0b19559
 {
   "results": [
     {
