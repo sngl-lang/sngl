@@ -98,7 +98,7 @@ component panel node {
     var shape Shape = Shape.empty
     var result = half(4)
 
-    text #area(value="{area(shape)}")
+    text #shownArea(value="{area(shape)}")
     text #outcome(value=label(result))
     text #radius(value=match var r = shape {
         circle => "{r}"
@@ -160,12 +160,12 @@ func testEquality(t Test, c panel) {
 }
 
 func testComponent(t Test, c panel) {
-    t.assert(c.area.value == "0")
+    t.assert(c.shownArea.value == "0")
     t.assert(c.outcome.value == "ok 2")
     t.assert(c.radius.value == "none")
     t.assert(c.round == null)
     c.grow.click()
-    t.assert(c.area.value == "3")
+    t.assert(c.shownArea.value == "3")
     t.assert(c.radius.value == "1")
     t.assert(c.round != null)
     c.grow.click()
@@ -174,7 +174,7 @@ func testComponent(t Test, c panel) {
     t.assert(c.outcome.value == "failed: odd")
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:277186d30cea6688e5723725379836ac
+sha256:c1207143bb6de04842bf7efe708cc504
 {
   "results": [
     {
@@ -234,7 +234,7 @@ sha256:ea70b7f235d1bc9294a6453eae2bd059
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:6204cc195f32ed1878f0b3a5c521f4b4
+sha256:3ce3e951daa883061ed99c6829ec10a7
 {
   "results": [
     {
@@ -264,7 +264,7 @@ sha256:6204cc195f32ed1878f0b3a5c521f4b4
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:0714be698ab13bd075ec2627f1bd769e
+sha256:5d1dfebfb04f1d8fbfea2d171c9be965
 {
   "results": [
     {
@@ -294,7 +294,7 @@ sha256:0714be698ab13bd075ec2627f1bd769e
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:8006c9f73727a90a883b1f845e498d1e
+sha256:f2ab6ff9eed0594589938ad2bd806128
 {
   "results": [
     {

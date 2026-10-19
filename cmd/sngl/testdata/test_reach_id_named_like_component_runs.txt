@@ -1,0 +1,95 @@
+# A test reaches through an #id named like the component it names
+# (`card #card`), on every target: its state (`c.card.hits`) and its node
+# (`c.card.btn.click()`).
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:ui"
+import "sngl:test"
+
+component card ui.node {
+    var hits = 0
+    ui.button #btn(text="hit", @click {
+        hits = hits + 1
+    })
+}
+
+component main ui.node {
+    card #card()
+}
+
+func testReadsThroughAnIDNamedLikeItsComponent(t test.Test, c main) {
+    c.card.btn.click()
+    t.assert(c.card.hits == 1)
+}
+
+ui.window {
+    main()
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:87e40f98386d3a6eaa0c6e909f2f7d07
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:afd987d7841c2a53190ef11b5e6d19d1
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:34541f02c7b638bc3bf7fe1ccbdee705
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:c6ba2106eadaffd252e6a3f2b6c2787c
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:7f93538eff030d6ca924a03e5df9efb8
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}

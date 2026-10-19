@@ -181,6 +181,9 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 					return c.applyEnumTypeArgs(t.Pos, typ, ed, t.TypeArgs)
 				}
 			}
+			if len(t.TypeArgs) > 0 && c.refuseTypeArgs(t, sym) {
+				return TypInvalid
+			}
 			return c.dataRecord(typ)
 		}
 	}
@@ -1039,4 +1042,55 @@ func (c *checker) dataRecord(typ *ir.Type) *ir.Type {
 		return &ir.Type{Kind: ir.TypeStruct, Decl: f.Record}
 	}
 	return typ
+}
+
+// refuseTypeArgs reports type arguments written on a declaration that takes
+// none, naming it and the builtin it shadows, if any, and reports whether it
+// did. Dropped, they left `list[string]` under a `component list` the
+// component, and the error a "cannot infer element type of empty list
+// literal" at an unrelated `[]`.
+func (c *checker) refuseTypeArgs(t *ast.NamedType, sym ir.Symbol) bool {
+	what := sym.SymName()
+	switch sym.(type) {
+	case *ir.Component:
+		what = "component " + what
+	case *ir.StructDef:
+		what = "struct " + what
+	case *ir.EnumDef:
+		what = "enum " + what
+	case *ir.UnitDef:
+		what = "unit " + what
+	default:
+		return false
+	}
+	if pos := declPos(sym); pos.Line > 0 {
+		what += fmt.Sprintf(" (at %s)", pos)
+	}
+	if b := c.shadowedBuiltin(t.Name, sym); b != nil {
+		what += fmt.Sprintf(", which shadows the builtin %s and", b.Name)
+	} else {
+		what += ", which"
+	}
+	c.error(t.Pos, "%s here is %s takes no type arguments", t.Name, what)
+	return true
+}
+
+// shadowedBuiltin is the generic builtin type called name that sym, found
+// first, hides from an enclosing scope, or nil.
+func (c *checker) shadowedBuiltin(name string, sym ir.Symbol) *ir.StructDef {
+	found := false
+	for s := c.scope; s != nil; s = s.Parent {
+		other, ok := s.Symbols[name]
+		if !ok {
+			continue
+		}
+		if !found {
+			found = other == sym
+			continue
+		}
+		if sd, ok := other.(*ir.StructDef); ok && sd.Builtin.IsGeneric() {
+			return sd
+		}
+	}
+	return nil
 }
