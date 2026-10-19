@@ -1,0 +1,96 @@
+# A test reaches a node whose `#id` is named like a component the package
+# declares. The id does not shadow the component -- `pair` still renders `box`
+# by that name -- but the node still has a handle, which is what the splice of
+# `cell` is recorded under and what `c.box.got` is pointed through. Without one
+# the read reached each target as a member nothing declares.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component box ui.node {
+    ui.text(value="box")
+}
+
+component cell(name string) ui.node {
+    var got = name
+}
+
+component pair ui.node {
+    cell #box(name="a")
+    cell #other(name="b")
+    box()
+}
+
+func testAnIdNamedLikeAComponent(t test.Test, c pair) {
+    t.assert(c.box.got == "a")
+    t.assert(c.other.got == "b")
+}
+-- testrun/android/kotlin/app.sngl/pair/1 --
+sha256:6e3213cef0d49ed6e9e7d508f489b39c
+{
+  "results": [
+    {
+      "Desc": "AnIdNamedLikeAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/pair/1 --
+sha256:911b8023c0c82a6ce5b0ddf3a6cf2446
+{
+  "results": [
+    {
+      "Desc": "AnIdNamedLikeAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pair/1 --
+sha256:d4e8f461dd15138c8bfdfaf768b28ec6
+{
+  "results": [
+    {
+      "Desc": "AnIdNamedLikeAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pair/1 --
+sha256:dac1264b8f86ced9a377870b1332411e
+{
+  "results": [
+    {
+      "Desc": "AnIdNamedLikeAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pair/1 --
+sha256:f70410074d7ebf7e633fe1e35d9bb2ce
+{
+  "results": [
+    {
+      "Desc": "AnIdNamedLikeAComponent",
+      "Passed": true
+    }
+  ]
+}

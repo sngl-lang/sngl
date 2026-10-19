@@ -649,6 +649,12 @@ type checker struct {
 	// handleCount is the outermost scope a counted node handle was reached
 	// through, for the diagnostic reportCountedHandleRead writes.
 	handleCount map[*ir.Var]nodeCount
+	// unboundHandles is the handle of each of the current component's own
+	// `#id`s whose name an enclosing declaration keeps: `cell #box` beside a
+	// package `component box`. The bare name stays the outer one, but the node
+	// still needs a handle, which is what a splice, and a test's `c.box`,
+	// reach it by.
+	unboundHandles map[string]*ir.Var
 	// nestedFuncs is the ir.Func built for each `func` written as a statement,
 	// keyed by its declaration. An enclosing body is checked more than once
 	// (preCheckComponentMethods, then checkComponentBody).
@@ -4550,9 +4556,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.scope = ir.NewScopeSize(c.scope, len(comp.Props)+len(comp.Vars)+len(comp.Funcs))
 	defer c.popScope()
 
-	prevComp, prevScope := c.currentComponent, c.componentScope
-	c.currentComponent, c.componentScope = comp, c.scope
-	defer func() { c.currentComponent, c.componentScope = prevComp, prevScope }()
+	prevComp, prevScope, prevUnbound := c.currentComponent, c.componentScope, c.unboundHandles
+	c.currentComponent, c.componentScope, c.unboundHandles = comp, c.scope, nil
+	defer func() { c.currentComponent, c.componentScope, c.unboundHandles = prevComp, prevScope, prevUnbound }()
 
 	// A body-local component sees the body it was written in: its sibling
 	// declarations, and its props, vars and funcs (#202).
@@ -4977,6 +4983,12 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 		// count.
 		v, isVar := sym.(*ir.Var)
 		if !isVar || !v.NodeHandle {
+			if len(counts) == 0 && c.currentComponent != nil {
+				if c.unboundHandles == nil {
+					c.unboundHandles = map[string]*ir.Var{}
+				}
+				c.unboundHandles[id] = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true, NodeHandle: true}
+			}
 			return
 		}
 	}
@@ -5192,15 +5204,11 @@ func (c *checker) nodeHandleSym(id string) *ir.Var {
 	if id == "" {
 		return nil
 	}
-	sym, ok := c.scope.Lookup(id)
-	if !ok {
-		return nil
+	sym, _ := c.scope.Lookup(id)
+	if v, ok := sym.(*ir.Var); ok && v.NodeHandle {
+		return v
 	}
-	v, ok := sym.(*ir.Var)
-	if !ok || !v.NodeHandle {
-		return nil
-	}
-	return v
+	return c.unboundHandles[id]
 }
 
 // familiesFirst orders a package's component declarations so each is

@@ -362,6 +362,14 @@ of them is a fact about the *declaration*: `ir.Ident.IsElementRef` is set on the
 `#id` resolves to the var the checker bound and carries nothing. Neither kind
 lands in `Component.Vars`, so `ExprCtx.Resolve` answers for neither.
 
+**A node has its handle even where its id binds no name.** A component's
+`#box` beside a package `component box` leaves `box` the component, as the spec
+says, but the node still gets a handle, kept out of scope
+(`checker.unboundHandles`): the inliner records a splice by its handle and a
+test's `c.box` is pointed through that record, so without one the read reached
+every compiled target as a member nothing declares
+(`cmd/sngl/testdata/test_reach_id_named_like_component_runs.txt`).
+
 Tested, never name-matched, for the reason `ir.Param.Receiver` gives: a node id
 is the author's word and `__`-prefixed names are not reserved. It is asked in
 the Go language context rather than in a platform emitter because the question
