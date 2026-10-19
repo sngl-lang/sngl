@@ -5,10 +5,10 @@ go 1.27
 require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.2
-	charm.land/lipgloss/v2 v2.0.2
+	charm.land/glamour/v2 v2.0.1
+	charm.land/lipgloss/v2 v2.0.4
 	fyne.io/fyne/v2 v2.7.4
 	github.com/alecthomas/chroma/v2 v2.14.0
-	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/x/cellbuf v0.0.15
 	github.com/davecgh/go-spew v1.1.1
 	github.com/evanw/esbuild v0.28.0
@@ -21,7 +21,7 @@ require (
 	github.com/sngl-lang/typescript-go v0.0.0-20260430031617-3cc44b40b555
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
-	github.com/yuin/goldmark v1.7.8
+	github.com/yuin/goldmark v1.8.5
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	golang.org/x/image v0.38.0
 	golang.org/x/mod v0.41.0
@@ -39,6 +39,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/Kunde21/markdownfmt/v2 v2.1.1-0.20210810103848-727f02f4c51c // indirect
 	github.com/PuerkitoBio/goquery v1.5.1 // indirect
+	github.com/alecthomas/chroma v0.8.2 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15 // indirect
 	github.com/andybalholm/cascadia v1.2.0 // indirect
@@ -51,15 +52,17 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bwplotka/mdox v0.9.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
-	github.com/charmbracelet/colorprofile v0.4.2 // indirect
-	github.com/charmbracelet/lipgloss v1.1.0 // indirect
+	github.com/charmbracelet/colorprofile v0.4.3 // indirect
+	github.com/charmbracelet/glamour v0.3.0 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260205113103-524a6607adb8 // indirect
-	github.com/charmbracelet/x/ansi v0.11.6 // indirect
+	github.com/charmbracelet/x/ansi v0.11.7 // indirect
+	github.com/charmbracelet/x/exp/slice v0.0.0-20250327172914-2fdc97757edf // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/efficientgo/tools/core v0.0.0-20210609125236-d73259166f20 // indirect
@@ -95,9 +98,9 @@ require (
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-runewidth v0.0.21 // indirect
+	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/mattn/go-shellwords v1.0.10 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
@@ -109,6 +112,7 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.5.1 // indirect
 	github.com/niklasfasching/go-org v1.3.0 // indirect
 	github.com/oklog/run v1.1.0 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.11.0 // indirect
@@ -139,7 +143,6 @@ require (
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/term v0.46.0 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.26.0-rc.1 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
@@ -167,3 +170,5 @@ tool (
 )
 
 replace modernc.org/egg => gitlab.com/duckbrain/egg v1.4.2-0.20261013225253-e774f1de7b2e
+
+replace charm.land/glamour/v2 => github.com/sngl-lang/glamour/v2 v2.0.0-20261019211257-b6317f6a9e05
