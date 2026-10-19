@@ -429,6 +429,15 @@ reads nothing and renders one was refused for a `#bar` that a *different*
 component read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both
 halves apart.
 
+**A node has a handle even where its id does not take the name.** An id does
+not shadow an existing name, so `card #card` beside `component card` leaves
+`card` the component in the body -- and `componentNamed` resolving the node's
+own target by scope depends on that. The handle is still made, and held aside
+per scope (`checker.unboundHandles`) for `nodeHandleSym`: bound to nothing, a
+node carried no `Handle`, the inliner recorded no splice of it, and a test's
+`c.card.hits` went unrepointed on every compiled target
+(`cmd/sngl/testdata/test_reach_id_named_like_component_runs.txt`).
+
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and
 because its users are outside the compiler: a language plugin generating marked

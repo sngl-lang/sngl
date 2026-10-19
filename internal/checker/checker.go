@@ -649,6 +649,9 @@ type checker struct {
 	// handleCount is the outermost scope a counted node handle was reached
 	// through, for the diagnostic reportCountedHandleRead writes.
 	handleCount map[*ir.Var]nodeCount
+	// unboundHandles is, per scope, the handle of each node written there
+	// whose id an enclosing scope's name keeps out of it (declareNodeID).
+	unboundHandles map[*ir.Scope]map[string]*ir.Var
 	// nestedFuncs is the ir.Func built for each `func` written as a statement,
 	// keyed by its declaration. An enclosing body is checked more than once
 	// (preCheckComponentMethods, then checkComponentBody).
@@ -4968,28 +4971,26 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 	if id == "" {
 		return
 	}
-	if _, ok := c.scope.LookupLocal(id); ok {
-		return
-	}
-	if sym, ok := c.scope.Lookup(id); ok && mode == yieldToOuter {
-		// The one thing a counted hoist still shadows is a node handle an
-		// enclosing scope bound, which is this same id hoisted at a shallower
-		// count.
-		v, isVar := sym.(*ir.Var)
-		if !isVar || !v.NodeHandle {
-			return
-		}
-	}
-	// A component's methods are registered under the component as receiver, not
-	// in scope by bare name: inferIdent reaches them only when the scope lookup
-	// misses. So `button #bump` beside `func bump()` would shadow the method.
-	if c.currentComponent != nil {
-		if _, ok := c.lookupBodyMethod(id); ok {
-			return
-		}
-	}
 	typ := c.countedHandleType(c.nodeHandleType(target), counts)
 	v := &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true}
+	if !c.bindsNodeID(id, mode) {
+		// The name stays what it was, but a node written here still has a
+		// handle, which is what the lowering knows it by: `card #card`
+		// beside `component card` reads `card` as the component, and a
+		// test's `c.card.hits` still reaches through the node.
+		if len(counts) == 0 {
+			if c.unboundHandles == nil {
+				c.unboundHandles = map[*ir.Scope]map[string]*ir.Var{}
+			}
+			if c.unboundHandles[c.scope] == nil {
+				c.unboundHandles[c.scope] = map[string]*ir.Var{}
+			}
+			if _, ok := c.unboundHandles[c.scope][id]; !ok {
+				c.unboundHandles[c.scope][id] = v
+			}
+		}
+		return
+	}
 	if len(counts) > 0 {
 		// The outermost count is what a reader out here crossed first, and so
 		// what the diagnostic names. Kept beside the var rather than on it:
@@ -5001,6 +5002,31 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 		c.handleCount[v] = counts[0]
 	}
 	c.declare(ast.Pos{}, v)
+}
+
+// bindsNodeID reports whether the id takes its name in the current scope.
+func (c *checker) bindsNodeID(id string, mode idMode) bool {
+	if _, ok := c.scope.LookupLocal(id); ok {
+		return false
+	}
+	if sym, ok := c.scope.Lookup(id); ok && mode == yieldToOuter {
+		// The one thing a counted hoist still shadows is a node handle an
+		// enclosing scope bound, which is this same id hoisted at a shallower
+		// count.
+		v, isVar := sym.(*ir.Var)
+		if !isVar || !v.NodeHandle {
+			return false
+		}
+	}
+	// A component's methods are registered under the component as receiver, not
+	// in scope by bare name: inferIdent reaches them only when the scope lookup
+	// misses. So `button #bump` beside `func bump()` would shadow the method.
+	if c.currentComponent != nil {
+		if _, ok := c.lookupBodyMethod(id); ok {
+			return false
+		}
+	}
+	return true
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
@@ -5192,15 +5218,17 @@ func (c *checker) nodeHandleSym(id string) *ir.Var {
 	if id == "" {
 		return nil
 	}
-	sym, ok := c.scope.Lookup(id)
-	if !ok {
-		return nil
+	if sym, ok := c.scope.Lookup(id); ok {
+		if v, ok := sym.(*ir.Var); ok && v.NodeHandle {
+			return v
+		}
 	}
-	v, ok := sym.(*ir.Var)
-	if !ok || !v.NodeHandle {
-		return nil
+	for s := c.scope; s != nil; s = s.Parent {
+		if v := c.unboundHandles[s][id]; v != nil {
+			return v
+		}
 	}
-	return v
+	return nil
 }
 
 // familiesFirst orders a package's component declarations so each is
