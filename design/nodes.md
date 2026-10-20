@@ -440,9 +440,11 @@ spliced that branch sits in the container's loop over its records -- a tab's
 panel in the strip's `for var k, t = items`. One iteration renders it, so a
 `for` in the panel makes the only copies a test indexes, as the checker types
 `c.cell` and the interpreter mounts it. `ir.RecordBranchOf` names the loop a
-`t.__id == N` branch picks one record of, and `lower.blockLoops` leaves it out
+`t.__id == N` branch picks one record of, and `lower.BlockLoops` leaves it out
 of a copy's key (`passCopyKeys`) and of the loops a copy's prop read binds
-(`nodeUnderLoops`); the interpreter found no loop at all, since `refLoops` did
+(`nodeUnderLoops`), and of the key bubbletea's presence check
+matches a copy by, which put the tab's index in front of it
+(`cmd/sngl/testdata/tabs_panel_presence_runs.txt`); the interpreter found no loop at all, since `refLoops` did
 not look in slot populations, and walks `ir.ViewBlocks` now. A panel with
 state of its own is an instance whose render slot builds the copies: fyne and
 gtk4 declare the Model's map of them once that slot's method is walked. And

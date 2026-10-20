@@ -1,0 +1,115 @@
+# A function reading only its parameter, named like a var of the page, called
+# from a component android composes on its own (the provider hands chip a
+# value of the context). Android matched state by name, took `name` for the
+# page's var, and made shout a member of the state class, which chip called
+# through a `state` it does not have.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+// Reads only its parameter, which is named like the page's var.
+func shout(name string) string {
+    var out list[string] = []
+    for var part = string.split(name, "-") {
+        out.push(string.upper(part))
+    }
+    return out.join(" ")
+}
+
+// What a chip says after its label.
+context #suffix("!")
+
+// Composed on its own on android, since the provider around it hands it a
+// value of the context.
+component chip(label string, @tap()) ui.node {
+    ui.button(text=shout(label) + suffix, @click { tap() })
+}
+
+component page ui.node {
+    var name = "a-page"
+    var picked = ""
+
+    ui.vbox {
+        ui.text #title(value=shout(name))
+        suffix("?") {
+            for var item = ["b", "c"] {
+                chip #chips(label=item, @tap { picked = item })
+            }
+        }
+    }
+}
+
+func testChipCallsAPureFunc(t test.Test, c page) {
+    t.assert(c.title.value == "A PAGE")
+    c.chips[1].tap()
+    t.assert(c.picked == "c")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:eb0d186d666896ea5d844b9333ddb523
+{
+  "results": [
+    {
+      "Desc": "ChipCallsAPureFunc",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:b7b69ce1c98b1b7460d3b3428696ad0c
+{
+  "results": [
+    {
+      "Desc": "ChipCallsAPureFunc",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:b851a99145266b608ddc30b4e2aedc64
+{
+  "results": [
+    {
+      "Desc": "ChipCallsAPureFunc",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:dc1bf36375f30c50381f6623d1f4d281
+{
+  "results": [
+    {
+      "Desc": "ChipCallsAPureFunc",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:aef462e81180ccfcb35b61229cb2dde9
+{
+  "results": [
+    {
+      "Desc": "ChipCallsAPureFunc",
+      "Passed": true
+    }
+  ]
+}

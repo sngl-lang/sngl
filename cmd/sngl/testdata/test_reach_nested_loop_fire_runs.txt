@@ -1,0 +1,109 @@
+# A test fires the event of a component a loop inside a loop renders, where
+# the inner loop walks what the outer one bound (`for var cell = row`). The
+# handler reads the inner loop's variable, which the test's indices name as
+# `cells[1][0]`; it read `row[0]`, which nothing in the test binds, and the Go
+# targets failed to build on `undefined: row`.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component chip(label string, @tap()) ui.node {
+    ui.button(text=label, @click { tap() })
+}
+
+// The inner loop walks what the outer one bound.
+component grid(@open(name string)) ui.node {
+    var cells = [["a", "b"], ["c", "d"]]
+
+    ui.vbox {
+        for var row = cells {
+            ui.hbox {
+                for var cell = row {
+                    chip #step(label=cell, @tap { open(cell) })
+                }
+            }
+        }
+    }
+}
+
+component host ui.node {
+    var opened = ""
+
+    grid #g(@open(n) { opened = n })
+}
+
+func testTapOpensItsCell(t test.Test, c host) {
+    c.g.step[1][0].tap()
+    t.assert(c.opened == "c")
+    c.g.step[0][1].tap()
+    t.assert(c.opened == "b")
+}
+-- testrun/android/kotlin/app.sngl/host/1 --
+sha256:997134206d4d4b99ccc1a87994a6761c
+{
+  "results": [
+    {
+      "Desc": "TapOpensItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/host/1 --
+sha256:31802be43190801050bdd7b131db1e3f
+{
+  "results": [
+    {
+      "Desc": "TapOpensItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/host/1 --
+sha256:52b9071b49e51f900083af636c668830
+{
+  "results": [
+    {
+      "Desc": "TapOpensItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/host/1 --
+sha256:f4fa0e64dbcddb7279bed37b61859ec6
+{
+  "results": [
+    {
+      "Desc": "TapOpensItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/host/1 --
+sha256:cd1b3af0353296944bdd0b03df2f8cfe
+{
+  "results": [
+    {
+      "Desc": "TapOpensItsCell",
+      "Passed": true
+    }
+  ]
+}

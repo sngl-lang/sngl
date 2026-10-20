@@ -177,7 +177,7 @@ func pressedNode(stmts []ir.Stmt, event string) (*ir.NodeInst, string) {
 				}
 			}
 			for _, b := range ir.ViewBlocks(s) {
-				walk(*b, blockLoops(s, b, loops))
+				walk(*b, BlockLoops(s, b, loops))
 			}
 		}
 	}

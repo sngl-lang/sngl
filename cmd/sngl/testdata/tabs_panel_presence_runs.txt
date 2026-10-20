@@ -1,0 +1,105 @@
+# A null test of one copy of a node a tab's panel loops over. The panel is one
+# record of the strip's loop over its tabs, so `#mark[2]` is the panel's own
+# loop's third copy, as every target but bubbletea keyed it: bubbletea's
+# presence check put the tab's index in front of the copy's ("1/2"), and
+# answered no copy present.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A tab's panel is one record of the strip's loop over its tabs, which makes
+// no copies of what the panel holds: `#mark[2]` is the panel's own loop's.
+component panes ui.node {
+    var tab = 0
+    var items = ["a", "", "c"]
+
+    ui.tabs #strip(:selected=tab) {
+        ui.tab(label="One") {
+            ui.text(value="one")
+        }
+        ui.tab(label="Two") {
+            for var item = items {
+                if item != "" {
+                    ui.text #mark(value=item)
+                }
+            }
+        }
+    }
+}
+
+func testPresentInAPanel(t test.Test, c panes) {
+    t.assert(c.mark[0] == null)
+    c.strip.change(1)
+    t.assert(c.mark[0] != null)
+    t.assert(c.mark[1] == null)
+    t.assert(c.mark[2] != null && c.mark[2].value == "c")
+}
+-- testrun/android/kotlin/app.sngl/panes/1 --
+sha256:7d3b43876c4b7166dc662db5fda3821e
+{
+  "results": [
+    {
+      "Desc": "PresentInAPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panes/1 --
+sha256:62ead1950d365d12d9349b1a56e3dad4
+{
+  "results": [
+    {
+      "Desc": "PresentInAPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panes/1 --
+sha256:678425036b56789cd8c8d588ae74194f
+{
+  "results": [
+    {
+      "Desc": "PresentInAPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panes/1 --
+sha256:e32f1cf99fe54c4a9e7d14e207546c8a
+{
+  "results": [
+    {
+      "Desc": "PresentInAPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panes/1 --
+sha256:2b206ac500cb567afae40320357dcd01
+{
+  "results": [
+    {
+      "Desc": "PresentInAPanel",
+      "Passed": true
+    }
+  ]
+}

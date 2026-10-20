@@ -1,0 +1,98 @@
+# A test calls a method of an instance and calls a method on what it answers,
+# `c.g.loud().length()`. Through the provider, android handed the instance to
+# the method as its first argument, beside the context it does take, and the
+# test file did not compile.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+context #suffix("!")
+
+component grid ui.node {
+    var cells = ["a", "b"]
+
+    func loud() => cells.map(func(s string) => s + suffix)
+
+    ui.text(value=cells[0])
+}
+
+// The provider makes grid's method one a test calls through the instance.
+component host ui.node {
+    suffix("?") {
+        grid #g()
+    }
+}
+
+func testAMethodsAnswerIsAReceiver(t test.Test, c host) {
+    t.assert(c.g.loud().length() == 2)
+    t.assert(c.g.loud().map(func(s string) => string.length(s)).join(",") == "2,2")
+}
+-- testrun/android/kotlin/app.sngl/host/1 --
+sha256:9f23650af902caf8363c4bde3d42345b
+{
+  "results": [
+    {
+      "Desc": "AMethodsAnswerIsAReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/host/1 --
+sha256:6c81ae88e5e40875bdea15a1412a6068
+{
+  "results": [
+    {
+      "Desc": "AMethodsAnswerIsAReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/host/1 --
+sha256:a9419627392e41f6f90ac94b4fa3432c
+{
+  "results": [
+    {
+      "Desc": "AMethodsAnswerIsAReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/host/1 --
+sha256:44d7ef4e3a8e6ea5f60cfdc53f84108b
+{
+  "results": [
+    {
+      "Desc": "AMethodsAnswerIsAReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/host/1 --
+sha256:e856ff42f1feee6c7d2f0a604599dfd8
+{
+  "results": [
+    {
+      "Desc": "AMethodsAnswerIsAReceiver",
+      "Passed": true
+    }
+  ]
+}

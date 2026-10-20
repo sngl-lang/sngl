@@ -454,7 +454,15 @@ page's state, widgets and funcs -- is spelled through it
 (`ExprCtx.OuterReceiver`, `golang.PageNodes`); spelled through the record, it
 named a field no record has. On android a composable other than MainScreen
 cannot see MainScreen's `remember`ed locals, so page state such a composable
-reads is declared at file level (`sharedPageState`). What is still missing on
+reads is declared at file level (`sharedPageState`). In a test build the
+page's state is a class, and a function reading it is a member of the class
+(`stateScopedFuncs`); what the function binds itself is no read of the
+page's, or `display(name string)` beside a page's `name` became a member a
+composable built on its own called through a `state` it does not have
+(`cmd/sngl/testdata/pure_func_param_named_like_state_runs.txt`). The class
+is written through a context requiring its imports of the file
+(`KtIRContext.Unrewritten`,
+`cmd/sngl/testdata/i18n_test_state_class_runs.txt`). What is still missing on
 the three mutation targets is the other direction: a write to page state
 updates the nodes of the scope that wrote it and of the page, and not those of
 *other* live instances reading it, so their views go stale until they are

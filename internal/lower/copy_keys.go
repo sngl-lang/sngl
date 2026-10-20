@@ -145,7 +145,7 @@ func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param, ro
 		}
 		if _, ok := s.(*ir.For); ok {
 			for _, b := range ir.ViewBlocks(s) {
-				*b = st.stamp(*b, blockLoops(s, b, loops), prefix, here)
+				*b = st.stamp(*b, BlockLoops(s, b, loops), prefix, here)
 			}
 			continue
 		}
@@ -172,7 +172,7 @@ func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param, ro
 			inner = nil
 		}
 		for _, b := range ir.ViewBlocks(s) {
-			*b = st.stamp(*b, blockLoops(s, b, loops), prefix, inner)
+			*b = st.stamp(*b, BlockLoops(s, b, loops), prefix, inner)
 		}
 	}
 	return stmts
@@ -210,7 +210,7 @@ func placedUnder(stmts []ir.Stmt, loops []*ir.For, visit func(*ir.NodeInst, []*i
 			visit(n, loops)
 		}
 		for _, b := range ir.ViewBlocks(s) {
-			placedUnder(*b, blockLoops(s, b, loops), visit)
+			placedUnder(*b, BlockLoops(s, b, loops), visit)
 		}
 	}
 }

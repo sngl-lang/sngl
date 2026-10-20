@@ -852,6 +852,7 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
 	if ir.IsI18nPluralKey(n) {
 		if goName := i18nPluralKeyGoName(n.Name); goName != "" {
+			gc.RequireImport(SnglI18nImportPath)
 			return "i18n." + goName
 		}
 	}
@@ -1309,6 +1310,7 @@ func (gc *GoIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	// An i18n.* entry point is the runtime package's.
 	if ir.IsI18nCall(n) {
 		if result := goBuiltinMethodFromArgs("i18n."+n.Func.Name, gc.evalCallArgs(n.Args)); result != "" {
+			gc.RequireImport(SnglI18nImportPath)
 			return result, true
 		}
 	}

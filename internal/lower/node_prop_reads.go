@@ -400,7 +400,7 @@ func nodeUnderLoops(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For) {
 				return n, loops
 			}
 			for _, b := range ir.ViewBlocks(s) {
-				if n, at := walk(*b, blockLoops(s, b, loops)); n != nil {
+				if n, at := walk(*b, BlockLoops(s, b, loops)); n != nil {
 					return n, at
 				}
 			}
@@ -414,7 +414,9 @@ func nodeUnderLoops(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For) {
 // names, one index per loop: the element of a list the loop walks or the
 // number a sngl:seq sequence counts there, and the index itself for the
 // loop's ordinal. A loop over anything else binds nothing, and a read of its
-// variable stays unnamed.
+// variable stays unnamed. A loop inside another may walk what the outer one
+// bound -- `for var cell = row` -- so each iterable is read with the outer
+// loops' bindings in it, and no binding names another loop's variable.
 func loopBindings(loops []*ir.For, idxs []ir.Expr) map[ir.Symbol]ir.Expr {
 	env := map[ir.Symbol]ir.Expr{}
 	for i, f := range loops {
@@ -426,6 +428,16 @@ func loopBindings(loops []*ir.For, idxs []ir.Expr) map[ir.Symbol]ir.Expr {
 			env[ord] = idxs[i]
 		}
 		iter := unnarrowed(f.Iter)
+		if i > 0 {
+			iter = newExprWalker(func(x ir.Expr) ir.Expr {
+				if id, ok := x.(*ir.Ident); ok && id.Sym != nil {
+					if bound, ok := env[id.Sym]; ok {
+						return ir.CloneExprSharingDecls(bound)
+					}
+				}
+				return x
+			}).expr(ir.CloneExprSharingDecls(iter))
+		}
 		if elem == nil {
 			continue
 		}
@@ -743,6 +755,23 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 		if _, ok := x.(*ir.ContextRead); ok {
 			unnamed = true
 			return x
+		}
+		// A method of comp called with its receiver left implicit, as its
+		// own body calls one, is called on inst, as a test calls one.
+		if call, ok := x.(*ir.Call); ok && call.Func != nil && call.Func.RecvDecl() == ir.Symbol(comp) && len(call.Args) < len(call.Func.Params) {
+			args := []ir.CallArg{{Value: ir.CloneExprSharingDecls(inst)}}
+			for _, a := range call.Args {
+				v := rebaseKeeping(a.Value, comp, inst, env, keep)
+				if v == nil {
+					unnamed = true
+					return x
+				}
+				a.Value = v
+				args = append(args, a)
+			}
+			out := *call
+			out.Args = args
+			return &out
 		}
 		id, ok := x.(*ir.Ident)
 		if !ok || id.Sym == nil {

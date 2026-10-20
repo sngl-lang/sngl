@@ -131,6 +131,15 @@ These rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
   an unannotated component var has no type until its body is read.
+- **A call of an instance's method carries the instance in front of its
+  arguments** on Kotlin, where the composable's own call leaves it implicit,
+  so the emitter splits it off (`carriedReceiver`) wherever the call is
+  spelled -- by the scope's name or as a component's method -- or it was
+  handed to the method as an argument once the call sat inside another,
+  `c.g.rows().length()` (`cmd/sngl/testdata/test_method_answer_receiver_runs.txt`).
+  The imports what a test body spells requires -- the i18n runtime a
+  context's default names -- are written into the Kotlin test file beside
+  the fixed list it starts from (`i18n_test_state_class_runs.txt`).
 - **A test holds its instance, not `m` or `state`**: package state and the
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
@@ -170,7 +179,14 @@ moves a node out of the body that wrote it:
   instance (`rewriteTestPropRead`): `"{hits}"` in `bar`'s body is
   `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
   indexed was handed -- the loop's list at that index, the number a
-  `sngl:seq` sequence counts there, or the index itself (`loopBindings`). A
+  `sngl:seq` sequence counts there, or the index itself (`loopBindings`). An
+  inner loop's list is read with the outer loops' bindings in it, so
+  `for var cell = row` under `for var row = cells` hands `cells[i][j]`, never
+  a `row` nothing in the test binds; a fire's handler read that and the Go
+  targets did not build (`cmd/sngl/testdata/test_reach_nested_loop_fire_runs.txt`).
+  A method of the component its own body calls with the instance left
+  implicit, `for var row = rows()`, is called through the instance, as a
+  test calls one (`test_reach_prop_through_method_runs.txt`). A
   prop reading what a test cannot name -- a slot's parameter, a local, a pull
   sequence's element -- is left as written for a node of the test's own
   instance and refused with a position for one reached through another

@@ -132,6 +132,14 @@ func NewIRContext(ctx *codegen.ExprCtx) *KtIRContext {
 	return &KtIRContext{Ctx: ctx, imports: newKtImportSet()}
 }
 
+// Unrewritten is a context for the file kc writes that rewrites no
+// identifier: the imports its code requires are the file's, which a context
+// of its own would require of nobody. Android's hoisted state class is
+// written through one, since its members reach each other through `this`.
+func (kc *KtIRContext) Unrewritten() *KtIRContext {
+	return &KtIRContext{Ctx: kc.Ctx, imports: kc.imports}
+}
+
 // RequireImport records that the emitted Kotlin file needs the given import.
 // Safe to call repeatedly; insertion order is preserved, duplicates ignored.
 // Called from emit sites when a native package reference is rendered.
@@ -986,7 +994,8 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 			if codegen.IsComputed(n.Func) {
 				return name
 			}
-			return name + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
+			_, args := carriedReceiver(n)
+			return name + "(" + strings.Join(kc.evalCallArgs(args), ", ") + ")"
 		}
 	}
 	if n.Func != nil && n.Func.IsMethod() {
@@ -1190,15 +1199,22 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// test-mode `state.` prefixing still applies.
 	if n.Func.OnComponent() {
 		name := method
+		rewritten := false
 		if kc.IdentRewrites != nil {
 			if rw, ok := kc.IdentRewrites[name]; ok {
-				name = rw
+				name, rewritten = rw, true
 			}
+		}
+		// A rewrite already names the method through the instance, and
+		// otherwise the receiver is spelled before the dot.
+		recv, args := carriedReceiver(n)
+		if recv != nil && !rewritten {
+			name = kc.EvalExpr(recv) + "." + name
 		}
 		if codegen.IsComputed(n.Func) {
 			return name
 		}
-		callArgs := kc.evalCallArgs(n.Args)
+		callArgs := kc.evalCallArgs(args)
 		return name + "(" + strings.Join(callArgs, ", ") + ")"
 	}
 
@@ -1223,6 +1239,19 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return args[0] + "." + method
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// carriedReceiver splits off the instance a call of a component's method
+// carries in front of its arguments, which a test's call through the
+// instance does -- `c.rows().size` -- and the composable's own call leaves
+// implicit. The func takes no such parameter: it is a member of what holds
+// the state. recv is nil for a call carrying none.
+func carriedReceiver(n *ir.Call) (recv ir.Expr, args []ir.CallArg) {
+	fn := n.Func
+	if fn != nil && fn.OnComponent() && len(n.Args) > 0 && len(n.Args) == len(fn.Params) && fn.Params[0].Receiver {
+		return n.Args[0].Value, n.Args[1:]
+	}
+	return nil, n.Args
 }
 
 // isScopeComputed reports whether a bare call names derived state of the

@@ -491,11 +491,11 @@ func CopyKey(loops []*ir.For) ir.Expr {
 	return ir.CopyKey(indices)
 }
 
-// blockLoops is the loops that make copies of what block b of s holds, given
+// BlockLoops is the loops that make copies of what block b of s holds, given
 // loops, those around s: a `for`'s body is one more, and the content of a
 // record in its container's loop over the records one fewer
 // (ir.RecordBranchOf).
-func blockLoops(s ir.Stmt, b *[]ir.Stmt, loops []*ir.For) []*ir.For {
+func BlockLoops(s ir.Stmt, b *[]ir.Stmt, loops []*ir.For) []*ir.For {
 	switch x := s.(type) {
 	case *ir.For:
 		if b == &x.Body {

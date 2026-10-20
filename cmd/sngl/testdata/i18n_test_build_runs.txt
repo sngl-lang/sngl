@@ -1,0 +1,169 @@
+# A test build of a package that translates, on every target a test runs on.
+#
+# Each test group is a build of its own, rooted at the component its tests
+# take, and only greeting's method reaches the package's $"...". So plain's
+# build emits none of it, and the Go targets imported the i18n runtime off a
+# flag the whole package raised, which Go refused as imported and not used.
+
+sngl test --platform=none app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+-- app.sngl --
+import i18n "sngl:i18n"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func greet(n int) => $"Hi {n}"
+
+func greetAll(ns list[int]) list[string] {
+    var out list[string] = []
+    for var n = ns {
+        out.push(greet(n))
+    }
+    return out
+}
+
+// A method of a component the window renders, which only `testGreets` reaches.
+component greeting ui.node {
+    var counts = [1, 2]
+
+    func lines() => greetAll(counts)
+
+    ui.vbox {
+        for var l = lines() {
+            ui.text(value=l)
+        }
+    }
+}
+
+component plain ui.node {
+    ui.text #t(value="x")
+}
+
+ui.window {
+    greeting()
+}
+
+func testGreets(t test.Test, c greeting) {
+    t.assert(c.lines()[0] == "Hi 1")
+    t.assert(c.lines().length() == 2)
+}
+
+func testPlain(t test.Test, c plain) {
+    t.assert(c.t.value == "x")
+}
+-- testrun/android/kotlin/app.sngl/greeting/1 --
+sha256:1879c6be062275fedccb1a887e486051
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/plain/1 --
+sha256:8b2120e8d6f67c8da436095f5d1f4954
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/greeting/1 --
+sha256:9a6607ce86fb078137e33d1b7175a355
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/plain/1 --
+sha256:31d643fce49e3a30696e6ec9821ba23f
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/greeting/1 --
+sha256:56abca1305586a69d21bf7ccca90ea28
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/plain/1 --
+sha256:cf0e13f4b8c38cc27c5e04073b45f2b1
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/greeting/1 --
+sha256:158b07ca2013fdf203fe69f1b2ecfff1
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/plain/1 --
+sha256:6bfd60c3eac58ae7a9d484f12e35a185
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/greeting/1 --
+sha256:c83c95945390e66480b182599ba2a3e2
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/plain/1 --
+sha256:351e581da5c930538ba4c806de21deee
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}

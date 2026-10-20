@@ -148,7 +148,7 @@ sha256:fa450737af0f9517402ef09dbe0c0f59
   ]
 }
 -- testrun/android/kotlin/app.sngl/pad/1 --
-sha256:0b4371d58908024c0cf217909dd6d9ab
+sha256:ba31564b6d584c0a5a7b49723440d712
 {
   "results": [
     {

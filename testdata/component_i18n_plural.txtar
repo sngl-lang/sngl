@@ -418,6 +418,7 @@ func (m *Model) addClick() {
 
 package test.sngl.app
 
+import us.duckfam.git.jonathan.sngl.i18n.I18n
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -429,7 +430,6 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
-import us.duckfam.git.jonathan.sngl.i18n.I18n
 import androidx.compose.ui.platform.testTag
 
 fun _snglFloatStr(v: Double): String =
@@ -1563,7 +1563,7 @@ pass sha256:02c29a19d8e168acdd196a917cf1ae21
 -- run/go/gtk4 --
 pass sha256:ac4f1f2e69efe6b96163c2f50b961f60
 -- run/kotlin/android --
-pass sha256:c525132dbbe79cd5c2b000f4f60917b2
+pass sha256:d4593b1f7b3726e4f7a4c99863c1a484
 -- run/none/html --
 pass sha256:f7c63032170d2efbe8656378b0833cfb
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --

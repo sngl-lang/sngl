@@ -740,8 +740,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// Init expressions inside the class body resolve sibling state vars
 		// via implicit `this`, NOT the `state` parameter (which doesn't exist
 		// here). Use a rewrite-free context so e.g. `__ctx_locale__inst1 =
-		// __ctx_locale` rather than `state.__ctx_locale`.
-		classKC := kotlin.NewIRContext(exprCtx)
+		// __ctx_locale` rather than `state.__ctx_locale`, requiring its
+		// imports of the file all the same.
+		classKC := kc.Unrewritten()
 		for _, bind := range info.binds {
 			initVal := bind.init
 			if bind.initEx != nil {
@@ -766,7 +767,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// with no IdentRewrites: inside the class, `__ctx_locale`
 		// resolves via implicit `this`, not `state.__ctx_locale`.
 		if len(stateFuncs) > 0 {
-			memberKC := kotlin.NewIRContext(exprCtx)
+			memberKC := kc.Unrewritten()
 			for _, fn := range stateFuncs {
 				emitIRKtMemberFunc(&body, fn, memberKC)
 			}
@@ -1435,9 +1436,28 @@ func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Fun
 	if fn.OnComponent() || reaches[fn] {
 		return true
 	}
+	// State is matched by name, so what fn binds itself is no read of it: a
+	// parameter, a loop's variable or a local named like a var of the page --
+	// `display(name string)` beside a page's `name` -- put a pure function
+	// on the state class, where a composable built on its own called it
+	// through a `state` it does not have.
+	own := map[ir.Symbol]bool{}
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && lv.Sym != nil {
+			own[lv.Sym] = true
+		}
+		return nil
+	})
 	found := false
 	ir.WalkExprs(fn.Block, func(e ir.Expr) error {
 		if id, ok := e.(*ir.Ident); ok {
+			switch id.Sym.(type) {
+			case *ir.Param, *ir.LoopVar:
+				return nil
+			}
+			if own[id.Sym] {
+				return nil
+			}
 			if _, isState := state[id.Name]; isState {
 				found = true
 			}

@@ -3,6 +3,7 @@ package kotlin
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -572,6 +573,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		b.WriteString("lateinit var composeTestRule: ComposeContentTestRule\n\n")
 	}
 
+	// What a body's translation requires -- the i18n runtime a context's
+	// default spells -- written at the marker with the actions' imports.
+	var required []string
 	for i, fn := range fns {
 		suffix := suffixes[i]
 		compRecvs := compReceiverSet(fn)
@@ -603,6 +607,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitNative) {
 				fmt.Fprintf(&b, "        %s\n", line)
 			}
+			required = append(required, isurf.required()...)
 			b.WriteString("    }\n\n")
 		case TestEmitAgent:
 			fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
@@ -624,6 +629,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitAgent) {
 				fmt.Fprintf(&b, "%s%s\n", indent, line)
 			}
+			required = append(required, isurf.required()...)
 			if fn.IsAsync {
 				b.WriteString("    }\n")
 			}
@@ -659,7 +665,19 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") || strings.Contains(src, ".performTextReplacement(") {
 		imports += composeActionImports
 	}
+	for _, path := range slices.Compact(slices.Sorted(slices.Values(required))) {
+		imports += "import " + path + "\n"
+	}
 	return strings.Replace(src, composeActionMarker, imports, 1)
+}
+
+// required is what the surface's own translator was asked to import. The
+// shared fallback is no file's, so it answers nothing.
+func (surf TestSurface) required() []string {
+	if surf.kt == nil {
+		return nil
+	}
+	return surf.kt.Imports()
 }
 
 // lowerInstanceRead spells a codegen.InstanceReadMethod call through the
