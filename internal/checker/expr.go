@@ -2532,7 +2532,10 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 		if c.expected != nil && c.expected.Kind == ir.TypeList {
 			return &ir.ListLit{AST: x, Type: c.expected, Elems: nil}
 		}
-		c.error(x.Pos, "cannot infer element type of empty list literal; add a type annotation")
+		// An annotation that did not resolve has been reported already.
+		if c.expected == nil || c.expected.Kind != ir.TypeInvalid {
+			c.error(x.Pos, "cannot infer element type of empty list literal; add a type annotation")
+		}
 		return &ir.ListLit{AST: x, Type: c.listOf(TypInvalid)}
 	}
 	var elemExpected *ir.Type

@@ -40,7 +40,7 @@ component main node {
     )
 
     // Legal: the write is from a click, outside the lifetime it ends.
-    button #bump(text="+", @click {
+    button #plus(text="+", @click {
         n += 1
     })
 

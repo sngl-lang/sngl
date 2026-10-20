@@ -481,6 +481,10 @@ type For struct {
 	// that leaves it from inside a match the target writes as its switch.
 	// A language whose switch takes no break of its own needs neither.
 	Label string `json:",omitempty"`
+	// KeyRead says a backend reads Key in code it writes as text -- a copy
+	// key (CopyKey) -- which no Ident in Body shows, so a head that declares
+	// only what the body reads must declare it.
+	KeyRead bool `json:",omitempty"`
 	// Counted is the arithmetic sequence this loop walks when its iterable is
 	// a sngl:seq call in a shape a host counting loop can express. Set by the
 	// passIterKind lowering pass alongside IterKind; nil for every other loop.

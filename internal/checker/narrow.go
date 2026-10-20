@@ -100,6 +100,14 @@ func narrowKeyOf(e ir.Expr) (narrowKey, bool) {
 			}
 			segs = append(segs, fmt.Sprintf("[%v]", lit.Value))
 			e = n.Operand
+		case *ir.Conversion:
+			// The unwrap applyNarrowing made of a narrowed prefix: `head.next`
+			// read under a test on `head` is the path `next` off `head`.
+			from := exprType(n.Operand)
+			if from == nil || from.Kind != ir.TypeOption || len(from.Elems) != 1 || !from.Elems[0].Equal(n.Type) {
+				return narrowKey{}, false
+			}
+			e = n.Operand
 		case *ir.Ident:
 			switch n.Sym.(type) {
 			case *ir.Var, *ir.Param, *ir.LoopVar:

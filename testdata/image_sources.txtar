@@ -859,7 +859,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -991,12 +990,17 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
 // Selects a day the way a click on it does, for gtk4's datepicker override
 // (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
 // 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
 static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
     if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_calendar_select_day(c, dt);
     G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }
 
@@ -1076,7 +1080,6 @@ static void sngl_emit_pressed(void* gesture) {
 }
 */
 import "C"
-
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
@@ -1553,7 +1556,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -1654,13 +1656,13 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Box(modifier = Modifier) {
+            SnglImage(modifier = Modifier, onLoad = {}, onError = {}) {
                 SnglAssetImage(url = "logo.svg")
             }
-            Box(modifier = Modifier) {
-                SnglAssetImage(url = url__inst0)
+            SnglImage(modifier = Modifier, onLoad = {}, onError = {}) {
+                SnglRemoteImage(url = url__inst0)
             }
-            Box(modifier = Modifier) {
+            SnglImage(modifier = Modifier, onLoad = {}, onError = {}) {
                 Canvas(modifier = Modifier.size(16.dp, 16.dp)) {
                     drawCircle(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), radius = radius__inst0.toFloat(), center = Offset(8.0.toFloat(), 8.0.toFloat()))
                 }
@@ -1668,9 +1670,11 @@ fun MainScreen() {
             if ((failed__inst0 || !hasPhoto__inst0)) {
                 Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
             } else {
-                Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                SnglImage(modifier = Modifier.width(40.dp).height(40.dp), onLoad = {}, onError = { _ ->
+                    failed__inst0 = true
+                }) {
                     if (hasPhoto__inst0) {
-                        SnglAssetImage(url = url__inst0)
+                        SnglRemoteImage(url = url__inst0)
                     }
                 }
             }
@@ -1699,19 +1703,36 @@ package test.sngl.app
 import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // SnglAssets reads the pictures the program carries out of the app's assets,
-// where the build put each file at the path the program names it by. A
-// picture a URL names is not one of them: no loader ships with the app, so it
-// is no picture at all. MainActivity hands it the application's context, since
-// a drawing paints where there is none to ask.
+// where the build put each file at the path the program names it by, and
+// fetches the pictures a URL names. MainActivity hands it the application's
+// context, since a drawing paints where there is none to ask.
 object SnglAssets {
     private var context: Context? = null
     private val pictures = HashMap<String, ImageBitmap?>()
+    private val fetched = ConcurrentHashMap<String, ImageBitmap>()
+
+    // How many fetches are still running: a test waits for none before it
+    // reads what their images reported.
+    val active = AtomicInteger()
 
     fun init(c: Context) {
         context = c.applicationContext
@@ -1719,21 +1740,107 @@ object SnglAssets {
 
     fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
         val c = context ?: return null
-        if (path.startsWith("http://") || path.startsWith("https://")) {
+        if (isRemote(path)) {
             null
         } else {
             runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
                 .getOrNull()?.asImageBitmap()
         }
     }
+
+    // Whether there are assets to read: a composition with no activity of
+    // the app's own around it has none, and says nothing of a file.
+    fun canRead(): Boolean = context != null
+
+    fun isRemote(path: String): Boolean = path.startsWith("http://") || path.startsWith("https://")
+
+    // The picture url names, once one has arrived.
+    fun cached(url: String): ImageBitmap? = fetched[url]
+
+    // Fetches the picture url names off the main thread. A picture that
+    // arrives is kept for the life of the process; a failure is asked again
+    // the next time an image shows the url.
+    suspend fun fetch(url: String): Result<ImageBitmap> {
+        fetched[url]?.let { return Result.success(it) }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                try {
+                    conn.connectTimeout = 15_000
+                    conn.readTimeout = 30_000
+                    val status = conn.responseCode
+                    if (status !in 200..299) throw java.io.IOException("HTTP $status")
+                    val bmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
+                        ?: throw java.io.IOException("not an image")
+                    bmp.asImageBitmap()
+                } finally {
+                    conn.disconnect()
+                }
+            }
+        }.onSuccess { fetched[url] = it }
+    }
 }
 
-// SnglAssetImage is an image's source on this platform: the picture a URL
-// names, or nothing where there is none.
+// What an image reports, handed to the source it holds: the source is what
+// knows when its picture arrived.
+class SnglImageEvents(val load: () -> Unit, val error: (String) -> Unit)
+
+val LocalSnglImageEvents = staticCompositionLocalOf<SnglImageEvents?> { null }
+
+// SnglImage is an image on this platform: a box holding its source, which
+// reports to it.
+@Composable
+fun SnglImage(
+    modifier: Modifier = Modifier,
+    onLoad: () -> Unit = {},
+    onError: (String) -> Unit = {},
+    src: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(LocalSnglImageEvents provides SnglImageEvents(onLoad, onError)) {
+        Box(modifier = modifier) { src() }
+    }
+}
+
+// SnglAssetImage is the picture a file the program carries holds, or nothing
+// where the app's assets hold none.
 @Composable
 fun SnglAssetImage(url: String) {
-    val bmp = SnglAssets.bitmap(url) ?: return
+    val events by rememberUpdatedState(LocalSnglImageEvents.current)
+    val bmp = SnglAssets.bitmap(url)
+    LaunchedEffect(url, bmp != null) {
+        when {
+            bmp != null -> events?.load?.invoke()
+            SnglAssets.canRead() -> events?.error?.invoke("no picture at $url")
+        }
+    }
+    bmp ?: return
     Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
+}
+
+// SnglRemoteImage is the picture a URL names, fetched while the program runs:
+// nothing until it arrives, and nothing if it does not.
+@Composable
+fun SnglRemoteImage(url: String) {
+    val events by rememberUpdatedState(LocalSnglImageEvents.current)
+    val bmp by produceState(SnglAssets.cached(url), url) {
+        if (value != null) {
+            events?.load?.invoke()
+            return@produceState
+        }
+        SnglAssets.active.incrementAndGet()
+        try {
+            SnglAssets.fetch(url)
+                .onSuccess {
+                    value = it
+                    events?.load?.invoke()
+                }
+                .onFailure { events?.error?.invoke(it.message ?: "could not load $url") }
+        } finally {
+            SnglAssets.active.decrementAndGet()
+        }
+    }
+    val shown = bmp ?: return
+    Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -2052,8 +2159,8 @@ pass sha256:4e1e85f17b4a2065817399c5fe88588a
 -- run/go/fyne --
 pass sha256:14793d5bfd1c6d64b6f880f5eb76ec14
 -- run/go/gtk4 --
-pass sha256:c4d48dc6f95de5f34281902d85095458
+pass sha256:c5015ec19b4d93e865ba99dad576e8e5
 -- run/kotlin/android --
-pass sha256:a9f41c50f197408490a7fc019ef70d13
+pass sha256:5256a2bd1764b8556d8537e9c9cd3bd9
 -- run/none/html --
 pass sha256:14abd1e84dbd4239eac904844b95be76

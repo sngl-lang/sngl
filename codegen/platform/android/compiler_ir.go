@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"io"
 	"maps"
 	"strings"
 	"unicode"
@@ -130,6 +131,11 @@ func pkgToPath(pkg string) string {
 
 // CompileIR generates a Kotlin source file from IR using CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
+	src, err := compileIR(ctx, cfg)
+	return src.bytes(), err
+}
+
+func compileIR(ctx *codegen.CodegenCtx, cfg Config) (ktSource, error) {
 	cfg = cfg.withDefaults()
 	pageTypeMethods(ctx, cfg)
 	info := analyzeIR(ctx)
@@ -148,18 +154,50 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 // composition.
 func CompileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	src, _, err := compileTestIR(ctx, cfg)
-	return src, err
+	return src.bytes(), err
 }
 
 // compileTestIR also returns what MainScreen spells each state member as --
 // `state.<name>` -- so the test lowerer reaches the same members through the
 // instance a test holds.
-func compileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, map[string]string, error) {
+func compileTestIR(ctx *codegen.CodegenCtx, cfg Config) (ktSource, map[string]string, error) {
 	cfg = cfg.withDefaults()
 	pageTypeMethods(ctx, cfg)
 	info := analyzeIR(ctx)
 	src, members := emitIR(info, ctx, cfg, true)
 	return src, members, ctx.Err()
+}
+
+// ktSource is a Kotlin file before a FileEmitter assembles it: its package,
+// the imports its body requires, and the body.
+type ktSource struct {
+	pkg     string
+	imports []string
+	body    string
+}
+
+// write emits src as the file name in sink.
+func (src ktSource) write(sink codegen.Sink, name string, lang codegen.LangTranslator, opts codegen.FileOptions) error {
+	opts.Name, opts.PackageName = name, src.pkg
+	e := lang.NewFileEmitter(sink, opts)
+	for _, imp := range src.imports {
+		e.RequireImport(imp)
+	}
+	if _, err := io.WriteString(e, src.body); err != nil {
+		e.Close()
+		return err
+	}
+	return e.Close()
+}
+
+// bytes is src assembled, with no generated-by header.
+func (src ktSource) bytes() []byte {
+	const name = "MainScreen.kt"
+	mem := codegen.NewMemSink()
+	if err := src.write(mem, name, &kotlin.Translator{}, codegen.FileOptions{}); err != nil {
+		return nil
+	}
+	return mem.Files()[name]
 }
 
 // irAnalysis is the IR-based replacement for analysisResult.
@@ -393,7 +431,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 	return info
 }
 
-func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) ([]byte, map[string]string) {
+func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) (ktSource, map[string]string) {
 	exprCtx := ctx.ScopedExprCtx()
 	kc := kotlin.NewIRContext(exprCtx)
 	nav, err := collectAndroidNav(ctx)
@@ -936,17 +974,14 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
-	// Assemble final output: package clause + imports (collected during
-	// pass 1 and dynamically during pass 2) + body.
+	// The imports were collected during pass 1 and dynamically during pass 2;
+	// the FileEmitter puts them and the package clause above the body.
 	body.WriteString(heldStyleDecls(kc, body.String(), info.Structs))
-	var out strings.Builder
-	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
-	for _, imp := range kc.Imports() {
-		fmt.Fprintf(&out, "import %s\n", imp)
-	}
-	out.WriteString("\n")
-	out.WriteString(kotlin.PruneLibraryDataClasses(body.String(), ctx.Pkg))
-	return []byte(out.String()), testRewrites
+	return ktSource{
+		pkg:     cfg.Package,
+		imports: kc.Imports(),
+		body:    kotlin.PruneLibraryDataClasses(body.String(), ctx.Pkg),
+	}, testRewrites
 }
 
 func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav, present map[string]bool, reads []codegen.InstanceRead) {

@@ -143,7 +143,7 @@ pages()
 // without a blocking call in it.
 func TestAHandlerInsideAComponentsWindowOffloadsToo(t *testing.T) {
 	model := generateFyneModelBuilt(t, asyncOffloadWindowSrc)
-	if !strings.Contains(model, "go func() {") || !strings.Contains(model, "fyne.Do(func() {") {
+	if !strings.Contains(model, "go func() {") || !strings.Contains(model, "__snglDo(func() {") {
 		t.Errorf("the handler still blocks the drawing thread\n--- model.go ---\n%s", model)
 	}
 }
@@ -187,7 +187,7 @@ window {
 // the half that was silent.
 func TestABlockingCallThroughAFuncvarLeavesTheThreadToo(t *testing.T) {
 	model := generateFyneModelBuilt(t, asyncFuncvarSrc)
-	if !strings.Contains(model, "go func() {") || !strings.Contains(model, "fyne.Do(func() {") {
+	if !strings.Contains(model, "go func() {") || !strings.Contains(model, "__snglDo(func() {") {
 		t.Errorf("the call through the funcvar still runs on the drawing thread\n--- model.go ---\n%s", model)
 	}
 }

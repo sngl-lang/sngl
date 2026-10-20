@@ -10,6 +10,9 @@ import (
 	"sort"
 	"strings"
 
+	"charm.land/glamour/v2"
+	"charm.land/glamour/v2/styles"
+	"charm.land/lipgloss/v2"
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/docs/lookup"
@@ -19,7 +22,7 @@ import (
 	"duckfam.us/sngl/internal/docsite"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
-	"github.com/charmbracelet/glamour"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -967,7 +970,7 @@ func runSNGLCompile(snglFile, outDir string) error {
 
 func renderToTerminal(md string) error {
 	r, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
+		glamour.WithStandardStyle(terminalStyle()),
 		glamour.WithWordWrap(100),
 	)
 	if err != nil {
@@ -979,6 +982,22 @@ func renderToTerminal(md string) error {
 		fmt.Print(md)
 		return nil
 	}
-	fmt.Print(out)
+	// Downsamples the colors to what the terminal shows, and drops them when
+	// stdout is not one. Fprint rather than Print: Print's writer wraps the
+	// os.Stdout of when lipgloss initialised, which a caller that swaps it
+	// (the script tests) never sees.
+	lipgloss.Fprint(os.Stdout, out)
 	return nil
+}
+
+// terminalStyle is the glamour style for stdout: notty when it is not a
+// terminal, and otherwise dark or light by the terminal's background.
+func terminalStyle() string {
+	switch {
+	case !isatty.IsTerminal(os.Stdout.Fd()):
+		return styles.NoTTYStyle
+	case lipgloss.HasDarkBackground(os.Stdin, os.Stdout):
+		return styles.DarkStyle
+	}
+	return styles.LightStyle
 }

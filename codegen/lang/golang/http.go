@@ -30,14 +30,7 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 		return nil, fmt.Errorf("golang: framework %q not implemented", req.Framework)
 	}
 
-	pkgName := req.Package
-	if pkgName == "" {
-		if req.Main {
-			pkgName = "main"
-		} else {
-			pkgName = "ui"
-		}
-	}
+	pkgName := PackageName(req.Package, req.Main, req.Executable)
 
 	// A single GoIRContext accumulates the native imports every route body
 	// references via RequireImport; we read them back through gc.Imports() to

@@ -168,7 +168,7 @@ reports.
   `Measurement`).
 - html emits `<input type="">`.
 - html: a local named like a var of its component reads the var: `var b = bumped(p)` in a method of a component declaring `b` emits `state2.b` for the
-  local. CLAUDE.md records the same gap on the Go mutation targets.
+  local. design/plugins.md records the same gap on the Go mutation targets.
 - android: an empty map literal as a state var's initializer, `var mm map[string, Row] = {}`, comes
   out as `mutableStateOf(mapOf())`, which Kotlin cannot type.
 - android: a field written through a list held in a state struct,

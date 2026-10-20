@@ -2,7 +2,7 @@
 # argument of that list may not read it. The checker says so, with a position.
 #
 # This file used to pin the opposite: the fold's re-entry guard left such a
-# prop standing and html wrote no <title> for it, silently, which CLAUDE.md
+# prop standing and html wrote no <title> for it, silently, which design/windows.md
 # recorded as the survivable answer rather than the right one. This is the
 # right one for the half a node's id covers. `const a int = a` is the same
 # shape one layer down, and the checker's cycle rule refuses it

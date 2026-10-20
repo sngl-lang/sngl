@@ -129,6 +129,7 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 	}
 	if o.Main {
 		codegen.SetOptionField(target.Options, "main", true)
+		codegen.SetOptionField(target.Options, "executable", true)
 	}
 	if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
 		codegen.SetOptionField(target.Options, "projectDir", o.Dir)

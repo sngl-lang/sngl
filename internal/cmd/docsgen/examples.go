@@ -52,8 +52,11 @@ func exampleArchive(fsys fs.FS) (source string, ok bool, err error) {
 		if !strings.HasSuffix(n, ".sngl") {
 			continue
 		}
-		// The go: scheme needs a Go toolchain, which the browser has none of.
-		if bytes.Contains(files[n], []byte(`"go:`)) {
+		// The go: scheme needs a Go toolchain, which the browser has none of,
+		// and openapi: reads its document through the project's import root,
+		// which an archive is not -- examples/pokedex, whose detail page is a
+		// route a static page cannot serve either, has a page of its own.
+		if bytes.Contains(files[n], []byte(`"go:`)) || bytes.Contains(files[n], []byte(`"openapi:`)) {
 			return "", false, nil
 		}
 		if path.Dir(n) != "." || n == "doc.sngl" || strings.HasSuffix(n, "_test.sngl") {

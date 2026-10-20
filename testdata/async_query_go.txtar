@@ -161,6 +161,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func Lookup(name string) Result__int {
 	time.Sleep(1000)
 	if name == "" {
@@ -182,7 +194,7 @@ func (m *Model) __effect0_mount() {
 	__async_arg0 := m.__effect0_key.Key
 	go func() {
 		r := Lookup(__async_arg0)
-		fyne.Do(func() {
+		__snglDo(func() {
 			if mine != m.attempt__inst0 {
 				return
 			}
@@ -530,7 +542,7 @@ func (c *CardInstance) __effect1_mount() {
 	__async_arg1 := c.__effect1_key.Key
 	go func() {
 		r := func(k string) Result__int { return Lookup(k) }(__async_arg1)
-		fyne.Do(func() {
+		__snglDo(func() {
 			if mine != c.attempt__inst1 {
 				return
 			}
@@ -1251,6 +1263,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:3eb61f89d2443efd2eeb8ae02bf0c6b1
+pass sha256:0c913d329a9e613928d6bc65e56b04f1
 -- run/go/gtk4 --
 pass sha256:7c0fc8f608e456a34cff4b8286971c87

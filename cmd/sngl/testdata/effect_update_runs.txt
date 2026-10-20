@@ -177,7 +177,7 @@ func testHarnessPush(t test.Test, c saver) {
     t.assert(c.out.value == "1:1")
 }
 -- testrun/android/kotlin/app.sngl/gated/1 --
-sha256:3c729f0e9de57c695ba74c154e6e4fa9
+sha256:744f915a6a5a78ebd884ec25f6ccf786
 {
   "results": [
     {
@@ -187,7 +187,7 @@ sha256:3c729f0e9de57c695ba74c154e6e4fa9
   ]
 }
 -- testrun/android/kotlin/app.sngl/saver/1 --
-sha256:f38230553b60e47e357b94ac4e6d6d76
+sha256:73fce567b539158b3df91ef361bcd533
 {
   "results": [
     {
@@ -217,7 +217,7 @@ sha256:f38230553b60e47e357b94ac4e6d6d76
   ]
 }
 -- testrun/android/kotlin/app.sngl/scalar/1 --
-sha256:7131b92c40a28aae64d399f4faa91e52
+sha256:ac094e9d49f60e6f4d10cf614582f26f
 {
   "results": [
     {
@@ -293,7 +293,7 @@ sha256:cd1c0ecddb12650abbad979eec3f81b7
   ]
 }
 -- testrun/fyne/go/app.sngl/gated/1 --
-sha256:01a470c8c33f986738b6fc6853f868a0
+sha256:056048a151c40137ff7f24b86c73c079
 {
   "results": [
     {
@@ -303,7 +303,7 @@ sha256:01a470c8c33f986738b6fc6853f868a0
   ]
 }
 -- testrun/fyne/go/app.sngl/saver/1 --
-sha256:129fb5795702e14fb2a6a015560ae939
+sha256:c4859c3b18cad6b5f582f3050e912366
 {
   "results": [
     {
@@ -333,7 +333,7 @@ sha256:129fb5795702e14fb2a6a015560ae939
   ]
 }
 -- testrun/fyne/go/app.sngl/scalar/1 --
-sha256:3ce0e515708412a57a1ec1e88aebc937
+sha256:563861ab89002e02e4fdc3a37897bcce
 {
   "results": [
     {

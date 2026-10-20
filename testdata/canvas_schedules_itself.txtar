@@ -38,7 +38,7 @@ Both are fixed in the lowering, and the IR now carries `__canvasRedraw` in the
 mount and in the tick on all three targets -- `sngl dump --stage lowered
 --after CanvasReactivity` shows it for fyne, gtk4 and html alike. **Only fyne
 emits it.** Both of the others drop a redraw that sits inside a lambda body,
-which is the same blind spot `CLAUDE.md` records for the lowering passes, one
+which is the same blind spot `design/language.md` records for the lowering passes, one
 layer further out. html drops the one at the top of an effect's body too, for a
 reason of its own: `translateBlockWithJC` lifts a redraw out of a handler and
 resolves it against `canvasSetups`, and `emitJSFunc` -- which is what writes an
@@ -159,6 +159,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
@@ -205,7 +217,7 @@ func (m *Model) __effect1_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if m.gen__inst0 != mine {
 						return
 					}
@@ -573,6 +585,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:5a6ff69472149734d12c91db58b7fcfe
+pass sha256:beb4d30e58872afcc7e4e5bb4c68f5ba
 -- run/none/html --
 pass sha256:605647f3bf0f2589139868f92622d51d

@@ -435,6 +435,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func (m *Model) __effect0_mount() {
 	m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
 	var mine int = m.gen__inst1__inst0
@@ -447,7 +459,7 @@ func (m *Model) __effect0_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if m.gen__inst1__inst0 != mine {
 						return
 					}
@@ -523,7 +535,7 @@ func (m *Model) __effect2_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if m.gen__inst0__inst0 != mine {
 						return
 					}
@@ -1275,7 +1287,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:311d20ce666f39997897933ff9f2baa2
 -- run/go/fyne --
-pass sha256:c8e6e639ca9885d4203b92c9c282d4bf
+pass sha256:821b714c466be3009cc16295356b0957
 -- run/go/gtk4 --
 pass sha256:7512549b629b383fb372091c88c51672
 -- run/kotlin/android --

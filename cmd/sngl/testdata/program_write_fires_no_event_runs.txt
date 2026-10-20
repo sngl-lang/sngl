@@ -1,0 +1,186 @@
+# A write the program makes to a control's bound value fires none of that
+# control's events; only the user, or a test's trigger, does. Run on every
+# target a test can execute on.
+#
+# Each control is bound twice: once at the root and once in Mirror, which a
+# loop makes a runtime instance. A runtime instance's handler wrote the value
+# back to the widget it came from, and gtk4's entry fired "changed" for that
+# write, re-entering the handler until the stack overflowed; a checkbox, switch
+# or radio fired its change for a write and reported it as the user's.
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component Mirror(:text string, :on bool, :pick string, @fired()) ui.node {
+    ui.vbox {
+        ui.input(:value=text, @input(v) { fired() }, @change(v) { fired() })
+        ui.textarea(:value=text, @input(v) { fired() }, @change(v) { fired() })
+        ui.checkbox(:checked=on, label="c", @change(c) { fired() })
+        ui.toggle(:checked=on, @change(c) { fired() })
+        ui.radio(:value=pick, @change(v) { fired() }) {
+            ui.choice(label="a")
+            ui.choice(label="b")
+        }
+        ui.select(:value=pick, @change(v) { fired() }) {
+            ui.choice(label="a")
+            ui.choice(label="b")
+        }
+    }
+}
+
+component main ui.node {
+    var text = ""
+    var on = false
+    var pick = "a"
+    var events = 0
+
+    ui.vbox {
+        ui.input #field(:value=text, @input(v) { events += 1 })
+        ui.checkbox #box(:checked=on, label="c", @change(c) { events += 1 })
+        ui.radio(:value=pick, @change(v) { events += 1 }) {
+            ui.choice(label="a")
+            ui.choice(label="b")
+        }
+        ui.button #set(text="set", @click {
+            text = "abc"
+            on = true
+            pick = "b"
+        })
+        for var i = [1] {
+            Mirror(:text=text, :on=on, :pick=pick, @fired { events += 1 })
+        }
+    }
+}
+
+func testAProgramWriteFiresNothing(t Test, c main) {
+    c.set.click()
+    t.assert(c.text == "abc")
+    t.assert(c.on == true)
+    t.assert(c.pick == "b")
+    t.assert(c.events == 0)
+}
+
+func testTypingFiresOnce(t Test, c main) {
+    c.field.input("xy")
+    t.assert(c.text == "xy")
+    t.assert(c.events == 1)
+}
+
+func testCheckingFiresOnce(t Test, c main) {
+    c.box.change(true)
+    t.assert(c.on == true)
+    t.assert(c.events == 1)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:b49c0687b1cfea030fa806509d23144a
+{
+  "results": [
+    {
+      "Desc": "AProgramWriteFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "CheckingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:69697d813e1d2ce91804a8f637effde0
+{
+  "results": [
+    {
+      "Desc": "AProgramWriteFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "CheckingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:2a64b6fe5616edf9398334fcdcc46671
+{
+  "results": [
+    {
+      "Desc": "AProgramWriteFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "CheckingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:b2f6805bf2864a6af266825d5522920c
+{
+  "results": [
+    {
+      "Desc": "AProgramWriteFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "CheckingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:e797d2f0284871e743eaacd605b4e6c7
+{
+  "results": [
+    {
+      "Desc": "AProgramWriteFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "CheckingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingFiresOnce",
+      "Passed": true
+    }
+  ]
+}

@@ -4810,20 +4810,20 @@ func (c *checker) declareOwnNodeIDs(block *ast.StmtBlock, headNames ...string) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
-	declared := blockDeclaredNames(block)
+	heads := map[string]bool{}
 	for _, n := range headNames {
-		if n == "" {
-			continue
+		if n != "" {
+			heads[n] = true
 		}
-		if declared == nil {
-			declared = map[string]bool{}
-		}
-		declared[n] = true
 	}
-	c.declareOwnNodeIDsIn(block, declared)
+	c.declareOwnNodeIDsIn(block, heads, blockDeclaredNames(block))
 }
 
-func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]bool) {
+// declareOwnNodeIDsIn re-binds each id in block's scope, where it reads as
+// the plain handle rather than the counted one the component scope holds. A
+// head, and a name the block itself declares, are closer than the component
+// scope the id belongs to, and shadow it there as they would any outer name.
+func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, heads, declared map[string]bool) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
@@ -4831,8 +4831,8 @@ func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]
 		switch n := s.(type) {
 		case *ast.VisualNode:
 			target := visualNodeTarget(n)
-			if !declared[n.ID] {
-				c.declareNodeID(n.ID, target, nil, shadowOuter)
+			if !heads[n.ID] && !declared[n.ID] {
+				c.declareNodeID(n.ID, target, n.Pos, nil)
 			}
 			// Through a canvas as through anything else. Stopping at a family
 			// change here while declareNodeIDsStmt no longer does left an id
@@ -4840,24 +4840,18 @@ func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]
 			// at the outer scope and never re-declared in the `if`'s own -- so
 			// a read from inside that same `if` was told to "read it inside
 			// the if", which is where it already was.
-			c.declareOwnNodeIDsIn(&n.Block, declared)
+			c.declareOwnNodeIDsIn(&n.Block, heads, declared)
 		case *ast.CallStmt:
-			if target, id, isElem := elementRefCallInfo(n.Call); isElem && !declared[id] {
-				c.declareNodeID(id, target, nil, shadowOuter)
+			if target, id, isElem := elementRefCallInfo(n.Call); isElem && !heads[id] && !declared[id] {
+				c.declareNodeID(id, target, n.Pos, nil)
 			}
 		}
 	}
 }
 
-// blockDeclaredNames is the names this block's own statements declare. A node
-// id written beside one of them declines to it, which is the rule a same-scope
-// `var label` beside a `#label` has always had: the hoist runs before the
-// statements are checked, so measuring the scope would find nothing there yet
-// and the var would then collide with the id rather than win over it.
-//
-// Only this block's own statements, not a nested one's: an id inside an `if`
-// is in a scope of its own and shadows an outer binding, which is the whole
-// point of hoisting it there.
+// blockDeclaredNames is the names this block's own statements declare, read
+// before they are checked: the re-binding runs first, so measuring the scope
+// would find nothing there yet.
 func blockDeclaredNames(block *ast.StmtBlock) map[string]bool {
 	if block == nil || !block.IsDefined() {
 		return nil
@@ -4903,7 +4897,7 @@ func blockDeclaredNames(block *ast.StmtBlock) map[string]bool {
 func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
-		c.declareNodeID(n.ID, visualNodeTarget(n), counts, yieldToOuter)
+		c.declareNodeID(n.ID, visualNodeTarget(n), n.Pos, counts)
 		// What a node's block renders hoists at the node's own count, whatever
 		// family it is: a window's body as a vbox's. A canvas used to stop the
 		// hoist outright, because a shape is spliced into the calls that paint
@@ -4918,7 +4912,7 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
 		if target, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id, target, counts, yieldToOuter)
+			c.declareNodeID(id, target, n.Pos, counts)
 		}
 	case *ast.IfStmt:
 		c.declareNodeIDsIn(&n.Body, withCount(counts, countOption))
@@ -4942,50 +4936,30 @@ func countsRepeat(counts []nodeCount) bool {
 	return slices.Contains(counts, countList)
 }
 
-// declareNodeID binds one node id. target names the component the node
-// instantiates.
-// idMode says what a node id may take the name from, and the two hoists differ
-// because they put the binding in different places.
+// declareNodeID binds one node id, as any declaration binds its name: hoisted
+// to the scope of the component (or window) it is written in, where it
+// shadows whatever an enclosing scope bound -- a package's `component card`
+// beside `card #card`, a package func beside `button #bump`. target names the
+// component the node instantiates.
 //
-// shadowOuter is the id in the scope it was written in: it is lexically here,
-// so it wins over anything an enclosing scope bound -- a var, a const, a
-// package declaration -- exactly as a nested binding of any other kind does.
-// What it declines to is a name this same block declares (blockDeclaredNames),
-// which is the sibling `var label` beside `#label` that has always won.
-//
-// yieldToOuter is the counted hoist, which puts the id in a scope the node is
-// *not* in so that a read from out there carries the scope's count. That
-// binding exists only to be refused, so it must not take a name an outer scope
-// legitimately holds: `#greeting` inside an `if` may not stop a package
-// `const greeting` resolving out here, where the node is not.
-type idMode int
-
-const (
-	shadowOuter idMode = iota
-	yieldToOuter
-)
-
-func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMode) {
+// Another declaration of the name in that same scope -- a var, a prop, a
+// method -- is a redeclaration. The same id written again is the one handle,
+// which a node reading it may not be rendered twice (see design/nodes.md).
+func (c *checker) declareNodeID(id, target string, pos ast.Pos, counts []nodeCount) {
 	if id == "" {
 		return
 	}
-	if _, ok := c.scope.LookupLocal(id); ok {
+	if sym, ok := c.scope.LookupLocal(id); ok {
+		if v, isVar := sym.(*ir.Var); !isVar || !v.NodeHandle {
+			c.reportNodeIDRedeclared(id, pos, declPos(sym))
+		}
 		return
 	}
-	if sym, ok := c.scope.Lookup(id); ok && mode == yieldToOuter {
-		// The one thing a counted hoist still shadows is a node handle an
-		// enclosing scope bound, which is this same id hoisted at a shallower
-		// count.
-		v, isVar := sym.(*ir.Var)
-		if !isVar || !v.NodeHandle {
-			return
-		}
-	}
-	// A component's methods are registered under the component as receiver, not
-	// in scope by bare name: inferIdent reaches them only when the scope lookup
-	// misses. So `button #bump` beside `func bump()` would shadow the method.
+	// A component's methods are registered under the component as receiver,
+	// not in scope by bare name, so the scope does not see them.
 	if c.currentComponent != nil {
-		if _, ok := c.lookupBodyMethod(id); ok {
+		if fn, ok := c.lookupBodyMethod(id); ok {
+			c.reportNodeIDRedeclared(id, pos, funcDeclPos(fn))
 			return
 		}
 	}
@@ -5001,7 +4975,15 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 		}
 		c.handleCount[v] = counts[0]
 	}
-	c.declare(ast.Pos{}, v)
+	c.declare(pos, v)
+}
+
+func (c *checker) reportNodeIDRedeclared(id string, pos, prev ast.Pos) {
+	if prev.Line > 0 {
+		c.error(pos, "%q redeclared in this component (previous declaration at %s)", id, prev)
+		return
+	}
+	c.error(pos, "%q redeclared in this component", id)
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
@@ -5039,7 +5021,8 @@ func (c *checker) componentNamed(target string) *ir.Component {
 	}
 	pkg, name, qualified := strings.Cut(target, ".")
 	if !qualified {
-		if sym, ok := c.scope.Lookup(target); ok {
+		// A node position names a component, past an id of the same name.
+		if sym, ok := c.scope.LookupComponent(target); ok {
 			comp, _ := sym.(*ir.Component)
 			return comp
 		}

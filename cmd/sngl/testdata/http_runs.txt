@@ -1,7 +1,6 @@
 # sngl:http against the local server the script harness runs at
 # 127.0.0.1:47819 (cmd/sngl/httpserver_test.go), decoded with sngl:json, on
-# every target that can wait for a request. bubbletea answers no async.do
-# yet (#272), so a request there is refused at the call that waits.
+# every target.
 
 sngl test --platform=none app.sngl
 stdout '10 tests, 0 failures'
@@ -18,8 +17,8 @@ stdout '10 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '10 tests, 0 failures'
 
-! sngl test --platform=bubbletea --language=go app.sngl
-stderr 'app.sngl:56:27: this call blocks and bubbletea has no way to run anything back'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '10 tests, 0 failures'
 
 -- app.sngl --
 // Requests to a local server, decoded into declared types: a path segment
@@ -258,7 +257,7 @@ window {
     adapter
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:6f0a5b03947d33da2edac2a0cbfb1ac3
+sha256:f6050a87ba72919b3ddcd8ba818f514e
 {
   "results": [
     {
@@ -292,7 +291,7 @@ sha256:6f0a5b03947d33da2edac2a0cbfb1ac3
   ]
 }
 -- testrun/android/kotlin/app.sngl/adapter/1 --
-sha256:4f2a3a0df695138498917abbd1937b42
+sha256:e7c3e33016a56220de5f6009b0793232
 {
   "results": [
     {
@@ -302,7 +301,65 @@ sha256:4f2a3a0df695138498917abbd1937b42
   ]
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:00d6317f3145ac4e67a29c606d871442
+sha256:5d44b1b5e8adc10b3f43942356b9ef63
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:47a765021c34ff8eeebf698eab9ef79d
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/adapter/1 --
+sha256:966b0fd470a934cde60c8edac84ee380
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:99c98b45b25e7ae7092a5aae0868daf8
 {
   "results": [
     {
@@ -316,7 +373,7 @@ sha256:00d6317f3145ac4e67a29c606d871442
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:63e0c3bc6db67f0f4b286269a1630c85
+sha256:cef966859f85e1b0d2725cdf2d0d74e2
 {
   "results": [
     {
@@ -350,7 +407,7 @@ sha256:63e0c3bc6db67f0f4b286269a1630c85
   ]
 }
 -- testrun/fyne/go/app.sngl/adapter/1 --
-sha256:c679a0126ba61684f4a1a2844033bc19
+sha256:d1e068ef71f84d552259d548f5fe33b8
 {
   "results": [
     {
@@ -360,7 +417,7 @@ sha256:c679a0126ba61684f4a1a2844033bc19
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:791d3df63b97bd04ea3c9bd72c8c3133
+sha256:75521851492aa22b80f3b69eaade3de1
 {
   "results": [
     {

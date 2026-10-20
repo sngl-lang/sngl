@@ -29,7 +29,7 @@ var mipmapSizes = []struct {
 
 // iconFiles generates dynamic icon resource files (VectorDrawable conversion,
 // PNG resizing). Static resources like colors.xml and adaptive icon XMLs are
-// handled by the scaffold templates.
+// written by scaffoldSources.
 func iconFiles(cfg Config) ([]*codegen.OutputFile, error) {
 	if cfg.Icon == "" {
 		return nil, nil

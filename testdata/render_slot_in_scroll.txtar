@@ -183,9 +183,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -278,4 +276,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:6f45895dc2370cadbe701ed69ffcf102
 -- run/go/gtk4 --
-pass sha256:db7d0ec960136d05d1b273857026d43c
+pass sha256:8975e33e5f06fe5e8f2b8dd1735ec68f

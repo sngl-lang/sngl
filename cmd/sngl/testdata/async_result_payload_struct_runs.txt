@@ -1,0 +1,289 @@
+# A struct named only as what a payload enum's member carries is declared:
+# Go's `Result__Response` is a struct holding a `Response` and a `Failure`,
+# and the shake neither counted a payload as a use nor promoted a library
+# struct reached through one, so the Go targets said `undefined: Response`.
+# The Result is held in a var nothing reads (held), handed to a function a
+# lambda calls (handed), and returned by a function another reads (returned).
+
+sngl test --platform=none held.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html held.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go held.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go held.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go held.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin held.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none handed.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html handed.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go handed.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go handed.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go handed.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin handed.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none returned.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html returned.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go returned.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go returned.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go returned.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin returned.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- held.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component page ui.node {
+    var last option[async.Result[http.Response]] = null
+    ui.text(value="-")
+}
+
+func testA(t test.Test, c page) {
+    t.assert(true)
+}
+
+ui.window {
+    page()
+}
+-- handed.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func answered(r async.Result[http.Response]) async.Result[string] {
+    match var got = r {
+        failed { return {failed=got} }
+        ok { return {ok="x"} }
+    }
+}
+
+component page ui.node {
+    var on = ""
+    var v option[string] = null
+    async.query(on=on, fetch=func(k string) => answered(http.get(url="http://127.0.0.1:47819/status/200")), :value=v)
+    ui.button #go(text="go", @click { on = "a" })
+}
+
+func testB(t test.Test, c page) {
+    c.go.click()
+    t.wait(func() => c.v != null, 5000)
+}
+
+ui.window {
+    page()
+}
+-- returned.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func ask(k string) async.Result[http.Response] {
+    return http.get(url="http://127.0.0.1:47819/status/200")
+}
+
+func shown(k string) async.Result[string] {
+    match var r = ask(k) {
+        failed { return {failed=r} }
+        ok { return {ok="y"} }
+    }
+}
+
+component page ui.node {
+    var on = ""
+    var v option[string] = null
+    async.query(on=on, fetch=shown, :value=v)
+    ui.button #go(text="go", @click { on = "a" })
+}
+
+func testE(t test.Test, c page) {
+    c.go.click()
+    t.wait(func() => c.v != null, 5000)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/handed.sngl/page/1 --
+sha256:85e25549c4e765e8321bce08d8a1517e
+{
+  "results": [
+    {
+      "Desc": "B",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/held.sngl/page/1 --
+sha256:3bd1801c7ac7988af4f85372f79e121d
+{
+  "results": [
+    {
+      "Desc": "A",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/returned.sngl/page/1 --
+sha256:4952bc0afd3b28319db6d098f75242df
+{
+  "results": [
+    {
+      "Desc": "E",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/handed.sngl/page/1 --
+sha256:c5285120ed18e785175120ebe5291c8c
+{
+  "results": [
+    {
+      "Desc": "B",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/held.sngl/page/1 --
+sha256:b0aa3fcddb65bda49d3ab92b874350e5
+{
+  "results": [
+    {
+      "Desc": "A",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/returned.sngl/page/1 --
+sha256:693ab0a3fa52446213fa5836b9b775ac
+{
+  "results": [
+    {
+      "Desc": "E",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/handed.sngl/page/1 --
+sha256:4dbc1348ddea99ffdb66931caf1a1e71
+{
+  "results": [
+    {
+      "Desc": "B",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/held.sngl/page/1 --
+sha256:709cd9464c9c571a9f1eece24fd6fa93
+{
+  "results": [
+    {
+      "Desc": "A",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/returned.sngl/page/1 --
+sha256:0f029700a4cf83936140315e4380dde8
+{
+  "results": [
+    {
+      "Desc": "E",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/handed.sngl/page/1 --
+sha256:81ecb2afbaf5b756be4ac8df1a6648d7
+{
+  "results": [
+    {
+      "Desc": "B",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/held.sngl/page/1 --
+sha256:9af96edeec94cf0c43aecaa46de4ea93
+{
+  "results": [
+    {
+      "Desc": "A",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/returned.sngl/page/1 --
+sha256:05455b5d001d6a54c9ef5a3748f11934
+{
+  "results": [
+    {
+      "Desc": "E",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/handed.sngl/page/1 --
+sha256:a3a3afd9bb48ad14cc218e2d90ac8249
+{
+  "results": [
+    {
+      "Desc": "B",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/held.sngl/page/1 --
+sha256:c4e6bf6a2e7c61b9f12bbf9872603cc1
+{
+  "results": [
+    {
+      "Desc": "A",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/returned.sngl/page/1 --
+sha256:94205580c2db7b15d30d246a0e9eb527
+{
+  "results": [
+    {
+      "Desc": "E",
+      "Passed": true
+    }
+  ]
+}

@@ -50,7 +50,7 @@ ui.window {
     main
 }
 -- testrun/android/kotlin/main.sngl/main/1 --
-sha256:e4a6fb40acbeba78ccae2da3f805c0ae
+sha256:8249e71bc19d13a147180d319063b040
 {
   "results": [
     {
@@ -70,7 +70,7 @@ sha256:be1f17ec23f7162bd6af93f21e201b08
   ]
 }
 -- testrun/fyne/go/main.sngl/main/1 --
-sha256:8dc98b16f0bb7bed277c4f8fe02993e1
+sha256:9a88468c1b9758cbd1505543cd3280d2
 {
   "results": [
     {

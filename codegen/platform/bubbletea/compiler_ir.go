@@ -17,6 +17,8 @@ type Config struct {
 	Package     string // Go package name (default: "ui")
 	ScaleFactor int    // pixels per terminal cell (default: 8); not source-exposed
 	Main        bool   // emit a main() function for standalone apps
+	// Set by internal/build for a build that becomes a binary.
+	Executable bool
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -33,13 +35,7 @@ type Config struct {
 }
 
 func (c Config) withDefaults() Config {
-	if c.Package == "" {
-		if c.Main {
-			c.Package = "main"
-		} else {
-			c.Package = "ui"
-		}
-	}
+	c.Package = golang.PackageName(c.Package, c.Main, c.Executable)
 	if c.ScaleFactor == 0 {
 		c.ScaleFactor = 8
 	}
@@ -709,6 +705,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		}
 	}
 
+	posts := usesPosts(ctx.Pkg)
+	if posts {
+		gc.RequireImport("time")
+		emitPostDecls(&b)
+		widgetInits = append(widgetInits, awaitPost)
+	}
+
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
 	if len(info.timers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
@@ -989,6 +992,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		getter := golang.ExportName(bind.name)
 		fmt.Fprintf(b, "\tcase set%sMsg:\n", getter)
 		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)
+	}
+
+	// A closure posted back to the loop, and the wait for the next.
+	if usesPosts(ctx.Pkg) {
+		fmt.Fprintf(b, "\tcase %s:\n\t\tmsg()\n\t\tcmds = append(cmds, %s)\n", postMsgType, awaitPost)
 	}
 
 	// Timer ticks

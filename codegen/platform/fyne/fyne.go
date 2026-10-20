@@ -95,6 +95,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 import (
 	"bytes"
 	"image/png"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
@@ -133,7 +134,7 @@ func init() {
 		return snapshotBytes(currentTestModel())
 	})
 }
-`)
+` + agentPosts(req.Pkg))
 				if err := writeRawFile(sink, "snapshot.go", snapshotSrc); err != nil {
 					return err
 				}

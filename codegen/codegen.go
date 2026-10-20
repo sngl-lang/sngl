@@ -1,13 +1,12 @@
 package codegen
 
 import (
+	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"strings"
-	"text/template"
 	"time"
 
 	"duckfam.us/sngl/ast"
@@ -15,10 +14,6 @@ import (
 	"duckfam.us/sngl/internal/imports"
 	"duckfam.us/sngl/ir"
 )
-
-// ErrSkip is returned by an OutputFile's WriteTo to indicate the file should
-// be skipped entirely (no output written, no error reported).
-var ErrSkip = errors.New("skip")
 
 // NativeAlias produces a deterministic JS identifier for a native module
 // import path. Used at both the call site (codegen/lang/javascript) and the
@@ -437,11 +432,13 @@ func GeneratesUntranslated(platform string) bool {
 // Route paths are abstract templates (e.g. "/users/{name}"); the language
 // translates {param} placeholders into its framework's routing syntax.
 type HTTPRequest struct {
-	Pkg       *ir.Package // v2 checked IR
-	Package   string      // target package name (e.g., "main", "ui")
-	Main      bool        // generate standalone server with main()
-	Framework string      // HTTP framework: "net/http", "gin", "echo"
-	Routes    []HTTPRoute // window → route mapping
+	Pkg     *ir.Package // v2 checked IR
+	Package string      // target package name (e.g., "main", "ui")
+	Main    bool        // generate standalone server with main()
+	// Executable says the build becomes a binary, so the package is main.
+	Executable bool
+	Framework  string      // HTTP framework: "net/http", "gin", "echo"
+	Routes     []HTTPRoute // window → route mapping
 	// RenderHTML returns a baked static HTML body for a route. It serves
 	// routes with no server actions, where the page is a constant; a route
 	// that has them renders through HTTPRoute.Render instead, whose IR-expr
@@ -598,65 +595,38 @@ func BytesFile(name string, content []byte) *OutputFile {
 	}
 }
 
-// TemplateFile creates an OutputFile that executes a Go template lazily.
-// If the template calls {{skip}}, WriteTo returns ErrSkip.
-func TemplateFile(name string, tmpl *template.Template, data any) *OutputFile {
+// WriterFile creates an OutputFile whose content write puts to the writer
+// when the file is written. The writes are buffered, since a sink's writer
+// may be a bare file, and the first error is kept and the writes after it
+// dropped, so write need not check each one.
+func WriterFile(name string, write func(w io.Writer)) *OutputFile {
 	return &OutputFile{
 		Name: name,
-		WriteTo: func(w io.Writer) (n int64, err error) {
-			defer func() {
-				if r := recover(); r != nil {
-					if skipErr, ok := r.(skipError); ok {
-						err = skipErr
-					} else {
-						panic(r)
-					}
-				}
-			}()
-			cw := &countWriter{w: w}
-			err = tmpl.Execute(cw, data)
-			return cw.n, err
+		WriteTo: func(w io.Writer) (int64, error) {
+			bw := bufio.NewWriter(w)
+			cw := &countWriter{w: bw}
+			write(cw)
+			if err := bw.Flush(); cw.err == nil {
+				cw.err = err
+			}
+			return cw.n, cw.err
 		},
 	}
 }
 
-func TemplateFuncs() template.FuncMap {
-	return template.FuncMap{
-		"skip": func() string { panic(skipError(ErrSkip)) },
-	}
-}
-
-// RenderTemplates walks an embedded template FS, executing each .tmpl file
-// against data. The output file name is the path with .tmpl stripped.
-// Templates that call {{skip}} are silently omitted.
-func RenderTemplates(fsys fs.FS, root string, data any) []*OutputFile {
-	var files []*OutputFile
-	fs.WalkDir(fsys, root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".tmpl") {
-			return nil
-		}
-		tmpl, err := template.New(d.Name()).Funcs(TemplateFuncs()).ParseFS(fsys, path)
-		if err != nil {
-			return nil
-		}
-		outName := strings.TrimPrefix(path, root+"/")
-		outName = strings.TrimSuffix(outName, ".tmpl")
-		files = append(files, TemplateFile(outName, tmpl, data))
-		return nil
-	})
-	return files
-}
-
-type skipError error
-
 type countWriter struct {
-	w io.Writer
-	n int64
+	w   io.Writer
+	n   int64
+	err error
 }
 
 func (cw *countWriter) Write(p []byte) (int, error) {
+	if cw.err != nil {
+		return 0, cw.err
+	}
 	n, err := cw.w.Write(p)
 	cw.n += int64(n)
+	cw.err = err
 	return n, err
 }
 

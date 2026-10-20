@@ -1,0 +1,173 @@
+# A function reading a context, taken as a value where a provider is in
+# scope, is a lambda passing the provided value (passContext's
+# funcValueUnder). Its parameters kept the function's own names, so spliced
+# into a component with a prop of one of them -- an openapi: adapter's `id`
+# beside pokemonRetrieveCall's `id` -- the lambda read the prop for its
+# argument: here `pick(name="b")` answered "b!" for every key. Under a loop
+# the prop was the loop variable, and the effect calling the lambda refused
+# a read of a loop variable it does not run inside.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+context #suffix("?")
+
+func shout(name string) async.Result[string] {
+    return {ok=name + suffix}
+}
+
+component pick(name string) ui.node {
+    var answer option[string] = null
+    async.query(on="key", fetch=shout, :value=answer)
+    ui.text(value=answer != null ? answer : name)
+}
+
+component one ui.node {
+    suffix("!") {
+        pick #p(name="b")
+    }
+}
+
+component rows ui.node {
+    var names = ["x", "y"]
+    suffix("!") {
+        for var n = names {
+            pick #r(name=n)
+        }
+    }
+}
+
+func testTheArgumentIsTheKey(t test.Test, c one) {
+    t.wait(func() => c.p.answer != null, 2000)
+    t.assert(c.p.answer == "key!")
+}
+
+func testEachCopyAsksWithItsKey(t test.Test, c rows) {
+    t.wait(func() => c.r[1].answer != null, 2000)
+    t.assert(c.r[1].answer == "key!")
+}
+
+ui.window {
+    one()
+    rows()
+}
+-- testrun/android/kotlin/app.sngl/one/1 --
+sha256:44014f9e545166bbd44f9c284c30afe4
+{
+  "results": [
+    {
+      "Desc": "TheArgumentIsTheKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/rows/1 --
+sha256:830aa22b2daaf144e7a89b83046f07e9
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksWithItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/one/1 --
+sha256:33ed70f0dcd8f981501a6ef454e70c73
+{
+  "results": [
+    {
+      "Desc": "TheArgumentIsTheKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/rows/1 --
+sha256:a14d7b2ce7c3ae9ac8f49fa0060acd56
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksWithItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/one/1 --
+sha256:ddc361bb3e6bfe80863f322570948c16
+{
+  "results": [
+    {
+      "Desc": "TheArgumentIsTheKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/rows/1 --
+sha256:81dc40a2c5df188ae0b206c32564c807
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksWithItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/one/1 --
+sha256:51372d91ee95ade4643e6e2df6021285
+{
+  "results": [
+    {
+      "Desc": "TheArgumentIsTheKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/rows/1 --
+sha256:4a0e8007c72c3117ff9a4a68b031d479
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksWithItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/one/1 --
+sha256:83e0136338d1d96bc60db742f159d317
+{
+  "results": [
+    {
+      "Desc": "TheArgumentIsTheKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/rows/1 --
+sha256:beffc9717ebf48e2131b0eb5aa6447e9
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksWithItsKey",
+      "Passed": true
+    }
+  ]
+}

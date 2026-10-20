@@ -82,7 +82,7 @@ func testClickReachesTheRenamed(t Test, c main) {
     t.assert(c.it.class == 2)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:3fc15d94b7a44fce98565d48c85a2b59
+sha256:5aba1ec7207138ab3ea7df026e40cb61
 {
   "results": [
     {
@@ -110,7 +110,7 @@ sha256:b06c61873bca6e17c018dc847e8e8d4b
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:c6610e86c0e54c3f77d15b3396894a35
+sha256:c7ba5cced87feca939e227d7a7e2caeb
 {
   "results": [
     {

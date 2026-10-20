@@ -1,4 +1,3 @@
-// SKIP(codegen) "bubbletea refuses an effect reading state in a component built per copy of a loop; async_query_go.txtar pins the Go code"
 // A query under a `for` is one per copy: each copy is an instance of its own,
 // asking for its own key, and one the tree drops is asked again when it
 // returns.

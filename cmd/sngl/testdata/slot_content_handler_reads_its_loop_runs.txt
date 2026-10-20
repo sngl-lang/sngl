@@ -94,7 +94,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:695621db0999ad1ca1b35b1767008c72
+sha256:f119c09f7fd5d17a4072184a582ab729
 {
   "results": [
     {
@@ -114,7 +114,7 @@ sha256:af6f60c1023de4ef856611b4cda7ee44
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:dc86f34077550ddcc5ad9f371c5740a7
+sha256:28a9c0340d6f7a7ff66175d48cc61bca
 {
   "results": [
     {

@@ -117,6 +117,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func (m *Model) __run(args []string, run func()) {
 	m.wanted = (slices.Index(args, "--open") >= 0)
 }
@@ -133,7 +145,7 @@ func (m *Model) __effect0_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if m.gen__inst0 != mine {
 						return
 					}
@@ -587,6 +599,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:135c85b41039ea9ec1ed63aad9fa6052
+pass sha256:68697a0bfafc2a9dfd4101db489bec62
 -- run/go/gtk4 --
-pass sha256:52d37d51d3213ccc661f94c5f040957e
+pass sha256:e75dc65a0adccd1fac8917ad5d738c59

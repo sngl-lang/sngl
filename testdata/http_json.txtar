@@ -188,6 +188,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func Lookup(name string) Result__Echo {
 	__match0 := func() Result__Response {
 		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery(("http://127.0.0.1:47819/echo/"+sngljson.Escape(name)), sngljson.Query(Page{Size: snglSome(20), Tags: []string{"a"}}, func() *sngljson.Codec {
@@ -259,7 +271,7 @@ func (m *Model) __effect0_mount() {
 	__async_arg0 := m.__effect0_key.Key
 	go func() {
 		r := Lookup(__async_arg0)
-		fyne.Do(func() {
+		__snglDo(func() {
 			if mine != m.attempt__inst0 {
 				return
 			}
@@ -393,7 +405,7 @@ func (m *Model) __n2_click_handler() {
 			}
 			return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 		}()
-		fyne.Do(func() {
+		__snglDo(func() {
 			switch {
 			case (__match2.tag == 0):
 				r := __match2.Ok
@@ -1450,8 +1462,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:c41fce6783825607ba23bd69f327e550
+pass sha256:4080251fe409ff97a7f8f29152ba0ae0
 -- run/kotlin/android --
-pass sha256:98eb7f312f8fc1642e871a6d3d4f4e32
+pass sha256:0993bb11753a151db8a7c4f722e06839
 -- run/none/html --
 pass sha256:89b0dd3ce830178e4c0c7be72720447a

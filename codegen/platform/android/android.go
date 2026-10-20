@@ -2,7 +2,6 @@ package android
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -47,23 +46,17 @@ func writeAndroidSourceFile(sink codegen.Sink, name string, lang codegen.LangTra
 }
 
 // writeOutputFile writes an OutputFile's content into sink using its name.
-// If WriteTo returns ErrSkip, the file is silently omitted.
 func writeOutputFile(sink codegen.Sink, f *codegen.OutputFile) error {
 	return writeOutputFileAs(sink, f.Name, f)
 }
 
 // writeOutputFileAs writes an OutputFile's content into sink under an overridden name.
-// If WriteTo returns ErrSkip, the file is silently omitted.
 func writeOutputFileAs(sink codegen.Sink, name string, f *codegen.OutputFile) error {
 	w, err := sink.Create(name)
 	if err != nil {
 		return err
 	}
 	_, werr := f.WriteTo(w)
-	if errors.Is(werr, codegen.ErrSkip) {
-		// Don't close — uncommitted writer is abandoned; file is skipped.
-		return nil
-	}
 	if cerr := w.Close(); werr == nil {
 		werr = cerr
 	}
@@ -169,14 +162,14 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	// two emit paths.
 	testMode := codegen.OptionBool(req.Options, "test")
 	var (
-		src     []byte
+		src     ktSource
 		members map[string]string
 		err     error
 	)
 	if testMode {
 		src, members, err = compileTestIR(ctx, cfg)
 	} else {
-		src, err = CompileIR(ctx, cfg)
+		src, err = compileIR(ctx, cfg)
 	}
 	if err != nil {
 		return err
@@ -199,7 +192,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	}
 
 	if !effectiveMain {
-		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+		if err := src.write(sink, "MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
 		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
@@ -213,7 +206,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
-		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+		if err := src.write(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
 		if err := emitDateFieldFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
@@ -236,15 +229,15 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			}
 			testAgentInc = testAgentDir
 		}
-		// templateTestMode flips the gradle template's TestMode flag,
+		// scaffoldTestMode sets app/build.gradle.kts's TestMode flag,
 		// which adds junit+robolectric+compose-ui-test deps and a
 		// testOptions block. Required for both agent-robolectric and
 		// native-robolectric paths so :app:testDebugUnitTest can
 		// compile + run the generated JUnit class. Device path skips
 		// this since instrumented tests live in androidTest sourceset
 		// with a different dep set.
-		templateTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
-		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
+		scaffoldTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
+		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), permissions(req.Pkg), deviceAgent, testAgentInc, scaffoldTestMode) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -262,7 +255,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			}
 		}
 	} else {
-		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+		if err := src.write(sink, "MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
 		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
@@ -274,7 +267,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent) {
+		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), permissions(req.Pkg), deviceAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -427,7 +420,7 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 		// kotlin/<pkg>/ regardless of where the rest of the sources go
 		// (AGP scans only that sourceset for unit tests).
 		testPrefix := "app/src/test/kotlin/" + pkgToPath(cfg.Package) + "/"
-		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, kotlin.UsesCodec(req.Pkg))); err != nil {
+		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, activeCounters(req.Pkg))); err != nil {
 			return err
 		}
 	case "device":
@@ -458,20 +451,39 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // test infra, etc. all resolve to real implementations on the JVM.
 //
 // A program that waits on a request has a test's wait for idle wait for the
-// bodies SnglCodec.start began as well, so a test reads what an effect's
-// answer wrote rather than what was there before it arrived.
-func robolectricAgentTestKotlin(pkg string, codec bool) []byte {
+// work each runtime counts as well -- the bodies SnglCodec.start began, the
+// pictures SnglAssets is fetching -- so a test reads what an answer wrote
+// rather than what was there before it arrived.
+// activeCounters is the counter of work in flight each runtime the program
+// carries keeps.
+func activeCounters(pkg *ir.Package) []string {
+	var out []string
+	if kotlin.UsesCodec(pkg) {
+		out = append(out, "SnglCodec.active")
+	}
+	if usesAssets(pkg) {
+		out = append(out, "SnglAssets.active")
+	}
+	return out
+}
+
+func robolectricAgentTestKotlin(pkg string, counters []string) []byte {
 	rule, waiter := "composeRule", "composeRule"
-	if codec {
+	if len(counters) > 0 {
+		busy := make([]string, len(counters))
+		for i, c := range counters {
+			busy[i] = c + ".get() > 0"
+		}
+		running := strings.Join(busy, " || ")
 		waiter = "composeTestRule"
 		rule = `object : androidx.compose.ui.test.junit4.ComposeContentTestRule by composeRule {
             override fun waitForIdle() {
                 composeRule.waitForIdle()
                 val deadline = System.currentTimeMillis() + 10_000
-                while (SnglCodec.active.get() > 0 && System.currentTimeMillis() < deadline) {
+                while ((` + running + `) && System.currentTimeMillis() < deadline) {
                     shadowOf(Looper.getMainLooper()).idle()
                     Thread.sleep(1)
-                    if (SnglCodec.active.get() == 0) composeRule.waitForIdle()
+                    if (!(` + running + `)) composeRule.waitForIdle()
                 }
             }
         }`

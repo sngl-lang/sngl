@@ -6,6 +6,7 @@ import (
 	"iter"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -144,10 +145,57 @@ func (b *Builtins) RegisterIntrinsic(def IntrinsicDef) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if prev, ok := b.intrinsics[def.Name]; ok && !prev.sameDeclAs(def) {
-		panic(fmt.Sprintf("ir: intrinsic %q is declared twice, as %s and as %s",
-			def.Name, prev.declSite(), def.declSite()))
+		// A target package may restate another package's id, to say
+		// something about the call on that target -- android's request says
+		// what permission it needs. The signature stays the other package's.
+		keep, ok := restatement(prev, def)
+		if !ok {
+			panic(fmt.Sprintf("ir: intrinsic %q is declared twice, as %s and as %s",
+				def.Name, prev.declSite(), def.declSite()))
+		}
+		merged := *keep
+		merged.Permissions = unionPermissions(prev.Permissions, def.Permissions)
+		b.intrinsics[def.Name] = &merged
+		return
+	}
+	// The same declaration registered again keeps what a restatement added.
+	if prev, ok := b.intrinsics[def.Name]; ok {
+		def.Permissions = unionPermissions(prev.Permissions, def.Permissions)
 	}
 	b.intrinsics[def.Name] = &def
+}
+
+func unionPermissions(a, b []string) []string {
+	out := slices.Clone(a)
+	for _, p := range b {
+		if !slices.Contains(out, p) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// restatement is the entry an id keeps when a and b both declare it and one
+// is a target package restating the other's: the other's, where their
+// parameters agree by name.
+func restatement(a *IntrinsicDef, b IntrinsicDef) (*IntrinsicDef, bool) {
+	keep, restate := a, &b
+	if isTargetPkg(a.Pkg) {
+		keep, restate = restate, keep
+	}
+	if !isTargetPkg(restate.Pkg) || isTargetPkg(keep.Pkg) || len(keep.Params) != len(restate.Params) {
+		return nil, false
+	}
+	for i, p := range keep.Params {
+		if p.Name != restate.Params[i].Name {
+			return nil, false
+		}
+	}
+	return keep, true
+}
+
+func isTargetPkg(pkg string) bool {
+	return strings.HasPrefix(pkg, "sngl:platform/") || strings.HasPrefix(pkg, "sngl:language/")
 }
 
 func (d IntrinsicDef) sameDeclAs(other IntrinsicDef) bool {

@@ -292,9 +292,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Measurement struct {
 	Px  float64
@@ -454,7 +452,7 @@ pass sha256:c8b87c933d1d707ce8d3ba5a650eb230
 -- run/go/fyne --
 pass sha256:a79d939b64ce247762514a9270744153
 -- run/go/gtk4 --
-pass sha256:e063396b738a0abd95cfe093183b929f
+pass sha256:562c846cfa78f8a1c5dcc2f216f68607
 -- run/kotlin/android --
 pass sha256:c3562326c5f045f8f85df3d545f495be
 -- run/none/html --

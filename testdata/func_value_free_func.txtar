@@ -150,9 +150,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Holder struct {
 	F func([]string) string
@@ -232,4 +230,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:e5bf1f45331d11af7285e584293f4f28
 -- run/go/gtk4 --
-pass sha256:da2a80fa8d93363e83dbaa1efef1865d
+pass sha256:789e3ea7c4be6bbad288fe04d34f9824

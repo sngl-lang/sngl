@@ -109,6 +109,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
 		fynelayout.Remove(__parent, __entry)
@@ -263,7 +275,7 @@ func (c *TimerInstance) __effect0_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if c.gen != mine {
 						return
 					}
@@ -850,7 +862,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:2bffabc43d7482a0fd1f9add5025c371
+pass sha256:7eb5bc218dc33f0aadb0e596864c1816
 -- run/go/gtk4 --
 pass sha256:67229a31df426d051a226c0ca3307097
 -- run/none/html --

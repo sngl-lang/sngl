@@ -34,6 +34,10 @@ type IntrinsicDef struct {
 	// with Pkg identifies it: RegisterIntrinsic panics on a second declaration
 	// of one id, and this is what tells that from the same one re-registered.
 	DeclaredAs string
+	// Permissions are what the declaration's #[android.permission] marks
+	// say, and what a target package restating the id says beside them: the
+	// call reaches that target's answer, so it needs what that answer does.
+	Permissions []string
 	// Receiver is the type a method declaration is attached to, nil for a
 	// free function: what a pass synthesizing a call of it names.
 	Receiver *Type

@@ -1,0 +1,172 @@
+{
+ "abilities": [
+  {
+   "ability": {
+    "name": "overgrow",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/ability/65/"
+   },
+   "is_hidden": false,
+   "slot": 1
+  },
+  {
+   "ability": {
+    "name": "chlorophyll",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/ability/34/"
+   },
+   "is_hidden": true,
+   "slot": 3
+  }
+ ],
+ "base_experience": 142,
+ "cries": {
+  "latest": null,
+  "legacy": null
+ },
+ "forms": [
+  {
+   "name": "ivysaur",
+   "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-form/2/"
+  }
+ ],
+ "game_indices": [
+  {
+   "game_index": 9,
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/version/1/"
+   }
+  },
+  {
+   "game_index": 9,
+   "version": {
+    "name": "blue",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/version/2/"
+   }
+  }
+ ],
+ "height": 10,
+ "held_items": [],
+ "id": 2,
+ "is_default": true,
+ "location_area_encounters": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon/2/encounters",
+ "moves": [
+  {
+   "move": {
+    "name": "swords-dance",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/move/14/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "red-blue",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/version-group/1/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "cut",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/move/15/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "red-blue",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/version-group/1/"
+     }
+    }
+   ]
+  }
+ ],
+ "name": "ivysaur",
+ "order": 2,
+ "past_abilities": [
+  {
+   "abilities": [
+    {
+     "ability": null,
+     "is_hidden": true,
+     "slot": 3
+    }
+   ],
+   "generation": {
+    "name": "generation-iv",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/generation/4/"
+   }
+  }
+ ],
+ "past_stats": [
+  {
+   "generation": {
+    "name": "generation-i",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/generation/1/"
+   },
+   "stats": [
+    {
+     "base_stat": 80,
+     "effort": 0,
+     "stat": {
+      "name": "special",
+      "url": "http://127.0.0.1:47819/pokeapi/api/v2/stat/9/"
+     }
+    }
+   ]
+  }
+ ],
+ "past_types": [],
+ "species": {
+  "name": "ivysaur",
+  "url": "http://127.0.0.1:47819/pokeapi/api/v2/pokemon-species/2/"
+ },
+ "sprites": {
+  "front_default": "http://127.0.0.1:47819/dot.png"
+ },
+ "stats": [
+  {
+   "base_stat": 60,
+   "effort": 0,
+   "stat": {
+    "name": "hp",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/stat/1/"
+   }
+  },
+  {
+   "base_stat": 62,
+   "effort": 0,
+   "stat": {
+    "name": "attack",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/stat/2/"
+   }
+  }
+ ],
+ "types": [
+  {
+   "slot": 1,
+   "type": {
+    "name": "grass",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/type/12/"
+   }
+  },
+  {
+   "slot": 2,
+   "type": {
+    "name": "poison",
+    "url": "http://127.0.0.1:47819/pokeapi/api/v2/type/4/"
+   }
+  }
+ ],
+ "weight": 130
+}
