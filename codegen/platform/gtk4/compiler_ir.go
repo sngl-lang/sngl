@@ -760,15 +760,7 @@ func selfIsNode(stmts []ir.Stmt, params []*ir.Param, node ir.Expr) []ir.Stmt {
 // answers for the widget it is handed. The statements are copied first: a
 // body is the lowered IR's, shared with every other reader of it.
 func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) []ir.Stmt {
-	found := false
-	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && widgetReads[c.Func.Intrinsic] != "" {
-			found = true
-			return ir.SkipAll
-		}
-		return nil
-	})
-	if !found {
+	if !readsWidget(stmts) {
 		return stmts
 	}
 	stmts = ir.CloneStmtsSharingDecls(stmts)
@@ -1698,19 +1690,45 @@ func gtk4IRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) [
 // is reached -- but first, since readWidgets spells a widget read into native
 // code: a select's `dropDownLabel(d)` in a render slot was read as `d` before
 // anything said `d` was the dropdown.
+//
+// Only a body holding such a handler is copied: a copy is a body whose nodes
+// are no longer the ones a canvas's redraw was pointed at.
 func (t *gtk4Translator) bindSignalSelves(stmts []ir.Stmt) []ir.Stmt {
-	stmts = ir.CloneStmtsSharingDecls(stmts)
-	_ = ir.Walk(stmts, func(n ir.Node) error {
-		cs, ok := n.(*ir.CallStmt)
-		if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Intrinsic != "AttachHandler" || len(cs.Call.Args) < 3 {
-			return nil
+	binds := func(cs *ir.CallStmt) (*ir.Lambda, bool) {
+		if cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Intrinsic != "AttachHandler" || len(cs.Call.Args) < 3 {
+			return nil, false
 		}
 		lam, ok := cs.Call.Args[2].Value.(*ir.Lambda)
-		if !ok || lam.Func == nil || len(lam.Func.Params) == 0 {
-			return nil
+		if !ok || lam.Func == nil || len(lam.Func.Params) == 0 || !readsWidget(lam.Func.Block) {
+			return nil, false
 		}
 		event, _ := cs.Call.Args[1].Value.(*ir.Literal)
 		if event == nil || t.signalFor(codegen.IdentBareName(cs.Call.Args[0].Value), event.Value) == "" {
+			return nil, false
+		}
+		return lam, true
+	}
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if cs, ok := n.(*ir.CallStmt); ok {
+			if _, ok := binds(cs); ok {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	if !found {
+		return stmts
+	}
+	stmts = ir.CloneStmtsSharingDecls(stmts)
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		cs, ok := n.(*ir.CallStmt)
+		if !ok {
+			return nil
+		}
+		lam, ok := binds(cs)
+		if !ok {
 			return nil
 		}
 		fn := *lam.Func
@@ -1721,4 +1739,17 @@ func (t *gtk4Translator) bindSignalSelves(stmts []ir.Stmt) []ir.Stmt {
 		return nil
 	})
 	return stmts
+}
+
+// readsWidget reports whether stmts hold a widgetReads call.
+func readsWidget(stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && widgetReads[c.Func.Intrinsic] != "" {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
