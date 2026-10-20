@@ -39,6 +39,26 @@ Two goals:
   `-update`d after any codegen change.
 - At the end of each part: commit, push, update the MR description, tick the
   part here, and write the prompt for the next session.
+- Recording runs: gtk4 needs a display. Run a headless compositor
+  (`XDG_RUNTIME_DIR=<short dir> WLR_BACKENDS=headless WLR_RENDERER=pixman cage -- sleep infinity`),
+  pass `XDG_RUNTIME_DIR` and `WAYLAND_DISPLAY=wayland-0`, and keep port 47819
+  free. Use `go test . -run TestGolden -update`, `go test ./codegen/platform/gtk4 -update`,
+  `go test ./codegen/platform/html -update`, and
+  `ANDROID_HOME=$HOME/Android/Sdk go test ./cmd/sngl -run TestScript -update`.
+  Read each golden diff for a change in behaviour, not only a new hash. Edit
+  nothing while a suite runs.
+- The `sngl` binary hands off to `./cmd/sngl` in the current directory. To
+  compare two compilers, run each one from its own checkout.
+- An `#id` is a declaration in its component's scope (`design/nodes.md`). It
+  shadows a package func the body calls, and that applies inside an `if` too
+  (part 6's `#number` became `#nationalNo` for this). Beside a var, prop or
+  method of the component it is an error. Name ids so that they never match a
+  function the page calls.
+- A program's write to a control fires none of its events. Only the user or
+  a test's trigger fires `@change` or `@input`, so no screen may rely on a
+  bound write to run a handler.
+- The gtk4 and android scaffolds are Go (`codegen/platform/*/scaffold_files.go`),
+  not templates. A platform helper goes there.
 
 ## Part 1: neutral `openapi:` fixtures
 
@@ -135,6 +155,38 @@ The harness gains one generic feature in place of PokéAPI routes.
 - [ ] The chain as artwork cards with the trigger between stages ("Lv. 16",
   "Thunder Stone", "High Friendship"); tapping one navigates to it.
 - [ ] A branching chain (Eevee) lays out as rows.
+
+Notes:
+
+- An evolution card is a component under a `for`. If an override in it holds
+  an effect, it is built once per copy, so each card gets its own effects and
+  handles.
+- The detail page has only `@back` today. A stage's card needs an event of
+  its own up to `app.sngl`, which calls `pages.go(detail, Mon{name=...})`, as
+  home's `@open` does. The page must follow its `name` prop changing, since
+  the species query is keyed on it.
+- A link's `evolution_details` is a list of `PokemonEvolution`, often
+  several per stage. Eevee's chain has one Leafeon and one Glaceon entry per
+  game, and a stage's `is_default` entry is the one to show. A regional form
+  is a second entry carrying `evolved_pokemon_form`: Raichu's Alolan form by
+  Thunder Stone, and Ninetales' by Ice Stone from Alolan Vulpix. Decide
+  whether such a form gets a card of its own or waits for part 8's forms, and
+  say so in the README. A stage with no detail marked `is_default` shows its
+  first.
+- Write a trigger's text through one function in `names.sngl` that takes
+  `$"..."` words, so that part 10 can translate it. Cover `min_level`
+  ("Lv. 16"), `item` ("Thunder Stone"), `min_happiness` ("High
+  Friendship"), with `time_of_day` ("High Friendship, day"), and
+  `known_move_type` (Sylveon). Item and trigger names stay PokéAPI's slugs
+  made readable until part 10 asks for their per-language names.
+- Recorded chains (`testdata/http/api/v2/evolution-chain/`): 1 Bulbasaur and 2
+  Charmander (level), 10 Pichu (a baby, friendship, a stone, an Alolan
+  form), 15 Vulpix (stones, an Alolan form) and 67 Eevee (eight branches).
+  The page asks for the chain with `poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url))`, a request keyed on the chain id, as `testEveryChainDecodes` does. Trim any new
+  recording the way the README says.
+- Tests: each chain's stages and trigger text, a branching chain's rows, and
+  tapping a stage. Each must fail when its behaviour is reverted, and every
+  test must pass on all six targets through `examples_runs.txt`.
 
 ## Part 8: Sprites
 
