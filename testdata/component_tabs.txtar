@@ -909,7 +909,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         TabRow(selectedTabIndex = state.idx) {
             for ((k, t) in listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
-                Tab(selected = (k == state.idx), enabled = !t.disabled, onClick = {
+                Tab(modifier = Modifier, selected = (k == state.idx), enabled = !t.disabled, onClick = {
                     state.idx = k
                     state.changed = k
                 }, text = {
@@ -1217,7 +1217,7 @@ pass sha256:1dfc6033a56c43fa2e732b715b4cf180
 -- run/go/gtk4 --
 pass sha256:c95d7782724c207421aa70000189cfe3
 -- run/kotlin/android --
-pass sha256:225a36a54547a35ba9dcf3b85ffb4903
+pass sha256:ef10211d13b2127fe52e7bbcface5061
 -- run/none/html --
 pass sha256:43294f1a77359bfce09eced0c9475e59
 -- testrun/html/none/component_tabs.sngl/main/1 --

@@ -379,6 +379,24 @@ value is reported as a choice:
   field chooses it, which is how the trigger's `performTextReplacement`
   reaches it.
 
+**A tab is chosen by pressing it.** No node of a `ui.tabs` reports `@change`:
+each tab of the strip a loop renders emits `change(k)` from its click, so the
+`#id` a test fires through lands on the box around them and named nothing
+that answers -- the interpreter said so, html chose nothing, and the Go
+targets called an invoker nobody wrote. A trigger of an event the node the
+id lands on does not report, where the body emits it from a looped node's
+handler or callback handing on the loop's index (`ir.EmittedIndex`), is a
+press of that node's copy at the index the trigger hands: `c.strip.change(1)`
+clicks the tab at 1, which writes `selected` and fires `@change` as a user's
+click does. `lower.NamePresses` gives the node the id `<id>__<event>` and
+turns the trigger into `c.strip__change[1].click()`, the invoker each target
+already has for one copy of a node loops render; both inliners call it,
+before the emits are substituted, since the optimizer splices a body no
+target overrides. The interpreter finds the copy by evaluating the index in
+each node's scope (`interp.View.Choosing`). Android's `Tab` takes a
+`modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
+runs it on all six, through an instance as well.
+
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
 Model on the Go targets — rather than as a local, so a read of it has to be

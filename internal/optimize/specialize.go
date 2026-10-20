@@ -221,6 +221,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// emit became one of the caller's events -- `emit("change", k)` in a
 	// root component that declares none, against nothing the Go targets
 	// define -- and a handler the call site did write was never run.
+	lower.NamePresses(ctx.pkg, cloned, n)
 	cloned = lower.SubstituteEvents(cloned, n.Handlers)
 	cloned = substituteSlots(cloned, site)
 	// Component-body platform override at inline time: optimize splices the

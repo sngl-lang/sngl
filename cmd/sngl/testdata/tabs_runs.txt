@@ -3,30 +3,33 @@
 # `selected`, a panel's handler writes the caller's state, and a `var` written
 # in a panel is state of that panel.
 #
-# The test switches tabs through a button of the caller's, as a click on the
-# strip would: a test's write of a var is a raw field write on the mutation
-# targets, which re-renders nothing. The strip's own buttons are the
-# override's, with no `#id` a test can name.
+# A test switches tabs as a user does, by pressing one: `c.strip.change(1)`
+# clicks the tab at 1, which writes `selected` and fires @change. No node of
+# the strip reports @change itself -- each tab's click emits it with its
+# index -- so the trigger is a press of that tab (lower.NamePresses, and
+# interp.View.Choosing on the interpreter), through the invoker each target
+# has for one copy of a node a loop renders; it reaches through an instance
+# too.
 #
 # testdata/component_tabs.txtar is the code.
 
 sngl test --platform=none app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   4 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   4 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   4 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   4 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   4 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   4 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -36,10 +39,7 @@ component app ui.node {
     var idx = 0
     var hits = 0
     var changed = -1
-    ui.button #second(text="second", @click {
-        idx = 1
-    })
-    ui.tabs(:selected=idx, @change(i) {
+    ui.tabs #strip(:selected=idx, @change(i) {
         changed = i
     }) {
         ui.tab(label="One") {
@@ -57,6 +57,10 @@ component app ui.node {
     }
 }
 
+component wrapped ui.node {
+    app #inner()
+}
+
 func testTheSelectedPanelIsShown(t Test, c app) {
     t.assert(c.hit != null)
     if c.hit != null {
@@ -66,7 +70,10 @@ func testTheSelectedPanelIsShown(t Test, c app) {
 }
 
 func testSwitchingShowsAnotherPanel(t Test, c app) {
-    c.second.click()
+    c.strip.change(1)
+    t.assert(c.idx == 1)
+    t.assert(c.changed == 1)
+    t.assert(c.hit == null)
     t.assert(c.twice != null)
     if c.twice != null {
         c.twice.click()
@@ -75,7 +82,7 @@ func testSwitchingShowsAnotherPanel(t Test, c app) {
 }
 
 func testAPanelKeepsStateOfItsOwn(t Test, c app) {
-    c.second.click()
+    c.strip.change(1)
     t.assert(c.twice != null)
     if c.twice != null {
         c.twice.click()
@@ -84,11 +91,17 @@ func testAPanelKeepsStateOfItsOwn(t Test, c app) {
     t.assert(c.hits == 20)
 }
 
+func testATabIsPressedThroughAnInstance(t Test, c wrapped) {
+    c.inner.strip.change(1)
+    t.assert(c.inner.idx == 1)
+    t.assert(c.inner.changed == 1)
+}
+
 ui.window {
     app
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:30097ff341960fc7b8d91526e797fefc
+sha256:7c25b86bee0e681a0d29da3d52d0320a
 {
   "results": [
     {
@@ -101,12 +114,22 @@ sha256:30097ff341960fc7b8d91526e797fefc
     },
     {
       "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/wrapped/1 --
+sha256:802a982b7de288f428688e63cbf9e122
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:0da4c790392d9ef3ec3a4f2cc8cea92d
+sha256:a286fd442264c731ea5e4fa4e0479761
 {
   "results": [
     {
@@ -119,12 +142,22 @@ sha256:0da4c790392d9ef3ec3a4f2cc8cea92d
     },
     {
       "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/wrapped/1 --
+sha256:d148928ab0d21a4deb89e9f115cedee9
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:350035d362321cb525ee5d048d7f7b4b
+sha256:2494c45c10984bffa0e185811c408883
 {
   "results": [
     {
@@ -137,12 +170,22 @@ sha256:350035d362321cb525ee5d048d7f7b4b
     },
     {
       "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/wrapped/1 --
+sha256:5c3d57014f5beb62e551c3e0b4a6f6b2
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:735f8f8be59a729999fdc91d9a8146ba
+sha256:2a7241e333bbf70eec1f21765f47c588
 {
   "results": [
     {
@@ -159,8 +202,18 @@ sha256:735f8f8be59a729999fdc91d9a8146ba
     }
   ]
 }
+-- testrun/gtk4/go/app.sngl/wrapped/1 --
+sha256:d57ceead2f6ced1c7bcf91460857ea7a
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/app/1 --
-sha256:ffe69595f238c65583a3017b7411ca67
+sha256:439eae77637bc8cf6dc1930b856a7d0c
 {
   "results": [
     {
@@ -173,6 +226,16 @@ sha256:ffe69595f238c65583a3017b7411ca67
     },
     {
       "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/wrapped/1 --
+sha256:f06b771c7d2c3321915c00130c3690b1
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
       "Passed": true
     }
   ]

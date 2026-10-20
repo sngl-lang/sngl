@@ -301,9 +301,11 @@ component TabRow(
 ) ui.node
 
 // One tab of a TabRow; `text` is its label, which Compose takes as content.
+// `modifier` carries the testTag a test presses one by.
 #[gen.renders(identity)]
 #[kt.native("Tab", "androidx.compose.material3.Tab")]
 component Tab(
+    modifier ui.Style,
     selected bool,
     enabled  bool,
     onClick  func(),

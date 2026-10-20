@@ -263,7 +263,7 @@ ui.window {
 		"CircularProgressIndicator(modifier = Modifier)",
 		"Card(modifier = Modifier) {",
 		"TabRow(selectedTabIndex = idx) {",
-		"Tab(selected = ",
+		"Tab(modifier = Modifier, selected = ",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)

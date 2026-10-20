@@ -501,6 +501,15 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 		if n := view.Handling(method[1:]); n != nil {
 			return env.InvokeElementEvent(n.Map(), method[1:], evalArgs)
 		}
+		// Or it is the press of one copy a loop renders, whose handler emits
+		// the event with the copy's index: a tab of a strip.
+		if vals, err := evalArgs(); err != nil {
+			return nil, true, err
+		} else if len(vals) == 1 {
+			if n, press := view.Choosing(method[1:], vals[0]); n != nil {
+				return env.InvokeElementEvent(n.Map(), press, func() ([]any, error) { return nil, nil })
+			}
+		}
 		return nil, true, fmt.Errorf("@%s fired on %s reaches nothing that handles it", method[1:], cv.compName)
 	}
 	fn := cv.funcNamed(method)

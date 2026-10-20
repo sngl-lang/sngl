@@ -252,3 +252,27 @@ func stripConversions(e Expr) Expr {
 	}
 	return e
 }
+
+// EmittedIndex is the loop variable block emits event with when the emit hands
+// on that and nothing else -- a tab strip's `@click { selected = k; change(k) }`
+// -- or nil. A trigger of event on a component whose body emits it so, from a
+// node a loop renders, is a press of that node's copy at the index the
+// trigger names: `c.strip.change(1)` presses the second tab.
+func EmittedIndex(block []Stmt, event string) *LoopVar {
+	var found *LoopVar
+	_ = Walk(block, func(n Node) error {
+		e, ok := n.(*Emit)
+		if !ok || e.Name != event {
+			return nil
+		}
+		if len(e.Args) == 1 {
+			if id, ok := e.Args[0].Value.(*Ident); ok {
+				if lv, ok := id.Sym.(*LoopVar); ok {
+					found = lv
+				}
+			}
+		}
+		return SkipDir
+	})
+	return found
+}

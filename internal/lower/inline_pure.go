@@ -759,6 +759,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Name matches a user-provided event handler with the handler body.
 	// Before the slots are spliced, since an emit in the content the call
 	// site supplied is the caller's own and names none of these events.
+	NamePresses(st.pkg, body, callsite)
 	body = substituteEvents(body, callsite.Handlers)
 
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
