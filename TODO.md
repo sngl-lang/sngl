@@ -1,8 +1,8 @@
 # Pokédex redesign
 
-One MR, `pokedex-7-redesign`, stacked on !268 (`pokedex-6-example`). Every
-part below is commits on this branch; none gets its own MR. Merge
-`origin/main` as !267, !268 and !269 land. Delete this file before the MR
+One MR, `pokedex-7-redesign` (!270), targeting `main` directly with nothing
+stacked under it. Every part below is commits on this branch; none gets its
+own MR. Merge `origin/main`, never rebase. Delete this file before the MR
 leaves draft.
 
 Two goals:
