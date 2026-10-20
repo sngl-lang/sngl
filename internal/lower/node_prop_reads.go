@@ -3,6 +3,7 @@ package lower
 import (
 	"duckfam.us/sngl/ast"
 	"fmt"
+	"maps"
 	"slices"
 
 	"duckfam.us/sngl/ir"
@@ -727,6 +728,33 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 			own[n.Handle] = true
 		}
 		return true
+	})
+	// What a function literal in e binds -- its parameters, a loop in its
+	// body -- is bound wherever e is read, the test included.
+	keep = maps.Clone(keep)
+	_ = ir.Walk(e, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Lambda:
+			if keep == nil {
+				keep = map[ir.Symbol]bool{}
+			}
+			if x.Func != nil {
+				for _, p := range x.Func.Params {
+					keep[p] = true
+				}
+			}
+		case *ir.For:
+			if keep == nil {
+				keep = map[ir.Symbol]bool{}
+			}
+			if x.KeySym != nil {
+				keep[x.KeySym] = true
+			}
+			if x.ValueSym != nil {
+				keep[x.ValueSym] = true
+			}
+		}
+		return nil
 	})
 	unnamed := false
 	out := newExprWalker(func(x ir.Expr) ir.Expr {

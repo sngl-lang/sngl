@@ -169,7 +169,11 @@ moves a node out of the body that wrote it:
   prop reading what a test cannot name -- a slot's parameter, a local, a pull
   sequence's element -- is left as written for a node of the test's own
   instance and refused with a position for one reached through another
-  instance (`unnamedTestPropRead`).
+  instance (`unnamedTestPropRead`). What a function literal in the
+  expression binds is no such name: `names.map(func(n) => …)` reads `n`
+  wherever it is read, a test included -- refused before, and so was any
+  prop whose pure helper the optimizer inlined into one
+  (`cmd/sngl/testdata/test_reach_prop_lambda_runs.txt`).
 - **A node is one of the test's instance's own**: `c.b.hit` becomes `c.hit`,
   and `c.r[1].tap` the copy of `c.tap` under key "1", the indices of each step
   kept outermost first -- the copy key a node inside an instance built at run
