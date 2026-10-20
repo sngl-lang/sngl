@@ -514,6 +514,10 @@ func loopIndex(fs *ir.For, depth int) *ir.LoopVar {
 		}
 		fs.Key = fmt.Sprintf("__copy%d", depth)
 		fs.KeySym = &ir.LoopVar{Name: fs.Key, Type: ir.TypInt}
+		// passIterKind classified the single-variable loop; a head written
+		// from the old kind binds the element to the index's name.
+		fs.Counted = ir.CountedSeq(fs)
+		fs.IterKind = ir.DeriveIterKind(fs)
 	}
 	if fs.KeySym == nil {
 		fs.KeySym = &ir.LoopVar{Name: fs.Key, Type: ir.TypInt}
