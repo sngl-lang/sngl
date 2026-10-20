@@ -12,9 +12,17 @@ Two goals:
    PokéAPI or the Pokédex, except a `design/` sentence pointing at the
    example where a rule came from it.
 2. **A fuller Pokédex.** Choose a Pokédex, browse its Pokémon as a grid of
-   pictures, tap one for a page of tabs about it, with many pictures.
+   pictures, tap one for a page of tabs about it, with many pictures -- in
+   the reader's language, PokéAPI's names and descriptions as well as the
+   app's own words.
 
 ## Rules for every part
+
+- Write for part 10 from part 7 on: every word the app itself shows is a
+  `$"..."` literal, and every name or text PokéAPI gives per language is
+  picked through one function in `names.sngl` (part 6's `speciesName`,
+  `genusOf`, `latestFlavor` and `englishName` are the ones to fold into it),
+  so part 10 adds languages rather than rewriting screens.
 
 - A compiler fix the example needs gets its own fixture, and that fixture
   uses neutral names. Goal 1 holds for new fixtures too.
@@ -140,10 +148,43 @@ The harness gains one generic feature in place of PokéAPI routes.
 - [ ] A `ui.table` of the moves learned by level in the latest version group.
 - [ ] A `ui.select` of learn method: level, machine, egg, tutor.
 
-## Part 10: every target, and the MR
+## Part 10: every language
 
-- [ ] The example's tests cover each tab and the dex switch, and pass on all
-  six targets through `examples_runs.txt`.
+SNGL has the features -- `$"..."` strings backed by `i18n.manifest.json`
+(`examples/hello-i18n`), ICU plurals, `i18n.numberFloat`, and the
+`i18n.locale` context, which a subtree or a test overrides -- and PokéAPI has
+the data. Languages: English, French, German, Spanish and Japanese.
+
+- [ ] A language choice in the app's shell, a `ui.select` providing
+  `i18n.locale` around the `nav.stack`, starting at the process locale and at
+  English where that is none of the five.
+- [ ] One function from a SNGL locale to PokéAPI's language names (`fr`,
+  `de`, `es`, `ja-Hrkt` and `ja`, `en`), and one picker over any list of
+  per-language entries, falling back to English, then to the resource's own
+  name made readable: species names, genera, the newest description in the
+  language, dex names.
+- [ ] The names a page shows that live on resources of their own -- types,
+  abilities, stats, egg groups, habitat, the items and triggers in an
+  evolution, moves and learn methods -- asked for by name where shown, each a
+  query keyed on it. Say in the README what that costs per page, and whether
+  a resource asked for twice on one screen is asked for twice.
+- [ ] The app's own words through `$"..."` and a manifest for the five
+  languages: tab labels, About's labels, "Show more", the search placeholder,
+  the errors, "Genderless", the dex count as a plural ("1 Pokémon" / "40
+  Pokémon"). Numbers through `i18n.numberFloat`, so French reads "0,7 m".
+- [ ] Re-record what parts 4-9 trimmed to English, keeping the five
+  languages, and record the per-name resources the screens ask for. The
+  README's trim rules say which languages are kept.
+- [ ] Tests set `i18n.locale` with `t.setContext`: a species' name, genus and
+  description in Japanese and French; a type and an ability name; a word
+  from the manifest; a plural; a decimal comma; and a language PokéAPI lacks
+  for an entry falling back to English. Each fails when its behaviour is
+  reverted.
+
+## Part 11: every target, and the MR
+
+- [ ] The example's tests cover each tab, the dex switch and the language
+  switch, and pass on all six targets through `examples_runs.txt`.
 - [ ] Look at it running on html, bubbletea, fyne, gtk4 and android;
   screenshots in the MR description.
 - [ ] README describes the redesign: files, the request per screen, where
