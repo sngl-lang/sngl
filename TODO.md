@@ -103,14 +103,14 @@ The harness gains one generic feature in place of PokéAPI routes.
 
 ## Part 5: home, a Pokédex as a grid
 
-- [ ] A `ui.select` over `pokedexList`, defaulting to National; the dex's
+- [X] A `ui.select` over `pokedexList`, defaulting to National; the dex's
   name, region and count beside it.
-- [ ] One `pokedexRetrieve` per dex. Each card shows its official artwork,
+- [X] One `pokedexRetrieve` per dex. Each card shows its official artwork,
   its number in this dex and its name. Artwork comes from the species id in
   the entry's URL, so a card makes no request of its own.
-- [ ] Rows of three, built by a helper in `names.sngl` (`Style` has no wrap
+- [X] Rows of three, built by a helper in `names.sngl` (`Style` has no wrap
   or grid columns), 30 cards at a time with "Show more".
-- [ ] The search covers the whole dex.
+- [X] The search covers the whole dex.
 
 ## Part 6: the detail page, header and tabs
 
