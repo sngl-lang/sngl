@@ -63,7 +63,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
                 }
             }
             if dex != null {
-                ui.text #about(value="{englishName(dex.names, dex.name)} · {dex.region != null ? display(dex.region.name) : "every region"} · {dex.pokemonEntries.length()} Pokémon")
+                ui.text #about(value="{dexTitle(dex.names, dex.name)} · {dex.region != null ? display(dex.region.name) : "every region"} · {dex.pokemonEntries.length()} Pokémon")
             }
         }
         ui.input #searchBox(placeholder="Search this Pokédex", :value=search)

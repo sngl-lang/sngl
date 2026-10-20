@@ -25,7 +25,7 @@ component Pokedex ui.node {
     nav.stack #pages {
         nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
             component content(p) {
-                detailPage(name=p.name, @back { pages.back() })
+                detailPage(name=p.name, @back { pages.back() }, @open(name) { pages.go(detail, Mon{name=name}) })
             }
         }
         nav.page #home(href="/", title="Pokédex") {

@@ -14,14 +14,14 @@ sngl generate --platform android   --lang kotlin -o /tmp/dex-apk examples/pokede
 
 ## How it is put together
 
-| file                | what is in it                                                      |
-|---------------------|--------------------------------------------------------------------|
-| `app.sngl`          | the window: a `nav.stack` of home and a page per Pokémon           |
-| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time   |
-| `detail.sngl`       | a species' page: a header over About, Stats and three tabs to come |
-| `names.sngl`        | ids, names, rows, the artwork, and what a page's lines say         |
-| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                               |
-| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                  |
+| file                | what is in it                                                                   |
+|---------------------|---------------------------------------------------------------------------------|
+| `app.sngl`          | the window: a `nav.stack` of home and a page per Pokémon                        |
+| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time                |
+| `detail.sngl`       | a species' page: a header over About, Stats, Evolution and two tabs to come     |
+| `names.sngl`        | ids, names, rows, the artwork, an evolution's rows, and what a page's lines say |
+| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                                            |
+| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                               |
 
 **The API is an import.** `import poke "openapi:./pokeapi.yml"` reads
 PokéAPI's own OpenAPI document and writes a SNGL package from it: a struct for
@@ -80,7 +80,7 @@ context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprit
 A test provides one with no `{id}` in it, the harness's `/dot.png`, so no card
 a test renders reaches the network.
 
-**A page is two requests, the second keyed on the first.** A card opens its
+**A page is three requests, each after the first keyed on it.** A card opens its
 species by name, and a species' name is not always a Pokémon's: the species
 deoxys is the Pokémon deoxys-normal. So the page asks for the species, and
 then for its default variety:
@@ -95,7 +95,7 @@ if about != null {
 The header needs only the species -- its artwork through `artwork`, its
 English name and genus, its national number as `#001` -- but for its types,
 which wait for the Pokémon. Under it is a `ui.tabs`: About, Stats, Evolution,
-Sprites and Moves, the last three still to come.
+Sprites and Moves, the last two still to come.
 
 **About** is the species' newest English description on one line (the games
 break a description with newlines and form feeds where their text box did),
@@ -107,13 +107,51 @@ rate. **Stats** is a bar per base stat against 255, their total, and the effort
 values defeating the Pokémon gives. Each line's text is a function in
 `names.sngl`, which `testNames` checks beside the page's own tests.
 
+Every name and text PokéAPI gives per language -- a species' name and genus,
+its newest description, a dex's name -- is picked by one function,
+`inLanguage`, out of the entries PokéAPI lists for it, the reader's language
+being English until the app offers others.
+
+**Evolution** is the species' evolution chain, the page's third request,
+keyed on the chain's id out of the species' `evolution_chain` URL:
+
+```sngl
+poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=evolution)
+```
+
+A chain is a tree, and the tab draws it as rows, one for each line from its
+first stage to a last (`evolutionRows`): Bulbasaur's is one row of three, and
+Eevee's eight rows of two, each starting at Eevee. A stage is a card of its
+artwork and its name, after the way it is reached -- "Lv. 16", "Thunder
+Stone", "High Friendship, day", "High Friendship, knowing a Fairy move".
+PokéAPI lists every way a stage is reached, game by game, and marks the ones
+to show `is_default`: Leafeon by a Leaf Stone, not by levelling up in Eterna
+Forest. A stage shows its first default detail, or its first where none is
+marked. The words are the app's own, each a `$"..."` in `triggerOf`, and an
+item, a type or a trigger is PokéAPI's name made readable, until the names
+PokéAPI gives each language are asked for.
+
+Tapping a card opens that species' page. `detailPage` hands the name up
+through `@open`, and the app's stack goes to it as home's `@open` does; where
+the stack keeps the page and changes its `name`, every request follows the
+new name, since each is keyed on what came before it.
+
+**A regional form waits for the Sprites tab's forms.** The chain names
+species, and a form is not one: Alolan Raichu is a second default detail of
+Raichu's stage, carrying `evolved_pokemon_form`, and so is Alolan Ninetales,
+by an Ice Stone from Alolan Vulpix. A card opens `/pokemon/{name}`, a
+species' page, and finds its artwork by species id, so a form's card would
+open its species and show its species' picture. Raichu's stage therefore
+shows its first default detail, the Thunder Stone, and Ninetales' the Fire
+Stone; the forms get cards of their own with the forms the Sprites tab lists.
+
 **Pages.** The app is a `nav.stack` of two pages. The detail page's params are
 a struct, and its href names their field:
 
 ```sngl
 nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
     component content(p) {
-        detailPage(name=p.name, @back { pages.back() })
+        detailPage(name=p.name, @back { pages.back() }, @open(name) { pages.go(detail, Mon{name=name}) })
     }
 }
 ```

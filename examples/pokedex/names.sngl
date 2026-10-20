@@ -1,3 +1,4 @@
+import i18n "sngl:i18n"
 import seq "sngl:seq"
 import poke "openapi:./pokeapi.yml"
 
@@ -21,16 +22,98 @@ func display(name string) string {
     return out.join(" ")
 }
 
-// The species of an evolution chain, each stage once, in the order the
-// chain walks them: a parent before what it evolves into.
-func stages(link poke.EvolutionChainLink) list[string] {
-    var out = [link.species.name]
+// One stage of an evolution chain as its card shows it: the species, its
+// national number, and how the stage before becomes it ("" for the first).
+struct Stage {
+    name    string
+    id      string
+    trigger string
+}
+
+// An evolution chain as rows, one for each line from its first stage to a
+// last: Bulbasaur's is one row of three, Eevee's eight rows of two.
+func evolutionRows(link poke.EvolutionChainLink) list[list[Stage]] {
+    return rowsFrom(link, Stage{name=link.species.name, id=idOf(link.species.url), trigger=""})
+}
+
+// The rows of the chain from `link` on, each starting at `here`, the stage
+// `link` is.
+func rowsFrom(link poke.EvolutionChainLink, here Stage) list[list[Stage]] {
+    if link.evolvesTo.length() == 0 {
+        return [[here]]
+    }
+    var out list[list[Stage]] = []
     for var next = link.evolvesTo {
-        for var s = stages(next) {
-            out.push(s)
+        var step = Stage{name=next.species.name, id=idOf(next.species.url), trigger=evolutionStep(next.evolutionDetails)}
+        for var rest = rowsFrom(next, step) {
+            var row = [here]
+            for var s = rest {
+                row.push(s)
+            }
+            out.push(row)
         }
     }
     return out
+}
+
+// How a stage is reached, from the details of its link: the one marked
+// default, or the first where none is. A link has several where games
+// differ -- Leafeon by a Leaf Stone or a mossy rock -- and a regional form is
+// a second default detail after the first.
+func evolutionStep(details list[poke.PokemonEvolution]) string {
+    var marked = details.filter(func(d poke.PokemonEvolution) => d.isDefault == true)
+    if marked.length() > 0 {
+        return triggerOf(marked[0])
+    }
+    return details.length() > 0 ? triggerOf(details[0]) : ""
+}
+
+// What an evolution asks, as the games say it: "Lv. 16", "Thunder Stone",
+// "High Friendship, day". Each word is the app's own, to translate; an item,
+// a type or a trigger is PokéAPI's name made readable.
+func triggerOf(d poke.PokemonEvolution) string {
+    var parts list[string] = []
+    var level = d.minLevel
+    if level != null {
+        parts.push($"Lv. {level}")
+    }
+    var item = d.item
+    if item != null {
+        parts.push(display(item.name))
+    }
+    var held = d.heldItem
+    if held != null {
+        parts.push($"holding {display(held.name)}")
+    }
+    if d.minHappiness != null {
+        parts.push($"High Friendship")
+    }
+    if d.minAffection != null {
+        parts.push($"High Affection")
+    }
+    var moveType = d.knownMoveType
+    if moveType != null {
+        parts.push($"knowing a {display(moveType.name)} move")
+    }
+    var move = d.knownMove
+    if move != null {
+        parts.push($"knowing {display(move.name)}")
+    }
+    var time = d.timeOfDay
+    if time != null && time != "" {
+        parts.push(time == "day" ? $"day" : time == "night" ? $"night" : display(time))
+    }
+    if d.trigger.name == "trade" {
+        parts.push($"Trade")
+    }
+    if parts.length() == 0 {
+        return display(d.trigger.name)
+    }
+    var text = parts[0]
+    for var p = parts.slice(1, parts.length()) {
+        text = $"{text}, {p}"
+    }
+    return text
 }
 
 // Where a Pokémon's official artwork is, `{id}` standing for its national
@@ -51,15 +134,23 @@ func number(n int) string {
     return "#" + digits
 }
 
-// A dex's English name, or its own name where it has none in English.
-func englishName(names list[poke.PokedexName], name string) string {
-    for var n = names {
-        if n.language.name == "en" {
-            return n.name
+// What PokéAPI gives in the reader's language out of `entries`, one per
+// language or more -- a name, a genus, a game's description -- `text` of the
+// last entry `language` says is in it, or `otherwise` where none is. Every
+// name or text the app shows from PokéAPI is picked here; the reader's
+// language is English until the app offers others.
+func inLanguage[T any](entries list[T], language func(T) string, text func(T) string, otherwise string) string {
+    var out = otherwise
+    for var e = entries {
+        if language(e) == "en" {
+            out = text(e)
         }
     }
-    return display(name)
+    return out
 }
+
+// A dex's name, or its own name made readable where it has none.
+func dexTitle(names list[poke.PokedexName], name string) => inLanguage(names, func(n poke.PokedexName) => n.language.name, func(n poke.PokedexName) => n.name, display(name))
 
 // `items` in rows of `width`, the last holding what is left: a grid, since a
 // `Style` neither wraps a row nor lays out columns.
@@ -82,30 +173,16 @@ func defaultVariety(varieties list[poke.PokemonSpeciesVariety], species string) 
     return species
 }
 
-// A species' English name, or its own name where it has none in English.
-func speciesName(names list[poke.PokemonSpeciesName], name string) string {
-    var en = names.filter(func(n poke.PokemonSpeciesName) => n.language.name == "en")
-    return en.length() > 0 ? en[0].name : display(name)
-}
+// A species' name, or its own name made readable where it has none.
+func speciesName(names list[poke.PokemonSpeciesName], name string) => inLanguage(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name, display(name))
 
-// What kind of Pokémon a species is, in English: "Seed Pokémon".
-func genusOf(genera list[poke.PokemonSpeciesGenus]) string {
-    var en = genera.filter(func(g poke.PokemonSpeciesGenus) => g.language.name == "en")
-    return en.length() > 0 ? en[0].genus : ""
-}
+// What kind of Pokémon a species is: "Seed Pokémon".
+func genusOf(genera list[poke.PokemonSpeciesGenus]) => inLanguage(genera, func(g poke.PokemonSpeciesGenus) => g.language.name, func(g poke.PokemonSpeciesGenus) => g.genus, "")
 
-// The last English description of a species, the newest game's, on one line:
-// the games break a description where their text box did, with newlines and
-// form feeds.
-func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) string {
-    var text = ""
-    for var e = entries {
-        if e.language.name == "en" {
-            text = e.flavorText
-        }
-    }
-    return oneLine(text)
-}
+// A species' last description, the newest game's, on one line: the games
+// break a description where their text box did, with newlines and form
+// feeds.
+func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) => oneLine(inLanguage(entries, func(e poke.PokemonSpeciesFlavorText) => e.language.name, func(e poke.PokemonSpeciesFlavorText) => e.flavorText, ""))
 
 // `s` with every run of whitespace a single space, and none at either end.
 func oneLine(s string) string {

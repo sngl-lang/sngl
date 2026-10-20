@@ -9,21 +9,29 @@ const maxStat = 255
 // One species: a header of its artwork, name, number, genus and types over
 // tabs about it. The page asks for the species, and then for the Pokémon that
 // is its default variety, keyed on what the species said: a species name is
-// not always a Pokémon's.
-component detailPage(name string, @back()) ui.node {
+// not always a Pokémon's. Its evolution chain is a third request, keyed on the
+// chain's id; a stage of it opens that species' page.
+component detailPage(name string, @back(), @open(name string)) ui.node {
     var about option[poke.PokemonSpeciesDetail] = null
     var mon option[poke.PokemonDetail] = null
     var loading = false
     var failure option[async.Failure] = null
     var monFailure option[async.Failure] = null
+    var evolution option[poke.EvolutionChainDetail] = null
     var tab = 0
 
     // The species' official artwork, as the `artwork` context says where.
     func picture() => about != null ? artworkOf(artwork, "{about.id}") : ""
 
+    // The species' evolution chain, a row for each line through it.
+    func chainRows() list[list[Stage]] {
+        return evolution != null ? evolutionRows(evolution.chain) : []
+    }
+
     poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
     if about != null {
         poke.pokemonRetrieve(id=defaultVariety(about.varieties, about.name), :value=mon, :failure=monFailure)
+        poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=evolution)
     }
 
     ui.vbox(style={gap=8px, padding=8px}) {
@@ -106,7 +114,21 @@ component detailPage(name string, @back()) ui.node {
                     }
                 }
                 ui.tab(label="Evolution") {
-                    ui.text(value="The evolution chain comes later.")
+                    ui.vbox(style={gap=12px, padding=8px}) {
+                        for var row = chainRows() {
+                            ui.hbox(style={gap=8px, alignItems=center}) {
+                                for var stage = row {
+                                    if stage.trigger != "" {
+                                        ui.vbox(style={alignItems=center, width=96px}) {
+                                            ui.text(value="→")
+                                            ui.text #trigger(value=stage.trigger)
+                                        }
+                                    }
+                                    stageCard #step(stage=stage, @open { open(stage.name) })
+                                }
+                            }
+                        }
+                    }
                 }
                 ui.tab(label="Sprites") {
                     ui.text(value="The sprites come later.")
@@ -124,5 +146,16 @@ component fact(label string, value ...component ui.node) ui.node {
     ui.hbox(style={gap=8px}) {
         ui.text(value=label, style={width=120px, fontWeight=bold})
         value
+    }
+}
+
+// One stage of an evolution chain: its artwork and its name, which opens its
+// page. Its picture comes from the species id, so a card asks for nothing.
+component stageCard(stage Stage, @open()) ui.node {
+    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+        ui.image(alt=stage.name, style={width=96px, height=96px}) {
+            ui.remote(url=artworkOf(artwork, stage.id))
+        }
+        ui.button(text=display(stage.name), @click { open() })
     }
 }

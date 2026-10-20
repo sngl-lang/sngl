@@ -6,32 +6,32 @@
 # html runs each component a test takes as a page of its own, so an example
 # whose window is served in route mode is tested as a static page there too.
 #
-# 45 is every example's tests together, so one dropping out of the walk fails.
+# 52 is every example's tests together, so one dropping out of the walk fails.
 
 exec cp -r $SNGL_ROOT/examples .
 
 sngl test --platform=none ./examples/...
-stdout '^ok +45 tests, 0 failures$'
+stdout '^ok +52 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=html ./examples/...
-stdout '^ok +45 tests, 0 failures$'
+stdout '^ok +52 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=fyne --language=go ./examples/...
-stdout '^ok +45 tests, 0 failures$'
+stdout '^ok +52 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=gtk4 --language=go ./examples/...
-stdout '^ok +45 tests, 0 failures$'
+stdout '^ok +52 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=bubbletea --language=go ./examples/...
-stdout '^ok +45 tests, 0 failures$'
+stdout '^ok +52 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=android --language=kotlin ./examples/...
-stdout '^ok +45 tests, 0 failures$'
+stdout '^ok +52 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
 sha256:eb923c1996a4c989d58bcd57405da761
@@ -44,7 +44,7 @@ sha256:eb923c1996a4c989d58bcd57405da761
   ]
 }
 -- testrun/android/kotlin/app.sngl/Tour/1 --
-sha256:a4f178a66f9cde17fdd230177a150d9c
+sha256:956b8e3635ecd9a31620aff7baaea238
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:b9e462ad6c32c4a2badf0d343a61a5ce
   ]
 }
 -- testrun/android/kotlin/app.sngl/bud/1 --
-sha256:35c16a8e7bb1d815e162fec98ade5ce7
+sha256:83cb210bbeb24268b99e35e51982107a
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:35c16a8e7bb1d815e162fec98ade5ce7
   ]
 }
 -- testrun/android/kotlin/app.sngl/chains/1 --
-sha256:cee6c5f2b697a3ba06fa070257f95322
+sha256:aeaf0a765de20b90600c4f7d92b5b5db
 {
   "results": [
     {
@@ -168,7 +168,7 @@ sha256:cee6c5f2b697a3ba06fa070257f95322
   ]
 }
 -- testrun/android/kotlin/app.sngl/dexes/1 --
-sha256:db40ad7aa54e650e7578af54450c72fb
+sha256:aa2f39afd4411b846c2213a39d8f7619
 {
   "results": [
     {
@@ -177,8 +177,38 @@ sha256:db40ad7aa54e650e7578af54450c72fb
     }
   ]
 }
+-- testrun/android/kotlin/app.sngl/flame/1 --
+sha256:7935ea7da0509c72aeb7967ce627dfeb
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/fluff/1 --
+sha256:63b157be91363ddccd041e4b6f910e03
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/fox/1 --
+sha256:6ed4577748a1a9ad8d731c9128fd2fe2
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/app.sngl/home/1 --
-sha256:a138dcef4dbe123206d82081e1f37d7c
+sha256:f521eeae0c26c6944326646caa97b2f5
 {
   "results": [
     {
@@ -208,7 +238,7 @@ sha256:a138dcef4dbe123206d82081e1f37d7c
   ]
 }
 -- testrun/android/kotlin/app.sngl/mons/1 --
-sha256:1c51bd99624d11197233766e8f136452
+sha256:1208e90a136c900c6da7749d07a3a73b
 {
   "results": [
     {
@@ -218,17 +248,21 @@ sha256:1c51bd99624d11197233766e8f136452
   ]
 }
 -- testrun/android/kotlin/app.sngl/mouse/1 --
-sha256:4303d89a53574cb1eea69caee520d80b
+sha256:41816d956aaf46ec8d72ee1522e5833d
 {
   "results": [
     {
       "Desc": "AboutIsEachSpecies",
       "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
     }
   ]
 }
 -- testrun/android/kotlin/app.sngl/seed/1 --
-sha256:24fd33eb559d0f785ac77cb043b60d7f
+sha256:356585e7f9f1334337282a12925572e4
 {
   "results": [
     {
@@ -252,6 +286,14 @@ sha256:24fd33eb559d0f785ac77cb043b60d7f
       "Passed": true
     },
     {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
+      "Passed": true
+    },
+    {
       "Desc": "StatsTotalAndEffort",
       "Passed": true
     },
@@ -270,11 +312,21 @@ sha256:24fd33eb559d0f785ac77cb043b60d7f
   ]
 }
 -- testrun/android/kotlin/app.sngl/species/1 --
-sha256:3c7eb4ada5a8eca000b436ba59977c45
+sha256:a6338cbfc7f5f6cc54f52f99236b33f0
 {
   "results": [
     {
       "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/walk/1 --
+sha256:f6be4c7965ef9ae091502d52fadec079
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
       "Passed": true
     }
   ]
@@ -394,7 +446,7 @@ sha256:0813353cfea9008d3012a4661f9e7d02
   ]
 }
 -- testrun/bubbletea/go/app.sngl/bud/1 --
-sha256:80d350b3e4999c2ba72503dced9776f5
+sha256:302c5ececdda783437d200907da8081b
 {
   "results": [
     {
@@ -404,7 +456,7 @@ sha256:80d350b3e4999c2ba72503dced9776f5
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chains/1 --
-sha256:a480aa4a99eaf9c44ac71dd81b849a27
+sha256:0ea3955f581d84797ff17f7bf2219513
 {
   "results": [
     {
@@ -414,7 +466,7 @@ sha256:a480aa4a99eaf9c44ac71dd81b849a27
   ]
 }
 -- testrun/bubbletea/go/app.sngl/dexes/1 --
-sha256:00944a4c129bad9318a2daed99a10f77
+sha256:4d3b2b16b615e37e9196def47769f320
 {
   "results": [
     {
@@ -423,8 +475,38 @@ sha256:00944a4c129bad9318a2daed99a10f77
     }
   ]
 }
+-- testrun/bubbletea/go/app.sngl/flame/1 --
+sha256:98c22955b49592c6161db8204dd02919
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/fluff/1 --
+sha256:1ea5a2f976a281b4dbee0b5872b68ac2
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/fox/1 --
+sha256:762c6bfd51b321ce941d188383856347
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/app.sngl/home/1 --
-sha256:4a6014121310479e44dde5067904312f
+sha256:d66eb56f118253e0b999e00518edf9be
 {
   "results": [
     {
@@ -464,17 +546,21 @@ sha256:f56c9a4b615ccd0106abf98dc2505319
   ]
 }
 -- testrun/bubbletea/go/app.sngl/mouse/1 --
-sha256:6f60d0f7b93a6772fb3b71d68199f755
+sha256:03c9b7cce60ce2967d21caa83240af95
 {
   "results": [
     {
       "Desc": "AboutIsEachSpecies",
       "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/seed/1 --
-sha256:1f6f3ac5786bb21459f6187cb56c3f1e
+sha256:784131982bd65a214a1f9cf49ca10ca7
 {
   "results": [
     {
@@ -495,6 +581,14 @@ sha256:1f6f3ac5786bb21459f6187cb56c3f1e
     },
     {
       "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
       "Passed": true
     },
     {
@@ -521,6 +615,16 @@ sha256:0220ebf73a4a8973adc56493816fe9c2
   "results": [
     {
       "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/walk/1 --
+sha256:845a6e7ef302cd7ce70ac3ee11f72089
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
       "Passed": true
     }
   ]
@@ -640,7 +744,7 @@ sha256:c40aee0e020edefcaee43f0cb7d66c68
   ]
 }
 -- testrun/fyne/go/app.sngl/bud/1 --
-sha256:37d7a7ad2726fa5dcadd94a99a0ce79d
+sha256:8ea05a1528aae1a62d5db8a67caf7a0a
 {
   "results": [
     {
@@ -650,7 +754,7 @@ sha256:37d7a7ad2726fa5dcadd94a99a0ce79d
   ]
 }
 -- testrun/fyne/go/app.sngl/chains/1 --
-sha256:3e7e501025cf0d8321b9f3af54b18c66
+sha256:564d11dd1740216d41bf67281fbf9cc4
 {
   "results": [
     {
@@ -660,7 +764,7 @@ sha256:3e7e501025cf0d8321b9f3af54b18c66
   ]
 }
 -- testrun/fyne/go/app.sngl/dexes/1 --
-sha256:5cec8e5c3c7fda8c4ce68de0c2a909e8
+sha256:8235a948835d4d9b2bcdcb953d2e3580
 {
   "results": [
     {
@@ -669,8 +773,38 @@ sha256:5cec8e5c3c7fda8c4ce68de0c2a909e8
     }
   ]
 }
+-- testrun/fyne/go/app.sngl/flame/1 --
+sha256:5ed8a521e8db0ff1c8abc563077fa195
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/fluff/1 --
+sha256:c24d4f8a45108aad6304bce863ad7021
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/fox/1 --
+sha256:5b6cb2fb7acb67835425bf543069ae3b
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/home/1 --
-sha256:7e639ad3d0ff3b8c7174006e804a929b
+sha256:223057fca2c5d446d24ce037f8e9a88c
 {
   "results": [
     {
@@ -710,17 +844,21 @@ sha256:2e5e4049cf4b898a743073cb28efebda
   ]
 }
 -- testrun/fyne/go/app.sngl/mouse/1 --
-sha256:a34131af5a579b153544f12428617618
+sha256:e411e9e6a8911c379d7a1ee60ec3ac23
 {
   "results": [
     {
       "Desc": "AboutIsEachSpecies",
       "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/seed/1 --
-sha256:0481cb62350b408a06a7d098eb37448c
+sha256:370924799ed563265dbd17ec500ecaf8
 {
   "results": [
     {
@@ -741,6 +879,14 @@ sha256:0481cb62350b408a06a7d098eb37448c
     },
     {
       "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
       "Passed": true
     },
     {
@@ -767,6 +913,16 @@ sha256:7abc2c0a700ffa36facce3ba698693d9
   "results": [
     {
       "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/walk/1 --
+sha256:9221abd615eee990854f4c9e7079081e
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
       "Passed": true
     }
   ]
@@ -886,7 +1042,7 @@ sha256:561041d29f58e373f669372343b1acd4
   ]
 }
 -- testrun/gtk4/go/app.sngl/bud/1 --
-sha256:49d7cadb2b0bad5a66f85c1972b1fb3d
+sha256:74d28277084946c8ca640943419a9550
 {
   "results": [
     {
@@ -896,7 +1052,7 @@ sha256:49d7cadb2b0bad5a66f85c1972b1fb3d
   ]
 }
 -- testrun/gtk4/go/app.sngl/chains/1 --
-sha256:c8025c7c79b72e25428719a02e814a86
+sha256:d0b4505880fad20890cdd09074fcce72
 {
   "results": [
     {
@@ -906,7 +1062,7 @@ sha256:c8025c7c79b72e25428719a02e814a86
   ]
 }
 -- testrun/gtk4/go/app.sngl/dexes/1 --
-sha256:15e8038cbd0021ad435edb6a3cc420e6
+sha256:1b2d07396e3d4c44053ce453440aebe1
 {
   "results": [
     {
@@ -915,8 +1071,38 @@ sha256:15e8038cbd0021ad435edb6a3cc420e6
     }
   ]
 }
+-- testrun/gtk4/go/app.sngl/flame/1 --
+sha256:10b5a413487064240a51ffe579b63627
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/fluff/1 --
+sha256:1d3ecd9363c7f6560fccaa1af54c18f8
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/fox/1 --
+sha256:0cd8e7cd073061a11d7cf16f330f70fa
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/home/1 --
-sha256:48f362fbd1fc4a92be074bd93de20c7e
+sha256:29b27119f786eb1c24a78ace543542b9
 {
   "results": [
     {
@@ -956,17 +1142,21 @@ sha256:ccbfab05095ddebab0e0199d1ab797da
   ]
 }
 -- testrun/gtk4/go/app.sngl/mouse/1 --
-sha256:d5c3d9164192944f8ac87677782ebaaf
+sha256:0aeb46773e91a72d306f06ca969547f8
 {
   "results": [
     {
       "Desc": "AboutIsEachSpecies",
       "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/seed/1 --
-sha256:d39e13af0e970968c815dd9fe452b6a7
+sha256:7d47956548a15cebce56f8f390851666
 {
   "results": [
     {
@@ -987,6 +1177,14 @@ sha256:d39e13af0e970968c815dd9fe452b6a7
     },
     {
       "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
       "Passed": true
     },
     {
@@ -1013,6 +1211,16 @@ sha256:d4d35c5be2ce11583137e0a43a32c23c
   "results": [
     {
       "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/walk/1 --
+sha256:fa89c638d8dc3d2f425b2f97cf708e52
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
       "Passed": true
     }
   ]
@@ -1132,7 +1340,7 @@ sha256:52bb12ce4ed54d96ca44ee1e423f9258
   ]
 }
 -- testrun/html/none/app.sngl/bud/1 --
-sha256:3b1e4ab4eeb8ca2467c5fa993026b4c3
+sha256:9b81e8ce9031df7d2f5afc4e70d6333f
 {
   "results": [
     {
@@ -1142,7 +1350,7 @@ sha256:3b1e4ab4eeb8ca2467c5fa993026b4c3
   ]
 }
 -- testrun/html/none/app.sngl/chains/1 --
-sha256:c9a11a8e7edcd3d28f5676d89d401b48
+sha256:1a4ac754fc563e340cae780b5b6ca205
 {
   "results": [
     {
@@ -1152,7 +1360,7 @@ sha256:c9a11a8e7edcd3d28f5676d89d401b48
   ]
 }
 -- testrun/html/none/app.sngl/dexes/1 --
-sha256:70c71ee06fe366b8abbf3bb9cc6446c7
+sha256:49e4da6effa19b0691fdc30ba29c1f7f
 {
   "results": [
     {
@@ -1161,8 +1369,38 @@ sha256:70c71ee06fe366b8abbf3bb9cc6446c7
     }
   ]
 }
+-- testrun/html/none/app.sngl/flame/1 --
+sha256:38c41d297b8e3a850c357a409310e033
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/fluff/1 --
+sha256:9c50faa5718ddd9f31039b41561d43a7
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/fox/1 --
+sha256:25c425a3cd0023c66cab7f64efdfbd81
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/home/1 --
-sha256:70b495d770c69f8d6b8bcef5c5c9472b
+sha256:c7a3573899fb956849dce5f95e74fd26
 {
   "results": [
     {
@@ -1192,7 +1430,7 @@ sha256:70b495d770c69f8d6b8bcef5c5c9472b
   ]
 }
 -- testrun/html/none/app.sngl/mons/1 --
-sha256:0f7f3b07cd80bf2811c3ad1935c08cde
+sha256:9c70f226a1498b203d44db408a15045e
 {
   "results": [
     {
@@ -1202,17 +1440,21 @@ sha256:0f7f3b07cd80bf2811c3ad1935c08cde
   ]
 }
 -- testrun/html/none/app.sngl/mouse/1 --
-sha256:bf0ba18ed84efb7bd72bf42870c95375
+sha256:18169c9f75dfc4243b8648a9899a3d26
 {
   "results": [
     {
       "Desc": "AboutIsEachSpecies",
       "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/seed/1 --
-sha256:d78627b82c2060e6ed8fbfb63722c0a1
+sha256:52140d33cf07529706c51cee9086a792
 {
   "results": [
     {
@@ -1236,6 +1478,14 @@ sha256:d78627b82c2060e6ed8fbfb63722c0a1
       "Passed": true
     },
     {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
+      "Passed": true
+    },
+    {
       "Desc": "StatsTotalAndEffort",
       "Passed": true
     },
@@ -1254,11 +1504,21 @@ sha256:d78627b82c2060e6ed8fbfb63722c0a1
   ]
 }
 -- testrun/html/none/app.sngl/species/1 --
-sha256:2b20a2fa1332fda0c92497f5955d38fd
+sha256:7b232e38491969143e6b334cb9b576d1
 {
   "results": [
     {
       "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/walk/1 --
+sha256:e2ab9853bc90210beb64c9d9062b0e4f
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
       "Passed": true
     }
   ]

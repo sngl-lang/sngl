@@ -48,6 +48,41 @@ component mouse ui.node {
     }
 }
 
+component flame ui.node {
+    poke.server(local) {
+        artwork(dot) {
+            detailPage #detail(name="charmeleon")
+        }
+    }
+}
+
+component fox ui.node {
+    poke.server(local) {
+        artwork(dot) {
+            detailPage #detail(name="vulpix")
+        }
+    }
+}
+
+component fluff ui.node {
+    poke.server(local) {
+        artwork(dot) {
+            detailPage #detail(name="eevee")
+        }
+    }
+}
+
+// A page that follows the stage tapped, as the app's stack does.
+component walk ui.node {
+    var name = "bulbasaur"
+
+    poke.server(local) {
+        artwork(dot) {
+            detailPage #detail(name=name, @open(n) { name = n })
+        }
+    }
+}
+
 // Every recorded Pokédex, Pokémon, species and chain, each its own query, so a
 // recording the document cannot decode leaves its `got` null.
 component dexes ui.node {
@@ -258,6 +293,63 @@ func testStatsGiveEveryEffort(t test.Test, c bud) {
     t.assert(c.detail.effort != null && c.detail.effort.value == "1 Sp. Atk, 1 Sp. Def")
 }
 
+// A chain's rows, each its stages and how each is reached, a row a line:
+// "bulbasaur, ivysaur Lv. 16, venusaur Lv. 32".
+func lineOf(row list[Stage]) => row.map(func(s Stage) => s.trigger == "" ? s.name : "{s.name} {s.trigger}").join(", ")
+
+func testEvolutionIsTheChainByLevel(t test.Test, c seed) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.chainRows().length() == 1)
+    t.assert(lineOf(c.detail.chainRows()[0]) == "bulbasaur, ivysaur Lv. 16, venusaur Lv. 32")
+    t.assert(c.detail.chainRows()[0][2].id == "3")
+}
+
+func testEvolutionIsEachSpeciesChain(t test.Test, c flame) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.chainRows().length() == 1)
+    t.assert(lineOf(c.detail.chainRows()[0]) == "charmander, charmeleon Lv. 16, charizard Lv. 36")
+}
+
+func testEvolutionByFriendshipAndStone(t test.Test, c mouse) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.chainRows().length() == 1)
+    t.assert(lineOf(c.detail.chainRows()[0]) == "pichu, pikachu High Friendship, raichu Thunder Stone")
+}
+
+func testEvolutionShowsTheFirstDefaultDetail(t test.Test, c fox) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.chainRows().length() == 1)
+    t.assert(lineOf(c.detail.chainRows()[0]) == "vulpix, ninetales Fire Stone")
+}
+
+func testABranchingChainIsRows(t test.Test, c fluff) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.chainRows().map(func(r list[Stage]) => lineOf(r)).join("; ") == "eevee, vaporeon Water Stone; eevee, jolteon Thunder Stone; eevee, flareon Fire Stone; eevee, espeon High Friendship, day; eevee, umbreon High Friendship, night; eevee, leafeon Leaf Stone; eevee, glaceon Ice Stone; eevee, sylveon High Friendship, knowing a Fairy move")
+}
+
+func testEvolutionTabShowsTheTriggers(t test.Test, c seed) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.trigger[0][1] == null)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(2)
+    }
+    t.assert(c.detail.trigger[0][1] != null && c.detail.trigger[0][1].value == "Lv. 16")
+    t.assert(c.detail.trigger[0][2] != null && c.detail.trigger[0][2].value == "Lv. 32")
+}
+
+func testTappingAStageOpensIt(t test.Test, c walk) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(2)
+    }
+    c.detail.step[0][1].open()
+    t.assert(c.name == "ivysaur")
+    t.wait(func() => c.detail.about != null && c.detail.about.name == "ivysaur", 5000)
+    t.assert(c.detail.title != null && c.detail.title.value == "Ivysaur")
+}
+
 func testEveryDexDecodes(t test.Test, c dexes) {
     t.wait(func() => c.list != null && c.national.got != null && c.kanto.got != null && c.johto.got != null, 5000)
     t.assert(c.list != null && c.list.results.map(func(d poke.PokedexSummary) => d.name).join(",") == "national,kanto,original-johto")
@@ -288,7 +380,7 @@ func testEverySpeciesDecodes(t test.Test, c species) {
 
 func testEveryChainDecodes(t test.Test, c chains) {
     t.wait(func() => c.bulbasaur.got != null && c.charmander.got != null && c.pikachu.got != null && c.vulpix.got != null && c.eevee.got != null, 5000)
-    t.assert(c.pikachu.got != null && stages(c.pikachu.got.chain).join(",") == "pichu,pikachu,raichu")
+    t.assert(c.pikachu.got != null && evolutionRows(c.pikachu.got.chain)[0].map(func(s Stage) => s.name).join(",") == "pichu,pikachu,raichu")
     t.assert(c.eevee.got != null && c.eevee.got.chain.evolvesTo.length() == 8)
     t.assert(c.vulpix.got != null && c.vulpix.got.chain.evolvesTo[0].evolutionDetails[0].item != null)
 }
@@ -311,4 +403,11 @@ func testNames(t test.Test, c home) {
     ]
     t.assert(defaultVariety(forms, "castform") == "castform-normal")
     t.assert(defaultVariety([], "castform") == "castform")
+    var trade = poke.EvolutionTriggerSummary{name="trade", url=""}
+    var shed = poke.EvolutionTriggerSummary{name="shed", url=""}
+    var coat = poke.ItemSummary{name="metal-coat", url=""}
+    t.assert(triggerOf(poke.PokemonEvolution{trigger=trade, heldItem=coat}) == "holding Metal Coat, Trade")
+    t.assert(triggerOf(poke.PokemonEvolution{trigger=trade, knownMove=poke.MoveSummary{name="ancient-power", url=""}}) == "knowing Ancient Power, Trade")
+    t.assert(triggerOf(poke.PokemonEvolution{trigger=shed}) == "Shed")
+    t.assert(evolutionStep([]) == "")
 }
