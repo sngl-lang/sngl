@@ -791,7 +791,7 @@ func ktLiteral(n *ir.Literal) string {
 	}
 	switch n.Type.Kind {
 	case ir.TypeString:
-		return fmt.Sprintf("%q", n.Value)
+		return Quote(n.Value)
 	case ir.TypeInt:
 		return n.Value
 	case ir.TypeFloat:
@@ -816,7 +816,7 @@ func ktLiteral(n *ir.Literal) string {
 		return "null"
 	case ir.TypeStruct:
 		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Value)
+			return Quote(n.Value)
 		}
 		return n.Value
 	default:

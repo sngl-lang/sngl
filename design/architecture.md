@@ -95,6 +95,11 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   language's Alert intrinsic writes with no import set to ask -- the one
   Compose-side name `reservedNames` still holds for that reason.
 
+  **A string is quoted as Kotlin quotes one** (`kotlin.Quote`), never with
+  Go's `%q`: that writes `\f` and `\x0c`, which Kotlin refuses, and leaves
+  `$`, which begins a Kotlin template, so `"$cost"` named a variable
+  (`cmd/sngl/testdata/string_escapes_runs.txt`).
+
   **Nothing the screen writes is Kotlin as text.** The emitter's own
   spellings go through `Name` -- `NameAs` where the file prefers another
   spelling, Compose's `Color` being `ComposeColor` beside the `Color` data

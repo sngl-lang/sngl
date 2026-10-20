@@ -277,9 +277,9 @@ func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]b
 	// failures land in the JSON-RPC test report; native (Robolectric
 	// @Test) mode falls back to junit's bundled assertTrue.
 	if mode == TestEmitAgent {
-		return fmt.Sprintf("t.assertTrue(%s, %q)", expr, expr), true
+		return fmt.Sprintf("t.assertTrue(%s, %s)", expr, Quote(expr)), true
 	}
-	return fmt.Sprintf("org.junit.Assert.assertTrue(%q, %s)", expr, expr), true
+	return fmt.Sprintf("org.junit.Assert.assertTrue(%s, %s)", Quote(expr), expr), true
 }
 
 func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
@@ -405,11 +405,11 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		return "-" + lowerTestExpr(n.Operand, surf, compRecvs)
 	case *ir.Literal:
 		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Value)
+			return Quote(n.Value)
 		}
 		switch n.Type.Kind {
 		case ir.TypeString:
-			return fmt.Sprintf("%q", n.Value)
+			return Quote(n.Value)
 		case ir.TypeNull:
 			return "null"
 		case ir.TypeFloat:
