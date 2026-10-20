@@ -307,9 +307,11 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n1_change_handler(v string) {
-	m.pick = v
-	if m.__n1.Selected != m.pick {
-		m.__n1.SetSelected(m.pick)
+	if v != m.pick {
+		m.pick = v
+		if m.__n1.Selected != m.pick {
+			m.__n1.SetSelected(m.pick)
+		}
 	}
 }
 
@@ -613,7 +615,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d48fbaac624e56d98c03f27ea025cbaa
 -- run/go/fyne --
-pass sha256:5c9f1f4c66647146331e5d05cde19f28
+pass sha256:059da5c9fbaa06844cc769fb80d8a019
 -- run/kotlin/android --
 pass sha256:93436ec393ed74ecb21faec12cb87d0a
 -- run/none/html --

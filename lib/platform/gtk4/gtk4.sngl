@@ -105,6 +105,11 @@ func switchActive(s gtk.GtkSwitch) bool
 #[marks.intrinsic("gtk4.entryText")]
 func entryText(e gtk.GtkEntry) string
 
+// Writes an entry's text, which an override does itself rather than binding
+// `text`: see ui.input.
+#[marks.intrinsic("gtk4.setEntryText")]
+func setEntryText(e gtk.GtkEntry, text string)
+
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
 #[marks.intrinsic("gtk4.calendarDate")]
@@ -120,8 +125,10 @@ const component ui.button[platform](text, style, @click) {
 
 const component ui.checkbox[platform](label, checked, style, @change) {
     gtk.GtkCheckButton(label=label, active=checked, style={...style}, @toggled(b) {
-        checked = checkActive(b)
-        change(checked)
+        if checkActive(b) != checked {
+            checked = checkActive(b)
+            change(checked)
+        }
     }) {}
 }
 
@@ -142,37 +149,53 @@ const component ui.image[platform](fit, @click, @load, @error, src) {
     }
 }
 
+// The value is pushed by an effect rather than bound: setting an entry's text
+// deletes and reinserts it, firing "changed" for each, so writing back the
+// text "changed" just reported re-entered the handler until the stack
+// overflowed. Only a value the entry does not already show is written.
 const component ui.input[platform](value, style, @input, @change) {
-    gtk.GtkEntry(
-        text = value,
+    gtk.GtkEntry #entry(
         style = {...style},
         @changed(e) {
-            value = entryText(e)
-            input(value)
+            if entryText(e) != value {
+                value = entryText(e)
+                input(value)
+            }
         },
         @activate(e) {
             value = entryText(e)
             change(value)
         },
     ) {}
+    effect(on=value, @mount(v) {
+        if entryText(entry) != v {
+            setEntryText(entry, v)
+        }
+    })
 }
 
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
 const component ui.textarea[platform](value, style, @input, @change) {
-    gtk.GtkEntry(
-        text = value,
+    gtk.GtkEntry #entry(
         style = {...style},
         @changed(e) {
-            value = entryText(e)
-            input(value)
+            if entryText(e) != value {
+                value = entryText(e)
+                input(value)
+            }
         },
         @activate(e) {
             value = entryText(e)
             change(value)
         },
     ) {}
+    effect(on=value, @mount(v) {
+        if entryText(entry) != v {
+            setEntryText(entry, v)
+        }
+    })
 }
 
 // --- Container widgets ---
@@ -236,8 +259,10 @@ const component ui.link[platform](text, href, disabled, style, @click) {
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
 const component ui.toggle[platform](checked, disabled, style, @change) {
     gtk.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive(s) {
-        checked = switchActive(s)
-        change(checked)
+        if switchActive(s) != checked {
+            checked = switchActive(s)
+            change(checked)
+        }
     }) {}
 }
 
@@ -332,7 +357,7 @@ const component ui.table[platform](style, columns, selectable, selected, sortabl
             gtk.GtkBox(orientation="horizontal", homogeneous=true) {
                 if selectable {
                     gtk.GtkCheckButton(active=(k == selected), @toggled(b) {
-                        if checkActive(b) {
+                        if checkActive(b) && selected != k {
                             selected = k
                             select()
                         }
@@ -368,7 +393,7 @@ const component ui.tree[platform](style, selected, @select, items) {
     gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
         for var row = _treeRows(items, "") {
             gtk.GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
-                if checkActive(b) {
+                if checkActive(b) && selected != row.label {
                     selected = row.label
                     select()
                 }
@@ -382,7 +407,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
         gtk.GtkBox(orientation="horizontal", spacing=6, sensitive=(disabled == false), style={...style}) {
             for var opt = options {
                 gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                    if checkActive(b) {
+                    if checkActive(b) && value != opt.label {
                         value = opt.label
                         change(opt.label)
                     }
@@ -393,7 +418,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
         gtk.GtkBox(orientation="vertical", spacing=6, sensitive=(disabled == false), style={...style}) {
             for var opt = options {
                 gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                    if checkActive(b) {
+                    if checkActive(b) && value != opt.label {
                         value = opt.label
                         change(opt.label)
                     }
@@ -410,7 +435,7 @@ const component ui.select[platform](value, disabled, style, @change, options) {
     gtk.GtkBox(orientation="vertical", spacing=6, sensitive=(disabled == false), style={...style}) {
         for var opt = options {
             gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                if checkActive(b) {
+                if checkActive(b) && value != opt.label {
                     value = opt.label
                     change(opt.label)
                 }

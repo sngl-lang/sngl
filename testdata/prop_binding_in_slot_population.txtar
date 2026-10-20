@@ -255,9 +255,11 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n1_input_handler(v string) {
-	m.name = v
-	m.__n1.SetText(m.name)
-	m.__n2.SetText(("hello " + m.name))
+	if v != m.name {
+		m.name = v
+		m.__n1.SetText(m.name)
+		m.__n2.SetText(("hello " + m.name))
+	}
 }
 
 func (m *Model) __n1_change_handler(v string) {
@@ -335,15 +337,26 @@ package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	name           string
-	visible__inst0 bool
-	__n0           gtk4rt.Handle
-	__n3           gtk4rt.Handle
-	__n1           gtk4rt.Handle
-	__n2           gtk4rt.Handle
-	__built        bool
+	name                string
+	visible__inst0      bool
+	__effect0_key       string
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
+	__n0                gtk4rt.Handle
+	__n2                gtk4rt.Handle
+	entry               gtk4rt.Handle
+	__n1                gtk4rt.Handle
+	__built             bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -352,7 +365,59 @@ func New() *Model {
 	m := &Model{}
 	m.name = ""
 	m.visible__inst0 = true
+	m.__effect0_key = ""
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
+}
+
+func (m *Model) __effect0_mount() {
+	if gtk4rt.EditableGetText(m.entry) != m.__effect0_key {
+		gtk4rt.EditableSetTextQuiet(m.entry, m.__effect0_key)
+	}
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []string{}
+	m.__effect0_desired = append(m.__effect0_desired, m.name)
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -363,16 +428,18 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
-func (m *Model) __n1_changed_handler() {
-	m.name = gtk4rt.EditableGetText(m.__n1)
-	gtk4rt.EditableSetText(m.__n1, m.name)
-	gtk4rt.LabelSetText(m.__n2, ("hello " + m.name))
+func (m *Model) entry_changed_handler() {
+	if gtk4rt.EditableGetText(m.entry) != m.name {
+		m.name = gtk4rt.EditableGetText(m.entry)
+		gtk4rt.LabelSetText(m.__n1, ("hello " + m.name))
+	}
+	m.__effects0_settle()
 }
 
-func (m *Model) __n1_activate_handler() {
-	m.name = gtk4rt.EditableGetText(m.__n1)
-	gtk4rt.EditableSetText(m.__n1, m.name)
-	gtk4rt.LabelSetText(m.__n2, ("hello " + m.name))
+func (m *Model) entry_activate_handler() {
+	m.name = gtk4rt.EditableGetText(m.entry)
+	gtk4rt.LabelSetText(m.__n1, ("hello " + m.name))
+	m.__effects0_settle()
 }
 
 func (m *Model) Name() string {
@@ -401,19 +468,19 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.__n1 = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(m.__n1, m.name)
-	gtk4rt.Connect(m.__n1, "changed", m.__n1_changed_handler)
-	gtk4rt.Connect(m.__n1, "activate", m.__n1_activate_handler)
-	gtk4rt.BoxAppend(m.__n3, m.__n1)
-	gtk4rt.BoxAppend(m.__n0, m.__n3)
-	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, ("hello " + m.name))
+	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n2, 6)
+	m.entry = gtk4rt.EntryNew()
+	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
+	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
+	gtk4rt.BoxAppend(m.__n2, m.entry)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, ("hello " + m.name))
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
+	m.__effects0_settle()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -421,6 +488,18 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.__n0)
+}
+
+// entryInput fires the "changed" signal on the #entry widget; for tests.
+func (m *Model) entryInput(v string) {
+	gtk4rt.EditableSetTextQuiet(m.entry, v)
+	gtk4rt.Emit(m.entry, "changed")
+}
+
+// entryChange fires the "activate" signal on the #entry widget; for tests.
+func (m *Model) entryChange(v string) {
+	gtk4rt.EditableSetTextQuiet(m.entry, v)
+	gtk4rt.Emit(m.entry, "activate")
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -469,8 +548,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fbc6d37e2adbea31d662294a14a3075c
 -- run/go/fyne --
-pass sha256:835d9fee419a13b00b46eac0fec97936
+pass sha256:6cf13b74073888923efc8b3289b10307
 -- run/go/gtk4 --
-pass sha256:bf106e02931465a80a2a168f1061d01d
+pass sha256:921d1c15514c3a47323b389fb3d54fc7
 -- run/none/html --
 pass sha256:d27513d14a1cd0d441c12cc6039a7cdf

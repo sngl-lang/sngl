@@ -5612,9 +5612,11 @@ func (c *ListItem__slot2Instance) __renderSlot1(__parent *fyne.Container) {
 			__n10 = c.__inst2_live[__inst2_i]
 			__n10.Set__p0(c.checked__inst0)
 			__n10.Set__on0(func(on bool) {
-				c.checked__inst0 = on
-				for __inst2_live_ui, _ := range c.__inst2_live {
-					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
+				if on != c.checked__inst0 {
+					c.checked__inst0 = on
+					for __inst2_live_ui, _ := range c.__inst2_live {
+						c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
+					}
 				}
 			})
 		} else {
@@ -5622,9 +5624,11 @@ func (c *ListItem__slot2Instance) __renderSlot1(__parent *fyne.Container) {
 				c.__inst2_live[__inst2_i].Destroy()
 			}
 			__n10__new := new__child1Instance(c.__model, c.checked__inst0, func(on bool) {
-				c.checked__inst0 = on
-				for __inst2_live_ui, _ := range c.__inst2_live {
-					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
+				if on != c.checked__inst0 {
+					c.checked__inst0 = on
+					for __inst2_live_ui, _ := range c.__inst2_live {
+						c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
+					}
 				}
 			})
 			__n10 = __n10__new
@@ -7021,9 +7025,11 @@ func (c *ListItem__slot1Instance) __renderSlot3(__parent *fyne.Container) {
 			__n224 = c.__inst4_live[__inst4_i]
 			__n224.Set__p0(c.checked__inst0)
 			__n224.Set__on0(func(on bool) {
-				c.checked__inst0 = on
-				for __inst4_live_ui, _ := range c.__inst4_live {
-					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
+				if on != c.checked__inst0 {
+					c.checked__inst0 = on
+					for __inst4_live_ui, _ := range c.__inst4_live {
+						c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
+					}
 				}
 			})
 		} else {
@@ -7031,9 +7037,11 @@ func (c *ListItem__slot1Instance) __renderSlot3(__parent *fyne.Container) {
 				c.__inst4_live[__inst4_i].Destroy()
 			}
 			__n224__new := new__child3Instance(c.__model, c.checked__inst0, func(on bool) {
-				c.checked__inst0 = on
-				for __inst4_live_ui, _ := range c.__inst4_live {
-					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
+				if on != c.checked__inst0 {
+					c.checked__inst0 = on
+					for __inst4_live_ui, _ := range c.__inst4_live {
+						c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
+					}
 				}
 			})
 			__n224 = __n224__new
@@ -8464,9 +8472,11 @@ func (c *ListItem__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 			__n439 = c.__inst7_live[__inst7_i]
 			__n439.Set__p0(c.checked__inst0)
 			__n439.Set__on0(func(on bool) {
-				c.checked__inst0 = on
-				for __inst7_live_ui, _ := range c.__inst7_live {
-					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
+				if on != c.checked__inst0 {
+					c.checked__inst0 = on
+					for __inst7_live_ui, _ := range c.__inst7_live {
+						c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
+					}
 				}
 			})
 		} else {
@@ -8474,9 +8484,11 @@ func (c *ListItem__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 				c.__inst7_live[__inst7_i].Destroy()
 			}
 			__n439__new := new__child5Instance(c.__model, c.checked__inst0, func(on bool) {
-				c.checked__inst0 = on
-				for __inst7_live_ui, _ := range c.__inst7_live {
-					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
+				if on != c.checked__inst0 {
+					c.checked__inst0 = on
+					for __inst7_live_ui, _ := range c.__inst7_live {
+						c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
+					}
 				}
 			})
 			__n439 = __n439__new
@@ -10517,6 +10529,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3069a47cbe54206bd6157b1b21fe7e40
 -- run/go/fyne --
-pass sha256:84bc28ed81119b0be9ebdd62419bb3d3
+pass sha256:a589edac0f202a357eb21e5e37ec652d
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

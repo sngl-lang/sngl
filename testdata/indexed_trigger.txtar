@@ -1162,9 +1162,11 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.box.SetChecked(c.checked)
 	c.__model.__list_box(c.__prop___copy, c.box)
 	c.box.OnChanged = func(on bool) {
-		c.checked = on
-		c.box.SetChecked(c.checked)
-		c.__prop_change(on)
+		if on != c.checked {
+			c.checked = on
+			c.box.SetChecked(c.checked)
+			c.__prop_change(on)
+		}
 	}
 	c.Root = c.box
 	c.__model.__named_box = c.box
@@ -1229,8 +1231,10 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.field.SetPlaceHolder("")
 	c.__model.__list_field(c.__prop___copy, c.field)
 	c.field.OnChanged = func(v string) {
-		c.value = v
-		c.field.SetText(c.value)
+		if v != c.value {
+			c.value = v
+			c.field.SetText(c.value)
+		}
 	}
 	c.field.OnSubmitted = func(v string) {
 		c.value = v
@@ -1336,6 +1340,11 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 )
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -1492,9 +1501,11 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.CheckButtonSetActive(c.box, c.checked)
 	c.__model.__list_box(c.__prop___copy, c.box)
 	gtk4rt.Connect(c.box, "toggled", func() {
-		c.checked = gtk4rt.CheckButtonGetActive(c.box)
-		gtk4rt.CheckButtonSetActive(c.box, c.checked)
-		c.__prop_change(c.checked)
+		if gtk4rt.CheckButtonGetActive(c.box) != c.checked {
+			c.checked = gtk4rt.CheckButtonGetActive(c.box)
+			gtk4rt.CheckButtonSetActive(c.box, c.checked)
+			c.__prop_change(c.checked)
+		}
 	})
 	c.Root = c.box
 	c.__model.__named_box = c.box
@@ -1543,6 +1554,12 @@ type __input_state1Instance struct {
 	__prop___copy        string
 	__prop_change        func(string)
 	value                string
+	__effect0_key        string
+	__effect0_live       []string
+	__effect0_desired    []string
+	__effects0_settling  bool
+	__effects0_pending   bool
+	__effects0_steps     int
 	__root               gtk4rt.Handle
 	__slot0              []gtk4rt.Handle
 	__slot0_at           gtk4rt.Handle
@@ -1556,24 +1573,78 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.value = c.__prop___start_value
+	c.__effect0_key = ""
+	c.__effect0_live = []string{}
+	c.__effect0_desired = []string{}
+	c.__effects0_settling = false
+	c.__effects0_pending = false
+	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.field = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(c.field, c.value)
 	c.__model.__list_field(c.__prop___copy, c.field)
 	gtk4rt.Connect(c.field, "changed", func() {
-		c.value = gtk4rt.EditableGetText(c.field)
-		gtk4rt.EditableSetText(c.field, c.value)
+		if gtk4rt.EditableGetText(c.field) != c.value {
+			c.value = gtk4rt.EditableGetText(c.field)
+		}
+		c.__effects0_settle()
 	})
 	gtk4rt.Connect(c.field, "activate", func() {
 		c.value = gtk4rt.EditableGetText(c.field)
-		gtk4rt.EditableSetText(c.field, c.value)
 		c.__prop_change(c.value)
+		c.__effects0_settle()
 	})
+	c.__effects0_settle()
 	c.Root = c.field
 	c.__model.__named_field = c.field
 	gtk4rt.Retain(c.Root)
 	return c
+}
+
+func (c *__input_state1Instance) __effect0_mount() {
+	if gtk4rt.EditableGetText(c.field) != c.__effect0_key {
+		gtk4rt.EditableSetTextQuiet(c.field, c.__effect0_key)
+	}
+}
+
+func (c *__input_state1Instance) __effect0_down() {
+	c.__effect0_desired = []string{}
+	c.__effect0_desired = append(c.__effect0_desired, c.value)
+}
+
+func (c *__input_state1Instance) __effect0_up() {
+	for __effect0_i, __effect0_k := range c.__effect0_desired {
+		if __effect0_i >= len(c.__effect0_live) {
+			c.__effect0_key = __effect0_k
+			c.__effect0_mount()
+		} else {
+			if c.__effect0_live[__effect0_i] != __effect0_k {
+				c.__effect0_key = __effect0_k
+				c.__effect0_mount()
+			}
+		}
+	}
+	c.__effect0_live = c.__effect0_desired
+}
+
+func (c *__input_state1Instance) __effects0_settle() {
+	if c.__effects0_settling {
+		c.__effects0_pending = true
+	} else {
+		c.__effects0_settling = true
+		c.__effects0_pending = true
+		c.__effects0_steps = 0
+		for c.__effects0_pending && (c.__effects0_steps < 512) {
+			c.__effects0_pending = false
+			c.__effects0_steps = (c.__effects0_steps + 1)
+			c.__effect0_down()
+			c.__effect0_up()
+		}
+		c.__effects0_settling = false
+		if c.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
 }
 
 func (c *__input_state1Instance) Set__start_value(__v string) {
@@ -2288,9 +2359,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4663150d762c81154da52d2c7afca73e
 -- run/go/fyne --
-pass sha256:729f564db20c0646a8aeb86204de48af
+pass sha256:b626c98fff73c2c1be8bb7f78fead02a
 -- run/go/gtk4 --
-pass sha256:b61a2ecfd7f7c06f905c4c01e88bb3b0
+pass sha256:95296f4553b978cddbadf5e723b92317
 -- run/kotlin/android --
 pass sha256:b10b27f2aa09b89de1fe31ec45e0bac8
 -- run/none/html --

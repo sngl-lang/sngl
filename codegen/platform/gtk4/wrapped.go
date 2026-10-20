@@ -224,6 +224,16 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 	return nil
 }
 
+// rtEventSetterExpr is the wrapped write of widgetWrites, the twin of
+// rtEventGetterExpr.
+func rtEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
+	switch cType {
+	case "GtkEntry":
+		return rtCall("EditableSetTextQuiet", ir.TypVoid, widgetRef, value)
+	}
+	return nil
+}
+
 // rtOrientationConst maps a SNGL orientation string literal to the gtk4rt
 // constant ident, and ok=false for anything unrecognised.
 func rtOrientationConst(value string) (ir.Expr, bool) {
