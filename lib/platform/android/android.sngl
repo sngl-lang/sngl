@@ -150,6 +150,12 @@ const func Modifier.fillMaxWidth() Modifier
 #[kt.native("fillMaxHeight", "androidx.compose.foundation.layout.fillMaxHeight", method)]
 const func Modifier.fillMaxHeight() Modifier
 
+// A share of the main axis of the Row or Column it is read in, which is where
+// it is in scope: Compose declares it on RowScope and ColumnScope, so it needs
+// no import. Unlike a Style's `flex`, it leaves the other axis to the content.
+#[kt.native("weight", "", method)]
+const func Modifier.weight(share float) Modifier
+
 #[kt.native("androidx.compose.foundation.ScrollState")]
 struct ScrollState {}
 

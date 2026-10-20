@@ -316,3 +316,24 @@ func isIntVar(e ir.Expr) bool {
 	t := e.ExprType()
 	return t != nil && t.Kind == ir.TypeInt
 }
+
+// PackageConstDecls declares each top-level const as a file-scope Go `var`,
+// which is how a free function names one: it is no method of the Model, so
+// the Model's field is out of its reach. A component-level const lives only
+// as a Model field.
+func PackageConstDecls(pkg *ir.Package, gc *GoIRContext) string {
+	if len(pkg.Consts) == 0 {
+		return ""
+	}
+	free := *gc
+	if gc.Ctx != nil {
+		free.Ctx = gc.Ctx.Clone()
+		free.Ctx.FreeBody = true
+	}
+	var b strings.Builder
+	for _, c := range pkg.Consts {
+		fmt.Fprintf(&b, "var %s %s = %s\n", c.Name, IRTypeToGo(c.Type), LowerVarInit(c, &free))
+	}
+	b.WriteString("\n")
+	return b.String()
+}

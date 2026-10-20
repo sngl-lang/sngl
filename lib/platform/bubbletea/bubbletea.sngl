@@ -491,18 +491,19 @@ const component ui.splitview[platform](style, panes) {
     }
 }
 
+// The headings and rows are handed to the table on each view and update, as a
+// select's choices are: rows a request answers arrive after it is built.
 const component ui.table[platform](style, columns, rows) {
     Widget(
         model = Model{
-            type = "table.Model",
-            new = "tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
-            view = ".View()",
-            update = ".Update(msg)",
-            pkg = "charm.land/bubbles/v2/table",
+            type = "tui.Table",
+            new = "tui.NewTable(10)",
+            view = ".View($\{columns\}, $\{rows\})",
+            update = ".Update(msg, $\{columns\}, $\{rows\})",
             resize = ".SetWidth($\{w\})",
         },
         focus = Focus{enabled=true},
-        binds = [Bind{prop="selected", get="tui.Cursor"}],
+        binds = [Bind{prop="selected", get=".Cursor()"}],
         columns = columns,
         rows = rows.map(func(r) => r.cells),
         style = {...style},

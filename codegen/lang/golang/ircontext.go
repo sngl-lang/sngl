@@ -888,7 +888,8 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// package body's as much as a component's. Asking about the component
 		// alone left a package const read as a bare name against the `m.blank`
 		// field the same build declared, once the package body was the scope.
-		if gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App {
+		// A free function is written from that scope too, and has no `m`.
+		if !gc.Ctx.FreeBody && (gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App) {
 			return gc.recvFor(sym) + "." + name
 		}
 		return name
@@ -2536,6 +2537,10 @@ func (gc *GoIRContext) emitFuncBody(lines []string, fn *ir.Func, _ []string) []s
 	// from the pointer answer rather than inheriting the caller's.
 	inner := *gc
 	inner.ModelIsValue = false
+	if gc.Ctx != nil {
+		inner.Ctx = gc.Ctx.Clone()
+		inner.Ctx.FreeBody = !fn.IsMethod() && gc.MethodRecvType == "" && gc.ExtraParam == ""
+	}
 	inner.ExtraParam = ""
 	bodyGC := &inner
 	for _, p := range fn.Params {

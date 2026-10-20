@@ -1802,7 +1802,7 @@ func (env *Env) binaryValues(e *ir.Binary, left, right any) (any, error) {
 		if err := orderable(left, right); err != nil {
 			return nil, err
 		}
-		switch cmp := compareNum(left, right); e.Op {
+		switch cmp := compareOrdered(left, right); e.Op {
 		case ast.BinLt:
 			return cmp < 0, nil
 		case ast.BinLte:
@@ -3120,7 +3120,15 @@ func orderable(a, b any) error {
 	return nil
 }
 
-func compareNum(a, b any) int {
+// compareOrdered orders two values `<` may compare: numbers and units by
+// magnitude, strings byte by byte as Go and the constant folder do. Read as
+// numbers, every string was 0 and none came before another.
+func compareOrdered(a, b any) int {
+	if sa, ok := a.(string); ok {
+		if sb, ok := b.(string); ok {
+			return strings.Compare(sa, sb)
+		}
+	}
 	fa, fb := toFloat(a), toFloat(b)
 	if fa < fb {
 		return -1

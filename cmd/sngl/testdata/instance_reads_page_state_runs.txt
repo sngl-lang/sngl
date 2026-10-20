@@ -1,0 +1,112 @@
+# An instance built at run time reads and writes page state, and a test reads
+# a computed of it, on every target.
+#
+# android's test build holds the page's state in a class MainScreen is handed,
+# and `chooser`, a composable of its own under the `if`, spelled
+# `state.picked` with no `state` in reach: the file now holds the state the
+# test made, which each new one replaces. A test's read of `shown`, which the
+# composable remembers as a derived value, called it as a function. And
+# `choose`, a function of `chooser` writing the page's state, was made a member
+# of the state class, where `count` is not.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+var picked = "a"
+
+component chooser ui.node {
+    var count = 0
+
+    func shown() => "picked {picked}"
+
+    // Counts the pick and makes it, from the composable's state and the page's.
+    func choose() {
+        count += 1
+        picked = "b"
+    }
+
+    ui.button #pick(text=shown(), @click { choose() })
+}
+
+component main ui.node {
+    var away = false
+
+    ui.button #leave(text="leave", @click { away = !away })
+    if !away {
+        chooser #c
+    }
+}
+
+func testComesBack(t test.Test, c main) {
+    if c.c != null {
+        c.c.pick.click()
+    }
+    c.leave.click()
+    t.assert(c.c == null)
+    c.leave.click()
+    t.assert(c.c != null && c.c.shown() == "picked b")
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:7d0ef695d7a23610e2c43243dfe5e7dd
+{
+  "results": [
+    {
+      "Desc": "ComesBack",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:663138a944e6d937d282e16f902d36af
+{
+  "results": [
+    {
+      "Desc": "ComesBack",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:5d25f7c708f2bf0394246329b37326a8
+{
+  "results": [
+    {
+      "Desc": "ComesBack",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:33363b4d96898565ebe9bfe15a623d3d
+{
+  "results": [
+    {
+      "Desc": "ComesBack",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:2c97b8c7f98783e259d0f2d4840f3f5c
+{
+  "results": [
+    {
+      "Desc": "ComesBack",
+      "Passed": true
+    }
+  ]
+}

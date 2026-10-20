@@ -556,6 +556,20 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 	})
 }
 
+// rebuildEach builds an instance a render describes under a node of the
+// slot's body afresh each time, and holds it for the next render to destroy.
+// The node it is attached to is built afresh too, so a kept instance would
+// have to leave the last one's -- GTK appends no widget that has a parent.
+// The cursor stays at the start, so close destroys every one the last render
+// held.
+func (st *reactivityState) rebuildEach(si *slotInstance, n *ir.NodeInst, declSt *declarativeState) []ir.Stmt {
+	cur := &ir.Var{Name: n.ID, Type: si.elem, Synthesized: true}
+	return []ir.Stmt{
+		&ir.LocalVar{Name: cur.Name, Type: si.elem, Sym: cur, Init: declSt.componentCreateCall(n)},
+		callListPush(varRef(si.next), varRef(cur), si.elem),
+	}
+}
+
 // reusable is the condition under which the instance a position holds may be
 // kept: one is held, and every construct prop it was built from is what this
 // render describes.

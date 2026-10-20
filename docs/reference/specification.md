@@ -1294,6 +1294,10 @@ From lowest to highest binding:
 
 <!-- END GENERATED: precedence -->
 
+The comparison operators order two numbers of one type, two values of a
+single-base unit, or two strings, which compare character by character by
+their codes: `"apple" < "fig"`, and `"pear" < "pears"`.
+
 The ternary operator `c ? a : b` evaluates `a` when `c` is true and `b`
 otherwise; `c` must be `bool`. The unary operators are `!` (logical negation,
 on `bool`), `-` (numeric or unit negation), `&` (reference), `*`

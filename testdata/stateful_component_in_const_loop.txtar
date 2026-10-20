@@ -299,6 +299,8 @@ import (
 	"os"
 )
 
+var labels []string = []string{"a", "b", "c"}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -458,6 +460,8 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 )
+
+var labels []string = []string{"a", "b", "c"}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -775,9 +779,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:cfb73e9546dc5d3a681e1c0964cdce53
 -- run/go/fyne --
-pass sha256:440f6d8184e1637e7a4a41fb5ab485d1
+pass sha256:fe2d3aee363b69e8810ec4805cade4e0
 -- run/go/gtk4 --
-pass sha256:3ec17d2563d1f01c678d10ef651a1583
+pass sha256:10fdef1f9baabe174fe8de7cdf361d67
 -- run/kotlin/android --
 pass sha256:8a988825006555dbc27ffeb2b336aa4c
 -- run/none/html --

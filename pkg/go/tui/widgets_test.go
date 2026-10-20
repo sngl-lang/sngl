@@ -2,6 +2,7 @@ package tui
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"charm.land/bubbles/v2/list"
@@ -112,9 +113,30 @@ func TestNewListSingleLineDelegate(t *testing.T) {
 
 func TestCursorFreshTable(t *testing.T) {
 	// A freshly constructed table starts with its cursor at row 0.
-	m := NewTable(Columns([]string{"Name", "ID"}), Rows([][]string{{"a", "1"}}), 10)
-	if got := Cursor(m); got != 0 {
+	m := NewTable(10)
+	if got := m.Cursor(); got != 0 {
 		t.Errorf("Cursor(fresh table) = %d, want 0", got)
+	}
+}
+
+// Rows a program hands the table after it is built are the rows it shows,
+// each column as wide as its longest cell.
+func TestTableShowsRowsHandedLater(t *testing.T) {
+	m := NewTable(10)
+	cols := []string{"Name", "ID"}
+	if v := m.View(cols, nil); strings.Contains(v, "Grace Hopper") {
+		t.Fatalf("empty table shows a row:\n%s", v)
+	}
+	v := m.View(cols, [][]string{{"Grace Hopper", "1"}})
+	if !strings.Contains(v, "Grace Hopper") {
+		t.Errorf("table does not show the row it was handed:\n%s", v)
+	}
+	m, _ = m.Update(nil, cols, [][]string{{"Ada", "2"}, {"Grace Hopper", "1"}})
+	if got := len(m.table.Rows()); got != 2 {
+		t.Errorf("rows after update = %d, want 2", got)
+	}
+	if got := m.table.Columns()[0].Width; got != len("Grace Hopper")+2 {
+		t.Errorf("first column width = %d, want %d", got, len("Grace Hopper")+2)
 	}
 }
 

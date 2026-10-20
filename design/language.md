@@ -429,7 +429,11 @@ came from `passNoListLambdas`, which makes `xs.map(func(x) => …)` a loop calli
 the literal in place: the literal is then a call's `Callee`, which
 `transformExpr` never visited, so a ternary or a match in it reached the Go
 emitters from a test body or a prop
-(`cmd/sngl/testdata/list_lambda_branch_runs.txt`).
+(`cmd/sngl/testdata/list_lambda_branch_runs.txt`). The loop it makes of a call
+in a ternary's branch, a match's arm or the right side of `&&` or `||` is
+written in that branch, its value a temp each branch sets: ahead of the
+expression, `b != null ? b.items.map(f) : []` read `b.items` with `b` null
+(`cmd/sngl/testdata/list_lambda_conditional_runs.txt`).
 
 That was latent in a second place until a timer became an effect: the tick is
 then a closure handed to a host scheduler, so the same defects came back on

@@ -161,14 +161,18 @@ static const char *sngl_drop_down_label(GtkDropDown *d) {
 }
 
 // Selects the choice labelled label, as a click on it does; one no choice
-// carries selects nothing.
+// carries selects nothing. The selection's handler may render the page the
+// drop-down is on afresh, which drops the drop-down while GTK is still
+// setting it, so it is held until the selection is done.
 static void sngl_drop_down_select(GtkDropDown *d, const char *label) {
     GListModel *m = gtk_drop_down_get_model(d);
     if (m == NULL || !GTK_IS_STRING_LIST(m)) return;
     guint n = g_list_model_get_n_items(m);
     for (guint i = 0; i < n; i++) {
         if (strcmp(gtk_string_list_get_string(GTK_STRING_LIST(m), i), label) == 0) {
+            g_object_ref(d);
             gtk_drop_down_set_selected(d, i);
+            g_object_unref(d);
             return;
         }
     }

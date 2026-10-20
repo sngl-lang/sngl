@@ -481,17 +481,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString(golang.ErrorEventDecl)
 	}
 
-	// A top-level const gets a file-scope Go `var` so the free functions, which
-	// are not Model methods, can name it. A component-level const lives only as
-	// a Model field.
-	if len(ctx.Pkg.Consts) > 0 {
-		for _, c := range ctx.Pkg.Consts {
-			init := golang.LowerVarInit(c, gc)
-			goType := golang.IRTypeToGo(c.Type)
-			fmt.Fprintf(&b, "var %s %s = %s\n", c.Name, goType, init)
-		}
-		b.WriteString("\n")
-	}
+	b.WriteString(golang.PackageConstDecls(ctx.Pkg, gc))
 
 	emitTimerTypes(&b, info.timers)
 

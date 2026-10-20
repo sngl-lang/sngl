@@ -44,7 +44,11 @@ type ExprCtx struct {
 	// application: a target that holds it in one Model reads the package's
 	// state and consts through it, as it did through the one window that used
 	// to be the scope.
-	App      bool
+	App bool
+	// FreeBody says the scope is the body of a function with no receiver and
+	// no Model handed to it, which reaches a const by its file-scope name
+	// whatever scope the function was written from.
+	FreeBody bool
 	locals   *localScope
 	EventVar string // what the handler's event parameter maps to (e.g., "e.target")
 	// EventParam is the handler parameter EventVar stands for. `event` was an
@@ -351,6 +355,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Component:     ctx.Component,
 		Surface:       ctx.Surface,
 		App:           ctx.App,
+		FreeBody:      ctx.FreeBody,
 		locals:        ctx.locals,
 		EventVar:      ctx.EventVar,
 		EventParam:    ctx.EventParam,

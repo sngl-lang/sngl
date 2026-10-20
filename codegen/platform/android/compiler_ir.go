@@ -462,8 +462,16 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// declares -- so a func reading one has to be declared inside it; beside
 	// it, `log__inst0 = log__inst0 + "!"` names something no file-scope
 	// declaration binds.
+	// A func of a component composed on its own stays in that composable,
+	// beside the component's state, and reaches the page's as the
+	// composable does: through the file.
 	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
+	composedOwn := componentOwnedFuncs(ctx)
 	for fn := range stateReaching {
+		if composedOwn[fn] {
+			delete(stateReaching, fn)
+			continue
+		}
 		mainOwnFuncs[fn] = true
 	}
 	// Two sets, not one: a func belongs inside exactly one composable, and the
@@ -730,7 +738,17 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// reference for assertions/mutations from outside the
 	// composition.
 	if testMode {
+		// A composable other than MainScreen that reads the page's state is
+		// handed no `state`, so the file holds the one the test made, which
+		// each new one replaces. Its reads spell `state.x` as MainScreen's do.
+		shared := len(info.shared) > 0
+		if shared {
+			body.WriteString("lateinit var state: MainScreenState\n\n")
+		}
 		body.WriteString("class MainScreenState {\n")
+		if shared {
+			body.WriteString("    init { state = this }\n")
+		}
 		if len(present) > 0 {
 			fmt.Fprintf(&body, "    init { %s.clear() }\n", kotlin.PresentRegistry)
 		}
@@ -1110,6 +1128,12 @@ func emitInstanceRegistration(b *strings.Builder, reads []codegen.InstanceRead, 
 	fmt.Fprintf(b, "    %s(%s) {\n", kc.Name(ktDisposableEffect), key)
 	fmt.Fprintf(b, "        %s[%s] = mapOf<String, (List<Any?>) -> Any?>(\n", kotlin.InstanceRegistry, key)
 	for _, r := range reads {
+		// A computed is a derived value the composable remembers, read by
+		// name rather than called.
+		if r.Func != nil && codegen.IsComputed(r.Func) {
+			fmt.Fprintf(b, "            %q to { _ -> %s },\n", r.Member, r.Func.Name)
+			continue
+		}
 		if r.Func != nil {
 			var args []string
 			i := 0

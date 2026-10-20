@@ -469,6 +469,8 @@ func snglSome[T any](v T) *T {
 	return &v
 }
 
+var folded []int = []int{0, 1, 2, 3}
+
 type P struct {
 	A int
 }
@@ -700,6 +702,8 @@ import (
 func snglSome[T any](v T) *T {
 	return &v
 }
+
+var folded []int = []int{0, 1, 2, 3}
 
 type P struct {
 	A int
@@ -1065,9 +1069,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:8e4eeb5e43e82d759e1c03f68733f745
 -- run/go/fyne --
-pass sha256:d3464c58dbb8e7de7df35e4adf46a8bf
+pass sha256:f84e6360c19966e95786cc9e1659e432
 -- run/go/gtk4 --
-pass sha256:aa6e874c0a4b8d7aa109c177d0fab18d
+pass sha256:ad2ded5fbd178a7460373058209d3064
 -- run/kotlin/android --
 pass sha256:b6e7d2aaf61bf16463d6929cd426a3da
 -- run/none/html --

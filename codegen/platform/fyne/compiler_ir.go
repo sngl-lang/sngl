@@ -406,6 +406,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	if ctx.Pkg.UsesErrorHandling {
 		td.LangHelpers += golang.ErrorEventDecl
 	}
+	td.LangHelpers += golang.PackageConstDecls(ctx.Pkg, gc)
 	if decls := emitThemeDecls(themes); decls != "" {
 		td.LangHelpers += decls
 		for _, path := range themeImports(themes) {

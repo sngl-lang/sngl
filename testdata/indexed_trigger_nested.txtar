@@ -1299,20 +1299,23 @@ import (
 	"slices"
 )
 
+var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	grid       [][]string
-	rows       [][]string
-	evens      func(func(int) bool)
-	dots       int
-	log        string
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
-	__slot2    []fyne.CanvasObject
-	__slot2_at fyne.CanvasObject
+	grid         [][]string
+	rows         [][]string
+	evens        func(func(int) bool)
+	dots         int
+	log          string
+	__root       *fyne.Container
+	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
+	__inst0_live []*__checkbox_state0Instance
+	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
+	__slot2      []fyne.CanvasObject
+	__slot2_at   fyne.CanvasObject
 
 	__n3          *fyne.Container
 	swap          *widget.Button
@@ -1345,6 +1348,7 @@ func New() *Model {
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__inst0_live = []*__checkbox_state0Instance{}
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__slot2 = nil
@@ -1359,6 +1363,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	m.__copies_cell = nil
+	__inst0_next := []*__checkbox_state0Instance{}
+	var __inst0_i int = 0
 	for __copy0, row := range m.rows {
 		__n1 := container.NewHBox()
 		for __copy1, it := range row {
@@ -1374,12 +1380,20 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.log = ((it + " ") + fmt.Sprint(on))
 				m.__n0.SetText(m.log)
 			})
+			__inst0_next = append(__inst0_next, __n2)
 			__n2__el := __n2.Root
 			__n1.Add(__n2__el)
 		}
 		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
@@ -1849,6 +1863,8 @@ import (
 	"slices"
 )
 
+var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	grid          [][]string
@@ -1859,6 +1875,7 @@ type Model struct {
 	__root        gtk4rt.Handle
 	__slot0       []gtk4rt.Handle
 	__slot0_at    gtk4rt.Handle
+	__inst0_live  []*__checkbox_state0Instance
 	__slot1       []gtk4rt.Handle
 	__slot1_at    gtk4rt.Handle
 	__slot2       []gtk4rt.Handle
@@ -1892,6 +1909,7 @@ func New() *Model {
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__inst0_live = []*__checkbox_state0Instance{}
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__slot2 = nil
@@ -1906,6 +1924,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	m.__copies_cell = nil
+	__inst0_next := []*__checkbox_state0Instance{}
+	var __inst0_i int = 0
 	for __copy0, row := range m.rows {
 		__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 		gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
@@ -1923,12 +1943,20 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.log = ((it + " ") + fmt.Sprint(on))
 				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
+			__inst0_next = append(__inst0_next, __n2)
 			__n2__el := __n2.Root
 			gtk4rt.BoxAppend(__n1, __n2__el)
 		}
 		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
@@ -2776,14 +2804,17 @@ window.__sngl_boot = () => {
     };
   }
   var __slot0 = [];
+  var __inst1_live = [];
   var __slot1 = [];
-  var __inst2_live = [];
+  var __inst3_live = [];
   var __slot2 = [];
-  var __inst4_live = [];
+  var __inst5_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
     for (const [__copy0, row] of state.rows.entries()) {
       let __n4 = document.createElement("div");
       __n4.setAttribute("style", "display:flex;flex-direction:row");
@@ -2806,6 +2837,7 @@ window.__sngl_boot = () => {
           state.log = it + " " + String(on);
           __n0.textContent = state.log;
         } });
+        __inst1_next.push(__n6);
         let __n6__el = __n6.__root;
         __n4.appendChild(__n6__el);
       }
@@ -2820,6 +2852,13 @@ window.__sngl_boot = () => {
       }
       __slot0.push(__n4);
     }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);
@@ -2827,17 +2866,17 @@ window.__sngl_boot = () => {
     }
   }
   function __renderSlot1(parent) {
-    let __place1_prev = __slot1;
-    let __place1_i = 0;
+    let __place2_prev = __slot1;
+    let __place2_i = 0;
     __slot1 = [];
-    let __inst2_next = [];
-    let __inst2_i = 0;
+    let __inst3_next = [];
+    let __inst3_i = 0;
     let __iterIdx0 = -1;
     for (const e of state.evens) {
       __iterIdx0 += 1;
       let __n7 = null;
-      if (__inst2_live.length > __inst2_i) {
-        __n7 = __inst2_live[__inst2_i];
+      if (__inst3_live.length > __inst3_i) {
+        __n7 = __inst3_live[__inst3_i];
         __n7.__set___p0(__iterIdx0);
         __n7.__set___p1(e);
         __n7.__set___on0(() => {
@@ -2845,8 +2884,8 @@ window.__sngl_boot = () => {
           __n0.textContent = state.log;
         });
       } else {
-        if (__inst2_live.length > __inst2_i) {
-          __inst2_live[__inst2_i].__destroy();
+        if (__inst3_live.length > __inst3_i) {
+          __inst3_live[__inst3_i].__destroy();
         }
         let __n7__new = __cf___child0({ __p0: __iterIdx0, __p1: e, __on0: () => {
           state.log = String(e);
@@ -2854,51 +2893,51 @@ window.__sngl_boot = () => {
         } });
         __n7 = __n7__new;
       }
-      __inst2_next.push(__n7);
-      __inst2_i = __inst2_i + 1;
+      __inst3_next.push(__n7);
+      __inst3_i = __inst3_i + 1;
       let __n7__el = __n7.__root;
-      let __place1_i_ref0 = null;
-      if (__place1_i < __place1_prev.length) {
-        __place1_i_ref0 = __place1_prev[__place1_i];
+      let __place2_i_ref0 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place1_i_ref0 === __n7__el) {
-        __place1_i = __place1_i + 1;
+      if (__place2_i_ref0 === __n7__el) {
+        __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(__n7__el, __place1_i_ref0);
+        parent.insertBefore(__n7__el, __place2_i_ref0);
       }
       __slot1.push(__n7__el);
     }
-    for (const [__inst2_i_d, _] of __inst2_live.entries()) {
-      let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
-      if (__inst2_i_j >= __inst2_i) {
-        __inst2_live[__inst2_i_j].__destroy();
+    for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+      let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+      if (__inst3_i_j >= __inst3_i) {
+        __inst3_live[__inst3_i_j].__destroy();
       }
     }
-    __inst2_live = __inst2_next;
-    for (const __place1_prev_e of __place1_prev) {
-      if (__slot1.indexOf(__place1_prev_e) < 0) {
-        parent.removeChild(__place1_prev_e);
+    __inst3_live = __inst3_next;
+    for (const __place2_prev_e of __place2_prev) {
+      if (__slot1.indexOf(__place2_prev_e) < 0) {
+        parent.removeChild(__place2_prev_e);
       }
     }
   }
   function __renderSlot2(parent) {
-    let __place3_prev = __slot2;
-    let __place3_i = 0;
+    let __place4_prev = __slot2;
+    let __place4_i = 0;
     __slot2 = [];
-    let __inst4_next = [];
-    let __inst4_i = 0;
+    let __inst5_next = [];
+    let __inst5_i = 0;
     for (let __copy0 = 0, __copyElem0 = 0, __end = state.dots; __copyElem0 < __end; __copy0++, __copyElem0++) {
       let __n8 = null;
-      if (__inst4_live.length > __inst4_i) {
-        __n8 = __inst4_live[__inst4_i];
+      if (__inst5_live.length > __inst5_i) {
+        __n8 = __inst5_live[__inst5_i];
         __n8.__set___p0(__copy0);
         __n8.__set___on0(() => {
           state.log = state.log + ".";
           __n0.textContent = state.log;
         });
       } else {
-        if (__inst4_live.length > __inst4_i) {
-          __inst4_live[__inst4_i].__destroy();
+        if (__inst5_live.length > __inst5_i) {
+          __inst5_live[__inst5_i].__destroy();
         }
         let __n8__new = __cf___child1({ __p0: __copy0, __on0: () => {
           state.log = state.log + ".";
@@ -2906,30 +2945,30 @@ window.__sngl_boot = () => {
         } });
         __n8 = __n8__new;
       }
-      __inst4_next.push(__n8);
-      __inst4_i = __inst4_i + 1;
+      __inst5_next.push(__n8);
+      __inst5_i = __inst5_i + 1;
       let __n8__el = __n8.__root;
-      let __place3_i_ref0 = null;
-      if (__place3_i < __place3_prev.length) {
-        __place3_i_ref0 = __place3_prev[__place3_i];
+      let __place4_i_ref0 = null;
+      if (__place4_i < __place4_prev.length) {
+        __place4_i_ref0 = __place4_prev[__place4_i];
       }
-      if (__place3_i_ref0 === __n8__el) {
-        __place3_i = __place3_i + 1;
+      if (__place4_i_ref0 === __n8__el) {
+        __place4_i = __place4_i + 1;
       } else {
-        parent.insertBefore(__n8__el, __place3_i_ref0);
+        parent.insertBefore(__n8__el, __place4_i_ref0);
       }
       __slot2.push(__n8__el);
     }
-    for (const [__inst4_i_d, _] of __inst4_live.entries()) {
-      let __inst4_i_j = __inst4_live.length - 1 - __inst4_i_d;
-      if (__inst4_i_j >= __inst4_i) {
-        __inst4_live[__inst4_i_j].__destroy();
+    for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+      let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+      if (__inst5_i_j >= __inst5_i) {
+        __inst5_live[__inst5_i_j].__destroy();
       }
     }
-    __inst4_live = __inst4_next;
-    for (const __place3_prev_e of __place3_prev) {
-      if (__slot2.indexOf(__place3_prev_e) < 0) {
-        parent.removeChild(__place3_prev_e);
+    __inst5_live = __inst5_next;
+    for (const __place4_prev_e of __place4_prev) {
+      if (__slot2.indexOf(__place4_prev_e) < 0) {
+        parent.removeChild(__place4_prev_e);
       }
     }
   }
@@ -2995,10 +3034,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:0d38313e476a3a4aee2ea101acb8d965
 -- run/go/fyne --
-pass sha256:c2d93f4bba893ac1af753d2336010376
+pass sha256:92c7a3db94906deb3eaf67dca0a1f079
 -- run/go/gtk4 --
-pass sha256:7b41582f50f20826dc33b4c06879e2c7
+pass sha256:64c396f1c7d801a9dd5a657648368fd1
 -- run/kotlin/android --
 pass sha256:3a02bffd495074297bbe1bec60b2fa34
 -- run/none/html --
-pass sha256:054b736d0dd5abd8086307e786b955c2
+pass sha256:01ed4ca0ae6a3e0e8bf176db187eef91

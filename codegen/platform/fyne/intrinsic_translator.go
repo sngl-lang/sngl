@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -881,7 +882,9 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		// `style`.
 		return codegen.KeepLocalsRead(value)
 	}
-	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
+	// The constructor answers the write it was built from, and a copy of
+	// that write a pass made: the expression, not the pointer, is the value.
+	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) {
 		return nil
 	}
 	// A window that names no title is built with none.
@@ -991,8 +994,11 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 	}}
 }
 
+// OnIter reads a slot's list, a field the scope declares, through the
+// receiver. Any other name a pass made is a local of the code it is in: the
+// accumulator a `map` or `filter` builds, which a second one ranges over.
 func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
-	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
+	if id, ok := iter.(*ir.Ident); ok && id.Synthesized && (id.IsElementRef || ir.IsSlotVarName(id.Name)) {
 		return t.nodeFieldRef(id)
 	}
 	return iter

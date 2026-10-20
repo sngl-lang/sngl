@@ -77,6 +77,7 @@ type Model struct {
 	__slot0_at      fyne.CanvasObject
 	__slot1         []fyne.CanvasObject
 	__slot1_at      fyne.CanvasObject
+	__inst0_live    []*__checkbox_state0Instance
 
 	__n7 *fyne.Container
 	__n8 *fyne.Container
@@ -93,6 +94,7 @@ func New() *Model {
 	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
+	m.__inst0_live = []*__checkbox_state0Instance{}
 	return m
 }
 
@@ -118,9 +120,12 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	}
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+	__inst0_next := []*__checkbox_state0Instance{}
+	var __inst0_i int = 0
 	for _, it := range m.items {
 		__n3 := container.NewHBox()
 		__n4 := new__checkbox_state0Instance(m, true, true)
+		__inst0_next = append(__inst0_next, __n4)
 		__n4__el := __n4.Root
 		__n3.Add(__n4__el)
 		__n5 := container.NewVBox()
@@ -131,6 +136,13 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
 		m.__slot1 = append(m.__slot1, __n3)
 	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) more_click_handler() {
@@ -282,6 +294,7 @@ type Model struct {
 	__slot0_at      gtk4rt.Handle
 	__slot1         []gtk4rt.Handle
 	__slot1_at      gtk4rt.Handle
+	__inst0_live    []*__checkbox_state0Instance
 	__n7            gtk4rt.Handle
 	__n8            gtk4rt.Handle
 	more            gtk4rt.Handle
@@ -298,6 +311,7 @@ func New() *Model {
 	m.__slot0_at = nil
 	m.__slot1 = nil
 	m.__slot1_at = nil
+	m.__inst0_live = []*__checkbox_state0Instance{}
 	return m
 }
 
@@ -325,11 +339,14 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	}
 	m.__slot1 = nil
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+	__inst0_next := []*__checkbox_state0Instance{}
+	var __inst0_i int = 0
 	for _, it := range m.items {
 		__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 		gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
 		gtk4rt.BoxSetSpacing(__n3, 6)
 		__n4 := new__checkbox_state0Instance(m, true, true)
+		__inst0_next = append(__inst0_next, __n4)
 		__n4__el := __n4.Root
 		gtk4rt.BoxAppend(__n3, __n4__el)
 		__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -342,6 +359,13 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 		m.__slot1 = append(m.__slot1, __n3)
 	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) more_clicked_handler() {
@@ -452,6 +476,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:aa39a4e5a47080d39edd86b167411d99
+pass sha256:e0a7dbfd80e74803aa304bfe178391a2
 -- run/go/gtk4 --
-pass sha256:129ddc3abf153c9ec8415aba206485e5
+pass sha256:7c76520e3fc1f45169514f147a64233e

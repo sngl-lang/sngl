@@ -26,6 +26,7 @@ func Ctors() map[string]any {
 		"duckfam.us/sngl/pkg/go/fynelayout.NewImage":       fynelayout.NewImage,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewImageSource": fynelayout.NewImageSource,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewToplevel":    fynelayout.NewToplevel,
+		"fyne.io/fyne/v2/container.NewGridWithColumns":     container.NewGridWithColumns,
 		"fyne.io/fyne/v2/container.NewHBox":                container.NewHBox,
 		"fyne.io/fyne/v2/container.NewVBox":                container.NewVBox,
 		"fyne.io/fyne/v2/container.NewVScroll":             container.NewVScroll,

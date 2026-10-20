@@ -398,12 +398,19 @@ value is reported as a choice:
   twice, which the build refused. A select a render slot builds reads its
   dropdown through the signal's parameter, which `readWidgets` leaves for
   `signalLambda` as above; spelled early, it read an unbound `d`
-  (`cmd/sngl/testdata/controls_several_runs.txt`).
+  (`cmd/sngl/testdata/controls_several_runs.txt`). The invoker holds the
+  drop-down until the selection is done: a choice whose handler renders afresh
+  the slot the select is in let go of its last reference while
+  `gtk_drop_down_set_selected` was still running
+  (`cmd/sngl/testdata/select_rebuilt_by_its_choice_runs.txt`).
 - **bubbletea**'s `tui.Select` is handed the choices on each view and update
   (`View(options)`, `Update(msg, options)`), its value is the truth and the
   cursor follows it, and a choice is the cursor moving or Enter on the row it
   is on, so `@change` fires when an update changed the value
-  (`choosesOnMove`).
+  (`choosesOnMove`). A table is handed its headings and rows the same way
+  (`tui.Table`): built once from the rows it started with, it showed
+  headings alone where the rows were a request's answer
+  (`cmd/sngl/testdata/table_rows_runs.txt`).
 - **android**'s `SnglSelect` is a field with a menu beside it, Kotlin the
   platform ships as it does `SnglDateField`; typing a choice's label into the
   field chooses it, which is how the trigger's `performTextReplacement`

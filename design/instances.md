@@ -250,7 +250,13 @@ and outside one fyne assigned every copy to the one Model field its id named.
 "Built at run time" means a component with a body of its own -- the inliner
 marks a *primitive* standing in a reactive position as well, on the
 declaration, and counting that made every loop of html elements a slot
-(`testdata/const_loop_beside_reactive_loop.txtar`).
+(`testdata/const_loop_beside_reactive_loop.txtar`). The slot keeps every
+instance its body builds, one under a node of the body as well as one at its
+top (`declarativeState.nestedInstance`): a tab's panel under the tabs of an
+`if` was built afresh by each render and never destroyed
+(`cmd/sngl/testdata/slot_nested_instance_runs.txt`). One under a node is built
+afresh still, and the next render destroys it (`rebuildEach`): the node is
+built afresh too, and GTK appends no widget that has a parent.
 
 **A slot re-renders where it was written.** html renders each into a
 `display:contents` wrapper of its own; fyne and gtk4 render into the container
@@ -261,7 +267,11 @@ it. Appending instead moved a re-rendered slot after every sibling below it
 (`testdata/render_slot_in_place.txtar`); gtk4's cgo mode does the same through
 two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
 record also holds a reference on its root, since the slot holding it removes
-it before appending it again and GTK frees a widget its parent held alone.
+it before appending it again and GTK frees a widget its parent held alone. In
+a table part -- a `tbody`, a `tr` -- html writes the anchor as a `template`,
+which the parser leaves where it is written where it moves a span out before
+the table, and the boot puts the span in its place
+(`cmd/sngl/testdata/table_rows_runs.txt`).
 
 **A slot re-renders on what its structure reads**, the `if`'s condition and
 the `for`'s iterable, and what its body reads beyond that is patched where it
@@ -471,11 +481,17 @@ composable built on its own called through a `state` it does not have
 (`cmd/sngl/testdata/pure_func_param_named_like_state_runs.txt`). The class
 is written through a context requiring its imports of the file
 (`KtIRContext.Unrewritten`,
-`cmd/sngl/testdata/i18n_test_state_class_runs.txt`). What is still missing on
-the three mutation targets is the other direction: a write to page state
-updates the nodes of the scope that wrote it and of the page, and not those of
-*other* live instances reading it, so their views go stale until they are
-rebuilt.
+`cmd/sngl/testdata/i18n_test_state_class_runs.txt`). A composable built on
+its own that reads the page's state reads the class the test made, which the
+file holds (`lateinit var state`) and each new one replaces
+(`cmd/sngl/testdata/instance_reads_page_state_runs.txt`). What is still
+missing on the three mutation targets is the other direction: a write to page
+state updates the nodes of the scope that wrote it and of the page, and not
+those of *other* live instances reading it, so their views go stale until they
+are rebuilt. A write in a component's body is given no update of another
+component's nodes at all (`reachable` in passReactivity): it named them, and
+the other's panel instances, through its own record, and fyne and gtk4 did not
+build (`cmd/sngl/testdata/page_state_other_instance_runs.txt`).
 
 **An html instance is a closure, and its body is laid out the way the page's
 markup is.** Its component's own `func`s are closures beside its vars, called

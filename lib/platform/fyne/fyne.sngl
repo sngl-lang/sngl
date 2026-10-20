@@ -234,11 +234,11 @@ component Wrapper(
 
 // --- The Fyne widgets ---
 //
-// Twelve declarations, one per Go constructor. Each is an ordinary component:
+// One declaration per Go constructor. Each is an ordinary component:
 // its body instantiates a primitive with the Spec that says which Fyne widget
 // to build, and the inliner collapses it into whatever instantiated it. They
 // are the vocabulary user code reaches for as `fyne.Label(...)`, and they are
-// written the same way a user would write a thirteenth.
+// written the same way a user would write one more.
 
 const component Label(text string = "", style ui.Style = ui.Style{}) ui.node {
     Widget(
@@ -420,6 +420,22 @@ const component HBox(style ui.Style = ui.Style{}, children ...component) ui.node
     }
 }
 
+// A grid of `columns` equal columns, its children laid out a row at a time.
+const component Grid(columns int = 1, style ui.Style = ui.Style{}, children ...component) ui.node {
+    Container(
+        spec = Spec{
+            new = Native{path="fyne.io/fyne/v2/container", name="NewGridWithColumns"},
+            args = [Arg{prop="number", raw="1"}],
+            goType = Native{path="fyne.io/fyne/v2", name="*Container"},
+            add = "Add",
+        },
+        number = columns,
+        style = {...style},
+    ) {
+        children
+    }
+}
+
 const component VScroll(style ui.Style = ui.Style{}, content ...component option[ui.node]) ui.node {
     Wrapper(
         spec = Spec{
@@ -535,12 +551,25 @@ const component ui.menu[platform](style) {
 
 // --- Data display ---
 //
-// `table`, `tree` and `radio` take their contents as a list prop rather than
-// as children, and Fyne's Table/Tree read theirs through callbacks a Spec has
-// no way to spell. Each renders as its container, empty.
+// `tree` and `radio` take their contents as a list prop rather than as
+// children, and Fyne's Tree reads its own through callbacks a Spec has no way
+// to spell. Each renders as its container, empty.
 
-const component ui.table[platform](style) {
-    VBox(style={...style}) {}
+// A table is a grid of labels a column per heading, the headings first and
+// then each row's cells, so a cell lines up under its heading. Fyne's own
+// Table reads its cells through callbacks a Spec cannot spell; the grid's
+// column count is a constructor argument, fixed where the table is built.
+const component ui.table[platform](style, columns, rows) {
+    Grid(columns=columns.length(), style={...style}) {
+        for var col = columns {
+            Label(text=col, style={fontWeight=bold})
+        }
+        for var row = rows {
+            for var cell = row.cells {
+                Label(text=cell)
+            }
+        }
+    }
 }
 
 const component ui.tree[platform](style) {
@@ -578,7 +607,7 @@ const component ui.progress[platform](style, value, label) {
 }
 
 // The picker shows its `placeholder` and neither reads the bound value nor
-// reports a selection: Fyne has no date widget among the twelve wrapped here,
+// reports a selection: Fyne has no date widget among those wrapped here,
 // so the Label is a stub standing in for one rather than a picker whose value
 // has nowhere to go.
 // Fyne's DateEntry takes a typed date or one picked from its calendar button,

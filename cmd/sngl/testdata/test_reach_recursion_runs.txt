@@ -266,7 +266,7 @@ sha256:6af4096e88461abf3988ba82c32c8806
   ]
 }
 -- testrun/fyne/go/buttons.sngl/main/1 --
-sha256:1db427708b2cf5182ab50655fe670dc3
+sha256:6f18eae231f70c4179fe455b177efbf9
 {
   "results": [
     {
@@ -296,7 +296,7 @@ sha256:845de6c13971fb30916041514abde314
   ]
 }
 -- testrun/gtk4/go/buttons.sngl/main/1 --
-sha256:d94e66e3b4afa60e41f6d29705bc2c49
+sha256:4cdf79f601e7a34cd822ac0ea0258897
 {
   "results": [
     {
@@ -326,7 +326,7 @@ sha256:7aa55eaa77bd342d5b8cbf27e70e6262
   ]
 }
 -- testrun/html/none/buttons.sngl/main/1 --
-sha256:8fd41c115f1cd6d1fae7fbf0b3ea97aa
+sha256:a1c5146b4b3eff11a0d5cd6ca77a3b8b
 {
   "results": [
     {

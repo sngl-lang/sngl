@@ -359,8 +359,30 @@ const component ui.splitview[platform](style, panes) {
     }
 }
 
-const component ui.table[platform] {
-    Text(text="") {}
+// A table is a column of rows, the headings first and then each row's cells,
+// every cell an equal share of its row so that it lines up under its heading.
+// The share is `weight` rather than a Style's `flex`, which would stretch
+// each row down the whole column too.
+const component ui.table[platform](style, columns, rows) {
+    Column(modifier={...style}) {
+        Row {
+            for var col = columns {
+                Box(then=[modifier.weight(f32(1.0))]) {
+                    Text(text=col, style={fontWeight=bold}) {}
+                }
+            }
+        }
+        HorizontalDivider() {}
+        for var row = rows {
+            Row {
+                for var cell = row.cells {
+                    Box(then=[modifier.weight(f32(1.0))]) {
+                        Text(text=cell) {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 const component ui.tree[platform] {

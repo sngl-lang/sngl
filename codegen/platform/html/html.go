@@ -767,6 +767,11 @@ type htmlGen struct {
 	// funcs are collected per owner, and a root component spliced into the
 	// package body owns every window's, so a page boots only its own.
 	pageSlots map[string]bool
+	// templateSlots are the page's slots whose anchor is a template, written
+	// where the parser would move a span (tableParts).
+	templateSlots map[string]bool
+	// parentTag is the element whose children are being written.
+	parentTag string
 
 	// irWindow is the Window this generator emits a document from, or nil
 	// when it is emitting a harness root's body. It carries the route's params
@@ -879,6 +884,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		loweredRefs:    make(map[string]bool),
 		loweredLocals:  make(map[string]bool),
 		pageSlots:      make(map[string]bool),
+		templateSlots:  make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
 		shared:         shared,
 	}
@@ -1465,6 +1471,15 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		if n.Call != nil && n.Call.Func != nil {
 			if idx := slotIndexFromRenderFunc(n.Call.Func.Name); idx != "" {
 				g.pageSlots[idx] = true
+				if tableParts[g.parentTag] {
+					// The parser moves a span out of a table, before it, and
+					// the slot's rows with it; it leaves a template where it
+					// is written, and the boot puts the span there.
+					g.templateSlots[idx] = true
+					fmt.Fprintf(b, "%s<template data-sngl-slot=\"%s\"></template>\n",
+						strings.Repeat("  ", depth), idx)
+					return
+				}
 				fmt.Fprintf(b, "%s<span data-sngl-slot=\"%s\" style=\"display:contents\"></span>\n",
 					strings.Repeat("  ", depth), idx)
 				return
@@ -2080,9 +2095,12 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else {
 			b.WriteString("\n")
+			outer := g.parentTag
+			g.parentTag = tag
 			for _, s := range ir.WidgetChildren(n) {
 				g.renderIRStmt(b, s, depth+1)
 			}
+			g.parentTag = outer
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		}
 	}
@@ -2656,7 +2674,16 @@ func (g *htmlGen) emitSlotBoots(b *strings.Builder) {
 			continue
 		}
 		anchor := slotAnchorVar(idx)
-		fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
+		if g.templateSlots[idx] {
+			// A span the script places stays where it is put, which a
+			// table's markup could not say.
+			fmt.Fprintf(b, "var %s = document.createElement('span');\n", anchor)
+			fmt.Fprintf(b, "%s.setAttribute('data-sngl-slot', %q);\n", anchor, idx)
+			fmt.Fprintf(b, "%s.style.display = 'contents';\n", anchor)
+			fmt.Fprintf(b, "document.querySelector('template[data-sngl-slot=\"%s\"]').replaceWith(%s);\n", idx, anchor)
+		} else {
+			fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
+		}
 		fmt.Fprintf(b, "%s(%s);\n", fn.Name, anchor)
 	}
 }

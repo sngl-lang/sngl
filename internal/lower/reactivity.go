@@ -36,6 +36,8 @@ type reactiveProp struct {
 	// html it emitted `__n1.setAttribute("label", ...)` against a node that is
 	// not the instance, and the page did not change.
 	Instance bool
+	// owner is the body the node is written in.
+	owner reactivityOwner
 }
 
 // reactivityState carries the analysis built up before mutation injection.
@@ -48,6 +50,8 @@ type reactivityState struct {
 	// to every instance the site holds when the var changes rather than by
 	// re-firing the slot (registerSlotBodyDeps).
 	reverseLive map[*ir.Var][]liveProp
+	// slotOwners is the body each slot is written in.
+	slotOwners map[string]reactivityOwner
 	// sites is the instance registry each slot-body instantiation keeps, by
 	// the site, so an updater and the render share one.
 	sites map[*ir.NodeInst]*slotInstance
@@ -190,6 +194,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
 		reverseLive:  make(map[*ir.Var][]liveProp),
+		slotOwners:   map[string]reactivityOwner{},
 		sites:        make(map[*ir.NodeInst]*slotInstance),
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
@@ -697,6 +702,7 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 				Instance: instance,
 				Comp:     n.Component,
 				Node:     n,
+				owner:    st.owner,
 			})
 		}
 	}
@@ -1003,6 +1009,7 @@ func (st *reactivityState) addSlotDep(v *ir.Var, slotID string) {
 
 func (st *reactivityState) freshSlotID() string {
 	id := ir.SlotVarPrefix + strconv.Itoa(st.slotCounter)
+	st.slotOwners[id] = st.owner
 	st.slotCounter++
 	return id
 }
@@ -1292,8 +1299,9 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	if v == nil {
 		return nil
 	}
-	out := st.updaterStmts(st.reverseDeps[v], st.reverseSlots[v], fieldRewrite)
-	if live := st.liveUpdaters(st.reverseLive[v], st.reverseSlots[v], fieldRewrite); len(live) > 0 {
+	props, slots, live := st.reachable(v)
+	out := st.updaterStmts(props, slots, fieldRewrite)
+	if live := st.liveUpdaters(live, slots, fieldRewrite); len(live) > 0 {
 		// Ahead of the slot re-fires, which a render reading a sibling
 		// instance's state would want settled first -- the order props and
 		// slots already keep.
@@ -1304,6 +1312,42 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		out = append(out[:n:n], append(live, out[n:]...)...)
 	}
 	return out
+}
+
+// reachable is what a write to v updates from the body being walked: every
+// node, slot and instance reading v but, from a component's body, those
+// another component's body writes. A component the build keeps -- one built at run time, a recursion
+// -- holds its nodes itself, so a write elsewhere has no way to them: one
+// instance writing page state another reads named the other's nodes and
+// panel instances from its own record, which has none. Such a reader shows
+// what it read when it was built (design/instances.md).
+func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot, []liveProp) {
+	// A package func may be any body's code -- a lambda lifted out of one --
+	// so only a component's own body is held to its own.
+	_, inComp := st.owner.(compOwner)
+	foreign := func(o reactivityOwner) bool {
+		_, other := o.(compOwner)
+		return inComp && other && st.owner != o
+	}
+	var props []reactiveProp
+	for _, p := range st.reverseDeps[v] {
+		if !foreign(p.owner) {
+			props = append(props, p)
+		}
+	}
+	var slots []reactiveSlot
+	for _, s := range st.reverseSlots[v] {
+		if !foreign(st.slotOwners[s.SlotID]) {
+			slots = append(slots, s)
+		}
+	}
+	var live []liveProp
+	for _, p := range st.reverseLive[v] {
+		if !foreign(p.owner) {
+			live = append(live, p)
+		}
+	}
+	return props, slots, live
 }
 
 // isSlotRefire reports whether s is a call of a slot's render function.
@@ -1862,6 +1906,16 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		// the instance itself.
 		return append(sub, pushToSlot(n))
 	}
+	// An instance under a node of the body is the slot's to keep too: built
+	// bare, nothing destroyed it when the next render dropped it, so its
+	// effects ran on and a test still found its widgets.
+	outerNested := declSt.nestedInstance
+	declSt.nestedInstance = func(n *ir.NodeInst) []ir.Stmt {
+		si := st.siteInstance(n, st.owner)
+		instances = append(instances, si)
+		return append(st.rebuildEach(si, n, declSt), declSt.componentRootBinding(n)...)
+	}
+	defer func() { declSt.nestedInstance = outerNested }()
 	// Recursively process a body: NodeInsts are realized + pushed onto the
 	// slot list. Nested If/For without their own slot (i.e. depending only
 	// on loop variables / non-reactive state) are kept structurally; their

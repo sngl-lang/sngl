@@ -508,6 +508,9 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	if c.ctx != nil && c.ctx.Pkg != nil && c.ctx.Pkg.UsesErrorHandling {
 		td.LangHelpers += golang.ErrorEventDecl
 	}
+	if c.ctx != nil && c.ctx.Pkg != nil {
+		td.LangHelpers += golang.PackageConstDecls(c.ctx.Pkg, gc)
+	}
 
 	var modelBuf, callbacksBuf strings.Builder
 	writeModelHead(&modelBuf, td)

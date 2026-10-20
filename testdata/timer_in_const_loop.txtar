@@ -353,6 +353,8 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	n                    int
@@ -751,6 +753,8 @@ type ErrorEvent struct {
 	Message string
 	Kind    string
 }
+
+var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -1350,8 +1354,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d982b83fdd5da414c81176c09a928243
 -- run/go/fyne --
-pass sha256:49d3a5134aa37689699cff4b4ebdc8ae
+pass sha256:a4b603cacacbd12cb7a1b2cf13f0a0ef
 -- run/go/gtk4 --
-pass sha256:73ba626aa31cc64a624180edcda23887
+pass sha256:60d10b791393e82fccc41fde782eef21
 -- run/none/html --
 pass sha256:03ad4bb55fb81ad8aff2e52855b3cac1

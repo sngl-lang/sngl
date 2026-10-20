@@ -1566,8 +1566,11 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 	}}
 }
 
+// OnIter reads a slot's list, a field the scope declares, through the
+// receiver. Any other name a pass made is a local of the code it is in: the
+// accumulator a `map` or `filter` builds, which a second one ranges over.
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
-	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
+	if id, ok := iter.(*ir.Ident); ok && id.Synthesized && (id.IsElementRef || ir.IsSlotVarName(id.Name)) {
 		return t.nodeFieldRef(id)
 	}
 	return iter

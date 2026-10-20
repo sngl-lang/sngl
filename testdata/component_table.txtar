@@ -45,7 +45,6 @@ output {
 package main
 
 import (
-	"charm.land/bubbles/v2/table"
 	"charm.land/bubbletea/v2"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
@@ -66,7 +65,7 @@ type modelState struct {
 	idx       int
 	__focusID int
 
-	widget0 table.Model
+	widget0 tui.Table
 
 	width, height int
 }
@@ -76,13 +75,7 @@ func New() Model {
 	m := Model{&modelState{}}
 	m.idx = 0
 	m.__focusID = 0
-	m.widget0 = tui.NewTable(tui.Columns([]string{"Name", "Role"}), tui.Rows(func() [][]string {
-		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}}))
-		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}} {
-			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
-		}
-		return __out
-	}()), 10)
+	m.widget0 = tui.NewTable(10)
 	m.resizeWidgets()
 	return m
 }
@@ -152,16 +145,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if m.__focusID == 0 {
-		m.widget0, cmd = m.widget0.Update(msg)
+		m.widget0, cmd = m.widget0.Update(msg, []string{"Name", "Role"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}())
 		cmds = append(cmds, cmd)
-		m.idx = tui.Cursor(m.widget0)
+		m.idx = m.widget0.Cursor()
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
 	var content string
-	content = m.widget0.View()
+	content = m.widget0.View([]string{"Name", "Role"}, func() [][]string {
+		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}}))
+		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}} {
+			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+		}
+		return __out
+	}())
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -196,17 +201,28 @@ func newTestComponent() Model { return New() }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynetheme"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Bold: true}
+
+type TableRow__record struct {
+	Cells []string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	idx int
 
 	__n0 *fyne.Container
+	__n1 *widget.Label
+	__n2 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -230,7 +246,19 @@ func (m *Model) SetIdx(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
+	m.__n0 = container.NewGridWithColumns(2)
+	for _, col := range []string{"Name", "Role"} {
+		m.__n1 = widget.NewLabel("")
+		m.__n1.SetText(col)
+		m.__n0.Add(container.NewThemeOverride(m.__n1, _snglTheme0))
+	}
+	for _, row := range []TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}} {
+		for _, cell := range row.Cells {
+			m.__n2 = widget.NewLabel("")
+			m.__n2.SetText(cell)
+			m.__n0.Add(m.__n2)
+		}
+	}
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -687,9 +715,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.material3.HorizontalDivider
+
+data class TableRow__record(
+    var cells: List<String> = listOf()
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -705,7 +743,25 @@ class MainScreenState {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    Text(text = "", modifier = Modifier.safeDrawingPadding())
+    Column(modifier = Modifier.safeDrawingPadding()) {
+        Row(modifier = Modifier) {
+            for (col in listOf("Name", "Role")) {
+                Box(modifier = Modifier.then(Modifier.weight(1.0.toFloat()))) {
+                    Text(text = col, modifier = Modifier, style = TextStyle(fontWeight = FontWeight.Bold))
+                }
+            }
+        }
+        HorizontalDivider(modifier = Modifier)
+        for (row in listOf(TableRow__record(cells = listOf("Ada", "Engineer")), TableRow__record(cells = listOf("Grace", "Admiral")))) {
+            Row(modifier = Modifier) {
+                for (cell in row.cells) {
+                    Box(modifier = Modifier.then(Modifier.weight(1.0.toFloat()))) {
+                        Text(text = cell, modifier = Modifier)
+                    }
+                }
+            }
+        }
+    }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from component_table.sngl; DO NOT EDIT.
@@ -804,13 +860,13 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:710f8974f94d19d9fbbedcd3ed548871
+pass sha256:e75b892c72c7c83a4dd911f3d2646f5f
 -- run/go/fyne --
-pass sha256:763d453540ed50f5f6aad8cb4f8cdbab
+pass sha256:eb15777acab1645e6a2156abd109c9df
 -- run/go/gtk4 --
 pass sha256:0ac3be834b4f443f42de5cc8da0f9e80
 -- run/kotlin/android --
-pass sha256:8024d25df4be54d4cec92f95b445761a
+pass sha256:6f7a7081f72333aef91afa935e42c3d0
 -- run/none/html --
 pass sha256:60a03e7db19649a8d985cd09e52055fe
 -- testrun/html/none/component_table.sngl/main/1 --

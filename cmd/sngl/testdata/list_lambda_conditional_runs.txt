@@ -1,0 +1,122 @@
+# A `map` or `filter` in a branch runs only where the branch is taken, on
+# every target.
+#
+# Go has no map or filter of its own, so each becomes a loop written before
+# the statement that reads it. One in a ternary's branch, a match's arm or the
+# right side of `&&` or `||` was written before the whole expression, so it
+# ran whichever way the condition went: `b != null ? b.items.map(f) : []`
+# read `b.items` with `b` null, and `rows[n]` in an arm the match did not
+# take read past the end of the list. Now the loop is written inside the
+# branch, and the expression's value is a temp each branch sets.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+struct Box {
+    items list[int]
+}
+
+component main ui.node {
+    var box option[Box] = null
+    var at = 3
+
+    ui.text(value="{doubled(box).length()}")
+}
+
+// The items doubled, none where there is no box.
+func doubled(b option[Box]) list[int] {
+    return b != null ? b.items.map(func(i int) => i * 2) : []
+}
+
+// Whether the box holds an even item.
+func holdsEven(b option[Box]) => b != null && b.items.filter(func(i int) => i % 2 == 0).length() > 0
+
+// Whether there is no box or it holds an odd item.
+func emptyOrOdd(b option[Box]) => b == null || b.items.filter(func(i int) => i % 2 == 1).length() > 0
+
+const rows = [[1, 2]]
+
+// Row `n` doubled, none past the first.
+func row(n int) list[int] {
+    return match n {
+        0 => rows[n].map(func(i int) => i * 2)
+        else => []
+    }
+}
+
+func testBranchesRunWhereTaken(t test.Test, c main) {
+    t.assert(doubled(c.box).length() == 0)
+    t.assert(!holdsEven(c.box))
+    t.assert(emptyOrOdd(c.box))
+    t.assert(row(c.at).length() == 0)
+    c.box = Box{items=[1, 2]}
+    c.at = 0
+    t.assert(doubled(c.box).length() == 2 && doubled(c.box)[1] == 4)
+    t.assert(holdsEven(c.box))
+    t.assert(emptyOrOdd(c.box))
+    t.assert(row(c.at).length() == 2)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:b1323ac6fd20d466db9d35e90e9711e9
+{
+  "results": [
+    {
+      "Desc": "BranchesRunWhereTaken",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:0657f7ee54d2a575dc352cdc594e18ca
+{
+  "results": [
+    {
+      "Desc": "BranchesRunWhereTaken",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:e7e6052c40e3fd2d04413c123658d298
+{
+  "results": [
+    {
+      "Desc": "BranchesRunWhereTaken",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:97c538c97485e43962db13a3d2c18089
+{
+  "results": [
+    {
+      "Desc": "BranchesRunWhereTaken",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:003810b7487b28f81990c2c5ad14ef08
+{
+  "results": [
+    {
+      "Desc": "BranchesRunWhereTaken",
+      "Passed": true
+    }
+  ]
+}

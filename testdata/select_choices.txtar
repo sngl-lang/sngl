@@ -619,14 +619,18 @@ static const char *sngl_drop_down_label(GtkDropDown *d) {
 }
 
 // Selects the choice labelled label, as a click on it does; one no choice
-// carries selects nothing.
+// carries selects nothing. The selection's handler may render the page the
+// drop-down is on afresh, which drops the drop-down while GTK is still
+// setting it, so it is held until the selection is done.
 static void sngl_drop_down_select(GtkDropDown *d, const char *label) {
     GListModel *m = gtk_drop_down_get_model(d);
     if (m == NULL || !GTK_IS_STRING_LIST(m)) return;
     guint n = g_list_model_get_n_items(m);
     for (guint i = 0; i < n; i++) {
         if (strcmp(gtk_string_list_get_string(GTK_STRING_LIST(m), i), label) == 0) {
+            g_object_ref(d);
             gtk_drop_down_set_selected(d, i);
+            g_object_unref(d);
             return;
         }
     }
@@ -1164,7 +1168,7 @@ pass sha256:395780b47f14b31de2b3918ffbc98a17
 -- run/go/fyne --
 pass sha256:059da5c9fbaa06844cc769fb80d8a019
 -- run/go/gtk4 --
-pass sha256:2f0a5a66375b8571789d69d0779307c8
+pass sha256:63466dd45223a4d1ab1e2ee7d76eaae7
 -- run/kotlin/android --
 pass sha256:62a0afe01bdde7fee56b746443428804
 -- run/none/html --
