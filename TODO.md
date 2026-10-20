@@ -152,9 +152,9 @@ The harness gains one generic feature in place of PokéAPI routes.
 
 ## Part 7: Evolution
 
-- [ ] The chain as artwork cards with the trigger between stages ("Lv. 16",
+- [X] The chain as artwork cards with the trigger between stages ("Lv. 16",
   "Thunder Stone", "High Friendship"); tapping one navigates to it.
-- [ ] A branching chain (Eevee) lays out as rows.
+- [X] A branching chain (Eevee) lays out as rows.
 
 Notes:
 
@@ -194,6 +194,19 @@ Notes:
   there is one, official artwork normal and shiny, Home.
 - [ ] Alternate forms from `species.varieties`, each with its picture,
   tapping to its page.
+- [ ] The regional forms part 7 left to this part: Alolan Raichu and Alolan
+  Ninetales as cards of the Evolution tab, beside their species' stage, from
+  the default detail carrying `evolved_pokemon_form` (the README's "A
+  regional form waits for the Sprites tab's forms").
+
+Notes:
+
+- A form is a Pokémon, not a species: `/pokemon/{name}` opens a species, and
+  `artwork` is keyed on the species id. A form's page and picture need the
+  Pokémon (`pokemonRetrieve`, its `sprites.other.officialArtwork`), so a
+  form's card is a request of its own, built once per copy under the `for`.
+- `inLanguage` in `names.sngl` is the one picker for PokéAPI's per-language
+  names and texts; a form's name (`PokemonFormDetail.names`) goes through it.
 
 ## Part 9: Moves
 
