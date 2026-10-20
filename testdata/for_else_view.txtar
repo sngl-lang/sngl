@@ -443,9 +443,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -853,7 +851,7 @@ pass sha256:eb2589c0f4399e45c9f424f71fd9a2d8
 -- run/go/fyne --
 pass sha256:a86f9ff63bc75db386fd7984983e4f3f
 -- run/go/gtk4 --
-pass sha256:0db310b6f050c58575ca5aa50dbdaa68
+pass sha256:60aa02f3f0c55b1daea1636a58118187
 -- run/kotlin/android --
 pass sha256:1eb6aec7f7a0942572e258713f7d926d
 -- run/none/html --

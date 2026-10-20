@@ -204,6 +204,7 @@ func ApplyCLIOpts(opts *ir.StructLit, kv map[string]string) error { return apply
 var buildOnlyOpts = map[string]bool{
 	"rootComponent": true,
 	"projectDir":    true,
+	"executable":    true,
 }
 
 // A non-string field's value is parsed as a SNGL const expression and checked

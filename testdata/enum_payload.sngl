@@ -75,7 +75,7 @@ component panel node {
     var shape Shape = Shape.empty
     var result = half(4)
 
-    text #area(value="{area(shape)}")
+    text #shownArea(value="{area(shape)}")
     text #outcome(value=label(result))
     text #radius(value=match var r = shape {
         circle => "{r}"
@@ -137,12 +137,12 @@ func testEquality(t Test, c panel) {
 }
 
 func testComponent(t Test, c panel) {
-    t.assert(c.area.value == "0")
+    t.assert(c.shownArea.value == "0")
     t.assert(c.outcome.value == "ok 2")
     t.assert(c.radius.value == "none")
     t.assert(c.round == null)
     c.grow.click()
-    t.assert(c.area.value == "3")
+    t.assert(c.shownArea.value == "3")
     t.assert(c.radius.value == "1")
     t.assert(c.round != null)
     c.grow.click()

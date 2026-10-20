@@ -608,8 +608,10 @@ const component DateEntry(
 
 const component ui.datepicker[platform](placeholder, value, style, @change) {
     DateEntry(value=value, placeholder=placeholder, style={...style}, @change(d) {
-        value = d
-        change(d)
+        if d != value {
+            value = d
+            change(d)
+        }
     }) {}
 }
 
@@ -681,8 +683,10 @@ const component shapes.image[platform](width, height, shapes) {
 
 const component ui.checkbox[platform](label, checked, style, @change) {
     Check(text=label, checked=checked, style={...style}, @change(on) {
-        checked = on
-        change(on)
+        if on != checked {
+            checked = on
+            change(on)
+        }
     }) {}
 }
 
@@ -690,15 +694,19 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // widget set this platform builds from.
 const component ui.toggle[platform](label, checked, style, @change) {
     Check(text=label, checked=checked, style={...style}, @change(on) {
-        checked = on
-        change(on)
+        if on != checked {
+            checked = on
+            change(on)
+        }
     }) {}
 }
 
 const component ui.select[platform](value, style, @change, options) {
     Select(selected=value, options=options.map(func(o) => o.label), style={...style}, @change(v) {
-        value = v
-        change(v)
+        if v != value {
+            value = v
+            change(v)
+        }
     }) {}
 }
 
@@ -710,8 +718,10 @@ const component ui.input[platform](placeholder, value, style, @input, @change) {
         placeholder = placeholder,
         style = {...style},
         @input(v) {
-            value = v
-            input(v)
+            if v != value {
+                value = v
+                input(v)
+            }
         },
         @change(v) {
             value = v
@@ -727,8 +737,10 @@ const component ui.textarea[platform](placeholder, value, rows, style, @input, @
         rows = rows,
         style = {...style},
         @input(v) {
-            value = v
-            input(v)
+            if v != value {
+                value = v
+                input(v)
+            }
         },
         @change(v) {
             value = v

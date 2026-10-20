@@ -639,25 +639,31 @@ func New() *Model {
 }
 
 func (m *Model) box_toggle_handler(on__p0 bool) {
-	m.on = on__p0
-	m.box.SetChecked(m.on)
-	m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
-	m.__n0.SetText(m.seen)
+	if on__p0 != m.on {
+		m.on = on__p0
+		m.box.SetChecked(m.on)
+		m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
+		m.__n0.SetText(m.seen)
+	}
 }
 
 func (m *Model) sw_toggle_handler(on bool) {
-	m.checked__inst0 = on
-	m.sw.SetChecked(m.checked__inst0)
-	m.lit = on
-	m.seen = ("sw " + fmt.Sprint(on))
-	m.__n0.SetText(m.seen)
+	if on != m.checked__inst0 {
+		m.checked__inst0 = on
+		m.sw.SetChecked(m.checked__inst0)
+		m.lit = on
+		m.seen = ("sw " + fmt.Sprint(on))
+		m.__n0.SetText(m.seen)
+	}
 }
 
 func (m *Model) field_input_handler(v string) {
-	m.name = v
-	m.field.SetText(m.name)
-	m.seen = ((("input " + v) + " ") + m.name)
-	m.__n0.SetText(m.seen)
+	if v != m.name {
+		m.name = v
+		m.field.SetText(m.name)
+		m.seen = ((("input " + v) + " ") + m.name)
+		m.__n0.SetText(m.seen)
+	}
 }
 
 func (m *Model) field_change_handler(v string) {
@@ -666,16 +672,18 @@ func (m *Model) field_change_handler(v string) {
 }
 
 func (m *Model) day_pick_handler(d *time.Time) {
-	m.picked = d
-	m.day.SetDate(m.picked)
-	var __lt0 string
-	if d == nil {
-		__lt0 = "no day"
-	} else {
-		__lt0 = "day"
+	if d != m.picked {
+		m.picked = d
+		m.day.SetDate(m.picked)
+		var __lt0 string
+		if d == nil {
+			__lt0 = "no day"
+		} else {
+			__lt0 = "day"
+		}
+		m.seen = __lt0
+		m.__n0.SetText(m.seen)
 	}
-	m.seen = __lt0
-	m.__n0.SetText(m.seen)
 }
 
 func (m *Model) press_click_handler() {
@@ -914,7 +922,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -1032,12 +1039,17 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
 // Selects a day the way a click on it does, for gtk4's datepicker override
 // (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
 // 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
 static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
     if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_calendar_select_day(c, dt);
     G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }
 
@@ -1059,7 +1071,6 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
 import (
 	"fmt"
 	"strconv"
@@ -1122,9 +1133,12 @@ type Model struct {
 	seen                string
 	clicks              int
 	checked__inst0      bool
-	__effect0_key       *time.Time
-	__effect0_live      []*time.Time
-	__effect0_desired   []*time.Time
+	__effect0_key       string
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effect1_key       *time.Time
+	__effect1_live      []*time.Time
+	__effect1_desired   []*time.Time
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -1148,9 +1162,12 @@ func New() *Model {
 	m.seen = "none"
 	m.clicks = 0
 	m.checked__inst0 = m.lit
-	m.__effect0_key = nil
-	m.__effect0_live = []*time.Time{}
-	m.__effect0_desired = []*time.Time{}
+	m.__effect0_key = ""
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effect1_key = nil
+	m.__effect1_live = []*time.Time{}
+	m.__effect1_desired = []*time.Time{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_steps = 0
@@ -1158,23 +1175,14 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key != nil {
-		C.sngl_calendar_select(m.day, C.int(func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}()), C.int(func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}()), C.int(func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}()))
+	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field)))) != m.__effect0_key {
+		C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.field)), C.CString(m.__effect0_key))
 	}
 }
 
 func (m *Model) __effect0_down() {
-	m.__effect0_desired = []*time.Time{}
-	m.__effect0_desired = append(m.__effect0_desired, m.picked)
+	m.__effect0_desired = []string{}
+	m.__effect0_desired = append(m.__effect0_desired, m.name)
 }
 
 func (m *Model) __effect0_up() {
@@ -1183,13 +1191,48 @@ func (m *Model) __effect0_up() {
 			m.__effect0_key = __effect0_k
 			m.__effect0_mount()
 		} else {
-			if ((m.__effect0_live[__effect0_i] == nil) && (__effect0_k != nil)) || ((m.__effect0_live[__effect0_i] != nil) && ((__effect0_k == nil) || ((*(m.__effect0_live[__effect0_i])) != (*(__effect0_k))))) {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
 				m.__effect0_key = __effect0_k
 				m.__effect0_mount()
 			}
 		}
 	}
 	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_mount() {
+	if m.__effect1_key != nil {
+		C.sngl_calendar_select(m.day, C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[0:4]), 10, 64)
+			return int(__v)
+		}()), C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[5:7]), 10, 64)
+			return int(__v)
+		}()), C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[8:10]), 10, 64)
+			return int(__v)
+		}()))
+	}
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []*time.Time{}
+	m.__effect1_desired = append(m.__effect1_desired, m.picked)
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if ((m.__effect1_live[__effect1_i] == nil) && (__effect1_k != nil)) || ((m.__effect1_live[__effect1_i] != nil) && ((__effect1_k == nil) || ((*(m.__effect1_live[__effect1_i])) != (*(__effect1_k))))) {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
 }
 
 func (m *Model) __effects0_settle() {
@@ -1202,8 +1245,10 @@ func (m *Model) __effects0_settle() {
 		for m.__effects0_pending && (m.__effects0_steps < 512) {
 			m.__effects0_pending = false
 			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect1_down()
 			m.__effect0_down()
 			m.__effect0_up()
+			m.__effect1_up()
 		}
 		m.__effects0_settling = false
 		if m.__effects0_pending {
@@ -1213,26 +1258,36 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) box_toggled_handler() {
-	m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
-	m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0) != m.on {
+		m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
+		C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.on)))
+		m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	}
 }
 
 func (m *Model) sw_notifyActive_handler() {
-	m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
-	m.lit = m.checked__inst0
-	m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0) != m.checked__inst0 {
+		m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
+		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst0)))
+		m.lit = m.checked__inst0
+		m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	}
 }
 
 func (m *Model) field_changed_handler() {
-	m.name = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field))))
-	m.seen = ((("input " + m.name) + " ") + m.name)
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field)))) != m.name {
+		m.name = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field))))
+		m.seen = ((("input " + m.name) + " ") + m.name)
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	}
+	m.__effects0_settle()
 }
 
 func (m *Model) field_activate_handler() {
 	m.name = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field))))
+	m.__effects0_settle()
 }
 
 func (m *Model) day_daySelected_handler() {
@@ -1329,7 +1384,6 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_connect(unsafe.Pointer(m.sw), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
 	m.field = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
-	C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(m.field)), C.CString(m.name))
 	snglCallbacks = append(snglCallbacks, m.field_changed_handler)
 	C.sngl_connect(unsafe.Pointer(m.field), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.field_activate_handler)
@@ -1798,9 +1852,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:21e696a381f8606e7b47cfe6749abb19
 -- run/go/fyne --
-pass sha256:31c6429b45c92c7adad3d96e703355d5
+pass sha256:7afd12707a166b11f90f0b791c169384
 -- run/go/gtk4 --
-pass sha256:c3f1f533c42809422a3d21ab690e816c
+pass sha256:4755310a073f4cf84e85ee5114f48152
 -- run/kotlin/android --
 pass sha256:eeedac8ed7bfa9790127488c6bfa0863
 -- run/none/html --

@@ -2,7 +2,6 @@ package android
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -47,23 +46,17 @@ func writeAndroidSourceFile(sink codegen.Sink, name string, lang codegen.LangTra
 }
 
 // writeOutputFile writes an OutputFile's content into sink using its name.
-// If WriteTo returns ErrSkip, the file is silently omitted.
 func writeOutputFile(sink codegen.Sink, f *codegen.OutputFile) error {
 	return writeOutputFileAs(sink, f.Name, f)
 }
 
 // writeOutputFileAs writes an OutputFile's content into sink under an overridden name.
-// If WriteTo returns ErrSkip, the file is silently omitted.
 func writeOutputFileAs(sink codegen.Sink, name string, f *codegen.OutputFile) error {
 	w, err := sink.Create(name)
 	if err != nil {
 		return err
 	}
 	_, werr := f.WriteTo(w)
-	if errors.Is(werr, codegen.ErrSkip) {
-		// Don't close — uncommitted writer is abandoned; file is skipped.
-		return nil
-	}
 	if cerr := w.Close(); werr == nil {
 		werr = cerr
 	}
@@ -169,14 +162,14 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	// two emit paths.
 	testMode := codegen.OptionBool(req.Options, "test")
 	var (
-		src     []byte
+		src     ktSource
 		members map[string]string
 		err     error
 	)
 	if testMode {
 		src, members, err = compileTestIR(ctx, cfg)
 	} else {
-		src, err = CompileIR(ctx, cfg)
+		src, err = compileIR(ctx, cfg)
 	}
 	if err != nil {
 		return err
@@ -199,7 +192,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	}
 
 	if !effectiveMain {
-		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+		if err := src.write(sink, "MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
 		if err := emitShippedComposables(req, sink, "MainScreen.kt", cfg.Package); err != nil {
@@ -213,7 +206,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
-		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+		if err := src.write(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
 		if err := emitShippedComposables(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
@@ -236,15 +229,15 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			}
 			testAgentInc = testAgentDir
 		}
-		// templateTestMode flips the gradle template's TestMode flag,
+		// scaffoldTestMode sets app/build.gradle.kts's TestMode flag,
 		// which adds junit+robolectric+compose-ui-test deps and a
 		// testOptions block. Required for both agent-robolectric and
 		// native-robolectric paths so :app:testDebugUnitTest can
 		// compile + run the generated JUnit class. Device path skips
 		// this since instrumented tests live in androidTest sourceset
 		// with a different dep set.
-		templateTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
-		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), permissions(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
+		scaffoldTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
+		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), permissions(req.Pkg), deviceAgent, testAgentInc, scaffoldTestMode) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -262,7 +255,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			}
 		}
 	} else {
-		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+		if err := src.write(sink, "MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
 		if err := emitShippedComposables(req, sink, "MainScreen.kt", cfg.Package); err != nil {

@@ -197,8 +197,10 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked)
 	c.__n0.OnChanged = func(on bool) {
-		c.checked = on
-		c.__n0.SetChecked(c.checked)
+		if on != c.checked {
+			c.checked = on
+			c.__n0.SetChecked(c.checked)
+		}
 	}
 	c.Root = c.__n0
 	return c
@@ -263,9 +265,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Measurement struct {
 	Px  float64
@@ -378,8 +378,10 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
-		c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
-		gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
+			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
+			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		}
 	})
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -450,6 +452,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:8fea2a771c66a3fa4d260ba37e0bc462
+pass sha256:aa39a4e5a47080d39edd86b167411d99
 -- run/go/gtk4 --
-pass sha256:ad98765c8f5815fa862b4003d57182a0
+pass sha256:129ddc3abf153c9ec8415aba206485e5

@@ -1,0 +1,20 @@
+// Type arguments on a declaration that takes none are refused, naming it and
+// the builtin it shadows. Dropped, `list[string]` under a `component list`
+// was the component, and the error was "cannot infer element type of empty
+// list literal" at the `[]` beside it.
+
+import ui "sngl:ui"
+
+struct box {
+    n int
+}
+
+component list ui.node {
+    var names list[string] = [] // ERROR(check) "list here is component list (at error_type_args_on_shadowing_decl.sngl:12:1), which shadows the builtin list and takes no type arguments"
+    var b box[int] = {n=1}      // ERROR(check) "box here is struct box (at error_type_args_on_shadowing_decl.sngl:8:1), which takes no type arguments"
+    ui.text(value="list")
+}
+
+ui.window {
+    list()
+}

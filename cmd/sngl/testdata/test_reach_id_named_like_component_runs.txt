@@ -1,30 +1,45 @@
-# A test reaches a node whose `#id` is named like a component the package
-# declares. The id does not shadow the component -- `pair` still renders `box`
-# by that name -- but the node still has a handle, which is what the splice of
-# `cell` is recorded under and what `c.box.got` is pointed through. Without one
-# the read reached each target as a member nothing declares.
+# A test reaches through an #id named like a component, on every target: the
+# one it names (`card #card`), through its state (`c.card.hits`) and its node
+# (`c.card.btn.click()`), and another the body still renders by name
+# (`cell #box` beside `box()`).
 
 sngl test --platform=none app.sngl
-stdout 'ok   1 tests, 0 failures'
+stdout 'ok   2 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout 'ok   1 tests, 0 failures'
+stdout 'ok   2 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok   1 tests, 0 failures'
+stdout 'ok   2 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok   1 tests, 0 failures'
+stdout 'ok   2 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok   1 tests, 0 failures'
+stdout 'ok   2 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok   1 tests, 0 failures'
+stdout 'ok   2 tests, 0 failures'
 
 -- app.sngl --
-import test "sngl:test"
-import ui "sngl:ui"
+import "sngl:ui"
+import "sngl:test"
+
+component card ui.node {
+    var hits = 0
+    ui.button #btn(text="hit", @click {
+        hits = hits + 1
+    })
+}
+
+component main ui.node {
+    card #card()
+}
+
+func testReadsThroughAnIDNamedLikeItsComponent(t test.Test, c main) {
+    c.card.btn.click()
+    t.assert(c.card.hits == 1)
+}
 
 component box ui.node {
     ui.text(value="box")
@@ -40,56 +55,110 @@ component pair ui.node {
     box()
 }
 
-func testAnIdNamedLikeAComponent(t test.Test, c pair) {
+func testAnIDNamedLikeAnotherComponent(t test.Test, c pair) {
     t.assert(c.box.got == "a")
     t.assert(c.other.got == "b")
 }
--- testrun/android/kotlin/app.sngl/pair/1 --
-sha256:6e3213cef0d49ed6e9e7d508f489b39c
+
+ui.window {
+    main()
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:9b25df470db58806e11e302c775b00ee
 {
   "results": [
     {
-      "Desc": "AnIdNamedLikeAComponent",
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/pair/1 --
+sha256:376bf0f08a789525b8623d38db6f01c1
+{
+  "results": [
+    {
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:afd987d7841c2a53190ef11b5e6d19d1
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:911b8023c0c82a6ce5b0ddf3a6cf2446
+sha256:5a1e478a80ca96026d7e25334ba9d3dc
 {
   "results": [
     {
-      "Desc": "AnIdNamedLikeAComponent",
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:34541f02c7b638bc3bf7fe1ccbdee705
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/pair/1 --
-sha256:d4e8f461dd15138c8bfdfaf768b28ec6
+sha256:e850a0bed4e56e2d7914598d6dccba6c
 {
   "results": [
     {
-      "Desc": "AnIdNamedLikeAComponent",
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:a68ef318a421b1806077d7546e06377c
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:dac1264b8f86ced9a377870b1332411e
+sha256:9883497673f819eccd1884930f78e320
 {
   "results": [
     {
-      "Desc": "AnIdNamedLikeAComponent",
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:7f93538eff030d6ca924a03e5df9efb8
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/pair/1 --
-sha256:f70410074d7ebf7e633fe1e35d9bb2ce
+sha256:f871b164f5c66edaf54bdc7b5d80f044
 {
   "results": [
     {
-      "Desc": "AnIdNamedLikeAComponent",
+      "Desc": "AnIDNamedLikeAnotherComponent",
       "Passed": true
     }
   ]

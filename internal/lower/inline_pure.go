@@ -285,6 +285,11 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if len(c.Funcs) > 0 {
 		return false
 	}
+	// A lifetime is state as a var is: spliced under a `for`, every copy's
+	// effect shares one key and one handle.
+	if st.loopDepth > 0 && holdsLifetime(c.Stmts) {
+		return false
+	}
 	if len(c.Vars) == 0 {
 		return true
 	}
@@ -703,14 +708,14 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	provided := providedContextVars(comp, callsite.Props)
 	typeArgs := spliceTypeArgs(comp, callsite)
 	var own []ir.Stmt
+	symRenames := map[ir.Symbol]ir.Symbol{}
 	if st.takesBody(comp) {
 		own, comp.Stmts = ir.InstantiateStmts(comp.Stmts, typeArgs), nil
 	} else {
 		own = splicedBody(comp, typeArgs)
+		freshNodeHandles(own, symRenames)
 	}
 	body := substituteVars(own, provided)
-	freshenHandles(body)
-	symRenames := map[ir.Symbol]ir.Symbol{}
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -745,8 +750,9 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			(*st.hoist)[i].Init = substituteParamsExpr((*st.hoist)[i].Init, bindings)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
 		}
-		body = renameIdents(body, renames, symRenames)
+		body = renameIdents(body, renames, nil)
 	}
+	body = renameIdents(body, nil, symRenames)
 
 	// The call site's handlers and slot content are spliced into the body's own
 	// handlers below, so a parameter of the body's sharing a name they read
@@ -1732,25 +1738,22 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 	return renameIdents(body, renames, symRenames)
 }
 
-// freshenHandles gives each node body declares a handle of its own: the body is
-// one copy of the component's, and its nodes' handles were the declaration's,
-// shared by every copy. uniqueNodeIDs tells copies apart by handle, so two
-// selects in one component on gtk4, whose override reads its `#drop` from an
-// effect beside it, were one handle rendered twice, refused as a read that
-// cannot say which.
-func freshenHandles(body []ir.Stmt) {
-	fresh := map[ir.Symbol]ir.Symbol{}
-	_ = ir.Walk(body, func(n ir.Node) error {
-		if ni, ok := n.(*ir.NodeInst); ok && ni.Handle != nil {
-			if _, done := fresh[ni.Handle]; !done {
-				v := *ni.Handle
-				fresh[ni.Handle] = &v
-			}
-			ni.Handle = fresh[ni.Handle].(*ir.Var)
+// freshNodeHandles gives each node in a spliced copy of a body a handle of its
+// own, recorded in renames for the reads of it. Shared, two splices of one
+// override held one `#cal`, and its own effect's read of it could not say
+// which copy it meant (uniqueNodeIDs).
+func freshNodeHandles(body []ir.Stmt, renames map[ir.Symbol]ir.Symbol) {
+	_ = ir.Walk(body, func(node ir.Node) error {
+		n, ok := node.(*ir.NodeInst)
+		if !ok || n.Handle == nil {
+			return nil
 		}
+		fresh, ok := renames[n.Handle].(*ir.Var)
+		if !ok {
+			fresh = cloneVarShallow(n.Handle)
+			renames[n.Handle] = fresh
+		}
+		n.Handle = fresh
 		return nil
 	})
-	if len(fresh) > 0 {
-		renameIdents(body, nil, fresh)
-	}
 }

@@ -847,7 +847,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:278e83c5eb6dfbf8d0be1ecc955d4ef7
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
-sha256:38139b6e2f2bc2546369849a11da2f34
+sha256:9034ab680d83502ce3fece9c127177ad
 {
   "results": [
     {
@@ -857,7 +857,7 @@ sha256:38139b6e2f2bc2546369849a11da2f34
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/callback/1 --
-sha256:6043779985669de34affc95e4c75e4af
+sha256:5e18e7c9be49c6e11a6a41a07b9bc286
 {
   "results": [
     {
@@ -867,7 +867,7 @@ sha256:6043779985669de34affc95e4c75e4af
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/carousel/1 --
-sha256:fad7163c0198b5c8b744b8ad47d688fb
+sha256:d7c0e3c92609c23c9f2e9f44d9a7c3c6
 {
   "results": [
     {
@@ -877,7 +877,7 @@ sha256:fad7163c0198b5c8b744b8ad47d688fb
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/computed/1 --
-sha256:e6725cae9508f5e2c97e2d9bc981c05a
+sha256:94266d1ac798f13a14604edf4909f33a
 {
   "results": [
     {
@@ -887,7 +887,7 @@ sha256:e6725cae9508f5e2c97e2d9bc981c05a
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:213e01d5d019672107de8c723d78f2ee
+sha256:3554e8ad8afef304bc69eec560e6eb54
 {
   "results": [
     {
@@ -897,7 +897,7 @@ sha256:213e01d5d019672107de8c723d78f2ee
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:635bcbd8da770167652086c6d0a7d7d2
+sha256:3cab0190edd762f14fd795a8422718f6
 {
   "results": [
     {
@@ -907,7 +907,7 @@ sha256:635bcbd8da770167652086c6d0a7d7d2
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:d0d6d79a8491ba8cade437815dd0b8d1
+sha256:30dfe1257b9b82262b20ab6df18ea870
 {
   "results": [
     {

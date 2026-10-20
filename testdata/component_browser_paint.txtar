@@ -278,7 +278,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:0d847a1a5045e4c4b731b6136a310c7f
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
-sha256:3bbf475b70db18015fe50166c6a56957
+sha256:11d65ab82c97df6841657cd2ebd2e73f
 {
   "results": [
     {

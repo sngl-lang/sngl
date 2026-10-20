@@ -233,7 +233,12 @@ unrolls. A window resets the context, because a loop over pages is not a
 position a page's body is repeated in. A canvas under a `for` is built at run
 time for the same reason -- its surface and draw routine are its owner's one
 field and one method -- which `passCanvasInstances` does by synthesizing a
-component around it (`testdata/canvas_under_loop.txtar`).
+component around it (`testdata/canvas_under_loop.txtar`). A lifetime is state
+in the same sense: a component holding an `effect` or a timer is built per copy
+under a `for` (`reactiveCtx.perCopy`) and not substituted there (`isPure`),
+since spliced, the copies shared one key and one handle; an override with no
+var of its own that holds one -- gtk4's entry, pushing its value from an effect
+-- is wrapped per call site by `passImplicitState` so that it is.
 
 A loop that holds a component built at run time is a slot too, whatever it
 iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
@@ -273,9 +278,11 @@ and still re-fires the slot, as does a `#[construct]` prop and anything else
 the body renders from; a node reading nothing is left to the rebuild, which
 only a structural change triggers. What a function literal in the subtree
 binds -- its parameters, its own loops and locals -- goes with it and is no
-prop (`literalBound`): `rows.map(func(r) => …)` in a tab's panel made `r` one,
+prop (`handlerParams`): `options.map(func(o) => o.label)` in a looped component
+and `rows.map(func(r) => …)` in a tab's panel each made the parameter one,
 handed a name the site never declared
-(`cmd/sngl/testdata/slot_child_literal_runs.txt`). A node is not lifted when its subtree holds
+(`testdata/slot_child_lambda_param.txtar`,
+`cmd/sngl/testdata/slot_child_literal_runs.txt`). A node is not lifted when its subtree holds
 a slot insertion, a boundary, a canvas or a window, or declares a handle
 something reads. bubbletea and android re-render the view anyway and are
 untouched (`testdata/slot_body_updates_in_place.txtar`,

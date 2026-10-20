@@ -1,0 +1,35 @@
+// A node's #id is a declaration in its component's scope, so another
+// declaration of the name in that scope -- a var, a prop, a method -- is a
+// redeclaration. It shadows an enclosing scope's name, counted or not: one
+// written inside an `if` is hoisted to the component's scope as an option of
+// the node, so `greeting` out there is the node rather than the package
+// const. The id used to give way to each silently.
+
+import ui "sngl:ui"
+
+const greeting = "hello"
+
+component panel(title string) ui.node {
+    var label = "a"
+
+    func bump() {
+        label = "b"
+    }
+
+    ui.text #label(value=label)                  // ERROR(check) "\"label\" redeclared in this component (previous declaration at error_node_id_redeclared.sngl:13:"
+    ui.text #title(value=title)                  // ERROR(check) "\"title\" redeclared in this component"
+    ui.button #bump(text="+", @click { bump() }) // ERROR(check) "\"bump\" redeclared in this component (previous declaration at error_node_id_redeclared.sngl:15:"
+}
+
+component greeter ui.node {
+    var open = false
+    if open {
+        ui.text #greeting(value="hi")
+    }
+    ui.text(value=greeting) // ERROR(check) "greeting is rendered inside an if, so out here it is option[text]"
+}
+
+ui.window {
+    panel(title="t")
+    greeter()
+}

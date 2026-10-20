@@ -140,6 +140,11 @@ These rules keep them agreeing:
   props holds its default, or its type's zero where it has none: a var of the
   component on a compiled target (`bindRootProps`), bound ahead of its own vars
   in the interpreter (`cmd/sngl/testdata/test_reads_root_prop_runs.txt`).
+- **Tests taking no component build the program's window**, or nothing where
+  the package body renders none (`ir.Package.IsProgram`): `testlaunch.Run`
+  drops its components, each of which was otherwise an entry point emitted
+  against a Model holding none of its state
+  (`cmd/sngl/testdata/test_group_no_component_runs.txt`).
 - **An event invoker takes the event's arguments**: `c.f.input("v")` hands
   the invoker `"v"`, which it puts in the widget before firing the one event,
   as android's `performTextReplacement` does.

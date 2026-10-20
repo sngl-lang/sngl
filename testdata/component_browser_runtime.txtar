@@ -1641,7 +1641,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:b46f7c4154310c9b09b5223a0884df56
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:61b65e43fc07dc50b372b18d30cdd76c
+sha256:219589daadb119746035df0294641f43
 {
   "results": [
     {
@@ -1651,7 +1651,7 @@ sha256:61b65e43fc07dc50b372b18d30cdd76c
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:d30debe19aeb334c6ac77d98140f4187
+sha256:ddafafeceed84ad86c0056f9519e7ea6
 {
   "results": [
     {
@@ -1661,7 +1661,7 @@ sha256:d30debe19aeb334c6ac77d98140f4187
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:f63c4bcf6c1668db947c31cacd9c45ad
+sha256:11db7318f33f52e481194b731f3fe201
 {
   "results": [
     {
@@ -1671,7 +1671,7 @@ sha256:f63c4bcf6c1668db947c31cacd9c45ad
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:07d99fdeaa66385feb96698c20b1e15d
+sha256:5b9cb7ce6c312518fbbd01000b60201a
 {
   "results": [
     {
@@ -1695,7 +1695,7 @@ sha256:34cd55b72404d0e3797ca4a4e1e51a71
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:abd50cf4cf6e62fdd6742629f0593f8d
+sha256:343f7cecb5672e74462f09671a75240b
 {
   "results": [
     {
@@ -1705,7 +1705,7 @@ sha256:abd50cf4cf6e62fdd6742629f0593f8d
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:893ed98f2d4e4ea57fe4d26359108480
+sha256:4b0fb4bc5546b869c6218cfe4c37ceb4
 {
   "results": [
     {
@@ -1715,7 +1715,7 @@ sha256:893ed98f2d4e4ea57fe4d26359108480
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:69f602acfb07bec64e62845cb63ea79f
+sha256:80211f0f8294756b5cfbb5ca68602a6a
 {
   "results": [
     {
@@ -1725,7 +1725,7 @@ sha256:69f602acfb07bec64e62845cb63ea79f
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:ec37e0d752a656ba38f37b45dd558f98
+sha256:a7d6a83290fe3a001ad18d6913a0e523
 {
   "results": [
     {
@@ -1739,7 +1739,7 @@ sha256:ec37e0d752a656ba38f37b45dd558f98
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:e5d9e9b3f3ac61b3c157d5b0c698dae0
+sha256:e7f4458acbf1c847efa5350af04cd777
 {
   "results": [
     {

@@ -341,6 +341,30 @@ matched. Each target reads its host its own way, in its own `.sngl`:
   reaches, whose handler writes the prop; the snapshot prints the `sngl:ui`
   component in its place.
 
+**A write the program makes fires none of a control's events, and each
+override holds to it** (`cmd/sngl/testdata/program_write_fires_no_event_runs.txt`,
+on every target). A handler reports only a value the program does not already
+hold -- `if checkActive(b) != checked { … }`, fyne's `if v != value { … }` --
+so a bound value written to the widget, whose host fires its change signal for
+the write, reports nothing; a commit (an entry's `activate`, fyne's submit) is
+not guarded, since pressing Enter commits whatever the value. A host whose
+write fires its signal more than once is written quietly instead: gtk4's entry
+overrides do not bind `text` but push it from
+`effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
+`gtk4.setEntryText` (a `widgetWrites` intrinsic beside the `widgetReads`
+getters) blocking "changed", because gtk_editable_set_text deletes and
+reinserts and a runtime instance's handler writing the text back re-entered
+itself until the stack overflowed (`codegen/platform/gtk4/entry_echo_test.go`).
+`sngl_calendar_select` blocks "day-selected" the same way; a test's invoker
+fires the signal itself after selecting.
+
+A handler attached in a statement list `readWidgets` reads names its widget
+through its parameter, which `signalLambda` maps to the node once the node is
+in scope, so `readWidgets` leaves those reads alone; read early, the parameter
+was taken for a widget handed in as a value (`e.(gtk4rt.Handle)`).
+`spellLocalNodes` then respells a node the slot declared as a local, which the
+Go renderer otherwise writes as the receiver's field (`c.__n1`).
+
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
 gtk4 sets the widget's state (which fires the signal) or its text; fyne calls
@@ -369,11 +393,11 @@ value is reported as a choice:
   mode, cgo otherwise), whose C blocks `notify::selected` meanwhile; the
   handler reads `dropDownLabel`. The invoker selects the label, which
   notifies, and fires nothing after it. Each splice of the override has its
-  own `#drop` (`freshenHandles`, as datepicker's `#cal`): the declaration's
+  own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's
   one handle, shared, made two selects in a component one handle rendered
-  twice, which the build refused. A select a render slot builds binds the
-  signal's parameter to the dropdown before its emitter spells widget reads
-  into native code (`bindSignalSelves`), or it read an unbound `d`
+  twice, which the build refused. A select a render slot builds reads its
+  dropdown through the signal's parameter, which `readWidgets` leaves for
+  `signalLambda` as above; spelled early, it read an unbound `d`
   (`cmd/sngl/testdata/controls_several_runs.txt`).
 - **bubbletea**'s `tui.Select` is handed the choices on each view and update
   (`View(options)`, `Update(msg, options)`), its value is the truth and the
@@ -434,14 +458,6 @@ of them is a fact about the *declaration*: `ir.Ident.IsElementRef` is set on the
 `__nN` references a lowering pass synthesizes, while a read of a program's own
 `#id` resolves to the var the checker bound and carries nothing. Neither kind
 lands in `Component.Vars`, so `ExprCtx.Resolve` answers for neither.
-
-**A node has its handle even where its id binds no name.** A component's
-`#box` beside a package `component box` leaves `box` the component, as the spec
-says, but the node still gets a handle, kept out of scope
-(`checker.unboundHandles`): the inliner records a splice by its handle and a
-test's `c.box` is pointed through that record, so without one the read reached
-every compiled target as a member nothing declares
-(`cmd/sngl/testdata/test_reach_id_named_like_component_runs.txt`).
 
 Tested, never name-matched, for the reason `ir.Param.Receiver` gives: a node id
 is the author's word and `__`-prefixed names are not reserved. It is asked in
@@ -509,6 +525,20 @@ the node, since `ID` is only a name. Keyed by name instead, a `quiet()` that
 reads nothing and renders one was refused for a `#bar` that a *different*
 component read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both
 halves apart.
+
+**An `#id` is a declaration, hoisted to its component's scope.** It shadows
+what an enclosing scope binds and is a redeclaration beside a var, a prop or a
+method of that scope (`declareNodeID`), however deep in the body the node is;
+inside an `if` or a `for` it is re-bound as the plain handle
+(`declareOwnNodeIDs`), giving way there to the head's variables and the block's
+own declarations, which are closer. It used to yield to any existing name
+instead, and quietly: `card #card` beside `component card` bound nothing, the
+node carried no `Handle`, the inliner recorded no splice of it, and a test's
+`c.card.hits` went unrepointed on every compiled target
+(`cmd/sngl/testdata/test_reach_id_named_like_component_runs.txt`,
+`testdata/node_id_shadows_outer.sngl`, `error_node_id_redeclared.sngl`). A node
+position looks a component up past the id (`Scope.LookupComponent`), which is
+what `componentNamed` asks too.
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and

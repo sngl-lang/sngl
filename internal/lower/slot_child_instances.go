@@ -1,7 +1,6 @@
 package lower
 
 import (
-	"maps"
 	"slices"
 	"strconv"
 
@@ -236,12 +235,17 @@ func isDrawShape(n *ir.NodeInst) bool {
 	return n.Component != nil && ir.IsShapeFamily(n.Component.Family)
 }
 
-// handlerParams is the parameters of every handler under n, which no lifting
-// may make a prop of: nothing outside the handler binds them.
-func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
-	add := func(h *ir.EventHandler) {
-		if h != nil && h.Func != nil {
-			for _, p := range h.Func.Params {
+// handlerParams is the parameters of every handler and lambda under n, and
+// every local and loop variable a body under n declares, which no lifting may
+// make a prop of: nothing outside n binds them. A lambda in a prop's value
+// (`options.map(func(o) => o.label)`) is one: lifting its parameter handed
+// the instance an `o` the site never declared. A runtime instance's content
+// lifted whole (liftContent) and a test's read rebased through an instance
+// (rebaseKeeping) ask it too.
+func handlerParams(n any, into map[ir.Symbol]bool) map[ir.Symbol]bool {
+	add := func(f *ir.Func) {
+		if f != nil {
+			for _, p := range f.Params {
 				into[p] = true
 			}
 		}
@@ -250,10 +254,25 @@ func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 		switch x := node.(type) {
 		case *ir.NodeInst:
 			for i := range x.Handlers {
-				add(&x.Handlers[i])
+				add(x.Handlers[i].Func)
 			}
 		case *ir.ErrorBoundary:
-			add(x.Handler)
+			if x.Handler != nil {
+				add(x.Handler.Func)
+			}
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				into[x.Sym] = true
+			}
+		case *ir.For:
+			if x.KeySym != nil {
+				into[x.KeySym] = true
+			}
+			if x.ValueSym != nil {
+				into[x.ValueSym] = true
+			}
 		}
 		return nil
 	})
@@ -386,14 +405,6 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 // A call reading one of local stays where it is, its reads lifted one by one:
 // its arguments name bindings the site does not have.
 func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
-	// What a function literal binds goes to the site with it.
-	if bound := literalBound(n); len(bound) > 0 {
-		local = maps.Clone(local)
-		if local == nil {
-			local = map[ir.Symbol]bool{}
-		}
-		maps.Copy(local, bound)
-	}
 	_ = ir.Rewrite(n, func(node ir.Node) (ir.Node, error) {
 		switch x := node.(type) {
 		case *ir.Call:

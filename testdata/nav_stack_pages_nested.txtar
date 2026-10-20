@@ -934,9 +934,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Row struct {
 	Name string
@@ -1528,6 +1526,6 @@ pass sha256:24821bdab5f17c2f9de9f8598925ab16
 -- run/go/fyne --
 pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
-pass sha256:63c1cbd979533983ce41f1cfda7728f3
+pass sha256:cb858956a7ee9347aa1263c1855423f6
 -- run/kotlin/android --
 pass sha256:ed0cadf815db293c1bc45576c4eec4d0

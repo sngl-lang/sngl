@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"html"
@@ -136,16 +137,36 @@ func compileSNGL(filename, outDir string) error {
 // file: import. Both targets are gitignored build artifacts. Sibling
 // playground.css / playground.js / tutorial.* files already live in that
 // directory.
+//
+// The WASM is staged gzipped, as sngl.wasm.gz, and wasm_load.js inflates it
+// in the browser: gzipped it is about a quarter of the size, which is what a
+// visitor downloads, and it keeps well clear of GitHub's 100 MiB per-file
+// limit, which the uncompressed WASM once outgrew and the pages deploy's push
+// refused. GitHub Pages does not serve Git LFS objects, so LFS is no way out.
 func prebuildPlaygroundAssets() error {
 	stageDir := filepath.Join("internal", "playground", "assets")
 
-	wasmOut := filepath.Join(stageDir, "sngl.wasm")
-	cmd := exec.Command("go", "build", "-o", wasmOut, "./internal/playground/cmd")
+	tmp, err := os.MkdirTemp("", "docsgen-wasm-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmp)
+	rawWasm := filepath.Join(tmp, "sngl.wasm")
+	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w", "-o", rawWasm, "./internal/playground/cmd")
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("building playground wasm: %w", err)
+	}
+	// An uncompressed copy left by an earlier build would ship beside the
+	// gzipped one, since the file: import takes the whole directory.
+	if err := os.Remove(filepath.Join(stageDir, "sngl.wasm")); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	wasmOut := filepath.Join(stageDir, "sngl.wasm.gz")
+	if err := gzipFile(rawWasm, wasmOut); err != nil {
+		return fmt.Errorf("compressing playground wasm: %w", err)
 	}
 	log.Printf("playground: built %s", wasmOut)
 

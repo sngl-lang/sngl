@@ -2,10 +2,11 @@
 # builds, on every target. gtk4's overrides name their widget (`#drop`, `#cal`)
 # for an effect beside it to read, and every splice of an override shared the
 # declaration's handle, so two of them were one handle rendered twice and the
-# build refused the read; now each splice has its own (freshenHandles). And a
+# build refused the read; now each splice has its own (freshNodeHandles). And a
 # select in a render slot read its signal's parameter as an unbound `d`: the
 # slot's emitter spelled widget reads into native code before the attach said
-# `d` was the dropdown (bindSignalSelves).
+# `d` was the dropdown, and readWidgets now leaves an attached handler's
+# parameter for signalLambda.
 
 sngl test --platform=none app.sngl
 stdout 'ok   2 tests, 0 failures'
@@ -70,7 +71,7 @@ func testASelectInASlotChooses(t test.Test, c form) {
     t.assert(c.extra == "Yes")
 }
 -- testrun/android/kotlin/app.sngl/form/1 --
-sha256:f41da4fe42ebd8db68bfea2a415da888
+sha256:df23b893fdc485aaaee7acbe20422228
 {
   "results": [
     {
@@ -98,7 +99,7 @@ sha256:6e90baed4ed74f8f6e7ee59b13566880
   ]
 }
 -- testrun/fyne/go/app.sngl/form/1 --
-sha256:591d53c704b2e496eb1dd02a0b24dd7f
+sha256:78cae181ad545da820220aced97539c6
 {
   "results": [
     {
@@ -112,7 +113,7 @@ sha256:591d53c704b2e496eb1dd02a0b24dd7f
   ]
 }
 -- testrun/gtk4/go/app.sngl/form/1 --
-sha256:601e77929eec7132a1ecad9f50d1d2ac
+sha256:3b5846ce21011ddc7e428564b78dc8f1
 {
   "results": [
     {

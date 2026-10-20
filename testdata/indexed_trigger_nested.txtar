@@ -1729,9 +1729,11 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.mark.SetChecked(c.checked)
 	c.__model.__list_mark(c.__prop___copy, c.mark)
 	c.mark.OnChanged = func(on bool) {
-		c.checked = on
-		c.mark.SetChecked(c.checked)
-		c.__prop_change(on)
+		if on != c.checked {
+			c.checked = on
+			c.mark.SetChecked(c.checked)
+			c.__prop_change(on)
+		}
 	}
 	c.Root = c.mark
 	c.__model.__named_mark = c.mark
@@ -2012,9 +2014,11 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.CheckButtonSetActive(c.mark, c.checked)
 	c.__model.__list_mark(c.__prop___copy, c.mark)
 	gtk4rt.Connect(c.mark, "toggled", func() {
-		c.checked = gtk4rt.CheckButtonGetActive(c.mark)
-		gtk4rt.CheckButtonSetActive(c.mark, c.checked)
-		c.__prop_change(c.checked)
+		if gtk4rt.CheckButtonGetActive(c.mark) != c.checked {
+			c.checked = gtk4rt.CheckButtonGetActive(c.mark)
+			gtk4rt.CheckButtonSetActive(c.mark, c.checked)
+			c.__prop_change(c.checked)
+		}
 	})
 	c.Root = c.mark
 	c.__model.__named_mark = c.mark
@@ -2991,9 +2995,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:0d38313e476a3a4aee2ea101acb8d965
 -- run/go/fyne --
-pass sha256:646543c74b52cfa275b1efd0b339a7a8
+pass sha256:c2d93f4bba893ac1af753d2336010376
 -- run/go/gtk4 --
-pass sha256:8ebb1204e0e489d2286cd89b40e5d320
+pass sha256:7b41582f50f20826dc33b4c06879e2c7
 -- run/kotlin/android --
 pass sha256:3a02bffd495074297bbe1bec60b2fa34
 -- run/none/html --
