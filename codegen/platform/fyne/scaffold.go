@@ -1,10 +1,14 @@
 package fyne
 
+import "duckfam.us/sngl/codegen/lang/golang"
+
 // Config controls code generation. Field names mirror fyne.sngl options.
 type Config struct {
 	Package string // Go package name (default: "ui")
 	Main    bool   // emit a main() function for standalone apps
-	AppName string // application display name; empty falls back to stdlib Name
+	// Set by internal/build for a build that becomes a binary.
+	Executable bool
+	AppName    string // application display name; empty falls back to stdlib Name
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -21,13 +25,7 @@ type Config struct {
 }
 
 func (c Config) withDefaults() Config {
-	if c.Package == "" {
-		if c.Main {
-			c.Package = "main"
-		} else {
-			c.Package = "ui"
-		}
-	}
+	c.Package = golang.PackageName(c.Package, c.Main, c.Executable)
 	if c.AppName == "" {
 		if c.Name != "" {
 			c.AppName = c.Name
