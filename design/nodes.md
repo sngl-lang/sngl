@@ -442,8 +442,10 @@ panel in the strip's `for var k, t = items`. One iteration renders it, so a
 `c.cell` and the interpreter mounts it. `ir.RecordBranchOf` names the loop a
 `t.__id == N` branch picks one record of, and `lower.BlockLoops` leaves it out
 of a copy's key (`passCopyKeys`) and of the loops a copy's prop read binds
-(`nodeUnderLoops`), and of the key bubbletea's presence check
-matches a copy by, which put the tab's index in front of it
+(`nodeUnderLoops`), of the loops whose index keys a stateful component's cells
+where bubbletea splices one under a `for` in a panel
+(`cmd/sngl/testdata/tabs_panel_cells_runs.txt`), and of the key bubbletea's
+presence check matches a copy by, which put the tab's index in front of it
 (`cmd/sngl/testdata/tabs_panel_presence_runs.txt`); the interpreter found no loop at all, since `refLoops` did
 not look in slot populations, and walks `ir.ViewBlocks` now. A panel with
 state of its own is an instance whose render slot builds the copies: fyne and

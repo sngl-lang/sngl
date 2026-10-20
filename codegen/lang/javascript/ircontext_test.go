@@ -305,8 +305,9 @@ func TestJsNamespaceCall_NoAwaitForSyncCallee(t *testing.T) {
 func TestJsCall_FuncvarAsyncSlot_Awaits(t *testing.T) {
 	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
 	v := &ir.Var{Name: "handler", Type: jsFuncTypeNoArgs()}
+	// handler is a local, bound below: a var of the package is state, which
+	// a read reaches through `state` whatever local shares its name.
 	pkg := &ir.Package{
-		Vars:  []*ir.Var{v},
 		Funcs: []*ir.Func{asyncFn},
 		PointsTo: &ir.PointsToInfo{
 			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {asyncFn}},
@@ -326,8 +327,9 @@ func TestJsCall_FuncvarAsyncSlot_Awaits(t *testing.T) {
 func TestJsCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
 	syncFn := &ir.Func{Name: "syncFn"}
 	v := &ir.Var{Name: "handler", Type: jsFuncTypeNoArgs()}
+	// handler is a local, bound below: a var of the package is state, which
+	// a read reaches through `state` whatever local shares its name.
 	pkg := &ir.Package{
-		Vars:  []*ir.Var{v},
 		Funcs: []*ir.Func{syncFn},
 		PointsTo: &ir.PointsToInfo{
 			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {syncFn}},

@@ -3542,6 +3542,9 @@ func (c *checker) checkPackageBody() {
 	c.pushScope()
 	defer c.popScope()
 	for _, st := range c.pendingPkgBody {
+		inStmtFile(c, st, func() { c.preSpecializeHandles(st, true) })
+	}
+	for _, st := range c.pendingPkgBody {
 		inStmtFile(c, st, func() {
 			if checked := c.checkStmt(st); checked != nil {
 				c.pkg.Body = append(c.pkg.Body, checked)
@@ -4667,6 +4670,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			case *ast.VarDecl:
 				c.checkComponentVars(s, comp)
 			}
+		}
+		// With the vars typed, so a prop reading one binds.
+		for _, stmt := range comp.AST.Body.Stmts {
+			c.preSpecializeHandles(stmt, true)
 		}
 	}
 

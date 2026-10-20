@@ -214,10 +214,13 @@ and html writes the same documents from it. A `var` written in a page's body is 
 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --
-the divergence a window under an `if` has there. A `nav.link` above its
-`nav.page` in source does not check (`cannot use page as page[struct {}]`):
-`specializeHandle` completes a handle's type only when its node is checked, so
-a read above the node sees the bare declaration. And a node in a page's
+the divergence a window under an `if` has there. A page's handle read above
+its `nav.page` in source has the type arguments its props bind -- its params
+-- since the checker reads them quietly before the body around the node
+(`preSpecializeHandles`, `cmd/sngl/testdata/nav_page_named_above_runs.txt`);
+what the children bind, a stack's meta type, still waits for the node, so a
+`go` above a stack whose pages carry a meta does not check
+(`cannot pass page[struct {}, Meta] as page[struct {}, struct {}]`). And a node in a page's
 content is rendered only while the page shows, and a component there is built
 at run time on the targets that keep an instance's state, so a compiled test
 reads neither (`c.label.value`, `c.tally.hits`), which is why `nav_stack_runs`

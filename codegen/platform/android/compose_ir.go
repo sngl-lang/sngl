@@ -832,6 +832,9 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) st
 	for _, p := range lam.Func.Params {
 		kc = kc.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(lam.Func.Block) {
+		kc = kc.WithLocal(name)
+	}
 	saved := cc.kc
 	cc.kc = kc
 	var body []string

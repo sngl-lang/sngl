@@ -1163,6 +1163,9 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		localKC = localKC.WithLocal(name)
+	}
 
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -1257,6 +1260,9 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	localKC := kc
 	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		localKC = localKC.WithLocal(name)
 	}
 
 	// Expression body

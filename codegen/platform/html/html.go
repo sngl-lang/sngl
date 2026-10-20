@@ -3469,6 +3469,9 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		jc = jc.WithLocal(name)
+	}
 	tr := g.newHTMLTranslator(jc)
 	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	for _, s := range lowered {

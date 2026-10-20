@@ -94,7 +94,11 @@ renumbered everything after it, in the program and in every golden. It also
 names the `__pN` a spliced body's parameter takes where it would shadow a name
 the call site's code reads (`freshenShadowingParams`): an override's
 `func(on) { checked = on; change(on) }` with the call site's `@change { on = !on }` spliced in for the emit was one `on` in every target spelling a local
-bare. `testdata/inst_suffix_one_sequence.txtar` is the fixture.
+bare. A local of the spliced body is renamed the same way, since a call site's
+`:value=got` beside `async.query`'s `match var got = r` wrote `got = got`
+once spliced into a component built at run time
+(`cmd/sngl/testdata/spliced_local_shadows_runs.txt`), and a call site's prop
+values count among the names it reads. `testdata/inst_suffix_one_sequence.txtar` is the fixture.
 
 A *double* suffix is not the symptom and is correct wherever it appears: html's
 `timer` override is substituted by one pass and its owner's clone hoisted by the
@@ -261,7 +265,12 @@ it before appending it again and GTK frees a widget its parent held alone.
 
 **A slot re-renders on what its structure reads**, the `if`'s condition and
 the `for`'s iterable, and what its body reads beyond that is patched where it
-stands. A re-render builds the body afresh, so a slot that re-fired on
+stands. A call there reads what its callee's `Func.Reads` says and what every
+call in the callee's body reads, a lambda's included; a splice adds to a
+method's `Reads` the vars it substitutes for the props the method reads
+(`withSubstitutedReads`), or a `for var n = rest()` over a prop the caller
+hands its var re-rendered on nothing
+(`cmd/sngl/testdata/slot_method_reads_prop_runs.txt`). A re-render builds the body afresh, so a slot that re-fired on
 everything its body read rebuilt a whole panel under `if details` every time
 one label in it changed, and lost what its widgets held that no state
 described -- focus, a selection, typed text. So on the three targets that

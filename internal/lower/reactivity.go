@@ -1044,110 +1044,15 @@ func gatherFuncReads(fn *ir.Func, reactive map[*ir.Var]bool, out map[*ir.Var]boo
 			out[v] = true
 		}
 	}
-	for _, s := range fn.Block {
-		eachCallInStmt(s, func(c *ir.Call) {
+	// Every call the body makes, a lambda's included: `all.filter(func(f) =>
+	// f != picked())` reads what picked reads
+	// (cmd/sngl/testdata/slot_method_reads_prop_runs.txt).
+	_ = ir.WalkExprs(fn.Block, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok {
 			gatherFuncReads(c.Func, reactive, out, visited)
-		})
-	}
-}
-
-// eachCallInStmt invokes fn for every *ir.Call reachable from s (and nested
-// statements). Used to follow the call graph for transitive reactive-dep
-// gathering; only the call nodes matter, so non-call exprs are descended
-// without other side effects.
-func eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
-	switch n := s.(type) {
-	case *ir.Return:
-		eachCallInExpr(n.Value, fn)
-	case *ir.LocalVar:
-		eachCallInExpr(n.Init, fn)
-	case *ir.Assign:
-		eachCallInExpr(n.Value, fn)
-	case *ir.CallStmt:
-		eachCallInExpr(n.Call, fn)
-	case *ir.Emit:
-		for _, a := range n.Args {
-			eachCallInExpr(a.Value, fn)
 		}
-	case *ir.If:
-		eachCallInExpr(n.Cond, fn)
-		for _, c := range n.Body {
-			eachCallInStmt(c, fn)
-		}
-		for _, c := range n.Else {
-			eachCallInStmt(c, fn)
-		}
-	case *ir.Match:
-		for _, h := range n.Heads() {
-			eachCallInExpr(h, fn)
-		}
-		for _, arm := range n.Arms {
-			for _, c := range arm.Body {
-				eachCallInStmt(c, fn)
-			}
-		}
-	case *ir.For:
-		eachCallInExpr(n.Iter, fn)
-		for _, c := range n.Body {
-			eachCallInStmt(c, fn)
-		}
-		for _, c := range n.Else {
-			eachCallInStmt(c, fn)
-		}
-	}
-}
-
-// eachCallInExpr invokes fn for every *ir.Call reachable from e.
-func eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
-	switch x := e.(type) {
-	case nil:
-		return
-	case *ir.Call:
-		fn(x)
-		eachCallInExpr(x.Receiver, fn)
-		for _, a := range x.Args {
-			eachCallInExpr(a.Value, fn)
-		}
-	case *ir.Binary:
-		eachCallInExpr(x.Left, fn)
-		eachCallInExpr(x.Right, fn)
-	case *ir.Unary:
-		eachCallInExpr(x.Operand, fn)
-	case *ir.Ternary:
-		eachCallInExpr(x.Cond, fn)
-		eachCallInExpr(x.Then, fn)
-		eachCallInExpr(x.Else, fn)
-	case *ir.MatchExpr:
-		eachCallInExpr(x.Subject, fn)
-		for _, arm := range x.Arms {
-			for _, p := range arm.Patterns {
-				eachCallInExpr(p, fn)
-			}
-			eachCallInExpr(arm.Value, fn)
-		}
-	case *ir.Conversion:
-		eachCallInExpr(x.Operand, fn)
-	case *ir.Select:
-		eachCallInExpr(x.Operand, fn)
-	case *ir.Index:
-		eachCallInExpr(x.Operand, fn)
-		eachCallInExpr(x.Idx, fn)
-	case *ir.ListLit:
-		for _, el := range x.Elems {
-			eachCallInExpr(el, fn)
-		}
-	case *ir.MapLitIR:
-		for _, en := range x.Entries {
-			eachCallInExpr(en.Key, fn)
-			eachCallInExpr(en.Value, fn)
-		}
-	case *ir.StructLit:
-		for _, f := range x.Fields {
-			eachCallInExpr(f.Value, fn)
-		}
-	case *ir.Spread:
-		eachCallInExpr(x.Operand, fn)
-	}
+		return nil
+	})
 }
 
 func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {

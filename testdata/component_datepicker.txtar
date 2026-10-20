@@ -254,9 +254,9 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_pick_handler(d *time.Time) {
-	if d != m.value__inst0 {
-		m.value__inst0 = d
+func (m *Model) __n0_pick_handler(d__p0 *time.Time) {
+	if d__p0 != m.value__inst0 {
+		m.value__inst0 = d__p0
 		m.__n0.SetDate(m.value__inst0)
 	}
 }
@@ -874,7 +874,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4c0af4220760b1b381b136ac2d5b831e
 -- run/go/fyne --
-pass sha256:f9dc8c9663526b87f49da77edabefd13
+pass sha256:95eb24ffec20a57a93b8c2be1eeb39c4
 -- run/go/gtk4 --
 pass sha256:c9b8e27786c7c37b5c49d3f3d1ce3f0c
 -- run/kotlin/android --

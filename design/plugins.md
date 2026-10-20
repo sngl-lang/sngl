@@ -58,8 +58,9 @@ Known gaps, each refused or documented where it bites:
   rather than running the server.
 - bubbletea splices a stateful component in a page, or a window under an `if`,
   into the Model, so its state survives the page being left.
-- A page handle read above its `nav.page` does not check
-  (`specializeHandle` runs only when the node is).
+- A handle read above its node has what the node's props bind, not what its
+  children bind: a `go` above a stack whose pages carry a meta does not check
+  (`preSpecializeHandles` reads props alone).
 - `sngl dump` prints a qualified node by its local name, so a dump of a
   program writing `nav.page` does not check again.
 - A component's props, events and slots keep their names whatever a target
@@ -67,6 +68,10 @@ Known gaps, each refused or documented where it bites:
   these by name), so a prop named `range` is still a Go parameter no target
   can declare.
 - A local that shares a package var's name reads the var on the Go mutation
-  targets: codegen resolves an identifier by name, and `ExprCtx.Resolve`
-  finds the Model field first.
+  targets wherever the scope declaring it does not bind it first: codegen
+  resolves an identifier by name, and `ExprCtx.Resolve` finds the Model field
+  first. A function and a lambda bind every local of their body
+  (`codegen.BodyLocals`, `cmd/sngl/testdata/func_local_named_like_state_runs.txt`),
+  and a read of the state itself is told apart by its symbol
+  (`ExprCtx.ShadowedStateVar`).
 - `gir:` reads only `Gtk-4.0`.

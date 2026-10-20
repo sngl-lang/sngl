@@ -675,23 +675,6 @@ func (gc *GoIRContext) ElseHead() string                    { return "} else {" 
 func (gc *GoIRContext) BlockEnd() string                    { return "}" }
 func (gc *GoIRContext) Indent() string                      { return "\t" }
 
-// shadowedStateVar reports a read of a state var whose name a local of the
-// emitted scope also binds -- a render slot's `parent` parameter beside a
-// program's `var parent` -- which Resolve, asking by name, answers as the local.
-func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
-	v, ok := sym.(*ir.Var)
-	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
-		return nil, false
-	}
-	if !gc.Ctx.IsLocal(v.Name) {
-		return nil, false
-	}
-	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {
-		return v, true
-	}
-	return v, gc.Ctx.Pkg != nil && slices.Contains(gc.Ctx.Pkg.Vars, v)
-}
-
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
@@ -2019,6 +2002,9 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	for _, p := range n.Func.Params {
 		gc = gc.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(n.Func.Block) {
+		gc = gc.WithLocal(name)
+	}
 
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -2555,6 +2541,9 @@ func (gc *GoIRContext) emitFuncBody(lines []string, fn *ir.Func, _ []string) []s
 	for _, p := range fn.Params {
 		bodyGC = bodyGC.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		bodyGC = bodyGC.WithLocal(name)
+	}
 	for _, stmt := range fn.Block {
 		for _, line := range bodyGC.EvalStmt(stmt) {
 			lines = append(lines, "\t"+line)
@@ -2703,4 +2692,13 @@ func switchCase(m *ir.MatchArms, i int, patterns []string) string {
 // writes a match expression as a switch assigning a temp.
 func (gc *GoIRContext) MatchExpr(*ir.MatchExpr) string {
 	panic("ir.MatchExpr reached Go codegen — NoTernary lifts it into a switch for every Go platform")
+}
+
+// shadowedStateVar is ExprCtx.ShadowedStateVar, for a context that may have
+// none.
+func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
+	if gc.Ctx == nil {
+		return nil, false
+	}
+	return gc.Ctx.ShadowedStateVar(sym)
 }

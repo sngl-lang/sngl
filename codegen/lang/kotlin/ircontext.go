@@ -1055,6 +1055,9 @@ func (kc *KtIRContext) waitingLiteralCall(lam *ir.Lambda, args []string) string 
 	for _, p := range lam.Func.Params {
 		body = body.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(lam.Func.Block) {
+		body = body.WithLocal(name)
+	}
 	for _, stmt := range lam.Func.Block {
 		for _, line := range body.EvalStmt(stmt) {
 			lines = append(lines, "\t"+line)
@@ -1489,6 +1492,9 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 		if p.Type != nil {
 			params[i] += ": " + IRTypeToKt(p.Type)
 		}
+	}
+	for _, name := range codegen.BodyLocals(n.Func.Block) {
+		kc = kc.WithLocal(name)
 	}
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {

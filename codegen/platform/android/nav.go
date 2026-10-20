@@ -489,13 +489,17 @@ func emitNavState(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtIRContex
 }
 
 // emitNavStateMembers is the test-mode state class's half: the controller a
-// composition hands it, and `current` read off it.
+// composition hands it, and `current` read off it. The controller is
+// `lateinit` rather than nullable, since a func of the class that goes to a
+// page calls it as MainScreen's own does
+// (cmd/sngl/testdata/nav_page_named_above_runs.txt); only `current` is read
+// before the composition hands it over.
 func emitNavStateMembers(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtIRContext) {
 	for _, st := range stacks {
-		fmt.Fprintf(b, "    var %s__nav: androidx.navigation.NavHostController? = null\n", st.name)
+		fmt.Fprintf(b, "    lateinit var %s__nav: androidx.navigation.NavHostController\n", st.name)
 		if st.start != nil {
 			rec := exportName(st.start.record.Def.Name)
-			fmt.Fprintf(b, "    val %s__current: %s get() = %s(%s__nav?.currentBackStackEntry) ?: %s\n", st.name, rec, recordFunc(st.start.record.Def), st.name, st.startValueKt(kc))
+			fmt.Fprintf(b, "    val %s__current: %s get() = %s(if (::%s__nav.isInitialized) %s__nav.currentBackStackEntry else null) ?: %s\n", st.name, rec, recordFunc(st.start.record.Def), st.name, st.name, st.startValueKt(kc))
 		}
 	}
 }

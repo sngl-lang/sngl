@@ -1647,6 +1647,11 @@ func callsiteNames(callsite *ir.NodeInst) map[string]bool {
 		}
 	}
 	roots = append(roots, callsite.Children)
+	for _, a := range callsite.Props {
+		if a.Value != nil {
+			roots = append(roots, a.Value)
+		}
+	}
 	for _, name := range ir.SlotNames(callsite.Slots) {
 		if sc := callsite.Slots[name]; sc != nil {
 			for _, p := range sc.Params {
@@ -1693,12 +1698,17 @@ func callsiteNames(callsite *ir.NodeInst) map[string]bool {
 }
 
 // freshenShadowingParams renames each parameter of a handler or lambda in
-// body whose name is in taken, and repoints its reads. A platform override's
+// body, and each local it declares, whose name is in taken, and repoints its
+// reads. A platform override's
 // `onCheckedChange = func(on) { checked = on; change(on) }` has the call
 // site's `@change { on = !on }` spliced in for `change(on)`: left alone, the
 // two `on`s are one name in every target that spells a local bare -- a
 // Kotlin lambda parameter captured the component's `var on` -- and the
-// body's is the one renamed, since the call site's is the program's.
+// body's is the one renamed, since the call site's is the program's. A local
+// is the same collision: `async.query`'s `match var got = r` beside a
+// `:value=got` the call site bound wrote `got = got` on html, fyne and gtk4
+// once the query was spliced into a component they build at run time
+// (`cmd/sngl/testdata/spliced_local_shadows_runs.txt`).
 func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer) []ir.Stmt {
 	renames := map[ir.Symbol]string{}
 	symRenames := map[ir.Symbol]ir.Symbol{}
@@ -1732,6 +1742,15 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 			}
 		case *ir.Lambda:
 			freshen(v.Func)
+		case *ir.LocalVar:
+			if v.Sym == nil || !taken[v.Name] {
+				break
+			}
+			fresh := cloneVarShallow(v.Sym)
+			fresh.Name = names.next(v.Name, "l")
+			renames[v.Sym] = fresh.Name
+			symRenames[v.Sym] = fresh
+			v.Name, v.Sym = fresh.Name, fresh
 		}
 		return nil
 	})

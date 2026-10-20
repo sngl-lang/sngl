@@ -150,9 +150,9 @@ func (m *Model) box_change_handler(v string) {
 	m.__n4.SetText(m.last)
 }
 
-func (m *Model) __n3_toggle_handler(on bool) {
-	if on != m.checked__inst0 {
-		m.checked__inst0 = on
+func (m *Model) __n3_toggle_handler(on__p0 bool) {
+	if on__p0 != m.checked__inst0 {
+		m.checked__inst0 = on__p0
 		m.__n3.SetChecked(m.checked__inst0)
 	}
 }
@@ -938,6 +938,6 @@ func (m *Model) entryChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_entry)), sig)
 }
 -- run/go/fyne --
-pass sha256:19f3469e184a0fa48cdf1431c1512603
+pass sha256:5c9318e85972eacd1120a0a88bde7f5d
 -- run/go/gtk4 --
 pass sha256:3b046688b54f407cee582242d3d97271

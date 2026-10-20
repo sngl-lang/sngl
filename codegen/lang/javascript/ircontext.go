@@ -552,6 +552,14 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if jc.EventVar != "" && jc.EventParam != nil && n.Sym == jc.EventParam {
 		return jc.EventVar
 	}
+	// A read of the state a local of the function shadows -- except in an
+	// html instance factory, whose component's vars are the factory's own
+	// closure locals.
+	if !jc.Ctx.ClosureMethods {
+		if _, ok := jc.Ctx.ShadowedStateVar(n.Sym); ok {
+			return jc.stateRecv() + "." + name
+		}
+	}
 	sym, kind := jc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
@@ -1040,6 +1048,9 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	for _, p := range n.Func.Params {
 		bodyJC = bodyJC.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(n.Func.Block) {
+		bodyJC = bodyJC.WithLocal(name)
+	}
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := bodyJC.EvalExpr(ret.Value)
@@ -1220,6 +1231,9 @@ func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
 	bodyJC := jc
 	for _, p := range fn.Params {
 		bodyJC = bodyJC.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		bodyJC = bodyJC.WithLocal(name)
 	}
 	for _, stmt := range fn.Block {
 		for _, line := range bodyJC.EvalStmt(stmt) {
