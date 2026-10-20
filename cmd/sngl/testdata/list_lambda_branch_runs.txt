@@ -1,0 +1,122 @@
+# A function literal handed to a list method holds a ternary or a match, in a
+# test body and in a prop: NoListLambdas makes the call a loop calling the
+# literal in place, and NoTernary now lifts what that literal's body holds,
+# which it reached as the call's callee and never visited -- every Go target
+# panicked with "ir.Ternary reached Go codegen".
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+func short(name string) string {
+    return match name {
+        "north" => "N"
+        "south" => "S"
+        else => "?"
+    }
+}
+
+component compass ui.node {
+    var headings = ["north", "south", "up"]
+    ui.text #label(value=headings.map(func(h string) => short(h)).join(","))
+    ui.text #flags(value=headings.map(func(h string) => h == "up" ? "^" : "-").join(""))
+}
+
+func testALiteralInAPropLiftsItsBranches(t test.Test, c compass) {
+    t.assert(c.label.value == "N,S,?")
+    t.assert(c.flags.value == "--^")
+}
+
+func testALiteralInATestLiftsItsBranches(t test.Test, c compass) {
+    var marks = c.headings.map(func(h string) => h == "north" ? "y" : "n").join("")
+    t.assert(marks == "ynn")
+    t.assert(c.headings.map(func(h string) => short(h)).join("") == "NS?")
+}
+-- testrun/android/kotlin/app.sngl/compass/1 --
+sha256:751bee6af56c15f90d4c665da8a3d83f
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPropLiftsItsBranches",
+      "Passed": true
+    },
+    {
+      "Desc": "ALiteralInATestLiftsItsBranches",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/compass/1 --
+sha256:71f5f59f4ece51072e0171001d42b2b0
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPropLiftsItsBranches",
+      "Passed": true
+    },
+    {
+      "Desc": "ALiteralInATestLiftsItsBranches",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/compass/1 --
+sha256:19c4cfe21efe792d46c75ca34d06c31b
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPropLiftsItsBranches",
+      "Passed": true
+    },
+    {
+      "Desc": "ALiteralInATestLiftsItsBranches",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/compass/1 --
+sha256:35af2c465c5a2f024293ac3f467073c8
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPropLiftsItsBranches",
+      "Passed": true
+    },
+    {
+      "Desc": "ALiteralInATestLiftsItsBranches",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/compass/1 --
+sha256:6096eef17d9c51cac5354eaa5257a3b0
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPropLiftsItsBranches",
+      "Passed": true
+    },
+    {
+      "Desc": "ALiteralInATestLiftsItsBranches",
+      "Passed": true
+    }
+  ]
+}

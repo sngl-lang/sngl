@@ -424,7 +424,12 @@ accepts. Both hooks now descend to lambda bodies and hoist nothing into the
 initializer, so the reason they are no-ops survives.
 `testdata/ternary_in_lambda_initializer.txtar` and
 `testdata/indexed_iter_in_lambda_initializer.txtar` pin the pair; `passNoRef`,
-the third, already had an `*ir.Lambda` arm in its rewriter.
+the third, already had an `*ir.Lambda` arm in its rewriter. A third position
+came from `passNoListLambdas`, which makes `xs.map(func(x) => …)` a loop calling
+the literal in place: the literal is then a call's `Callee`, which
+`transformExpr` never visited, so a ternary or a match in it reached the Go
+emitters from a test body or a prop
+(`cmd/sngl/testdata/list_lambda_branch_runs.txt`).
 
 That was latent in a second place until a timer became an effect: the tick is
 then a closure handed to a host scheduler, so the same defects came back on
