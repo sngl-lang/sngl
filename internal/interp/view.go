@@ -356,7 +356,9 @@ func (v *View) Choosing(event string, arg any) (*Node, string) {
 		for _, k := range ns {
 			for _, h := range k.Handlers {
 				fn, ok := h.Body.(*ir.Func)
-				if !ok || k.Env == nil {
+				// Only what the component's own body wrote emits its events: a
+				// panel's nodes are the writer's.
+				if !ok || k.Env == nil || k.Owner != v.owner {
 					continue
 				}
 				lv := ir.EmittedIndex(fn.Block, event)

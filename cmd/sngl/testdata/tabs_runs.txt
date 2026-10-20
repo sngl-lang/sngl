@@ -9,7 +9,10 @@
 # index -- so the trigger is a press of that tab (lower.NamePresses, and
 # interp.View.Choosing on the interpreter), through the invoker each target
 # has for one copy of a node a loop renders; it reaches through an instance
-# too.
+# too. A control in a panel that reports the same event -- a select's
+# @change -- is the panel's writer's, and the trigger presses the tab all the
+# same; two components each holding a `#strip` under one root are each
+# pressed through their own.
 #
 # A loop in a panel makes copies a test indexes by that loop alone: the
 # strip's loop over its tabs shows a tab's panel in one iteration, so it is no
@@ -20,22 +23,22 @@
 # testdata/component_tabs.txtar is the code.
 
 sngl test --platform=none app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -46,6 +49,7 @@ component app ui.node {
     var hits = 0
     var changed = -1
     var rows = [1, 2, 3]
+    var fruit = "Apple"
     ui.tabs #strip(:selected=idx, @change(i) {
         changed = i
     }) {
@@ -53,6 +57,12 @@ component app ui.node {
             ui.button #hit(text="hit", @click {
                 hits = hits + 1
             })
+            ui.select(:value=fruit, @change(v) {
+                hits = 100
+            }) {
+                ui.choice(label="Apple")
+                ui.choice(label="Pear")
+            }
         }
         ui.tab(label="Two") {
             var local = 0
@@ -69,6 +79,11 @@ component app ui.node {
 
 component wrapped ui.node {
     app #inner()
+}
+
+component pair ui.node {
+    app #left()
+    app #right()
 }
 
 func testTheSelectedPanelIsShown(t Test, c app) {
@@ -108,6 +123,13 @@ func testALoopInAPanelIsIndexedByItself(t Test, c app) {
     t.assert(c.cell[3] == null)
 }
 
+func testTwoStripsArePressedEachThroughItsOwn(t Test, c pair) {
+    c.right.strip.change(1)
+    t.assert(c.right.idx == 1 && c.left.idx == 0)
+    c.left.strip.change(1)
+    t.assert(c.left.idx == 1 && c.left.hits == 0)
+}
+
 func testATabIsPressedThroughAnInstance(t Test, c wrapped) {
     c.inner.strip.change(1)
     t.assert(c.inner.idx == 1)
@@ -118,7 +140,7 @@ ui.window {
     app
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:bfd38b3aa7a74c7f877251aa708d7669
+sha256:6c4e63cb4755aecdd1f6d6bf2cdb6e63
 {
   "results": [
     {
@@ -139,8 +161,18 @@ sha256:bfd38b3aa7a74c7f877251aa708d7669
     }
   ]
 }
+-- testrun/android/kotlin/app.sngl/pair/1 --
+sha256:d0da57fa1fc97e0bfedea87318d7359b
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:dd91a28ccbec9ef505776963e6dae361
+sha256:98fe398442c99f3079a886e6a0677f18
 {
   "results": [
     {
@@ -150,7 +182,7 @@ sha256:dd91a28ccbec9ef505776963e6dae361
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:36b27196664a5de442949e07c7e7546d
+sha256:bdff6087e92574ab340dee8924493d5e
 {
   "results": [
     {
@@ -171,8 +203,18 @@ sha256:36b27196664a5de442949e07c7e7546d
     }
   ]
 }
+-- testrun/bubbletea/go/app.sngl/pair/1 --
+sha256:4ac327343e4491efc01a69738d90de01
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:9a0c066f175e0f2fc569e233ef6556c4
+sha256:5e70b2272e604fcafeecea076dccac03
 {
   "results": [
     {
@@ -182,7 +224,7 @@ sha256:9a0c066f175e0f2fc569e233ef6556c4
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:b0a627ca51382e564a23e5f3c7281e7f
+sha256:92728f8b0242a136e870c31981728c87
 {
   "results": [
     {
@@ -203,8 +245,18 @@ sha256:b0a627ca51382e564a23e5f3c7281e7f
     }
   ]
 }
+-- testrun/fyne/go/app.sngl/pair/1 --
+sha256:34af8b2ec8ad3f5f7540eca8fb88164d
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:81c73d987e3c9c44c6a188cdcc9cd93c
+sha256:0c799604e3a56c4eb9c45096e7b8607b
 {
   "results": [
     {
@@ -214,7 +266,7 @@ sha256:81c73d987e3c9c44c6a188cdcc9cd93c
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:937e5713d6d42657f774ec5e80fdedcf
+sha256:8d756943f69e3010e9b4c851d33ec4e3
 {
   "results": [
     {
@@ -235,8 +287,18 @@ sha256:937e5713d6d42657f774ec5e80fdedcf
     }
   ]
 }
+-- testrun/gtk4/go/app.sngl/pair/1 --
+sha256:0afafd5bf693710260b4624d620c239d
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:400690f237102345d9589248f042e851
+sha256:f19e4e54c39a54acae6b96faa03fc011
 {
   "results": [
     {
@@ -246,7 +308,7 @@ sha256:400690f237102345d9589248f042e851
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:339493eb7a5b62d4dabb6ddad9b5cbf2
+sha256:391f5d470562c90bde6932675eeda0df
 {
   "results": [
     {
@@ -267,8 +329,18 @@ sha256:339493eb7a5b62d4dabb6ddad9b5cbf2
     }
   ]
 }
+-- testrun/html/none/app.sngl/pair/1 --
+sha256:5944613beed6bbea93c5f74d7a9e7c63
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:622ae84fca1e6b378becd8a94c7c68c4
+sha256:bbcba3b65fe70e5af3d1f2e4297987c9
 {
   "results": [
     {

@@ -1,12 +1,14 @@
 package lower
 
 import (
+	"strings"
+
 	"duckfam.us/sngl/ir"
 )
 
 // NamePresses answers a test's trigger of an event through callsite's `#id`
 // where body, the component's body being spliced in its place, emits the event
-// from a node a loop renders, handing on the loop's index (ir.EmittedIndex):
+// from a node one loop renders, handing on the loop's index (ir.EmittedIndex):
 // ui.tabs' strip, whose tab at k emits `change(k)` when clicked. The id lands
 // on the body's first node, which reports none of it, so the trigger is a
 // press: the node is given an `#id` of its own, `<id>__<event>`, and each such
@@ -17,50 +19,84 @@ import (
 //
 // Both inliners call it before the emits are substituted, which is where the
 // index an emit hands on is still in the body: the optimizer, which splices a
-// body the target does not override, and passInlinePure.
-func NamePresses(pkg *ir.Package, body []ir.Stmt, callsite *ir.NodeInst) {
+// body the target does not override, and passInlinePure. The node is named
+// at once and the triggers rewritten by the returned commit, which a caller
+// runs only once the splice is kept: the optimizer may still give one up. A
+// trigger a splice before this one rewrote names the node too, so a second
+// component's strip under the same id is named as the first was.
+func NamePresses(pkg *ir.Package, body []ir.Stmt, callsite *ir.NodeInst) (commit func()) {
+	commit = func() {}
 	if pkg == nil || callsite == nil || callsite.ID == "" {
-		return
+		return commit
 	}
-	for _, c := range triggersThrough(pkg, callsite) {
-		if reportsAtRoot(body, c.Event) {
+	waiting, pressed := triggersThrough(pkg, callsite)
+	events := map[string]bool{}
+	for _, c := range waiting {
+		events[c.Event] = true
+	}
+	for e := range pressed {
+		events[e] = true
+	}
+	fires := map[string]string{}
+	for event := range events {
+		if reportsAtRoot(body, event) {
 			continue
 		}
-		n, fires := pressedNode(body, c.Event, nil)
+		n, press := pressedNode(body, event)
 		if n == nil {
 			continue
 		}
-		id := callsite.ID + "__" + c.Event
+		id := pressID(callsite.ID, event)
 		if n.ID != id {
 			n.ID = id
 			n.Handle = &ir.Var{Name: id, Type: n.Component.SymType(), IsConst: true, NodeHandle: true}
 		}
-		c.Receiver = &ir.Index{Operand: renamedRef(c.Receiver, id), Idx: c.Args[0].Value}
-		c.Event, c.Args = fires, nil
+		fires[event] = press
+	}
+	return func() {
+		for _, c := range waiting {
+			press, ok := fires[c.Event]
+			if !ok {
+				continue
+			}
+			c.Receiver = renamedRef(c.Receiver, pressID(callsite.ID, c.Event), c.Args[0].Value)
+			c.Event, c.Args = press, nil
+		}
 	}
 }
 
-// triggersThrough is each trigger in pkg's tests of an event with one
-// argument through the `#id` callsite wrote, reached from the instance a test
-// holds or through instances it renders (`c.inner.strip`).
-func triggersThrough(pkg *ir.Package, callsite *ir.NodeInst) []*ir.Call {
-	var out []*ir.Call
+// pressID is the `#id` the node a trigger of event through id presses is
+// given.
+func pressID(id, event string) string { return id + "__" + event }
+
+// triggersThrough is each trigger in pkg's tests of an event with one argument
+// through the `#id` callsite wrote, reached from the instance a test holds or
+// through instances it renders (`c.inner.strip`), and each event a trigger
+// through it was already turned into a press of.
+func triggersThrough(pkg *ir.Package, callsite *ir.NodeInst) (waiting []*ir.Call, pressed map[string]bool) {
+	pressed = map[string]bool{}
 	for _, fn := range pkg.Funcs {
 		if fn == nil || !fn.IsTest {
 			continue
 		}
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			c, ok := n.(*ir.Call)
-			if !ok || c.Event == "" || len(c.Args) != 1 {
+			if !ok || c.Event == "" {
 				return nil
 			}
-			if sel := triggerSelect(c.Receiver); sel != nil && sel.Field == callsite.ID && sameComponent(sel.Type, callsite.Component) {
-				out = append(out, c)
+			sel := triggerSelect(c.Receiver)
+			if sel == nil {
+				return nil
+			}
+			if len(c.Args) == 1 && sel.Field == callsite.ID && sameComponent(sel.Type, callsite.Component) {
+				waiting = append(waiting, c)
+			} else if event, ok := strings.CutPrefix(sel.Field, callsite.ID+"__"); ok && len(c.Args) == 0 {
+				pressed[event] = true
 			}
 			return nil
 		})
 	}
-	return out
+	return waiting, pressed
 }
 
 // triggerSelect is the select naming the node a trigger's receiver reads, under
@@ -111,54 +147,62 @@ func reportsAtRoot(body []ir.Stmt, event string) bool {
 	return false
 }
 
-// pressedNode is the first node of stmts, inside the loops around it, whose
-// handler or callback prop emits event with the index of the innermost loop's
-// copy, and what pressing it fires: the handler's event, or a click for a
-// callback, which is what calls one.
-func pressedNode(stmts []ir.Stmt, event string, loop *ir.For) (*ir.NodeInst, string) {
-	for _, s := range stmts {
-		switch x := s.(type) {
-		case *ir.For:
-			if n, fires := pressedNode(x.Body, event, x); n != nil {
-				return n, fires
+// pressedNode is the first node of stmts under exactly one loop whose handler,
+// or callback taking nothing, emits event with that loop's index, and what
+// pressing it fires: the handler's event, or a click for a callback, which is
+// what calls one. A node under two loops has a copy per pair of indexes, which
+// one index cannot name.
+func pressedNode(stmts []ir.Stmt, event string) (*ir.NodeInst, string) {
+	var found *ir.NodeInst
+	fires := ""
+	var walk func(stmts []ir.Stmt, loops []*ir.For)
+	walk = func(stmts []ir.Stmt, loops []*ir.For) {
+		for _, s := range stmts {
+			if found != nil {
+				return
 			}
-		case *ir.If:
-			if n, fires := pressedNode(x.Body, event, loop); n != nil {
-				return n, fires
-			}
-			if n, fires := pressedNode(x.Else, event, loop); n != nil {
-				return n, fires
-			}
-		case *ir.NodeInst:
-			if loop != nil && loop.KeySym != nil && x.Component != nil {
+			if x, ok := s.(*ir.NodeInst); ok && len(loops) == 1 && loops[0].KeySym != nil && x.Component != nil {
+				key := loops[0].KeySym
 				for _, h := range x.Handlers {
-					if h.Func != nil && ir.EmittedIndex(h.Func.Block, event) == loop.KeySym {
-						return x, h.Name
+					if h.Func != nil && ir.EmittedIndex(h.Func.Block, event) == key {
+						found, fires = x, h.Name
+						return
 					}
 				}
 				for _, p := range x.Props {
-					if l, ok := p.Value.(*ir.Lambda); ok && l.Func != nil && ir.EmittedIndex(l.Func.Block, event) == loop.KeySym {
-						return x, "click"
+					if l, ok := p.Value.(*ir.Lambda); ok && l.Func != nil && len(l.Func.Params) == 0 && ir.EmittedIndex(l.Func.Block, event) == key {
+						found, fires = x, "click"
+						return
 					}
 				}
 			}
-			if n, fires := pressedNode(x.Children, event, loop); n != nil {
-				return n, fires
+			for _, b := range ir.ViewBlocks(s) {
+				walk(*b, blockLoops(s, b, loops))
 			}
 		}
 	}
-	return nil, ""
+	walk(stmts, nil)
+	return found, fires
 }
 
-// renamedRef is the ref r, a trigger's receiver, naming the node id inside one
-// more loop: the indexes into the loops around r's node kept, a narrowing
-// after a null test dropped.
-func renamedRef(r ir.Expr, id string) ir.Expr {
+// renamedRef is the ref r, a trigger's receiver, naming the copy at idx of the
+// node id one loop renders inside r's node: the indexes into the loops around
+// r's node kept, a narrowing after a null test dropped.
+func renamedRef(r ir.Expr, id string, idx ir.Expr) ir.Expr {
+	inner := renamedSelect(r, id)
+	t := inner.ExprType()
+	if t != nil && t.Kind == ir.TypeList && len(t.Elems) > 0 {
+		t = t.Elems[0]
+	}
+	return &ir.Index{Operand: inner, Idx: idx, Type: t}
+}
+
+func renamedSelect(r ir.Expr, id string) ir.Expr {
 	switch x := r.(type) {
 	case *ir.Conversion:
-		return renamedRef(x.Operand, id)
+		return renamedSelect(x.Operand, id)
 	case *ir.Index:
-		return &ir.Index{Operand: renamedRef(x.Operand, id), Idx: x.Idx}
+		return &ir.Index{Operand: renamedSelect(x.Operand, id), Idx: x.Idx, Type: x.Type}
 	case *ir.Select:
 		sel := *x
 		sel.Field = id

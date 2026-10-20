@@ -398,8 +398,14 @@ click does. `lower.NamePresses` gives the node the id `<id>__<event>` and
 turns the trigger into `c.strip__change[1].click()`, the invoker each target
 already has for one copy of a node loops render; both inliners call it,
 before the emits are substituted, since the optimizer splices a body no
-target overrides. The interpreter finds the copy by evaluating the index in
-each node's scope (`interp.View.Choosing`). Android's `Tab` takes a
+target overrides. Only a node under exactly one loop of the body is pressed,
+since one index names one copy, and the optimizer rewrites a trigger only
+once it keeps the splice. A trigger an earlier splice rewrote names the node
+too, so two components each holding a `#strip` are each pressed through
+their own. The interpreter finds the copy by evaluating the index in each
+node's scope (`interp.View.Choosing`), among the nodes the component's own
+body wrote and before any node that reports the event: a select in a panel
+is the panel's writer's, and the press chooses the tab all the same. Android's `Tab` takes a
 `modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
 runs it on all six, through an instance as well.
 
