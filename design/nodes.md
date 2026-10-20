@@ -368,7 +368,13 @@ value is reported as a choice:
   intrinsic calling the template's `snglDropDownOffer` (gtk4rt in wrapped
   mode, cgo otherwise), whose C blocks `notify::selected` meanwhile; the
   handler reads `dropDownLabel`. The invoker selects the label, which
-  notifies, and fires nothing after it.
+  notifies, and fires nothing after it. Each splice of the override has its
+  own `#drop` (`freshenHandles`, as datepicker's `#cal`): the declaration's
+  one handle, shared, made two selects in a component one handle rendered
+  twice, which the build refused. A select a render slot builds binds the
+  signal's parameter to the dropdown before its emitter spells widget reads
+  into native code (`bindSignalSelves`), or it read an unbound `d`
+  (`cmd/sngl/testdata/controls_several_runs.txt`).
 - **bubbletea**'s `tui.Select` is handed the choices on each view and update
   (`View(options)`, `Update(msg, options)`), its value is the truth and the
   cursor follows it, and a choice is the cursor moving or Enter on the row it

@@ -248,6 +248,12 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		for i := range n.Props {
 			n.Props[i].Value = w.expr(n.Props[i].Value)
 		}
+		// A `:prop=x` binding names its target here until passPropBindings
+		// makes it a write-back: a rename skipping it left a component's copy
+		// writing the original's var.
+		for i := range n.Bindings {
+			n.Bindings[i].Target = w.expr(n.Bindings[i].Target)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				w.fn(h.Func)

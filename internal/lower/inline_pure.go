@@ -709,6 +709,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		own = splicedBody(comp, typeArgs)
 	}
 	body := substituteVars(own, provided)
+	freshenHandles(body)
 	symRenames := map[ir.Symbol]ir.Symbol{}
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
@@ -1319,6 +1320,17 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 			pc.Value = deepCloneExpr(p.Value)
 			clone.Props[i] = pc
 		}
+		// A binding's target is renamed with the rest of the copy, so a copy
+		// sharing it renamed every other copy's too: two instances of one
+		// body bound one `:value=fruit`, and the second named a var the
+		// first had renamed away.
+		if n.Bindings != nil {
+			clone.Bindings = make([]ir.PropBinding, len(n.Bindings))
+			for i, b := range n.Bindings {
+				b.Target = deepCloneExpr(b.Target)
+				clone.Bindings[i] = b
+			}
+		}
 		clone.Key = deepCloneExpr(n.Key)
 		clone.Ref = deepCloneExpr(n.Ref)
 		return &clone
@@ -1718,4 +1730,27 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 		return nil
 	})
 	return renameIdents(body, renames, symRenames)
+}
+
+// freshenHandles gives each node body declares a handle of its own: the body is
+// one copy of the component's, and its nodes' handles were the declaration's,
+// shared by every copy. uniqueNodeIDs tells copies apart by handle, so two
+// selects in one component on gtk4, whose override reads its `#drop` from an
+// effect beside it, were one handle rendered twice, refused as a read that
+// cannot say which.
+func freshenHandles(body []ir.Stmt) {
+	fresh := map[ir.Symbol]ir.Symbol{}
+	_ = ir.Walk(body, func(n ir.Node) error {
+		if ni, ok := n.(*ir.NodeInst); ok && ni.Handle != nil {
+			if _, done := fresh[ni.Handle]; !done {
+				v := *ni.Handle
+				fresh[ni.Handle] = &v
+			}
+			ni.Handle = fresh[ni.Handle].(*ir.Var)
+		}
+		return nil
+	})
+	if len(fresh) > 0 {
+		renameIdents(body, nil, fresh)
+	}
 }

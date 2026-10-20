@@ -697,7 +697,7 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	// it the write was dropped and the node went stale.
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(fn.Block)
-	block := readWidgets(fn.Block, widgetReader(wrapped, shared, modelNode(wrapped)))
+	block := readWidgets(tr.bindSignalSelves(fn.Block), widgetReader(wrapped, shared, modelNode(wrapped)))
 	bodyStmts := codegen.WalkLowered(context.Background(), block, tr)
 
 	params := fn.Params
@@ -1204,7 +1204,7 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *
 	// known program reaches this emitter with one; it is here so the three
 	// emitters do not disagree about what their translator knows.
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
-	body := codegen.WalkLowered(context.Background(), readWidgets(fn.Block, tr.widgetReader()), tr)
+	body := codegen.WalkLowered(context.Background(), readWidgets(tr.bindSignalSelves(fn.Block), tr.widgetReader()), tr)
 
 	fnCopy := *fn
 	// A component's own func names its component as the receiver
@@ -1392,7 +1392,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(cc.Body)
 
-	body := codegen.WalkLowered(context.Background(), readWidgets(cc.Body, tr.widgetReader()), tr)
+	body := codegen.WalkLowered(context.Background(), readWidgets(tr.bindSignalSelves(cc.Body), tr.widgetReader()), tr)
 
 	var bodyBuf strings.Builder
 	for _, stmt := range body {
@@ -1691,4 +1691,34 @@ func gtk4IRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) [
 		return []string{"true"}
 	}
 	return []string{"// unsupported Alert." + method}
+}
+
+// bindSignalSelves makes the parameter of each handler stmts attaches to a
+// signal the widget it is attached to, as signalLambda does when the attach
+// is reached -- but first, since readWidgets spells a widget read into native
+// code: a select's `dropDownLabel(d)` in a render slot was read as `d` before
+// anything said `d` was the dropdown.
+func (t *gtk4Translator) bindSignalSelves(stmts []ir.Stmt) []ir.Stmt {
+	stmts = ir.CloneStmtsSharingDecls(stmts)
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		cs, ok := n.(*ir.CallStmt)
+		if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Intrinsic != "AttachHandler" || len(cs.Call.Args) < 3 {
+			return nil
+		}
+		lam, ok := cs.Call.Args[2].Value.(*ir.Lambda)
+		if !ok || lam.Func == nil || len(lam.Func.Params) == 0 {
+			return nil
+		}
+		event, _ := cs.Call.Args[1].Value.(*ir.Literal)
+		if event == nil || t.signalFor(codegen.IdentBareName(cs.Call.Args[0].Value), event.Value) == "" {
+			return nil
+		}
+		fn := *lam.Func
+		fn.Block = selfIsNode(fn.Block, fn.Params, cs.Call.Args[0].Value)
+		out := *lam
+		out.Func = &fn
+		cs.Call.Args[2].Value = &out
+		return nil
+	})
+	return stmts
 }
