@@ -190,11 +190,11 @@ Notes:
 
 ## Part 8: Sprites
 
-- [ ] A labeled gallery: front and back, normal and shiny, female where
+- [X] A labeled gallery: front and back, normal and shiny, female where
   there is one, official artwork normal and shiny, Home.
-- [ ] Alternate forms from `species.varieties`, each with its picture,
+- [X] Alternate forms from `species.varieties`, each with its picture,
   tapping to its page.
-- [ ] The regional forms part 7 left to this part: Alolan Raichu and Alolan
+- [X] The regional forms part 7 left to this part: Alolan Raichu and Alolan
   Ninetales as cards of the Evolution tab, beside their species' stage, from
   the default detail carrying `evolved_pokemon_form` (the README's "A
   regional form waits for the Sprites tab's forms").

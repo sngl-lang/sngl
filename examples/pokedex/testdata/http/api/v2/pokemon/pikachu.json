@@ -895,24 +895,24 @@
   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/25/"
  },
  "sprites": {
-  "back_default": "http://127.0.0.1:47819/dot.png",
-  "back_female": "http://127.0.0.1:47819/dot.png",
-  "back_shiny": "http://127.0.0.1:47819/dot.png",
-  "back_shiny_female": "http://127.0.0.1:47819/dot.png",
-  "front_default": "http://127.0.0.1:47819/dot.png",
-  "front_female": "http://127.0.0.1:47819/dot.png",
-  "front_shiny": "http://127.0.0.1:47819/dot.png",
-  "front_shiny_female": "http://127.0.0.1:47819/dot.png",
+  "back_default": "http://127.0.0.1:47819/dot.png?sprite=back/25.png",
+  "back_female": "http://127.0.0.1:47819/dot.png?sprite=back/female/25.png",
+  "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=back/shiny/25.png",
+  "back_shiny_female": "http://127.0.0.1:47819/dot.png?sprite=back/shiny/female/25.png",
+  "front_default": "http://127.0.0.1:47819/dot.png?sprite=25.png",
+  "front_female": "http://127.0.0.1:47819/dot.png?sprite=female/25.png",
+  "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=shiny/25.png",
+  "front_shiny_female": "http://127.0.0.1:47819/dot.png?sprite=shiny/female/25.png",
   "other": {
    "home": {
-    "front_default": "http://127.0.0.1:47819/dot.png",
-    "front_female": "http://127.0.0.1:47819/dot.png",
-    "front_shiny": "http://127.0.0.1:47819/dot.png",
-    "front_shiny_female": "http://127.0.0.1:47819/dot.png"
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/home/25.png",
+    "front_female": "http://127.0.0.1:47819/dot.png?sprite=other/home/female/25.png",
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/25.png",
+    "front_shiny_female": "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/female/25.png"
    },
    "official-artwork": {
-    "front_default": "http://127.0.0.1:47819/dot.png",
-    "front_shiny": "http://127.0.0.1:47819/dot.png"
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/25.png",
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/25.png"
    }
   }
  },

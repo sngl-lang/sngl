@@ -7,21 +7,49 @@ import ui "sngl:ui"
 const maxStat = 255
 
 // One species: a header of its artwork, name, number, genus and types over
-// tabs about it. The page asks for the species, and then for the Pokémon that
-// is its default variety, keyed on what the species said: a species name is
-// not always a Pokémon's. Its evolution chain is a third request, keyed on the
-// chain's id; a stage of it opens that species' page.
-component detailPage(name string, @back(), @open(name string)) ui.node {
+// tabs about it. The page asks for the species, and then for the Pokémon it
+// shows -- `form`, one of its varieties, or its default variety where that is
+// "" -- keyed on what the species said: a species name is not always a
+// Pokémon's. Its evolution chain is a third request, keyed on the chain's id;
+// a stage of it, or a form, opens that page, `form` "" for a species' own.
+component detailPage(name string, form = "", @back(), @open(name string, form string)) ui.node {
     var about option[poke.PokemonSpeciesDetail] = null
     var mon option[poke.PokemonDetail] = null
+    var shape option[poke.PokemonFormDetail] = null
     var loading = false
     var failure option[async.Failure] = null
     var monFailure option[async.Failure] = null
     var evolution option[poke.EvolutionChainDetail] = null
     var tab = 0
 
-    // The species' official artwork, as the `artwork` context says where.
-    func picture() => about != null ? artworkOf(artwork, "{about.id}") : ""
+    // The Pokémon the page shows: the form asked for, or the species' default.
+    func shown() => about != null ? form != "" ? form : defaultVariety(about.varieties, about.name) : form
+
+    // The official artwork of the Pokémon shown, as the `artwork` context says
+    // where: a form's is numbered by its Pokémon, not its species.
+    func picture() => about != null ? artworkOf(artwork, varietyId(about.varieties, shown(), "{about.id}")) : ""
+
+    // The page's title: the species' name, or the form's where it shows one.
+    func heading() string {
+        if about != null {
+            var species = speciesName(about.names, about.name)
+            return form != "" && shape != null ? formName(shape.names, species) : species
+        }
+        return display(name)
+    }
+
+    // The Pokémon's pictures, labelled.
+    func pictures() list[Sprite] {
+        return mon != null ? gallery(mon.sprites) : []
+    }
+
+    // The species' other varieties, each a form the Sprites tab lists by name.
+    func forms() list[string] {
+        return about != null ? otherVarieties(about.varieties, shown()).map(func(v poke.PokemonSpeciesVariety) => v.pokemon.name) : []
+    }
+
+    // Opens the species' page showing `pokemon`, `form` "" for its default.
+    func formOf(pokemon string) => about != null && pokemon == defaultVariety(about.varieties, about.name) ? "" : pokemon
 
     // The species' evolution chain, a row for each line through it.
     func chainRows() list[list[Stage]] {
@@ -30,8 +58,11 @@ component detailPage(name string, @back(), @open(name string)) ui.node {
 
     poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
     if about != null {
-        poke.pokemonRetrieve(id=defaultVariety(about.varieties, about.name), :value=mon, :failure=monFailure)
+        poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure)
         poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=evolution)
+    }
+    if form != "" && mon != null && mon.forms.length() > 0 {
+        poke.pokemonFormRetrieve(id=mon.forms[0].name, :value=shape)
     }
 
     ui.vbox(style={gap=8px, padding=8px}) {
@@ -53,7 +84,7 @@ component detailPage(name string, @back(), @open(name string)) ui.node {
                     ui.remote(url=picture())
                 }
                 ui.vbox(style={gap=4px}) {
-                    ui.text #title(value=speciesName(about.names, about.name), style={fontSize=28px, fontWeight=bold})
+                    ui.text #title(value=heading(), style={fontSize=28px, fontWeight=bold})
                     ui.text #nationalNo(value=number(about.id))
                     ui.text #genus(value=genusOf(about.genera))
                     if mon != null {
@@ -118,20 +149,54 @@ component detailPage(name string, @back(), @open(name string)) ui.node {
                         for var row = chainRows() {
                             ui.hbox(style={gap=8px, alignItems=center}) {
                                 for var stage = row {
-                                    if stage.trigger != "" {
-                                        ui.vbox(style={alignItems=center, width=96px}) {
-                                            ui.text(value="→")
-                                            ui.text #trigger(value=stage.trigger)
+                                    ui.vbox(style={gap=8px}) {
+                                        ui.hbox(style={gap=8px, alignItems=center}) {
+                                            if stage.trigger != "" {
+                                                ui.vbox(style={alignItems=center, width=96px}) {
+                                                    ui.text(value="→")
+                                                    ui.text #trigger(value=stage.trigger)
+                                                }
+                                            }
+                                            stageCard #step(stage=stage, @open { open(stage.name, "") })
+                                        }
+                                        for var f = stage.forms {
+                                            ui.hbox(style={gap=8px, alignItems=center}) {
+                                                ui.vbox(style={alignItems=center, width=96px}) {
+                                                    ui.text(value="→")
+                                                    ui.text #formTrigger(value=f.trigger)
+                                                }
+                                                formCard #formStep(form=f.form, @open(p) { open(stage.name, p) })
+                                            }
                                         }
                                     }
-                                    stageCard #step(stage=stage, @open { open(stage.name) })
                                 }
                             }
                         }
                     }
                 }
                 ui.tab(label="Sprites") {
-                    ui.text(value="The sprites come later.")
+                    ui.vbox(style={gap=8px, padding=8px}) {
+                        for var row = rows(pictures(), 4) {
+                            ui.hbox(style={gap=8px}) {
+                                for var p = row {
+                                    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+                                        ui.image(alt=p.label, style={width=96px, height=96px}) {
+                                            ui.remote(url=p.url)
+                                        }
+                                        ui.text #spriteLabel(value=p.label)
+                                    }
+                                }
+                            }
+                        }
+                        if forms().length() > 0 {
+                            ui.text(value=$"Forms", style={fontWeight=bold})
+                            ui.hbox(style={gap=8px}) {
+                                for var v = forms() {
+                                    formCard #variety(form=v, @open(p) { open(name, formOf(p)) })
+                                }
+                            }
+                        }
+                    }
                 }
                 ui.tab(label="Moves") {
                     ui.text(value="The moves come later.")
@@ -157,5 +222,26 @@ component stageCard(stage Stage, @open()) ui.node {
             ui.remote(url=artworkOf(artwork, stage.id))
         }
         ui.button(text=display(stage.name), @click { open() })
+    }
+}
+
+// A form of a species -- a Pokémon of it, as Alolan Vulpix is of Vulpix --
+// as its picture and its name, which opens its species' page showing it. A
+// form is not a species, so nothing in the species says its name or which
+// artwork is its own: the card asks for the form, named as PokéAPI names a
+// variety's form after the Pokémon, and the answer names the Pokémon whose
+// number the artwork is.
+component formCard(form string, @open(pokemon string)) ui.node {
+    var got option[poke.PokemonFormDetail] = null
+
+    poke.pokemonFormRetrieve(id=form, :value=got)
+
+    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+        if got != null {
+            ui.image(alt=form, style={width=96px, height=96px}) {
+                ui.remote(url=artworkOf(artwork, idOf(got.pokemon.url)))
+            }
+        }
+        ui.button #formLabel(text=got != null ? formName(got.names, display(form)) : display(form), @click { open(got != null ? got.pokemon.name : form) })
     }
 }

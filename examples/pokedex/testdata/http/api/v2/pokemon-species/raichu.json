@@ -1,0 +1,283 @@
+{
+ "id": 26,
+ "name": "raichu",
+ "order": 27,
+ "gender_rate": 4,
+ "capture_rate": 75,
+ "base_happiness": 70,
+ "is_baby": false,
+ "is_legendary": false,
+ "is_mythical": false,
+ "hatch_counter": 10,
+ "has_gender_differences": true,
+ "forms_switchable": false,
+ "growth_rate": {
+  "name": "medium",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/growth-rate/2/"
+ },
+ "pokedex_numbers": [
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "national",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/2/"
+   }
+  },
+  {
+   "entry_number": 23,
+   "pokedex": {
+    "name": "original-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/3/"
+   }
+  },
+  {
+   "entry_number": 157,
+   "pokedex": {
+    "name": "hoenn",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/4/"
+   }
+  },
+  {
+   "entry_number": 105,
+   "pokedex": {
+    "name": "original-sinnoh",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/5/"
+   }
+  },
+  {
+   "entry_number": 105,
+   "pokedex": {
+    "name": "extended-sinnoh",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/6/"
+   }
+  },
+  {
+   "entry_number": 23,
+   "pokedex": {
+    "name": "updated-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/7/"
+   }
+  },
+  {
+   "entry_number": 17,
+   "pokedex": {
+    "name": "conquest-gallery",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/11/"
+   }
+  },
+  {
+   "entry_number": 37,
+   "pokedex": {
+    "name": "kalos-central",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/12/"
+   }
+  },
+  {
+   "entry_number": 164,
+   "pokedex": {
+    "name": "updated-hoenn",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/15/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "original-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/16/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "original-melemele",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/17/"
+   }
+  },
+  {
+   "entry_number": 33,
+   "pokedex": {
+    "name": "updated-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/21/"
+   }
+  },
+  {
+   "entry_number": 33,
+   "pokedex": {
+    "name": "updated-melemele",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/22/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "letsgo-kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/26/"
+   }
+  },
+  {
+   "entry_number": 195,
+   "pokedex": {
+    "name": "galar",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/27/"
+   }
+  },
+  {
+   "entry_number": 86,
+   "pokedex": {
+    "name": "isle-of-armor",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/28/"
+   }
+  },
+  {
+   "entry_number": 57,
+   "pokedex": {
+    "name": "hisui",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/30/"
+   }
+  },
+  {
+   "entry_number": 75,
+   "pokedex": {
+    "name": "paldea",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/31/"
+   }
+  },
+  {
+   "entry_number": 22,
+   "pokedex": {
+    "name": "kitakami",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/32/"
+   }
+  },
+  {
+   "entry_number": 54,
+   "pokedex": {
+    "name": "lumiose-city",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/34/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "champions",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/36/"
+   }
+  }
+ ],
+ "egg_groups": [
+  {
+   "name": "ground",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/5/"
+  },
+  {
+   "name": "fairy",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/6/"
+  }
+ ],
+ "color": {
+  "name": "yellow",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-color/10/"
+ },
+ "shape": {
+  "name": "upright",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-shape/6/"
+ },
+ "evolves_from_species": {
+  "name": "pikachu",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/25/"
+ },
+ "evolution_chain": {
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/10/"
+ },
+ "habitat": {
+  "name": "forest",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-habitat/2/"
+ },
+ "generation": {
+  "name": "generation-i",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+ },
+ "names": [
+  {
+   "name": "Raichu",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  }
+ ],
+ "pal_park_encounters": [
+  {
+   "base_score": 90,
+   "rate": 3,
+   "area": {
+    "name": "forest",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pal-park-area/1/"
+   }
+  }
+ ],
+ "form_descriptions": [],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Its long tail\nserves as a\nground to protect\fitself from its\nown high voltage\npower.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
+   }
+  },
+  {
+   "flavor_text": "It can discharge bursts of electricity exceeding 100,000 volts—\na single strike with that amount of power would incapacitate one\nof the Copperajah of my homeland.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "legends-arceus",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/39/"
+   }
+  }
+ ],
+ "genera": [
+  {
+   "genus": "Mouse Pokémon",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  }
+ ],
+ "varieties": [
+  {
+   "is_default": true,
+   "pokemon": {
+    "name": "raichu",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/26/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "raichu-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10100/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "raichu-mega-x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10304/"
+   }
+  }
+ ]
+}

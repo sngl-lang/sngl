@@ -23,17 +23,27 @@ func display(name string) string {
 }
 
 // One stage of an evolution chain as its card shows it: the species, its
-// national number, and how the stage before becomes it ("" for the first).
+// national number, how the stage before becomes it ("" for the first), and
+// the regional forms the same stage evolves into besides.
 struct Stage {
     name    string
     id      string
+    trigger string
+    forms   list[FormStep]
+}
+
+// A regional form an evolution reaches beside its species -- Alolan Raichu
+// by a Thunder Stone -- named as PokéAPI names the form, and how it is
+// reached.
+struct FormStep {
+    form    string
     trigger string
 }
 
 // An evolution chain as rows, one for each line from its first stage to a
 // last: Bulbasaur's is one row of three, Eevee's eight rows of two.
 func evolutionRows(link poke.EvolutionChainLink) list[list[Stage]] {
-    return rowsFrom(link, Stage{name=link.species.name, id=idOf(link.species.url), trigger=""})
+    return rowsFrom(link, Stage{name=link.species.name, id=idOf(link.species.url), trigger="", forms=[]})
 }
 
 // The rows of the chain from `link` on, each starting at `here`, the stage
@@ -44,7 +54,7 @@ func rowsFrom(link poke.EvolutionChainLink, here Stage) list[list[Stage]] {
     }
     var out list[list[Stage]] = []
     for var next = link.evolvesTo {
-        var step = Stage{name=next.species.name, id=idOf(next.species.url), trigger=evolutionStep(next.evolutionDetails)}
+        var step = Stage{name=next.species.name, id=idOf(next.species.url), trigger=evolutionStep(next.evolutionDetails), forms=formSteps(next.evolutionDetails)}
         for var rest = rowsFrom(next, step) {
             var row = [here]
             for var s = rest {
@@ -56,16 +66,30 @@ func rowsFrom(link poke.EvolutionChainLink, here Stage) list[list[Stage]] {
     return out
 }
 
-// How a stage is reached, from the details of its link: the one marked
-// default, or the first where none is. A link has several where games
-// differ -- Leafeon by a Leaf Stone or a mossy rock -- and a regional form is
-// a second default detail after the first.
+// How a stage is reached, from the details of its link: the first marked
+// default that reaches the species rather than a form of it, or the first
+// where none is. A link has several where games differ -- Leafeon by a Leaf
+// Stone or a mossy rock.
 func evolutionStep(details list[poke.PokemonEvolution]) string {
-    var marked = details.filter(func(d poke.PokemonEvolution) => d.isDefault == true)
+    var marked = details.filter(func(d poke.PokemonEvolution) => d.isDefault == true && d.evolvedPokemonForm == null)
     if marked.length() > 0 {
         return triggerOf(marked[0])
     }
     return details.length() > 0 ? triggerOf(details[0]) : ""
+}
+
+// The regional forms a stage evolves into besides its species: each default
+// detail carrying `evolved_pokemon_form`, as Raichu's Alolan form by a
+// Thunder Stone and Ninetales' by an Ice Stone from Alolan Vulpix.
+func formSteps(details list[poke.PokemonEvolution]) list[FormStep] {
+    var out list[FormStep] = []
+    for var d = details {
+        var form = d.evolvedPokemonForm
+        if d.isDefault == true && form != null {
+            out.push(FormStep{form=form.name, trigger=triggerOf(d)})
+        }
+    }
+    return out
 }
 
 // What an evolution asks, as the games say it: "Lv. 16", "Thunder Stone",
@@ -172,6 +196,62 @@ func defaultVariety(varieties list[poke.PokemonSpeciesVariety], species string) 
     }
     return species
 }
+
+// A form's name -- "Alolan Vulpix" -- or `otherwise` where PokéAPI gives it
+// none, as for a species' default form.
+func formName(names list[poke.PokemonFormName], otherwise string) => inLanguage(names, func(n poke.PokemonFormName) => n.language.name, func(n poke.PokemonFormName) => n.name, otherwise)
+
+// The varieties of a species other than `shown`, the one a page shows: the
+// forms its Sprites tab lists.
+func otherVarieties(varieties list[poke.PokemonSpeciesVariety], shown string) list[poke.PokemonSpeciesVariety] {
+    return varieties.filter(func(v poke.PokemonSpeciesVariety) => v.pokemon.name != shown)
+}
+
+// The national number of the Pokémon `pokemon` among a species' varieties,
+// out of its URL, or `otherwise` where it is none of them: a form's artwork is
+// numbered by its Pokémon, not its species.
+func varietyId(varieties list[poke.PokemonSpeciesVariety], pokemon string, otherwise string) string {
+    for var v = varieties {
+        if v.pokemon.name == pokemon {
+            return idOf(v.pokemon.url)
+        }
+    }
+    return otherwise
+}
+
+// One picture of a Pokémon's gallery: what it shows, and where it is.
+struct Sprite {
+    label string
+    url   string
+}
+
+// A Pokémon's pictures, each labelled: front and back, normal and shiny,
+// female where it looks different, and its official artwork and Home
+// picture. A picture PokéAPI has none of -- a female one, for a Pokémon that
+// looks the same either way -- is left out.
+func gallery(s poke.PokemonSprites) list[Sprite] {
+    var art = s.other.officialArtwork
+    var home = s.other.home
+    return [
+        Sprite{label=$"Front", url=orNone(s.frontDefault)},
+        Sprite{label=$"Back", url=orNone(s.backDefault)},
+        Sprite{label=$"Shiny front", url=orNone(s.frontShiny)},
+        Sprite{label=$"Shiny back", url=orNone(s.backShiny)},
+        Sprite{label=$"Female front", url=orNone(s.frontFemale)},
+        Sprite{label=$"Female back", url=orNone(s.backFemale)},
+        Sprite{label=$"Shiny female front", url=orNone(s.frontShinyFemale)},
+        Sprite{label=$"Shiny female back", url=orNone(s.backShinyFemale)},
+        Sprite{label=$"Official artwork", url=orNone(art.frontDefault)},
+        Sprite{label=$"Shiny official artwork", url=orNone(art.frontShiny)},
+        Sprite{label=$"Home", url=orNone(home.frontDefault)},
+        Sprite{label=$"Shiny Home", url=orNone(home.frontShiny)},
+        Sprite{label=$"Female Home", url=orNone(home.frontFemale)},
+        Sprite{label=$"Shiny female Home", url=orNone(home.frontShinyFemale)},
+    ].filter(func(p Sprite) => p.url != "")
+}
+
+// A picture's URL, or "" where there is none.
+func orNone(url option[string]) => url != null ? url : ""
 
 // A species' name, or its own name made readable where it has none.
 func speciesName(names list[poke.PokemonSpeciesName], name string) => inLanguage(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name, display(name))

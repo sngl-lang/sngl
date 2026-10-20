@@ -75,10 +75,54 @@ component fluff ui.node {
 // A page that follows the stage tapped, as the app's stack does.
 component walk ui.node {
     var name = "bulbasaur"
+    var form = ""
 
     poke.server(local) {
         artwork(dot) {
-            detailPage #detail(name=name, @open(n) { name = n })
+            detailPage #detail(name=name, form=form, @open(n, f) {
+                name = n
+                form = f
+            })
+        }
+    }
+}
+
+// The same, from a species with a form, its artwork's URL naming the
+// Pokémon.
+component roam ui.node {
+    var name = "vulpix"
+    var form = ""
+
+    poke.server(local) {
+        artwork(dotOf) {
+            detailPage #detail(name=name, form=form, @open(n, f) {
+                name = n
+                form = f
+            })
+        }
+    }
+}
+
+// A species' page showing one of its forms.
+component alolan ui.node {
+    poke.server(local) {
+        artwork(dotOf) {
+            detailPage #detail(name="vulpix", form="vulpix-alola")
+        }
+    }
+}
+
+// The same, from Pikachu's line, through its stages' cards.
+component spark ui.node {
+    var name = "pikachu"
+    var form = ""
+
+    poke.server(local) {
+        artwork(dot) {
+            detailPage #detail(name=name, form=form, @open(n, f) {
+                name = n
+                form = f
+            })
         }
     }
 }
@@ -113,6 +157,10 @@ component mons ui.node {
         mon #pikachu(name="pikachu")
         mon #vulpix(name="vulpix")
         mon #alola(name="vulpix-alola")
+        mon #raichu(name="raichu")
+        mon #raichuAlola(name="raichu-alola")
+        mon #ninetales(name="ninetales")
+        mon #ninetalesAlola(name="ninetales-alola")
     }
 }
 
@@ -132,6 +180,8 @@ component species ui.node {
         kind #eevee(name="eevee")
         kind #pikachu(name="pikachu")
         kind #vulpix(name="vulpix")
+        kind #raichu(name="raichu")
+        kind #ninetales(name="ninetales")
     }
 }
 
@@ -139,6 +189,25 @@ component kind(name string) ui.node {
     var got option[poke.PokemonSpeciesDetail] = null
 
     poke.pokemonSpeciesRetrieve(id=name, :value=got)
+}
+
+component shapes ui.node {
+    poke.server(local) {
+        variant #vulpix(name="vulpix")
+        variant #vulpixAlola(name="vulpix-alola")
+        variant #raichu(name="raichu")
+        variant #raichuAlola(name="raichu-alola")
+        variant #ninetales(name="ninetales")
+        variant #ninetalesAlola(name="ninetales-alola")
+        variant #rockStar(name="pikachu-rock-star")
+        variant #belle(name="pikachu-belle")
+    }
+}
+
+component variant(name string) ui.node {
+    var got option[poke.PokemonFormDetail] = null
+
+    poke.pokemonFormRetrieve(id=name, :value=got)
 }
 
 component chains ui.node {
@@ -294,8 +363,17 @@ func testStatsGiveEveryEffort(t test.Test, c bud) {
 }
 
 // A chain's rows, each its stages and how each is reached, a row a line:
-// "bulbasaur, ivysaur Lv. 16, venusaur Lv. 32".
-func lineOf(row list[Stage]) => row.map(func(s Stage) => s.trigger == "" ? s.name : "{s.name} {s.trigger}").join(", ")
+// "bulbasaur, ivysaur Lv. 16, venusaur Lv. 32", and a stage's forms after it:
+// "raichu Thunder Stone (raichu-alola Thunder Stone)".
+func lineOf(row list[Stage]) => row.map(func(s Stage) => stageOf(s)).join(", ")
+
+func stageOf(s Stage) string {
+    var text = s.trigger == "" ? s.name : "{s.name} {s.trigger}"
+    for var f = s.forms {
+        text = "{text} ({f.form} {f.trigger})"
+    }
+    return text
+}
 
 func testEvolutionIsTheChainByLevel(t test.Test, c seed) {
     t.wait(func() => c.detail.evolution != null, 5000)
@@ -313,13 +391,13 @@ func testEvolutionIsEachSpeciesChain(t test.Test, c flame) {
 func testEvolutionByFriendshipAndStone(t test.Test, c mouse) {
     t.wait(func() => c.detail.evolution != null, 5000)
     t.assert(c.detail.chainRows().length() == 1)
-    t.assert(lineOf(c.detail.chainRows()[0]) == "pichu, pikachu High Friendship, raichu Thunder Stone")
+    t.assert(lineOf(c.detail.chainRows()[0]) == "pichu, pikachu High Friendship, raichu Thunder Stone (raichu-alola Thunder Stone)")
 }
 
 func testEvolutionShowsTheFirstDefaultDetail(t test.Test, c fox) {
     t.wait(func() => c.detail.evolution != null, 5000)
     t.assert(c.detail.chainRows().length() == 1)
-    t.assert(lineOf(c.detail.chainRows()[0]) == "vulpix, ninetales Fire Stone")
+    t.assert(lineOf(c.detail.chainRows()[0]) == "vulpix, ninetales Fire Stone (ninetales-alola Ice Stone)")
 }
 
 func testABranchingChainIsRows(t test.Test, c fluff) {
@@ -350,6 +428,111 @@ func testTappingAStageOpensIt(t test.Test, c walk) {
     t.assert(c.detail.title != null && c.detail.title.value == "Ivysaur")
 }
 
+func testEvolutionShowsTheAlolanForms(t test.Test, c mouse) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(2)
+    }
+    t.assert(c.detail.formTrigger[0][2][0] != null && c.detail.formTrigger[0][2][0].value == "Thunder Stone")
+    t.assert(c.detail.formTrigger[0][1][0] == null)
+    t.wait(func() => c.detail.formStep[0][2][0].got != null, 5000)
+    t.assert(c.detail.formStep[0][2][0].formLabel.text == "Alolan Raichu")
+}
+
+func testEvolutionShowsAFormFromAForm(t test.Test, c fox) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(2)
+    }
+    t.assert(c.detail.formTrigger[0][1][0] != null && c.detail.formTrigger[0][1][0].value == "Ice Stone")
+    t.wait(func() => c.detail.formStep[0][1][0].got != null, 5000)
+    t.assert(c.detail.formStep[0][1][0].formLabel.text == "Alolan Ninetales")
+}
+
+func testTappingAnAlolanFormOpensIt(t test.Test, c spark) {
+    t.wait(func() => c.detail.evolution != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(2)
+    }
+    t.wait(func() => c.detail.formStep[0][2][0].got != null, 5000)
+    c.detail.formStep[0][2][0].formLabel.click()
+    t.assert(c.name == "raichu" && c.form == "raichu-alola")
+    t.wait(func() => c.detail.mon != null && c.detail.mon.name == "raichu-alola", 5000)
+    t.wait(func() => c.detail.shape != null, 5000)
+    t.assert(c.detail.title != null && c.detail.title.value == "Alolan Raichu")
+    t.assert(c.detail.types[1] != null && c.detail.types[1].value == "Psychic")
+}
+
+func testSpritesLabelEveryPicture(t test.Test, c mouse) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.pictures().map(func(p Sprite) => p.label).join(", ") == "Front, Back, Shiny front, Shiny back, Female front, Female back, Shiny female front, Shiny female back, Official artwork, Shiny official artwork, Home, Shiny Home, Female Home, Shiny female Home")
+    t.assert(c.detail.pictures()[5].url == "http://127.0.0.1:47819/dot.png?sprite=back/female/25.png")
+    t.assert(c.detail.pictures()[9].url == "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/25.png")
+    t.assert(c.detail.pictures()[13].url == "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/female/25.png")
+    t.assert(c.detail.spriteLabel[1][0] == null)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(3)
+    }
+    t.assert(c.detail.spriteLabel[1][0] != null && c.detail.spriteLabel[1][0].value == "Female front")
+    t.assert(c.detail.spriteLabel[3][1] != null && c.detail.spriteLabel[3][1].value == "Shiny female Home")
+}
+
+func testSpritesLeaveOutAFemaleTheyLack(t test.Test, c seed) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.pictures().map(func(p Sprite) => p.label).join(", ") == "Front, Back, Shiny front, Shiny back, Official artwork, Shiny official artwork, Home, Shiny Home")
+    t.assert(c.detail.pictures()[4].url == "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/1.png")
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(3)
+    }
+    t.assert(c.detail.spriteLabel[1][0] != null && c.detail.spriteLabel[1][0].value == "Official artwork")
+    t.assert(c.detail.spriteLabel[2][0] == null)
+    t.assert(c.detail.forms().length() == 0)
+}
+
+func testSpritesListTheForms(t test.Test, c mouse) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.forms().join(",") == "pikachu-rock-star,pikachu-belle")
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(3)
+    }
+    t.wait(func() => c.detail.variety[0].got != null && c.detail.variety[1].got != null, 5000)
+    t.assert(c.detail.variety[0].formLabel.text == "Pikachu Rock Star")
+    t.assert(c.detail.variety[1].formLabel.text == "Pikachu Belle")
+}
+
+func testTappingAFormOpensIt(t test.Test, c roam) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(3)
+    }
+    t.wait(func() => c.detail.variety[0].got != null, 5000)
+    c.detail.variety[0].formLabel.click()
+    t.assert(c.name == "vulpix" && c.form == "vulpix-alola")
+    t.wait(func() => c.detail.mon != null && c.detail.mon.name == "vulpix-alola", 5000)
+    t.assert(c.detail.forms().join(",") == "vulpix")
+    // The card keeps the form it showed until the next answer arrives.
+    t.wait(func() => c.detail.variety[0].formLabel.text == "Vulpix", 5000)
+    c.detail.variety[0].formLabel.click()
+    t.assert(c.name == "vulpix" && c.form == "")
+}
+
+func testAFormsPageIsTheForm(t test.Test, c alolan) {
+    t.wait(func() => c.detail.shape != null, 5000)
+    t.assert(c.detail.title != null && c.detail.title.value == "Alolan Vulpix")
+    t.assert(c.detail.nationalNo != null && c.detail.nationalNo.value == "#037")
+    t.assert(c.detail.types[0] != null && c.detail.types[0].value == "Ice")
+    t.setContext(artwork, dotOf)
+    t.assert(c.detail.picture() == "http://127.0.0.1:47819/dot.png?id=10103")
+    t.assert(c.detail.pictures()[0].url == "http://127.0.0.1:47819/dot.png?sprite=10103.png")
+}
+
 func testEveryDexDecodes(t test.Test, c dexes) {
     t.wait(func() => c.list != null && c.national.got != null && c.kanto.got != null && c.johto.got != null, 5000)
     t.assert(c.list != null && c.list.results.map(func(d poke.PokedexSummary) => d.name).join(",") == "national,kanto,original-johto")
@@ -360,22 +543,35 @@ func testEveryDexDecodes(t test.Test, c dexes) {
 }
 
 func testEveryMonDecodes(t test.Test, c mons) {
-    t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null && c.alola.got != null, 5000)
+    t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null && c.alola.got != null && c.raichu.got != null && c.raichuAlola.got != null && c.ninetales.got != null && c.ninetalesAlola.got != null, 5000)
     t.assert(c.pikachu.got != null && c.pikachu.got.sprites.frontFemale != null)
     t.assert(c.bulbasaur.got != null && c.bulbasaur.got.sprites.frontFemale == null)
     t.assert(c.eevee.got != null && c.eevee.got.sprites.other.officialArtwork.frontShiny != null)
     t.assert(c.eevee.got != null && c.eevee.got.sprites.other.home.frontDefault != null)
     t.assert(c.alola.got != null && c.alola.got.types[0].type.name == "ice")
     t.assert(c.vulpix.got != null && c.vulpix.got.abilities[1].isHidden == true)
+    t.assert(c.raichuAlola.got != null && c.raichuAlola.got.types[1].type.name == "psychic")
+    t.assert(c.ninetalesAlola.got != null && c.ninetalesAlola.got.forms[0].name == "ninetales-alola")
 }
 
 func testEverySpeciesDecodes(t test.Test, c species) {
-    t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null, 5000)
+    t.wait(func() => c.bulbasaur.got != null && c.ivysaur.got != null && c.venusaur.got != null && c.charmander.got != null && c.charmeleon.got != null && c.eevee.got != null && c.pikachu.got != null && c.vulpix.got != null && c.raichu.got != null && c.ninetales.got != null, 5000)
     t.assert(c.eevee.got != null && c.eevee.got.genera[0].genus == "Evolution Pokémon")
     t.assert(c.pikachu.got != null && c.pikachu.got.genderRate == 4)
     t.assert(c.vulpix.got != null && c.vulpix.got.varieties[1].pokemon.name == "vulpix-alola")
     t.assert(c.bulbasaur.got != null && c.bulbasaur.got.eggGroups.length() == 2)
     t.assert(c.bulbasaur.got != null && c.bulbasaur.got.habitat != null && c.bulbasaur.got.habitat.name == "grassland")
+    t.assert(c.raichu.got != null && c.raichu.got.varieties[1].pokemon.name == "raichu-alola")
+    t.assert(c.ninetales.got != null && c.ninetales.got.evolvesFromSpecies != null)
+}
+
+func testEveryFormDecodes(t test.Test, c shapes) {
+    t.wait(func() => c.vulpix.got != null && c.vulpixAlola.got != null && c.raichu.got != null && c.raichuAlola.got != null && c.ninetales.got != null && c.ninetalesAlola.got != null && c.rockStar.got != null && c.belle.got != null, 5000)
+    t.assert(c.vulpix.got != null && c.vulpix.got.names.length() == 0)
+    t.assert(c.vulpixAlola.got != null && c.vulpixAlola.got.names[0].name == "Alolan Vulpix")
+    t.assert(c.raichuAlola.got != null && c.raichuAlola.got.pokemon.name == "raichu-alola")
+    t.assert(c.ninetalesAlola.got != null && idOf(c.ninetalesAlola.got.pokemon.url) == "10104")
+    t.assert(c.rockStar.got != null && c.rockStar.got.names[0].name == "Pikachu Rock Star")
 }
 
 func testEveryChainDecodes(t test.Test, c chains) {
@@ -410,4 +606,20 @@ func testNames(t test.Test, c home) {
     t.assert(triggerOf(poke.PokemonEvolution{trigger=trade, knownMove=poke.MoveSummary{name="ancient-power", url=""}}) == "knowing Ancient Power, Trade")
     t.assert(triggerOf(poke.PokemonEvolution{trigger=shed}) == "Shed")
     t.assert(evolutionStep([]) == "")
+    var stone = poke.EvolutionTriggerSummary{name="use-item", url=""}
+    var thunder = poke.ItemSummary{name="thunder-stone", url=""}
+    var alola = poke.PokemonFormSummary{name="raichu-alola", url=""}
+    var both = [
+        poke.PokemonEvolution{trigger=stone, item=thunder, isDefault=true, evolvedPokemonForm=alola},
+        poke.PokemonEvolution{trigger=stone, item=poke.ItemSummary{name="moon-stone", url=""}, isDefault=true},
+    ]
+    t.assert(evolutionStep(both) == "Moon Stone")
+    t.assert(formSteps(both).map(func(f FormStep) => "{f.form} {f.trigger}").join(",") == "raichu-alola Thunder Stone")
+    t.assert(formName([], "Vulpix") == "Vulpix")
+    var vulpixes = [
+        poke.PokemonSpeciesVariety{isDefault=true, pokemon=poke.PokemonSummary{name="vulpix", url="https://pokeapi.co/api/v2/pokemon/37/"}},
+        poke.PokemonSpeciesVariety{isDefault=false, pokemon=poke.PokemonSummary{name="vulpix-alola", url="https://pokeapi.co/api/v2/pokemon/10103/"}},
+    ]
+    t.assert(varietyId(vulpixes, "vulpix-alola", "37") == "10103" && varietyId(vulpixes, "vulpix-galar", "37") == "37")
+    t.assert(otherVarieties(vulpixes, "vulpix").map(func(v poke.PokemonSpeciesVariety) => v.pokemon.name).join(",") == "vulpix-alola")
 }

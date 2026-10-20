@@ -18,14 +18,37 @@ struct Mon {
     name string
 }
 
-// The list and a page per Pokémon. The detail page is written first because
-// the list's handler names it, and a page is named below where it is
-// written; the stack starts at "/" wherever that is.
+// Which species a form's page shows, and which of its varieties: Alolan
+// Vulpix is the species vulpix's Pokémon vulpix-alola.
+struct Form {
+    name string
+    form string
+}
+
+// The list and a page per Pokémon, and a page per form of one. A page is
+// named below where it is written, so the detail page is written after the
+// form's page, which its handler names, and before the list, whose handler
+// names it; the stack starts at "/" wherever that is.
 component Pokedex ui.node {
+    // Opens the species' page, or its page showing a form where `form` is
+    // one of its varieties.
+    func show(name string, form string) {
+        if form != "" {
+            pages.go(variety, Form{name=name, form=form})
+        } else {
+            pages.go(detail, Mon{name=name})
+        }
+    }
+
     nav.stack #pages {
+        nav.page #variety(href=`/pokemon/{name}/{form}`, title="Pokémon", params=Form{name="vulpix", form="vulpix-alola"}) {
+            component content(p) {
+                detailPage(name=p.name, form=p.form, @back { pages.back() }, @open(name, form) { show(name, form) })
+            }
+        }
         nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
             component content(p) {
-                detailPage(name=p.name, @back { pages.back() }, @open(name) { pages.go(detail, Mon{name=name}) })
+                detailPage(name=p.name, @back { pages.back() }, @open(name, form) { show(name, form) })
             }
         }
         nav.page #home(href="/", title="Pokédex") {

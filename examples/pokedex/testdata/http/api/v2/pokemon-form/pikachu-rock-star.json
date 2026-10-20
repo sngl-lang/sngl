@@ -1,0 +1,422 @@
+{
+ "id": 10182,
+ "name": "pikachu-rock-star",
+ "order": 38,
+ "form_order": 3,
+ "is_default": true,
+ "is_battle_only": false,
+ "is_mega": false,
+ "form_name": "rock-star",
+ "pokemon": {
+  "name": "pikachu-rock-star",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10080/"
+ },
+ "sprites": {
+  "other": {
+   "home": {
+    "front_shiny": null,
+    "front_female": null,
+    "front_default": null,
+    "front_shiny_female": null
+   },
+   "showdown": {
+    "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/back/shiny/10080.gif",
+    "back_female": null,
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/shiny/10080.gif",
+    "back_default": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/back/10080.gif",
+    "front_female": null,
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/10080.gif",
+    "back_shiny_female": null,
+    "front_shiny_female": null
+   },
+   "dream_world": {
+    "front_female": null,
+    "front_default": null
+   },
+   "official-artwork": {
+    "versions": {
+     "generation-i": {
+      "red-and-blue": {
+       "front_default": null
+      },
+      "red-and-green": {
+       "front_default": null
+      }
+     },
+     "generation-ii": {
+      "gold-and-silver": {
+       "front_default": null
+      }
+     }
+    },
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/10080.png",
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/10080.png"
+   }
+  },
+  "versions": {
+   "generation-i": {
+    "yellow": {
+     "back_gbc": null,
+     "back_gray": null,
+     "front_gbc": null,
+     "front_gray": null,
+     "back_default": null,
+     "front_default": null,
+     "back_transparent": null,
+     "front_transparent": null,
+     "back_transparent_gray": null,
+     "front_transparent_gray": null
+    },
+    "red-blue": {
+     "back_gray": null,
+     "front_gray": null,
+     "back_default": null,
+     "front_default": null,
+     "back_transparent": null,
+     "front_transparent": null,
+     "back_transparent_gray": null,
+     "front_transparent_gray": null
+    },
+    "red-green-japan": {
+     "back_gray": null,
+     "front_gray": null,
+     "back_default": null,
+     "front_default": null
+    }
+   },
+   "generation-v": {
+    "icons": {
+     "animated": {
+      "front_default": null
+     },
+     "front_default": null
+    },
+    "black-white": {
+     "animated": {
+      "back_shiny": null,
+      "back_female": null,
+      "front_shiny": null,
+      "back_default": null,
+      "front_female": null,
+      "front_default": null,
+      "back_shiny_female": null,
+      "front_shiny_female": null
+     },
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/back/shiny/10080.png",
+     "back_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/shiny/10080.png",
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/back/10080.png",
+     "front_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/10080.png",
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    }
+   },
+   "generation-ii": {
+    "gold": {
+     "back_shiny": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_default": null,
+     "back_transparent": null,
+     "front_transparent": null,
+     "back_shiny_transparent": null,
+     "front_shiny_transparent": null
+    },
+    "silver": {
+     "back_shiny": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_default": null,
+     "back_transparent": null,
+     "front_transparent": null,
+     "back_shiny_transparent": null,
+     "front_shiny_transparent": null
+    },
+    "crystal": {
+     "animated": {
+      "front_shiny": null,
+      "front_default": null
+     },
+     "back_shiny": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_default": null,
+     "back_transparent": null,
+     "front_transparent": null,
+     "back_shiny_transparent": null,
+     "front_shiny_transparent": null
+    }
+   },
+   "generation-iv": {
+    "icons": {
+     "front_default": null
+    },
+    "platinum": {
+     "animated": {
+      "front_shiny": null,
+      "front_female": null,
+      "front_default": null,
+      "front_shiny_female": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "diamond-pearl": {
+     "animated": {
+      "front_shiny": null,
+      "front_female": null,
+      "front_default": null,
+      "front_shiny_female": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "heartgold-soulsilver": {
+     "animated": {
+      "front_shiny": null,
+      "front_female": null,
+      "front_default": null,
+      "front_shiny_female": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    }
+   },
+   "generation-ix": {
+    "champions": {
+     "icons": {
+      "front_shiny": null,
+      "front_default": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "legends-za": {
+     "icons": {
+      "front_shiny": null,
+      "front_female": null,
+      "front_default": null,
+      "front_shiny_female": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "scarlet-violet": {
+     "icons": {
+      "front_female": null,
+      "front_default": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    }
+   },
+   "generation-vi": {
+    "x-y": {
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "icons": {
+     "front_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/icons/10080.png"
+    },
+    "omega-ruby-alpha-sapphire": {
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/back/shiny/10080.png",
+     "back_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/shiny/10080.png",
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/back/10080.png",
+     "front_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/10080.png",
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    }
+   },
+   "generation-iii": {
+    "icons": {
+     "front_default": null
+    },
+    "emerald": {
+     "animated": {
+      "back_shiny": null,
+      "front_shiny": null,
+      "back_default": null,
+      "front_default": null
+     },
+     "back_shiny": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_default": null
+    },
+    "ruby-sapphire": {
+     "back_shiny": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_default": null
+    },
+    "firered-leafgreen": {
+     "back_shiny": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_default": null
+    }
+   },
+   "generation-vii": {
+    "icons": {
+     "front_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/icons/10080.png"
+    },
+    "ultra-sun-ultra-moon": {
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/back/shiny/10080.gif",
+     "back_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/shiny/10080.gif",
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/back/10080.gif",
+     "front_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/10080.gif",
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "lets-go-pikachu-lets-go-eevee": {
+     "icons": {
+      "front_default": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    }
+   },
+   "generation-viii": {
+    "sword-shield": {
+     "icons": {
+      "front_female": null,
+      "front_default": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "legends-arceus": {
+     "icons": {
+      "front_shiny": null,
+      "front_female": null,
+      "front_default": null,
+      "front_shiny_female": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    },
+    "brilliant-diamond-shining-pearl": {
+     "icons": {
+      "front_default": null
+     },
+     "back_shiny": null,
+     "back_female": null,
+     "front_shiny": null,
+     "back_default": null,
+     "front_female": null,
+     "front_default": null,
+     "back_shiny_female": null,
+     "front_shiny_female": null
+    }
+   }
+  },
+  "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=back/shiny/10080.png",
+  "back_female": null,
+  "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=shiny/10080.png",
+  "back_default": "http://127.0.0.1:47819/dot.png?sprite=back/10080.png",
+  "front_female": null,
+  "front_default": "http://127.0.0.1:47819/dot.png?sprite=10080.png",
+  "back_shiny_female": null,
+  "front_shiny_female": null
+ },
+ "version_group": {
+  "name": "omega-ruby-alpha-sapphire",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/16/"
+ },
+ "form_names": [
+  {
+   "name": "Pikachu Rock Star",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  }
+ ],
+ "names": [
+  {
+   "name": "Pikachu Rock Star",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  }
+ ],
+ "types": [
+  {
+   "slot": 1,
+   "type": {
+    "name": "electric",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/13/"
+   }
+  }
+ ],
+ "trigger_conditions": [],
+ "flavor_text_entries": []
+}

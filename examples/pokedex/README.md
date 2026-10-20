@@ -1,8 +1,8 @@
 # Pokédex
 
 A choice of Pokédex from [PokéAPI](https://pokeapi.co) and a grid of its
-Pokémon, and a page per species: a header of its artwork, name, number, genus
-and types over tabs about it. It builds for html, fyne, gtk4, bubbletea and android, and
+Pokémon, and a page per species and per form of one: a header of its artwork,
+name, number, genus and types over tabs about it. It builds for html, fyne, gtk4, bubbletea and android, and
 the interpreter runs it. Nothing in it makes a request by hand, and nothing in
 it says how a target waits for one.
 
@@ -14,14 +14,14 @@ sngl generate --platform android   --lang kotlin -o /tmp/dex-apk examples/pokede
 
 ## How it is put together
 
-| file                | what is in it                                                                   |
-|---------------------|---------------------------------------------------------------------------------|
-| `app.sngl`          | the window: a `nav.stack` of home and a page per Pokémon                        |
-| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time                |
-| `detail.sngl`       | a species' page: a header over About, Stats, Evolution and two tabs to come     |
-| `names.sngl`        | ids, names, rows, the artwork, an evolution's rows, and what a page's lines say |
-| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                                            |
-| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                               |
+| file                | what is in it                                                                  |
+|---------------------|--------------------------------------------------------------------------------|
+| `app.sngl`          | the window: a `nav.stack` of home, a page per Pokémon and a page per form      |
+| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time               |
+| `detail.sngl`       | a species' page: a header over About, Stats, Evolution, Sprites and Moves      |
+| `names.sngl`        | ids, names, rows, the artwork, an evolution's rows, a gallery, and lines' text |
+| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                                           |
+| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                              |
 
 **The API is an import.** `import poke "openapi:./pokeapi.yml"` reads
 PokéAPI's own OpenAPI document and writes a SNGL package from it: a struct for
@@ -95,7 +95,7 @@ if about != null {
 The header needs only the species -- its artwork through `artwork`, its
 English name and genus, its national number as `#001` -- but for its types,
 which wait for the Pokémon. Under it is a `ui.tabs`: About, Stats, Evolution,
-Sprites and Moves, the last two still to come.
+Sprites and Moves, the last still to come.
 
 **About** is the species' newest English description on one line (the games
 break a description with newlines and form feeds where their text box did),
@@ -136,14 +136,49 @@ through `@open`, and the app's stack goes to it as home's `@open` does; where
 the stack keeps the page and changes its `name`, every request follows the
 new name, since each is keyed on what came before it.
 
-**A regional form waits for the Sprites tab's forms.** The chain names
+**A regional form is a card beside its species' stage.** The chain names
 species, and a form is not one: Alolan Raichu is a second default detail of
 Raichu's stage, carrying `evolved_pokemon_form`, and so is Alolan Ninetales,
-by an Ice Stone from Alolan Vulpix. A card opens `/pokemon/{name}`, a
-species' page, and finds its artwork by species id, so a form's card would
-open its species and show its species' picture. Raichu's stage therefore
-shows its first default detail, the Thunder Stone, and Ninetales' the Fire
-Stone; the forms get cards of their own with the forms the Sprites tab lists.
+by an Ice Stone from Alolan Vulpix. So a stage shows its first default detail
+that reaches no form -- the Thunder Stone, the Fire Stone -- and under its card
+a card per form, after the way the form is reached (`formSteps`).
+
+**A form's card asks for the form.** Nothing in a chain or a species says a
+form's name or which artwork is its own, so the card is a request of its own,
+built once per copy under the `for`:
+
+```sngl
+poke.pokemonFormRetrieve(id=form, :value=got)
+```
+
+The answer names the form in each language, picked by `inLanguage` like every
+other name ("Alolan Raichu"), and the Pokémon it is a form of, whose number in
+its URL is the artwork's -- 10100, not Raichu's 26. A card shows the form's
+own name made readable until the answer arrives, and keeps the last answer
+while the next is on its way. Tapping it opens that Pokémon's page.
+
+**A form's page is its species' page, showing the form.** `/pokemon/{name}`
+opens a species and its default variety; `/pokemon/{name}/{form}` opens the
+same page showing one of its varieties, `detailPage(name="vulpix", form="vulpix-alola")`. The species and its chain are the species', so About and
+Evolution are too; the Pokémon asked for is the form, so the header's artwork,
+types, Stats and Sprites are the form's, and the title is the form's name, a
+fourth request keyed on the Pokémon's first form:
+
+```sngl
+poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure)
+if form != "" && mon != null && mon.forms.length() > 0 {
+    poke.pokemonFormRetrieve(id=mon.forms[0].name, :value=shape)
+}
+```
+
+**Sprites** is a labelled gallery of the Pokémon's pictures, four to a row:
+front and back, normal and shiny, female where it looks different (Pikachu
+does, Bulbasaur not, whose female pictures PokéAPI gives as `null`), its
+official artwork normal and shiny, and its Home picture, normal, shiny and
+female (`gallery`). Below it are the species' other varieties as form cards:
+Pikachu's caps, Alolan Vulpix, and on a form's page the species' own, which
+opens the species' page. A card asks for the form by its Pokémon's name, which
+is how PokéAPI names a variety's form.
 
 **Pages.** The app is a `nav.stack` of two pages. The detail page's params are
 a struct, and its href names their field:
@@ -151,10 +186,15 @@ a struct, and its href names their field:
 ```sngl
 nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
     component content(p) {
-        detailPage(name=p.name, @back { pages.back() }, @open(name) { pages.go(detail, Mon{name=name}) })
+        detailPage(name=p.name, @back { pages.back() }, @open(name, form) { show(name, form) })
     }
 }
 ```
+
+A form's page is a second `nav.page`, `/pokemon/{name}/{form}` with a `Form`
+of both, since html serves a page's params from its path alone. `show`, a func
+of the app, goes to one or the other; each page names the other, and a page's
+handle read above it in source has the params type its props bind.
 
 On html each page is a route, so the app is served by a Go program
 (`--lang go`). Elsewhere the stack is the target's own: a NavHost on android,
@@ -216,16 +256,22 @@ is what the test provides: `testTheHeaderNamesTheSpecies` sets `artwork` with
 
 `testdata/http` is PokéAPI's answers, recorded from https://pokeapi.co: the
 list of Pokédexes, as home asks for it (`limit=50`); the National, Kanto and
-Johto dexes; and the Pokémon, its
+Johto dexes; the Pokémon, its
 species and its evolution chain for Bulbasaur's and Charmander's lines,
-Eevee, Pikachu, Vulpix and Alolan Vulpix. Each is trimmed so nothing a test
+Eevee, Pikachu, Raichu, Vulpix and Ninetales; the Pokémon of Alolan Vulpix,
+Raichu and Ninetales; and the forms the tests' cards ask for, under
+`api/v2/pokemon-form/`. Each is trimmed so nothing a test
 runs reaches the network and no file is longer than the app reads: every
-link points at the harness's server and every picture at its `/dot.png`; the
+link points at the harness's server and every picture at its `/dot.png`, a
+sprite's with its path under PokéAPI's sprites in the query
+(`dot.png?sprite=back/female/25.png`), which the server ignores and a test
+reads to tell the pictures apart; the
 dex list keeps the three dexes recorded, and a dex its first 40
 entries; a Pokémon's moves are Scarlet and Violet's, every one learned by
 level and four of each other method; a species keeps its English genus,
-names and first and last English descriptions; and every other long list is
-cut to its first entries. A request's path
+names and first and last English descriptions and its first three varieties;
+a form keeps its English names and first English description; and every other
+long list is cut to its first entries. A request's path
 names its file with the trailing slash dropped, then `@` and the query in key
 order where there is one, then `.json`: `/api/v2/pokemon/ivysaur/` is
 `api/v2/pokemon/ivysaur.json`, and the list of Pokédexes,

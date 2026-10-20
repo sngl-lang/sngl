@@ -805,24 +805,24 @@
   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/37/"
  },
  "sprites": {
-  "back_default": "http://127.0.0.1:47819/dot.png",
+  "back_default": "http://127.0.0.1:47819/dot.png?sprite=back/37.png",
   "back_female": null,
-  "back_shiny": "http://127.0.0.1:47819/dot.png",
+  "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=back/shiny/37.png",
   "back_shiny_female": null,
-  "front_default": "http://127.0.0.1:47819/dot.png",
+  "front_default": "http://127.0.0.1:47819/dot.png?sprite=37.png",
   "front_female": null,
-  "front_shiny": "http://127.0.0.1:47819/dot.png",
+  "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=shiny/37.png",
   "front_shiny_female": null,
   "other": {
    "home": {
-    "front_default": "http://127.0.0.1:47819/dot.png",
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/home/37.png",
     "front_female": null,
-    "front_shiny": "http://127.0.0.1:47819/dot.png",
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/37.png",
     "front_shiny_female": null
    },
    "official-artwork": {
-    "front_default": "http://127.0.0.1:47819/dot.png",
-    "front_shiny": "http://127.0.0.1:47819/dot.png"
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/37.png",
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/37.png"
    }
   }
  },
