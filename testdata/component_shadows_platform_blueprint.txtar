@@ -278,8 +278,10 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n1_input_handler(v string) {
-	m.value__inst0 = v
-	m.__n1.SetText(m.value__inst0)
+	if v != m.value__inst0 {
+		m.value__inst0 = v
+		m.__n1.SetText(m.value__inst0)
+	}
 }
 
 func (m *Model) __n1_change_handler(v string) {
@@ -361,15 +363,26 @@ package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	name__inst0    string
-	visible__inst0 bool
-	value__inst0   string
-	__n0           gtk4rt.Handle
-	__n2           gtk4rt.Handle
-	__n1           gtk4rt.Handle
-	__built        bool
+	name__inst0         string
+	visible__inst0      bool
+	value__inst0        string
+	__effect0_key       string
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
+	__n0                gtk4rt.Handle
+	__n1                gtk4rt.Handle
+	entry               gtk4rt.Handle
+	__built             bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -379,7 +392,59 @@ func New() *Model {
 	m.name__inst0 = ""
 	m.visible__inst0 = true
 	m.value__inst0 = m.name__inst0
+	m.__effect0_key = ""
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
+}
+
+func (m *Model) __effect0_mount() {
+	if gtk4rt.EditableGetText(m.entry) != m.__effect0_key {
+		gtk4rt.EditableSetTextQuiet(m.entry, m.__effect0_key)
+	}
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []string{}
+	m.__effect0_desired = append(m.__effect0_desired, m.value__inst0)
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -390,14 +455,16 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
-func (m *Model) __n1_changed_handler() {
-	m.value__inst0 = gtk4rt.EditableGetText(m.__n1)
-	gtk4rt.EditableSetText(m.__n1, m.value__inst0)
+func (m *Model) entry_changed_handler() {
+	if gtk4rt.EditableGetText(m.entry) != m.value__inst0 {
+		m.value__inst0 = gtk4rt.EditableGetText(m.entry)
+	}
+	m.__effects0_settle()
 }
 
-func (m *Model) __n1_activate_handler() {
-	m.value__inst0 = gtk4rt.EditableGetText(m.__n1)
-	gtk4rt.EditableSetText(m.__n1, m.value__inst0)
+func (m *Model) entry_activate_handler() {
+	m.value__inst0 = gtk4rt.EditableGetText(m.entry)
+	m.__effects0_settle()
 }
 
 func (m *Model) Name__inst0() string {
@@ -433,15 +500,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, "user widget")
-	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	m.__n1 = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(m.__n1, m.value__inst0)
-	gtk4rt.Connect(m.__n1, "changed", m.__n1_changed_handler)
-	gtk4rt.Connect(m.__n1, "activate", m.__n1_activate_handler)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, "user widget")
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	m.entry = gtk4rt.EntryNew()
+	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
+	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
+	gtk4rt.BoxAppend(m.__n0, m.entry)
 	gtk4rt.AppAttach(m.__n0)
+	m.__effects0_settle()
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
@@ -449,6 +516,18 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.__n0)
+}
+
+// entryInput fires the "changed" signal on the #entry widget; for tests.
+func (m *Model) entryInput(v string) {
+	gtk4rt.EditableSetTextQuiet(m.entry, v)
+	gtk4rt.Emit(m.entry, "changed")
+}
+
+// entryChange fires the "activate" signal on the #entry widget; for tests.
+func (m *Model) entryChange(v string) {
+	gtk4rt.EditableSetTextQuiet(m.entry, v)
+	gtk4rt.Emit(m.entry, "activate")
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from component_shadows_platform_blueprint.sngl; DO NOT EDIT.
@@ -539,9 +618,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5c0d287bf4b918c49e5bbc610ebc211d
 -- run/go/fyne --
-pass sha256:c94dcd7144d45fd68c19963b4579087d
+pass sha256:967d42aa92a874c4539336652f51cd2b
 -- run/go/gtk4 --
-pass sha256:7b891302878559851326558eaed23fc4
+pass sha256:7a71bb3a0e6d5ba0201e5186805d91f0
 -- run/kotlin/android --
 pass sha256:f19548d805a1228d182f618c05603c63
 -- run/none/html --

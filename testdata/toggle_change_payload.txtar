@@ -371,18 +371,22 @@ func New() *Model {
 }
 
 func (m *Model) box_toggle_handler(on__p0 bool) {
-	m.on = on__p0
-	m.box.SetChecked(m.on)
-	m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
-	m.__n0.SetText(m.seen)
+	if on__p0 != m.on {
+		m.on = on__p0
+		m.box.SetChecked(m.on)
+		m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
+		m.__n0.SetText(m.seen)
+	}
 }
 
 func (m *Model) sw_toggle_handler(on bool) {
-	m.checked__inst0 = on
-	m.sw.SetChecked(m.checked__inst0)
-	m.lit = on
-	m.seen = ("sw " + fmt.Sprint(on))
-	m.__n0.SetText(m.seen)
+	if on != m.checked__inst0 {
+		m.checked__inst0 = on
+		m.sw.SetChecked(m.checked__inst0)
+		m.lit = on
+		m.seen = ("sw " + fmt.Sprint(on))
+		m.__n0.SetText(m.seen)
+	}
 }
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
@@ -631,12 +635,17 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
 // Selects a day the way a click on it does, for gtk4's datepicker override
 // (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
 // 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
 static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
     if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_calendar_select_day(c, dt);
     G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }
 
@@ -694,16 +703,22 @@ func New() *Model {
 }
 
 func (m *Model) box_toggled_handler() {
-	m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
-	m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0) != m.on {
+		m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
+		C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.on)))
+		m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	}
 }
 
 func (m *Model) sw_notifyActive_handler() {
-	m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
-	m.lit = m.checked__inst0
-	m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0) != m.checked__inst0 {
+		m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
+		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst0)))
+		m.lit = m.checked__inst0
+		m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	}
 }
 
 func (m *Model) On() bool {
@@ -1019,9 +1034,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:194eb8e87cf2927e1c40666982c3b77e
 -- run/go/fyne --
-pass sha256:40ebe27760c9a1ecb25870601de61d4f
+pass sha256:da52e86f62fbbead6c0affdd99149c90
 -- run/go/gtk4 --
-pass sha256:e695d70104215b878116ebde806ee721
+pass sha256:d5ef48f29bd456691b6740fd5a755fb1
 -- run/go/html --
 pass sha256:299fd0606c3b9b7f1c96605654863c50
 -- run/kotlin/android --

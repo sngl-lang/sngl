@@ -432,11 +432,13 @@ func GeneratesUntranslated(platform string) bool {
 // Route paths are abstract templates (e.g. "/users/{name}"); the language
 // translates {param} placeholders into its framework's routing syntax.
 type HTTPRequest struct {
-	Pkg       *ir.Package // v2 checked IR
-	Package   string      // target package name (e.g., "main", "ui")
-	Main      bool        // generate standalone server with main()
-	Framework string      // HTTP framework: "net/http", "gin", "echo"
-	Routes    []HTTPRoute // window → route mapping
+	Pkg     *ir.Package // v2 checked IR
+	Package string      // target package name (e.g., "main", "ui")
+	Main    bool        // generate standalone server with main()
+	// Executable says the build becomes a binary, so the package is main.
+	Executable bool
+	Framework  string      // HTTP framework: "net/http", "gin", "echo"
+	Routes     []HTTPRoute // window → route mapping
 	// RenderHTML returns a baked static HTML body for a route. It serves
 	// routes with no server actions, where the page is a constant; a route
 	// that has them renders through HTTPRoute.Render instead, whose IR-expr

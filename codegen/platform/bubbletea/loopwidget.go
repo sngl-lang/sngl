@@ -72,6 +72,12 @@ func newLoopWidget(n *ir.NodeInst, loops []*ir.For, bindProp string) *loopWidget
 		return nil
 	}
 	lw := &loopWidget{loops: loops, lf: lf}
+	// The key is fixed before any head is written: CopyKey gives a loop
+	// binding only its element an index, and the walks write it as text.
+	lower.CopyKey(loops)
+	for _, l := range loops {
+		l.KeyRead = true
+	}
 	if h := codegen.NodeHandler(n, bindProp); h != nil && h.Func != nil {
 		lw.bind = h
 		_ = ir.Walk(h.Func.Block, func(x ir.Node) error {

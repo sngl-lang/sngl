@@ -302,16 +302,18 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) d_pick_handler(d *time.Time) {
-	m.picked__inst0 = d
-	m.d.SetDate(m.picked__inst0)
-	var __lt0 string
-	if m.picked__inst0 != nil {
-		__lt0 = (*(m.picked__inst0)).Format("2006-01-02")
-	} else {
-		__lt0 = "none"
+	if d != m.picked__inst0 {
+		m.picked__inst0 = d
+		m.d.SetDate(m.picked__inst0)
+		var __lt0 string
+		if m.picked__inst0 != nil {
+			__lt0 = (*(m.picked__inst0)).Format("2006-01-02")
+		} else {
+			__lt0 = "none"
+		}
+		m.__n1.SetText(__lt0)
+		m.changes__inst0 += 1
 	}
-	m.__n1.SetText(__lt0)
-	m.changes__inst0 += 1
 }
 
 // dChange invokes the OnChanged callback on the #d widget; for tests.
@@ -513,12 +515,17 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
 // Selects a day the way a click on it does, for gtk4's datepicker override
 // (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
 // 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
 static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
     if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_calendar_select_day(c, dt);
     G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }
 
@@ -944,9 +951,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ad538e920261cc371fe575c447db6768
 -- run/go/fyne --
-pass sha256:fe601aba4571496d0b2b8851461872f4
+pass sha256:fd8d2962b874c24d2bc113f300a786b5
 -- run/go/gtk4 --
-pass sha256:125a7a91e86fa9ea0b08d0d28d5d2ff4
+pass sha256:5fb76100abf0eb19cc3af0f96976c737
 -- run/kotlin/android --
 pass sha256:55d388f0330aff011e985b915c03281c
 -- run/none/html --

@@ -1,10 +1,14 @@
 package gtk4
 
+import "duckfam.us/sngl/codegen/lang/golang"
+
 // Config controls GTK4 code generation. Fields are populated via --opt flags.
 type Config struct {
 	Package string `option:"package"` // default: "main"
-	Main    bool   `option:"main"`    // default: true — emit main() entrypoint
+	Main    bool   `option:"main"`    // emit main() entrypoint
 	GIRPath string `option:"gir"`     // default: "" — autodetect from standard paths
+	// Set by internal/build for a build that becomes a binary.
+	Executable bool `option:"executable"`
 
 	// Lang globals (lib/language/go/golang.sngl).
 	GoVersion  string `option:"goVersion"`  // Go toolchain version for go.mod (default: "1.23")
@@ -18,6 +22,7 @@ func (c Config) withDefaults() Config {
 	if c.Package == "" {
 		c.Package = "main"
 	}
+	c.Package = golang.PackageName(c.Package, c.Main, c.Executable)
 	if c.GoVersion == "" {
 		c.GoVersion = "1.23"
 	}

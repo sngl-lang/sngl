@@ -6,7 +6,7 @@ import (
 )
 
 // A Fyne callback hands its handler the value it reports, and the override's
-// handler names it: `Entry(@input(v) { value = v; input(v) })`. So the
+// handler names it: `Entry(@input(v) { if v != value { value = v; input(v) } })`. So the
 // promoted handler takes the callback's parameter under that name, and the
 // override's write of its prop is a bound var's write-back reading it.
 //
@@ -25,7 +25,7 @@ window {
     }
 }
 `)
-		if !strings.Contains(out, "_input_handler(v string) {\n\tm.name = v\n") {
+		if !strings.Contains(out, "_input_handler(v string) {\n\tif v != m.name {\n\t\tm.name = v\n") {
 			t.Errorf("the write-back does not read the callback parameter\n--- generated ---\n%s", out)
 		}
 	})

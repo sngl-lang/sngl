@@ -72,7 +72,7 @@ sha256:fda3d9616b7f5db34e2e00778a0186d8
   ]
 }
 -- testrun/fyne/go/app.sngl/picker/1 --
-sha256:c0ede7b077fbeec177ccee9914320c7e
+sha256:3752fba1fd56098727951c32a4e4163f
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:c0ede7b077fbeec177ccee9914320c7e
   ]
 }
 -- testrun/gtk4/go/app.sngl/picker/1 --
-sha256:e4de717f448af67cca89d1b23547e333
+sha256:701dc4ceb962c476d336cfe9cca40e32
 {
   "results": [
     {

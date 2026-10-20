@@ -351,6 +351,7 @@ type htmlConfig struct {
 	ProjectDir  string
 	Package     string
 	Main        bool
+	Executable  bool
 	Framework   string
 	Listen      string
 	Minify      bool

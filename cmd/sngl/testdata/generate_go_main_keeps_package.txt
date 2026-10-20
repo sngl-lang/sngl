@@ -1,0 +1,21 @@
+# main=true written in an output block emits func main() into the package the
+# block names, for a program that calls it from a main of its own. Only a build
+# that becomes a binary (`sngl run`, `sngl build`) is package main -- see
+# testdata/generate_go_main_package.txtar.
+
+sngl generate --platform=fyne --lang=go --out=out app.sngl
+grep '^package widgets$' out/model.go
+grep '^func main\(\)' out/model.go
+
+-- app.sngl --
+import ui "sngl:ui"
+
+output {
+    go {
+        fyne(package="widgets", main=true)
+    }
+}
+
+ui.window #app(title="Hi") {
+    ui.text(value="hi")
+}
