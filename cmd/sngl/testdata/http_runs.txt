@@ -291,7 +291,7 @@ sha256:39cb02aded3981c554e8ac503b6ed445
   ]
 }
 -- testrun/android/kotlin/app.sngl/adapter/1 --
-sha256:14047c898fc87625d0fa9826ac84044a
+sha256:bae46f773c64ba36c1d0f9fec9cf83ea
 {
   "results": [
     {
@@ -301,7 +301,7 @@ sha256:14047c898fc87625d0fa9826ac84044a
   ]
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:dd28671663b53da724d8e54907c7a497
+sha256:b110c249bf8d83b0b68eeb7b071d4b61
 {
   "results": [
     {
@@ -349,7 +349,7 @@ sha256:97f86acbacb321433bd5fcc50b7eb581
   ]
 }
 -- testrun/bubbletea/go/app.sngl/adapter/1 --
-sha256:096dfa1078488e3ae97eb415324d8004
+sha256:c082a30940652eef0ff65638cceeca99
 {
   "results": [
     {
@@ -359,7 +359,7 @@ sha256:096dfa1078488e3ae97eb415324d8004
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:858cdd392c3043f8b303d00fc7f45aa8
+sha256:60d10caf8d0b31132d0b8da1b5fc6c1c
 {
   "results": [
     {
@@ -407,7 +407,7 @@ sha256:b58f0ac124f54f5afa1748d51e370343
   ]
 }
 -- testrun/fyne/go/app.sngl/adapter/1 --
-sha256:f07aed8aa6915dcee18e02bcfd78581d
+sha256:ba098bd3cc6bcfabbd72ef37aeeaf89c
 {
   "results": [
     {
@@ -417,7 +417,7 @@ sha256:f07aed8aa6915dcee18e02bcfd78581d
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:a63c2afc6a5590e4f9c63d6986286cc7
+sha256:b04134b8e94e62aa75a0e0a0d7668e61
 {
   "results": [
     {
@@ -465,7 +465,7 @@ sha256:9fe9d25ea42d7d60d4808349302397d0
   ]
 }
 -- testrun/gtk4/go/app.sngl/adapter/1 --
-sha256:840efdb2216c2209d40a3561d703689a
+sha256:c3192e8864f9eed514738e2358c5c49e
 {
   "results": [
     {
@@ -475,7 +475,7 @@ sha256:840efdb2216c2209d40a3561d703689a
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:9b9fa1c54998ec338b03d0d5c37e5228
+sha256:fbfae4260c07911397d17a64c80f6003
 {
   "results": [
     {
@@ -523,7 +523,7 @@ sha256:4933b0907aac1de1c69057327ddf7f3c
   ]
 }
 -- testrun/html/none/app.sngl/adapter/1 --
-sha256:83d1222fd2a08f905a7847b354a59925
+sha256:a662e321aae8dec344c8ecee2c14d463
 {
   "results": [
     {
@@ -533,7 +533,7 @@ sha256:83d1222fd2a08f905a7847b354a59925
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:299f3d6f19d962010a3e750367b2050e
+sha256:1649801d0837f803f229269c62067ae9
 {
   "results": [
     {
