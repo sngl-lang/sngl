@@ -4,17 +4,16 @@ import ui "sngl:ui"
 
 const local = "http://127.0.0.1:47819/examples/pokedex"
 
+// The one picture the harness's server answers, for every card's artwork.
+const dot = "http://127.0.0.1:47819/dot.png"
+
 var opened = ""
 
-component listed ui.node {
+component home ui.node {
     poke.server(local) {
-        listPage #page(pageSize=2, @open(n) { opened = n })
-    }
-}
-
-component aCard ui.node {
-    poke.server(local) {
-        card #one(name="bulbasaur", @open { opened = "bulbasaur" })
+        artwork(dot) {
+            homePage #page(@open(n) { opened = n })
+        }
     }
 }
 
@@ -36,7 +35,7 @@ component dexes ui.node {
     var list option[poke.PaginatedPokedexSummaryList] = null
 
     poke.server(local) {
-        poke.pokedexList(:value=list)
+        poke.pokedexList(limit=dexLimit, offset=0, :value=list)
         dex #national(name="national")
         dex #kanto(name="kanto")
         dex #johto(name="original-johto")
@@ -104,32 +103,52 @@ component line(id string) ui.node {
     poke.evolutionChainRetrieve(id=id, :value=got)
 }
 
-func testTheListLoadsAPageAndMore(t test.Test, c listed) {
-    t.wait(func() => c.page.names.length() == 2, 5000)
-    t.assert(c.page.count == 5)
-    t.assert(c.page.names[0].name == "bulbasaur")
+func testHomeStartsAtTheNationalDex(t test.Test, c home) {
+    t.wait(func() => c.page.dex != null, 5000)
+    t.assert(c.page.dex != null && c.page.dex.name == "national")
+    t.assert(c.page.chosen == "National")
+    t.assert(c.page.about != null && c.page.about.value == "National · every region · 40 Pokémon")
+    t.assert(c.page.visible()[0].pokemonSpecies.name == "bulbasaur")
+}
+
+func testTheSelectSwitchesTheDex(t test.Test, c home) {
+    t.wait(func() => c.page.dex != null && c.page.dexes.length() == 3, 5000)
+    if c.page.more != null {
+        c.page.more.click()
+    }
+    t.assert(c.page.visible().length() == 40)
+    c.page.dexPick.change("Kanto")
+    t.wait(func() => c.page.dex != null && c.page.dex.name == "kanto", 5000)
+    t.assert(c.page.dexName == "kanto")
+    t.assert(c.page.visible().length() == 30)
+    t.assert(c.page.about != null && c.page.about.value == "Kanto · Kanto · 40 Pokémon")
+}
+
+func testTheGridIsRowsOfThree(t test.Test, c home) {
+    t.wait(func() => c.page.dex != null, 5000)
+    t.assert(c.page.grid().length() == 10)
+    t.assert(c.page.grid()[0].map(func(e poke.PokemonDexNumber) => number(e.entryNumber)).join(",") == "#001,#002,#003")
+    t.assert(c.page.grid()[9].map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).join(",") == "sandslash,nidoran-f,nidorina")
+}
+
+func testShowMoreAddsTheRest(t test.Test, c home) {
+    t.wait(func() => c.page.dex != null, 5000)
+    t.assert(c.page.visible().length() == 30)
     t.assert(c.page.more != null)
     if c.page.more != null {
         c.page.more.click()
     }
-    t.wait(func() => c.page.names.length() == 4, 5000)
-    t.assert(c.page.names[3].name == "charmander")
+    t.assert(c.page.visible().length() == 40)
+    t.assert(c.page.grid().length() == 14)
+    t.assert(c.page.grid()[13].length() == 1)
+    t.assert(c.page.more == null)
 }
 
-func testTheSearchFiltersWhatLoaded(t test.Test, c listed) {
-    t.wait(func() => c.page.names.length() == 2, 5000)
-    t.assert(c.page.more != null)
-    if c.page.more != null {
-        c.page.more.click()
-    }
-    t.wait(func() => c.page.names.length() == 4, 5000)
-    c.page.searchBox.input("SAUR")
-    t.assert(c.page.matching().length() == 3)
-}
-
-func testACardAsksForItsOwn(t test.Test, c aCard) {
-    t.wait(func() => c.one.mon != null, 5000)
-    t.assert(c.one.mon != null && c.one.mon.types.length() == 2)
+func testTheSearchCoversTheWholeDex(t test.Test, c home) {
+    t.wait(func() => c.page.dex != null, 5000)
+    c.page.searchBox.input("GGLY")
+    t.assert(c.page.visible().map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).join(",") == "jigglypuff,wigglytuff")
+    t.assert(c.page.grid().length() == 1)
 }
 
 func testTheDetailPageLoadsByName(t test.Test, c aPage) {
@@ -183,7 +202,10 @@ func testEveryChainDecodes(t test.Test, c chains) {
 // Takes a component as every test here does: on html a group of tests that
 // take none builds the package with no root, and a component built at run
 // time in it has no setter for the prop a reactive `if` hands it.
-func testNames(t test.Test, c listed) {
+func testNames(t test.Test, c home) {
     t.assert(display("mr-mime") == "Mr Mime")
     t.assert(idOf("http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/2/") == "2")
+    t.assert(number(7) == "#007" && number(151) == "#151" && number(1025) == "#1025")
+    t.assert(rows([1, 2, 3, 4, 5, 6, 7], 3).map(func(r list[int]) => r.length()).join(",") == "3,3,1")
+    t.assert(artworkOf(`https://example.com/{id}.png`, "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/25/") == "https://example.com/25.png")
 }

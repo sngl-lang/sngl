@@ -30,7 +30,7 @@ component Pokedex ui.node {
             }
         }
         nav.page #home(href="/", title="Pokédex") {
-            listPage(@open(name) { pages.go(detail, Mon{name=name}) })
+            homePage(@open(name) { pages.go(detail, Mon{name=name}) })
         }
     }
 }

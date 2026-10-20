@@ -6,32 +6,32 @@
 # html runs each component a test takes as a page of its own, so an example
 # whose window is served in route mode is tested as a static page there too.
 #
-# 34 is every example's tests together, so one dropping out of the walk fails.
+# 36 is every example's tests together, so one dropping out of the walk fails.
 
 exec cp -r $SNGL_ROOT/examples .
 
 sngl test --platform=none ./examples/...
-stdout '^ok +34 tests, 0 failures$'
+stdout '^ok +36 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=html ./examples/...
-stdout '^ok +34 tests, 0 failures$'
+stdout '^ok +36 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=fyne --language=go ./examples/...
-stdout '^ok +34 tests, 0 failures$'
+stdout '^ok +36 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=gtk4 --language=go ./examples/...
-stdout '^ok +34 tests, 0 failures$'
+stdout '^ok +36 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=bubbletea --language=go ./examples/...
-stdout '^ok +34 tests, 0 failures$'
+stdout '^ok +36 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=android --language=kotlin ./examples/...
-stdout '^ok +34 tests, 0 failures$'
+stdout '^ok +36 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
 sha256:0e2b28a53ff0f0e70fb93352ffaaa099
@@ -44,7 +44,7 @@ sha256:0e2b28a53ff0f0e70fb93352ffaaa099
   ]
 }
 -- testrun/android/kotlin/app.sngl/Tour/1 --
-sha256:2effb8b8dbde2d94f2deccf23983391c
+sha256:b4b0653a2f16fe3b5e1f7d6246a74f2c
 {
   "results": [
     {
@@ -147,18 +147,8 @@ sha256:c01ddd36fa679c1073332705982638cb
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/aCard/1 --
-sha256:dae8a45386a782489be7c5ffc4b05e51
-{
-  "results": [
-    {
-      "Desc": "ACardAsksForItsOwn",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/android/kotlin/app.sngl/aPage/1 --
-sha256:fb6e266164d53657051dee6b02662566
+sha256:c2a0f66650cac1549b5f48a071a67735
 {
   "results": [
     {
@@ -168,7 +158,7 @@ sha256:fb6e266164d53657051dee6b02662566
   ]
 }
 -- testrun/android/kotlin/app.sngl/chain/1 --
-sha256:9c3f182261e667c9b26a57a9fb27abf4
+sha256:cbb91a4d002e63e5a6d368a7c3fd609a
 {
   "results": [
     {
@@ -178,7 +168,7 @@ sha256:9c3f182261e667c9b26a57a9fb27abf4
   ]
 }
 -- testrun/android/kotlin/app.sngl/chains/1 --
-sha256:43f61c1b8512208cf8929fe95c8ed16a
+sha256:769159c3cb559d7603376271b01936fb
 {
   "results": [
     {
@@ -188,7 +178,7 @@ sha256:43f61c1b8512208cf8929fe95c8ed16a
   ]
 }
 -- testrun/android/kotlin/app.sngl/dexes/1 --
-sha256:6ab76f5ddbf78d1facdc4b3604177a07
+sha256:5ea9fdddaa09fe73b2010216be56df3d
 {
   "results": [
     {
@@ -197,26 +187,38 @@ sha256:6ab76f5ddbf78d1facdc4b3604177a07
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/listed/1 --
-sha256:146eb893be45ec9a097f6030b915c1e4
+-- testrun/android/kotlin/app.sngl/home/1 --
+sha256:7b5d59ef4744639c35f9ae331493114c
 {
   "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
     {
       "Desc": "Names",
       "Passed": true
     },
     {
-      "Desc": "TheListLoadsAPageAndMore",
+      "Desc": "ShowMoreAddsTheRest",
       "Passed": true
     },
     {
-      "Desc": "TheSearchFiltersWhatLoaded",
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
       "Passed": true
     }
   ]
 }
 -- testrun/android/kotlin/app.sngl/mons/1 --
-sha256:ff2f878867f1bbeea40c2432ddc54098
+sha256:8ed0910725d1f3b532d5d4b96bbf41a3
 {
   "results": [
     {
@@ -226,7 +228,7 @@ sha256:ff2f878867f1bbeea40c2432ddc54098
   ]
 }
 -- testrun/android/kotlin/app.sngl/species/1 --
-sha256:62319be9ba7d0afe6d25f31c132c8876
+sha256:55eb3653a998cd2e90d0c3f4c2ac2a99
 {
   "results": [
     {
@@ -246,7 +248,7 @@ sha256:a50db25153cd92cb0c25ad8329d89313
   ]
 }
 -- testrun/bubbletea/go/app.sngl/Tour/1 --
-sha256:4f2d0633f8b283e414c2a4a0ee01451e
+sha256:26f9c5ad6b6d97093267dd2405e5e93f
 {
   "results": [
     {
@@ -349,18 +351,8 @@ sha256:0813353cfea9008d3012a4661f9e7d02
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/aCard/1 --
-sha256:68d3753487545062832a52deb4eebdb1
-{
-  "results": [
-    {
-      "Desc": "ACardAsksForItsOwn",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/bubbletea/go/app.sngl/aPage/1 --
-sha256:4768bff2e97233ce74024c06d3775978
+sha256:f9f2dd1c629dc27499dfd883be2c7264
 {
   "results": [
     {
@@ -370,7 +362,7 @@ sha256:4768bff2e97233ce74024c06d3775978
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chain/1 --
-sha256:e14c690c5de8b092fa3e13ed63a7876c
+sha256:63e1d966fef0a42e9531f8f30b231bd2
 {
   "results": [
     {
@@ -380,7 +372,7 @@ sha256:e14c690c5de8b092fa3e13ed63a7876c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chains/1 --
-sha256:0f7bd35c9ad7f90b7b051673719d8e83
+sha256:d80aca92fed369216516dac6de34eb88
 {
   "results": [
     {
@@ -390,7 +382,7 @@ sha256:0f7bd35c9ad7f90b7b051673719d8e83
   ]
 }
 -- testrun/bubbletea/go/app.sngl/dexes/1 --
-sha256:020ab0d6e775a57310f910c54720f2f5
+sha256:b8240480cb54a647af122348dc7604c6
 {
   "results": [
     {
@@ -399,26 +391,38 @@ sha256:020ab0d6e775a57310f910c54720f2f5
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/listed/1 --
-sha256:baaf2c5cb380b73e8886e0a6d13ebd81
+-- testrun/bubbletea/go/app.sngl/home/1 --
+sha256:a3939792a599d2fdce7f8514e1185f39
 {
   "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
     {
       "Desc": "Names",
       "Passed": true
     },
     {
-      "Desc": "TheListLoadsAPageAndMore",
+      "Desc": "ShowMoreAddsTheRest",
       "Passed": true
     },
     {
-      "Desc": "TheSearchFiltersWhatLoaded",
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/mons/1 --
-sha256:a8aa33c77dcfc004c3f0881ac88188d1
+sha256:299a66298cd5fcc0e20d923b686bc1f3
 {
   "results": [
     {
@@ -428,7 +432,7 @@ sha256:a8aa33c77dcfc004c3f0881ac88188d1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/species/1 --
-sha256:b1dc9f5f03190d969bda686fffcbef2c
+sha256:f09b47bd1c6bab961affe40ff7b9ec38
 {
   "results": [
     {
@@ -551,18 +555,8 @@ sha256:c40aee0e020edefcaee43f0cb7d66c68
     }
   ]
 }
--- testrun/fyne/go/app.sngl/aCard/1 --
-sha256:5706a56c29946a8675de2372b47bc5aa
-{
-  "results": [
-    {
-      "Desc": "ACardAsksForItsOwn",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/fyne/go/app.sngl/aPage/1 --
-sha256:40d55e7654ad05688d957cc9f02bab0a
+sha256:0e3e78b27c938bf449b74d834bbfbb90
 {
   "results": [
     {
@@ -572,7 +566,7 @@ sha256:40d55e7654ad05688d957cc9f02bab0a
   ]
 }
 -- testrun/fyne/go/app.sngl/chain/1 --
-sha256:d53f422f8e4d3ed4171002a58158b859
+sha256:4d3fe79f3a824c3d026d43ab0993fc46
 {
   "results": [
     {
@@ -582,7 +576,7 @@ sha256:d53f422f8e4d3ed4171002a58158b859
   ]
 }
 -- testrun/fyne/go/app.sngl/chains/1 --
-sha256:231f214b256fd6882e95bc2d6af927e2
+sha256:2ba7d95009bf1226769095e8017527df
 {
   "results": [
     {
@@ -592,7 +586,7 @@ sha256:231f214b256fd6882e95bc2d6af927e2
   ]
 }
 -- testrun/fyne/go/app.sngl/dexes/1 --
-sha256:8c9bde18816240da61b75b923a37ddd2
+sha256:d19c486305a88ef4e55559bc803a5ce7
 {
   "results": [
     {
@@ -601,26 +595,38 @@ sha256:8c9bde18816240da61b75b923a37ddd2
     }
   ]
 }
--- testrun/fyne/go/app.sngl/listed/1 --
-sha256:fecfc41b15079db6da53022ba9522e6a
+-- testrun/fyne/go/app.sngl/home/1 --
+sha256:a26b257652e1726d439ae0ed251f056f
 {
   "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
     {
       "Desc": "Names",
       "Passed": true
     },
     {
-      "Desc": "TheListLoadsAPageAndMore",
+      "Desc": "ShowMoreAddsTheRest",
       "Passed": true
     },
     {
-      "Desc": "TheSearchFiltersWhatLoaded",
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/mons/1 --
-sha256:30a3c2d7b62359ab556bc3f628f44902
+sha256:ce6e50d8fd871a5ec4e0042256bc24db
 {
   "results": [
     {
@@ -630,7 +636,7 @@ sha256:30a3c2d7b62359ab556bc3f628f44902
   ]
 }
 -- testrun/fyne/go/app.sngl/species/1 --
-sha256:b774c0fd51048b5d709a1183b59db28d
+sha256:ed0240229b352a387fb037f8a0a37cfb
 {
   "results": [
     {
@@ -650,7 +656,7 @@ sha256:ff8a93993f943abaa79034835c82cfac
   ]
 }
 -- testrun/gtk4/go/app.sngl/Tour/1 --
-sha256:d39c143e7aaaa73823183d3cbf960d5b
+sha256:68e113924a4ddd8f2cfb1983b6c2614b
 {
   "results": [
     {
@@ -753,18 +759,8 @@ sha256:0242a26e7dc826323b4b8acadb391e47
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/aCard/1 --
-sha256:2c82677fbb23c0657f4e612e6f3d3cf7
-{
-  "results": [
-    {
-      "Desc": "ACardAsksForItsOwn",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/gtk4/go/app.sngl/aPage/1 --
-sha256:4d8eec61d90130d7c5f3c940093c58c8
+sha256:332e2050306d021057473975b4758597
 {
   "results": [
     {
@@ -774,7 +770,7 @@ sha256:4d8eec61d90130d7c5f3c940093c58c8
   ]
 }
 -- testrun/gtk4/go/app.sngl/chain/1 --
-sha256:8678052f579fb4466a191cd3b4a173e8
+sha256:6c8ec0c22f16660c1b6a9ce6d1731845
 {
   "results": [
     {
@@ -784,7 +780,7 @@ sha256:8678052f579fb4466a191cd3b4a173e8
   ]
 }
 -- testrun/gtk4/go/app.sngl/chains/1 --
-sha256:cb2457bcc7a7cf5e6c527d26114eda12
+sha256:9bd438bb4e09def6260829ffd2307ba1
 {
   "results": [
     {
@@ -794,7 +790,7 @@ sha256:cb2457bcc7a7cf5e6c527d26114eda12
   ]
 }
 -- testrun/gtk4/go/app.sngl/dexes/1 --
-sha256:427a7d89c19e09eb9776daa1354c0cf1
+sha256:b4fd2d253b996e5d2c8495f08e570cfe
 {
   "results": [
     {
@@ -803,26 +799,38 @@ sha256:427a7d89c19e09eb9776daa1354c0cf1
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/listed/1 --
-sha256:2c1d8106bb524cffd6c13760285d8965
+-- testrun/gtk4/go/app.sngl/home/1 --
+sha256:4ea61f543c66fe4991f0d0da09948f16
 {
   "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
     {
       "Desc": "Names",
       "Passed": true
     },
     {
-      "Desc": "TheListLoadsAPageAndMore",
+      "Desc": "ShowMoreAddsTheRest",
       "Passed": true
     },
     {
-      "Desc": "TheSearchFiltersWhatLoaded",
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/mons/1 --
-sha256:560f92a11c3e2433ef8dac2ab318c913
+sha256:01356c48303873d2b0166b70ec5d44cf
 {
   "results": [
     {
@@ -832,7 +840,7 @@ sha256:560f92a11c3e2433ef8dac2ab318c913
   ]
 }
 -- testrun/gtk4/go/app.sngl/species/1 --
-sha256:f4e8523ad9a72aed85659427ba768128
+sha256:eec7c0f036db5dd4afc45daf1bb203b3
 {
   "results": [
     {
@@ -955,18 +963,8 @@ sha256:1fea06e955445b85cb584bf1d6fc14cf
     }
   ]
 }
--- testrun/html/none/app.sngl/aCard/1 --
-sha256:575d98590aa927835894e24310a9d255
-{
-  "results": [
-    {
-      "Desc": "ACardAsksForItsOwn",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/html/none/app.sngl/aPage/1 --
-sha256:ffb098c2fc63b6bfca3c14c3efcd34dd
+sha256:a198fbfbd88b868b3b1e6c3b15d5de86
 {
   "results": [
     {
@@ -976,7 +974,7 @@ sha256:ffb098c2fc63b6bfca3c14c3efcd34dd
   ]
 }
 -- testrun/html/none/app.sngl/chain/1 --
-sha256:bd1b7705894639bb2dae264650fa4363
+sha256:c2dac65f798599ff065e6d780fcf2221
 {
   "results": [
     {
@@ -986,7 +984,7 @@ sha256:bd1b7705894639bb2dae264650fa4363
   ]
 }
 -- testrun/html/none/app.sngl/chains/1 --
-sha256:49b7958ea9d2a0491829e355440757a2
+sha256:c30285909a306bb8343ea33aa051d9c2
 {
   "results": [
     {
@@ -996,7 +994,7 @@ sha256:49b7958ea9d2a0491829e355440757a2
   ]
 }
 -- testrun/html/none/app.sngl/dexes/1 --
-sha256:7f5d487c310b9ae5615c76e0e0eb250a
+sha256:7924a058963b7508605fce0d660dd766
 {
   "results": [
     {
@@ -1005,26 +1003,38 @@ sha256:7f5d487c310b9ae5615c76e0e0eb250a
     }
   ]
 }
--- testrun/html/none/app.sngl/listed/1 --
-sha256:edcab60bb075b85def37fc491c48b885
+-- testrun/html/none/app.sngl/home/1 --
+sha256:279ff60860e13fd3649cf8cd08489fb7
 {
   "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
     {
       "Desc": "Names",
       "Passed": true
     },
     {
-      "Desc": "TheListLoadsAPageAndMore",
+      "Desc": "ShowMoreAddsTheRest",
       "Passed": true
     },
     {
-      "Desc": "TheSearchFiltersWhatLoaded",
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/mons/1 --
-sha256:28e9691489b43fda504d97ca678bbeb7
+sha256:c95f1ae6da9ae77b2b8e9af18a0293e3
 {
   "results": [
     {
@@ -1034,7 +1044,7 @@ sha256:28e9691489b43fda504d97ca678bbeb7
   ]
 }
 -- testrun/html/none/app.sngl/species/1 --
-sha256:2f91ab73584957e1bf40495feb37632c
+sha256:cdc5d503423027b3df75ef7e6c11ec3a
 {
   "results": [
     {

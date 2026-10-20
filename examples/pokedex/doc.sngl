@@ -1,6 +1,6 @@
-// A Pokédex over PokéAPI, on every target SNGL has: a list of every Pokémon,
-// a page at a time, and a page per Pokémon with its picture, types, base stats
-// and evolution chain.
+// A Pokédex over PokéAPI, on every target SNGL has: a choice of Pokédex and a
+// grid of its Pokémon, and a page per Pokémon with its picture, types, base
+// stats and evolution chain.
 //
 // Nothing here makes a request by hand. `import poke "openapi:./pokeapi.yml"`
 // writes a package from PokéAPI's own OpenAPI document -- a struct per schema,
@@ -12,8 +12,8 @@
 // asks when the page mounts and again whenever `name` changes, keeps the last
 // answer while it does, and drops one that arrives after the page is gone.
 //
-//	app.sngl     the window: a nav.stack of the list and a page per Pokémon
-//	list.sngl    the list, a page of names at a time, and a card per name
+//	app.sngl     the window: a nav.stack of home and a page per Pokémon
+//	home.sngl    a select of Pokédex and a grid of its Pokémon, 30 at a time
 //	detail.sngl  one Pokémon, and the evolution chain two requests behind it
-//	names.sngl   ids out of PokéAPI's URLs, names as the games print them
+//	names.sngl   ids out of URLs, names as the games print them, rows, artwork
 //	pokeapi.yml  PokéAPI's document, vendored, with the corrections in README.md

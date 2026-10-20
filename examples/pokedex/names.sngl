@@ -1,3 +1,4 @@
+import seq "sngl:seq"
 import poke "openapi:./pokeapi.yml"
 
 // The last segment of a PokéAPI resource URL, which is the resource's id:
@@ -28,6 +29,44 @@ func stages(link poke.EvolutionChainLink) list[string] {
         for var s = stages(next) {
             out.push(s)
         }
+    }
+    return out
+}
+
+// Where a Pokémon's official artwork is, `{id}` standing for its national
+// number. A test provides one with no `{id}` in it, so every card shows the
+// one picture its server answers.
+context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`)
+
+// The official artwork of the species `speciesURL` names, as `template`
+// says where it is.
+func artworkOf(template string, speciesURL string) => string.replace(template, `{id}`, idOf(speciesURL))
+
+// A number in a dex as the games print it: 7 is "#007".
+func number(n int) string {
+    var digits = "{n}"
+    for string.length(digits) < 3 {
+        digits = "0" + digits
+    }
+    return "#" + digits
+}
+
+// A dex's English name, or its own name where it has none in English.
+func englishName(names list[poke.PokedexName], name string) string {
+    for var n = names {
+        if n.language.name == "en" {
+            return n.name
+        }
+    }
+    return display(name)
+}
+
+// `items` in rows of `width`, the last holding what is left: a grid, since a
+// `Style` neither wraps a row nor lays out columns.
+func rows[T any](items list[T], width int) list[list[T]] {
+    var out list[list[T]] = []
+    for var start = seq.step(0, items.length(), width) {
+        out.push(items.slice(start, int.min(start + width, items.length())))
     }
     return out
 }

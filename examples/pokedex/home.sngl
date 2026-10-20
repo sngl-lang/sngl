@@ -2,70 +2,103 @@ import async "sngl:async"
 import poke "openapi:./pokeapi.yml"
 import ui "sngl:ui"
 
-// Every Pokémon, `pageSize` names at a time: the request is keyed on
-// `offset`, so "More" asks for the next page by moving it, and each page that
-// arrives is appended to what is already shown. The search filters what has
-// loaded; PokéAPI has no endpoint that searches.
-component listPage(pageSize = 24, @open(name string)) ui.node {
-    var offset = 0
-    var names list[poke.PokemonSummary] = []
-    var count = 0
+// The Pokédexes to choose from: every one PokéAPI has fits in one page of
+// this size, so the list is one request.
+const dexLimit = 50
+
+// How many cards a row holds.
+const columns = 3
+
+// Home: a choice of Pokédex, what it is, and a grid of its Pokémon,
+// `pageSize` cards at a time. The dex is one request keyed on its name, so
+// choosing another moves the key; every entry arrives with it, so the search
+// covers the whole dex and "Show more" asks for nothing.
+component homePage(pageSize = 30, @open(name string)) ui.node {
+    var dexes list[poke.PokedexSummary] = []
+    var dexName = "national"
+    var chosen = display(dexName)
+    var dex option[poke.PokedexDetail] = null
     var loading = false
     var failure option[async.Failure] = null
+    var shown = pageSize
     var search = ""
 
-    // The loaded names the search matches.
-    func matching() list[poke.PokemonSummary] {
-        return names.filter(func(m poke.PokemonSummary) => string.contains(m.name, string.lower(search)))
+    // Shows the dex whose label is `label`, from its first page of cards.
+    func pick(label string) {
+        for var d = dexes {
+            if display(d.name) == label {
+                dexName = d.name
+                shown = pageSize
+            }
+        }
     }
 
-    poke.pokemonList(limit=pageSize, offset=offset, :pending=loading, :failure=failure, @load(page) {
-        for var r = page.results {
-            names.push(r)
+    // The dex's entries the search matches, all of them.
+    func matching() list[poke.PokemonDexNumber] {
+        var q = string.lower(search)
+        var all list[poke.PokemonDexNumber] = []
+        if dex != null {
+            all = dex.pokemonEntries
         }
-        count = page.count
-    })
+        return all.filter(func(e poke.PokemonDexNumber) => string.contains(e.pokemonSpecies.name, q))
+    }
+
+    // The matches the grid shows.
+    func visible() list[poke.PokemonDexNumber] {
+        var all = matching()
+        return all.slice(0, int.min(shown, all.length()))
+    }
+
+    // The grid, a row of `columns` cards at a time.
+    func grid() => rows(visible(), columns)
+
+    poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
+    poke.pokedexRetrieve(id=dexName, :value=dex, :pending=loading, :failure=failure)
 
     ui.vbox(style={gap=8px, padding=8px}) {
-        ui.input #searchBox(placeholder="Search the loaded names", :value=search)
-        ui.text #shown(value="{names.length()} of {count}")
+        ui.hbox(style={gap=8px, alignItems=center}) {
+            ui.select #dexPick(:value=chosen, @change(v) { pick(v) }) {
+                for var d = dexes {
+                    ui.choice(label=display(d.name))
+                }
+            }
+            if dex != null {
+                ui.text #about(value="{englishName(dex.names, dex.name)} · {dex.region != null ? display(dex.region.name) : "every region"} · {dex.pokemonEntries.length()} Pokémon")
+            }
+        }
+        ui.input #searchBox(placeholder="Search this Pokédex", :value=search)
         if failure != null {
-            ui.text(value="Could not load the list: {failure.message}")
+            ui.text(value="Could not load the Pokédex: {failure.message}")
+        }
+        if dex == null && loading {
+            ui.spinner(label="Loading")
         }
         ui.scroll(style={flex=1}) {
-            ui.vbox(style={gap=4px}) {
-                for var mon = matching() {
-                    card(name=mon.name, @open { open(mon.name) })
+            ui.vbox(style={gap=8px}) {
+                for var row = grid() {
+                    ui.hbox(style={gap=8px}) {
+                        for var entry = row {
+                            card(entry=entry, @open { open(entry.pokemonSpecies.name) })
+                        }
+                    }
                 }
             }
         }
-        if loading {
-            ui.spinner(label="Loading")
-        } else if names.length() < count {
-            ui.button #more(text="More", @click { offset += pageSize })
+        if matching().length() > shown {
+            ui.button #more(text="Show more", @click { shown += pageSize })
         }
     }
 }
 
-// One Pokémon of the list. Each card asks for its own Pokémon, keyed on its
-// name: the card is the key, so a card scrolled away by a search and back
-// asks again, and nothing caches per argument.
-component card(name string, @open()) ui.node {
-    var mon option[poke.PokemonDetail] = null
-
-    poke.pokemonRetrieve(id=name, :value=mon)
-
-    ui.hbox(style={gap=8px, alignItems=center}) {
-        if mon != null && mon.sprites.frontDefault != null {
-            ui.image(alt=name, style={width=48px, height=48px}) {
-                ui.remote(url=mon.sprites.frontDefault)
-            }
+// One Pokémon of a dex: its artwork, its number in this dex and its name.
+// The picture's URL comes from the species id in the entry, so a card asks
+// for nothing.
+component card(entry poke.PokemonDexNumber, @open()) ui.node {
+    ui.vbox(style={gap=4px, alignItems=center, width=128px}) {
+        ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
+            ui.remote(url=artworkOf(artwork, entry.pokemonSpecies.url))
         }
-        ui.button(text=display(name), @click { open() })
-        if mon != null {
-            for var t = mon.types {
-                ui.badge(value=t.type.name)
-            }
-        }
+        ui.text(value=number(entry.entryNumber))
+        ui.button(text=display(entry.pokemonSpecies.name), @click { open() })
     }
 }

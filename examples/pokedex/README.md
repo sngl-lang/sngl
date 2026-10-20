@@ -1,8 +1,8 @@
 # Pokédex
 
-Every Pokémon from [PokéAPI](https://pokeapi.co), a page of names at a time,
-and a page per Pokémon with its picture, its types, its base stats and its
-evolution chain. It builds for html, fyne, gtk4, bubbletea and android, and
+A choice of Pokédex from [PokéAPI](https://pokeapi.co) and a grid of its
+Pokémon, and a page per Pokémon with its picture, its types, its base stats
+and its evolution chain. It builds for html, fyne, gtk4, bubbletea and android, and
 the interpreter runs it. Nothing in it makes a request by hand, and nothing in
 it says how a target waits for one.
 
@@ -14,14 +14,14 @@ sngl generate --platform android   --lang kotlin -o /tmp/dex-apk examples/pokede
 
 ## How it is put together
 
-| file                | what is in it                                                       |
-|---------------------|---------------------------------------------------------------------|
-| `app.sngl`          | the window: a `nav.stack` of the list and a page per Pokémon        |
-| `list.sngl`         | the list, keyed on `offset`; a card per name, each its own request  |
-| `detail.sngl`       | one Pokémon, and the evolution chain two requests behind it         |
-| `names.sngl`        | ids out of PokéAPI's URLs, names as the games print them, the chain |
-| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                                |
-| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                   |
+| file                | what is in it                                                     |
+|---------------------|-------------------------------------------------------------------|
+| `app.sngl`          | the window: a `nav.stack` of home and a page per Pokémon          |
+| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time  |
+| `detail.sngl`       | one Pokémon, and the evolution chain two requests behind it       |
+| `names.sngl`        | ids out of URLs, names as the games print them, rows, the artwork |
+| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                              |
+| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                 |
 
 **The API is an import.** `import poke "openapi:./pokeapi.yml"` reads
 PokéAPI's own OpenAPI document and writes a SNGL package from it: a struct for
@@ -51,25 +51,34 @@ page draws a spinner or what went wrong next to whatever it still has.
 `loading` and `failure` are the page's own state, bound with `:` the way a
 text field's value is, and a page that does not care leaves them out.
 
-**More is a change of key.** The list keys its request on `offset`, so "More"
-moves it, and `@load` appends each page that arrives to the names already
-shown:
+**Home is two requests.** One lists the Pokédexes, with a limit that holds
+every one PokéAPI has (it answers 20 a page otherwise), and fills the
+`ui.select`. The other is the dex chosen, keyed on its name, so choosing
+another moves the key; `@change` maps the label chosen back to the dex's name:
 
 ```sngl
-poke.pokemonList(limit=pageSize, offset=offset, :pending=loading, :failure=failure, @load(page) {
-    for var r = page.results {
-        names.push(r)
-    }
-    count = page.count
-})
+poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
+poke.pokedexRetrieve(id=dexName, :value=dex, :pending=loading, :failure=failure)
 ```
 
-The search filters what has loaded: PokéAPI has no endpoint that searches.
+Beside the select are the dex's English name, its region ("every region"
+for the National dex, which has none) and how many Pokémon it holds.
 
-**A card per Pokémon asks for its own.** Each card is an instance with its own
-`pokemonRetrieve`, keyed on its name, for its picture and types: the instance
-is the key, so nothing caches per argument, and a card a search hides and
-shows again asks again.
+**Every entry arrives with the dex**, so the search covers the whole dex and
+"Show more" asks for nothing: it shows the next 30 of what matches. The grid
+is rows of three that `rows` in `names.sngl` cuts, since a `Style` neither
+wraps a row nor lays out columns.
+
+**A card asks for nothing.** It shows the entry's number in this dex, its name
+and its official artwork, whose URL is the species id out of the entry's URL
+put into `artwork`, a context holding where the artwork is:
+
+```sngl
+context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`)
+```
+
+A test provides one with no `{id}` in it, the harness's `/dot.png`, so no card
+a test renders reaches the network.
 
 **The evolution chain is two requests behind the first.** The species names
 its chain by URL, and the chain names its stages, so `evolution` writes a
@@ -143,7 +152,8 @@ func testTheDetailPageLoadsByName(t test.Test, c aPage) {
 ```
 
 `testdata/http` is PokéAPI's answers, recorded from https://pokeapi.co: the
-list of Pokédexes; the list of Pokémon, two at a time; the National, Kanto and Johto dexes; and the Pokémon, its
+list of Pokédexes, as home asks for it (`limit=50`); the National, Kanto and
+Johto dexes; and the Pokémon, its
 species and its evolution chain for Bulbasaur's and Charmander's lines,
 Eevee, Pikachu, Vulpix and Alolan Vulpix. Each is trimmed so nothing a test
 runs reaches the network and no file is longer than the app reads: every
@@ -155,12 +165,12 @@ names and first and last English descriptions; and every other long list is
 cut to its first entries. A request's path
 names its file with the trailing slash dropped, then `@` and the query in key
 order where there is one, then `.json`: `/api/v2/pokemon/ivysaur/` is
-`api/v2/pokemon/ivysaur.json`, and the list's second page,
-`/api/v2/pokemon/?limit=2&offset=2`, is `api/v2/pokemon@limit=2&offset=2.json`.
+`api/v2/pokemon/ivysaur.json`, and the list of Pokédexes,
+`/api/v2/pokedex/?limit=50&offset=0`, is `api/v2/pokedex@limit=50&offset=0.json`.
 
 These tests are why a fyne test build queues `async.do`'s closure for
 `t.wait` to run (`design/nodes.md`): fyne's test driver runs `fyne.Do` on the
-goroutine that calls it, so a request's answer rebuilt the list's widgets
+goroutine that calls it, so a request's answer rebuilt a page's widgets
 while a test clicked others, and fyne crashed laying them out.
 
 ## The document
