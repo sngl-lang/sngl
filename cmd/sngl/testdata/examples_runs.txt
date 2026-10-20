@@ -6,35 +6,35 @@
 # html runs each component a test takes as a page of its own, so an example
 # whose window is served in route mode is tested as a static page there too.
 #
-# 36 is every example's tests together, so one dropping out of the walk fails.
+# 45 is every example's tests together, so one dropping out of the walk fails.
 
 exec cp -r $SNGL_ROOT/examples .
 
 sngl test --platform=none ./examples/...
-stdout '^ok +36 tests, 0 failures$'
+stdout '^ok +45 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=html ./examples/...
-stdout '^ok +36 tests, 0 failures$'
+stdout '^ok +45 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=fyne --language=go ./examples/...
-stdout '^ok +36 tests, 0 failures$'
+stdout '^ok +45 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=gtk4 --language=go ./examples/...
-stdout '^ok +36 tests, 0 failures$'
+stdout '^ok +45 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=bubbletea --language=go ./examples/...
-stdout '^ok +36 tests, 0 failures$'
+stdout '^ok +45 tests, 0 failures$'
 ! stdout SKIP
 
 sngl test --platform=android --language=kotlin ./examples/...
-stdout '^ok +36 tests, 0 failures$'
+stdout '^ok +45 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
-sha256:0e2b28a53ff0f0e70fb93352ffaaa099
+sha256:7200d78dabcea25994c2045096df1340
 {
   "results": [
     {
@@ -44,7 +44,7 @@ sha256:0e2b28a53ff0f0e70fb93352ffaaa099
   ]
 }
 -- testrun/android/kotlin/app.sngl/Tour/1 --
-sha256:b4b0653a2f16fe3b5e1f7d6246a74f2c
+sha256:5354ba05be42ed08ffd04d496ec730ea
 {
   "results": [
     {
@@ -58,7 +58,7 @@ sha256:b4b0653a2f16fe3b5e1f7d6246a74f2c
   ]
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:c01ddd36fa679c1073332705982638cb
+sha256:e4af2f87b78fadb28c1981d927c98882
 {
   "results": [
     {
@@ -147,28 +147,18 @@ sha256:c01ddd36fa679c1073332705982638cb
     }
   ]
 }
--- testrun/android/kotlin/app.sngl/aPage/1 --
-sha256:c2a0f66650cac1549b5f48a071a67735
+-- testrun/android/kotlin/app.sngl/bud/1 --
+sha256:31e1b9047188b3d12b9c412b66469790
 {
   "results": [
     {
-      "Desc": "TheDetailPageLoadsByName",
-      "Passed": true
-    }
-  ]
-}
--- testrun/android/kotlin/app.sngl/chain/1 --
-sha256:cbb91a4d002e63e5a6d368a7c3fd609a
-{
-  "results": [
-    {
-      "Desc": "TheChainIsTwoRequestsBehind",
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     }
   ]
 }
 -- testrun/android/kotlin/app.sngl/chains/1 --
-sha256:769159c3cb559d7603376271b01936fb
+sha256:3ee9aa450d465127ec44bc23752e0b2f
 {
   "results": [
     {
@@ -178,7 +168,7 @@ sha256:769159c3cb559d7603376271b01936fb
   ]
 }
 -- testrun/android/kotlin/app.sngl/dexes/1 --
-sha256:5ea9fdddaa09fe73b2010216be56df3d
+sha256:c41d07633db8e7a5d40c3f42c99290ff
 {
   "results": [
     {
@@ -188,7 +178,7 @@ sha256:5ea9fdddaa09fe73b2010216be56df3d
   ]
 }
 -- testrun/android/kotlin/app.sngl/home/1 --
-sha256:7b5d59ef4744639c35f9ae331493114c
+sha256:696c416c3925b82916257f443744ffa3
 {
   "results": [
     {
@@ -218,7 +208,7 @@ sha256:7b5d59ef4744639c35f9ae331493114c
   ]
 }
 -- testrun/android/kotlin/app.sngl/mons/1 --
-sha256:8ed0910725d1f3b532d5d4b96bbf41a3
+sha256:d0fba3a7dbce7545f5d61650e1bc61e4
 {
   "results": [
     {
@@ -227,8 +217,60 @@ sha256:8ed0910725d1f3b532d5d4b96bbf41a3
     }
   ]
 }
+-- testrun/android/kotlin/app.sngl/mouse/1 --
+sha256:fb462722eca37fc14a0b8be93b866fd0
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/seed/1 --
+sha256:3fbf293935881269c8cd3b9e7a17a3e6
+{
+  "results": [
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/app.sngl/species/1 --
-sha256:55eb3653a998cd2e90d0c3f4c2ac2a99
+sha256:ed11a26d8d2164a5e0f94a82f59984fc
 {
   "results": [
     {
@@ -351,28 +393,18 @@ sha256:0813353cfea9008d3012a4661f9e7d02
     }
   ]
 }
--- testrun/bubbletea/go/app.sngl/aPage/1 --
-sha256:f9f2dd1c629dc27499dfd883be2c7264
+-- testrun/bubbletea/go/app.sngl/bud/1 --
+sha256:5bb8c86b1e395ab3c019025c8f2f0f54
 {
   "results": [
     {
-      "Desc": "TheDetailPageLoadsByName",
-      "Passed": true
-    }
-  ]
-}
--- testrun/bubbletea/go/app.sngl/chain/1 --
-sha256:63e1d966fef0a42e9531f8f30b231bd2
-{
-  "results": [
-    {
-      "Desc": "TheChainIsTwoRequestsBehind",
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chains/1 --
-sha256:d80aca92fed369216516dac6de34eb88
+sha256:a480aa4a99eaf9c44ac71dd81b849a27
 {
   "results": [
     {
@@ -382,7 +414,7 @@ sha256:d80aca92fed369216516dac6de34eb88
   ]
 }
 -- testrun/bubbletea/go/app.sngl/dexes/1 --
-sha256:b8240480cb54a647af122348dc7604c6
+sha256:00944a4c129bad9318a2daed99a10f77
 {
   "results": [
     {
@@ -392,7 +424,7 @@ sha256:b8240480cb54a647af122348dc7604c6
   ]
 }
 -- testrun/bubbletea/go/app.sngl/home/1 --
-sha256:a3939792a599d2fdce7f8514e1185f39
+sha256:4a6014121310479e44dde5067904312f
 {
   "results": [
     {
@@ -422,7 +454,7 @@ sha256:a3939792a599d2fdce7f8514e1185f39
   ]
 }
 -- testrun/bubbletea/go/app.sngl/mons/1 --
-sha256:299a66298cd5fcc0e20d923b686bc1f3
+sha256:f56c9a4b615ccd0106abf98dc2505319
 {
   "results": [
     {
@@ -431,8 +463,60 @@ sha256:299a66298cd5fcc0e20d923b686bc1f3
     }
   ]
 }
+-- testrun/bubbletea/go/app.sngl/mouse/1 --
+sha256:1008d4e6b5a9da28762066412171031f
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/seed/1 --
+sha256:921f290840f884cbd36741b82b21f319
+{
+  "results": [
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/app.sngl/species/1 --
-sha256:f09b47bd1c6bab961affe40ff7b9ec38
+sha256:0220ebf73a4a8973adc56493816fe9c2
 {
   "results": [
     {
@@ -442,7 +526,7 @@ sha256:f09b47bd1c6bab961affe40ff7b9ec38
   ]
 }
 -- testrun/fyne/go/app.sngl/Calculator/1 --
-sha256:b776b977dbac58737a9a70e12eb558b2
+sha256:ae30b3dbb4dbb896b2f2432ae71cf848
 {
   "results": [
     {
@@ -555,28 +639,18 @@ sha256:c40aee0e020edefcaee43f0cb7d66c68
     }
   ]
 }
--- testrun/fyne/go/app.sngl/aPage/1 --
-sha256:0e3e78b27c938bf449b74d834bbfbb90
+-- testrun/fyne/go/app.sngl/bud/1 --
+sha256:ef692af4477b3a7fc6ade6e528374483
 {
   "results": [
     {
-      "Desc": "TheDetailPageLoadsByName",
-      "Passed": true
-    }
-  ]
-}
--- testrun/fyne/go/app.sngl/chain/1 --
-sha256:4d3fe79f3a824c3d026d43ab0993fc46
-{
-  "results": [
-    {
-      "Desc": "TheChainIsTwoRequestsBehind",
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/chains/1 --
-sha256:2ba7d95009bf1226769095e8017527df
+sha256:3e7e501025cf0d8321b9f3af54b18c66
 {
   "results": [
     {
@@ -586,7 +660,7 @@ sha256:2ba7d95009bf1226769095e8017527df
   ]
 }
 -- testrun/fyne/go/app.sngl/dexes/1 --
-sha256:d19c486305a88ef4e55559bc803a5ce7
+sha256:5cec8e5c3c7fda8c4ce68de0c2a909e8
 {
   "results": [
     {
@@ -596,7 +670,7 @@ sha256:d19c486305a88ef4e55559bc803a5ce7
   ]
 }
 -- testrun/fyne/go/app.sngl/home/1 --
-sha256:a26b257652e1726d439ae0ed251f056f
+sha256:6daafe130c23a05e2dcae7674e686613
 {
   "results": [
     {
@@ -626,7 +700,7 @@ sha256:a26b257652e1726d439ae0ed251f056f
   ]
 }
 -- testrun/fyne/go/app.sngl/mons/1 --
-sha256:ce6e50d8fd871a5ec4e0042256bc24db
+sha256:2e5e4049cf4b898a743073cb28efebda
 {
   "results": [
     {
@@ -635,8 +709,60 @@ sha256:ce6e50d8fd871a5ec4e0042256bc24db
     }
   ]
 }
+-- testrun/fyne/go/app.sngl/mouse/1 --
+sha256:3f59ecdda526e377719800d9d58fbfb1
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/seed/1 --
+sha256:63272c6180a51c5779acecb75a9cc609
+{
+  "results": [
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/species/1 --
-sha256:ed0240229b352a387fb037f8a0a37cfb
+sha256:7abc2c0a700ffa36facce3ba698693d9
 {
   "results": [
     {
@@ -646,7 +772,7 @@ sha256:ed0240229b352a387fb037f8a0a37cfb
   ]
 }
 -- testrun/gtk4/go/app.sngl/Calculator/1 --
-sha256:ff8a93993f943abaa79034835c82cfac
+sha256:d6c8e0782facf9b416ad5429c107ddbd
 {
   "results": [
     {
@@ -759,28 +885,18 @@ sha256:0242a26e7dc826323b4b8acadb391e47
     }
   ]
 }
--- testrun/gtk4/go/app.sngl/aPage/1 --
-sha256:332e2050306d021057473975b4758597
+-- testrun/gtk4/go/app.sngl/bud/1 --
+sha256:5fdfd6a00d7325e817d5e5b04c9254ca
 {
   "results": [
     {
-      "Desc": "TheDetailPageLoadsByName",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/chain/1 --
-sha256:6c8ec0c22f16660c1b6a9ce6d1731845
-{
-  "results": [
-    {
-      "Desc": "TheChainIsTwoRequestsBehind",
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/chains/1 --
-sha256:9bd438bb4e09def6260829ffd2307ba1
+sha256:c8025c7c79b72e25428719a02e814a86
 {
   "results": [
     {
@@ -790,7 +906,7 @@ sha256:9bd438bb4e09def6260829ffd2307ba1
   ]
 }
 -- testrun/gtk4/go/app.sngl/dexes/1 --
-sha256:b4fd2d253b996e5d2c8495f08e570cfe
+sha256:15e8038cbd0021ad435edb6a3cc420e6
 {
   "results": [
     {
@@ -800,7 +916,7 @@ sha256:b4fd2d253b996e5d2c8495f08e570cfe
   ]
 }
 -- testrun/gtk4/go/app.sngl/home/1 --
-sha256:4ea61f543c66fe4991f0d0da09948f16
+sha256:5b42b924d89834bf288488e0bcddf670
 {
   "results": [
     {
@@ -830,7 +946,7 @@ sha256:4ea61f543c66fe4991f0d0da09948f16
   ]
 }
 -- testrun/gtk4/go/app.sngl/mons/1 --
-sha256:01356c48303873d2b0166b70ec5d44cf
+sha256:ccbfab05095ddebab0e0199d1ab797da
 {
   "results": [
     {
@@ -839,8 +955,60 @@ sha256:01356c48303873d2b0166b70ec5d44cf
     }
   ]
 }
+-- testrun/gtk4/go/app.sngl/mouse/1 --
+sha256:981e4fccf3a9c1569a7f0fd7b7fb118a
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/seed/1 --
+sha256:b9ce0aabef3c0f5892afdc346d2b845a
+{
+  "results": [
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/species/1 --
-sha256:eec7c0f036db5dd4afc45daf1bb203b3
+sha256:d4d35c5be2ce11583137e0a43a32c23c
 {
   "results": [
     {
@@ -850,7 +1018,7 @@ sha256:eec7c0f036db5dd4afc45daf1bb203b3
   ]
 }
 -- testrun/html/none/app.sngl/Calculator/1 --
-sha256:9b07f3360b1113a9bfcf0476c15a1f4c
+sha256:78253c533f46a455008d2de28f0b7b7d
 {
   "results": [
     {
@@ -874,7 +1042,7 @@ sha256:eac9ab004d59e7e1c0107173f97565f1
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:1fea06e955445b85cb584bf1d6fc14cf
+sha256:52bb12ce4ed54d96ca44ee1e423f9258
 {
   "results": [
     {
@@ -963,28 +1131,18 @@ sha256:1fea06e955445b85cb584bf1d6fc14cf
     }
   ]
 }
--- testrun/html/none/app.sngl/aPage/1 --
-sha256:a198fbfbd88b868b3b1e6c3b15d5de86
+-- testrun/html/none/app.sngl/bud/1 --
+sha256:87882820f068caac37769fad42f5c9df
 {
   "results": [
     {
-      "Desc": "TheDetailPageLoadsByName",
-      "Passed": true
-    }
-  ]
-}
--- testrun/html/none/app.sngl/chain/1 --
-sha256:c2dac65f798599ff065e6d780fcf2221
-{
-  "results": [
-    {
-      "Desc": "TheChainIsTwoRequestsBehind",
+      "Desc": "StatsGiveEveryEffort",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/chains/1 --
-sha256:c30285909a306bb8343ea33aa051d9c2
+sha256:c9a11a8e7edcd3d28f5676d89d401b48
 {
   "results": [
     {
@@ -994,7 +1152,7 @@ sha256:c30285909a306bb8343ea33aa051d9c2
   ]
 }
 -- testrun/html/none/app.sngl/dexes/1 --
-sha256:7924a058963b7508605fce0d660dd766
+sha256:70c71ee06fe366b8abbf3bb9cc6446c7
 {
   "results": [
     {
@@ -1004,7 +1162,7 @@ sha256:7924a058963b7508605fce0d660dd766
   ]
 }
 -- testrun/html/none/app.sngl/home/1 --
-sha256:279ff60860e13fd3649cf8cd08489fb7
+sha256:70b495d770c69f8d6b8bcef5c5c9472b
 {
   "results": [
     {
@@ -1034,7 +1192,7 @@ sha256:279ff60860e13fd3649cf8cd08489fb7
   ]
 }
 -- testrun/html/none/app.sngl/mons/1 --
-sha256:c95f1ae6da9ae77b2b8e9af18a0293e3
+sha256:0f7f3b07cd80bf2811c3ad1935c08cde
 {
   "results": [
     {
@@ -1043,8 +1201,60 @@ sha256:c95f1ae6da9ae77b2b8e9af18a0293e3
     }
   ]
 }
+-- testrun/html/none/app.sngl/mouse/1 --
+sha256:49f6098b3138cfcb20cd20cd060b7dfe
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/seed/1 --
+sha256:727f5c9877eb422abfa9996d8942ae8b
+{
+  "results": [
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/species/1 --
-sha256:cdc5d503423027b3df75ef7e6c11ec3a
+sha256:2b20a2fa1332fda0c92497f5955d38fd
 {
   "results": [
     {

@@ -96,7 +96,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
 component card(entry poke.PokemonDexNumber, @open()) ui.node {
     ui.vbox(style={gap=4px, alignItems=center, width=128px}) {
         ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
-            ui.remote(url=artworkOf(artwork, entry.pokemonSpecies.url))
+            ui.remote(url=artworkOf(artwork, idOf(entry.pokemonSpecies.url)))
         }
         ui.text(value=number(entry.entryNumber))
         ui.button(text=display(entry.pokemonSpecies.name), @click { open() })

@@ -1,8 +1,8 @@
 # Pokédex
 
 A choice of Pokédex from [PokéAPI](https://pokeapi.co) and a grid of its
-Pokémon, and a page per Pokémon with its picture, its types, its base stats
-and its evolution chain. It builds for html, fyne, gtk4, bubbletea and android, and
+Pokémon, and a page per species: a header of its artwork, name, number, genus
+and types over tabs about it. It builds for html, fyne, gtk4, bubbletea and android, and
 the interpreter runs it. Nothing in it makes a request by hand, and nothing in
 it says how a target waits for one.
 
@@ -14,14 +14,14 @@ sngl generate --platform android   --lang kotlin -o /tmp/dex-apk examples/pokede
 
 ## How it is put together
 
-| file                | what is in it                                                     |
-|---------------------|-------------------------------------------------------------------|
-| `app.sngl`          | the window: a `nav.stack` of home and a page per Pokémon          |
-| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time  |
-| `detail.sngl`       | one Pokémon, and the evolution chain two requests behind it       |
-| `names.sngl`        | ids out of URLs, names as the games print them, rows, the artwork |
-| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                              |
-| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                 |
+| file                | what is in it                                                      |
+|---------------------|--------------------------------------------------------------------|
+| `app.sngl`          | the window: a `nav.stack` of home and a page per Pokémon           |
+| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time   |
+| `detail.sngl`       | a species' page: a header over About, Stats and three tabs to come |
+| `names.sngl`        | ids, names, rows, the artwork, and what a page's lines say         |
+| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                               |
+| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                  |
 
 **The API is an import.** `import poke "openapi:./pokeapi.yml"` reads
 PokéAPI's own OpenAPI document and writes a SNGL package from it: a struct for
@@ -80,18 +80,32 @@ context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprit
 A test provides one with no `{id}` in it, the harness's `/dot.png`, so no card
 a test renders reaches the network.
 
-**The evolution chain is two requests behind the first.** The species names
-its chain by URL, and the chain names its stages, so `evolution` writes a
-query under an `if` on each answer before it:
+**A page is two requests, the second keyed on the first.** A card opens its
+species by name, and a species' name is not always a Pokémon's: the species
+deoxys is the Pokémon deoxys-normal. So the page asks for the species, and
+then for its default variety:
 
 ```sngl
-poke.pokemonSpeciesRetrieve(id=species, :value=about)
+poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
 if about != null {
-    poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=chain)
+    poke.pokemonRetrieve(id=defaultVariety(about.varieties, about.name), :value=mon)
 }
 ```
 
-A stage other than the one showing is a button going to its page.
+The header needs only the species -- its artwork through `artwork`, its
+English name and genus, its national number as `#001` -- but for its types,
+which wait for the Pokémon. Under it is a `ui.tabs`: About, Stats, Evolution,
+Sprites and Moves, the last three still to come.
+
+**About** is the species' newest English description on one line (the games
+break a description with newlines and form feeds where their text box did),
+the Pokémon's height and weight in metres and kilograms -- `unit length { m }`
+and `unit mass { kg }`, since PokéAPI gives tenths of each -- its abilities with
+a hidden one marked, the species' habitat (which may be `null`), egg groups,
+gender ratio (from `gender_rate`, eighths female or -1 for none) and capture
+rate. **Stats** is a bar per base stat against 255, their total, and the effort
+values defeating the Pokémon gives. Each line's text is a function in
+`names.sngl`, which `testNames` checks beside the page's own tests.
 
 **Pages.** The app is a `nav.stack` of two pages. The detail page's params are
 a struct, and its href names their field:
@@ -99,8 +113,7 @@ a struct, and its href names their field:
 ```sngl
 nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
     component content(p) {
-        ui.button(text="Back", @click { pages.back() })
-        detailPage(name=p.name, @open(name) { pages.go(detail, Mon{name=name}) })
+        detailPage(name=p.name, @back { pages.back() })
     }
 }
 ```
@@ -139,17 +152,29 @@ so what it reads is one instance deep: a compiled test reaches into the
 instance its component renders, and no further.
 
 ```sngl
-component aPage ui.node {
+component bud ui.node {
     poke.server(local) {
-        detailPage #detail(name="ivysaur", @open(n) { opened = n })
+        artwork(dot) {
+            detailPage #detail(name="ivysaur")
+        }
     }
 }
 
-func testTheDetailPageLoadsByName(t test.Test, c aPage) {
+func testStatsGiveEveryEffort(t test.Test, c bud) {
     t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.mon != null && c.detail.mon.id == 2)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(1)
+    }
+    t.assert(c.detail.total != null && c.detail.total.value == "405")
+    t.assert(c.detail.effort != null && c.detail.effort.value == "1 Sp. Atk, 1 Sp. Def")
 }
 ```
+
+`c.detail.tabs.change(1)` chooses a tab as a user does, by pressing the one
+at that index. A test is a root, so what a page's function reads of a context
+is what the test provides: `testTheHeaderNamesTheSpecies` sets `artwork` with
+`t.setContext` before it asks the page which picture it shows.
 
 `testdata/http` is PokéAPI's answers, recorded from https://pokeapi.co: the
 list of Pokédexes, as home asks for it (`limit=50`); the National, Kanto and

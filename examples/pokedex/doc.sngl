@@ -1,6 +1,5 @@
 // A Pokédex over PokéAPI, on every target SNGL has: a choice of Pokédex and a
-// grid of its Pokémon, and a page per Pokémon with its picture, types, base
-// stats and evolution chain.
+// grid of its Pokémon, and a page per species, a header over tabs about it.
 //
 // Nothing here makes a request by hand. `import poke "openapi:./pokeapi.yml"`
 // writes a package from PokéAPI's own OpenAPI document -- a struct per schema,
@@ -14,6 +13,6 @@
 //
 //	app.sngl     the window: a nav.stack of home and a page per Pokémon
 //	home.sngl    a select of Pokédex and a grid of its Pokémon, 30 at a time
-//	detail.sngl  one Pokémon, and the evolution chain two requests behind it
-//	names.sngl   ids out of URLs, names as the games print them, rows, artwork
+//	detail.sngl  a species' page: its header, and About and Stats tabs
+//	names.sngl   ids, names, rows, artwork, and what a page's lines say
 //	pokeapi.yml  PokéAPI's document, vendored, with the corrections in README.md

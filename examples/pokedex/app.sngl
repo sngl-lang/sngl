@@ -13,7 +13,7 @@ output {
     kotlin { android }
 }
 
-// Which Pokémon a detail page shows.
+// Which species a detail page shows.
 struct Mon {
     name string
 }
@@ -25,8 +25,7 @@ component Pokedex ui.node {
     nav.stack #pages {
         nav.page #detail(href=`/pokemon/{name}`, title="Pokémon", params=Mon{name="bulbasaur"}) {
             component content(p) {
-                ui.button(text="Back", @click { pages.back() })
-                detailPage(name=p.name, @open(name) { pages.go(detail, Mon{name=name}) })
+                detailPage(name=p.name, @back { pages.back() })
             }
         }
         nav.page #home(href="/", title="Pokédex") {

@@ -34,13 +34,13 @@ func stages(link poke.EvolutionChainLink) list[string] {
 }
 
 // Where a Pokémon's official artwork is, `{id}` standing for its national
-// number. A test provides one with no `{id}` in it, so every card shows the
-// one picture its server answers.
+// number. A test provides one with no `{id}` in it, so every picture is the
+// one its server answers.
 context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`)
 
-// The official artwork of the species `speciesURL` names, as `template`
-// says where it is.
-func artworkOf(template string, speciesURL string) => string.replace(template, `{id}`, idOf(speciesURL))
+// The official artwork of the species numbered `id`, as `template` says where
+// it is. A dex entry names its species by URL, whose last segment is the id.
+func artworkOf(template string, id string) => string.replace(template, `{id}`, id)
 
 // A number in a dex as the games print it: 7 is "#007".
 func number(n int) string {
@@ -69,4 +69,111 @@ func rows[T any](items list[T], width int) list[list[T]] {
         out.push(items.slice(start, int.min(start + width, items.length())))
     }
     return out
+}
+
+// The Pokémon a species' page shows: its default variety, whose name is not
+// always the species' -- the species deoxys is the Pokémon deoxys-normal.
+func defaultVariety(varieties list[poke.PokemonSpeciesVariety], species string) string {
+    for var v = varieties {
+        if v.isDefault {
+            return v.pokemon.name
+        }
+    }
+    return species
+}
+
+// A species' English name, or its own name where it has none in English.
+func speciesName(names list[poke.PokemonSpeciesName], name string) string {
+    var en = names.filter(func(n poke.PokemonSpeciesName) => n.language.name == "en")
+    return en.length() > 0 ? en[0].name : display(name)
+}
+
+// What kind of Pokémon a species is, in English: "Seed Pokémon".
+func genusOf(genera list[poke.PokemonSpeciesGenus]) string {
+    var en = genera.filter(func(g poke.PokemonSpeciesGenus) => g.language.name == "en")
+    return en.length() > 0 ? en[0].genus : ""
+}
+
+// The last English description of a species, the newest game's, on one line:
+// the games break a description where their text box did, with newlines and
+// form feeds.
+func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) string {
+    var text = ""
+    for var e = entries {
+        if e.language.name == "en" {
+            text = e.flavorText
+        }
+    }
+    return oneLine(text)
+}
+
+// `s` with every run of whitespace a single space, and none at either end.
+func oneLine(s string) string {
+    var spaced = s
+    for var ws = ["\n", "\x0c", "\r", "\t"] {
+        spaced = string.replace(spaced, ws, " ")
+    }
+    return string.split(spaced, " ").filter(func(w string) => w != "").join(" ")
+}
+
+// A length in metres.
+unit length { m }
+
+// A mass in kilograms.
+unit mass { kg }
+
+// A Pokémon's height, which PokéAPI gives in tenths of a metre.
+func heightOf(decimetres int) length {
+    return 1m * (float(decimetres) / 10.0)
+}
+
+// A Pokémon's weight, which PokéAPI gives in tenths of a kilogram.
+func weightOf(hectograms int) mass {
+    return 1kg * (float(hectograms) / 10.0)
+}
+
+// A Pokémon's abilities, a hidden one marked: "Overgrow, Chlorophyll (hidden)".
+func abilitiesOf(abilities list[poke.PokemonAbility]) string {
+    return abilities.map(func(a poke.PokemonAbility) => a.isHidden == true ? "{display(a.ability.name)} (hidden)" : display(a.ability.name)).join(", ")
+}
+
+// Names as the games print them, in a list: "Monster, Plant".
+func namesOf(names list[string]) => names.map(func(n string) => display(n)).join(", ")
+
+// The share of a species that is each gender, from its gender rate: how
+// many eighths are female, or -1 for a species that has no gender.
+func genderOf(rate int) string {
+    if rate < 0 {
+        return "Genderless"
+    }
+    var female = float(rate) * 12.5
+    return "{100.0 - female}% male, {female}% female"
+}
+
+// A base stat's name as the games abbreviate it.
+func statLabel(name string) string {
+    return match name {
+        "hp" => "HP"
+        "attack" => "Attack"
+        "defense" => "Defense"
+        "special-attack" => "Sp. Atk"
+        "special-defense" => "Sp. Def"
+        "speed" => "Speed"
+        else => display(name)
+    }
+}
+
+// The sum of a Pokémon's base stats.
+func statTotal(stats list[poke.PokemonStat]) int {
+    var total = 0
+    for var s = stats {
+        total += s.baseStat
+    }
+    return total
+}
+
+// The effort values defeating a Pokémon gives: "1 Sp. Atk, 1 Sp. Def".
+func effortOf(stats list[poke.PokemonStat]) string {
+    var given = stats.filter(func(s poke.PokemonStat) => s.effort > 0)
+    return given.map(func(s poke.PokemonStat) => "{s.effort} {statLabel(s.stat.name)}").join(", ")
 }

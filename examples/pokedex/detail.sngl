@@ -6,70 +6,119 @@ import ui "sngl:ui"
 // against.
 const maxStat = 255
 
-// One Pokémon: its picture, its types, its base stats as bars, and the
-// Pokémon it evolves from and into. The evolution chain is two requests
-// behind the first -- the species names its chain, and the chain names its
-// stages -- each a query under an `if` on the answer before it, keyed on
-// what that answer said.
-component detailPage(name string, @open(name string)) ui.node {
+// One species: a header of its artwork, name, number, genus and types over
+// tabs about it. The page asks for the species, and then for the Pokémon that
+// is its default variety, keyed on what the species said: a species name is
+// not always a Pokémon's.
+component detailPage(name string, @back()) ui.node {
+    var about option[poke.PokemonSpeciesDetail] = null
     var mon option[poke.PokemonDetail] = null
     var loading = false
     var failure option[async.Failure] = null
+    var tab = 0
 
-    poke.pokemonRetrieve(id=name, :value=mon, :pending=loading, :failure=failure)
+    // The species' official artwork, as the `artwork` context says where.
+    func picture() => about != null ? artworkOf(artwork, "{about.id}") : ""
+
+    poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
+    if about != null {
+        poke.pokemonRetrieve(id=defaultVariety(about.varieties, about.name), :value=mon)
+    }
 
     ui.vbox(style={gap=8px, padding=8px}) {
-        ui.text #title(value=display(name), style={fontSize=24px, fontWeight=bold})
-        if mon == null && loading {
-            ui.spinner(label="Loading {name}")
+        ui.hbox {
+            ui.button #backButton(text="Back", @click { back() })
+        }
+        if about == null && loading {
+            ui.spinner(label="Loading {display(name)}")
         }
         if failure != null {
-            ui.text #failed(value="Could not load {name}: {failure.message}")
+            ui.text #failed(value="Could not load {display(name)}: {failure.message}")
         }
-        if mon != null {
-            if mon.sprites.frontDefault != null {
-                ui.image(alt=name, style={width=96px, height=96px}) {
-                    ui.remote(url=mon.sprites.frontDefault)
+        if about != null {
+            ui.hbox(style={gap=16px, alignItems=center}) {
+                ui.image(alt=about.name, style={width=192px, height=192px}) {
+                    ui.remote(url=picture())
+                }
+                ui.vbox(style={gap=4px}) {
+                    ui.text #title(value=speciesName(about.names, about.name), style={fontSize=28px, fontWeight=bold})
+                    ui.text #nationalNo(value=number(about.id))
+                    ui.text #genus(value=genusOf(about.genera))
+                    if mon != null {
+                        ui.hbox(style={gap=4px}) {
+                            for var t = mon.types {
+                                ui.badge #types(value=display(t.type.name))
+                            }
+                        }
+                    }
                 }
             }
-            ui.text #number(value="No. {mon.id}")
-            ui.hbox(style={gap=4px}) {
-                for var t = mon.types {
-                    ui.badge(value=t.type.name)
+            ui.tabs #tabs(:selected=tab) {
+                ui.tab(label="About") {
+                    ui.vbox(style={gap=6px, padding=8px}) {
+                        ui.text #flavor(value=latestFlavor(about.flavorTextEntries))
+                        if mon != null {
+                            fact(label="Height") {
+                                ui.text #height(value=mon.height != null ? "{heightOf(mon.height)}" : "Unknown")
+                            }
+                            fact(label="Weight") {
+                                ui.text #weight(value=mon.weight != null ? "{weightOf(mon.weight)}" : "Unknown")
+                            }
+                            fact(label="Abilities") {
+                                ui.text #abilities(value=abilitiesOf(mon.abilities))
+                            }
+                        }
+                        fact(label="Habitat") {
+                            ui.text #habitat(value=about.habitat != null ? display(about.habitat.name) : "Unknown")
+                        }
+                        fact(label="Egg groups") {
+                            ui.text #eggGroups(value=namesOf(about.eggGroups.map(func(g poke.EggGroupSummary) => g.name)))
+                        }
+                        fact(label="Gender") {
+                            ui.text #gender(value=about.genderRate != null ? genderOf(about.genderRate) : "Unknown")
+                        }
+                        fact(label="Capture rate") {
+                            ui.text #capture(value=about.captureRate != null ? "{about.captureRate}" : "Unknown")
+                        }
+                    }
+                }
+                ui.tab(label="Stats") {
+                    ui.vbox(style={gap=6px, padding=8px}) {
+                        if mon != null {
+                            for var s = mon.stats {
+                                ui.hbox(style={gap=8px, alignItems=center}) {
+                                    ui.text(value=statLabel(s.stat.name), style={width=80px})
+                                    ui.text #base(value="{s.baseStat}", style={width=40px})
+                                    ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name), style={flex=1})
+                                }
+                            }
+                            fact(label="Total") {
+                                ui.text #total(value="{statTotal(mon.stats)}")
+                            }
+                            fact(label="EVs given") {
+                                ui.text #effort(value=effortOf(mon.stats))
+                            }
+                        }
+                    }
+                }
+                ui.tab(label="Evolution") {
+                    ui.text(value="The evolution chain comes later.")
+                }
+                ui.tab(label="Sprites") {
+                    ui.text(value="The sprites come later.")
+                }
+                ui.tab(label="Moves") {
+                    ui.text(value="The moves come later.")
                 }
             }
-            for var s = mon.stats {
-                ui.hbox(style={gap=8px, alignItems=center}) {
-                    ui.text(value=s.stat.name, style={width=120px})
-                    ui.progress(value=float(s.baseStat), max=float(maxStat), label=s.stat.name, style={flex=1})
-                    ui.text(value="{s.baseStat}")
-                }
-            }
-            evolution(species=mon.species.name, @open(n) { open(n) })
         }
     }
 }
 
-// The stages of the evolution chain `species` belongs to, each a link to
-// its own page but the one showing.
-component evolution(species string, @open(name string)) ui.node {
-    var about option[poke.PokemonSpeciesDetail] = null
-    var chain option[poke.EvolutionChainDetail] = null
-
-    poke.pokemonSpeciesRetrieve(id=species, :value=about)
-    if about != null {
-        poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=chain)
-    }
-    if chain != null {
-        ui.hbox #chainRow(style={gap=8px, alignItems=center}) {
-            ui.text(value="Evolution:")
-            for var stage = stages(chain.chain) {
-                if stage == species {
-                    ui.text(value=display(stage), style={fontWeight=bold})
-                } else {
-                    ui.button(text=display(stage), @click { open(stage) })
-                }
-            }
-        }
+// One line of a tab: what it says, and the value beside it.
+component fact(label string, value ...component ui.node) ui.node {
+    ui.hbox(style={gap=8px}) {
+        ui.text(value=label, style={width=120px, fontWeight=bold})
+        value
     }
 }

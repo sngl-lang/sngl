@@ -7,7 +7,13 @@ const local = "http://127.0.0.1:47819/examples/pokedex"
 // The one picture the harness's server answers, for every card's artwork.
 const dot = "http://127.0.0.1:47819/dot.png"
 
+// The same picture with the id in its query, which the server ignores, so a
+// test sees which species' artwork a page asked for.
+const dotOf = `http://127.0.0.1:47819/dot.png?id={id}`
+
 var opened = ""
+
+var left = false
 
 component home ui.node {
     poke.server(local) {
@@ -17,15 +23,28 @@ component home ui.node {
     }
 }
 
-component aPage ui.node {
+// A species' page, its artwork's URL naming the species.
+component seed ui.node {
     poke.server(local) {
-        detailPage #detail(name="ivysaur", @open(n) { opened = n })
+        artwork(dotOf) {
+            detailPage #detail(name="bulbasaur", @back { left = true })
+        }
     }
 }
 
-component chain ui.node {
+component bud ui.node {
     poke.server(local) {
-        evolution #evo(species="ivysaur", @open(n) { opened = n })
+        artwork(dot) {
+            detailPage #detail(name="ivysaur")
+        }
+    }
+}
+
+component mouse ui.node {
+    poke.server(local) {
+        artwork(dot) {
+            detailPage #detail(name="pikachu")
+        }
     }
 }
 
@@ -151,17 +170,92 @@ func testTheSearchCoversTheWholeDex(t test.Test, c home) {
     t.assert(c.page.grid().length() == 1)
 }
 
-func testTheDetailPageLoadsByName(t test.Test, c aPage) {
+func testTheHeaderNamesTheSpecies(t test.Test, c seed) {
     t.wait(func() => c.detail.mon != null, 5000)
-    t.assert(c.detail.mon != null && c.detail.mon.id == 2)
-    t.assert(c.detail.mon != null && c.detail.mon.stats[0].baseStat == 60)
-    t.assert(!c.detail.loading)
+    t.assert(c.detail.title != null && c.detail.title.value == "Bulbasaur")
+    t.assert(c.detail.nationalNo != null && c.detail.nationalNo.value == "#001")
+    t.assert(c.detail.genus != null && c.detail.genus.value == "Seed Pokémon")
+    // A test is a root: what the page's func reads of `artwork` is what the
+    // test provides, as it is what the page's render read.
+    t.setContext(artwork, dotOf)
+    t.assert(c.detail.picture() == "http://127.0.0.1:47819/dot.png?id=1")
+    t.assert(c.detail.types[0].value == "Grass" && c.detail.types[1].value == "Poison")
+    t.assert(c.detail.types[2] == null)
 }
 
-func testTheChainIsTwoRequestsBehind(t test.Test, c chain) {
-    t.wait(func() => c.evo.chain != null, 5000)
-    t.assert(c.evo.about != null && idOf(c.evo.about.evolutionChain.url) == "1")
-    t.assert(c.evo.chain != null && stages(c.evo.chain.chain).join(",") == "bulbasaur,ivysaur,venusaur")
+func testTheHeaderGoesBack(t test.Test, c seed) {
+    t.wait(func() => c.detail.about != null, 5000)
+    c.detail.backButton.click()
+    t.assert(left)
+}
+
+func testAboutTellsTheLatestDescription(t test.Test, c seed) {
+    t.wait(func() => c.detail.about != null, 5000)
+    t.assert(c.detail.flavor != null && c.detail.flavor.value == "While it is young, it uses the nutrients that are stored in the seed on its back in order to grow.")
+}
+
+func testAboutGivesHeightAndWeight(t test.Test, c seed) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.height != null && c.detail.height.value == "0.7m")
+    t.assert(c.detail.weight != null && c.detail.weight.value == "6.9kg")
+}
+
+func testAboutMarksTheHiddenAbility(t test.Test, c seed) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.abilities != null && c.detail.abilities.value == "Overgrow, Chlorophyll (hidden)")
+}
+
+func testAboutGivesHabitatAndEggGroups(t test.Test, c seed) {
+    t.wait(func() => c.detail.about != null, 5000)
+    t.assert(c.detail.habitat != null && c.detail.habitat.value == "Grassland")
+    t.assert(c.detail.eggGroups != null && c.detail.eggGroups.value == "Monster, Plant")
+}
+
+func testAboutGivesGenderAndCaptureRate(t test.Test, c seed) {
+    t.wait(func() => c.detail.about != null, 5000)
+    t.assert(c.detail.gender != null && c.detail.gender.value == "87.5% male, 12.5% female")
+    t.assert(c.detail.capture != null && c.detail.capture.value == "45")
+}
+
+func testAboutIsEachSpecies(t test.Test, c mouse) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.gender != null && c.detail.gender.value == "50% male, 50% female")
+    t.assert(c.detail.capture != null && c.detail.capture.value == "190")
+    t.assert(c.detail.habitat != null && c.detail.habitat.value == "Forest")
+}
+
+func testTheTabsSwitchToStats(t test.Test, c seed) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.flavor != null && c.detail.total == null)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(1)
+    }
+    t.assert(c.detail.tab == 1)
+    t.assert(c.detail.flavor == null)
+    t.assert(c.detail.total != null)
+}
+
+func testStatsTotalAndEffort(t test.Test, c seed) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(1)
+    }
+    t.assert(c.detail.base[0].value == "45" && c.detail.base[3].value == "65")
+    t.assert(c.detail.base[6] == null)
+    t.assert(c.detail.total != null && c.detail.total.value == "318")
+    t.assert(c.detail.effort != null && c.detail.effort.value == "1 Sp. Atk")
+}
+
+func testStatsGiveEveryEffort(t test.Test, c bud) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(1)
+    }
+    t.assert(c.detail.total != null && c.detail.total.value == "405")
+    t.assert(c.detail.effort != null && c.detail.effort.value == "1 Sp. Atk, 1 Sp. Def")
 }
 
 func testEveryDexDecodes(t test.Test, c dexes) {
@@ -207,5 +301,14 @@ func testNames(t test.Test, c home) {
     t.assert(idOf("http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/2/") == "2")
     t.assert(number(7) == "#007" && number(151) == "#151" && number(1025) == "#1025")
     t.assert(rows([1, 2, 3, 4, 5, 6, 7], 3).map(func(r list[int]) => r.length()).join(",") == "3,3,1")
-    t.assert(artworkOf(`https://example.com/{id}.png`, "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/25/") == "https://example.com/25.png")
+    t.assert(artworkOf(`https://example.com/{id}.png`, "25") == "https://example.com/25.png")
+    t.assert(genderOf(-1) == "Genderless" && genderOf(0) == "100% male, 0% female" && genderOf(8) == "0% male, 100% female")
+    t.assert(oneLine(" a\nb\x0cc  d ") == "a b c d")
+    t.assert(statLabel("special-defense") == "Sp. Def" && statLabel("accuracy") == "Accuracy")
+    var forms = [
+        poke.PokemonSpeciesVariety{isDefault=false, pokemon=poke.PokemonSummary{name="castform-sunny", url=""}},
+        poke.PokemonSpeciesVariety{isDefault=true, pokemon=poke.PokemonSummary{name="castform-normal", url=""}},
+    ]
+    t.assert(defaultVariety(forms, "castform") == "castform-normal")
+    t.assert(defaultVariety([], "castform") == "castform")
 }
