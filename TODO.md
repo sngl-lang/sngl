@@ -114,13 +114,13 @@ The harness gains one generic feature in place of PokéAPI routes.
 
 ## Part 6: the detail page, header and tabs
 
-- [ ] `/pokemon/{name}`: Back, large artwork, name, national number, genus,
+- [X] `/pokemon/{name}`: Back, large artwork, name, national number, genus,
   type badges.
-- [ ] `ui.tabs`: About, Stats, Evolution, Sprites, Moves.
-- [ ] About: latest English description, height and weight in units,
+- [X] `ui.tabs`: About, Stats, Evolution, Sprites, Moves.
+- [X] About: latest English description, height and weight in units,
   abilities with hidden ones marked, habitat, egg groups, gender ratio,
   capture rate.
-- [ ] Stats: base-stat bars, total, the EVs it gives.
+- [X] Stats: base-stat bars, total, the EVs it gives.
 
 ## Part 7: Evolution
 
