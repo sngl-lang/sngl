@@ -271,7 +271,11 @@ write hands every live instance at the site the new value through its setter
 the slot binds -- a loop variable, a local -- has no one value for every copy
 and still re-fires the slot, as does a `#[construct]` prop and anything else
 the body renders from; a node reading nothing is left to the rebuild, which
-only a structural change triggers. A node is not lifted when its subtree holds
+only a structural change triggers. What a function literal in the subtree
+binds -- its parameters, its own loops and locals -- goes with it and is no
+prop (`literalBound`): `rows.map(func(r) => …)` in a tab's panel made `r` one,
+handed a name the site never declared
+(`cmd/sngl/testdata/slot_child_literal_runs.txt`). A node is not lifted when its subtree holds
 a slot insertion, a boundary, a canvas or a window, or declares a handle
 something reads. bubbletea and android re-render the view anyway and are
 untouched (`testdata/slot_body_updates_in_place.txtar`,

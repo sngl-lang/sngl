@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"maps"
 	"slices"
 	"strconv"
 
@@ -385,6 +386,14 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 // A call reading one of local stays where it is, its reads lifted one by one:
 // its arguments name bindings the site does not have.
 func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
+	// What a function literal binds goes to the site with it.
+	if bound := literalBound(n); len(bound) > 0 {
+		local = maps.Clone(local)
+		if local == nil {
+			local = map[ir.Symbol]bool{}
+		}
+		maps.Copy(local, bound)
+	}
 	_ = ir.Rewrite(n, func(node ir.Node) (ir.Node, error) {
 		switch x := node.(type) {
 		case *ir.Call:

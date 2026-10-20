@@ -1,0 +1,94 @@
+# A function literal in a body lifted into a component built at run time --
+# a tab's panel, which the strip shows under a condition on its state -- binds
+# its own parameter: the lift made `r` a prop of the instance, handed a name
+# the site never declared, and fyne and gtk4 did not compile.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component shelf ui.node {
+    var idx = 0
+    var rows = [1, 2]
+
+    ui.tabs #strip(:selected=idx) {
+        ui.tab(label="One") {
+            ui.text #joined(value=rows.map(func(r int) => "<{r}>").join(""))
+        }
+        ui.tab(label="Two") {
+            ui.text(value="two")
+        }
+    }
+}
+
+func testALiteralInAPanelBindsItsOwn(t test.Test, c shelf) {
+    t.assert(c.joined != null && c.joined.value == "<1><2>")
+}
+-- testrun/android/kotlin/app.sngl/shelf/1 --
+sha256:7280ae5da0a4190fb7a7e9c1a43f814c
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPanelBindsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shelf/1 --
+sha256:2941ee2574e8f43b2d5ac05c95f60676
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPanelBindsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shelf/1 --
+sha256:685bf847c865429ba512da0ff6dc502b
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPanelBindsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shelf/1 --
+sha256:f4342c2e8a89ec908b26c55a9eef771f
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPanelBindsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/shelf/1 --
+sha256:b406307132272012cfa41af24047520f
+{
+  "results": [
+    {
+      "Desc": "ALiteralInAPanelBindsItsOwn",
+      "Passed": true
+    }
+  ]
+}

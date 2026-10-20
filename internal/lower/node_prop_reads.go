@@ -729,33 +729,15 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 		}
 		return true
 	})
-	// What a function literal in e binds -- its parameters, a loop in its
-	// body -- is bound wherever e is read, the test included.
-	keep = maps.Clone(keep)
-	_ = ir.Walk(e, func(n ir.Node) error {
-		switch x := n.(type) {
-		case *ir.Lambda:
-			if keep == nil {
-				keep = map[ir.Symbol]bool{}
-			}
-			if x.Func != nil {
-				for _, p := range x.Func.Params {
-					keep[p] = true
-				}
-			}
-		case *ir.For:
-			if keep == nil {
-				keep = map[ir.Symbol]bool{}
-			}
-			if x.KeySym != nil {
-				keep[x.KeySym] = true
-			}
-			if x.ValueSym != nil {
-				keep[x.ValueSym] = true
-			}
+	// What a function literal in e binds is bound wherever e is read, the
+	// test included.
+	if bound := literalBound(e); len(bound) > 0 {
+		keep = maps.Clone(keep)
+		if keep == nil {
+			keep = map[ir.Symbol]bool{}
 		}
-		return nil
-	})
+		maps.Copy(keep, bound)
+	}
 	unnamed := false
 	out := newExprWalker(func(x ir.Expr) ir.Expr {
 		// A context answers the provider the instance is under, which the
@@ -791,5 +773,52 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 	if unnamed {
 		return nil
 	}
+	return out
+}
+
+// literalBound is each name a function literal in root binds for its body:
+// its parameters, and a loop's variables or a local in that body. A read of
+// one inside the literal is bound wherever the literal goes, so it is no
+// capture and nothing a reader of the expression lacks.
+func literalBound(root any) map[ir.Symbol]bool {
+	var out map[ir.Symbol]bool
+	add := func(s ir.Symbol) {
+		if out == nil {
+			out = map[ir.Symbol]bool{}
+		}
+		out[s] = true
+	}
+	_ = ir.Walk(root, func(n ir.Node) error {
+		var fn *ir.Func
+		switch x := n.(type) {
+		case *ir.Lambda:
+			fn = x.Func
+		case *ir.Closure:
+			fn = x.Func
+		}
+		if fn == nil {
+			return nil
+		}
+		for _, p := range fn.Params {
+			add(p)
+		}
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.For:
+				if x.KeySym != nil {
+					add(x.KeySym)
+				}
+				if x.ValueSym != nil {
+					add(x.ValueSym)
+				}
+			case *ir.LocalVar:
+				if x.Sym != nil {
+					add(x.Sym)
+				}
+			}
+			return nil
+		})
+		return nil
+	})
 	return out
 }
