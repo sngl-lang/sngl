@@ -91,6 +91,15 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 		// root is.
 		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
 		build.IsolateRootComponent(groupPkg, group.Component)
+		// The group's own tests, before lowering as well as at generation:
+		// what a test reaches decides what the lowering stamps -- the key of
+		// every copy a test indexes (passCopyKeys) -- and a stamp only another
+		// group's test asked for named a map this group's code never declared.
+		keep := map[string]bool{}
+		for _, tf := range group.Funcs {
+			keep[tf.Name] = true
+		}
+		groupPkg.Funcs = pkgWithTestSubset(groupPkg, keep).Funcs
 		assets, err := prepareForLaunch(groupPkg, cfg, group.Component)
 		if err != nil {
 			return results, err

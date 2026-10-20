@@ -398,12 +398,8 @@ func nodeUnderLoops(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For) {
 			if n, ok := s.(*ir.NodeInst); ok && n.ID == id {
 				return n, loops
 			}
-			inner := loops
-			if f, ok := s.(*ir.For); ok {
-				inner = append(slices.Clip(loops), f)
-			}
 			for _, b := range ir.ViewBlocks(s) {
-				if n, at := walk(*b, inner); n != nil {
+				if n, at := walk(*b, blockLoops(s, b, loops)); n != nil {
 					return n, at
 				}
 			}

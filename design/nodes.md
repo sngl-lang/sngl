@@ -397,6 +397,23 @@ each node's scope (`interp.View.Choosing`). Android's `Tab` takes a
 `modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
 runs it on all six, through an instance as well.
 
+**A record's content is counted by where it was written.** A data family's
+content becomes a population of its container's hidden content slot,
+branching on the record's number (`ir.RecordID`), and once the container is
+spliced that branch sits in the container's loop over its records -- a tab's
+panel in the strip's `for var k, t = items`. One iteration renders it, so a
+`for` in the panel makes the only copies a test indexes, as the checker types
+`c.cell` and the interpreter mounts it. `ir.RecordBranchOf` names the loop a
+`t.__id == N` branch picks one record of, and `lower.blockLoops` leaves it out
+of a copy's key (`passCopyKeys`) and of the loops a copy's prop read binds
+(`nodeUnderLoops`); the interpreter found no loop at all, since `refLoops` did
+not look in slot populations, and walks `ir.ViewBlocks` now. A panel with
+state of its own is an instance whose render slot builds the copies: fyne and
+gtk4 declare the Model's map of them once that slot's method is walked. And
+`sngl test` lowers each group with that group's tests alone, as it generates
+it: a key stamped for another group's test named a map this group never
+declared. `cmd/sngl/testdata/tabs_runs.txt` runs it on all six.
+
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
 Model on the Go targets — rather than as a local, so a read of it has to be

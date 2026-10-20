@@ -256,6 +256,16 @@ func emitComponentInstance(
 		methods.WriteByte('\n')
 	}
 
+	// A widget a render slot of the record builds -- a copy of a loop in it --
+	// is found only by walking that slot's method, above: its copies are kept
+	// in the Model's map as the body's are, under the key the slot gives each.
+	for _, f := range fields {
+		if indexed[f.name] && !slices.Contains(listed, f.name) {
+			modelFieldSink(copiesField(f.name), copyMapType(f.goType))
+			listed = append(listed, f.name)
+		}
+	}
+
 	fmt.Fprintf(b, "// %s is one live instance of the %s component.\ntype %s struct {\n", typeName, comp.Name, typeName)
 	fmt.Fprintf(b, "\t%s fyne.CanvasObject\n", golang.ComponentRootField)
 	fmt.Fprintf(b, "\t%s *%s\n", golang.InstanceModelField, codegen.ModelTypeName)

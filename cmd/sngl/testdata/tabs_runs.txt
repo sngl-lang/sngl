@@ -11,25 +11,31 @@
 # has for one copy of a node a loop renders; it reaches through an instance
 # too.
 #
+# A loop in a panel makes copies a test indexes by that loop alone: the
+# strip's loop over its tabs shows a tab's panel in one iteration, so it is no
+# part of a copy's key (ir.RecordBranchOf), as the checker counts the ref --
+# and the interpreter finds the loop in the panel, which is the population
+# of the strip's hidden content slot.
+#
 # testdata/component_tabs.txtar is the code.
 
 sngl test --platform=none app.sngl
-stdout 'ok   4 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout 'ok   4 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok   4 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok   4 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok   4 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok   4 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -39,6 +45,7 @@ component app ui.node {
     var idx = 0
     var hits = 0
     var changed = -1
+    var rows = [1, 2, 3]
     ui.tabs #strip(:selected=idx, @change(i) {
         changed = i
     }) {
@@ -53,6 +60,9 @@ component app ui.node {
                 local = local + 1
                 hits = local * 10
             })
+            for var r = rows {
+                ui.text #cell(value="row {r}")
+            }
         }
     }
 }
@@ -91,6 +101,13 @@ func testAPanelKeepsStateOfItsOwn(t Test, c app) {
     t.assert(c.hits == 20)
 }
 
+func testALoopInAPanelIsIndexedByItself(t Test, c app) {
+    c.strip.change(1)
+    t.assert(c.cell[0].value == "row 1")
+    t.assert(c.cell[2].value == "row 3")
+    t.assert(c.cell[3] == null)
+}
+
 func testATabIsPressedThroughAnInstance(t Test, c wrapped) {
     c.inner.strip.change(1)
     t.assert(c.inner.idx == 1)
@@ -101,9 +118,13 @@ ui.window {
     app
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:7c25b86bee0e681a0d29da3d52d0320a
+sha256:bfd38b3aa7a74c7f877251aa708d7669
 {
   "results": [
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    },
     {
       "Desc": "APanelKeepsStateOfItsOwn",
       "Passed": true
@@ -119,7 +140,7 @@ sha256:7c25b86bee0e681a0d29da3d52d0320a
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:802a982b7de288f428688e63cbf9e122
+sha256:dd91a28ccbec9ef505776963e6dae361
 {
   "results": [
     {
@@ -129,9 +150,13 @@ sha256:802a982b7de288f428688e63cbf9e122
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:a286fd442264c731ea5e4fa4e0479761
+sha256:36b27196664a5de442949e07c7e7546d
 {
   "results": [
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    },
     {
       "Desc": "APanelKeepsStateOfItsOwn",
       "Passed": true
@@ -147,7 +172,7 @@ sha256:a286fd442264c731ea5e4fa4e0479761
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:d148928ab0d21a4deb89e9f115cedee9
+sha256:9a0c066f175e0f2fc569e233ef6556c4
 {
   "results": [
     {
@@ -157,9 +182,13 @@ sha256:d148928ab0d21a4deb89e9f115cedee9
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:2494c45c10984bffa0e185811c408883
+sha256:b0a627ca51382e564a23e5f3c7281e7f
 {
   "results": [
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    },
     {
       "Desc": "APanelKeepsStateOfItsOwn",
       "Passed": true
@@ -175,7 +204,7 @@ sha256:2494c45c10984bffa0e185811c408883
   ]
 }
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:5c3d57014f5beb62e551c3e0b4a6f6b2
+sha256:81c73d987e3c9c44c6a188cdcc9cd93c
 {
   "results": [
     {
@@ -185,9 +214,13 @@ sha256:5c3d57014f5beb62e551c3e0b4a6f6b2
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:2a7241e333bbf70eec1f21765f47c588
+sha256:937e5713d6d42657f774ec5e80fdedcf
 {
   "results": [
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    },
     {
       "Desc": "APanelKeepsStateOfItsOwn",
       "Passed": true
@@ -203,7 +236,7 @@ sha256:2a7241e333bbf70eec1f21765f47c588
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:d57ceead2f6ced1c7bcf91460857ea7a
+sha256:400690f237102345d9589248f042e851
 {
   "results": [
     {
@@ -213,9 +246,13 @@ sha256:d57ceead2f6ced1c7bcf91460857ea7a
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:439eae77637bc8cf6dc1930b856a7d0c
+sha256:339493eb7a5b62d4dabb6ddad9b5cbf2
 {
   "results": [
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    },
     {
       "Desc": "APanelKeepsStateOfItsOwn",
       "Passed": true
@@ -231,7 +268,7 @@ sha256:439eae77637bc8cf6dc1930b856a7d0c
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:f06b771c7d2c3321915c00130c3690b1
+sha256:622ae84fca1e6b378becd8a94c7c68c4
 {
   "results": [
     {

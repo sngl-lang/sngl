@@ -143,9 +143,10 @@ func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param, ro
 				here[id] = slices.Clip(loops)
 			}
 		}
-		if f, ok := s.(*ir.For); ok {
-			f.Body = st.stamp(f.Body, append(loops[:len(loops):len(loops)], f), prefix, here)
-			f.Else = st.stamp(f.Else, loops, prefix, here)
+		if _, ok := s.(*ir.For); ok {
+			for _, b := range ir.ViewBlocks(s) {
+				*b = st.stamp(*b, blockLoops(s, b, loops), prefix, here)
+			}
 			continue
 		}
 		n, isNode := s.(*ir.NodeInst)
@@ -171,7 +172,7 @@ func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param, ro
 			inner = nil
 		}
 		for _, b := range ir.ViewBlocks(s) {
-			*b = st.stamp(*b, loops, prefix, inner)
+			*b = st.stamp(*b, blockLoops(s, b, loops), prefix, inner)
 		}
 	}
 	return stmts
@@ -200,17 +201,16 @@ func setCopyProp(n *ir.NodeInst, key ir.Expr) { setProp(n, ir.CopyProp, key) }
 // placed calls visit on each node of a view with the number of loops around
 // it.
 func placed(stmts []ir.Stmt, loops int, visit func(*ir.NodeInst, int)) {
+	placedUnder(stmts, nil, func(n *ir.NodeInst, around []*ir.For) { visit(n, loops+len(around)) })
+}
+
+func placedUnder(stmts []ir.Stmt, loops []*ir.For, visit func(*ir.NodeInst, []*ir.For)) {
 	for _, s := range stmts {
-		if f, ok := s.(*ir.For); ok {
-			placed(f.Body, loops+1, visit)
-			placed(f.Else, loops, visit)
-			continue
-		}
 		if n, ok := s.(*ir.NodeInst); ok {
 			visit(n, loops)
 		}
 		for _, b := range ir.ViewBlocks(s) {
-			placed(*b, loops, visit)
+			placedUnder(*b, blockLoops(s, b, loops), visit)
 		}
 	}
 }

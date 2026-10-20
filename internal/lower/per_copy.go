@@ -491,6 +491,24 @@ func CopyKey(loops []*ir.For) ir.Expr {
 	return ir.CopyKey(indices)
 }
 
+// blockLoops is the loops that make copies of what block b of s holds, given
+// loops, those around s: a `for`'s body is one more, and the content of a
+// record in its container's loop over the records one fewer
+// (ir.RecordBranchOf).
+func blockLoops(s ir.Stmt, b *[]ir.Stmt, loops []*ir.For) []*ir.For {
+	switch x := s.(type) {
+	case *ir.For:
+		if b == &x.Body {
+			return append(slices.Clip(loops), x)
+		}
+	case *ir.If:
+		if f := ir.RecordBranchOf(x.Cond, loops); f != nil && b == &x.Body {
+			return slices.DeleteFunc(slices.Clone(loops), func(l *ir.For) bool { return l == f })
+		}
+	}
+	return loops
+}
+
 // loopIndex is the loop's index variable, rewriting a single-variable loop
 // into the two-variable form -- index in Key, element in Value -- that every
 // consumer downstream already reads Key off.

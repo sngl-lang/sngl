@@ -276,3 +276,33 @@ func EmittedIndex(block []Stmt, event string) *LoopVar {
 	})
 	return found
 }
+
+// RecordBranchOf is the loop among loops whose element cond picks one record
+// of, `t.__id == 3`, or nil. A data family's content is a population branching
+// on the record's number (RecordID), and once the container's body is spliced
+// that branch sits in the container's loop over its records. Numbers are
+// unique, so at most one iteration renders what the branch holds: the loop
+// makes no copies of it, and a node written there is counted, as the checker
+// and the interpreter count it, by the loops around where it was written.
+func RecordBranchOf(cond Expr, loops []*For) *For {
+	b, ok := cond.(*Binary)
+	if !ok || b.Op != ast.BinEq {
+		return nil
+	}
+	for _, side := range []Expr{b.Left, b.Right} {
+		sel, ok := side.(*Select)
+		if !ok || sel.Field != RecordID {
+			continue
+		}
+		id, ok := sel.Operand.(*Ident)
+		if !ok {
+			continue
+		}
+		for _, f := range loops {
+			if f.ValueSym != nil && id.Sym == Symbol(f.ValueSym) {
+				return f
+			}
+		}
+	}
+	return nil
+}
