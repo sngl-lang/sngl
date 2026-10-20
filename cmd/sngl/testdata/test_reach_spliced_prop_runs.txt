@@ -1,0 +1,105 @@
+# A test reads a prop of a node whose library body the optimizer would splice
+# for a fold it unlocks -- html's ui.badge picks its class from `variant` --
+# so the read is answered from the call as written: spliced first, `#kind`
+# was the span html draws a badge with, which names no `value`, and the read
+# folded to "".
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Kind {
+    name string
+}
+
+struct Item {
+    kinds list[Kind]
+}
+
+component card ui.node {
+    var item option[Item] = Item{kinds=[Kind{name="leaf"}, Kind{name="stone"}]}
+    if item != null {
+        ui.hbox {
+            for var k = item.kinds {
+                ui.badge #kind(value=string.upper(k.name))
+            }
+        }
+    }
+}
+
+component held ui.node {
+    card #inner()
+}
+
+func testABadgeOfAnOptionIsRead(t test.Test, c held) {
+    t.assert(c.inner.kind[0].value == "LEAF")
+    t.assert(c.inner.kind[1].value == "STONE")
+}
+-- testrun/android/kotlin/app.sngl/held/1 --
+sha256:86258fbaa76364ae7d86797d3a5607ca
+{
+  "results": [
+    {
+      "Desc": "ABadgeOfAnOptionIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/held/1 --
+sha256:fad01ab320ab843b0c3892251bb2bb85
+{
+  "results": [
+    {
+      "Desc": "ABadgeOfAnOptionIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/held/1 --
+sha256:0f6af50bc3a8fba69d9524fa0981f9e8
+{
+  "results": [
+    {
+      "Desc": "ABadgeOfAnOptionIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/held/1 --
+sha256:e349297febd6175c977124fd2e945f45
+{
+  "results": [
+    {
+      "Desc": "ABadgeOfAnOptionIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/held/1 --
+sha256:7e9a975f87886b7f4a0b3ae7e2f89b13
+{
+  "results": [
+    {
+      "Desc": "ABadgeOfAnOptionIsRead",
+      "Passed": true
+    }
+  ]
+}

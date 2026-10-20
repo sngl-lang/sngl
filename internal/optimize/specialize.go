@@ -91,6 +91,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if n.Handle != nil && comp.PkgPath() == "" && ctx.reachedThrough()[n.Handle] {
 		return nil
 	}
+	// A node a test reads a prop of is answered from the call as written
+	// (passNodePropReads): spliced here, a badge became the span its target
+	// draws it with, whose props name no `value`, and the read folded to "".
+	if n.ID != "" && ctx.propReadIDs()[n.ID] {
+		return nil
+	}
 
 	propNames := make(map[string]bool, len(comp.Props))
 	for _, p := range comp.Props {
@@ -635,6 +641,14 @@ func (ctx *evalCtx) nullTestedIDs() map[string]bool {
 		ctx.nullTested = ir.NullTestedIDs(ctx.pkg)
 	}
 	return ctx.nullTested
+}
+
+func (ctx *evalCtx) propReadIDs() map[string]bool {
+	if !ctx.propReadSet {
+		ctx.propReadSet = true
+		ctx.propRead = ir.PropReadIDs(ctx.pkg)
+	}
+	return ctx.propRead
 }
 
 func (ctx *evalCtx) reachedThrough() map[*ir.Var]bool {

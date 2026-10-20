@@ -173,7 +173,10 @@ moves a node out of the body that wrote it:
   expression binds is no such name: `names.map(func(n) => …)` reads `n`
   wherever it is read, a test included -- refused before, and so was any
   prop whose pure helper the optimizer inlined into one
-  (`cmd/sngl/testdata/test_reach_prop_lambda_runs.txt`).
+  (`cmd/sngl/testdata/test_reach_prop_lambda_runs.txt`). The call has to
+  still be there: the optimizer splices no node whose prop a test reads
+  (`ir.PropReadIDs`), which left html's badge the `span` it draws one with
+  and the read `""` (`test_reach_spliced_prop_runs.txt`).
 - **A node is one of the test's instance's own**: `c.b.hit` becomes `c.hit`,
   and `c.r[1].tap` the copy of `c.tap` under key "1", the indices of each step
   kept outermost first -- the copy key a node inside an instance built at run
