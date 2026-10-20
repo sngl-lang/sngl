@@ -52,10 +52,42 @@
  "moves": [
   {
    "move": {
+    "name": "razor-wind",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/13/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
     "name": "swords-dance",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/14/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "tutor",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/3/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 0,
      "move_learn_method": {
@@ -72,10 +104,66 @@
   },
   {
    "move": {
+    "name": "cut",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/15/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
     "name": "vine-whip",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/22/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 10,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 10,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 3,
      "move_learn_method": {
@@ -92,10 +180,54 @@
   },
   {
    "move": {
+    "name": "headbutt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/29/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
     "name": "tackle",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/33/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 1,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 1,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 1,
      "move_learn_method": {
@@ -116,6 +248,18 @@
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/34/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "tutor",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/3/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 0,
      "move_learn_method": {
@@ -171,6 +315,18 @@
     {
      "level_learned_at": 0,
      "move_learn_method": {
+      "name": "tutor",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/3/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
       "name": "machine",
       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
      },
@@ -189,6 +345,30 @@
    },
    "version_group_details": [
     {
+     "level_learned_at": 4,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 4,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
      "level_learned_at": 1,
      "move_learn_method": {
       "name": "level-up",
@@ -204,10 +384,54 @@
   },
   {
    "move": {
+    "name": "strength",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/70/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
     "name": "leech-seed",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/73/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 7,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 7,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 9,
      "move_learn_method": {
@@ -229,6 +453,30 @@
    },
    "version_group_details": [
     {
+     "level_learned_at": 32,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 32,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
      "level_learned_at": 6,
      "move_learn_method": {
       "name": "level-up",
@@ -249,6 +497,30 @@
    },
    "version_group_details": [
     {
+     "level_learned_at": 20,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 20,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
      "level_learned_at": 12,
      "move_learn_method": {
       "name": "level-up",
@@ -268,6 +540,54 @@
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/76/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 46,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 46,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 36,
      "move_learn_method": {
@@ -308,6 +628,30 @@
      },
      "order": 1,
      "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 15,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": 1,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
+     "level_learned_at": 15,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": 1,
+     "version_group": {
       "name": "scarlet-violet",
       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
      }
@@ -320,6 +664,30 @@
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/79/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 15,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": 2,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 15,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": 2,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 15,
      "move_learn_method": {
@@ -348,6 +716,30 @@
      },
      "order": null,
      "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
       "name": "scarlet-violet",
       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
      }
@@ -360,6 +752,30 @@
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/92/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 0,
      "move_learn_method": {
@@ -382,6 +798,122 @@
      "version_group": {
       "name": "scarlet-violet",
       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "mimic",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/102/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "tutor",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/3/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "double-team",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/104/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "light-screen",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/113/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "skull-bash",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/130/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
      }
     }
    ]
@@ -420,6 +952,18 @@
      },
      "order": null,
      "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
       "name": "scarlet-violet",
       "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
      }
@@ -445,6 +989,42 @@
    },
    "version_group_details": [
     {
+     "level_learned_at": 25,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 25,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
+    {
      "level_learned_at": 24,
      "move_learn_method": {
       "name": "level-up",
@@ -464,6 +1044,30 @@
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/235/"
    },
    "version_group_details": [
+    {
+     "level_learned_at": 39,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "crystal",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/4/"
+     }
+    },
+    {
+     "level_learned_at": 39,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "firered-leafgreen",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/7/"
+     }
+    },
     {
      "level_learned_at": 27,
      "move_learn_method": {

@@ -21,6 +21,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     var monFailure option[async.Failure] = null
     var evolution option[poke.EvolutionChainDetail] = null
     var tab = 0
+    var method = $"Level"
 
     // The Pokémon the page shows: the form asked for, or the species' default.
     func shown() => about != null ? form != "" ? form : defaultVariety(about.varieties, about.name) : form
@@ -50,6 +51,12 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
 
     // Opens the species' page showing `pokemon`, `form` "" for its default.
     func formOf(pokemon string) => about != null && pokemon == defaultVariety(about.varieties, about.name) ? "" : pokemon
+
+    // The moves the Pokémon learns the way `method` labels, in the latest game
+    // of the dex chosen on home that it learns any in.
+    func moveRows() list[MoveRow] {
+        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), methodNamed(method)) : []
+    }
 
     // The species' evolution chain, a row for each line through it.
     func chainRows() list[list[Stage]] {
@@ -199,7 +206,21 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                     }
                 }
                 ui.tab(label="Moves") {
-                    ui.text(value="The moves come later.")
+                    ui.vbox(style={gap=8px, padding=8px}) {
+                        ui.select #methodPick(:value=method) {
+                            for var m = learnMethods() {
+                                ui.choice(label=m.label)
+                            }
+                        }
+                        ui.table #moveTable(columns=[$"Level", $"Move"]) {
+                            for var r = moveRows() {
+                                ui.tableRow(cells=[r.level, r.name])
+                            }
+                        }
+                        if mon != null && moveRows().length() == 0 {
+                            ui.text #noMoves(value=$"It learns no moves this way.")
+                        }
+                    }
                 }
             }
         }

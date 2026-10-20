@@ -14,14 +14,14 @@ sngl generate --platform android   --lang kotlin -o /tmp/dex-apk examples/pokede
 
 ## How it is put together
 
-| file                | what is in it                                                                  |
-|---------------------|--------------------------------------------------------------------------------|
-| `app.sngl`          | the window: a `nav.stack` of home, a page per Pokémon and a page per form      |
-| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time               |
-| `detail.sngl`       | a species' page: a header over About, Stats, Evolution, Sprites and Moves      |
-| `names.sngl`        | ids, names, rows, the artwork, an evolution's rows, a gallery, and lines' text |
-| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                                           |
-| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                              |
+| file                | what is in it                                                                             |
+|---------------------|-------------------------------------------------------------------------------------------|
+| `app.sngl`          | the window: a `nav.stack` of home, a page per Pokémon and a page per form                 |
+| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time                          |
+| `detail.sngl`       | a species' page: a header over About, Stats, Evolution, Sprites and Moves                 |
+| `names.sngl`        | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text |
+| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                                                      |
+| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                                         |
 
 **The API is an import.** `import poke "openapi:./pokeapi.yml"` reads
 PokéAPI's own OpenAPI document and writes a SNGL package from it: a struct for
@@ -64,6 +64,11 @@ poke.pokedexRetrieve(id=dexName, :value=dex, :pending=loading, :failure=failure)
 Beside the select are the dex's English name, its region ("every region"
 for the National dex, which has none) and how many Pokémon it holds.
 
+The dex chosen is the package's, not the page's: `dexName` and the answer,
+`chosenDex`, are package `var`s home's select and request write. So home
+shown again starts at the dex chosen, and a Pokémon's page lists the moves of
+the latest game that dex covers.
+
 **Every entry arrives with the dex**, so the search covers the whole dex and
 "Show more" asks for nothing: it shows the next 30 of what matches. The grid
 is rows of three that `rows` in `names.sngl` cuts, since a `Style` neither
@@ -95,7 +100,7 @@ if about != null {
 The header needs only the species -- its artwork through `artwork`, its
 English name and genus, its national number as `#001` -- but for its types,
 which wait for the Pokémon. Under it is a `ui.tabs`: About, Stats, Evolution,
-Sprites and Moves, the last still to come.
+Sprites and Moves.
 
 **About** is the species' newest English description on one line (the games
 break a description with newlines and form feeds where their text box did),
@@ -179,6 +184,24 @@ female (`gallery`). Below it are the species' other varieties as form cards:
 Pikachu's caps, Alolan Vulpix, and on a form's page the species' own, which
 opens the species' page. A card asks for the form by its Pokémon's name, which
 is how PokéAPI names a variety's form.
+
+**Moves** is a `ui.table` of the moves the Pokémon shown learns, a level and
+a name per row, under a `ui.select` of the way it learns them: by level, by
+machine, from an egg or from a tutor (`learnMethods`). By level the rows are
+ordered by level, and moves learned at one level by PokéAPI's `order` --
+Tackle before Growl; the other ways have no level, and are ordered by name
+(`movesOf`). The moves are those of one version group (`latestGroup`): the
+latest that both the dex chosen on home covers -- every group, for the
+National dex, which names none -- and the Pokémon learns any move in.
+PokéAPI's ids are not release order (red-green-japan is 28, after
+scarlet-violet's 25), so `versionGroups` in `names.sngl` lists the groups in
+the order their games came out, PokéAPI's `order`, and a group added after
+it counts as the newest. Bulbasaur's moves are Scarlet and Violet's under
+the National dex and FireRed and LeafGreen's under Kanto. A form's page lists
+the form's moves, since the Pokémon asked for is the form. A way with no
+moves says so under the table, and the headings and the select's labels are
+the app's own words; a move's name is PokéAPI's made readable until the names
+each language gives are asked for.
 
 **Pages.** The app is a `nav.stack` of two pages. The detail page's params are
 a struct, and its href names their field:
@@ -267,8 +290,10 @@ sprite's with its path under PokéAPI's sprites in the query
 (`dot.png?sprite=back/female/25.png`), which the server ignores and a test
 reads to tell the pictures apart; the
 dex list keeps the three dexes recorded, and a dex its first 40
-entries; a Pokémon's moves are Scarlet and Violet's, every one learned by
-level and four of each other method; a species keeps its English genus,
+entries; a Pokémon's moves are those of Scarlet and Violet, FireRed and
+LeafGreen, and Crystal -- the latest group of each recorded dex -- every one
+learned by level and, per group, the first four of each other method, a
+move's method in a group being its first detail's there; a species keeps its English genus,
 names and first and last English descriptions and its first three varieties;
 a form keeps its English names and first English description; and every other
 long list is cut to its first entries. A request's path

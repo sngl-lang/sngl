@@ -210,8 +210,25 @@ Notes:
 
 ## Part 9: Moves
 
-- [ ] A `ui.table` of the moves learned by level in the latest version group.
-- [ ] A `ui.select` of learn method: level, machine, egg, tutor.
+- [X] A `ui.table` of the moves learned by level in the latest version group.
+- [X] A `ui.select` of learn method: level, machine, egg, tutor.
+
+Notes:
+
+- The dex chosen on home is package state (`dexName`, `chosenDex`), and the
+  version group is the latest, in `versionGroups`' release order, that the dex
+  covers (all of them for National) and the Pokémon learns moves in.
+- Gaps found and left, for part 11 to look at: the detail page built at run
+  time (under an `if`) does not build on fyne or gtk4 -- a lift nested in a
+  lifted panel hands its props names the outer scope lacks (`__pN`), as at
+  HEAD; a test's own write to a component var re-renders no slot inside a
+  context provider on html, fyne or gtk4 (a program's write does);
+  bubbletea keeps a hidden instance's cells, where every other target starts
+  a fresh instance; on gtk4 a select changed in an `if` with no tabs around
+  it once left the page's value unchanged in a bisect, unexplained; and the
+  app itself does not build on android (`sngl build`), as at HEAD: a page's
+  `@back { pages.back() }` names `pages__nav`, the stack's controller, where
+  the composable it is written in holds none.
 
 ## Part 10: every language
 

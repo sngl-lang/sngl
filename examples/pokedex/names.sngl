@@ -334,3 +334,147 @@ func effortOf(stats list[poke.PokemonStat]) string {
     var given = stats.filter(func(s poke.PokemonStat) => s.effort > 0)
     return given.map(func(s poke.PokemonStat) => "{s.effort} {statLabel(s.stat.name)}").join(", ")
 }
+
+// PokéAPI's version groups in the order their games came out, which is its
+// `order` and not its ids: red-green-japan is 28 and came first. A group
+// PokéAPI adds after these counts as the newest.
+const versionGroups = [
+    "red-green-japan",
+    "blue-japan",
+    "red-blue",
+    "yellow",
+    "gold-silver",
+    "crystal",
+    "ruby-sapphire",
+    "emerald",
+    "colosseum",
+    "xd",
+    "firered-leafgreen",
+    "diamond-pearl",
+    "platinum",
+    "heartgold-soulsilver",
+    "black-white",
+    "black-2-white-2",
+    "x-y",
+    "omega-ruby-alpha-sapphire",
+    "sun-moon",
+    "ultra-sun-ultra-moon",
+    "lets-go-pikachu-lets-go-eevee",
+    "sword-shield",
+    "the-isle-of-armor",
+    "the-crown-tundra",
+    "brilliant-diamond-shining-pearl",
+    "legends-arceus",
+    "scarlet-violet",
+    "the-teal-mask",
+    "the-indigo-disk",
+    "legends-za",
+    "mega-dimension",
+    "champions",
+]
+
+// Where a version group came out among `versionGroups`.
+func released(group string) int {
+    for var i, g = versionGroups {
+        if g == group {
+            return i
+        }
+    }
+    return versionGroups.length()
+}
+
+// The version group whose moves a Pokémon's page lists: the newest it learns
+// moves in among those `covered` names -- the groups of the dex chosen -- or
+// among all of them where it names none, as the National dex does. "" where
+// it learns none there.
+func latestGroup(covered list[string], moves list[poke.PokemonMove]) string {
+    var best = ""
+    for var m = moves {
+        for var d = m.versionGroupDetails {
+            var g = d.versionGroup.name
+            var offered = covered.length() == 0 || covered.filter(func(c string) => c == g).length() > 0
+            if offered && (best == "" || released(g) > released(best)) {
+                best = g
+            }
+        }
+    }
+    return best
+}
+
+// The version groups a dex covers, none where no dex is chosen.
+func dexGroups(dex option[poke.PokedexDetail]) list[string] {
+    return dex != null ? dex.versionGroups.map(func(g poke.VersionGroupSummary) => g.name) : []
+}
+
+// A way a Pokémon learns a move, as the Moves tab offers it: its label, and
+// PokéAPI's name for it.
+struct LearnMethod {
+    label string
+    name  string
+}
+
+// The ways the Moves tab offers, by level first.
+func learnMethods() list[LearnMethod] {
+    return [
+        LearnMethod{label=$"Level", name="level-up"},
+        LearnMethod{label=$"Machine", name="machine"},
+        LearnMethod{label=$"Egg", name="egg"},
+        LearnMethod{label=$"Tutor", name="tutor"},
+    ]
+}
+
+// PokéAPI's name for the way labelled `label`, by level where none is.
+func methodNamed(label string) string {
+    for var m = learnMethods() {
+        if m.label == label {
+            return m.name
+        }
+    }
+    return "level-up"
+}
+
+// One row of the Moves tab: the level a move is learned at, "" for a way
+// that has none, and the move's name made readable.
+struct MoveRow {
+    level string
+    name  string
+}
+
+// A move as `movesOf` orders it.
+struct learned {
+    level int
+    order int
+    name  string
+}
+
+// Whether `a` comes before `b`: by level, then by PokéAPI's order where moves
+// share one -- Tackle before Growl at level 1 -- then by name.
+func before(a learned, b learned) bool {
+    if a.level != b.level {
+        return a.level < b.level
+    }
+    if a.order != b.order {
+        return a.order < b.order
+    }
+    return a.name < b.name
+}
+
+// The moves a Pokémon learns by `method` in `group`, as the Moves tab's rows,
+// in the order `before` says.
+func movesOf(moves list[poke.PokemonMove], group string, method string) list[MoveRow] {
+    var sorted list[learned] = []
+    for var m = moves {
+        for var d = m.versionGroupDetails {
+            if d.versionGroup.name == group && d.moveLearnMethod.name == method {
+                var order = d.order
+                var it = learned{level=d.levelLearnedAt, order=order != null ? order : 0, name=display(m.move.name)}
+                var at = sorted.length()
+                for at > 0 && before(it, sorted[at - 1]) {
+                    at -= 1
+                }
+                sorted.insert(at, it)
+            }
+        }
+    }
+    return sorted.map(func(l learned) => MoveRow{level=method == "level-up" ? "{l.level}" : "", name=l.name})
+}
