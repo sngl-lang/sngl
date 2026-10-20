@@ -15,6 +15,7 @@ component detailPage(name string, @back()) ui.node {
     var mon option[poke.PokemonDetail] = null
     var loading = false
     var failure option[async.Failure] = null
+    var monFailure option[async.Failure] = null
     var tab = 0
 
     // The species' official artwork, as the `artwork` context says where.
@@ -22,7 +23,7 @@ component detailPage(name string, @back()) ui.node {
 
     poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
     if about != null {
-        poke.pokemonRetrieve(id=defaultVariety(about.varieties, about.name), :value=mon)
+        poke.pokemonRetrieve(id=defaultVariety(about.varieties, about.name), :value=mon, :failure=monFailure)
     }
 
     ui.vbox(style={gap=8px, padding=8px}) {
@@ -34,6 +35,9 @@ component detailPage(name string, @back()) ui.node {
         }
         if failure != null {
             ui.text #failed(value="Could not load {display(name)}: {failure.message}")
+        }
+        if monFailure != null {
+            ui.text(value="Could not load {display(name)}'s types and stats: {monFailure.message}")
         }
         if about != null {
             ui.hbox(style={gap=16px, alignItems=center}) {
