@@ -200,17 +200,21 @@ const component ui.toggle[platform](label, checked, style, @change) {
     }
 }
 
-// Not converted. The menu needs per-call-site state, and an override may
-// declare a var -- passInlinePure hoists one onto the enclosing composable
-// under a `__instN` suffix. What it does not survive is a `for`: two call
-// sites at one level get `__inst0` and `__inst1`, but one inside a loop and
-// one outside both get `__inst0`, and the emitted Kotlin then declares the
-// same name twice. One cell per call site is one cell for every row of the
-// loop besides, which is not what `expanded` means. compose_ir.go numbers
-// `expandedN` per rendered node, which is the thing an override cannot ask
-// for.
-const component ui.select() {
-    OutlinedTextField(value=value, readOnly=true) {}
+// The menu's open state is SnglSelect's own, in Kotlin, as a datepicker's
+// dialog is: an override declaring a var gets one cell per call site, and a
+// select inside a `for` is many selects.
+const component ui.select[platform](placeholder, value, disabled, style, @change, options) {
+    SnglSelect(
+        value = value,
+        options = options.map(func(o) => o.label),
+        label = placeholder,
+        enabled = disabled == false,
+        modifier = {...style},
+        onValueChange = func(v) {
+            value = v
+            change(v)
+        },
+    ) {}
 }
 
 const component ui.textarea[platform](value, style, @input, @change) {
@@ -229,7 +233,7 @@ const component ui.textarea[platform](value, style, @input, @change) {
 // A date is typed as YYYY-MM-DD, or picked in Material's dialog from the
 // button beside the field. The half-typed text and the dialog's open state are
 // SnglDateField's own, in Kotlin, because a const override has nowhere to hold
-// state its render reads (see select). An
+// state its render reads. An
 // unpicked date shows nothing -- the `option` is what distinguishes that from
 // the zero date, the first day of year one.
 const component ui.datepicker[platform](placeholder, value, disabled, style, @change) {

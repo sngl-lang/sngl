@@ -568,6 +568,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		NeedsGObjectSet:   c.shared.gObjectSet,
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,
+		NeedsDropDown:     c.shared.dropDown,
 		Wrapped:           c.wrapped,
 		CLinks:            golang.CPreambleLines(ir.ReachedCLinks(c.ctx.Pkg)),
 	}
@@ -725,10 +726,11 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 // `@toggled(b) { checked = checkActive(b) }` is how the value a change
 // reports reaches the program.
 var widgetReads = map[string]string{
-	"gtk4.checkActive":  "GtkCheckButton",
-	"gtk4.switchActive": "GtkSwitch",
-	"gtk4.entryText":    "GtkEntry",
-	"gtk4.calendarDate": "GtkCalendar",
+	"gtk4.checkActive":   "GtkCheckButton",
+	"gtk4.switchActive":  "GtkSwitch",
+	"gtk4.entryText":     "GtkEntry",
+	"gtk4.calendarDate":  "GtkCalendar",
+	"gtk4.dropDownLabel": "GtkDropDown",
 }
 
 // selfIsNode is a signal handler's body with its parameters read as the node
@@ -874,6 +876,19 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 			Type: ir.NativeGoPointerOf("time.Time"),
 			Func: &ir.Func{Name: calendarDateHelper, Foreign: ir.Foreign{Name: calendarDateHelper}},
 			Args: []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
+		}
+	case "GtkDropDown":
+		label := &ir.Call{
+			Type:     ir.NativePointerOf("char"),
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("sngl_drop_down_label"),
+			Args:     []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
+		}
+		return &ir.Call{
+			Type:     ir.TypString,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("GoString"),
+			Args:     []ir.CallArg{{Value: label}},
 		}
 	}
 	return nil
@@ -1466,8 +1481,13 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 			continue // duplicate id+event — keep the first
 		}
 		seen[methodName] = true
-		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
-			methodName, inv.GTKSignal, inv.IDLabel)
+		if inv.WidgetType == "GtkDropDown" {
+			fmt.Fprintf(b, "// %s selects the choice labelled v on the #%s widget; for tests.\n",
+				methodName, inv.IDLabel)
+		} else {
+			fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
+				methodName, inv.GTKSignal, inv.IDLabel)
+		}
 		emitEventInvoker(b, inv, methodName, "", "m."+inv.FieldName, wrapped)
 		if !keyed[inv.IDLabel] {
 			continue
@@ -1502,6 +1522,17 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 			preFire = fmt.Sprintf("%s((*C.GtkCalendar)(unsafe.Pointer(%s)), v)", calendarSelectHelper, w)
 		}
 	}
+	// A drop-down's carries the label chosen, which the invoker selects: the
+	// selection notifies, as a click on the choice does, so nothing is fired
+	// after it.
+	if inv.WidgetType == "GtkDropDown" {
+		valueParam = "v string"
+		if wrapped {
+			preFire = fmt.Sprintf("gtk4rt.DropDownSelect(%s, v)", w)
+		} else {
+			preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_drop_down_select((*C.GtkDropDown)(unsafe.Pointer(%s)), __v)", w)
+		}
+	}
 	params := func(p string) string {
 		if lead == "" {
 			return p
@@ -1527,6 +1558,10 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 	}
 	if preFire != "" {
 		fmt.Fprintf(b, "\t%s\n", preFire)
+	}
+	if inv.WidgetType == "GtkDropDown" {
+		b.WriteString("}\n\n")
+		return
 	}
 	switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
 	case inv.GTKSignal == "pressed":

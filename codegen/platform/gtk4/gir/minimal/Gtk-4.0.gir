@@ -650,6 +650,21 @@ and then add the viewport as its child widget.</doc>
         </return-value>
       </glib:signal>
     </class>
+    <class name="DropDown" c:type="GtkDropDown" parent="Widget">
+      <constructor name="new" c:identifier="gtk_drop_down_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="model" transfer-ownership="full" nullable="1" allow-none="1">
+            <type name="Gio.ListModel" c:type="GListModel*"/>
+          </parameter>
+          <parameter name="expression" transfer-ownership="full" nullable="1" allow-none="1">
+            <type name="Expression" c:type="GtkExpression*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
     <class name="Frame" c:type="GtkFrame" parent="Widget">
       <constructor name="new" c:identifier="gtk_frame_new">
         <parameters>

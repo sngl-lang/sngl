@@ -1110,7 +1110,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		}
 		val, hasInput, hasChange := widgetPayloadEvents(w)
 		get := val.get
-		if hasInput {
+		picks := choosesOnMove(w)
+		if hasInput || hasChange && picks {
 			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
 		}
 		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
@@ -1123,7 +1124,10 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		if hasInput {
 			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "input"), fwdIndent)
 		}
-		if hasChange {
+		switch {
+		case hasChange && picks:
+			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "change"), fwdIndent)
+		case hasChange:
 			fmt.Fprintf(b, "%s\tif __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {\n%s\t\tm.%s(%s)\n%s\t}\n", fwdIndent, fwdIndent, widgetEventMethod(w, "change"), bindReadBack(w.fieldName, get), fwdIndent)
 		}
 		fmt.Fprintf(b, "%s}\n", fwdIndent)
@@ -1409,7 +1413,8 @@ var widgetValues = []widgetValue{
 
 // widgetPayloadEvents reports which of a widget's payload events the program
 // handles, and the value they carry. @input fires when an Update changed the
-// value; @change, on Enter in a single-line field, is the commit. Only a
+// value; @change, on Enter in a single-line field, is the commit, and in a
+// select is the cursor moving to another choice (choosesOnMove). Only a
 // widget bound through one of widgetValues carries a value.
 func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 	if w.node == nil {
@@ -1432,9 +1437,19 @@ func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 		h := codegen.NodeHandler(w.node, event)
 		return h != nil && h.Func != nil
 	}
-	singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
-	return val, has("input"), has("change") && singleLine
+	return val, has("input"), has("change") && commits(w)
 }
+
+// commits reports whether a widget has a commit for @change to fire on: Enter
+// in a single-line field, or a select's cursor moving.
+func commits(w widgetInfo) bool {
+	return w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput" || choosesOnMove(w)
+}
+
+// choosesOnMove reports whether a widget's value is the row its cursor is on,
+// so that moving it is the choice and @change fires on it rather than on
+// Enter.
+func choosesOnMove(w widgetInfo) bool { return w.model.Type == "tui.Select" }
 
 func widgetEventMethod(w widgetInfo, event string) string {
 	return "__" + w.fieldName + "_" + event
@@ -1468,13 +1483,12 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 		// test's value: into the widget, and back into the var the way
 		// Update writes it.
 		named := w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n")
-		singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
 		for _, ev := range []struct {
 			name string
 			want bool
 		}{
-			{"input", get != "" && !hasInput && val.goType == "string"},
-			{"change", get != "" && !hasChange && singleLine},
+			{"input", get != "" && !hasInput && val.goType == "string" && !choosesOnMove(w)},
+			{"change", get != "" && !hasChange && commits(w)},
 		} {
 			if !ev.want || !named {
 				continue

@@ -209,7 +209,8 @@ func emitCopyHandler(vw *viewWalk, h *ir.EventHandler, value string, info *irAna
 
 // emitLoopWidgetForward writes Update's forwarding of a message to the copy
 // of w the loop slot's cursor names: the write-back of a value the message
-// changed, then @input, and @change on Enter.
+// changed, then @input, and @change on Enter -- or, in a select, on the
+// cursor moving to another choice.
 func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, gc *golang.GoIRContext, indent string) {
 	val, hasInput, hasChange := widgetPayloadEvents(w)
 	depth := strings.Count(indent, "\t")
@@ -238,7 +239,14 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 			}
 			vw.indent--
 			vw.line("}")
-			if hasChange {
+			switch {
+			case hasChange && choosesOnMove(w):
+				vw.line("if __v := %s; __v != __prev {", readOf("w", val.get))
+				vw.indent++
+				emitCopyHandler(vw, codegen.NodeHandler(w.node, "change"), "__v", info, gc)
+				vw.indent--
+				vw.line("}")
+			case hasChange:
 				vw.line("if __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {")
 				vw.indent++
 				emitCopyHandler(vw, codegen.NodeHandler(w.node, "change"), readOf("w", val.get), info, gc)
@@ -266,11 +274,10 @@ func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, 
 		return
 	}
 	copyKey := w.node.Prop(ir.CopyProp)
-	singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
 	for _, ev := range []struct {
 		name string
 		want bool
-	}{{"input", val.goType == "string"}, {"change", singleLine}} {
+	}{{"input", val.goType == "string" && !choosesOnMove(w)}, {"change", commits(w)}} {
 		if !ev.want {
 			continue
 		}

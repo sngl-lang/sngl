@@ -24,8 +24,11 @@ type emitShared struct {
 	// calendarDate: a handler reads a GtkCalendar's day through
 	// calendarDateHelper.
 	calendarDate bool
-	errs         []error
-	seen         map[string]bool
+	// dropDown: the program builds a GtkDropDown, which the preamble's
+	// drop-down helpers serve.
+	dropDown bool
+	errs     []error
+	seen     map[string]bool
 
 	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
@@ -620,6 +623,9 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.shared.fail(fmt.Errorf("gtk4: %s is a window, which GTK places in no container; write ui.window, which this platform makes a GtkApplicationWindow of", cType))
 		t.skipped[id] = struct{}{}
 		return nil
+	}
+	if cType == "GtkDropDown" {
+		t.shared.dropDown = true
 	}
 	ctorInfo := pickPrimaryConstructorInfo(info)
 	if t.wrapped {

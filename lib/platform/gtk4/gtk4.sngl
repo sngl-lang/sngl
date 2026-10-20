@@ -403,20 +403,36 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
     }
 }
 
-// GtkDropDown takes its choices as a list model, which nothing here can
-// declare, so a select lays its choices out as a radio does. `placeholder`,
-// `multiple` and the focus events have nothing to reach.
+// Offers a drop-down the labels `labels` joins with newlines, and selects
+// `chosen` where one of them is it and nothing where none is. A drop-down
+// takes its choices as a GListModel, which no SNGL expression produces, so the
+// preamble's sngl_drop_down_offer builds one, reached through gtk4rt or cgo as
+// the program is emitted. Neither is a choice anyone made, so the drop-down
+// reports neither.
+#[marks.intrinsic("gtk4.offerChoices")]
+func offerChoices(d gtk.GtkDropDown, labels string, chosen string)
+
+// The label a drop-down has selected, or "" where it has none.
+#[marks.intrinsic("gtk4.dropDownLabel")]
+func dropDownLabel(d gtk.GtkDropDown) string
+
+// One drop-down, offered the choices' labels whenever they change and
+// selecting the bound value whenever it does. `placeholder`, `multiple` and
+// the focus events have nothing to reach.
 const component ui.select[platform](value, disabled, style, @change, options) {
-    gtk.GtkBox(orientation="vertical", spacing=6, sensitive=(disabled == false), style={...style}) {
-        for var opt = options {
-            gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
-                if checkActive(b) {
-                    value = opt.label
-                    change(opt.label)
-                }
-            }) {}
+    gtk.GtkDropDown #drop(sensitive=(disabled == false), style={...style}, @notifySelected(d) {
+        var v = dropDownLabel(d)
+        if v != "" && v != value {
+            value = v
+            change(v)
         }
-    }
+    }) {}
+    effect(on=options.map(func(o) => o.label).join("\n"), @mount(labels) {
+        offerChoices(drop, labels, value)
+    })
+    effect(on=value, @mount(v) {
+        offerChoices(drop, options.map(func(o) => o.label).join("\n"), v)
+    })
 }
 
 // A menu's top-level entries, as html shows them; a submenu has nowhere to

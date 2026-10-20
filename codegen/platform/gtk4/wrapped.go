@@ -129,6 +129,8 @@ func rtCtorForCType(cType string) (ir.Expr, bool) {
 		return rtCall("ScrolledWindowNew", gtk4rtHandleIRType()), true
 	case "GtkFrame":
 		return rtCall("FrameNew", gtk4rtHandleIRType()), true
+	case "GtkDropDown":
+		return rtCall("DropDownNew", gtk4rtHandleIRType()), true
 	}
 	return nil, false
 }
@@ -220,6 +222,8 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		return rtCall("CheckButtonGetActive", ir.TypBool, widgetRef)
 	case "GtkCalendar":
 		return rtCall("CalendarGetDate", ir.NativeGoPointerOf("time.Time"), widgetRef)
+	case "GtkDropDown":
+		return rtCall("DropDownLabel", ir.TypString, widgetRef)
 	}
 	return nil
 }

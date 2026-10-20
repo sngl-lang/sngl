@@ -209,9 +209,6 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		return
 	}
 	if n.Component != nil {
-		if cc.renderStdlibComposable(n) {
-			return
-		}
 		if !codegen.DeclinesNode(n.Component) {
 			// A user component the optimizer eliminated — its body was empty,
 			// so there is no composable to call and nothing to draw. Lowering
@@ -224,33 +221,6 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 	// A library declaration with no android override and no body here: another
 	// platform's element, or a component this one never implemented.
 	cc.ctx.Fail(codegen.UnimplementedNode(n.Component, n.AST, n.Name, "android"))
-}
-
-// emitInputHandlerCall lowers one @change handler attached to select, the
-// last composable whose body is written here. The handler body runs inside
-// Compose's onClick lambda with the chosen option bound to `newValueVar`,
-// which is the event's one parameter.
-func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newValueVar string) {
-	h := codegen.NodeHandler(n, eventName)
-	if h == nil || h.Func == nil {
-		return
-	}
-	// Each handler body runs in its own block so two handlers with
-	// the same event-param name (e.g. both `@input(e)` and
-	// `@change(e)`) don't collide on a single Kotlin scope.
-	cc.line("run {")
-	cc.indent++
-	if len(h.Func.Params) > 0 {
-		param := h.Func.Params[0]
-		cc.line("val %s = %s", param.Name, newValueVar)
-	}
-	for _, stmt := range h.Func.Block {
-		for _, line := range cc.kc.EvalStmt(stmt) {
-			cc.line("%s", line)
-		}
-	}
-	cc.indent--
-	cc.line("}")
 }
 
 func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
@@ -266,85 +236,6 @@ func declaredName(n *ir.NodeInst) string {
 		return n.Component.Name
 	}
 	return n.Name
-}
-
-// handWrittenComposables names what renderStdlibComposable has a case for.
-// Kept beside it so the one other question asked about that set -- whether a
-// node reaches emitInputHandlerCall, and so needs the event holder declared --
-// reads the same list rather than a copy of it.
-var handWrittenComposables = []string{"select"}
-
-func handWrittenComposable(n *ir.NodeInst) bool {
-	return slices.Contains(handWrittenComposables, declaredName(n))
-}
-
-// renderStdlibComposable emits the components whose android body is still
-// written here rather than declared in codegen/platform/android. It reports
-// whether it recognised n; an unrecognised one is a missing override, which
-// renderNode panics on.
-//
-// Each is here for a reason a declaration cannot yet state, and the comment on
-// its `component ui.X()` stub in widgets.sngl is where that reason is written
-// down.
-func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
-	style := cc.buildModifier(n)
-
-	switch declaredName(n) {
-	case "select":
-		// Two-way `:value` dropdown. The binding pass synthesizes the
-		// write-back as a @change handler (like `input`), so selecting an
-		// option calls it with the chosen label. `expanded` is per-instance
-		// local state controlling the menu.
-		// The choices arrive as records (a choice is data), and the menu shows
-		// each one's label.
-		optionsExpr := "listOf<String>()"
-		if o := codegen.NodeProp(n, "options"); o != nil {
-			optionsExpr = "(" + cc.kc.EvalExpr(o) + ").map { it.label }"
-		}
-		valueExpr := "\"\""
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			valueExpr = cc.kc.EvalExpr(v)
-		}
-		placeholder, _ := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder"))
-		cc.widgetSeq++
-		exp := fmt.Sprintf("expanded%d", cc.widgetSeq)
-		stateDelegate(cc.kc)
-		cc.line("var %s by %s { %s(false) }", exp, cc.kc.Name(ktRemember), cc.kc.Name(ktMutableStateOf))
-		cc.line("%s(%s) {", cc.kc.Name(ktBox), style)
-		cc.indent++
-		cc.line("%s(onClick = { %s = true }) {", cc.kc.Name(ktOutlinedButton), exp)
-		cc.indent++
-		if placeholder != "" {
-			cc.line("%s(if (%s.isNotEmpty()) %s else %q)", cc.kc.Name(ktText), valueExpr, valueExpr, placeholder)
-		} else {
-			cc.line("%s(%s)", cc.kc.Name(ktText), valueExpr)
-		}
-		cc.indent--
-		cc.line("}")
-		cc.line("%s(expanded = %s, onDismissRequest = { %s = false }) {", cc.kc.Name(ktDropdownMenu), exp, exp)
-		cc.indent++
-		cc.line("%s.forEach { opt ->", optionsExpr)
-		cc.indent++
-		cc.line("%s(text = { %s(opt) }, onClick = {", cc.kc.Name(ktDropdownMenuItem), cc.kc.Name(ktText))
-		cc.indent++
-		// Two-way `:value` write-back (the bound var is an assignable lvalue),
-		// then any user @change handler, then close the menu.
-		cc.line("%s = opt", valueExpr)
-		emitInputHandlerCall(cc, n, "change", "opt")
-		cc.line("%s = false", exp)
-		cc.indent--
-		cc.line("})")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-
-	default:
-		return false
-	}
-	return true
 }
 
 func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {

@@ -353,6 +353,32 @@ bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
 `cmd/sngl/testdata/toggle_change_payload_runs.txt` and
 `ui_event_params_runs.txt` the answer.
 
+**A select is one control on every target**, so its `#id` names the widget a
+test's `c.pick.change("Banana")` chooses through, as a user does: html's
+`<select>`, fyne's Select, gtk4's GtkDropDown, bubbletea's `tui.Select`,
+android's `SnglSelect` and the interpreter's own
+(`cmd/sngl/testdata/select_change_runs.txt`). A select laid out as one widget
+per choice leaves the id on the box around them, which no trigger reaches,
+and a menu the trigger cannot type into is no input path a test has. Each
+holds the bound value even before a choice carries it, since choices may
+be state that arrives later, and neither offering choices nor writing the
+value is reported as a choice:
+
+- **gtk4** offers a GtkStringList through `offerChoices`, a platform
+  intrinsic calling the template's `snglDropDownOffer` (gtk4rt in wrapped
+  mode, cgo otherwise), whose C blocks `notify::selected` meanwhile; the
+  handler reads `dropDownLabel`. The invoker selects the label, which
+  notifies, and fires nothing after it.
+- **bubbletea**'s `tui.Select` is handed the choices on each view and update
+  (`View(options)`, `Update(msg, options)`), its value is the truth and the
+  cursor follows it, and a choice is the cursor moving or Enter on the row it
+  is on, so `@change` fires when an update changed the value
+  (`choosesOnMove`).
+- **android**'s `SnglSelect` is a field with a menu beside it, Kotlin the
+  platform ships as it does `SnglDateField`; typing a choice's label into the
+  field chooses it, which is how the trigger's `performTextReplacement`
+  reaches it.
+
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
 Model on the Go targets — rather than as a local, so a read of it has to be

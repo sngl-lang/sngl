@@ -322,18 +322,21 @@ const component ui.toggle[platform](label, checked, style, @change) {
     ) {}
 }
 
+// A select is tui.Select: a list whose cursor is the choice, holding the
+// value even before a choice carries it. Its choices are handed to every
+// view and update, since they are the program's and may arrive after it
+// starts.
 const component ui.select[platform](style, options) {
     Widget(
         model = Model{
-            type = "list.Model",
-            new = "tui.NewList(tui.StringItems($\{options\}), 40, 10)",
-            view = ".View()",
-            update = ".Update(msg)",
-            pkg = "charm.land/bubbles/v2/list",
+            type = "tui.Select",
+            new = "tui.NewSelect(40, 10)",
+            view = ".View($\{options\})",
+            update = ".Update(msg, $\{options\})",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
         focus = Focus{enabled=true},
-        binds = [Bind{prop="value", get="tui.SelectedString"}],
+        binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
         style = {...style},
     ) {}

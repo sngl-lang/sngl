@@ -49,8 +49,12 @@ type templateData struct {
 	// NeedsCalendarDate emits snglCalendarDate, which a datepicker's change
 	// handler reads its payload through.
 	NeedsCalendarDate bool
-	HasCanvas         bool // emit the cairo draw-func trampoline glue in callbacks.go
-	Wrapped           bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
+	// NeedsDropDown emits the preamble's drop-down helpers and
+	// snglDropDownOffer, which a select's override offers its choices through
+	// (offerChoices), for a program that renders a GtkDropDown.
+	NeedsDropDown bool
+	HasCanvas     bool // emit the cairo draw-func trampoline glue in callbacks.go
+	Wrapped       bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
 	// CLinks is the #cgo flags and #include lines of the c.link directives
 	// the program reaches, for the `#[cnative]` functions it calls. Its
 	// calls are cgo, so a program carrying one is built in inline mode.
