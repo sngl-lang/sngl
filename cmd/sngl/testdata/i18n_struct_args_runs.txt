@@ -87,7 +87,7 @@ sha256:13151bad4d496ebdb2246e05005b2ffb
   ]
 }
 -- testrun/html/none/app.sngl/Greeter/1 --
-sha256:7954308c74d312708d0f80a1ea63313a
+sha256:525ac27b4daed4eda4677bb2a3e49c79
 {
   "results": [
     {

@@ -754,8 +754,10 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 		return n.Name
 	}
 	// A write names the var it writes, so a same-named lambda parameter in
-	// scope (android's checkbox hands its lambda `on`) does not shadow it.
-	if _, isVar := n.Sym.(*ir.Var); isVar {
+	// scope (android's checkbox hands its lambda `on`) does not shadow it --
+	// and a function's own local is not the page's var of its name:
+	// sngl:http's `checked()` wrote its `kind` as `state.kind`.
+	if v, isVar := n.Sym.(*ir.Var); isVar && kc.declared(v) {
 		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
 			return rewritten
 		}
@@ -764,6 +766,23 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 		return rewritten
 	}
 	return n.Name
+}
+
+// declared reports whether v is a var the package or one of its components
+// declares, rather than a local a body binds.
+func (kc *KtIRContext) declared(v *ir.Var) bool {
+	if kc.Ctx == nil || kc.Ctx.Pkg == nil {
+		return true
+	}
+	if slices.Contains(kc.Ctx.Pkg.Vars, v) {
+		return true
+	}
+	for _, c := range kc.Ctx.Pkg.Components {
+		if slices.Contains(c.Vars, v) {
+			return true
+		}
+	}
+	return false
 }
 
 // identRewrite is the rewrite for a name the page's state declares, unless
@@ -1727,6 +1746,11 @@ func IRTypeToKt(t *ir.Type) string {
 		ret := "Unit"
 		if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
 			ret = IRTypeToKt(t.Sig.Return)
+		}
+		// One that waits is a suspend function, as an async function is
+		// declared: a query's fetch prop is handed `::fetchBook`.
+		if t.Sig.Color == ir.ColorAsync {
+			return "suspend (" + strings.Join(params, ", ") + ") -> " + ret
 		}
 		return "(" + strings.Join(params, ", ") + ") -> " + ret
 	case ir.TypeNull:

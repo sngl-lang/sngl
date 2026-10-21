@@ -254,9 +254,23 @@ declaration, and counting that made every loop of html elements a slot
 instance its body builds, one under a node of the body as well as one at its
 top (`declarativeState.nestedInstance`): a tab's panel under the tabs of an
 `if` was built afresh by each render and never destroyed
-(`cmd/sngl/testdata/slot_nested_instance_runs.txt`). One under a node is built
-afresh still, and the next render destroys it (`rebuildEach`): the node is
-built afresh too, and GTK appends no widget that has a parent.
+(`cmd/sngl/testdata/slot_nested_instance_runs.txt`). One under a node is
+kept across renders as one at the top is, by position, and appended to the
+node built afresh around it. Built afresh itself, a query in it asked again
+on every render, so a page whose answers wrote what its slot renders asked
+for every name again with each answer and never finished
+(`cmd/sngl/testdata/slot_nested_query_kept_runs.txt`).
+
+**A render asked for while it runs runs after it** (`renderOnce`): a render
+builds its instances, a query's mount runs in the constructor, and a fetch
+that answers at once runs the call site's `@load` there. One writing what the
+slot renders asked for the render it was inside; re-entered, that render built
+the instance afresh, since the list it reuses from is set at its end, until
+the stack overflowed (`cmd/sngl/testdata/slot_render_reentered_runs.txt`).
+A reused instance is handed its function props first: each setter settles
+it, and a key written first mounted with the handler the last render handed
+over, so an `@load` reading its loop variable wrote under the last key
+(`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`).
 
 **A slot re-renders where it was written.** html renders each into a
 `display:contents` wrapper of its own; fyne and gtk4 render into the container
@@ -287,7 +301,9 @@ described -- focus, a selection, typed text. So on the three targets that
 build instances at run time, `passSlotChildInstances` lifts each top-level
 node of a slot body that reads state into a synthesized component
 (`liftSlotBodies`, `internal/lower/slot_body_instances.go`): what the subtree
-reads becomes a prop, and the slot keeps the instances across renders as it
+reads becomes a prop, read at the site as the subtree wrote it (`liftValues`) -- a
+synthesized var such as the context lowering's `__ctx_locale` stays one, which
+html binds on the page rather than on `state` -- and the slot keeps the instances across renders as it
 keeps any other. passReactivity's `registerSlotBodyDeps` then subscribes such
 an instance's props to the vars they read rather than the slot to them, and a
 write hands every live instance at the site the new value through its setter
@@ -410,7 +426,12 @@ per row -- is keyed on the pair `{copy, on}`, and each handler reads both
 halves into locals where it starts, since a mount that waits writes its cells
 after the wait, when the settle may have handed a later copy's mount another
 key (`testdata/async_query_loop.sngl`,
-`cmd/sngl/testdata/async_query_bubbletea_runs.txt`). A timer under a loop is then a schedule per copy, which
+`cmd/sngl/testdata/async_query_bubbletea_runs.txt`). A loop variable a handler
+reads -- a call site's `@load(got) { seen[w] = got }` under `for var w` -- is
+bound where it starts, by walking the loop's iterable to the index the key
+holds (`loopVarsFrom`); the handler runs from the settle, outside the loop, and
+the read was refused
+(`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same
@@ -478,7 +499,10 @@ page's state is a class, and a function reading it is a member of the class
 (`stateScopedFuncs`); what the function binds itself is no read of the
 page's, or `display(name string)` beside a page's `name` became a member a
 composable built on its own called through a `state` it does not have
-(`cmd/sngl/testdata/pure_func_param_named_like_state_runs.txt`). The class
+(`cmd/sngl/testdata/pure_func_param_named_like_state_runs.txt`), and a write
+is respelled `state.<name>` only for a var the package or a component
+declares, or a function's local named like the page's var was written as the
+page's (`kotlin_local_named_like_state_runs.txt`). The class
 is written through a context requiring its imports of the file
 (`KtIRContext.Unrewritten`,
 `cmd/sngl/testdata/i18n_test_state_class_runs.txt`). A composable built on

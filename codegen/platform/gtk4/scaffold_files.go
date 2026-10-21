@@ -314,7 +314,11 @@ const cgoDropDown = `
 // them, or the value bound, is no choice anyone made, so notify::selected is
 // blocked meanwhile; and a model is replaced only for labels that differ,
 // which would otherwise drop the popup a user has open.
+// A drop-down a render has not built yet is offered nothing: a settle the
+// render's own instances ask for runs before it, and the drop-down's build
+// mounts the offer again (remountOnBuild).
 static void sngl_drop_down_offer(GtkDropDown *d, const char *labels, const char *chosen) {
+    if (d == NULL) return;
     guint notify = g_signal_lookup("notify", G_TYPE_OBJECT);
     GQuark selected = g_quark_from_static_string("selected");
     g_signal_handlers_block_matched(d, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL, notify, selected, NULL, NULL, NULL);

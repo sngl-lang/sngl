@@ -372,12 +372,14 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	items        []int
-	foots        string
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__inst0_live []*Card__slot0Instance
+	items          []int
+	foots          string
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*Card__slot0Instance
+	__rendering0   bool
+	__renderAgain0 bool
 
 	__n4 *fyne.Container
 }
@@ -391,48 +393,60 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Card__slot0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*Card__slot0Instance{}
-	var __inst0_i int = 0
-	for _, i := range m.items {
-		var __n3 *Card__slot0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetStart(i)
-			__n3.Set__p0(i)
-			__n3.Set__on0(func(s string) {
-				m.foots = ((m.foots + s) + " ")
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n3__new := newCard__slot0Instance(m, i, i, func(s string) {
-				m.foots = ((m.foots + s) + " ")
-			})
-			__n3 = __n3__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*Card__slot0Instance{}
+			var __inst0_i int = 0
+			for _, i := range m.items {
+				var __n3 *Card__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n3 = m.__inst0_live[__inst0_i]
+					__n3.Set__on0(func(s string) {
+						m.foots = ((m.foots + s) + " ")
+					})
+					__n3.SetStart(i)
+					__n3.Set__p0(i)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := newCard__slot0Instance(m, i, i, func(s string) {
+						m.foots = ((m.foots + s) + " ")
+					})
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
+				m.__slot0 = append(m.__slot0, __n3__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) Items() []int {
@@ -671,12 +685,14 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	items        []int
-	foots        string
-	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__inst0_live []*Card__slot0Instance
+	items          []int
+	foots          string
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__inst0_live   []*Card__slot0Instance
+	__rendering0   bool
+	__renderAgain0 bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -689,48 +705,60 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Card__slot0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*Card__slot0Instance{}
-	var __inst0_i int = 0
-	for _, i := range m.items {
-		var __n3 *Card__slot0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetStart(i)
-			__n3.Set__p0(i)
-			__n3.Set__on0(func(s string) {
-				m.foots = ((m.foots + s) + " ")
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n3__new := newCard__slot0Instance(m, i, i, func(s string) {
-				m.foots = ((m.foots + s) + " ")
-			})
-			__n3 = __n3__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*Card__slot0Instance{}
+			var __inst0_i int = 0
+			for _, i := range m.items {
+				var __n3 *Card__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n3 = m.__inst0_live[__inst0_i]
+					__n3.Set__on0(func(s string) {
+						m.foots = ((m.foots + s) + " ")
+					})
+					__n3.SetStart(i)
+					__n3.Set__p0(i)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := newCard__slot0Instance(m, i, i, func(s string) {
+						m.foots = ((m.foots + s) + " ")
+					})
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
+				m.__slot0 = append(m.__slot0, __n3__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 // CounterInstance is one live instance of the Counter component.
@@ -1208,55 +1236,67 @@ window.__sngl_boot = () => {
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const i of state.items) {
-      let __n3 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n3 = __inst1_live[__inst1_i];
-        __n3.__set_start(i);
-        __n3.__set___p0(i);
-        __n3.__set___on0((s) => {
-          state.foots = state.foots + s + " ";
-        });
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const i of state.items) {
+          let __n3 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n3 = __inst1_live[__inst1_i];
+            __n3.__set___on0((s) => {
+              state.foots = state.foots + s + " ";
+            });
+            __n3.__set_start(i);
+            __n3.__set___p0(i);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n3__new = __cf_Card__slot0({ start: i, __p0: i, __on0: (s) => {
+              state.foots = state.foots + s + " ";
+            } });
+            __n3 = __n3__new;
+          }
+          __inst1_next.push(__n3);
+          __inst1_i = __inst1_i + 1;
+          let __n3__el = __n3.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n3__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n3__el, __place0_i_ref0);
+          }
+          __slot0.push(__n3__el);
         }
-        let __n3__new = __cf_Card__slot0({ start: i, __p0: i, __on0: (s) => {
-          state.foots = state.foots + s + " ";
-        } });
-        __n3 = __n3__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n3);
-      __inst1_i = __inst1_i + 1;
-      let __n3__el = __n3.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n3__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n3__el, __place0_i_ref0);
-      }
-      __slot0.push(__n3__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -1272,10 +1312,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:09d584cfec6b55260192de3fb71d70d8
 -- run/go/fyne --
-pass sha256:360bab527a04497227ca15b7bd9a1962
+pass sha256:2043c274a3331998cba3504f613fa86b
 -- run/go/gtk4 --
-pass sha256:ae0bd8bae4c0f55627cda221cacbdae2
+pass sha256:6df2c7d7848b2b91de4f83ff2d1d00f8
 -- run/kotlin/android --
 pass sha256:c3e1a47c5ed99910236c364747976bec
 -- run/none/html --
-pass sha256:77adc5819bdc49981a0e4ec990b891d0
+pass sha256:5d5870edd83764afb919ead23d814ddc

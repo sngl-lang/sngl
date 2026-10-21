@@ -139,9 +139,11 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 				}
 				local := copyKeyLocal(fn)
 				block := rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
-				block = keyPartsFrom(block, loops, func() ir.Expr {
+				keyOf := func() ir.Expr {
 					return &ir.Ident{Name: local.Name, Type: local.Type, Sym: local, Synthesized: true}
-				})
+				}
+				block = keyPartsFrom(block, loops, keyOf)
+				block = loopVarsFrom(block, loops, keyOf)
 				fn.Block = nil
 				held = append(held, func() { fn.Block = block })
 			}
@@ -207,6 +209,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 			h.Func.Params = []*ir.Param{param}
 			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
 			block = keyPartsFrom(block, loops, copyOf)
+			block = loopVarsFrom(block, loops, copyOf)
 			if was != nil {
 				block = newExprWalker(func(e ir.Expr) ir.Expr {
 					if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(was) {
@@ -293,6 +296,101 @@ func keyPartsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stm
 		return &ir.Index{Type: ir.TypString, Operand: split, Idx: intLiteralLit(k)}, nil
 	})
 	return block
+}
+
+// loopVarsFrom binds each loop variable block reads -- a loop's index or its
+// element -- to the copy key names, where the handler starts: the handler
+// runs from the settle, outside the loops, and a call site's `@load(got) {
+// seen[w] = got }` under `for var w` named a w nothing there binds, which
+// passEffect refused. The element is found by walking the loop's iterable to
+// the index the key holds; an inner loop's iterable reads the outer loops'
+// variables as this binds them. Bound after the local the key is read into,
+// so a mount that waits reads the copy it was handed.
+func loopVarsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stmt {
+	read := map[*ir.LoopVar]bool{}
+	_ = ir.Walk(block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if lv, ok := id.Sym.(*ir.LoopVar); ok {
+				read[lv] = true
+			}
+		}
+		return nil
+	})
+	deepest := -1
+	for k, fs := range loops {
+		if read[fs.KeySym] || fs.ValueSym != nil && read[fs.ValueSym] {
+			deepest = k
+		}
+	}
+	if deepest < 0 {
+		return block
+	}
+	// What the inner loops' iterables read is read too: they are walked here.
+	for _, fs := range loops[1 : deepest+1] {
+		_ = ir.Walk(fs.Iter, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if lv, ok := id.Sym.(*ir.LoopVar); ok {
+					read[lv] = true
+				}
+			}
+			return nil
+		})
+	}
+	renames := map[ir.Symbol]string{}
+	symRenames := map[ir.Symbol]ir.Symbol{}
+	var binds []ir.Stmt
+	for k, fs := range loops[:deepest+1] {
+		var part ir.Expr = key()
+		if len(loops) > 1 {
+			parts := ir.ListOf(ir.TypString)
+			part = &ir.Index{Type: ir.TypString, Operand: &ir.Call{
+				Type: parts,
+				Func: ir.IntrinsicMethod("split", "string.split", ir.TypString, parts),
+				Args: []ir.CallArg{{Value: key()}, {Value: stringLit("/")}},
+			}, Idx: intLiteralLit(k)}
+		}
+		scan := &ir.For{
+			Key:      fmt.Sprintf("__copyAt%d", k),
+			KeySym:   &ir.LoopVar{Name: fmt.Sprintf("__copyAt%d", k), Type: fs.KeySym.Type},
+			Iter:     renameInExpr(deepCloneExpr(fs.Iter), renames, symRenames),
+			ElemType: fs.ElemType,
+			AST:      fs.AST,
+		}
+		var found []ir.Stmt
+		bind := func(lv *ir.LoopVar, from *ir.LoopVar) {
+			v := &ir.Var{Name: fmt.Sprintf("%s__at%d", lv.Name, k), Type: lv.Type, Synthesized: true}
+			binds = append(binds, &ir.LocalVar{Name: v.Name, Type: v.Type, Sym: v, Init: ir.ZeroExpr(v.Type)})
+			found = append(found, &ir.Assign{Target: &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true}, Op: ast.AssignSet, Value: &ir.Ident{Name: from.Name, Type: from.Type, Sym: from, Synthesized: true}})
+			renames[ir.Symbol(lv)] = v.Name
+			symRenames[ir.Symbol(lv)] = v
+		}
+		if read[fs.KeySym] {
+			bind(fs.KeySym, scan.KeySym)
+		}
+		scan.Value = "_"
+		if fs.ValueSym != nil && read[fs.ValueSym] {
+			scan.Value = fmt.Sprintf("__copyElemAt%d", k)
+			scan.ValueSym = &ir.LoopVar{Name: scan.Value, Type: fs.ValueSym.Type}
+			bind(fs.ValueSym, scan.ValueSym)
+		}
+		scan.Body = []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq,
+				Left:  &ir.Conversion{Type: ir.TypString, Operand: &ir.Ident{Name: scan.Key, Type: scan.KeySym.Type, Sym: scan.KeySym, Synthesized: true}},
+				Right: part},
+			Body: found,
+		}}
+		scan.IterKind = ir.DeriveIterKind(scan)
+		binds = append(binds, scan)
+	}
+	block = renameIdents(block, renames, symRenames)
+	// After the local the key is read into, where a splice put one.
+	at := 0
+	for i, st := range block {
+		if lv, ok := st.(*ir.LocalVar); ok && lv.Name == copyKeyName {
+			at = i + 1
+		}
+	}
+	return slices.Concat(block[:at], binds, block[at:])
 }
 
 // handlersTouchCells reports whether any of n's handlers reads or writes a

@@ -654,7 +654,7 @@ and the adapter's own `code`. **The latest attempt wins**: each mount numbers
 its attempt, an unmount bumps the number, and an answer whose number is stale
 writes nothing.
 
-Three general things it needed, each of its own:
+The general things it needed, each of its own:
 
 - **An effect's handler is started, not awaited** (`ir.Call.Detached`, written
   by `startOf` in the effect lowering). A call marked so colours nothing async
@@ -678,6 +678,25 @@ Three general things it needed, each of its own:
   prop, so `fetch`'s signature is never coloured: it is every check's
   declaration, and the call through it is a direct or a literal call by the
   time it is emitted.
+- **A query built at run time waits as its fetch does** (`passAsyncProps`): a
+  query written straight under a `for` is the instance itself, so `fetch`
+  stays its prop, which nothing coloured. A func-typed prop of a component
+  built at run time is typed as a function that waits wherever a call site
+  hands it one, before passEffect colours the mount; html read the Promise
+  its fetch returned as the answer, fyne and gtk4 fetched on the drawing
+  thread, and android's composable took a suspend function as a plain one;
+  Kotlin spells a function type that waits `suspend`. The value the call goes
+  through is bound ahead of the goroutine with the arguments, since a setter
+  writes it (`testdata/async_query_fetch_prop.txtar`,
+  `cmd/sngl/testdata/async_query_fetch_prop_runs.txt`).
+- **An effect whose key reads a node mounts again wherever the node is
+  built** (`remountOnBuild`): a call after the node lets go of the keys the
+  bracket holds, unmounting them, and the next settle mounts it. A render
+  that builds the node afresh frees the old one, and the new one may be handed
+  its address, so a key holding the node compared equal: gtk4's select offered
+  a rebuilt drop-down nothing. Such a bracket settles on any write to its
+  owner's state, which is what may build the node again
+  (`cmd/sngl/testdata/select_rebuilt_slot_runs.txt`).
 
 On bubbletea the mount's tail is posted back through Update like any other
 `async.do` (see the bubbletea platform), so a fetch that waits runs there too

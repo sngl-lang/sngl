@@ -465,8 +465,17 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 	// Every prop the instance can absorb is pushed on reuse: the render has no
 	// way to know which of them changed, and a setter that writes the value it
 	// already held costs an assignment and patches nothing.
+	//
+	// A function is handed over before anything else. Each setter settles the
+	// instance, and a key it writes may mount -- a query's @load reading the
+	// loop variable it was written under ran the closure the last render
+	// handed it, for the last key, when the mount answered at once.
 	reuse := []ir.Stmt{&ir.Assign{Target: curRef(), Op: ast.AssignSet, Value: held()}}
-	for _, p := range n.Props {
+	props := slices.Clone(n.Props)
+	slices.SortStableFunc(props, func(a, b ir.Arg) int {
+		return boolOrder(!isFuncValued(a)) - boolOrder(!isFuncValued(b))
+	})
+	for _, p := range props {
 		if p.Name == "" {
 			continue
 		}
@@ -556,18 +565,18 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 	})
 }
 
-// rebuildEach builds an instance a render describes under a node of the
-// slot's body afresh each time, and holds it for the next render to destroy.
-// The node it is attached to is built afresh too, so a kept instance would
-// have to leave the last one's -- GTK appends no widget that has a parent.
-// The cursor stays at the start, so close destroys every one the last render
-// held.
-func (st *reactivityState) rebuildEach(si *slotInstance, n *ir.NodeInst, declSt *declarativeState) []ir.Stmt {
-	cur := &ir.Var{Name: n.ID, Type: si.elem, Synthesized: true}
-	return []ir.Stmt{
-		&ir.LocalVar{Name: cur.Name, Type: si.elem, Sym: cur, Init: declSt.componentCreateCall(n)},
-		callListPush(varRef(si.next), varRef(cur), si.elem),
+// isFuncValued reports whether a prop is handed a function: a handler.
+func isFuncValued(a ir.Arg) bool {
+	t := a.Value.ExprType()
+	return t != nil && t.Kind == ir.TypeFunc
+}
+
+// boolOrder is 1 for true and 0 for false, for a sort.
+func boolOrder(b bool) int {
+	if b {
+		return 1
 	}
+	return 0
 }
 
 // reusable is the condition under which the instance a position holds may be

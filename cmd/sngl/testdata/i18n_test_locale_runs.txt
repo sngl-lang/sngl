@@ -1,0 +1,247 @@
+# A test that sets the locale reads the program's own words and numbers in
+# it, on every target, one instance down as well as at the top.
+#
+# Each target fell short a different way. Every target's i18n.numberFloat(x)
+# left out the `style` it defaults, so the locale NoContext appends landed in
+# its slot; the interpreter answered an entry point by its id, for env.Locale
+# whatever t.setContext said, and translated against no manifest at all;
+# android's test never ran MainActivity, which loads the manifest; and html
+# translated a test's read of a `$"..."` for the browser's locale.
+
+sngl test --platform=none app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+-- app.sngl --
+import i18n "sngl:i18n"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A context a provider above the inner instance sets, which puts the instance
+// under a provider as an app's pages are.
+context #shelf("main")
+
+component greeting ui.node {
+    var count = 1
+
+    ui.vbox {
+        ui.text #hello(value=$"Hello")
+        ui.text #size(value=i18n.numberFloat(0.5))
+        ui.text #books(value=$"{count, plural, one{# book} other{# books}}")
+        ui.button #more(text="more", @click { count += 1 })
+    }
+}
+
+component inner ui.node {
+    ui.vbox {
+        ui.text #hello(value=$"Hello")
+        ui.button #wave(text=$"Hello")
+        ui.text #size(value=i18n.numberFloat(0.5))
+    }
+}
+
+component outer ui.node {
+    shelf("side") {
+        inner #inner
+    }
+}
+
+component plain ui.node {
+    inner #inner
+}
+
+ui.window {
+    greeting()
+}
+
+func testAWordInFrench(t test.Test, c greeting) {
+    t.setContext(i18n.locale, "fr")
+    t.assert(c.hello.value == "Bonjour")
+    t.assert(c.size.value == "0,5")
+    t.assert(c.books.value == "1 livre")
+    c.more.click()
+    t.assert(c.books.value == "2 livres")
+}
+
+func testAWordUnderAProviderInFrench(t test.Test, c outer) {
+    t.setContext(i18n.locale, "fr")
+    t.assert(c.inner.hello.value == "Bonjour")
+    t.assert(c.inner.wave.text == "Bonjour")
+    t.assert(c.inner.size.value == "0,5")
+}
+
+func testAWordOfAnInstanceInFrench(t test.Test, c plain) {
+    t.setContext(i18n.locale, "fr")
+    t.assert(c.inner.hello.value == "Bonjour")
+    t.assert(c.inner.wave.text == "Bonjour")
+    t.assert(c.inner.size.value == "0,5")
+}
+-- i18n.manifest.json --
+{
+  "Hello": {"translations": {"fr": "Bonjour"}},
+  "{count, plural, one{# book} other{# books}}": {"translations": {"fr": "{count, plural, one{# livre} other{# livres}}"}}
+}
+-- testrun/android/kotlin/app.sngl/greeting/1 --
+sha256:20a54b49f0e4a513d22c77626cba7cfb
+{
+  "results": [
+    {
+      "Desc": "AWordInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/outer/1 --
+sha256:2eb986d7dfe9f5f76863f277c6901c45
+{
+  "results": [
+    {
+      "Desc": "AWordUnderAProviderInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/plain/1 --
+sha256:f034af346d5c47c62a53a95f52891262
+{
+  "results": [
+    {
+      "Desc": "AWordOfAnInstanceInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/greeting/1 --
+sha256:8833efe6377a446c3db66c0bd31265e1
+{
+  "results": [
+    {
+      "Desc": "AWordInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/outer/1 --
+sha256:37c567d16f61e7d332f0df2d5bff2089
+{
+  "results": [
+    {
+      "Desc": "AWordUnderAProviderInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/plain/1 --
+sha256:18b2eed697374f5b60e8f5e3a23e855b
+{
+  "results": [
+    {
+      "Desc": "AWordOfAnInstanceInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/greeting/1 --
+sha256:431b0b4d1fb8cfb7804569eedf86d2bf
+{
+  "results": [
+    {
+      "Desc": "AWordInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/outer/1 --
+sha256:a66d9290d159636631eea0b2e93cbc9c
+{
+  "results": [
+    {
+      "Desc": "AWordUnderAProviderInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/plain/1 --
+sha256:1fc3dc643b54ba300a13e30bf078e32d
+{
+  "results": [
+    {
+      "Desc": "AWordOfAnInstanceInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/greeting/1 --
+sha256:5fb859c5e0728e240628689b6546e167
+{
+  "results": [
+    {
+      "Desc": "AWordInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/outer/1 --
+sha256:cd9b7b39ef2b134e86356adf8f4a0598
+{
+  "results": [
+    {
+      "Desc": "AWordUnderAProviderInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/plain/1 --
+sha256:4cf82f61116bf7875ac2ecc541ba1916
+{
+  "results": [
+    {
+      "Desc": "AWordOfAnInstanceInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/greeting/1 --
+sha256:d6f7334dbb15bfedae2e44a8d6bf558d
+{
+  "results": [
+    {
+      "Desc": "AWordInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/outer/1 --
+sha256:8bf5755d9e37ad938d6ead94e6b612ba
+{
+  "results": [
+    {
+      "Desc": "AWordUnderAProviderInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/plain/1 --
+sha256:ef912c673fafe58e865be12d1821305e
+{
+  "results": [
+    {
+      "Desc": "AWordOfAnInstanceInFrench",
+      "Passed": true
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+# A query under a node of a slot's body asks once, on every target.
+#
+# Each answer writes what the slot renders, and the slot -- a tab's panel
+# holding a select, which is not lifted -- renders again. An instance under
+# a node of the body was built afresh by every render, so each answer asked
+# for every book again and the answers never stopped: on gtk4 a page of
+# names never finished arriving. It is kept across renders now, as one at
+# the top of the body is.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import json "sngl:json"
+import test "sngl:test"
+import ui "sngl:ui"
+
+const server = "http://127.0.0.1:47819"
+
+struct Book {
+    title string
+}
+
+// A book, asked of the harness's server.
+func fetchBook(title string) async.Result[Book] {
+    match var r = http.get(url="{server}/books/{http.pathEscape(title)}") {
+        failed { return {failed=r} }
+        ok {
+            match var checked = r.checked() {
+                failed { return {failed=checked} }
+                ok { return json.decode[Book](checked.body) }
+            }
+        }
+    }
+}
+
+component page ui.node {
+    var tab = 0
+    var loads = 0
+    var kind = "Red"
+
+    ui.tabs #tabs(:selected=tab) {
+        ui.tab(label="First") {
+            ui.text(value="first")
+        }
+        ui.tab(label="Second") {
+            ui.vbox {
+                for var title = ["dune", "war and peace"] {
+                    async.query(on=title, fetch=func(t string) => fetchBook(t), @load(got) { loads += 1 })
+                }
+                ui.select #pick(:value=kind) {
+                    ui.choice(label="Red")
+                    ui.choice(label="Green")
+                }
+                ui.text #count(value="{loads}")
+            }
+        }
+    }
+}
+
+ui.window {
+    page()
+}
+
+func testEachBookIsAskedForOnce(t test.Test, c page) {
+    c.tabs.change(1)
+    t.wait(func() => c.loads >= 2, 5000)
+    t.wait(func() => c.loads > 2, 1000)
+    t.assert(c.loads == 2)
+    t.assert(c.count != null && c.count.value == "2")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:55219a72f961ce209376e7f812cd7bbb
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:106d443b81123d7e9cf2e898afc365d5
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:43ec7ef36a1dc3fccee58edc976522bd
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:1d5765d8573e5e9e3fff8121d1b19a9a
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:c2f03b1ff4a5ddf07375ee78ab518420
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}

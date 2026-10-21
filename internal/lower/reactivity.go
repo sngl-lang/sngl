@@ -1834,10 +1834,61 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	if sp := placement; sp != nil {
 		fn.Block = append(sp.open(), body...)
 		fn.Block = append(fn.Block, st.closeSlotPlacement(sp)...)
-		return fn
+	} else {
+		fn.Block = append([]ir.Stmt{teardown, reset}, body...)
 	}
-	fn.Block = append([]ir.Stmt{teardown, reset}, body...)
+	fn.Block = st.renderOnce(slotID, fn.Block)
 	return fn
+}
+
+// renderOnce has a slot's render, asked for again while it runs, run again
+// after it rather than inside it.
+//
+//	if __renderingN {
+//	    __renderAgainN = true
+//	} else {
+//	    __renderingN = true
+//	    __renderAgainN = true
+//	    for __renderAgainN {
+//	        __renderAgainN = false
+//	        <render>
+//	    }
+//	    __renderingN = false
+//	}
+//
+// A render builds the instances its body holds, and a query's mounts in the
+// instance's constructor: a fetch that answers at once runs the call site's
+// @load there, and a @load writing what the slot renders asked for the slot
+// again. Re-entered, that render built the instance afresh -- the list it
+// would have reused is set only at the render's end -- whose mount answered
+// again, until the stack overflowed. Run after, it finds the instance held
+// and keyed as before, and stops.
+func (st *reactivityState) renderOnce(slotID string, render []ir.Stmt) []ir.Stmt {
+	n := strings.TrimPrefix(slotID, ir.SlotVarPrefix)
+	// Not __slotN_rendering: a backend takes a name with the slot prefix for
+	// the slot's own list.
+	flag := func(prefix string) *ir.Var {
+		v := &ir.Var{Name: prefix + n, Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Synthesized: true}
+		st.owner.addVar(v)
+		return v
+	}
+	rendering, again := flag("__rendering"), flag("__renderAgain")
+	ref := func(v *ir.Var) *ir.Ident {
+		return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true}
+	}
+	set := func(v *ir.Var, to bool) ir.Stmt {
+		return &ir.Assign{Target: ref(v), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(to)}}
+	}
+	return []ir.Stmt{&ir.If{
+		Cond: ref(rendering),
+		Body: []ir.Stmt{set(again, true)},
+		Else: []ir.Stmt{
+			set(rendering, true),
+			set(again, true),
+			&ir.For{Iter: ref(again), Body: append([]ir.Stmt{set(again, false)}, render...)},
+			set(rendering, false),
+		},
+	}}
 }
 
 // renderSlotBody emits the cond/iter-gated create+append sequence for the
@@ -1908,12 +1959,15 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	}
 	// An instance under a node of the body is the slot's to keep too: built
 	// bare, nothing destroyed it when the next render dropped it, so its
-	// effects ran on and a test still found its widgets.
+	// effects ran on and a test still found its widgets. It is kept across
+	// renders as one at the top is, handed to the node built afresh around
+	// it: built afresh itself, a query in it asked again on every render, and
+	// a render its own answer asked for asked again, without end.
 	outerNested := declSt.nestedInstance
 	declSt.nestedInstance = func(n *ir.NodeInst) []ir.Stmt {
 		si := st.siteInstance(n, st.owner)
 		instances = append(instances, si)
-		return append(st.rebuildEach(si, n, declSt), declSt.componentRootBinding(n)...)
+		return append(st.reuseOrCreate(si, n, declSt), declSt.componentRootBinding(n)...)
 	}
 	defer func() { declSt.nestedInstance = outerNested }()
 	// Recursively process a body: NodeInsts are realized + pushed onto the

@@ -404,65 +404,77 @@ window.__sngl_boot = () => {
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const opt of [{ label: "small" }, { label: "medium" }, { label: "large" }]) {
-      let __n2 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set___p0(opt);
-        __n2.__set___p1(state.sel);
-        __n2.__set___on0(() => {
-          state.sel = opt.label;
-          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-            ;
-            __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const opt of [{ label: "small" }, { label: "medium" }, { label: "large" }]) {
+          let __n2 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n2 = __inst1_live[__inst1_i];
+            __n2.__set___on0(() => {
+              state.sel = opt.label;
+              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                ;
+                __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+              }
+              ;
+            });
+            __n2.__set___p0(opt);
+            __n2.__set___p1(state.sel);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: () => {
+              state.sel = opt.label;
+              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                ;
+                __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+              }
+              ;
+            } });
+            __n2 = __n2__new;
           }
-          ;
-        });
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+          __inst1_next.push(__n2);
+          __inst1_i = __inst1_i + 1;
+          let __n2__el = __n2.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2__el, __place0_i_ref0);
+          }
+          __slot0.push(__n2__el);
         }
-        let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: () => {
-          state.sel = opt.label;
-          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-            ;
-            __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
           }
-          ;
-        } });
-        __n2 = __n2__new;
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n2);
-      __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n2__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
-      }
-      __slot0.push(__n2__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function _snglStyleLength(v) {
@@ -490,9 +502,9 @@ pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
 pass sha256:35bd17229b7ac76768b744948ef54c50
 -- run/none/html --
-pass sha256:f63e5f3b471137563af0d2dfda3529da
+pass sha256:c9662e4445ecd877f2fa9a96098a200c
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:3b5a4f03c93bd81c38512c72c8ff5843
+sha256:adc6c65d70dce4365b4414493bc81980
 {
   "results": [
     {

@@ -1,0 +1,125 @@
+# A panel the program builds at run time holds a label and an instance of a
+# component, each of which a test indexes, and reads a context it hands the
+# instance.
+#
+# fyne and gtk4 listed every id the record held that a test indexes in the
+# Model's map of widget copies, the instance among them, whose record is no
+# widget: the program did not build. A nested instance takes its own root out
+# of the Model's maps as it is destroyed.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import i18n "sngl:i18n"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A label in the active locale's language.
+func tagged(name string) => "{name} ({i18n.locale})"
+
+// A chip counting its own taps.
+component chip(name string) ui.node {
+    var taps = 0
+
+    ui.button #face(text=tagged(name), @click { taps += 1 })
+}
+
+component shelf ui.node {
+    var rows = [["a", "b"], ["c"]]
+    var shown = true
+
+    ui.vbox {
+        ui.button #toggle(text="toggle", @click { shown = !shown })
+        if shown {
+            for var row = rows {
+                ui.hbox {
+                    for var name = row {
+                        ui.hbox {
+                            ui.text #label(value=tagged(name))
+                            chip #item(name=name)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+ui.window {
+    shelf()
+}
+
+func testAChipOfARow(t test.Test, c shelf) {
+    t.assert(c.label[1][0] != null)
+    t.assert(c.item[0][1] != null)
+    c.item[0][1].face.click()
+    t.assert(c.item[0][1].taps == 1)
+    c.toggle.click()
+    t.assert(c.item[0][1] == null)
+}
+-- testrun/android/kotlin/app.sngl/shelf/1 --
+sha256:25ce416695dad291bfcdc05e0094b65d
+{
+  "results": [
+    {
+      "Desc": "AChipOfARow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shelf/1 --
+sha256:98a07b842a17f5548e3e10134224d102
+{
+  "results": [
+    {
+      "Desc": "AChipOfARow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shelf/1 --
+sha256:46d6f05198e99ae8a0d725566ae11246
+{
+  "results": [
+    {
+      "Desc": "AChipOfARow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shelf/1 --
+sha256:2abba8443596a74c31e1f9d0a48813e7
+{
+  "results": [
+    {
+      "Desc": "AChipOfARow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/shelf/1 --
+sha256:7edba5d70e60369fa0fa755ebc8f2088
+{
+  "results": [
+    {
+      "Desc": "AChipOfARow",
+      "Passed": true
+    }
+  ]
+}

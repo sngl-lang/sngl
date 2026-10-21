@@ -189,10 +189,18 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				if strings.HasPrefix(ctxGoType, "time.") {
 					gc.RequireImport("time")
 				}
+				init := irVarInit(v, ctxGC)
+				// Written in a context of its own, as a component's var is
+				// below: its imports are the file's -- the i18n runtime a
+				// locale's default names, which a test build rooted at the
+				// component wrote with none.
+				for _, p := range ctxGC.Imports() {
+					gc.RequireImport(p)
+				}
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
 					goType:      ctxGoType,
-					init:        irVarInit(v, ctxGC),
+					init:        init,
 					noAccessors: true,
 				})
 				continue

@@ -43,6 +43,7 @@ func emitComponentInstance(
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
+	records := golang.InstanceRecordTypes(gc.Ctx.Pkg)
 	handleType := "*C.GtkWidget"
 	if wrapped {
 		handleType = gtk4rtHandleType
@@ -139,7 +140,7 @@ func emitComponentInstance(
 	// An id a test only null-tests one copy of is kept by key too, with no
 	// invoker to have exposed it.
 	for _, f := range fields {
-		if indexed[f.name] && !slices.Contains(listed, f.name) {
+		if indexed[f.name] && !slices.Contains(listed, f.name) && !records[f.goType] {
 			modelFieldSink(widgetField{name: copiesField(f.name), goType: copyMapType(f.goType)})
 			listed = append(listed, f.name)
 		}
@@ -254,7 +255,7 @@ func emitComponentInstance(
 	// is found only by walking that slot's method, above: its copies are kept
 	// in the Model's map as the body's are, under the key the slot gives each.
 	for _, f := range fields {
-		if indexed[f.name] && !slices.Contains(listed, f.name) {
+		if indexed[f.name] && !slices.Contains(listed, f.name) && !records[f.goType] {
 			modelFieldSink(widgetField{name: copiesField(f.name), goType: copyMapType(f.goType)})
 			listed = append(listed, f.name)
 		}

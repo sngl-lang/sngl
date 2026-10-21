@@ -11,8 +11,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -243,7 +245,11 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 	for {
 		m, err := r.Read()
 		if err == io.EOF {
-			break
+			// The program went away before answering the run: it crashed --
+			// a stack overflow, a fatal signal -- or exited. Read as the end
+			// of a run, that was `ok 0 tests`, which a script's `stdout ok`
+			// accepted.
+			return results, exitedEarly(current)
 		}
 		if err != nil {
 			return results, err
@@ -315,6 +321,15 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 		}
 	}
 	return results, nil
+}
+
+// exitedEarly is the error of a test program that went away before it
+// answered its run, naming the tests it had started and not ended.
+func exitedEarly(current map[string]*codegen.TestResult) error {
+	if len(current) == 0 {
+		return errors.New("the test program exited before its run ended")
+	}
+	return fmt.Errorf("the test program exited during %s", strings.Join(slices.Sorted(maps.Keys(current)), ", "))
 }
 
 func handleSnapshotAssert(w *testrpc.Writer, store *snapshot.Store, m *testrpc.Message, fixtureBase string) {

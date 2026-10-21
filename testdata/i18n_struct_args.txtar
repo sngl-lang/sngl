@@ -1364,21 +1364,21 @@ body { font-family: system-ui, sans-serif; }
   })();
   var state = { who__inst0: null, calls__inst0: 0, inline__inst0: null, visible__inst0: true };
   state.who__inst0 = { name: "Ada", count: 3 };
-  state.inline__inst0 = i18n.getTranslator().tr("Hello, {arg0}", "Hello, {arg0}", /* @__PURE__ */ new Map([["arg0", state.who__inst0.name]]));
+  state.inline__inst0 = i18n.translate(__ctx_locale__inst0, "Hello, {arg0}", "Hello, {arg0}", /* @__PURE__ */ new Map([["arg0", state.who__inst0.name]]));
   function next__inst0() {
     state.calls__inst0 = state.calls__inst0 + 1;
     __n3.textContent = computed__inst0(__ctx_locale__inst0);
     return state.who__inst0;
   }
   function literal__inst0(__ctx_locale) {
-    return i18n.getTranslator().format("Hello, {name}!", /* @__PURE__ */ new Map([["name", state.who__inst0.name]]));
+    return i18n.format(__ctx_locale, "Hello, {name}!", /* @__PURE__ */ new Map([["name", state.who__inst0.name]]));
   }
   function named__inst0(__ctx_locale) {
-    return i18n.getTranslator().format("{name}:{count}", /* @__PURE__ */ new Map([["name", state.who__inst0.name], ["count", state.who__inst0.count]]));
+    return i18n.format(__ctx_locale, "{name}:{count}", /* @__PURE__ */ new Map([["name", state.who__inst0.name], ["count", state.who__inst0.count]]));
   }
   function computed__inst0(__ctx_locale) {
     let __spread0 = next__inst0();
-    return i18n.getTranslator().format("{name}:{count}", /* @__PURE__ */ new Map([["name", __spread0.name], ["count", __spread0.count]]));
+    return i18n.format(__ctx_locale, "{name}:{count}", /* @__PURE__ */ new Map([["name", __spread0.name], ["count", __spread0.count]]));
   }
   var __ctx_locale__inst0 = i18n.defaultLocale();
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -1390,7 +1390,7 @@ body { font-family: system-ui, sans-serif; }
     __n1.textContent = literal__inst0(__ctx_locale__inst0);
     __n2.textContent = named__inst0(__ctx_locale__inst0);
     __n3.textContent = computed__inst0(__ctx_locale__inst0);
-    __n4.textContent = i18n.getTranslator().tr("Hi {name}", "Hi {name}", /* @__PURE__ */ new Map([["name", "Bo"]]));
+    __n4.textContent = i18n.translate(__ctx_locale__inst0, "Hi {name}", "Hi {name}", /* @__PURE__ */ new Map([["name", "Bo"]]));
     __n5.textContent = state.inline__inst0;
   }
   __sngl_init();
@@ -1402,4 +1402,4 @@ pass sha256:2a7baa5886514a56bd4d361da4ceec2a
 -- run/kotlin/android --
 pass sha256:5c30849522dce4670f06a49617ce972c
 -- run/none/html --
-pass sha256:15a873d3d6c3eb6e930606c57bea5dbb
+pass sha256:44b5c773501ee79cc37b753ad0bc6178

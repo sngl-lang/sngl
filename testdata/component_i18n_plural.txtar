@@ -1540,11 +1540,12 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  var __ctx_locale = i18n.defaultLocale();
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
     state.count = state.count + 1;
-    state.label = i18n.getTranslator().tr("You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
+    state.label = i18n.translate(__ctx_locale, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
     __n0.textContent = state.label;
   });
   function __sngl_init() {
@@ -1565,9 +1566,9 @@ pass sha256:ac4f1f2e69efe6b96163c2f50b961f60
 -- run/kotlin/android --
 pass sha256:d4593b1f7b3726e4f7a4c99863c1a484
 -- run/none/html --
-pass sha256:f7c63032170d2efbe8656378b0833cfb
+pass sha256:2903c323df14d80d717cd6e173e9c041
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --
-sha256:791b21bf75a995c323ae05679b1026d2
+sha256:17d5bfe71d8ab622c8404f4aac2b4ba7
 {
   "results": [
     {

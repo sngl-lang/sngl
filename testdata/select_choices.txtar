@@ -583,7 +583,11 @@ static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
 // them, or the value bound, is no choice anyone made, so notify::selected is
 // blocked meanwhile; and a model is replaced only for labels that differ,
 // which would otherwise drop the popup a user has open.
+// A drop-down a render has not built yet is offered nothing: a settle the
+// render's own instances ask for runs before it, and the drop-down's build
+// mounts the offer again (remountOnBuild).
 static void sngl_drop_down_offer(GtkDropDown *d, const char *labels, const char *chosen) {
+    if (d == NULL) return;
     guint notify = g_signal_lookup("notify", G_TYPE_OBJECT);
     GQuark selected = g_quark_from_static_string("selected");
     g_signal_handlers_block_matched(d, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL, notify, selected, NULL, NULL, NULL);
@@ -684,14 +688,19 @@ type Choice__record struct {
 	Label string
 }
 
+type __anon_drop_labels_ffa5ce struct {
+	Drop   any
+	Labels string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	fruits              []string
 	pick                string
 	visible__inst0      bool
-	__effect0_key       string
-	__effect0_live      []string
-	__effect0_desired   []string
+	__effect0_key       __anon_drop_labels_ffa5ce
+	__effect0_live      []__anon_drop_labels_ffa5ce
+	__effect0_desired   []__anon_drop_labels_ffa5ce
 	__effect1_key       string
 	__effect1_live      []string
 	__effect1_desired   []string
@@ -712,9 +721,9 @@ func New() *Model {
 	m.fruits = []string{"Apple", "Banana"}
 	m.pick = "Apple"
 	m.visible__inst0 = true
-	m.__effect0_key = ""
-	m.__effect0_live = []string{}
-	m.__effect0_desired = []string{}
+	m.__effect0_key = __anon_drop_labels_ffa5ce{}
+	m.__effect0_live = []__anon_drop_labels_ffa5ce{}
+	m.__effect0_desired = []__anon_drop_labels_ffa5ce{}
 	m.__effect1_key = ""
 	m.__effect1_live = []string{}
 	m.__effect1_desired = []string{}
@@ -725,12 +734,12 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	snglDropDownOffer(m.drop, m.__effect0_key, m.pick)
+	snglDropDownOffer(m.drop, m.__effect0_key.Labels, m.pick)
 }
 
 func (m *Model) __effect0_down() {
-	m.__effect0_desired = []string{}
-	m.__effect0_desired = append(m.__effect0_desired, strings.Join(func() []string {
+	m.__effect0_desired = []__anon_drop_labels_ffa5ce{}
+	m.__effect0_desired = append(m.__effect0_desired, __anon_drop_labels_ffa5ce{Labels: strings.Join(func() []string {
 		__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
 			__out := make([]Choice__record, len(m.fruits))
 			for __i, __item := range m.fruits {
@@ -748,7 +757,7 @@ func (m *Model) __effect0_down() {
 			__out[__i] = func(o Choice__record) string { return o.Label }(__item)
 		}
 		return __out
-	}(), "\n"))
+	}(), "\n"), Drop: m.drop})
 }
 
 func (m *Model) __effect0_up() {
@@ -757,7 +766,7 @@ func (m *Model) __effect0_up() {
 			m.__effect0_key = __effect0_k
 			m.__effect0_mount()
 		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
+			if (m.__effect0_live[__effect0_i].Drop != __effect0_k.Drop) || (m.__effect0_live[__effect0_i].Labels != __effect0_k.Labels) {
 				m.__effect0_key = __effect0_k
 				m.__effect0_mount()
 			}
@@ -808,6 +817,10 @@ func (m *Model) __effect1_up() {
 	m.__effect1_live = m.__effect1_desired
 }
 
+func (m *Model) __effect0_rebuilt() {
+	m.__effect0_live = []__anon_drop_labels_ffa5ce{}
+}
+
 func (m *Model) __effects0_settle() {
 	if m.__effects0_settling {
 		m.__effects0_pending = true
@@ -835,6 +848,7 @@ func (m *Model) __n0_closed_handler() {
 
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	m.__effects0_settle()
 }
 
 func (m *Model) drop_notifySelected_handler() {
@@ -888,6 +902,7 @@ func (m *Model) buildWidgetTree() {
 	snglCallbacks = append(snglCallbacks, m.drop_notifySelected_handler)
 	C.sngl_connect(unsafe.Pointer(m.drop), C.CString("notify::selected"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.drop)))
+	m.__effect0_rebuilt()
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), C.CString("more"))
 	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
@@ -1098,50 +1113,62 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const opt of [{ label: "None" }, ...state.fruits.map((f) => ({ label: f }))]) {
-      let __n2 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set___p0(opt);
-        __n2.__set___p1(state.pick);
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const opt of [{ label: "None" }, ...state.fruits.map((f) => ({ label: f }))]) {
+          let __n2 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n2 = __inst1_live[__inst1_i];
+            __n2.__set___p0(opt);
+            __n2.__set___p1(state.pick);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n2__new = __cf___child0({ __p0: opt, __p1: state.pick });
+            __n2 = __n2__new;
+          }
+          __inst1_next.push(__n2);
+          __inst1_i = __inst1_i + 1;
+          let __n2__el = __n2.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2__el, __place0_i_ref0);
+          }
+          __slot0.push(__n2__el);
         }
-        let __n2__new = __cf___child0({ __p0: opt, __p1: state.pick });
-        __n2 = __n2__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n2);
-      __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n2__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
-      }
-      __slot0.push(__n2__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   var $1 = document.getElementById("$1");
@@ -1168,8 +1195,8 @@ pass sha256:395780b47f14b31de2b3918ffbc98a17
 -- run/go/fyne --
 pass sha256:059da5c9fbaa06844cc769fb80d8a019
 -- run/go/gtk4 --
-pass sha256:63466dd45223a4d1ab1e2ee7d76eaae7
+pass sha256:43c82da3d4c569802d357165904faa5a
 -- run/kotlin/android --
 pass sha256:62a0afe01bdde7fee56b746443428804
 -- run/none/html --
-pass sha256:7b1306314f2816bf12b2bd530628a21a
+pass sha256:52bf0ceeb7c8a1ad6759aa5e22d9f1cd

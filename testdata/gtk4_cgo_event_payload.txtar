@@ -79,6 +79,8 @@ type Model struct {
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*RowInstance
+	__rendering0   bool
+	__renderAgain0 bool
 
 	__n6 *fyne.Container
 	box  *widget.Entry
@@ -98,42 +100,54 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*RowInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*RowInstance{}
-	var __inst0_i int = 0
-	for _, r := range m.rows {
-		var __n5 *RowInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n5 = m.__inst0_live[__inst0_i]
-			__n5.SetLabel(r)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n5__new := newRowInstance(m, r)
-			__n5 = __n5__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*RowInstance{}
+			var __inst0_i int = 0
+			for _, r := range m.rows {
+				var __n5 *RowInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n5 = m.__inst0_live[__inst0_i]
+					__n5.SetLabel(r)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n5__new := newRowInstance(m, r)
+					__n5 = __n5__new
+				}
+				__inst0_next = append(__inst0_next, __n5)
+				__inst0_i = (__inst0_i + 1)
+				__n5__el := __n5.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+				m.__slot0 = append(m.__slot0, __n5__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n5)
-		__inst0_i = (__inst0_i + 1)
-		__n5__el := __n5.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
-		m.__slot0 = append(m.__slot0, __n5__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) box_input_handler(v string) {
@@ -554,6 +568,8 @@ type Model struct {
 	__slot0             []*C.GtkWidget
 	__slot0_at          *C.GtkWidget
 	__inst0_live        []*RowInstance
+	__rendering0        bool
+	__renderAgain0      bool
 	box                 *C.GtkEntry
 	__n2                *C.GtkSwitch
 	__n3                *C.GtkLabel
@@ -579,6 +595,8 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*RowInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
@@ -629,38 +647,48 @@ func (m *Model) __effects1_settle() {
 }
 
 func (m *Model) __renderSlot0(parent *C.GtkBox) {
-	for _, __entry := range m.__slot0 {
-		C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
-	}
-	m.__slot0 = nil
-	m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
-	__inst0_next := []*RowInstance{}
-	var __inst0_i int = 0
-	for _, r := range m.rows {
-		var __n4 *RowInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(r)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
 			}
-			__n4__new := newRowInstance(m, r)
-			__n4 = __n4__new
+			m.__slot0 = nil
+			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
+			__inst0_next := []*RowInstance{}
+			var __inst0_i int = 0
+			for _, r := range m.rows {
+				var __n4 *RowInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.SetLabel(r)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := newRowInstance(m, r)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
+				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n4)
-		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
-		m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) box_changed_handler() {
@@ -938,6 +966,6 @@ func (m *Model) entryChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_entry)), sig)
 }
 -- run/go/fyne --
-pass sha256:5c9318e85972eacd1120a0a88bde7f5d
+pass sha256:88797177f61dd03a8cfecb1fa35a50b5
 -- run/go/gtk4 --
-pass sha256:3b046688b54f407cee582242d3d97271
+pass sha256:b8788642feb8690569a97133929a8e0f

@@ -420,7 +420,7 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 		// kotlin/<pkg>/ regardless of where the rest of the sources go
 		// (AGP scans only that sourceset for unit tests).
 		testPrefix := "app/src/test/kotlin/" + pkgToPath(cfg.Package) + "/"
-		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, activeCounters(req.Pkg))); err != nil {
+		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, activeCounters(req.Pkg), hasI18nCalls(req.Pkg))); err != nil {
 			return err
 		}
 	case "device":
@@ -454,6 +454,10 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // work each runtime counts as well -- the bodies SnglCodec.start began, the
 // pictures SnglAssets is fetching -- so a test reads what an answer wrote
 // rather than what was there before it arrived.
+//
+// A program that translates loads its manifest before the screen mounts, as
+// MainActivity.onCreate does: the test never runs MainActivity, and every
+// `$"..."` answered its inlined English template whatever the locale.
 // activeCounters is the counter of work in flight each runtime the program
 // carries keeps.
 func activeCounters(pkg *ir.Package) []string {
@@ -467,8 +471,16 @@ func activeCounters(pkg *ir.Package) []string {
 	return out
 }
 
-func robolectricAgentTestKotlin(pkg string, counters []string) []byte {
+func robolectricAgentTestKotlin(pkg string, counters []string, i18n bool) []byte {
 	rule, waiter := "composeRule", "composeRule"
+	i18nImport, i18nInit := "", ""
+	if i18n {
+		i18nImport = "import " + kotlin.SnglI18nKotlinPackage + ".I18n\n"
+		i18nInit = `
+        // The manifest, as MainActivity.onCreate loads it.
+        I18n.init(composeRule.activity)
+`
+	}
 	if len(counters) > 0 {
 		busy := make([]string, len(counters))
 		for i, c := range counters {
@@ -503,7 +515,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import us.duckfam.git.jonathan.sngl.testagent.Snapshots
 import us.duckfam.git.jonathan.sngl.testagent.TestAgent
-import java.io.ByteArrayOutputStream
+` + i18nImport + `import java.io.ByteArrayOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -522,7 +534,7 @@ class MainScreenAgentTest {
         // every test function into the testagent Registry before the
         // driver issues its first "list"/"run".
         SnglTestRegistration.ensure()
-
+` + i18nInit + `
         // setContent may be called once per rule, so one composition shows
         // whichever model the running test installed.
         composeRule.setContent { CurrentTestScreen() }

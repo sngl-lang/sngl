@@ -62,6 +62,9 @@ var alwaysOn = []string{
 	// A program naming sngl:async is refused on a target with no answer for
 	// it, and every target is asked -- what differs is the answer.
 	"AsyncCapable",
+	// A function a call site hands a component's prop waits as it does,
+	// wherever the component is built.
+	"AsyncProps",
 	"BoundaryFailed",
 	// Once every raise is resolved a boundary holds nothing, on any target.
 	"BoundaryPassthrough",

@@ -399,6 +399,25 @@ Notable stdlib packages:
   module is bundled beside the page, and an i18n call the optimizer inlined
   into a test body named nothing there.
 
+  **A test that sets the locale reads the program's words in it, on every
+  target** (`cmd/sngl/testdata/i18n_test_locale_runs.txt`). Each target had
+  fallen short its own way:
+  - An entry point is an intrinsic with a body, and `passCallDefaults` fills
+    its defaults as any function's: its emitter stands in for the body and
+    reads every parameter by position, so `i18n.numberFloat(x)` handed the
+    trailing locale to `style`'s slot.
+  - The interpreter runs an entry point's body, which reads the `locale`
+    context and hands it to the primitive, and answers only the primitives
+    by id; answered by its id, an entry point formatted for `env.Locale`
+    whatever a provider or `t.setContext` said. It translates against the
+    `i18n.manifest.json` beside the package's source (`pkg.SourcePath`), where
+    it had used none.
+  - android's Robolectric test loads the manifest before it mounts the
+    screen, as `MainActivity.onCreate` does; the test never runs
+    MainActivity.
+  - JavaScript emits a test body's entry-point call with the locale NoContext
+    threaded, as Go does, where it used the browser's.
+
 ## HTTP and JSON
 
 **`sngl:json` reads text as a declared type and writes a value back**:

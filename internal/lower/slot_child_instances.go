@@ -427,10 +427,12 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] || l.relayed[x.Sym] {
 				return node, nil
 			}
-			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &ir.Ident{
-				// The read as the site wrote it, before this walk repoints it.
-				Name: x.Name, Type: x.Type, Sym: x.Sym,
-			})
+			// The read as the site wrote it, before this walk repoints it, and
+			// marked as it was: a synthesized one -- the __ctx_locale the
+			// context lowering declares -- is the page's own binding, and
+			// rebuilt unmarked html read it off `state`, where nothing is.
+			site := *x
+			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &site)
 			x.Name = p.Name
 			x.Sym = p
 			return node, nil

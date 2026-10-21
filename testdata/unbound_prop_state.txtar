@@ -387,6 +387,8 @@ type Model struct {
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*__checkbox_state3Instance
+	__rendering0   bool
+	__renderAgain0 bool
 
 	__n1    *fynelayout.Toplevel
 	__n5    *fyne.Container
@@ -406,42 +408,54 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state3Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*__checkbox_state3Instance{}
-	var __inst0_i int = 0
-	for _, it := range m.items__inst0 {
-		var __n4 *__checkbox_state3Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(it)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n4__new := new__checkbox_state3Instance(m, false, it)
-			__n4 = __n4__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*__checkbox_state3Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items__inst0 {
+				var __n4 *__checkbox_state3Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.SetLabel(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := new__checkbox_state3Instance(m, false, it)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+				m.__slot0 = append(m.__slot0, __n4__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n4)
-		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -631,6 +645,8 @@ type Model struct {
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__checkbox_state3Instance
+	__rendering0   bool
+	__renderAgain0 bool
 	__n1           gtk4rt.Handle
 	__n5           gtk4rt.Handle
 	box            gtk4rt.Handle
@@ -650,42 +666,54 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state3Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*__checkbox_state3Instance{}
-	var __inst0_i int = 0
-	for _, it := range m.items__inst0 {
-		var __n4 *__checkbox_state3Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(it)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n4__new := new__checkbox_state3Instance(m, false, it)
-			__n4 = __n4__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*__checkbox_state3Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items__inst0 {
+				var __n4 *__checkbox_state3Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.SetLabel(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := new__checkbox_state3Instance(m, false, it)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+				m.__slot0 = append(m.__slot0, __n4__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n4)
-		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -1006,49 +1034,61 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const it of state.items__inst0) {
-      let __n6 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n6 = __inst1_live[__inst1_i];
-        __n6.__set_label(it);
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const it of state.items__inst0) {
+          let __n6 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n6 = __inst1_live[__inst1_i];
+            __n6.__set_label(it);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n6__new = __cf___checkbox_state3({ label: it });
+            __n6 = __n6__new;
+          }
+          __inst1_next.push(__n6);
+          __inst1_i = __inst1_i + 1;
+          let __n6__el = __n6.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n6__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n6__el, __place0_i_ref0);
+          }
+          __slot0.push(__n6__el);
         }
-        let __n6__new = __cf___checkbox_state3({ label: it });
-        __n6 = __n6__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n6);
-      __inst1_i = __inst1_i + 1;
-      let __n6__el = __n6.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n6__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n6__el, __place0_i_ref0);
-      }
-      __slot0.push(__n6__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
@@ -1077,10 +1117,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:aa952c70d8da843435759edf96dcf5a0
 -- run/go/fyne --
-pass sha256:99f8f3a919484b104d1a9abc829a6b67
+pass sha256:63412d2348b10d6d21e48af8dd0bc8b9
 -- run/go/gtk4 --
-pass sha256:66ef72b6dc24879c6876e476e9192af7
+pass sha256:da19c51c16cb4d587b2caf0e46856a66
 -- run/kotlin/android --
 pass sha256:5630ced9a0e6f0c8b6debe42f6958c87
 -- run/none/html --
-pass sha256:b8779496cbbf4bac312f49ceb23262d6
+pass sha256:bd1a09c14e25c8d1d32df46d6e17f033

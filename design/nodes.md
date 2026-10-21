@@ -252,7 +252,10 @@ lists its root under that key where it binds it -- `ComponentRoot`'s second
 argument, after the setter has re-keyed an instance a slot reuses: html's
 `data-sngl-copy` beside `data-sngl-instance`, fyne's and gtk4's
 `__copies_<id>`, one map for every record: a re-key replaces the entry and a
-record's `Destroy` takes its root out, and android's `SnglPresent` entry
+record's `Destroy` takes its root out -- a record holding a nested instance
+lists none of it, since the nested one takes its own root out
+(`golang.InstanceRecordTypes`; listed with the widgets, it compared a widget
+with a record and the program did not build) -- and android's `SnglPresent` entry
 `id[key]`, each asked only for an id some such instance carries
 (`codegen.KeyedInstanceIDs`); html places a static instance's root, built
 once at a fixed position, with the same marks. bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
@@ -402,7 +405,12 @@ value is reported as a choice:
   drop-down until the selection is done: a choice whose handler renders afresh
   the slot the select is in let go of its last reference while
   `gtk_drop_down_set_selected` was still running
-  (`cmd/sngl/testdata/select_rebuilt_by_its_choice_runs.txt`).
+  (`cmd/sngl/testdata/select_rebuilt_by_its_choice_runs.txt`). The offer is
+  keyed on the drop-down as well as the labels, so a render that builds it
+  afresh offers the new one its choices (see *Queries* in `language.md` for
+  why a key reading a node mounts again;
+  `cmd/sngl/testdata/select_rebuilt_slot_runs.txt`), and a drop-down not built
+  yet is offered nothing.
 - **bubbletea**'s `tui.Select` is handed the choices on each view and update
   (`View(options)`, `Update(msg, options)`), its value is the truth and the
   cursor follows it, and a choice is the cursor moving or Enter on the row it
