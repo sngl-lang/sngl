@@ -1,0 +1,106 @@
+{
+ "attributes": [
+  {
+   "name": "underground",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item-attribute/8/"
+  }
+ ],
+ "baby_trigger_for": null,
+ "category": {
+  "name": "evolution",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item-category/10/"
+ },
+ "effect_entries": [
+  {
+   "effect": "Used on a party Pokémon\n:   Evolves an Eevee into Vaporeon, a Lombre into Ludicolo, a Panpour into Simipour, a Poliwhirl into Poliwrath, a Shellder into Cloyster, or a Staryu into Starmie.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Evolves an Eevee into Vaporeon, a Lombre into Ludicolo, a Panpour into Simipour, a Poliwhirl into Poliwrath, a Shellder into Cloyster, or a Staryu into Starmie."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "text": "Makes certain\nspecies of POKéMON\nevolve.",
+   "version_group": {
+    "name": "ruby-sapphire",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/5/"
+   }
+  }
+ ],
+ "fling_effect": null,
+ "fling_power": 30,
+ "game_indices": [
+  {
+   "game_index": 34,
+   "generation": {
+    "name": "generation-i",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+   }
+  },
+  {
+   "game_index": 24,
+   "generation": {
+    "name": "generation-ii",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/2/"
+   }
+  }
+ ],
+ "held_by_pokemon": [],
+ "id": 84,
+ "machines": [],
+ "name": "water-stone",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "みずのいし"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Pierre Eau"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Wasserstein"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Piedra Agua"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Water Stone"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "みずのいし"
+  }
+ ],
+ "prices": [],
+ "sprites": {
+  "default": "http://127.0.0.1:47819/dot.png"
+ }
+}

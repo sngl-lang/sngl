@@ -32,10 +32,120 @@
    }
   },
   {
+   "flavor_text": "Au matin de sa vie, la graine sur\nson dos lui fournit les éléments\ndont il a besoin pour grandir.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "black",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/17/"
+   }
+  },
+  {
+   "flavor_text": "うまれたときから　せなかに\nふしぎな　タネが　うえてあって\nからだと　ともに　そだつという。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Dieses Pokémon trägt von Geburt an einen Samen\nauf dem Rücken, der mit ihm keimt und wächst.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Una rara semilla le fue plantada en el lomo al nacer.\nLa planta brota y crece con este Pokémon.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "生まれたときから　背中に\n不思議な　タネが　植えてあって\n体と　ともに　育つという。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "うまれて　しばらくの　あいだ\nせなかの　タネに　つまった\nえいようを　とって　そだつ。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Quand il est jeune, il absorbe les nutriments\nconservés dans son dos pour grandir\net se développer.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Nach der Geburt nimmt es für eine Weile\nNährstoffe über den Samen auf seinem\nRücken auf.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Desde que nace, crece alimentándose de los\nnutrientes que contiene la semilla de su lomo.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
    "flavor_text": "While it is young, it uses the nutrients that are\nstored in the seed on its back in order to grow.",
    "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "生まれて　しばらくの　あいだ\n背中の　タネに　つまった\n栄養を　とって　育つ。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
    },
    "version": {
     "name": "shield",
@@ -48,10 +158,45 @@
  "gender_rate": 1,
  "genera": [
   {
+   "genus": "たねポケモン",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   }
+  },
+  {
+   "genus": "Pokémon Graine",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "genus": "Samen-Pokémon",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "genus": "Pokémon Semilla",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
    "genus": "Seed Pokémon",
    "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  },
+  {
+   "genus": "たねポケモン",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
    }
   }
  ],
@@ -77,10 +222,45 @@
  "names": [
   {
    "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "フシギダネ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Bulbizarre"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Bisasam"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Bulbasaur"
+  },
+  {
+   "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
    },
    "name": "Bulbasaur"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "フシギダネ"
   }
  ],
  "order": 1,

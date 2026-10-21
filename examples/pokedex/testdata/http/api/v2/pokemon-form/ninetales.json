@@ -1,39 +1,42 @@
 {
- "id": 38,
- "name": "ninetales",
- "order": 72,
- "form_order": 1,
- "is_default": true,
- "is_battle_only": false,
- "is_mega": false,
+ "flavor_text_entries": [],
  "form_name": "",
+ "form_names": [],
+ "form_order": 1,
+ "id": 38,
+ "is_battle_only": false,
+ "is_default": true,
+ "is_mega": false,
+ "name": "ninetales",
+ "names": [],
+ "order": 72,
  "pokemon": {
   "name": "ninetales",
   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/38/"
  },
  "sprites": {
+  "back_default": "http://127.0.0.1:47819/dot.png?sprite=back/38.png",
+  "back_female": null,
+  "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=back/shiny/38.png",
+  "back_shiny_female": null,
+  "front_default": "http://127.0.0.1:47819/dot.png?sprite=38.png",
+  "front_female": null,
+  "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=shiny/38.png",
+  "front_shiny_female": null,
   "other": {
-   "home": {
-    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/38.png",
-    "front_female": null,
-    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/home/38.png",
-    "front_shiny_female": null
-   },
-   "showdown": {
-    "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/back/shiny/38.gif",
-    "back_female": null,
-    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/shiny/38.gif",
-    "back_default": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/back/38.gif",
-    "front_female": null,
-    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/38.gif",
-    "back_shiny_female": null,
-    "front_shiny_female": null
-   },
    "dream_world": {
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/dream-world/38.svg",
+    "front_female": null
+   },
+   "home": {
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/home/38.png",
     "front_female": null,
-    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/dream-world/38.svg"
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/38.png",
+    "front_shiny_female": null
    },
    "official-artwork": {
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/38.png",
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/38.png",
     "versions": {
      "generation-i": {
       "red-and-blue": {
@@ -48,350 +51,345 @@
        "front_default": null
       }
      }
-    },
-    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/38.png",
-    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/38.png"
+    }
+   },
+   "showdown": {
+    "back_default": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/back/38.gif",
+    "back_female": null,
+    "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/back/shiny/38.gif",
+    "back_shiny_female": null,
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/38.gif",
+    "front_female": null,
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/showdown/shiny/38.gif",
+    "front_shiny_female": null
    }
   },
   "versions": {
    "generation-i": {
-    "yellow": {
-     "back_gbc": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/back/gbc/38.png",
-     "back_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/back/gray/38.png",
-     "front_gbc": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/gbc/38.png",
-     "front_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/gray/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/38.png",
-     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/back/38.png",
-     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/38.png",
-     "back_transparent_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/back/gray/38.png",
-     "front_transparent_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/gray/38.png"
-    },
     "red-blue": {
-     "back_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/back/gray/38.png",
-     "front_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/gray/38.png",
      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/38.png",
+     "back_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/back/gray/38.png",
      "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/transparent/back/38.png",
-     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/transparent/38.png",
      "back_transparent_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/transparent/back/gray/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/38.png",
+     "front_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/gray/38.png",
+     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/transparent/38.png",
      "front_transparent_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-blue/transparent/gray/38.png"
     },
     "red-green-japan": {
-     "back_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-green-japan/back/gray/38.png",
-     "front_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-green-japan/gray/38.png",
      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-green-japan/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-green-japan/38.png"
-    }
-   },
-   "generation-v": {
-    "icons": {
-     "animated": {
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/icons/animated/38.png"
-     },
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/icons/38.png"
+     "back_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-green-japan/back/gray/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-green-japan/38.png",
+     "front_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/red-green-japan/gray/38.png"
     },
-    "black-white": {
-     "animated": {
-      "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/back/shiny/38.gif",
-      "back_female": null,
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/shiny/38.gif",
-      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/back/38.gif",
-      "front_female": null,
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/38.gif",
-      "back_shiny_female": null,
-      "front_shiny_female": null
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/back/shiny/38.png",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/back/38.png",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/38.png",
-     "back_shiny_female": null,
-     "front_shiny_female": null
+    "yellow": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/back/38.png",
+     "back_gbc": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/back/gbc/38.png",
+     "back_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/back/gray/38.png",
+     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/back/38.png",
+     "back_transparent_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/back/gray/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/38.png",
+     "front_gbc": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/gbc/38.png",
+     "front_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/gray/38.png",
+     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/38.png",
+     "front_transparent_gray": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-i/yellow/transparent/gray/38.png"
     }
    },
    "generation-ii": {
-    "gold": {
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/back/shiny/38.png",
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/38.png",
-     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/back/38.png",
-     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/38.png",
-     "back_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/back/shiny/38.png",
-     "front_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/shiny/38.png"
-    },
-    "silver": {
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/back/shiny/38.png",
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/38.png",
-     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/back/38.png",
-     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/38.png",
-     "back_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/back/shiny/38.png",
-     "front_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/shiny/38.png"
-    },
     "crystal": {
      "animated": {
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/animated/shiny/38.gif",
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/animated/38.gif"
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/animated/38.gif",
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/animated/shiny/38.gif"
      },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/back/shiny/38.png",
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/shiny/38.png",
      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/38.png",
-     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/transparent/back/38.png",
-     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/transparent/38.png",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/back/shiny/38.png",
      "back_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/transparent/back/shiny/38.png",
-     "front_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/transparent/shiny/38.png"
+     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/transparent/back/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/38.png",
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/shiny/38.png",
+     "front_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/transparent/shiny/38.png",
+     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/crystal/transparent/38.png"
+    },
+    "gold": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/back/38.png",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/back/shiny/38.png",
+     "back_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/back/shiny/38.png",
+     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/back/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/38.png",
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/shiny/38.png",
+     "front_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/shiny/38.png",
+     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/gold/transparent/38.png"
+    },
+    "silver": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/back/38.png",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/back/shiny/38.png",
+     "back_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/back/shiny/38.png",
+     "back_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/back/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/38.png",
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/shiny/38.png",
+     "front_shiny_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/shiny/38.png",
+     "front_transparent": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ii/silver/transparent/38.png"
+    }
+   },
+   "generation-iii": {
+    "emerald": {
+     "animated": {
+      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/back/38.png",
+      "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/back/shiny/38.png",
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/38.png",
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/shiny/38.png"
+     },
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/back/38.png",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/back/shiny/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/38.png",
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/shiny/38.png"
+    },
+    "firered-leafgreen": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/back/38.png",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/back/shiny/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/38.png",
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/shiny/38.png"
+    },
+    "icons": {
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/icons/38.png"
+    },
+    "ruby-sapphire": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/back/38.png",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/back/shiny/38.png",
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/38.png",
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/shiny/38.png"
     }
    },
    "generation-iv": {
+    "diamond-pearl": {
+     "animated": {
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/animated/38.png",
+      "front_female": null,
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/animated/shiny/38.png",
+      "front_shiny_female": null
+     },
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/back/38.png",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/back/shiny/38.png",
+     "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/38.png",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/shiny/38.png",
+     "front_shiny_female": null
+    },
+    "heartgold-soulsilver": {
+     "animated": {
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/animated/38.png",
+      "front_female": null,
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/animated/shiny/38.png",
+      "front_shiny_female": null
+     },
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/back/38.png",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/back/shiny/38.png",
+     "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/38.png",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/shiny/38.png",
+     "front_shiny_female": null
+    },
     "icons": {
      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/icons/38.png"
     },
     "platinum": {
      "animated": {
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/animated/shiny/38.png",
-      "front_female": null,
       "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/animated/38.png",
+      "front_female": null,
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/animated/shiny/38.png",
       "front_shiny_female": null
      },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/back/shiny/38.png",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/shiny/38.png",
      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/back/38.png",
-     "front_female": null,
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/back/shiny/38.png",
+     "back_shiny_female": null,
      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/38.png",
-     "back_shiny_female": null,
-     "front_shiny_female": null
-    },
-    "diamond-pearl": {
-     "animated": {
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/animated/shiny/38.png",
-      "front_female": null,
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/animated/38.png",
-      "front_shiny_female": null
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/back/shiny/38.png",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/back/38.png",
      "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/diamond-pearl/38.png",
-     "back_shiny_female": null,
-     "front_shiny_female": null
-    },
-    "heartgold-soulsilver": {
-     "animated": {
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/animated/shiny/38.png",
-      "front_female": null,
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/animated/38.png",
-      "front_shiny_female": null
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/back/shiny/38.png",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/back/38.png",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/heartgold-soulsilver/38.png",
-     "back_shiny_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iv/platinum/shiny/38.png",
      "front_shiny_female": null
     }
    },
    "generation-ix": {
     "champions": {
-     "icons": {
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/icons/shiny/38.png",
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/icons/38.png"
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/back/shiny/38.webp",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/shiny/38.webp",
      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/back/38.webp",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/38.webp",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/back/shiny/38.webp",
      "back_shiny_female": null,
-     "front_shiny_female": null
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/38.webp",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/shiny/38.webp",
+     "front_shiny_female": null,
+     "icons": {
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/icons/38.png",
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/champions/icons/shiny/38.png"
+     }
     },
     "legends-za": {
-     "icons": {
-      "front_shiny": null,
-      "front_female": null,
-      "front_default": null,
-      "front_shiny_female": null
-     },
-     "back_shiny": null,
-     "back_female": null,
-     "front_shiny": null,
      "back_default": null,
-     "front_female": null,
-     "front_default": null,
+     "back_female": null,
+     "back_shiny": null,
      "back_shiny_female": null,
-     "front_shiny_female": null
+     "front_default": null,
+     "front_female": null,
+     "front_shiny": null,
+     "front_shiny_female": null,
+     "icons": {
+      "front_default": null,
+      "front_female": null,
+      "front_shiny": null,
+      "front_shiny_female": null
+     }
     },
     "scarlet-violet": {
-     "icons": {
-      "front_female": null,
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/icons/38.png"
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/back/shiny/38.webp",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/shiny/38.webp",
      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/back/38.webp",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/38.webp",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/back/shiny/38.webp",
      "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/38.webp",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/shiny/38.webp",
+     "front_shiny_female": null,
+     "icons": {
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-ix/scarlet-violet/icons/38.png",
+      "front_female": null
+     }
+    }
+   },
+   "generation-v": {
+    "black-white": {
+     "animated": {
+      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/back/38.gif",
+      "back_female": null,
+      "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/back/shiny/38.gif",
+      "back_shiny_female": null,
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/38.gif",
+      "front_female": null,
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/animated/shiny/38.gif",
+      "front_shiny_female": null
+     },
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/back/38.png",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/back/shiny/38.png",
+     "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/38.png",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/black-white/shiny/38.png",
      "front_shiny_female": null
+    },
+    "icons": {
+     "animated": {
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/icons/animated/38.png"
+     },
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-v/icons/38.png"
     }
    },
    "generation-vi": {
-    "x-y": {
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/back/shiny/38.png",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/back/38.png",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/38.png",
-     "back_shiny_female": null,
-     "front_shiny_female": null
-    },
     "icons": {
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/icons/38.png"
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/icons/38.png",
+     "front_female": null
     },
     "omega-ruby-alpha-sapphire": {
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/back/shiny/38.png",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/shiny/38.png",
      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/back/38.png",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/38.png",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/back/shiny/38.png",
      "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/38.png",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/omega-ruby-alpha-sapphire/shiny/38.png",
      "front_shiny_female": null
-    }
-   },
-   "generation-iii": {
-    "icons": {
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/icons/38.png"
     },
-    "emerald": {
-     "animated": {
-      "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/back/shiny/38.png",
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/shiny/38.png",
-      "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/back/38.png",
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/animated/38.png"
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/back/shiny/38.png",
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/emerald/38.png"
-    },
-    "ruby-sapphire": {
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/back/shiny/38.png",
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/ruby-sapphire/38.png"
-    },
-    "firered-leafgreen": {
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/back/shiny/38.png",
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/shiny/38.png",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/back/38.png",
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-iii/firered-leafgreen/38.png"
+    "x-y": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/back/38.png",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/back/shiny/38.png",
+     "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/38.png",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vi/x-y/shiny/38.png",
+     "front_shiny_female": null
     }
    },
    "generation-vii": {
     "icons": {
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/icons/38.png"
-    },
-    "ultra-sun-ultra-moon": {
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/back/shiny/38.gif",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/shiny/38.gif",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/back/38.gif",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/38.gif",
-     "back_shiny_female": null,
-     "front_shiny_female": null
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/icons/38.png",
+     "front_female": null
     },
     "lets-go-pikachu-lets-go-eevee": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/back/38.gif",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/back/shiny/38.gif",
+     "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/38.gif",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/shiny/38.gif",
+     "front_shiny_female": null,
      "icons": {
       "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/icons/38.png"
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/back/shiny/38.gif",
+     }
+    },
+    "ultra-sun-ultra-moon": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/back/38.gif",
      "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/shiny/38.gif",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/back/38.gif",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/lets-go-pikachu-lets-go-eevee/38.gif",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/back/shiny/38.gif",
      "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/38.gif",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-vii/ultra-sun-ultra-moon/shiny/38.gif",
      "front_shiny_female": null
     }
    },
    "generation-viii": {
-    "sword-shield": {
-     "icons": {
-      "front_female": null,
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/icons/38.png"
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/back/shiny/38.webp",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/shiny/38.webp",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/back/38.webp",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/38.webp",
-     "back_shiny_female": null,
-     "front_shiny_female": null
-    },
-    "legends-arceus": {
-     "icons": {
-      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/icons/shiny/38.png",
-      "front_female": null,
-      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/icons/38.png",
-      "front_shiny_female": null
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/back/shiny/38.webp",
-     "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/shiny/38.webp",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/back/38.webp",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/38.webp",
-     "back_shiny_female": null,
-     "front_shiny_female": null
-    },
     "brilliant-diamond-shining-pearl": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/back/38.webp",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/back/shiny/38.webp",
+     "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/38.webp",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/shiny/38.webp",
+     "front_shiny_female": null,
      "icons": {
       "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/icons/38.png"
-     },
-     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/back/shiny/38.webp",
+     }
+    },
+    "legends-arceus": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/back/38.webp",
      "back_female": null,
-     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/shiny/38.webp",
-     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/back/38.webp",
-     "front_female": null,
-     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/brilliant-diamond-shining-pearl/38.webp",
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/back/shiny/38.webp",
      "back_shiny_female": null,
-     "front_shiny_female": null
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/38.webp",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/shiny/38.webp",
+     "front_shiny_female": null,
+     "icons": {
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/icons/38.png",
+      "front_female": null,
+      "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/legends-arceus/icons/shiny/38.png",
+      "front_shiny_female": null
+     }
+    },
+    "sword-shield": {
+     "back_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/back/38.webp",
+     "back_female": null,
+     "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/back/shiny/38.webp",
+     "back_shiny_female": null,
+     "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/38.webp",
+     "front_female": null,
+     "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/shiny/38.webp",
+     "front_shiny_female": null,
+     "icons": {
+      "front_default": "http://127.0.0.1:47819/dot.png?sprite=versions/generation-viii/sword-shield/icons/38.png",
+      "front_female": null
+     }
     }
    }
-  },
-  "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=back/shiny/38.png",
-  "back_female": null,
-  "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=shiny/38.png",
-  "back_default": "http://127.0.0.1:47819/dot.png?sprite=back/38.png",
-  "front_female": null,
-  "front_default": "http://127.0.0.1:47819/dot.png?sprite=38.png",
-  "back_shiny_female": null,
-  "front_shiny_female": null
+  }
  },
- "version_group": {
-  "name": "red-green-japan",
-  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/28/"
- },
- "form_names": [],
- "names": [],
+ "trigger_conditions": [],
  "types": [
   {
    "slot": 1,
@@ -401,6 +399,8 @@
    }
   }
  ],
- "trigger_conditions": [],
- "flavor_text_entries": []
+ "version_group": {
+  "name": "red-green-japan",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/28/"
+ }
 }

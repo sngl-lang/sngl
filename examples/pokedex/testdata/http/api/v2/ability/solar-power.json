@@ -1,0 +1,95 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "During strong sunlight, this Pokémon has 1.5× its Special Attack but takes 1/8 of its maximum HP in damage after each turn.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Increases Special Attack to 1.5× but costs 1/8 max HP after each turn during strong sunlight."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Boosts Sp. Atk, but\nlowers HP in sunshine.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "diamond-pearl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/8/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iv",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/4/"
+ },
+ "id": 94,
+ "is_main_series": true,
+ "name": "solar-power",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "サンパワー"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Force Soleil"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Solarkraft"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Poder Solar"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Solar Power"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "サンパワー"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": true,
+   "pokemon": {
+    "name": "charmander",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/4/"
+   },
+   "slot": 3
+  },
+  {
+   "is_hidden": true,
+   "pokemon": {
+    "name": "charmeleon",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/5/"
+   },
+   "slot": 3
+  }
+ ]
+}

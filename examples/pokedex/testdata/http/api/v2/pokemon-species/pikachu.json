@@ -35,6 +35,116 @@
    }
   },
   {
+   "flavor_text": "Il lui arrive de remettre d’aplomb\nun Pikachu allié en lui envoyant\nune décharge électrique.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "black",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/17/"
+   }
+  },
+  {
+   "flavor_text": "しっぽを　たてて　まわりの\nようすを　さぐっていると　ときどき\nかみなりが　しっぽに　おちてくる。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Es streckt seinen Schweif nach oben, um seine\nUmgebung zu prüfen. Häufig fährt ein Blitz hinein.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Levanta su cola para vigilar los alrededores. A veces,\npuede ser alcanzado por un rayo en esa pose.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "尻尾を　立てて　まわりの　様子を\n探っていると　ときどき\n雷が　尻尾に　落ちてくる。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "おたがいの　しっぽを　くっつけて\nでんきを　ながしあうのが\nピカチュウ　どうしの　あいさつだ。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Les Pikachu se disent bonjour en se frottant\nla queue et en y faisant passer du courant\nélectrique.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Pikachu begrüßen einander, indem sie ihre\nSchweife aneinanderreiben und eine Ladung\nStrom durch diese gleiten lassen.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Los miembros de esta especie se saludan entre\nsí uniendo sus colas y transmitiéndose corriente\neléctrica.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "おたがいの　しっぽを　くっつけて\n電気を　流しあうのが\nピカチュウ　同士の　挨拶だ。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
    "flavor_text": "Possesses cheek sacs in which it stores electricity. This clever\nforest-dweller roasts tough berries with an electric shock before\nconsuming them.",
    "language": {
     "name": "en",
@@ -51,10 +161,45 @@
  "gender_rate": 4,
  "genera": [
   {
+   "genus": "ねずみポケモン",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   }
+  },
+  {
+   "genus": "Pokémon Souris",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "genus": "Maus-Pokémon",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "genus": "Pokémon Ratón",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
    "genus": "Mouse Pokémon",
    "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  },
+  {
+   "genus": "ねずみポケモン",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
    }
   }
  ],
@@ -80,10 +225,45 @@
  "names": [
   {
    "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ピカチュウ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Pikachu"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Pikachu"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Pikachu"
+  },
+  {
+   "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
    },
    "name": "Pikachu"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ピカチュウ"
   }
  ],
  "order": 26,

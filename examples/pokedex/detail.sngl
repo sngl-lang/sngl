@@ -1,4 +1,5 @@
 import async "sngl:async"
+import i18n "sngl:i18n"
 import poke "openapi:./pokeapi.yml"
 import ui "sngl:ui"
 
@@ -12,6 +13,9 @@ const maxStat = 255
 // "" -- keyed on what the species said: a species name is not always a
 // Pokémon's. Its evolution chain is a third request, keyed on the chain's id;
 // a stage of it, or a form, opens that page, `form` "" for a species' own.
+// Every name the page shows of a resource of its own -- a type, an ability,
+// a move -- is a request keyed on it, made where the name is shown, and
+// `names` keeps each answer's names in every language.
 component detailPage(name string, form = "", @back(), @open(name string, form string)) ui.node {
     var about option[poke.PokemonSpeciesDetail] = null
     var mon option[poke.PokemonDetail] = null
@@ -22,6 +26,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     var evolution option[poke.EvolutionChainDetail] = null
     var tab = 0
     var method = $"Level"
+    var names map[string, list[Named]] = {}
 
     // The Pokémon the page shows: the form asked for, or the species' default.
     func shown() => about != null ? form != "" ? form : defaultVariety(about.varieties, about.name) : form
@@ -55,12 +60,20 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     // The moves the Pokémon learns the way `method` labels, in the latest game
     // of the dex chosen on home that it learns any in.
     func moveRows() list[MoveRow] {
-        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), methodNamed(method)) : []
+        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), methodNamed(method), names) : []
+    }
+
+    // The moves the Moves tab shows, each once.
+    func moveSlugs() => slugsOf(moveRows().map(func(r MoveRow) => "move/{r.move}"), `move`)
+
+    // The names of `kind` the Evolution tab shows.
+    func chainSlugs(kind string) list[string] {
+        return evolution != null ? chainNames(evolution.chain, kind) : []
     }
 
     // The species' evolution chain, a row for each line through it.
     func chainRows() list[list[Stage]] {
-        return evolution != null ? evolutionRows(evolution.chain) : []
+        return evolution != null ? evolutionRows(evolution.chain, names) : []
     }
 
     poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
@@ -74,16 +87,16 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
 
     ui.vbox(style={gap=8px, padding=8px}) {
         ui.hbox {
-            ui.button #backButton(text="Back", @click { back() })
+            ui.button #backButton(text=$"‹ Back", @click { back() })
         }
         if about == null && loading {
-            ui.spinner(label="Loading {display(name)}")
+            ui.spinner(label=loadingName(display(name)))
         }
         if failure != null {
-            ui.text #failed(value="Could not load {display(name)}: {failure.message}")
+            ui.text #failed(value=couldNotLoad(display(name), failure.message))
         }
         if monFailure != null {
-            ui.text(value="Could not load {display(name)}'s types and stats: {monFailure.message}")
+            ui.text(value=couldNotLoadMon(display(name), monFailure.message))
         }
         if about != null {
             ui.hbox(style={gap=16px, alignItems=center}) {
@@ -97,62 +110,85 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                     if mon != null {
                         ui.hbox(style={gap=4px}) {
                             for var t = mon.types {
-                                ui.badge #types(value=display(t.type.name))
+                                poke.typeRetrieve(id=t.type.name, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                ui.badge #types(value=called(names, `type`, t.type.name))
                             }
                         }
                     }
                 }
             }
             ui.tabs #tabs(:selected=tab) {
-                ui.tab(label="About") {
+                ui.tab(label=$"About") {
                     ui.vbox(style={gap=6px, padding=8px}) {
                         ui.text #flavor(value=latestFlavor(about.flavorTextEntries))
                         if mon != null {
-                            fact(label="Height") {
-                                ui.text #height(value=mon.height != null ? "{heightOf(mon.height)}" : "Unknown")
+                            for var a = mon.abilities {
+                                poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
                             }
-                            fact(label="Weight") {
-                                ui.text #weight(value=mon.weight != null ? "{weightOf(mon.weight)}" : "Unknown")
+                            fact(label=$"Height") {
+                                ui.text #height(value=mon.height != null ? metres(heightOf(mon.height)) : $"Unknown")
                             }
-                            fact(label="Abilities") {
-                                ui.text #abilities(value=abilitiesOf(mon.abilities))
+                            fact(label=$"Weight") {
+                                ui.text #weight(value=mon.weight != null ? kilograms(weightOf(mon.weight)) : $"Unknown")
+                            }
+                            fact(label=$"Abilities") {
+                                ui.text #abilities(value=abilitiesOf(mon.abilities, names))
                             }
                         }
-                        fact(label="Habitat") {
-                            ui.text #habitat(value=about.habitat != null ? display(about.habitat.name) : "Unknown")
+                        if about.habitat != null {
+                            poke.pokemonHabitatRetrieve(id=about.habitat.name, @load(got) { names["habitat/{got.name}"] = habitatNamed(got.names) })
                         }
-                        fact(label="Egg groups") {
-                            ui.text #eggGroups(value=namesOf(about.eggGroups.map(func(g poke.EggGroupSummary) => g.name)))
+                        for var g = about.eggGroups {
+                            poke.eggGroupRetrieve(id=g.name, @load(got) { names["egg-group/{got.name}"] = eggGroupNamed(got.names) })
                         }
-                        fact(label="Gender") {
-                            ui.text #gender(value=about.genderRate != null ? genderOf(about.genderRate) : "Unknown")
+                        fact(label=$"Habitat") {
+                            ui.text #habitat(value=about.habitat != null ? called(names, `habitat`, about.habitat.name) : $"Unknown")
                         }
-                        fact(label="Capture rate") {
-                            ui.text #capture(value=about.captureRate != null ? "{about.captureRate}" : "Unknown")
+                        fact(label=$"Egg groups") {
+                            ui.text #eggGroups(value=namesOf(`egg-group`, about.eggGroups.map(func(g poke.EggGroupSummary) => g.name), names))
+                        }
+                        fact(label=$"Gender") {
+                            ui.text #gender(value=about.genderRate != null ? genderOf(about.genderRate) : $"Unknown")
+                        }
+                        fact(label=$"Capture rate") {
+                            ui.text #capture(value=about.captureRate != null ? i18n.numberInt(about.captureRate) : $"Unknown")
                         }
                     }
                 }
-                ui.tab(label="Stats") {
+                ui.tab(label=$"Stats") {
                     ui.vbox(style={gap=6px, padding=8px}) {
                         if mon != null {
                             for var s = mon.stats {
+                                poke.statRetrieve(id=s.stat.name, @load(got) { names["stat/{got.name}"] = statNamed(got.names) })
                                 ui.hbox(style={gap=8px, alignItems=center}) {
-                                    ui.text(value=statLabel(s.stat.name), style={width=80px})
+                                    ui.text #statName(value=statLabel(s.stat.name, names), style={width=120px})
                                     ui.text #base(value="{s.baseStat}", style={width=40px})
-                                    ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name), style={flex=1})
+                                    ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names), style={flex=1})
                                 }
                             }
-                            fact(label="Total") {
+                            fact(label=$"Total") {
                                 ui.text #total(value="{statTotal(mon.stats)}")
                             }
-                            fact(label="EVs given") {
-                                ui.text #effort(value=effortOf(mon.stats))
+                            fact(label=$"EVs given") {
+                                ui.text #effort(value=effortOf(mon.stats, names))
                             }
                         }
                     }
                 }
-                ui.tab(label="Evolution") {
+                ui.tab(label=$"Evolution") {
                     ui.vbox(style={gap=12px, padding=8px}) {
+                        for var slug = chainSlugs(`item`) {
+                            poke.itemRetrieve(id=slug, @load(got) { names["item/{got.name}"] = itemNamed(got.names) })
+                        }
+                        for var slug = chainSlugs(`type`) {
+                            poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                        }
+                        for var slug = chainSlugs(`move`) {
+                            poke.moveRetrieve(id=slug, @load(got) { names["move/{got.name}"] = moveNamed(got.names) })
+                        }
+                        for var slug = chainSlugs(`trigger`) {
+                            poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{got.name}"] = triggerNamed(got.names) })
+                        }
                         for var row = chainRows() {
                             ui.hbox(style={gap=8px, alignItems=center}) {
                                 for var stage = row {
@@ -181,7 +217,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                         }
                     }
                 }
-                ui.tab(label="Sprites") {
+                ui.tab(label=$"Sprites") {
                     ui.vbox(style={gap=8px, padding=8px}) {
                         for var row = rows(pictures(), 4) {
                             ui.hbox(style={gap=8px}) {
@@ -205,8 +241,11 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                         }
                     }
                 }
-                ui.tab(label="Moves") {
+                ui.tab(label=$"Moves") {
                     ui.vbox(style={gap=8px, padding=8px}) {
+                        for var slug = moveSlugs() {
+                            poke.moveRetrieve(id=slug, @load(got) { names["move/{got.name}"] = moveNamed(got.names) })
+                        }
                         ui.select #methodPick(:value=method) {
                             for var m = learnMethods() {
                                 ui.choice(label=m.label)
@@ -217,8 +256,8 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                 ui.tableRow(cells=[r.level, r.name])
                             }
                         }
-                        if mon != null && moveRows().length() == 0 {
-                            ui.text #noMoves(value=$"It learns no moves this way.")
+                        if mon != null {
+                            ui.text #movesCount(value=movesNote(moveRows().length()))
                         }
                     }
                 }

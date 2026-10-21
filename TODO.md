@@ -237,33 +237,68 @@ SNGL has the features -- `$"..."` strings backed by `i18n.manifest.json`
 `i18n.locale` context, which a subtree or a test overrides -- and PokéAPI has
 the data. Languages: English, French, German, Spanish and Japanese.
 
-- [ ] A language choice in the app's shell, a `ui.select` providing
+- [X] A language choice in the app's shell, a `ui.select` providing
   `i18n.locale` around the `nav.stack`, starting at the process locale and at
   English where that is none of the five.
-- [ ] One function from a SNGL locale to PokéAPI's language names (`fr`,
+- [X] One function from a SNGL locale to PokéAPI's language names (`fr`,
   `de`, `es`, `ja-Hrkt` and `ja`, `en`), and one picker over any list of
   per-language entries, falling back to English, then to the resource's own
   name made readable: species names, genera, the newest description in the
   language, dex names.
-- [ ] The names a page shows that live on resources of their own -- types,
+- [X] The names a page shows that live on resources of their own -- types,
   abilities, stats, egg groups, habitat, the items and triggers in an
   evolution, moves and learn methods -- asked for by name where shown, each a
   query keyed on it. Say in the README what that costs per page, and whether
   a resource asked for twice on one screen is asked for twice.
-- [ ] The app's own words through `$"..."` and a manifest for the five
+- [X] The app's own words through `$"..."` and a manifest for the five
   languages: tab labels, About's labels, "Show more", the search placeholder,
   the errors, "Genderless", the dex count as a plural ("1 Pokémon" / "40
   Pokémon"). Numbers through `i18n.numberFloat`, so French reads "0,7 m".
-- [ ] Re-record what parts 4-9 trimmed to English, keeping the five
+- [X] Re-record what parts 4-9 trimmed to English, keeping the five
   languages, and record the per-name resources the screens ask for. The
   README's trim rules say which languages are kept.
-- [ ] Tests set `i18n.locale` with `t.setContext`: a species' name, genus and
+- [X] Tests set `i18n.locale` with `t.setContext`: a species' name, genus and
   description in Japanese and French; a type and an ability name; a word
   from the manifest; a plural; a decimal comma; and a language PokéAPI lacks
   for an entry falling back to English. Each fails when its behaviour is
   reverted.
 
+Notes:
+
+- Decided with the user: names on resources of their own go in a page store
+  (`names`, `kind/slug` to the names in every language) filled by a query
+  per distinct name a tab shows, so the line functions still return strings;
+  Japanese prefers `ja` (kanji), then `ja-hrkt`; the Moves tab's note is a
+  plural whose forms differ, so the plural test can fail; learn methods are
+  never asked for, since the select keeps the app's `$"..."` labels.
+- PokéAPI spells kana Japanese `ja-hrkt`, not `ja-Hrkt`. A habitat is named
+  in English, French and Spanish only, in lower case; a stat and an egg group
+  in kana only; a dex and a form have no Japanese name.
+- Left for part 11: a card's name on home and in Evolution is the species'
+  slug made readable (a card asks for nothing), and so is a dex's region; a
+  language chosen while the Moves tab shows a way other than level shows the
+  level moves, the old label matching no choice; a Japanese description's
+  line breaks become ASCII spaces (`oneLine`).
+- On html and android a test's `t.setContext` redraws nothing: a test's read
+  of a node's prop is evaluated in the test's locale, but a select's choices
+  stay in the language they were drawn in, so a test cannot pick a choice by
+  its translated label (`testHowManyMovesIsAPlural` does not).
+- gtk4 failed five of the tests, each a compiler bug with a neutral script
+  test on all six targets: an instance under a node of a slot's body was
+  built afresh by every render, so each answer re-rendered the tab and asked
+  for every name again; a rebuilt drop-down took the old one's address and
+  was offered no choices (the select part 9 saw unchanged); a render re-entered
+  from an answer that arrived during it; a reused instance's `@load` ran for
+  the last key. Fixing those found a crashed test program reported as `ok`,
+  a query's `fetch` prop never coloured as waiting (html, fyne, gtk4 and
+  android), bubbletea refusing an `@load` that reads its loop variable, and
+  android writing a function's local as the page's var. The MR description
+  lists each with its fixture.
+
 ## Part 11: every target, and the MR
+
+- [ ] Every line the example builds with `join` (`dexLine`, `oneLine`,
+  `display`) is built with `builder` once !265 is on main, as the user asked.
 
 - [ ] The example's tests cover each tab, the dex switch and the language
   switch, and pass on all six targets through `examples_runs.txt`.

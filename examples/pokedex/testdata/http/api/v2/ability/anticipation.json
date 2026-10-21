@@ -1,0 +1,95 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "When this Pokémon enters battle, if one of its opponents has a move that is super effective against it, Self-Destruct, Explosion, or a one-hit knockout move, all participating trainers are notified.\n\nThe move itself is not revealed; only that there is such a move.  Moves that inflict typeless damage, such as Future Sight, and moves of variable type, such as Hidden Power, count as their listed types.  Counter, Metal Burst, Mirror Coat, and one-hit KO moves to which this Pokémon is immune do not trigger this ability.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Notifies all trainers upon entering battle if an opponent has a super-effective move, Self-Destruct, Explosion, or a one-hit KO move."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Senses the foe’s\ndangerous moves.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "diamond-pearl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/8/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iv",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/4/"
+ },
+ "id": 107,
+ "is_main_series": true,
+ "name": "anticipation",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "きけんよち"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Anticipation"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Vorahnung"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Anticipación"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Anticipation"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "きけんよち"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": true,
+   "pokemon": {
+    "name": "eevee",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/133/"
+   },
+   "slot": 3
+  },
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "barboach",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/339/"
+   },
+   "slot": 2
+  }
+ ]
+}

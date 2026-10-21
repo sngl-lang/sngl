@@ -4377,7 +4377,9 @@ components:
           maximum: 2147483647
           minimum: -2147483648
         fling_effect:
-          $ref: '#/components/schemas/ItemFlingEffectSummary'
+          oneOf:
+          - $ref: '#/components/schemas/ItemFlingEffectSummary'
+          - type: 'null'
         attributes:
           type: array
           items:
@@ -4996,14 +4998,18 @@ components:
           maximum: 2147483647
           minimum: -2147483648
         effect_chance:
-          type: integer
+          type:
+          - integer
+          - 'null'
         effect_entries:
           type: array
           items:
             $ref: '#/components/schemas/MoveEffectEffectText'
           readOnly: true
         type:
-          $ref: '#/components/schemas/TypeSummary'
+          oneOf:
+          - $ref: '#/components/schemas/TypeSummary'
+          - type: 'null'
         version_group:
           $ref: '#/components/schemas/VersionGroupSummary'
       required:
@@ -5119,7 +5125,9 @@ components:
           maximum: 2147483647
           minimum: -2147483648
         effect_chance:
-          type: integer
+          type:
+          - integer
+          - 'null'
         pp:
           type:
           - integer
@@ -5146,7 +5154,9 @@ components:
         contest_type:
           $ref: '#/components/schemas/ContestTypeSummary'
         contest_effect:
-          $ref: '#/components/schemas/ContestEffectSummary'
+          oneOf:
+          - $ref: '#/components/schemas/ContestEffectSummary'
+          - type: 'null'
         damage_class:
           $ref: '#/components/schemas/MoveDamageClassSummary'
         effect_entries:
@@ -8309,7 +8319,9 @@ components:
             $ref: '#/components/schemas/CharacteristicSummary'
           readOnly: true
         move_damage_class:
-          $ref: '#/components/schemas/MoveDamageClassSummary'
+          oneOf:
+          - $ref: '#/components/schemas/MoveDamageClassSummary'
+          - type: 'null'
         names:
           type: array
           items:
@@ -8421,7 +8433,9 @@ components:
         generation:
           $ref: '#/components/schemas/GenerationSummary'
         move_damage_class:
-          $ref: '#/components/schemas/MoveDamageClassSummary'
+          oneOf:
+          - $ref: '#/components/schemas/MoveDamageClassSummary'
+          - type: 'null'
         names:
           type: array
           items:

@@ -1,0 +1,121 @@
+{
+ "affecting_items": [
+  {
+   "name": "calcium",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/49/"
+  },
+  {
+   "name": "x-sp-atk",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/61/"
+  }
+ ],
+ "affecting_moves": {
+  "decrease": [
+   {
+    "change": -2,
+    "move": {
+     "name": "memento",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/262/"
+    }
+   },
+   {
+    "change": -1,
+    "move": {
+     "name": "mist-ball",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/296/"
+    }
+   }
+  ],
+  "increase": [
+   {
+    "change": 1,
+    "move": {
+     "name": "growth",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/74/"
+    }
+   },
+   {
+    "change": 1,
+    "move": {
+     "name": "ancient-power",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/246/"
+    }
+   }
+  ]
+ },
+ "affecting_natures": {
+  "decrease": [
+   {
+    "name": "adamant",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/11/"
+   },
+   {
+    "name": "impish",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/12/"
+   }
+  ],
+  "increase": [
+   {
+    "name": "modest",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/3/"
+   },
+   {
+    "name": "mild",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/8/"
+   }
+  ]
+ },
+ "characteristics": [
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/4/"
+  },
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/10/"
+  }
+ ],
+ "game_index": 5,
+ "id": 4,
+ "is_battle_only": false,
+ "move_damage_class": {
+  "name": "special",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-damage-class/3/"
+ },
+ "name": "special-attack",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "とくこう"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Attaque Spéciale"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Spezialangriff"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Ataque Especial"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Special Attack"
+  }
+ ]
+}

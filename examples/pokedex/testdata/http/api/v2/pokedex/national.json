@@ -1,6 +1,27 @@
 {
  "descriptions": [
   {
+   "description": "Pokédex National complet",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "description": "Komplette Nationale Dex",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "description": "Pokédex Nacional completa",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
    "description": "Entire National dex",
    "language": {
     "name": "en",
@@ -12,6 +33,27 @@
  "is_main_series": true,
  "name": "national",
  "names": [
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "National"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "National"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Nacional"
+  },
   {
    "language": {
     "name": "en",

@@ -35,10 +35,120 @@
    }
   },
   {
+   "flavor_text": "La nuit, la queue ardente du Reptincel\nbrille comme une étoile dans son\nrepaire montagneux.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "black",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/17/"
+   }
+  },
+  {
+   "flavor_text": "しっぽを　ふりまわして　あいてを\nなぎたおし　するどい　ツメで\nズタズタに　ひきさいてしまう。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Es schlägt im Kampf mit seinem Schwanz nach\nseinen Gegnern. Anschließend zerfetzt es\ndie Gegner mit seinen scharfen Klauen.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Suele usar la cola para derribar a su rival. Cuando lo\ntira, se vale de sus afiladas garras para acabar con él.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "尻尾を　振り回して\n相手を　なぎ倒し　鋭い　ツメで\nズタズタに　ひきさいてしまう。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "たたかいで　きもちが　たかぶると\nしゃくねつの　ほのおを　ふきながら\nあたりを　もやしてまわる。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "S’il s’excite pendant un combat, il crache\nde grandes flammes, brûlant tout ce qui\nse trouve aux alentours.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Steigert es sich in einen Kampf hinein, spuckt es\nFlammen, die alles in seiner Umgebung\nniederbrennen.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Si se exalta en combate, expulsa intensas\nllamaradas que incineran todo a su alrededor.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
    "flavor_text": "If it becomes agitated during battle, it spouts\nintense flames, incinerating its surroundings.",
    "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "戦いで　気持ちが　たかぶると\n灼熱の　炎を　吹きながら\nあたりを　燃やしてまわる。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
    },
    "version": {
     "name": "shield",
@@ -51,10 +161,45 @@
  "gender_rate": 1,
  "genera": [
   {
+   "genus": "かえんポケモン",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   }
+  },
+  {
+   "genus": "Pokémon Flamme",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "genus": "Flammen-Pokémon",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "genus": "Pokémon Llama",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
    "genus": "Flame Pokémon",
    "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  },
+  {
+   "genus": "かえんポケモン",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
    }
   }
  ],
@@ -80,10 +225,45 @@
  "names": [
   {
    "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "リザード"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Reptincel"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Glutexo"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Charmeleon"
+  },
+  {
+   "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
    },
    "name": "Charmeleon"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "リザード"
   }
  ],
  "order": 5,

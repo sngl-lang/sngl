@@ -2,8 +2,9 @@
 
 A choice of Pokédex from [PokéAPI](https://pokeapi.co) and a grid of its
 Pokémon, and a page per species and per form of one: a header of its artwork,
-name, number, genus and types over tabs about it. It builds for html, fyne, gtk4, bubbletea and android, and
-the interpreter runs it. Nothing in it makes a request by hand, and nothing in
+name, number, genus and types over tabs about it, in English, French, German,
+Spanish or Japanese. It builds for html, fyne, gtk4, bubbletea and android,
+and the interpreter runs it. Nothing in it makes a request by hand, and nothing in
 it says how a target waits for one.
 
 ```
@@ -14,14 +15,15 @@ sngl generate --platform android   --lang kotlin -o /tmp/dex-apk examples/pokede
 
 ## How it is put together
 
-| file                | what is in it                                                                             |
-|---------------------|-------------------------------------------------------------------------------------------|
-| `app.sngl`          | the window: a `nav.stack` of home, a page per Pokémon and a page per form                 |
-| `home.sngl`         | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time                          |
-| `detail.sngl`       | a species' page: a header over About, Stats, Evolution, Sprites and Moves                 |
-| `names.sngl`        | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text |
-| `pokeapi.yml`       | PokéAPI's OpenAPI document, vendored                                                      |
-| `pokedex_test.sngl` | the tests, against the answers in `testdata/http`                                         |
+| file                 | what is in it                                                                                       |
+|----------------------|-----------------------------------------------------------------------------------------------------|
+| `app.sngl`           | the window: a choice of language over a `nav.stack` of home, a page per Pokémon and a page per form |
+| `home.sngl`          | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time                                    |
+| `detail.sngl`        | a species' page: a header over About, Stats, Evolution, Sprites and Moves                           |
+| `names.sngl`         | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text           |
+| `pokeapi.yml`        | PokéAPI's OpenAPI document, vendored                                                                |
+| `i18n.manifest.json` | the app's own words in French, German, Spanish and Japanese                                         |
+| `pokedex_test.sngl`  | the tests, against the answers in `testdata/http`                                                   |
 
 **The API is an import.** `import poke "openapi:./pokeapi.yml"` reads
 PokéAPI's own OpenAPI document and writes a SNGL package from it: a struct for
@@ -61,8 +63,8 @@ poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
 poke.pokedexRetrieve(id=dexName, :value=dex, :pending=loading, :failure=failure)
 ```
 
-Beside the select are the dex's English name, its region ("every region"
-for the National dex, which has none) and how many Pokémon it holds.
+Beside the select are the dex's name, its region ("every region" for the
+National dex, which has none) and how many Pokémon it holds.
 
 The dex chosen is the package's, not the page's: `dexName` and the answer,
 `chosenDex`, are package `var`s home's select and request write. So home
@@ -97,12 +99,13 @@ if about != null {
 }
 ```
 
-The header needs only the species -- its artwork through `artwork`, its
-English name and genus, its national number as `#001` -- but for its types,
-which wait for the Pokémon. Under it is a `ui.tabs`: About, Stats, Evolution,
+The header needs only the species -- its artwork through `artwork`, its name
+and genus, its national number as `#001` -- but for its types, which wait for
+the Pokémon and are asked for by name (see [Languages](#languages)). Under it is a `ui.tabs`: About, Stats, Evolution,
 Sprites and Moves.
 
-**About** is the species' newest English description on one line (the games
+**About** is the species' newest description in the reader's language on one
+line (the games
 break a description with newlines and form feeds where their text box did),
 the Pokémon's height and weight in metres and kilograms -- `unit length { m }`
 and `unit mass { kg }`, since PokéAPI gives tenths of each -- its abilities with
@@ -114,8 +117,9 @@ values defeating the Pokémon gives. Each line's text is a function in
 
 Every name and text PokéAPI gives per language -- a species' name and genus,
 its newest description, a dex's name -- is picked by one function,
-`inLanguage`, out of the entries PokéAPI lists for it, the reader's language
-being English until the app offers others.
+`inLanguage`, out of the entries PokéAPI lists for it, and every name that
+lives on a resource of its own -- an ability, a habitat, an egg group, a stat
+-- is a request for it ([Languages](#languages)).
 
 **Evolution** is the species' evolution chain, the page's third request,
 keyed on the chain's id out of the species' `evolution_chain` URL:
@@ -133,8 +137,8 @@ PokéAPI lists every way a stage is reached, game by game, and marks the ones
 to show `is_default`: Leafeon by a Leaf Stone, not by levelling up in Eterna
 Forest. A stage shows its first default detail, or its first where none is
 marked. The words are the app's own, each a `$"..."` in `triggerOf`, and an
-item, a type or a trigger is PokéAPI's name made readable, until the names
-PokéAPI gives each language are asked for.
+item, a type, a move or a trigger is PokéAPI's name for it in the reader's
+language, asked for by name.
 
 Tapping a card opens that species' page. `detailPage` hands the name up
 through `@open`, and the app's stack goes to it as home's `@open` does; where
@@ -198,10 +202,11 @@ scarlet-violet's 25), so `versionGroups` in `names.sngl` lists the groups in
 the order their games came out, PokéAPI's `order`, and a group added after
 it counts as the newest. Bulbasaur's moves are Scarlet and Violet's under
 the National dex and FireRed and LeafGreen's under Kanto. A form's page lists
-the form's moves, since the Pokémon asked for is the form. A way with no
-moves says so under the table, and the headings and the select's labels are
-the app's own words; a move's name is PokéAPI's made readable until the names
-each language gives are asked for.
+the form's moves, since the Pokémon asked for is the form. Under the table
+the tab says how many moves the way teaches, none included, and the headings
+and the select's labels are the app's own words; a move's name is PokéAPI's
+in the reader's language, asked for by name, and the ways with no level order
+by it.
 
 **Pages.** The app is a `nav.stack` of two pages. The detail page's params are
 a struct, and its href names their field:
@@ -222,6 +227,108 @@ handle read above it in source has the params type its props bind.
 On html each page is a route, so the app is served by a Go program
 (`--lang go`). Elsewhere the stack is the target's own: a NavHost on android,
 a field of the model on the desktop and in the terminal.
+
+## Languages
+
+The app reads in English, French, German, Spanish or Japanese. Above the
+stack is a `ui.select` of the five, each named in itself, and the stack is
+under an `i18n.locale` provider holding the one chosen:
+
+```sngl
+ui.select #languagePick(:value=language) {
+    for var l = languages {
+        ui.choice(label=l.label)
+    }
+}
+i18n.locale(localeLabelled(language)) {
+    nav.stack #pages { … }
+}
+```
+
+It starts at the process's locale -- `fr_CA.UTF-8` is French -- and at English
+where that is none of the five (`languageLabel`).
+
+**What PokéAPI says is picked by one function.** `pokeLanguages` turns a SNGL
+locale into PokéAPI's names for its language, in the order to look for them,
+English last: `fr`, `de` and `es` alone, and Japanese as `ja`, then `ja-hrkt`.
+PokéAPI writes Japanese twice, `ja` in kanji as the newer games print it and
+`ja-hrkt` in kana, and some resources only in kana, a stat or an egg group
+among them. `inLanguage` takes any list of per-language entries and gives the
+last entry in the first of those languages that has one -- the newest
+description, since PokéAPI lists them game by game -- and the resource's own
+name made readable where none has. A species' name and genus, its newest
+description, a dex's name and a form's name all go through it.
+
+PokéAPI does not name everything in every language, so the fallback is
+reached: a habitat has English, French and Spanish names only, in lower case
+("grassland", "champs"), and German reads it in English; a dex and a form have
+no Japanese name.
+
+**A name that lives on a resource of its own is a request for it.** A type,
+an ability, a stat, an egg group, a habitat, the items, types, moves and
+triggers an evolution names, and a move are asked for by name where the page
+shows them, each a query keyed on it under a `for` over the names shown:
+
+```sngl
+for var a = mon.abilities {
+    poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
+}
+```
+
+`names` is the page's: a map from `kind/slug` to the resource's names in every
+language. The lines' functions -- `abilitiesOf`, `effortOf`, `triggerOf`,
+`movesOf` -- take it and still answer strings, through `called`, which reads
+the name in the reader's language and the slug made readable until the answer
+arrives. So the table and the select keep their strings, and choosing
+another language asks for nothing again.
+
+What that costs per page, beside the page's own three or four requests:
+
+| where      | asked for                                     | Bulbasaur |
+|------------|-----------------------------------------------|-----------|
+| the header | each type                                     | 2         |
+| About      | each ability, the habitat, each egg group     | 5         |
+| Stats      | each stat                                     | 6         |
+| Evolution  | each item, type, move or trigger a step names | 0         |
+| Moves      | each move the way chosen teaches              | 15        |
+
+Eevee's Evolution asks for six: five stones and the Fairy type. The requests
+of a tab are made when it is shown, since a tab's panel mounts then.
+
+**A resource is asked for once per place it is shown.** A tab asks for each
+name it shows once, however many times it shows it -- a move learned at two
+levels, a stone two stages reach. Nothing is kept between places or between
+showings: the header's Fairy type and a Fairy move in Evolution are two
+requests, and a tab shown again asks again, though what the first answer
+put in `names` shows while the second is on its way. A page opened again
+starts with no names.
+
+**The app's own words are `$"..."`**, and `i18n.manifest.json` translates
+each into the four other languages: the tab labels, About's and Stats'
+labels, the sprite labels, the Moves tab's headings, choices and note, the
+words of an evolution's step, "Show more", the search's placeholder, the
+errors and "Genderless". A word is a key, and a key has one meaning: the
+page's back button is "‹ Back", since a sprite's "Back" is the Pokémon's back
+(French "Retour" and "Dos"). A line joining several names joins them with
+`$"{text}, {p}"`, so Japanese joins with 「、」.
+
+Two counts are plurals: a dex's, "40 Pokémon" ("40匹" in Japanese), and the
+Moves tab's note, "It learns no moves this way.", "It learns 1 move this
+way.", "It learns 15 moves this way." Numbers are written as the reader
+writes them, by `i18n.numberFloat` and `i18n.numberInt`: Bulbasaur is "0.7
+m" in English and "0,7 m" in French, and "87.5% male, 12.5% female" is
+"87,5 % mâles, 12,5 % femelles".
+
+The Moves select's labels are the app's own words, and choosing one maps the
+label back to its way of learning by comparing it with the same `$"..."`
+labels (`methodNamed`), so it holds in any language. Learn methods are
+therefore never asked for. A language chosen while the Moves tab shows a way
+leaves its label in the old language, which matches no choice, and the tab
+shows the moves by level.
+
+Left in English, or as PokéAPI's slug made readable: a card's name on home
+and in Evolution -- a species' name lives on the species, and a card asks for
+nothing -- and a dex's region.
 
 ## Where each target stands
 
@@ -268,22 +375,39 @@ func testStatsGiveEveryEffort(t test.Test, c bud) {
         c.detail.tabs.change(1)
     }
     t.assert(c.detail.total != null && c.detail.total.value == "405")
-    t.assert(c.detail.effort != null && c.detail.effort.value == "1 Sp. Atk, 1 Sp. Def")
+    t.assert(c.detail.effort != null && c.detail.effort.value == "1 Special Attack, 1 Special Defense")
 }
 ```
 
 `c.detail.tabs.change(1)` chooses a tab as a user does, by pressing the one
 at that index. A test is a root, so what a page's function reads of a context
 is what the test provides: `testTheHeaderNamesTheSpecies` sets `artwork` with
-`t.setContext` before it asks the page which picture it shows.
+`t.setContext` before it asks the page which picture it shows, and a test of
+another language sets `i18n.locale` the same way:
+
+```sngl
+func testADecimalCommaInFrench(t test.Test, c seed) {
+    t.setContext(i18n.locale, "fr")
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.height != null && c.detail.height.value == "0,7 m")
+}
+```
+
+Every other test reads English. `examples_runs.txt` sets `LC_ALL` to
+`en_US.UTF-8`, since a test that sets no locale reads the process's, and a
+name PokéAPI gives arrives after the page does, so a test of one waits for it.
 
 `testdata/http` is PokéAPI's answers, recorded from https://pokeapi.co: the
 list of Pokédexes, as home asks for it (`limit=50`); the National, Kanto and
 Johto dexes; the Pokémon, its
 species and its evolution chain for Bulbasaur's and Charmander's lines,
 Eevee, Pikachu, Raichu, Vulpix and Ninetales; the Pokémon of Alolan Vulpix,
-Raichu and Ninetales; and the forms the tests' cards ask for, under
-`api/v2/pokemon-form/`. Each is trimmed so nothing a test
+Raichu and Ninetales; the forms the tests' cards ask for, under
+`api/v2/pokemon-form/`; and the resources a test's page asks a name of: every
+recorded Pokémon's types and abilities, every recorded species' habitat and
+egg groups, the six stats, the stones the recorded chains name, and the moves
+Bulbasaur learns in Scarlet and Violet, the one Moves tab a test shows. Each
+is trimmed so nothing a test
 runs reaches the network and no file is longer than the app reads: every
 link points at the harness's server and every picture at its `/dot.png`, a
 sprite's with its path under PokéAPI's sprites in the query
@@ -293,10 +417,14 @@ dex list keeps the three dexes recorded, and a dex its first 40
 entries; a Pokémon's moves are those of Scarlet and Violet, FireRed and
 LeafGreen, and Crystal -- the latest group of each recorded dex -- every one
 learned by level and, per group, the first four of each other method, a
-move's method in a group being its first detail's there; a species keeps its English genus,
-names and first and last English descriptions and its first three varieties;
-a form keeps its English names and first English description; and every other
-long list is cut to its first entries. A request's path
+move's method in a group being its first detail's there; every name or text
+given per language is kept in the five languages the app offers, Japanese as
+both `ja` and `ja-hrkt`, and nothing else: a species' genus and names, its
+first and last description in each, and its first three varieties; a form's
+and a dex's names, and a form's first description in each; a resource asked
+for by name its names, its other per-language lists in English alone, and
+each other list cut to its first two entries; and every other long list is
+cut to its first entries. A request's path
 names its file with the trailing slash dropped, then `@` and the query in key
 order where there is one, then `.json`: `/api/v2/pokemon/ivysaur/` is
 `api/v2/pokemon/ivysaur.json`, and the list of Pokédexes,
@@ -339,6 +467,12 @@ with these corrections:
   female). Each picture may be `null`, as a female one is for a Pokémon that
   looks the same either way.
 - `PokedexDetail.region` may be `null`: the National dex has none.
+- What the names the app asks for decode as: `TypeDetail.move_damage_class`
+  and `StatDetail.move_damage_class` may be `null` (Fairy, HP, Speed),
+  `ItemDetail.fling_effect` may be (a Thunder Stone), and so may
+  `MoveDetail.contest_effect` (Seed Bomb), `MoveDetail.effect_chance`, and
+  `MoveChange.effect_chance` and `MoveChange.type`, a move's past values
+  (Tackle).
 
 The species' genus, descriptions, egg groups, gender and capture rates and
 varieties were declared already, and decode as published; its habitat is the

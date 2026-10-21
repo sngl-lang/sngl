@@ -1,0 +1,95 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "The weather changes to hail when this Pokémon enters battle and does not end unless cancelled by another weather condition.\n\nIf multiple Pokémon with this ability, Drizzle, Drought, or Sand Stream are sent out at the same time, the abilities will activate in order of Speed, respecting Trick Room.  Each ability's weather will cancel the previous weather, and only the weather summoned by the slowest of the Pokémon will stay.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Summons hail that lasts indefinitely upon entering battle."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "The Pokémon summons a\nhailstorm in battle.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "diamond-pearl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/8/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iv",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/4/"
+ },
+ "id": 117,
+ "is_main_series": true,
+ "name": "snow-warning",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ゆきふらし"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Alerte Neige"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Hagelalarm"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Nevada"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Snow Warning"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ゆきふらし"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "snover",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/459/"
+   },
+   "slot": 1
+  },
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "abomasnow",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/460/"
+   },
+   "slot": 1
+  }
+ ]
+}

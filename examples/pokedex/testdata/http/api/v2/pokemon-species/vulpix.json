@@ -28,6 +28,116 @@
    }
   },
   {
+   "flavor_text": "Il envoie des boules de feu. Avec\nl’âge, ses six queues en forment de\nnouvelles.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "black",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/17/"
+   }
+  },
+  {
+   "flavor_text": "うまれたとき　しっぽは　まっしろで\n１ぽんしかない。そだつと　やがて\nさきが　わかれて　しっぽが　ふえる。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Dieses Pokémon hat bei seiner Geburt nur einen\nSchweif, der sich mit zunehmendem Alter aufspaltet.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Cuando nace solo tiene una cola, pero a medida que\ncrece, esta se va dividiendo desde la punta.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "生まれたとき　尻尾は　真っ白で\n１本しかない。育つと　やがて\n先が　分かれて　尻尾が　増える。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "６ぽんの　しっぽは　そだつごとに\nけなみが　よくなり　うつくしくなる。\nだきしめると　ほんのり　あたたかい。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Avec l’âge, la fourrure de ses six queues devient\nde plus en plus belle et soyeuse.\nElle est chaude au toucher.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Sein Fell wird geschmeidiger, wenn seine sechs\nSchweife wachsen. Wenn man das Fell berührt,\nfühlt es sich leicht warm an.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Su pelaje se va volviendo más suave, lustroso\ny bello a medida que le crecen las seis colas.\nAl abrazarlo, emana una ligera calidez.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "６本の　しっぽは　育つごとに\n毛並みが　良くなり　美しくなる。\n抱きしめると　ほんのり　温かい。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
    "flavor_text": "In its belly burns a fire, which Vulpix spits out in the form of\nfireballs. When young, this Pokémon has but one white tail.\nAs the Pokémon matures, this single tail splits into six.",
    "language": {
     "name": "en",
@@ -44,10 +154,45 @@
  "gender_rate": 6,
  "genera": [
   {
+   "genus": "きつねポケモン",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   }
+  },
+  {
+   "genus": "Pokémon Renard",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "genus": "Fuchs-Pokémon",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "genus": "Pokémon Zorro",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
    "genus": "Fox Pokémon",
    "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  },
+  {
+   "genus": "きつねポケモン",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
    }
   }
  ],
@@ -73,10 +218,45 @@
  "names": [
   {
    "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ロコン"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Goupix"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Vulpix"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Vulpix"
+  },
+  {
+   "language": {
     "name": "en",
     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
    },
    "name": "Vulpix"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ロコン"
   }
  ],
  "order": 39,

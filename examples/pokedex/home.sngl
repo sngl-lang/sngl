@@ -68,15 +68,15 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
                 }
             }
             if chosenDex != null {
-                ui.text #about(value="{dexTitle(chosenDex.names, chosenDex.name)} · {chosenDex.region != null ? display(chosenDex.region.name) : "every region"} · {chosenDex.pokemonEntries.length()} Pokémon")
+                ui.text #about(value=dexLine(chosenDex))
             }
         }
-        ui.input #searchBox(placeholder="Search this Pokédex", :value=search)
+        ui.input #searchBox(placeholder=$"Search this Pokédex", :value=search)
         if failure != null {
-            ui.text(value="Could not load the Pokédex: {failure.message}")
+            ui.text(value=couldNotLoadDex(failure.message))
         }
         if chosenDex == null && loading {
-            ui.spinner(label="Loading")
+            ui.spinner(label=$"Loading")
         }
         ui.scroll(style={flex=1}) {
             ui.vbox(style={gap=8px}) {
@@ -90,7 +90,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
             }
         }
         if matching().length() > shown {
-            ui.button #more(text="Show more", @click { shown += pageSize })
+            ui.button #more(text=$"Show more", @click { shown += pageSize })
         }
     }
 }
@@ -107,3 +107,13 @@ component card(entry poke.PokemonDexNumber, @open()) ui.node {
         ui.button(text=display(entry.pokemonSpecies.name), @click { open() })
     }
 }
+
+// What a dex is: its name, its region and how many Pokémon it holds,
+// "Kanto · Kanto · 40 Pokémon".
+func dexLine(dex poke.PokedexDetail) string {
+    var region = dex.region != null ? display(dex.region.name) : $"every region"
+    return [dexTitle(dex.names, dex.name), region, dexCount(dex.pokemonEntries.length())].join(" · ")
+}
+
+// What home says where the dex failed to load, and why.
+func couldNotLoadDex(why string) => $"Could not load the Pokédex: {why}"

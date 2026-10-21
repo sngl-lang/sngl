@@ -1,0 +1,125 @@
+{
+ "effect_changes": [
+  {
+   "effect_entries": [
+    {
+     "effect": "Feu Follet ne déclenche pas ce talent pour un Pokémon immunisé à la brûlure.",
+     "language": {
+      "name": "fr",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+     }
+    },
+    {
+     "effect": "Irrlicht triggert die Fähigkeit nicht bei Pokémon die immun gegen Verbrennung sind.",
+     "language": {
+      "name": "de",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+     }
+    },
+    {
+     "effect": "This Pokemon is immune to Fire-type moves, as long as it is not frozen. The first time it is hit by a Fire-type move, damage from its Fire-type attacks will be multiplied by 1.5 as long as it remains active and has this Ability. If this Pokemon has a non-volatile status condition, is a Fire type, or has a substitute, Will-O-Wisp will not activate this Ability.",
+     "language": {
+      "name": "en",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+     }
+    }
+   ],
+   "version_group": {
+    "name": "diamond-pearl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/8/"
+   }
+  }
+ ],
+ "effect_entries": [
+  {
+   "effect": "This Pokémon is immune to Fire-type moves.  Once this Pokémon has been hit by a Fire move, its own Fire moves will inflict 1.5× as much damage until it leaves battle.\n\nThis ability has no effect while the Pokémon is frozen.  The Fire damage bonus is retained even if the Pokémon is frozen and thawed or the ability is lost or disabled.  Fire moves will ignore this Pokémon's Substitute.  This ability takes effect even on non-damaging moves, i.e. Will-O-Wisp.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Protects against Fire moves.  Once one has been blocked, the Pokémon's own Fire moves inflict 1.5× damage until it leaves battle."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Powers up if hit by fire.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "ruby-sapphire",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/5/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iii",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/3/"
+ },
+ "id": 18,
+ "is_main_series": true,
+ "name": "flash-fire",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "もらいび"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Torche"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Feuerfänger"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Absorbe Fuego"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Flash Fire"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "もらいび"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "vulpix",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/37/"
+   },
+   "slot": 1
+  },
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "ninetales",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/38/"
+   },
+   "slot": 1
+  }
+ ]
+}

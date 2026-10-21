@@ -1,0 +1,223 @@
+{
+ "damage_relations": {
+  "double_damage_from": [
+   {
+    "name": "fighting",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/2/"
+   }
+  ],
+  "double_damage_to": [],
+  "half_damage_from": [],
+  "half_damage_to": [
+   {
+    "name": "rock",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/6/"
+   },
+   {
+    "name": "steel",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/9/"
+   }
+  ],
+  "no_damage_from": [
+   {
+    "name": "ghost",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/8/"
+   }
+  ],
+  "no_damage_to": [
+   {
+    "name": "ghost",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/8/"
+   }
+  ]
+ },
+ "game_indices": [
+  {
+   "game_index": 0,
+   "generation": {
+    "name": "generation-i",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+   }
+  },
+  {
+   "game_index": 0,
+   "generation": {
+    "name": "generation-ii",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/2/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-i",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+ },
+ "id": 1,
+ "move_damage_class": {
+  "name": "physical",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-damage-class/2/"
+ },
+ "moves": [
+  {
+   "name": "pound",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/1/"
+  },
+  {
+   "name": "double-slap",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/3/"
+  }
+ ],
+ "name": "normal",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ノーマル"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Normal"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Normal"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Normal"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Normal"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ノーマル"
+  }
+ ],
+ "past_damage_relations": [],
+ "pokemon": [
+  {
+   "pokemon": {
+    "name": "pidgey",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/16/"
+   },
+   "slot": 1
+  },
+  {
+   "pokemon": {
+    "name": "pidgeotto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/17/"
+   },
+   "slot": 1
+  }
+ ],
+ "sprites": {
+  "generation-iii": {
+   "colosseum": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "emerald": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "firered-leafgreen": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "ruby-sapphire": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "xd": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   }
+  },
+  "generation-iv": {
+   "diamond-pearl": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "heartgold-soulsilver": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "platinum": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   }
+  },
+  "generation-ix": {
+   "scarlet-violet": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   }
+  },
+  "generation-v": {
+   "black-2-white-2": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "black-white": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   }
+  },
+  "generation-vi": {
+   "omega-ruby-alpha-sapphire": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "x-y": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   }
+  },
+  "generation-vii": {
+   "lets-go-pikachu-lets-go-eevee": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   },
+   "sun-moon": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "ultra-sun-ultra-moon": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   }
+  },
+  "generation-viii": {
+   "brilliant-diamond-shining-pearl": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   },
+   "legends-arceus": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   },
+   "sword-shield": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   }
+  }
+ }
+}
