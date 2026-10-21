@@ -218,6 +218,7 @@ window.__sngl_boot = () => {
     state.attempt__inst0__inst0 += 1;
   }
   function __snglTeardown() {
+    __effects0_torn = true;
     __effect1_teardown();
     __effect0_teardown();
   }
@@ -232,6 +233,7 @@ window.__sngl_boot = () => {
   var __effect1_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
@@ -310,23 +312,25 @@ window.__sngl_boot = () => {
     __effect1_live = [];
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect1_down();
-        __effect0_down();
-        __effect0_up();
-        __effect1_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -362,9 +366,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b1311241a4d825a501194b6a0691009b
+pass sha256:d1960d73d5d7a4921f764e35ae68a727
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:0ce3fb1fdff82a62fb920f92f7cbc9ea
+sha256:729a1a1d01ed0f958f9a66123fadee7a
 {
   "results": [
     {
@@ -374,7 +378,7 @@ sha256:0ce3fb1fdff82a62fb920f92f7cbc9ea
   ]
 }
 -- testrun/html/none/component_async_query.sngl/latest/1 --
-sha256:9b0835d7b980f990220777152b5d6d20
+sha256:862bdd8470d2264a5c008676f1e1b985
 {
   "results": [
     {

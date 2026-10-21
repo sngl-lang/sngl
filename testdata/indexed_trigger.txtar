@@ -1587,6 +1587,7 @@ type __input_state1Instance struct {
 	__effect0_desired    []string
 	__effects0_settling  bool
 	__effects0_pending   bool
+	__effects0_torn      bool
 	__effects0_steps     int
 	__root               gtk4rt.Handle
 	__slot0              []gtk4rt.Handle
@@ -1606,6 +1607,7 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.__effect0_desired = []string{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1656,21 +1658,23 @@ func (c *__input_state1Instance) __effect0_up() {
 }
 
 func (c *__input_state1Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -2401,7 +2405,7 @@ pass sha256:4663150d762c81154da52d2c7afca73e
 -- run/go/fyne --
 pass sha256:161f14c69bcf1e4f8041a3ceace6acbd
 -- run/go/gtk4 --
-pass sha256:f2336376efeaa0c85a35769e7c174e5b
+pass sha256:55ca6cf61554a4cd1fd0bfb7a602b7ef
 -- run/kotlin/android --
 pass sha256:b10b27f2aa09b89de1fe31ec45e0bac8
 -- run/none/html --

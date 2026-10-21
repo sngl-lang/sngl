@@ -275,6 +275,7 @@ type __query_state1Instance struct {
 	__effect0_desired      []__anon_key_n_a1dba7
 	__effects0_settling    bool
 	__effects0_pending     bool
+	__effects0_torn        bool
 	__effects0_steps       int
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
@@ -300,6 +301,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.__effect0_desired = []__anon_key_n_a1dba7{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -391,26 +393,29 @@ func (c *__query_state1Instance) __effect0_teardown() {
 }
 
 func (c *__query_state1Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *__query_state1Instance) Destroy() {
+	c.__effects0_torn = true
 	c.__effect0_teardown()
 }
 
@@ -625,6 +630,7 @@ type __query_state1Instance struct {
 	__effect0_desired      []__anon_key_n_a1dba7
 	__effects0_settling    bool
 	__effects0_pending     bool
+	__effects0_torn        bool
 	__effects0_steps       int
 	__root                 gtk4rt.Handle
 	__slot0                []gtk4rt.Handle
@@ -650,6 +656,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.__effect0_desired = []__anon_key_n_a1dba7{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -742,26 +749,29 @@ func (c *__query_state1Instance) __effect0_teardown() {
 }
 
 func (c *__query_state1Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *__query_state1Instance) teardown() {
+	c.__effects0_torn = true
 	c.__effect0_teardown()
 }
 
@@ -858,6 +868,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:fef07f3bdf1621115af09fe7bef1a12b
+pass sha256:7d68e69e4a04b596582bce2cf71d5884
 -- run/go/gtk4 --
-pass sha256:33ab03c61f5971124cacf1b1d1a045ca
+pass sha256:69f4b503fd9c896ef8531ae80ab3c621

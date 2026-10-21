@@ -602,6 +602,7 @@ type TimerInstance struct {
 	__effect1_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -626,6 +627,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__effect1_dirty = false
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -711,33 +713,36 @@ func (c *TimerInstance) __effect1_update() {
 }
 
 func (c *TimerInstance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			if c.__effect1_dirty {
-				c.__effect1_dirty = false
-				if c.__prop_enabled && (c.__prop_interval > (time.Duration(0) * time.Millisecond)) {
-					c.__effect1_key = c.__prop_interval
-					c.__effect1_update()
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				if c.__effect1_dirty {
+					c.__effect1_dirty = false
+					if c.__prop_enabled && (c.__prop_interval > (time.Duration(0) * time.Millisecond)) {
+						c.__effect1_key = c.__prop_interval
+						c.__effect1_update()
+					}
 				}
+				c.__effect0_down()
+				c.__effect0_up()
 			}
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *TimerInstance) Destroy() {
+	c.__effects0_torn = true
 	c.__effect0_teardown()
 }
 
@@ -967,6 +972,7 @@ type TimerInstance struct {
 	__effect0_desired   []time.Duration
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -987,6 +993,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1050,26 +1057,29 @@ func (c *TimerInstance) __effect0_teardown() {
 }
 
 func (c *TimerInstance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *TimerInstance) teardown() {
+	c.__effects0_torn = true
 	c.__effect0_teardown()
 }
 
@@ -1186,6 +1196,7 @@ body { font-family: system-ui, sans-serif; }
     let __effect0_desired = [];
     let __effects0_settling = false;
     let __effects0_pending = false;
+    let __effects0_torn = false;
     let __effects0_steps = 0;
     let __slot02 = [];
     let __slot12 = [];
@@ -1237,25 +1248,28 @@ body { font-family: system-ui, sans-serif; }
       __effect0_live = [];
     }
     function __effects0_settle() {
-      if (__effects0_settling) {
-        __effects0_pending = true;
-      } else {
-        __effects0_settling = true;
-        __effects0_pending = true;
-        __effects0_steps = 0;
-        while (__effects0_pending && __effects0_steps < 512) {
-          __effects0_pending = false;
-          __effects0_steps = __effects0_steps + 1;
-          __effect0_down();
-          __effect0_up();
-        }
-        __effects0_settling = false;
-        if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects0_torn) {
+        if (__effects0_settling) {
+          __effects0_pending = true;
+        } else {
+          __effects0_settling = true;
+          __effects0_pending = true;
+          __effects0_steps = 0;
+          while (__effects0_pending && __effects0_steps < 512) {
+            __effects0_pending = false;
+            __effects0_steps = __effects0_steps + 1;
+            __effect0_down();
+            __effect0_up();
+          }
+          __effects0_settling = false;
+          if (__effects0_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
     function __snglTeardown() {
+      __effects0_torn = true;
       __effect0_teardown();
     }
     function __set_tick(__v) {
@@ -1434,8 +1448,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d982b83fdd5da414c81176c09a928243
 -- run/go/fyne --
-pass sha256:65be112e863d05e2c3f558340345a3f3
+pass sha256:eff8f05c55bbc6d39871df4b1528441a
 -- run/go/gtk4 --
-pass sha256:f24c50098fc54ba430e65f5212b15430
+pass sha256:4b51b8a84ff547cd11ae376076da74fc
 -- run/none/html --
-pass sha256:ce0e36cafa340878865117e382b502bb
+pass sha256:cadf4e611cda132af4cd0c926aa059fd

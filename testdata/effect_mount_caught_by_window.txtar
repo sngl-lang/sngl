@@ -73,6 +73,7 @@ type modelState struct {
 	__effect0_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	width, height int
@@ -87,6 +88,7 @@ func New() Model {
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__effects0_settle()
 	return m
@@ -142,21 +144,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -269,6 +273,7 @@ type Model struct {
 	__effect0_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -285,6 +290,7 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -334,21 +340,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -435,6 +443,7 @@ type Model struct {
 	__effect0_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__n0                gtk4rt.Handle
 	__n1                gtk4rt.Handle
@@ -451,6 +460,7 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -500,21 +510,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -581,7 +593,7 @@ func Handler() http.Handler {
 
 func handleIndex(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from mount.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<span id=\"__n1\" data-sngl-id=\"__n1\">\n</span>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { caught: \"\", visible__inst0: true };\n  function risky(n) {\n    if (n > 1) {\n      ;\n      throw Object.assign(new Error(\"too big\"), { kind: \"range\" });\n    }\n    ;\n    return n * 10;\n  }\n  function __effect0_mount() {\n    try {\n      ;\n      risky(3);\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = e.message;\n      __n1.textContent = state.caught;\n    }\n    ;\n  }\n  var __effect0_live = [];\n  var __effect0_desired = [];\n  var __effects0_settling = false;\n  var __effects0_pending = false;\n  var __effects0_steps = 0;\n  function __effect0_down() {\n    __effect0_desired = [];\n    __effect0_desired.push(true);\n  }\n  function __effect0_up() {\n    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {\n      if (__effect0_i >= __effect0_live.length) {\n        __effect0_mount();\n      } else {\n        if (__effect0_live[__effect0_i] !== __effect0_k) {\n          __effect0_mount();\n        }\n      }\n    }\n    __effect0_live = __effect0_desired;\n  }\n  function __effects0_settle() {\n    if (__effects0_settling) {\n      __effects0_pending = true;\n    } else {\n      __effects0_settling = true;\n      __effects0_pending = true;\n      __effects0_steps = 0;\n      while (__effects0_pending && __effects0_steps < 512) {\n        __effects0_pending = false;\n        __effects0_steps = __effects0_steps + 1;\n        __effect0_down();\n        __effect0_up();\n      }\n      __effects0_settling = false;\n      if (__effects0_pending) {\n        throw Object.assign(new Error(\"effects did not settle in 512 passes; an effect is rekeying itself\"), { kind: \"effect\" });\n      }\n    }\n  }\n  var __n1 = document.querySelector('[data-sngl-id=\"__n1\"]');\n  function __sngl_init() {\n    __n1.textContent = state.caught;\n  }\n  __sngl_init();\n  __effects0_settle();\n})();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from mount.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<span id=\"__n1\" data-sngl-id=\"__n1\">\n</span>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { caught: \"\", visible__inst0: true };\n  function risky(n) {\n    if (n > 1) {\n      ;\n      throw Object.assign(new Error(\"too big\"), { kind: \"range\" });\n    }\n    ;\n    return n * 10;\n  }\n  function __effect0_mount() {\n    try {\n      ;\n      risky(3);\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = e.message;\n      __n1.textContent = state.caught;\n    }\n    ;\n  }\n  var __effect0_live = [];\n  var __effect0_desired = [];\n  var __effects0_settling = false;\n  var __effects0_pending = false;\n  var __effects0_torn = false;\n  var __effects0_steps = 0;\n  function __effect0_down() {\n    __effect0_desired = [];\n    __effect0_desired.push(true);\n  }\n  function __effect0_up() {\n    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {\n      if (__effect0_i >= __effect0_live.length) {\n        __effect0_mount();\n      } else {\n        if (__effect0_live[__effect0_i] !== __effect0_k) {\n          __effect0_mount();\n        }\n      }\n    }\n    __effect0_live = __effect0_desired;\n  }\n  function __effects0_settle() {\n    if (!__effects0_torn) {\n      if (__effects0_settling) {\n        __effects0_pending = true;\n      } else {\n        __effects0_settling = true;\n        __effects0_pending = true;\n        __effects0_steps = 0;\n        while (__effects0_pending && __effects0_steps < 512) {\n          __effects0_pending = false;\n          __effects0_steps = __effects0_steps + 1;\n          __effect0_down();\n          __effect0_up();\n        }\n        __effects0_settling = false;\n        if (__effects0_pending) {\n          throw Object.assign(new Error(\"effects did not settle in 512 passes; an effect is rekeying itself\"), { kind: \"effect\" });\n        }\n      }\n    }\n  }\n  var __n1 = document.querySelector('[data-sngl-id=\"__n1\"]');\n  function __sngl_init() {\n    __n1.textContent = state.caught;\n  }\n  __sngl_init();\n  __effects0_settle();\n})();\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -700,6 +712,7 @@ body { font-family: system-ui, sans-serif; }
   var __effect0_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
@@ -718,21 +731,23 @@ body { font-family: system-ui, sans-serif; }
     __effect0_live = __effect0_desired;
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect0_down();
-        __effect0_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect0_down();
+          __effect0_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -746,14 +761,14 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:17ed37365ed5e8fdbce14bc40a2415c0
+pass sha256:2a7f3ce3b85424f66904c30987803d25
 -- run/go/fyne --
-pass sha256:5f06153e3d28985c96c4e4dd3bdd3a59
+pass sha256:338c69748557592cfa0d42f0ae362962
 -- run/go/gtk4 --
-pass sha256:4cfa1a66b06c9052149d5c8fcf7192ba
+pass sha256:03a47ebd0d40e59438301db9f84b0305
 -- run/go/html --
-pass sha256:5062ea269e1a450f5882689caa6e46a6
+pass sha256:692165c47647c3c8f9bd27f25214263f
 -- run/kotlin/android --
 pass sha256:fcf6d25d990d814a02c9bb0158dc4b7f
 -- run/none/html --
-pass sha256:7d0fe632d2cff95fd57650986954a60d
+pass sha256:d0080254c2a6e394828c5b65aafeb831

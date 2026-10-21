@@ -563,6 +563,7 @@ type Model struct {
 	__effect1_desired   []string
 	__effects1_settling bool
 	__effects1_pending  bool
+	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *C.GtkBox
 	__slot0             []*C.GtkWidget
@@ -590,6 +591,7 @@ func New() *Model {
 	m.__effect1_desired = []string{}
 	m.__effects1_settling = false
 	m.__effects1_pending = false
+	m.__effects1_torn = false
 	m.__effects1_steps = 0
 	m.__root = nil
 	m.__slot0 = nil
@@ -627,21 +629,23 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effects1_settle() {
-	if m.__effects1_settling {
-		m.__effects1_pending = true
-	} else {
-		m.__effects1_settling = true
-		m.__effects1_pending = true
-		m.__effects1_steps = 0
-		for m.__effects1_pending && (m.__effects1_steps < 512) {
-			m.__effects1_pending = false
-			m.__effects1_steps = (m.__effects1_steps + 1)
-			m.__effect1_down()
-			m.__effect1_up()
-		}
-		m.__effects1_settling = false
-		if m.__effects1_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects1_torn {
+		if m.__effects1_settling {
+			m.__effects1_pending = true
+		} else {
+			m.__effects1_settling = true
+			m.__effects1_pending = true
+			m.__effects1_steps = 0
+			for m.__effects1_pending && (m.__effects1_steps < 512) {
+				m.__effects1_pending = false
+				m.__effects1_steps = (m.__effects1_steps + 1)
+				m.__effect1_down()
+				m.__effect1_up()
+			}
+			m.__effects1_settling = false
+			if m.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -725,6 +729,7 @@ type RowInstance struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *C.GtkBox
 	__slot0             []*C.GtkWidget
@@ -746,6 +751,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__effect0_desired = []string{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
@@ -816,21 +822,23 @@ func (c *RowInstance) __effect0_up() {
 }
 
 func (c *RowInstance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -968,4 +976,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:88797177f61dd03a8cfecb1fa35a50b5
 -- run/go/gtk4 --
-pass sha256:b8788642feb8690569a97133929a8e0f
+pass sha256:38591b12396f874887fe99d8aa088f28

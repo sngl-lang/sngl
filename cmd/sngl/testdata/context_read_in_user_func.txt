@@ -172,7 +172,7 @@ sha256:82b20308467b5d13d89ba699c900a625
   ]
 }
 -- testrun/html/none/funcs.sngl/main/1 --
-sha256:9a8dec770fb8a28569b860c97bb96762
+sha256:64cbef3abfda9e79b8b2bca4ec0562a7
 {
   "results": [
     {

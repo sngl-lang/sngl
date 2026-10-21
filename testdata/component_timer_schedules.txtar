@@ -163,6 +163,7 @@ window.__sngl_boot = () => {
     clearInterval(state.handle__inst2__inst0);
   }
   function __snglTeardown() {
+    __effects0_torn = true;
     __effect2_teardown();
     __effect1_teardown();
     __effect0_teardown();
@@ -186,6 +187,7 @@ window.__sngl_boot = () => {
     let __effect3_desired = [];
     let __effects1_settling = false;
     let __effects1_pending = false;
+    let __effects1_torn = false;
     let __effects1_steps = 0;
     let __slot02 = [];
     function __effect3_mount() {
@@ -236,25 +238,28 @@ window.__sngl_boot = () => {
       __effect3_live = [];
     }
     function __effects1_settle() {
-      if (__effects1_settling) {
-        __effects1_pending = true;
-      } else {
-        __effects1_settling = true;
-        __effects1_pending = true;
-        __effects1_steps = 0;
-        while (__effects1_pending && __effects1_steps < 512) {
-          __effects1_pending = false;
-          __effects1_steps = __effects1_steps + 1;
-          __effect3_down();
-          __effect3_up();
-        }
-        __effects1_settling = false;
-        if (__effects1_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects1_torn) {
+        if (__effects1_settling) {
+          __effects1_pending = true;
+        } else {
+          __effects1_settling = true;
+          __effects1_pending = true;
+          __effects1_steps = 0;
+          while (__effects1_pending && __effects1_steps < 512) {
+            __effects1_pending = false;
+            __effects1_steps = __effects1_steps + 1;
+            __effect3_down();
+            __effect3_up();
+          }
+          __effects1_settling = false;
+          if (__effects1_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
     function __snglTeardown2() {
+      __effects1_torn = true;
       __effect3_teardown();
     }
     function __set_tick(__v) {
@@ -281,6 +286,7 @@ window.__sngl_boot = () => {
   var __effect2_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   var __slot0 = [];
   var __inst1_live = [];
@@ -401,25 +407,27 @@ window.__sngl_boot = () => {
     __effect2_live = [];
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect2_down();
-        __effect1_down();
-        __effect0_down();
-        __effect0_up();
-        __effect1_up();
-        __effect2_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect2_down();
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+          __effect2_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -532,9 +540,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:618efc17a6b0a952c3650504234d3a0b
+pass sha256:e8703fbd305743d541d90d213f74f93b
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
-sha256:ae301aae57a32b924908f6b9fa737e77
+sha256:abf1c7cf2fc1e5a9df14e407daf40980
 {
   "results": [
     {
@@ -544,7 +552,7 @@ sha256:ae301aae57a32b924908f6b9fa737e77
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/nested/1 --
-sha256:ebe5be6c891b04b42aff1a9ebca10180
+sha256:3e567636796bea4546706721d8182106
 {
   "results": [
     {
@@ -554,7 +562,7 @@ sha256:ebe5be6c891b04b42aff1a9ebca10180
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:864e484d057f9d1eaad7df1fc604af97
+sha256:176c758a30da092edd0f5f6e43af0fa8
 {
   "results": [
     {

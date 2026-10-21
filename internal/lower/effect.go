@@ -114,7 +114,14 @@ type effectGroup struct {
 	settling *ir.Var
 	pending  *ir.Var
 	steps    *ir.Var
-	settle   *ir.Func
+	// torn is set by the teardown, and a settle after it does nothing. An
+	// answer reaching a torn-down instance is stale, since the teardown
+	// ended its attempt, but a stale answer still settles, and a settle
+	// there found every bracket the teardown had let go of still wanted and
+	// mounted it again: it asked a second time, and rendered into a box the
+	// destroy had freed (cmd/sngl/testdata/async_query_destroyed_instance_runs.txt).
+	torn   *ir.Var
+	settle *ir.Func
 }
 
 // maxEffectSettleSteps bounds the settle loop: an effect that rekeys itself
@@ -1133,7 +1140,8 @@ func (st *effectState) finishTeardown() error {
 		// Reverse the order the program wrote them in: an effect set up later
 		// may hold something an earlier one handed it, so releasing in
 		// acquisition order can release a thing still in use.
-		body := make([]ir.Stmt, 0, len(tears[o]))
+		body := make([]ir.Stmt, 0, len(tears[o])+1)
+		body = append(body, st.setFlag(tears[o][0].group.torn, true))
 		for _, fx := range slices.Backward(tears[o]) {
 			body = append(body, callOf(fx.tear))
 		}
@@ -1184,6 +1192,7 @@ func (st *effectState) buildGroups() {
 		o := &ir.Owner{Comp: g.comp}
 		g.settling = st.flagVar(o, prefix+"_settling")
 		g.pending = st.flagVar(o, prefix+"_pending")
+		g.torn = st.flagVar(o, prefix+"_torn")
 		g.steps = &ir.Var{
 			Name:        prefix + "_steps",
 			Type:        ir.TypInt,
@@ -1226,48 +1235,51 @@ func (st *effectState) buildGroups() {
 			Purity:      ir.PurityMutates,
 			Synthesized: true,
 			Block: []ir.Stmt{&ir.If{
-				Cond: st.varIdent(g.settling),
-				Body: []ir.Stmt{st.setFlag(g.pending, true)},
-				Else: []ir.Stmt{
-					st.setFlag(g.settling, true),
-					st.setFlag(g.pending, true),
-					&ir.Assign{Target: st.varIdent(g.steps), Op: ast.AssignSet, Value: intLiteralLit(0)},
-					&ir.For{
-						Iter: &ir.Binary{
-							Type: ir.TypBool, Op: ast.BinAnd,
-							Left: st.varIdent(g.pending),
-							Right: &ir.Binary{
-								Type: ir.TypBool, Op: ast.BinLt,
-								Left:  st.varIdent(g.steps),
-								Right: intLiteralLit(maxEffectSettleSteps),
+				Cond: &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: st.varIdent(g.torn)},
+				Body: []ir.Stmt{&ir.If{
+					Cond: st.varIdent(g.settling),
+					Body: []ir.Stmt{st.setFlag(g.pending, true)},
+					Else: []ir.Stmt{
+						st.setFlag(g.settling, true),
+						st.setFlag(g.pending, true),
+						&ir.Assign{Target: st.varIdent(g.steps), Op: ast.AssignSet, Value: intLiteralLit(0)},
+						&ir.For{
+							Iter: &ir.Binary{
+								Type: ir.TypBool, Op: ast.BinAnd,
+								Left: st.varIdent(g.pending),
+								Right: &ir.Binary{
+									Type: ir.TypBool, Op: ast.BinLt,
+									Left:  st.varIdent(g.steps),
+									Right: intLiteralLit(maxEffectSettleSteps),
+								},
 							},
+							Body: pass,
 						},
-						Body: pass,
+						st.setFlag(g.settling, false),
+						// The loop's condition is `pending && steps < bound`, so
+						// leaving it with `pending` still set is the bound
+						// stopping it rather than the settle finishing. Reported,
+						// because the alternative -- what this used to do -- is a
+						// program that quietly runs on with brackets that do not
+						// describe its tree, while the interpreter refuses the
+						// same program outright.
+						//
+						// No handler scope: a settle is called from the body, from
+						// every event handler that writes a key it reads, and from
+						// the platform's mount, so there is no one errorBoundary it
+						// sits inside the way a recursive instantiation sits inside
+						// the body that wrote it. Native is the honest answer, and
+						// reporting nowhere is louder than settling nowhere.
+						&ir.If{
+							Cond: st.varIdent(g.pending),
+							Body: []ir.Stmt{raiseStmt(
+								fmt.Sprintf("effects did not settle in %d passes; an effect is rekeying itself", maxEffectSettleSteps),
+								"effect",
+								nil,
+							)},
+						},
 					},
-					st.setFlag(g.settling, false),
-					// The loop's condition is `pending && steps < bound`, so
-					// leaving it with `pending` still set is the bound
-					// stopping it rather than the settle finishing. Reported,
-					// because the alternative -- what this used to do -- is a
-					// program that quietly runs on with brackets that do not
-					// describe its tree, while the interpreter refuses the
-					// same program outright.
-					//
-					// No handler scope: a settle is called from the body, from
-					// every event handler that writes a key it reads, and from
-					// the platform's mount, so there is no one errorBoundary it
-					// sits inside the way a recursive instantiation sits inside
-					// the body that wrote it. Native is the honest answer, and
-					// reporting nowhere is louder than settling nowhere.
-					&ir.If{
-						Cond: st.varIdent(g.pending),
-						Body: []ir.Stmt{raiseStmt(
-							fmt.Sprintf("effects did not settle in %d passes; an effect is rekeying itself", maxEffectSettleSteps),
-							"effect",
-							nil,
-						)},
-					},
-				},
+				}},
 			}},
 		}
 		st.addFunc(o, g.settle)

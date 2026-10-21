@@ -697,6 +697,13 @@ The general things it needed, each of its own:
   a rebuilt drop-down nothing. Such a bracket settles on any write to its
   owner's state, which is what may build the node again
   (`cmd/sngl/testdata/select_rebuilt_slot_runs.txt`).
+- **A torn-down scope settles nothing** (`effectGroup.torn`): the teardown
+  sets the flag before it ends any bracket, and a settle after it returns. An
+  answer reaching a destroyed instance is stale, but a stale answer still
+  settles when another bracket keys on what it writes, and that settle found
+  the brackets the teardown had let go of wanted and mounted them again: a
+  second request, and a render into the box the destroy had freed, which
+  crashed gtk4 (`cmd/sngl/testdata/async_query_destroyed_instance_runs.txt`).
 
 On bubbletea the mount's tail is posted back through Update like any other
 `async.do` (see the bubbletea platform), so a fetch that waits runs there too

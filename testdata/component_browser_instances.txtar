@@ -219,6 +219,7 @@ window.__sngl_boot = () => {
     let __effect0_desired = [];
     let __effects0_settling = false;
     let __effects0_pending = false;
+    let __effects0_torn = false;
     let __effects0_steps = 0;
     let __slot02 = [];
     let __slot12 = [];
@@ -269,25 +270,28 @@ window.__sngl_boot = () => {
       __effect0_live = [];
     }
     function __effects0_settle() {
-      if (__effects0_settling) {
-        __effects0_pending = true;
-      } else {
-        __effects0_settling = true;
-        __effects0_pending = true;
-        __effects0_steps = 0;
-        while (__effects0_pending && __effects0_steps < 512) {
-          __effects0_pending = false;
-          __effects0_steps = __effects0_steps + 1;
-          __effect0_down();
-          __effect0_up();
-        }
-        __effects0_settling = false;
-        if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects0_torn) {
+        if (__effects0_settling) {
+          __effects0_pending = true;
+        } else {
+          __effects0_settling = true;
+          __effects0_pending = true;
+          __effects0_steps = 0;
+          while (__effects0_pending && __effects0_steps < 512) {
+            __effects0_pending = false;
+            __effects0_steps = __effects0_steps + 1;
+            __effect0_down();
+            __effect0_up();
+          }
+          __effects0_settling = false;
+          if (__effects0_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
     function __snglTeardown() {
+      __effects0_torn = true;
       __effect0_teardown();
     }
     function __set_label(__v) {
@@ -601,7 +605,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:72b57faf709e51fe6b6f6933a6017690
+pass sha256:b58509befbd07da2e28df44054a0f091
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
 sha256:dc8d7cf3834b7d2a6ae0f67170b84c30
 {
@@ -613,7 +617,7 @@ sha256:dc8d7cf3834b7d2a6ae0f67170b84c30
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:f401b56046020a92c6355ae036fa81c8
+sha256:7fe602a82dfb9fab2db03f879ff81d00
 {
   "results": [
     {

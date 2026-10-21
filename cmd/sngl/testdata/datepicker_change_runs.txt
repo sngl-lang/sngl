@@ -82,7 +82,7 @@ sha256:3752fba1fd56098727951c32a4e4163f
   ]
 }
 -- testrun/gtk4/go/app.sngl/picker/1 --
-sha256:701dc4ceb962c476d336cfe9cca40e32
+sha256:50c0a136a7768091c2eb8b04f8184dd7
 {
   "results": [
     {
