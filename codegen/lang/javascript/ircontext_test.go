@@ -385,20 +385,20 @@ func TestJsEmitI18nTr(t *testing.T) {
 }
 
 func TestJsEmitI18nPlural(t *testing.T) {
-	// Namespace call: i18n.plural(count, forms).
+	// i18n.plural(count, forms), shaped as TestJsEmitI18nTr's: no Receiver
+	// expression, which the namespace path would hand on as the count.
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")},
-		Receiver: &ir.Ident{Name: "i18n"},
+		Func: &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Value: "3", Type: ir.TypInt}},
 			{Value: &ir.MapLitIR{}},
 		},
 	}
 	got := jc.EvalExpr(call)
-	if !strings.Contains(got, "i18n.getTranslator().plural(") {
-		t.Errorf("i18n.plural: got %q, want call containing i18n.getTranslator().plural(", got)
+	if want := "i18n.getTranslator().plural(3, new Map([]))"; got != want {
+		t.Errorf("i18n.plural: got %q, want %q", got, want)
 	}
 }
 

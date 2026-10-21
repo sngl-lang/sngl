@@ -3,20 +3,23 @@
 # A Go target's test runs in a program of its own, and a stack overflow ends
 # that program where no recover reaches. The driver read the end of its
 # output as the end of a run and printed `ok 0 tests`, which a script's
-# `stdout ok` accepted. It is now an error naming the test that was running.
-# The interpreter, html and android report the overflow as the test's
-# failure.
+# `stdout ok` accepted. The test that was running now fails, naming the exit,
+# and is recorded as any failure is. The interpreter, html and android report
+# the overflow as the test's failure themselves.
 
 ! sngl test --platform=none app.sngl
 stdout 'not ok +2 tests, 1 failures'
 ! sngl test --platform=html app.sngl
 stdout 'not ok +2 tests, 1 failures'
 ! sngl test --platform=bubbletea --language=go app.sngl
-stderr 'the test program exited during TheProgramGoesAway'
+stdout 'not ok +2 tests, 1 failures'
+stdout 'the test program exited during TheProgramGoesAway'
 ! sngl test --platform=fyne --language=go app.sngl
-stderr 'the test program exited during TheProgramGoesAway'
+stdout 'not ok +2 tests, 1 failures'
+stdout 'the test program exited during TheProgramGoesAway'
 ! sngl test --platform=gtk4 --language=go app.sngl
-stderr 'the test program exited during TheProgramGoesAway'
+stdout 'not ok +2 tests, 1 failures'
+stdout 'the test program exited during TheProgramGoesAway'
 ! sngl test --platform=android --language=kotlin app.sngl
 stdout 'not ok +2 tests, 1 failures'
 
@@ -59,6 +62,63 @@ sha256:025b751c09f194c6cb4f443155d253cc
       "Desc": "TheProgramGoesAway",
       "Log": [
         "exception: StackOverflowError: null"
+      ]
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:91c0d1f34836a61933e47899e660cac7
+{
+  "results": [
+    {
+      "Desc": "AFirstTestPasses",
+      "Passed": true
+    },
+    {
+      "Desc": "TheProgramGoesAway",
+      "Error": "the test program exited during TheProgramGoesAway",
+      "Failures": [
+        {
+          "Message": "the test program exited during TheProgramGoesAway"
+        }
+      ]
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:92180ccc8a15f084fb459ca7f17cc709
+{
+  "results": [
+    {
+      "Desc": "AFirstTestPasses",
+      "Passed": true
+    },
+    {
+      "Desc": "TheProgramGoesAway",
+      "Error": "the test program exited during TheProgramGoesAway",
+      "Failures": [
+        {
+          "Message": "the test program exited during TheProgramGoesAway"
+        }
+      ]
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:85aca13c4eb13c8b88b223e6ee63b2bc
+{
+  "results": [
+    {
+      "Desc": "AFirstTestPasses",
+      "Passed": true
+    },
+    {
+      "Desc": "TheProgramGoesAway",
+      "Error": "the test program exited during TheProgramGoesAway",
+      "Failures": [
+        {
+          "Message": "the test program exited during TheProgramGoesAway"
+        }
       ]
     }
   ]

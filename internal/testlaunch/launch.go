@@ -249,7 +249,7 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 			// a stack overflow, a fatal signal -- or exited. Read as the end
 			// of a run, that was `ok 0 tests`, which a script's `stdout ok`
 			// accepted.
-			return results, exitedEarly(current)
+			return exitedEarly(results, current)
 		}
 		if err != nil {
 			return results, err
@@ -323,13 +323,27 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 	return results, nil
 }
 
-// exitedEarly is the error of a test program that went away before it
-// answered its run, naming the tests it had started and not ended.
-func exitedEarly(current map[string]*codegen.TestResult) error {
+// exitedEarly ends the run of a test program that went away before answering
+// it. The tests it had started fail: the program's crash is its answer, as
+// deterministic as an assertion, so it is recorded like one -- an error would
+// be the launch's, which is the host's and never recorded. A program that went
+// away with no test running says nothing about any test, and nothing tells it
+// from a host that failed.
+func exitedEarly(results []*codegen.TestResult, current map[string]*codegen.TestResult) ([]*codegen.TestResult, error) {
 	if len(current) == 0 {
-		return errors.New("the test program exited before its run ended")
+		return results, errors.New("the test program exited before its run ended")
 	}
-	return fmt.Errorf("the test program exited during %s", strings.Join(slices.Sorted(maps.Keys(current)), ", "))
+	for _, name := range slices.Sorted(maps.Keys(current)) {
+		cur := current[name]
+		msg := "the test program exited during " + name
+		cur.Passed = false
+		cur.Failures = append(cur.Failures, codegen.TestFailure{Message: msg})
+		if cur.Error == "" {
+			cur.Error = msg
+		}
+		results = append(results, cur)
+	}
+	return results, nil
 }
 
 func handleSnapshotAssert(w *testrpc.Writer, store *snapshot.Store, m *testrpc.Message, fixtureBase string) {

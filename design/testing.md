@@ -83,7 +83,10 @@ gtk4 in design/architecture.md).
 (`exitedEarly`, `cmd/sngl/testdata/test_program_exits_runs.txt`): a Go
 target's stack overflow ends the program where no recover reaches, and the
 driver read the end of its output as the end of the run, `ok 0 tests`, which
-a script's `stdout ok` accepted. The error names the test that was running.
+a script's `stdout ok` accepted. The test that was running fails, naming the
+exit, and is recorded as any failure is: the crash is the program's answer,
+not the host's, so it is no launch error, which is never recorded. A program
+that exits with no test running is still one.
 
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
