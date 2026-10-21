@@ -474,13 +474,13 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
 		// widget temp rather than clobbering a shared Model field.
-		return t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor})
+		return t.withShare(id, sp, t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor}))
 	}
-	create := t.withThemeOverride(id, sp, &ir.Assign{
+	create := t.withShare(id, sp, t.withThemeOverride(id, sp, &ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
-	})
+	}))
 	if t.indexed[id] {
 		t.sinkField(copiesField(id), copyMapType(goType))
 	}
@@ -490,6 +490,21 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		create = append(create, &ir.Assign{Target: t.modelPresentRef(named), Op: ast.AssignSet, Value: t.fieldRef(id)})
 	}
 	return create
+}
+
+// withShare follows a node's creation with what it asks of the box it will be
+// put in, said on the object that box holds: the node, or the theme override
+// built with it. A theme the build reads is put on at the append instead
+// (themed), and says it there.
+func (t *fyneTranslator) withShare(id string, sp *fyneSpec, create []ir.Stmt) []ir.Stmt {
+	if !sp.shares() || (!sp.RuntimeTheme && sp.ThemeVar != "") {
+		return create
+	}
+	obj := t.nodeRefFor(id)
+	if sp.RuntimeTheme {
+		obj = t.themeOverrideRef(id)
+	}
+	return append(create, &ir.CallStmt{Call: shareCall(obj, sp)})
 }
 
 func (t *fyneTranslator) withThemeOverride(id string, sp *fyneSpec, create ir.Stmt) []ir.Stmt {

@@ -7,9 +7,9 @@ import (
 
 // TestFlexBuildsTheWeightedLayout: a box whose children carry `style.flex` is
 // built with the SNGL weighted layout rather than with Fyne's own box, which
-// packs at minimum size and has nowhere for a child to claim a share. The
-// weights are the children's flex in append order, and the box's own gap and
-// padding travel with them.
+// packs at minimum size and has nowhere for a child to claim a share. Each
+// child's flex and margin are said on the child, and the box's own gap and
+// padding travel with the layout.
 func TestFlexBuildsTheWeightedLayout(t *testing.T) {
 	out := generateFyneModel(t, `
 import . "sngl:ui"
@@ -23,7 +23,9 @@ window {
 `)
 	for _, want := range []string{
 		`"duckfam.us/sngl/pkg/go/fynelayout"`,
-		"container.New(fynelayout.New(true, []float32{1, 2}, []float32{3, 0}, 4, 6))",
+		"container.New(fynelayout.New(true, 4, 6))",
+		"fynelayout.Share(m.__n2, 1, 3)",
+		"fynelayout.Share(m.__n3, 2, 0)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("emitted Go missing %q\n--- generated ---\n%s", want, out)

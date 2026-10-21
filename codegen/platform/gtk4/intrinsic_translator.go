@@ -1089,8 +1089,15 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// override bodies, and no GTK property is behind it. Two GTK classes
 	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
 	// declaration reserves the name for style, so it is not theirs.
+	// Of its fields, `flex` alone is answered: it asks the box holding the
+	// widget for its spare room, which GTK says with an expand, and without
+	// one a scroll is the few pixels its scrollbar needs.
 	if prop == stylePropName {
-		return codegen.KeepLocalsRead(value)
+		keep := codegen.KeepLocalsRead(value)
+		if styleFlexes(value) {
+			keep = append(keep, &ir.CallStmt{Call: rtCall("Flex", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)))})
+		}
+		return keep
 	}
 	bare := codegen.IdentBareName(node)
 	if prop == ir.CopyProp {

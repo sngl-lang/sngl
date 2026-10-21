@@ -81,7 +81,7 @@ component Pokedex ui.node {
         }
     }
 
-    ui.vbox(style={gap=4px}) {
+    ui.vbox(style={gap=4px, flex=1}) {
         ui.hbox(style={padding=8px}) {
             ui.select #languagePick(:value=language) {
                 for var l = languages {

@@ -328,8 +328,9 @@ const component ui.popover[platform](style, open, @close, content) {
     }
 }
 
-// A widget's `style` sets nothing on this platform, so nothing below can mark
-// a selection with a font weight; a check button's `active` marks it instead.
+// A widget's `style` sets nothing on this platform but an expand for its
+// `flex`, so nothing below can mark a selection with a font weight; a check
+// button's `active` marks it instead.
 // Clicking the selected one unchecks it on screen and changes nothing, since
 // GTK has no way here to refuse the toggle.
 

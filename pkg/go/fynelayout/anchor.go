@@ -46,6 +46,7 @@ func InsertBefore(c *fyne.Container, anchor, o fyne.CanvasObject) {
 		AppAttach(o)
 		return
 	}
+	Adopt(c, o)
 	i := slices.Index(c.Objects, anchor)
 	if i < 0 {
 		c.Add(o)

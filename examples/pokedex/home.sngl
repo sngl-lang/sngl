@@ -60,7 +60,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
     poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
     poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
 
-    ui.vbox(style={gap=8px, padding=8px}) {
+    ui.vbox(style={gap=8px, padding=8px, flex=1}) {
         ui.hbox(style={gap=8px, alignItems=center}) {
             ui.select #dexPick(:value=chosen, @change(v) { pick(v) }) {
                 for var d = dexes {
