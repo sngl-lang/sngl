@@ -846,6 +846,12 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
+	// The stacks come before the computeds and funcs that go to a page or read
+	// one's current: Kotlin declares a local where it is written, and a local
+	// fun naming a controller declared below it does not compile
+	// (examples/pokedex's show).
+	emitNavState(&body, mainStacks, kc, testMode)
+
 	// Computed state. In test mode computeds live on MainScreenState (emitted
 	// above) so the test accessor can read them; here they're locals only in
 	// non-test mode.
@@ -910,8 +916,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("        }\n")
 		body.WriteString("    }\n\n")
 	}
-
-	emitNavState(&body, mainStacks, kc, testMode)
 
 	// Visual tree
 	cc := &irComposeContext{
@@ -1053,6 +1057,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		}
 		decls++
 	}
+	// Before the computeds and funcs, which may read a stack, as MainScreen's.
+	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 	for _, fn := range cc.Computeds {
 		comp := irAndroidComputed{name: fn.Name, ktType: irFuncReturnKt(fn), fn: fn}
 		stateDelegate(kc)
@@ -1078,7 +1084,6 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		b.WriteString("\n")
 	}
 	emitInstanceRegistration(b, own, kc)
-	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 
 	vc := &irComposeContext{
 		nav:     nav,

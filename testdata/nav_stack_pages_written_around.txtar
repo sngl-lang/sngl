@@ -69,6 +69,12 @@ component extras {
 }
 
 ui.window(title="Site - {pages.current.title}") {
+    // A func of the window going to a page: android declares the stack's
+    // controller above the local fun naming it.
+    func toContact() {
+        pages.go(contact)
+    }
+
     ui.vbox {
         nav.stack #pages {
             for var it = items {
@@ -88,7 +94,7 @@ ui.window(title="Site - {pages.current.title}") {
                 ui.text(value="contact")
             }
         }
-        ui.button(text="Contact", @click { pages.go(contact) })
+        ui.button(text="Contact", @click { toContact() })
         ui.button(text="Back", @click { pages.back() })
     }
 }
@@ -158,6 +164,11 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) toContact() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
+	m.pages__current = _page__value{Id: 4, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
 }
 
 func (m *Model) __focusNext() {
@@ -258,8 +269,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
-			m.pages__current = _page__value{Id: 4, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
+			m.toContact()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			if len(m.pages__history) > 0 {
 				m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
@@ -465,6 +475,17 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) toContact() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
+	m.pages__current = _page__value{Id: 4, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
+	m.__n1.SetTitle(("Site - " + m.pages__current.Title))
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
+	m.__renderSlot2(m.__n8)
+	m.__renderSlot3(m.__n8)
+	m.__renderSlot4(m.__n8)
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -622,14 +643,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n9_click_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
-	m.pages__current = _page__value{Id: 4, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
-	m.__n1.SetTitle(("Site - " + m.pages__current.Title))
-	m.__renderSlot0(m.__n8)
-	m.__renderSlot1(m.__n8)
-	m.__renderSlot2(m.__n8)
-	m.__renderSlot3(m.__n8)
-	m.__renderSlot4(m.__n8)
+	m.toContact()
 }
 
 func (m *Model) __n10_click_handler() {
@@ -883,6 +897,17 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) toContact() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
+	m.pages__current = _page__value{Id: 4, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
+	gtk4rt.ToplevelSetTitle(m.__n1, ("Site - " + m.pages__current.Title))
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
+	m.__renderSlot2(m.__n8)
+	m.__renderSlot3(m.__n8)
+	m.__renderSlot4(m.__n8)
+}
+
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1040,14 +1065,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n9_clicked_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
-	m.pages__current = _page__value{Id: 4, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
-	gtk4rt.ToplevelSetTitle(m.__n1, ("Site - " + m.pages__current.Title))
-	m.__renderSlot0(m.__n8)
-	m.__renderSlot1(m.__n8)
-	m.__renderSlot2(m.__n8)
-	m.__renderSlot3(m.__n8)
-	m.__renderSlot4(m.__n8)
+	m.toContact()
 }
 
 func (m *Model) __n10_clicked_handler() {
@@ -1306,10 +1324,15 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
 @Composable
 fun MainScreen() {
     var visible__inst0 by remember { mutableStateOf(true) }
-
     val pages__nav = rememberNavController()
     val pages__entry by pages__nav.currentBackStackEntryAsState()
     val pages__current = _page__valueOf(pages__entry) ?: _page__value(id = 0, href = "/", title = "Two", meta = __anon_e3b0c4(), copy = listOf(1))
+
+
+
+    fun toContact() {
+        pages__nav.navigate(_page__valueRoute4())
+    }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -1345,7 +1368,7 @@ fun MainScreen() {
                 }
             }
             Button(onClick = {
-                pages__nav.navigate(_page__valueRoute4())
+                toContact()
             }, modifier = Modifier) {
                 Text(text = "Contact", modifier = Modifier)
             }
@@ -1385,10 +1408,13 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true };
+  function toContact() {
+    location.assign("/contact");
+  }
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   $2.addEventListener("click", function() {
-    location.assign("/contact");
+    toContact();
   });
   $3.addEventListener("click", function() {
     history.back();
@@ -1424,10 +1450,13 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true };
+  function toContact() {
+    location.assign("/contact");
+  }
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   $2.addEventListener("click", function() {
-    location.assign("/contact");
+    toContact();
   });
   $3.addEventListener("click", function() {
     history.back();
@@ -1463,10 +1492,13 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true };
+  function toContact() {
+    location.assign("/contact");
+  }
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   $2.addEventListener("click", function() {
-    location.assign("/contact");
+    toContact();
   });
   $3.addEventListener("click", function() {
     history.back();
@@ -1502,10 +1534,13 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true };
+  function toContact() {
+    location.assign("/contact");
+  }
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   $2.addEventListener("click", function() {
-    location.assign("/contact");
+    toContact();
   });
   $3.addEventListener("click", function() {
     history.back();
@@ -1543,11 +1578,14 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true };
+  function toContact() {
+    location.assign("/contact");
+  }
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
   $3.addEventListener("click", function() {
-    location.assign("/contact");
+    toContact();
   });
   $4.addEventListener("click", function() {
     history.back();
@@ -1589,11 +1627,14 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true };
+  function toContact() {
+    location.assign("/contact");
+  }
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
   $3.addEventListener("click", function() {
-    location.assign("/contact");
+    toContact();
   });
   $4.addEventListener("click", function() {
     history.back();
@@ -1606,12 +1647,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8eae8eb866a56654254751145c9338ed
+pass sha256:39feb5637aed5cde48e2d72f6a06f696
 -- run/go/fyne --
-pass sha256:8125708fc7555d6895c7f868993ab3e2
+pass sha256:e05225a628de381787a62e73ae2e32e3
 -- run/go/gtk4 --
-pass sha256:be73258be8b2642ad77ed1887e7f90ea
+pass sha256:3607922d9054939cee8fbb7f03f7d71e
 -- run/kotlin/android --
-pass sha256:dc9fbcbe4e3c45e7d4bf3462c3b0d232
+pass sha256:3c57f49565bf1180425293cedea1a4ae
 -- run/none/html --
-pass sha256:7f287c5849ab19c1808dda96f4c17b45
+pass sha256:4353892526306c85dae4350c227c871a

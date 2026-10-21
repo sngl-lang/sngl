@@ -1514,10 +1514,10 @@ fun MainScreen() {
     var opened by remember { mutableStateOf(0) }
     var total__inst0 by remember { mutableStateOf(0) }
     var visible__inst0 by remember { mutableStateOf(true) }
-
     val pages__nav = rememberNavController()
     val pages__entry by pages__nav.currentBackStackEntryAsState()
     val pages__current = _page__valueOf(pages__entry) ?: _page__value(id = 0, href = "/", title = "Home", meta = __anon_e3b0c4())
+
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -2053,6 +2053,6 @@ pass sha256:8866a881544fe8383ea6bf3cd53dd83a
 -- run/go/gtk4 --
 pass sha256:059512b03a4459e312ec4f477fc5fd8f
 -- run/kotlin/android --
-pass sha256:5606f57685a627cf98c73ed3b004bd29
+pass sha256:1fdb99dbfc56e482249f8e3a668995a9
 -- run/none/html --
 pass sha256:4282853fb43b1cebf630c0a76bee71ed

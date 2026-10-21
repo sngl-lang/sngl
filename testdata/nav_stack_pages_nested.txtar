@@ -1530,10 +1530,10 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
 @Composable
 fun MainScreen() {
     var visible__inst0 by remember { mutableStateOf(true) }
-
     val pages__nav = rememberNavController()
     val pages__entry by pages__nav.currentBackStackEntryAsState()
     val pages__current = _page__valueOf(pages__entry) ?: _page__value(id = 0, href = "/", title = "b3", meta = __anon_e3b0c4(), copy = listOf(1, 0))
+
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -1588,4 +1588,4 @@ pass sha256:4df5003c29d2e511c80ef38e2db397f8
 -- run/go/gtk4 --
 pass sha256:4502be46f4d66a30da1673447805aa3b
 -- run/kotlin/android --
-pass sha256:ed0cadf815db293c1bc45576c4eec4d0
+pass sha256:abf64f6b7c7d8a795a1a9a0f4ad99392
