@@ -908,8 +908,11 @@ func (l *contextLowerer) visit(n ir.Node) (ir.Node, error) {
 					continue
 				}
 				paramName := "__ctx_" + ctx.Name
+				// A copy per call: passSlotChildInstances repoints a read it
+				// lifts in place, and one node shared by two lifted bodies
+				// left the second reading the first's prop.
 				if !hasArgNamed(x.Props, paramName) {
-					x.Props = append(x.Props, ir.Arg{Name: paramName, Value: l.active[ctx]})
+					x.Props = append(x.Props, ir.Arg{Name: paramName, Value: ir.CloneExprSharingDecls(l.active[ctx])})
 				}
 			}
 		}
@@ -956,7 +959,7 @@ func (l *contextLowerer) visit(n ir.Node) (ir.Node, error) {
 		// provider is rewriteReads' (the hidden parameter); one with no value
 		// here is left for codegen to refuse.
 		if val, ok := l.active[x.Ref]; ok {
-			return val, ir.SkipDir
+			return ir.CloneExprSharingDecls(val), ir.SkipDir
 		}
 
 	case *ir.Ident:
