@@ -66,7 +66,7 @@ component main node {
         heading(&b, "T")
         var c = b
         c.add("y")
-        shown = string(b) + "|" + touched(c) + "|" + lines(["a", "b"]) + "|" + pages()
+        shown = string(b) + "|" + touched(c) + "|" + lines([shown + "a", "b"]) + "|" + pages()
     })
     text(value=shown)
 }
@@ -148,7 +148,7 @@ func (m *Model) go__r0_click_handler() {
 	b = Heading(b, "T")
 	c__r0 := append([]byte(nil), b...)
 	c__r0 = append(c__r0, "y"...)
-	m.shown = ((((((string(b) + "|") + Touched(c__r0)) + "|") + Lines([]string{"a", "b"})) + "|") + Pages())
+	m.shown = ((((((string(b) + "|") + Touched(c__r0)) + "|") + Lines([]string{(m.shown + "a"), "b"})) + "|") + Pages())
 	m.__n0.SetText(m.shown)
 }
 
@@ -257,7 +257,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             b = heading(b, "T")
             var c = StringBuilder(b)
             c.append("y")
-            state.shown = ((((((b.toString() + "|") + touched(c)) + "|") + lines(listOf("a", "b"))) + "|") + pages())
+            state.shown = ((((((b.toString() + "|") + touched(c)) + "|") + lines(listOf((state.shown + "a"), "b"))) + "|") + pages())
         }, modifier = Modifier.testTag("go").safeDrawingPadding()) {
             Text(text = "Go", modifier = Modifier)
         }
@@ -405,7 +405,7 @@ window.__sngl_boot = () => {
     b = heading(b, "T");
     let c = b;
     c += "y";
-    state.shown = b + "|" + touched(c) + "|" + lines(["a", "b"]) + "|" + pages();
+    state.shown = b + "|" + touched(c) + "|" + lines([state.shown + "a", "b"]) + "|" + pages();
     __n0.textContent = state.shown;
   });
   function __sngl_init() {
@@ -418,8 +418,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ffe26c42d02459e89b49028db8c9c609
+pass sha256:ccc4da5082af6410b77e901d81f9e815
 -- run/kotlin/android --
-pass sha256:3d3fa5c8ad0377f8f779a47b0b6b154a
+pass sha256:f97f942a4ae0387ff49336525423d544
 -- run/none/html --
-pass sha256:40377bfa35505c0ab86451ad6653efe0
+pass sha256:e5ea679481abb1a2705f65af3bbdc0a1
