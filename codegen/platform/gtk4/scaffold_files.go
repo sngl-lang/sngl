@@ -280,12 +280,17 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
 // Selects a day the way a click on it does, for gtk4's datepicker override
 // (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
 // 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
 static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
     if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_calendar_select_day(c, dt);
     G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }`
 

@@ -453,20 +453,24 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) box_toggle_handler(on bool) {
-	m.checked__inst0 = on
-	m.box.SetChecked(m.checked__inst0)
-	var __lt0 string
-	if m.checked__inst0 {
-		__lt0 = "on"
-	} else {
-		__lt0 = "off"
+	if on != m.checked__inst0 {
+		m.checked__inst0 = on
+		m.box.SetChecked(m.checked__inst0)
+		var __lt0 string
+		if m.checked__inst0 {
+			__lt0 = "on"
+		} else {
+			__lt0 = "off"
+		}
+		m.__n2.SetText(__lt0)
 	}
-	m.__n2.SetText(__lt0)
 }
 
 func (m *Model) __n3_toggle_handler(on bool) {
-	m.checked__inst1 = on
-	m.__n3.SetChecked(m.checked__inst1)
+	if on != m.checked__inst1 {
+		m.checked__inst1 = on
+		m.__n3.SetChecked(m.checked__inst1)
+	}
 }
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
@@ -571,8 +575,10 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0.SetText(c.__prop_label)
 	c.__n0.SetChecked(c.checked)
 	c.__n0.OnChanged = func(on bool) {
-		c.checked = on
-		c.__n0.SetChecked(c.checked)
+		if on != c.checked {
+			c.checked = on
+			c.__n0.SetChecked(c.checked)
+		}
 	}
 	c.Root = c.__n0
 	return c
@@ -691,20 +697,24 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) box_toggled_handler() {
-	m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
-	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
-	var __lt0 string
-	if m.checked__inst0 {
-		__lt0 = "on"
-	} else {
-		__lt0 = "off"
+	if gtk4rt.CheckButtonGetActive(m.box) != m.checked__inst0 {
+		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
+		gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
+		var __lt0 string
+		if m.checked__inst0 {
+			__lt0 = "on"
+		} else {
+			__lt0 = "off"
+		}
+		gtk4rt.LabelSetText(m.__n2, __lt0)
 	}
-	gtk4rt.LabelSetText(m.__n2, __lt0)
 }
 
 func (m *Model) __n3_toggled_handler() {
-	m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.__n3)
-	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
+	if gtk4rt.CheckButtonGetActive(m.__n3) != m.checked__inst1 {
+		m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.__n3)
+		gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
+	}
 }
 
 // __checkbox_state3Instance is one live instance of the __checkbox_state3 component.
@@ -732,8 +742,10 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.CheckButtonSetLabel(c.__n0, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
-		c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
-		gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
+			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
+			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		}
 	})
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1065,9 +1077,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:aa952c70d8da843435759edf96dcf5a0
 -- run/go/fyne --
-pass sha256:655dfb02a272d12f4957f54a9deef398
+pass sha256:99f8f3a919484b104d1a9abc829a6b67
 -- run/go/gtk4 --
-pass sha256:b938b1ee9a4d1385426fd2b133f9e674
+pass sha256:66ef72b6dc24879c6876e476e9192af7
 -- run/kotlin/android --
 pass sha256:5630ced9a0e6f0c8b6debe42f6958c87
 -- run/none/html --

@@ -1380,15 +1380,45 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, self ir.Expr) ir.Expr {
 	}
 	fn := *lam.Func
 	fn.Params = nil
-	fn.Block = readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader())
+	fn.Block = t.spellLocalNodes(readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader()))
 	out := *lam
 	out.Func = &fn
 	return &out
 }
 
+// spellLocalNodes respells each node ref in stmts that this scope declares as a
+// local, which the Go renderer otherwise writes as a field of the receiver: a
+// handler in an instance's render slot handing its widget on wrote `c.__n1`
+// for the slot's own `__n1`.
+func (t *gtk4Translator) spellLocalNodes(stmts []ir.Stmt) []ir.Stmt {
+	local := func(e ir.Expr) bool {
+		id, ok := e.(*ir.Ident)
+		return ok && id.IsElementRef && t.isLocalRef(id.Name)
+	}
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if local(e) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	if !found {
+		return stmts
+	}
+	stmts = ir.CloneStmtsSharingDecls(stmts)
+	_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+		if local(e) {
+			return t.qualifyNodeExpr(e), nil
+		}
+		return e, nil
+	})
+	return stmts
+}
+
 // widgetReader is readWidgets' read for what this translator emits, which
 // spells a node the way it spells every other.
-func (t *gtk4Translator) widgetReader() func(cType string, ref ir.Expr) ir.Expr {
+func (t *gtk4Translator) widgetReader() widgetAccess {
 	return widgetReader(t.wrapped, t.shared, func(name string) ir.Expr {
 		return t.qualifyNodeExpr(&ir.Ident{Name: name, IsElementRef: true})
 	})

@@ -341,6 +341,30 @@ matched. Each target reads its host its own way, in its own `.sngl`:
   reaches, whose handler writes the prop; the snapshot prints the `sngl:ui`
   component in its place.
 
+**A write the program makes fires none of a control's events, and each
+override holds to it** (`cmd/sngl/testdata/program_write_fires_no_event_runs.txt`,
+on every target). A handler reports only a value the program does not already
+hold -- `if checkActive(b) != checked { … }`, fyne's `if v != value { … }` --
+so a bound value written to the widget, whose host fires its change signal for
+the write, reports nothing; a commit (an entry's `activate`, fyne's submit) is
+not guarded, since pressing Enter commits whatever the value. A host whose
+write fires its signal more than once is written quietly instead: gtk4's entry
+overrides do not bind `text` but push it from
+`effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
+`gtk4.setEntryText` (a `widgetWrites` intrinsic beside the `widgetReads`
+getters) blocking "changed", because gtk_editable_set_text deletes and
+reinserts and a runtime instance's handler writing the text back re-entered
+itself until the stack overflowed (`codegen/platform/gtk4/entry_echo_test.go`).
+`sngl_calendar_select` blocks "day-selected" the same way; a test's invoker
+fires the signal itself after selecting.
+
+A handler attached in a statement list `readWidgets` reads names its widget
+through its parameter, which `signalLambda` maps to the node once the node is
+in scope, so `readWidgets` leaves those reads alone; read early, the parameter
+was taken for a widget handed in as a value (`e.(gtk4rt.Handle)`).
+`spellLocalNodes` then respells a node the slot declared as a local, which the
+Go renderer otherwise writes as the receiver's field (`c.__n1`).
+
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
 gtk4 sets the widget's state (which fires the signal) or its text; fyne calls

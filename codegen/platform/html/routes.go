@@ -101,25 +101,18 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	if err := codegen.ApplyOptions(&opts, req.Options); err != nil {
 		return fmt.Errorf("html: %w", err)
 	}
-	pkgName := opts.Package
-	if pkgName == "" {
-		if opts.Main {
-			pkgName = "main"
-		} else {
-			pkgName = "ui"
-		}
-	}
 	framework := opts.Framework
 	if framework == "" {
 		framework = "net/http"
 	}
 
 	httpReq := &codegen.HTTPRequest{
-		Pkg:       req.Pkg,
-		Package:   pkgName,
-		Main:      opts.Main,
-		Framework: framework,
-		Routes:    routes,
+		Pkg:        req.Pkg,
+		Package:    opts.Package,
+		Main:       opts.Main,
+		Executable: opts.Executable,
+		Framework:  framework,
+		Routes:     routes,
 		RenderHTML: func(idx int) string {
 			if idx < 0 || idx >= len(perWindow) {
 				return ""

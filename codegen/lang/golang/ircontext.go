@@ -2600,6 +2600,9 @@ func loopReadNames(n *ir.For) map[string]bool {
 // the outer loop's. Asked by name, so anything that might read it keeps it.
 func WithUnreadVarsDropped(n *ir.For) *ir.For {
 	read := loopReadNames(n)
+	if n.KeyRead {
+		read[n.Key] = true
+	}
 	// A counted loop's variable is read by its own condition, which ForHead
 	// names __i when the body does not name one.
 	if n.IterKind == ir.IterCounted {

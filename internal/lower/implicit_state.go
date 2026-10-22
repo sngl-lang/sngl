@@ -36,6 +36,12 @@ import (
 // goes inside with the node: the handle is what a test reaches the widget
 // through, and it must name the widget rather than the wrapper.
 //
+// A node under a `for` whose host holds a lifetime and no var -- an override
+// pushing its value from an `effect` -- is wrapped too, with nothing unbound:
+// the inliner builds the wrapper per copy (reactiveCtx.perCopy), where
+// splicing the node gave every copy one effect and one handle. A host with a
+// var is built per copy already.
+//
 // After PlatformExtensionBody, so an override body the program wrote is
 // reached; before PropBindings, which lowers the binding this writes, and
 // NodePropReads, which would otherwise answer the read with the value the call
@@ -57,7 +63,7 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 		if o.Comp != nil {
 			hosted = o.Comp.Family
 		}
-		if err := st.stmts(*o.Body, hosted); err != nil {
+		if err := st.stmts(*o.Body, hosted, false); err != nil {
 			return err
 		}
 	}
@@ -151,22 +157,24 @@ type implicitState struct {
 	reads map[*ir.Var]map[string]*ir.Var
 }
 
-// stmts wraps each node in stmts that leaves a two-way prop unbound. hosted is
-// the family the position accepts, which a component taking the family it is
-// placed in is a member of (rendersAsType).
-func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component) error {
+// stmts wraps each node in stmts that leaves a two-way prop unbound, or holds a
+// lifetime under a `for` (inLoop). hosted is the family the position accepts,
+// which a component taking the family it is placed in is a member of
+// (rendersAsType).
+func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component, inLoop bool) error {
 	for i, s := range stmts {
 		inner := hosted
 		if n, ok := s.(*ir.NodeInst); ok {
 			inner = hostedBy(handleType(n))
 		}
+		_, isFor := s.(*ir.For)
 		for _, b := range ir.ViewBlocks(s) {
-			if err := st.stmts(*b, inner); err != nil {
+			if err := st.stmts(*b, inner, inLoop || isFor); err != nil {
 				return err
 			}
 		}
 		if n, ok := s.(*ir.NodeInst); ok {
-			w, err := st.wrap(n, hosted)
+			w, err := st.wrap(n, hosted, inLoop)
 			if err != nil {
 				return err
 			}
@@ -179,8 +187,8 @@ func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component) error {
 }
 
 // wrap is the instantiation that takes n's place, or nil when n leaves no
-// two-way prop unbound.
-func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component) (*ir.NodeInst, error) {
+// two-way prop unbound and holds no lifetime under a `for`.
+func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop bool) (*ir.NodeInst, error) {
 	comp := n.Component
 	if comp == nil {
 		return nil, nil
@@ -189,11 +197,14 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component) (*ir.NodeIns
 	if n.Handle == nil && n.ID == "" {
 		unbound = slices.DeleteFunc(unbound, func(p *ir.Prop) bool { return !hostReports(comp, p) })
 	}
-	if len(unbound) == 0 {
+	if len(unbound) == 0 && !(inLoop && len(comp.Vars) == 0 && holdsLifetime(comp.Stmts)) {
 		return nil, nil
 	}
 	rest := comp.RestSlot()
 	if len(n.Children) > 0 && rest == nil || slices.ContainsFunc(ir.SlotNames(n.Slots), func(name string) bool { return slotDeclOf(comp, name) == nil }) {
+		if len(unbound) == 0 {
+			return nil, fmt.Errorf("%s: %s holds a lifetime and is given content under a for, which is not supported yet", nodePos(n), comp.DisplayName())
+		}
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 

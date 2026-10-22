@@ -1840,7 +1840,9 @@ A component parameter is one of four kinds:
   component fires by calling its name (`name(x, y)`) and the caller handles
   with `@name(a, b) { … }`. The list is a function's, each parameter named
   and typed, and as with a function the parens may be left off when there is
-  none: `@name` and `@name()` both pass nothing;
+  none: `@name` and `@name()` both pass nothing. A control's event reports what
+  the user, or a test's trigger, did: a write the program makes to a binding
+  parameter fires none of its events;
 - a **slot** — `name component …` — a region of UI the caller supplies,
   described next.
 

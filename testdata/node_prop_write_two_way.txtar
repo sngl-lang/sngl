@@ -328,20 +328,24 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) bound_toggle_handler(on bool) {
-	m.shown__inst0 = on
-	m.bound.SetChecked(m.shown__inst0)
+	if on != m.shown__inst0 {
+		m.shown__inst0 = on
+		m.bound.SetChecked(m.shown__inst0)
+	}
 }
 
 func (m *Model) free_toggle_handler(on bool) {
-	m.checked__inst0 = on
-	m.free.SetChecked(m.checked__inst0)
-	var __lt0 string
-	if m.checked__inst0 {
-		__lt0 = "on"
-	} else {
-		__lt0 = "off"
+	if on != m.checked__inst0 {
+		m.checked__inst0 = on
+		m.free.SetChecked(m.checked__inst0)
+		var __lt0 string
+		if m.checked__inst0 {
+			__lt0 = "on"
+		} else {
+			__lt0 = "off"
+		}
+		m.seen.SetText(__lt0)
 	}
-	m.seen.SetText(__lt0)
 }
 
 func (m *Model) flip_click_handler() {
@@ -506,20 +510,24 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) bound_toggled_handler() {
-	m.shown__inst0 = gtk4rt.CheckButtonGetActive(m.bound)
-	gtk4rt.CheckButtonSetActive(m.bound, m.shown__inst0)
+	if gtk4rt.CheckButtonGetActive(m.bound) != m.shown__inst0 {
+		m.shown__inst0 = gtk4rt.CheckButtonGetActive(m.bound)
+		gtk4rt.CheckButtonSetActive(m.bound, m.shown__inst0)
+	}
 }
 
 func (m *Model) free_toggled_handler() {
-	m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.free)
-	gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
-	var __lt0 string
-	if m.checked__inst0 {
-		__lt0 = "on"
-	} else {
-		__lt0 = "off"
+	if gtk4rt.CheckButtonGetActive(m.free) != m.checked__inst0 {
+		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.free)
+		gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
+		var __lt0 string
+		if m.checked__inst0 {
+			__lt0 = "on"
+		} else {
+			__lt0 = "off"
+		}
+		gtk4rt.LabelSetText(m.seen, __lt0)
 	}
-	gtk4rt.LabelSetText(m.seen, __lt0)
 }
 
 func (m *Model) flip_clicked_handler() {
@@ -763,9 +771,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e58e728500f708e3dbb41746d06f3a35
 -- run/go/fyne --
-pass sha256:12cec83ffa3572d42dafbd38c3462c9b
+pass sha256:829b106bd02ca46d204b7962c5f1a8d4
 -- run/go/gtk4 --
-pass sha256:5bbe1c3801f9dd0d8da64446051751bb
+pass sha256:1b6f5adebdb3e5e5b646f50801087d9c
 -- run/kotlin/android --
 pass sha256:927019c200ecd918b1e97bf826fb03f3
 -- run/none/html --

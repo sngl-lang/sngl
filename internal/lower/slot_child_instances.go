@@ -235,12 +235,15 @@ func isDrawShape(n *ir.NodeInst) bool {
 	return n.Component != nil && ir.IsShapeFamily(n.Component.Family)
 }
 
-// handlerParams is the parameters of every handler under n, which no lifting
-// may make a prop of: nothing outside the handler binds them.
+// handlerParams is the parameters of every handler and lambda under n, and
+// every local and loop variable a body under n declares, which no lifting may
+// make a prop of: nothing outside n binds them. A lambda in a prop's value
+// (`options.map(func(o) => o.label)`) is one: lifting its parameter handed
+// the instance an `o` the site never declared.
 func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
-	add := func(h *ir.EventHandler) {
-		if h != nil && h.Func != nil {
-			for _, p := range h.Func.Params {
+	add := func(f *ir.Func) {
+		if f != nil {
+			for _, p := range f.Params {
 				into[p] = true
 			}
 		}
@@ -249,10 +252,25 @@ func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 		switch x := node.(type) {
 		case *ir.NodeInst:
 			for i := range x.Handlers {
-				add(&x.Handlers[i])
+				add(x.Handlers[i].Func)
 			}
 		case *ir.ErrorBoundary:
-			add(x.Handler)
+			if x.Handler != nil {
+				add(x.Handler.Func)
+			}
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				into[x.Sym] = true
+			}
+		case *ir.For:
+			if x.KeySym != nil {
+				into[x.KeySym] = true
+			}
+			if x.ValueSym != nil {
+				into[x.ValueSym] = true
+			}
 		}
 		return nil
 	})

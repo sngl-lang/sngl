@@ -198,8 +198,10 @@ func New() *Model {
 }
 
 func (m *Model) __n0_toggle_handler(on__p0 bool) {
-	m.on = on__p0
-	m.__n0.SetChecked(m.on)
+	if on__p0 != m.on {
+		m.on = on__p0
+		m.__n0.SetChecked(m.on)
+	}
 }
 
 func (m *Model) On() bool {
@@ -290,8 +292,10 @@ func New() *Model {
 }
 
 func (m *Model) __n0_toggled_handler() {
-	m.on = gtk4rt.CheckButtonGetActive(m.__n0)
-	gtk4rt.CheckButtonSetActive(m.__n0, m.on)
+	if gtk4rt.CheckButtonGetActive(m.__n0) != m.on {
+		m.on = gtk4rt.CheckButtonGetActive(m.__n0)
+		gtk4rt.CheckButtonSetActive(m.__n0, m.on)
+	}
 }
 
 func (m *Model) On() bool {
@@ -456,9 +460,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:1e8601ccb8c9deb2b78a479754002bbd
 -- run/go/fyne --
-pass sha256:730b338d2b83fc8d84da400b942b487b
+pass sha256:950e5072df6b199d99e1c43db61ebaa4
 -- run/go/gtk4 --
-pass sha256:a050524f7406a603df29f8795d54fc7a
+pass sha256:02fe8b3d1870c6ee5a68279c498d1679
 -- run/kotlin/android --
 pass sha256:bf380c48a11746ee4e1db5977e51f3de
 -- run/none/html --

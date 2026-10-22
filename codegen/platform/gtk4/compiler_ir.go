@@ -696,6 +696,19 @@ var widgetReads = map[string]string{
 	"gtk4.calendarDate": "GtkCalendar",
 }
 
+// widgetWrites are the setters gtk4.sngl declares for an override to write
+// what a control holds when it decides to, by intrinsic id, and the widget
+// each writes.
+var widgetWrites = map[string]string{
+	"gtk4.setEntryText": "GtkEntry",
+}
+
+// widgetAccess spells widgetReads and widgetWrites calls for one scope.
+type widgetAccess struct {
+	read  func(cType string, ref ir.Expr) ir.Expr
+	write func(cType string, ref, value ir.Expr) ir.Expr
+}
+
 // selfIsNode is a signal handler's body with its parameters read as the node
 // the handler is attached to. A GTK signal hands its callback the instance it
 // fired on, which is what an event declares as `self`; the trampoline passes
@@ -719,13 +732,14 @@ func selfIsNode(stmts []ir.Stmt, params []*ir.Param, node ir.Expr) []ir.Stmt {
 	return stmts
 }
 
-// readWidgets rewrites each widgetReads call in stmts to the getter read
-// answers for the widget it is handed. The statements are copied first: a
-// body is the lowered IR's, shared with every other reader of it.
-func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) []ir.Stmt {
+// readWidgets rewrites each widgetReads and widgetWrites call in stmts to the
+// getter or setter access answers for the widget it is handed. The statements
+// are copied first: a body is the lowered IR's, shared with every other reader
+// of it.
+func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 	found := false
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && widgetReads[c.Func.Intrinsic] != "" {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && (widgetReads[c.Func.Intrinsic] != "" || widgetWrites[c.Func.Intrinsic] != "") {
 			found = true
 			return ir.SkipAll
 		}
@@ -735,16 +749,43 @@ func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) 
 		return stmts
 	}
 	stmts = ir.CloneStmtsSharingDecls(stmts)
+	// A handler attached in these statements reads the node it is attached to
+	// through its parameter, which signalLambda maps once the node is in scope;
+	// read here, the parameter would be taken for a widget handed in as a value.
+	attached := map[*ir.Param]struct{}{}
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) == 3 {
+			if lam, ok := c.Args[2].Value.(*ir.Lambda); ok && lam.Func != nil {
+				for _, p := range lam.Func.Params {
+					attached[p] = struct{}{}
+				}
+			}
+		}
+		return nil
+	})
 	_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
 		c, ok := e.(*ir.Call)
-		if !ok || c.Func == nil || len(c.Args) != 1 {
+		if !ok || c.Func == nil || len(c.Args) == 0 {
+			return e, nil
+		}
+		if id, ok := c.Args[0].Value.(*ir.Ident); ok {
+			if p, ok := id.Sym.(*ir.Param); ok {
+				if _, ok := attached[p]; ok {
+					return e, nil
+				}
+			}
+		}
+		if cType := widgetWrites[c.Func.Intrinsic]; cType != "" && len(c.Args) == 2 {
+			if w := access.write(cType, c.Args[0].Value, c.Args[1].Value); w != nil {
+				return w, ir.SkipDir
+			}
 			return e, nil
 		}
 		cType := widgetReads[c.Func.Intrinsic]
-		if cType == "" {
+		if cType == "" || len(c.Args) != 1 {
 			return e, nil
 		}
-		if g := read(cType, c.Args[0].Value); g != nil {
+		if g := access.read(cType, c.Args[0].Value); g != nil {
 			return g, ir.SkipDir
 		}
 		return e, nil
@@ -759,25 +800,43 @@ func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) 
 // widget value has no Go type of its own, so it is asserted to its field's.
 // gtk4rt wraps no getter for some widgets, and the cgo one there is what makes
 // the program fall back to inline cgo.
-func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir.Expr) func(cType string, ref ir.Expr) ir.Expr {
-	return func(cType string, ref ir.Expr) ir.Expr {
-		// What is not a name is a node already spelled: selfIsNode's, which
-		// is the Model's field.
-		w := ref
+func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir.Expr) widgetAccess {
+	// What is not a name is a node already spelled: selfIsNode's, which is
+	// the Model's field.
+	spell := func(cType string, ref ir.Expr) ir.Expr {
 		if id, ok := ref.(*ir.Ident); ok {
 			if isNodeRef(id) {
-				w = qualify(strings.TrimPrefix(id.Name, "m."))
-			} else {
-				w = &ir.Ident{Name: id.Name + ".(" + widgetFieldGoType(cType, wrapped) + ")"}
+				return qualify(strings.TrimPrefix(id.Name, "m."))
 			}
+			return &ir.Ident{Name: id.Name + ".(" + widgetFieldGoType(cType, wrapped) + ")"}
 		}
+		return ref
+	}
+	return widgetAccess{read: func(cType string, ref ir.Expr) ir.Expr {
+		w := spell(cType, ref)
 		if wrapped {
 			if g := rtEventGetterExpr(cType, w); g != nil {
 				return g
 			}
 		}
 		return shared.cgoEventGetter(cType, w)
+	}, write: func(cType string, ref, value ir.Expr) ir.Expr {
+		w := spell(cType, ref)
+		if wrapped {
+			return rtEventSetterExpr(cType, w, value)
+		}
+		return cgoEventSetterExpr(cType, w, value)
+	}}
+}
+
+// cgoEventSetterExpr is the inline-cgo write of widgetWrites, the twin of
+// cgoEventGetterExpr.
+func cgoEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
+	switch cType {
+	case "GtkEntry":
+		return nativeCall("sngl_set_entry_text_quiet", ir.TypVoid, cgoCast("GtkEditable", widgetRef), cString(value))
 	}
+	return nil
 }
 
 // isNodeRef reports whether id names a node: one a lowering synthesized, or a
