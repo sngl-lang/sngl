@@ -49,7 +49,8 @@ const heldStyleFn = "snglStyle"
 // field by field, which is every constant style and any field reading state.
 // A Style held as a value -- a prop, a merge of one, a var -- goes through
 // snglStyle, which reads the same fields off it at run time, so a style the
-// program computes is drawn as one it wrote.
+// program computes is drawn as one it wrote. Only sngl:ui's: a shape's style
+// is a drawing's, not a widget's.
 func (t *gtk4Translator) setStyle(node, value ir.Expr) ir.Stmt {
 	var arg ir.Expr
 	if lit, ok := value.(*ir.StructLit); ok {
@@ -64,7 +65,7 @@ func (t *gtk4Translator) setStyle(node, value ir.Expr) ir.Stmt {
 		arg = lit
 	} else {
 		sd, ok := value.ExprType().Decl.(*ir.StructDef)
-		if !ok {
+		if !ok || sd.Name != "Style" || sd.PkgPath() != "sngl:ui" {
 			return nil
 		}
 		t.shared.heldStyle = sd
