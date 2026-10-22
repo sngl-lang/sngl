@@ -2599,7 +2599,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -3206,6 +3205,6 @@ pass sha256:4089635aa8ccd1c2f5c33718d5ced61c
 -- run/go/gtk4 --
 pass sha256:36b2531706c75d86496945cfc2d07d54
 -- run/kotlin/android --
-pass sha256:3a02bffd495074297bbe1bec60b2fa34
+pass sha256:ae21502745fd4acaee96198c4f6294a6
 -- run/none/html --
 pass sha256:94f6910df79daefcb8cdfbe5156877b4

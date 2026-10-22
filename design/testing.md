@@ -165,7 +165,7 @@ These rules keep them agreeing:
   (`cmd/sngl/testdata/test_group_no_component_runs.txt`).
 - **An event invoker takes the event's arguments**: `c.f.input("v")` hands
   the invoker `"v"`, which it puts in the widget before firing the one event,
-  as android's `performTextReplacement` does.
+  as android's `SetText` semantics action does.
 - **Effects settle after every statement**: a compiled test settles after
   each write (`settleAfterWrites`), and the interpreter's runner after each
   statement as well as on each read through the instance, since a read of

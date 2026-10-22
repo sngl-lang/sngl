@@ -584,13 +584,33 @@ func methodNamed(label string) string {
 }
 
 // One row of the Moves tab: the level a move is learned at, "" for a way
-// that has none, the move's name in the reader's language, and PokéAPI's
-// name for it.
+// that has none, the move's name in the reader's language, its type's, its
+// power and accuracy, and PokéAPI's name for it. The type, power and
+// accuracy are "" until the move's answer arrives, and a power or an accuracy
+// the move has none of is "—".
 struct MoveRow {
-    level string
-    name  string
-    move  string
+    level    string
+    name     string
+    kind     string
+    power    string
+    accuracy string
+    move     string
 }
+
+// What a page keeps of a move it asked for: its type, and its power and
+// accuracy, each `null` for a move with none -- Growl deals no damage, and
+// Swords Dance never misses.
+struct MoveFact {
+    kind     string
+    power    option[int]
+    accuracy option[int]
+}
+
+// What the Moves tab keeps of `m`.
+func moveFactOf(m poke.MoveDetail) => MoveFact{kind=m.type.name, power=m.power, accuracy=m.accuracy}
+
+// A move's power or accuracy as its row shows it.
+func amount(n option[int]) => n != null ? i18n.numberInt(n) : "—"
 
 // A move as `movesOf` orders it.
 struct learned {
@@ -613,8 +633,8 @@ func before(a learned, b learned) bool {
 }
 
 // The moves a Pokémon learns by `method` in `group`, as the Moves tab's rows,
-// in the order `before` says.
-func movesOf(moves list[poke.PokemonMove], group string, method string, store map[string, list[Named]]) list[MoveRow] {
+// in the order `before` says, each with what `facts` holds of it.
+func movesOf(moves list[poke.PokemonMove], group string, method string, facts map[string, MoveFact], store map[string, list[Named]]) list[MoveRow] {
     var sorted list[learned] = []
     for var m = moves {
         for var d = m.versionGroupDetails {
@@ -629,7 +649,16 @@ func movesOf(moves list[poke.PokemonMove], group string, method string, store ma
             }
         }
     }
-    return sorted.map(func(l learned) => MoveRow{level=method == "level-up" ? "{l.level}" : "", name=l.name, move=l.move})
+    return sorted.map(func(l learned) => moveRow(l, method == "level-up" ? "{l.level}" : "", facts, store))
+}
+
+// `l`'s row, at `level`, with what `facts` holds of it.
+func moveRow(l learned, level string, facts map[string, MoveFact], store map[string, list[Named]]) MoveRow {
+    if !facts.contains(l.move) {
+        return MoveRow{level=level, name=l.name, move=l.move}
+    }
+    var f = facts[l.move]
+    return MoveRow{level=level, name=l.name, kind=called(store, `type`, f.kind), power=amount(f.power), accuracy=amount(f.accuracy), move=l.move}
 }
 
 // What the Moves tab says under its table: how many moves the way chosen

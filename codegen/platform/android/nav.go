@@ -578,13 +578,13 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 			}
 			cc.kc = cc.kc.WithLocal(param.Name)
 		}
-		outerAxis, outerRoot := cc.parentAxis, cc.atRoot
+		outerAxis, outerStretches, outerRoot := cc.parentAxis, cc.parentStretches, cc.atRoot
 		cc.parentAxis, cc.atRoot = "", false
 		body := pageContent(pg.node)
 		if len(body) > 1 {
 			cc.line("%s {", cc.kc.Name(ktColumn))
 			cc.indent++
-			cc.parentAxis = "Column"
+			cc.parentAxis, cc.parentStretches = "Column", true
 		}
 		for _, s := range body {
 			cc.renderStmt(s)
@@ -593,7 +593,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 			cc.indent--
 			cc.line("}")
 		}
-		cc.parentAxis, cc.atRoot = outerAxis, outerRoot
+		cc.parentAxis, cc.parentStretches, cc.atRoot = outerAxis, outerStretches, outerRoot
 		cc.kc = saved
 		cc.indent--
 		cc.line("}")

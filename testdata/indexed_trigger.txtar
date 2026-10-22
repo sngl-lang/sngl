@@ -1953,7 +1953,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1976,7 +1975,7 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
         composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"a true\")", (c.log == "a true"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performTextReplacement("x"); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("x")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b=x\")", (c.log == "b=x"))
     }
 
@@ -1989,7 +1988,7 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("(c.log == \"e\")", (c.log == "e"))
         composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"d true\")", (c.log == "d true"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).performTextReplacement("y"); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("y")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"c=y\")", (c.log == "c=y"))
     }
 
@@ -2407,6 +2406,6 @@ pass sha256:161f14c69bcf1e4f8041a3ceace6acbd
 -- run/go/gtk4 --
 pass sha256:55ca6cf61554a4cd1fd0bfb7a602b7ef
 -- run/kotlin/android --
-pass sha256:b10b27f2aa09b89de1fe31ec45e0bac8
+pass sha256:2bdfa715628916a42d9a1b08f3734e18
 -- run/none/html --
 pass sha256:6713435d38b088c64ad185973c0bcd42

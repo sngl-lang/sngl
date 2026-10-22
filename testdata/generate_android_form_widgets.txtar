@@ -216,24 +216,30 @@ private fun parseDate(s: String): String? =
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglSelect.kt --
 package test.sngl.app
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setText
 
-// SnglSelect is sngl:ui's select: a field showing the label chosen, with a
-// button beside it opening a menu of the choices. Picking one in the menu
-// reports it, and so does typing a choice's label into the field, which is
-// how a keyboard and a test reach it. A label typed or picked that is
-// already the value reports nothing.
+// SnglSelect is sngl:ui's select: a field showing the label chosen, which a
+// tap anywhere on opens a menu of the choices. The field is read-only -- a
+// select chooses among its choices, and a field a user types into is a
+// different control. Picking one in the menu reports it. A test chooses as a
+// keyboard would, by setting the field's text to a choice's label, which the
+// field's semantics answer as a pick; a label that names no choice, or is
+// already the value, reports nothing.
 @Composable
 fun SnglSelect(
     value: String,
@@ -243,42 +249,40 @@ fun SnglSelect(
     modifier: Modifier,
     onValueChange: (String) -> Unit,
 ) {
-    // The text is the field's own while it names no choice, and starts again
-    // from the value whenever the value changes from outside.
-    var text by remember(value) { mutableStateOf(value) }
     var open by remember { mutableStateOf(false) }
     val choose = { v: String ->
-        if (v != value) {
+        open = false
+        if (v != value && v in options) {
             onValueChange(v)
         }
     }
-    Box {
+    Box(
+        modifier = modifier.semantics {
+            role = Role.DropdownList
+            setText { typed ->
+                choose(typed.text)
+                true
+            }
+        },
+    ) {
         OutlinedTextField(
-            value = text,
-            onValueChange = { typed ->
-                text = typed
-                if (typed in options) {
-                    choose(typed)
-                }
-            },
+            value = value,
+            onValueChange = {},
+            readOnly = true,
             enabled = enabled,
             singleLine = true,
             label = if (label.isEmpty()) null else ({ Text(label) }),
-            trailingIcon = {
-                TextButton(onClick = { open = true }, enabled = enabled) { Text("▾") }
-            },
-            modifier = modifier,
+            trailingIcon = { Text("▾") },
         )
+        // A read-only field still takes a tap as its own, to place a cursor,
+        // so the tap that opens the menu is a layer over it.
+        Box(Modifier.matchParentSize().clickable(enabled = enabled) { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             for (o in options) {
-                DropdownMenuItem(text = { Text(o) }, onClick = {
-                    open = false
-                    text = o
-                    choose(o)
-                })
+                DropdownMenuItem(text = { Text(o) }, onClick = { choose(o) })
             }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:e820f1b5e4565f233b4479730281e8ae
+pass sha256:47d27701917263c70ff0d6ff94d44bd0

@@ -599,6 +599,21 @@ func testMovesAreByLevel(t test.Test, c seed) {
     t.assert(c.detail.movesCount != null && c.detail.movesCount.value == "It learns 15 moves this way.")
 }
 
+// A move's row gives its type, power and accuracy once its answer arrives,
+// and a power the move has none of as a dash: Growl deals no damage.
+func testAMoveGivesItsTypePowerAndAccuracy(t test.Test, c seed) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(4)
+    }
+    t.wait(func() => c.detail.moveRows()[0].kind == "Normal" && c.detail.moveRows()[1].power != "", 5000)
+    var tackle = c.detail.moveRows()[0]
+    t.assert(tackle.name == "Tackle" && tackle.kind == "Normal" && tackle.power == "40" && tackle.accuracy == "100")
+    var growl = c.detail.moveRows()[1]
+    t.assert(growl.name == "Growl" && growl.power == "—" && growl.accuracy == "100")
+}
+
 func testTheSelectSwitchesTheMethod(t test.Test, c seed) {
     t.wait(func() => c.detail.mon != null, 5000)
     t.assert(c.detail.tabs != null)

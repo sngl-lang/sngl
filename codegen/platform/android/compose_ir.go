@@ -22,6 +22,10 @@ type irComposeContext struct {
 	// one, and "" at the top of a composable. weight() lives on those two
 	// scopes, and which one it is decides which axis it grows.
 	parentAxis string
+	// parentStretches is whether that Row or Column stretches its children
+	// across its other axis, as CSS's default `alignItems` does: a parent
+	// whose Style names another alignment does not.
+	parentStretches bool
 	// screen is the window the view draws, which the system back closes.
 	screen *codegen.Screen
 	// atRoot marks the window's own content, which is the node the display
@@ -403,12 +407,32 @@ func (cc *irComposeContext) flexModifier(val string) string {
 		// weight() grows the main axis only. CSS stretches a flex child
 		// across the other one by default, which is why the rows of the
 		// keypad divided the height while the keys in them stayed the height
-		// of their own labels.
+		// of their own labels. A row that aligns its children otherwise gets
+		// the share alone: fillMaxHeight fills the most the row may be, not
+		// the height of its tallest child, so a bar in a row of a stats tab
+		// took the whole screen.
+		if !cc.parentStretches {
+			return fmt.Sprintf("weight(%s)", ktFloat(val))
+		}
 		return fmt.Sprintf("weight(%s).%s()", ktFloat(val), cc.kc.Name(ktFillMaxHeight))
 	case "Column":
+		if !cc.parentStretches {
+			return fmt.Sprintf("weight(%s)", ktFloat(val))
+		}
 		return fmt.Sprintf("weight(%s).%s()", ktFloat(val), cc.kc.Name(ktFillMaxWidth))
 	}
 	return cc.kc.Name(ktFillMaxSize) + "()"
+}
+
+// stretches reports whether a Row or Column's Style leaves its children
+// stretched across its other axis: no `alignItems`, or `stretch`.
+func stretches(n *ir.NodeInst) bool {
+	for _, sf := range codegen.NodeStyleFieldsOf(n, "modifier") {
+		if sf.Name == "alignItems" {
+			return enumMember(sf.Value) == "stretch"
+		}
+	}
+	return true
 }
 
 // declaresProp reports whether comp declares a prop of this name.
@@ -707,13 +731,13 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	// weight() lives on RowScope and ColumnScope, so whether a child may ask
 	// for a share -- and along which axis -- depends on which composable is
 	// about to receive it. Nothing below here is the window's content.
-	outerAxis, outerRoot := cc.parentAxis, cc.atRoot
+	outerAxis, outerStretches, outerRoot := cc.parentAxis, cc.parentStretches, cc.atRoot
 	cc.parentAxis = ""
 	if axis == "Row" || axis == "Column" {
-		cc.parentAxis = axis
+		cc.parentAxis, cc.parentStretches = axis, stretches(n)
 	}
 	cc.atRoot = false
-	defer func() { cc.parentAxis, cc.atRoot = outerAxis, outerRoot }()
+	defer func() { cc.parentAxis, cc.parentStretches, cc.atRoot = outerAxis, outerStretches, outerRoot }()
 	for _, child := range n.Children {
 		cc.renderStmt(child)
 	}

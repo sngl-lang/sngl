@@ -74,7 +74,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:9391c2b78eebbe8307f4c0af31e44ac8
+sha256:664e8a5e588b2927b4cdc6075ffa0a4a
 {
   "results": [
     {

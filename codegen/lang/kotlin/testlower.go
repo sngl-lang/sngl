@@ -317,23 +317,23 @@ const clickAction = ".performSemanticsAction(androidx.compose.ui.semantics.Seman
 // them. Written only into a file that triggers an event, at the marker.
 const (
 	composeActionImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
-		"import androidx.compose.ui.test.performSemanticsAction\n" +
-		"import androidx.compose.ui.test.performTextReplacement\n"
+		"import androidx.compose.ui.test.performSemanticsAction\n"
 	composeActionMarker = "\x00composeActions\x00"
 )
 
 // composeAction maps a SNGL event name + invocation args to its
 // Compose-UI-test equivalent. Input/change events take the text the field
-// now holds, which performTextReplacement puts there: it clears the field
-// first and then inserts, matching the "test sets the value" semantic
-// regardless of prior content.
+// now holds, which the node's SetText action puts there in place of what it
+// held, as clickAction runs its OnClick: performTextReplacement asks first
+// that the node be an editable text field, and a select is a read-only one
+// that answers SetText with the choice it names.
 func composeAction(event string, args []ir.CallArg) string {
 	switch event {
 	case "click":
 		return strings.TrimPrefix(clickAction, ".")
 	case "input", "change", "changed":
 		text := extractEventValue(args)
-		return fmt.Sprintf("performTextReplacement(%s)", text)
+		return fmt.Sprintf("performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(%s)) }", text)
 	case "reachEnd":
 		// A scroll's end is reached by scrolling to it, which SnglScroll's
 		// effect reports as it would a finger's: the scroll's own semantics
@@ -668,7 +668,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	if strings.Contains(src, ".onAllNodesWithTag(") {
 		imports = "import androidx.compose.ui.test.onAllNodesWithTag\n"
 	}
-	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") || strings.Contains(src, ".performTextReplacement(") {
+	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") {
 		imports += composeActionImports
 	}
 	for _, path := range slices.Compact(slices.Sorted(slices.Values(required))) {

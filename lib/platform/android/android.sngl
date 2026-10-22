@@ -386,11 +386,12 @@ component SnglScroll(
     children   ...component,
 ) ui.node
 
-// SnglSelect is a select: a field showing the label chosen, with a menu of
-// the choices beside it. It is Kotlin the platform ships with the app
-// (codegen/platform/android/select.kt), since whether the menu is open is
-// state its render reads. `onValueChange` is a label picked in the menu or
-// typed into the field, and never the value it already has.
+// SnglSelect is a select: a read-only field showing the label chosen, which a
+// tap opens a menu of the choices from. It is Kotlin the platform ships with
+// the app (codegen/platform/android/select.kt), since whether the menu is open
+// is state its render reads. `onValueChange` is a label picked in the menu, or
+// a choice's label a test sets as the field's text, and never the value it
+// already has.
 #[gen.renders(identity)]
 #[intrinsic("android:SnglSelect")]
 component SnglSelect(

@@ -7,7 +7,7 @@
 # html's <select>, fyne's Select, gtk4's GtkDropDown (the invoker selects the
 # label, which notifies), bubbletea's tui.Select (a list whose cursor is the
 # choice), android's SnglSelect (a field a label is typed into, with a menu of
-# the choices) and the interpreter's own.
+# text a test sets to a label) and the interpreter's own.
 
 sngl test --platform=none app.sngl
 stdout '2 tests, 0 failures'

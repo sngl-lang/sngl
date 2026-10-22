@@ -766,11 +766,15 @@ fun SnglAssetImage(url: String) {
 }
 
 // SnglRemoteImage is the picture a URL names, fetched while the program runs:
-// nothing until it arrives, and nothing if it does not.
+// nothing until it arrives, and nothing if it does not. produceState takes its
+// initial value once, so a new URL starts again from what the cache holds for
+// it: the last URL's picture is not this one's, and stood in its place for
+// good, since a value already there skipped the fetch.
 @Composable
 fun SnglRemoteImage(url: String) {
     val events by rememberUpdatedState(LocalSnglImageEvents.current)
     val bmp by produceState(SnglAssets.cached(url), url) {
+        value = SnglAssets.cached(url)
         if (value != null) {
             events?.load?.invoke()
             return@produceState
@@ -864,6 +868,6 @@ pass sha256:d14e48b099171fc7211b1d85495e9c7d
 -- run/go/gtk4 --
 pass sha256:591f852bc838ae888c219c4fa74d90ce
 -- run/kotlin/android --
-pass sha256:4bdf55a7d8954c4120955152486a6409
+pass sha256:e045d79ad5f06376367ecb03e6a8e762
 -- run/none/html --
 pass sha256:7e3af92a86fa381ade6ac4f0c8288783

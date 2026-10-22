@@ -436,10 +436,12 @@ value is reported as a choice:
   (`tui.Table`): built once from the rows it started with, it showed
   headings alone where the rows were a request's answer
   (`cmd/sngl/testdata/table_rows_runs.txt`).
-- **android**'s `SnglSelect` is a field with a menu beside it, Kotlin the
-  platform ships as it does `SnglDateField`; typing a choice's label into the
-  field chooses it, which is how the trigger's `performTextReplacement`
-  reaches it.
+- **android**'s `SnglSelect` is a read-only field a tap opens a menu from,
+  Kotlin the platform ships as it does `SnglDateField`. A user cannot type
+  into it -- the Pokédex's selects took any text -- but its semantics answer
+  `SetText` with a choice's label as a pick. A trigger's `change` runs that
+  action rather than `performTextReplacement`, which refuses a field that is
+  not editable, as its `click` runs `OnClick` rather than a touch.
 
 **A tab is chosen by pressing it.** No node of a `ui.tabs` reports `@change`:
 each tab of the strip a loop renders emits `change(k)` from its click, so the

@@ -391,6 +391,30 @@
       "ja": "わざ"
     }
   },
+  "Type": {
+    "translations": {
+      "fr": "Type",
+      "de": "Typ",
+      "es": "Tipo",
+      "ja": "タイプ"
+    }
+  },
+  "Power": {
+    "translations": {
+      "fr": "Puissance",
+      "de": "Stärke",
+      "es": "Potencia",
+      "ja": "いりょく"
+    }
+  },
+  "Accuracy": {
+    "translations": {
+      "fr": "Précision",
+      "de": "Genauigkeit",
+      "es": "Precisión",
+      "ja": "めいちゅう"
+    }
+  },
   "{count, plural, =0{It learns no moves this way.} one{It learns # move this way.} other{It learns # moves this way.}}": {
     "translations": {
       "fr": "{count, plural, =0{Il n’apprend aucune capacité de cette façon.} one{Il apprend # capacité de cette façon.} other{Il apprend # capacités de cette façon.}}",
