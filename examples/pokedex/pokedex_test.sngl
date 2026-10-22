@@ -616,7 +616,10 @@ func testAMoveGivesItsTypePowerAndAccuracy(t test.Test, c seed) {
     if c.detail.tabs != null {
         c.detail.tabs.change(4)
     }
-    t.wait(func() => tackleAndGrowl(c.detail.moveRows()), 5000)
+    // Tackle's and Growl's answers may be the last of the fifteen moves' to
+    // arrive, and fyne lays the table out again for each: about five seconds
+    // all told, and longer on a busy host.
+    t.wait(func() => tackleAndGrowl(c.detail.moveRows()), 20000)
     t.assert(tackleAndGrowl(c.detail.moveRows()))
     // Each move's type is a badge in its own colour.
     t.assert(c.detail.moveRows()[0].kindSlug == "normal" && typeColor(c.detail.moveRows()[0].kindSlug) == #a8a77a)
