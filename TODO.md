@@ -128,13 +128,17 @@ The node half.
   released (`testdata/owned_state.sngl`,
   `cmd/sngl/testdata/simulate_cnative_owned.txt`).
 - [X] Goldens on Go and JS (`testdata/owned_state.txtar`).
-- [ ] The Kotlin golden. android has to compile an owned value in a
-  component under `if` first: a package function that writes package state
-  (the release, in the fixture) is a method of the screen's state class, and
-  the component's own Composable has no `state` to call it on
-  (`Unresolved reference 'state'`), which predates Part 5. Its `@update` keyed
-  on a prop also looked never marked in the generated code; unconfirmed until
-  it compiles.
+- [X] The Kotlin golden (`testdata/owned_state.txtar`). android compiled no
+  owned value in a component under `if`: a package function writing package
+  state (the release) was MainScreen's local fun, or the test build's member
+  through a `state` the file declared only for a composable naming page state
+  itself. A function such a composable calls is now declared at file level
+  with what it reaches (`testdata/android_instance_calls_page_func.txtar`,
+  `android_instance_calls_page_func_app.txtar`). And a write reaching its
+  `@update` through a prop never ran it: a composable has no setter, so it
+  now notices the prop change itself
+  (`owned_derived_built_once_on_entry.txtar`'s
+  `testRebuiltOnAWriteWhileShown`).
 - [X] bubbletea keeps an instance's state when the `if` it sits under leaves
   and comes back, where every other target and the interpreter start it
   again; with this part that is a second release on the next leave. A `match`
@@ -168,18 +172,14 @@ The node half.
   the `@update`'s dirty flag set, so on bubbletea the settle that took the
   branch back built the value in the enter function and again in the report.
   An `@update` under an `if` taken in the same pass as a write to its key
-  ran on every target, where the interpreter reports only writes made while
+  ran on every target, android included, where the interpreter reports only writes made while
   the bracket ran: a report now skips a bracket its position did not describe
   at the last pass
   (`testdata/owned_derived_built_once_on_entry.txtar`).
 - [ ] An `@update` under a `for` whose key does not step into the loop still
   runs for a copy that entered in the pass a write reached its key: only a
   position of `if`s remembers what it described. It needs the copies keyed, as
-  a cell under a loop has them (`dirtyAt`). android keeps nothing either:
-  whether it reports to a bracket its `if` took back in the same pass as the
-  write is unverified, since
-  `testdata/owned_derived_built_once_on_entry.txtar` with kotlin/android in
-  its `output` block does not compile, for the Kotlin golden's reason above.
+  a cell under a loop has them (`dirtyAt`).
 
 ## Part 6: application teardown on targets
 

@@ -178,8 +178,7 @@ type loweredEffect struct {
 	// bracket under an `if` but no loop: one it describes now began its
 	// lifetime in this pass, after every write that set dirty. False to start,
 	// since an instance may never settle before its first write. A loop's
-	// copies would need keys, so it keeps none, and nor does a platform that
-	// brackets lifetimes itself, whose runs this has not been held to.
+	// copies would need keys, so it keeps none.
 	absent *ir.Var
 	// mark sets dirty, for a test body: a test reaches the instance's state
 	// through the instance, and html keeps a synthesized var where only the
@@ -400,7 +399,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		if fx.cell != nil && fx.cell.loop != nil {
 			fx.dirtyAt = &ir.Var{Name: prefix + "_dirtyAt", Type: ir.ListOf(ir.TypInt), Init: &ir.ListLit{Type: ir.ListOf(ir.TypInt)}, Synthesized: true}
 			st.addVar(o, fx.dirtyAt)
-		} else if !st.native && len(frames) > 0 && !slices.ContainsFunc(frames, func(f effectFrame) bool { return f.loop != nil && !f.loopElse }) {
+		} else if len(frames) > 0 && !slices.ContainsFunc(frames, func(f effectFrame) bool { return f.loop != nil && !f.loopElse }) {
 			fx.absent = &ir.Var{Name: prefix + "_absent", Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Synthesized: true}
 			st.addVar(o, fx.absent)
 		}

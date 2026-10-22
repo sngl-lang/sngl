@@ -427,7 +427,7 @@ sha256:c6db084da6e068133ca7b9384e60bbaa
   ]
 }
 -- testrun/android/kotlin/app.sngl/gated/1 --
-sha256:c6adcb92a4f623d3adbbc80a56dfe843
+sha256:0697dca4db8f0bca0c93de3a7040ef50
 {
   "results": [
     {

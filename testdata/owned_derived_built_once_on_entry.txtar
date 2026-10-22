@@ -18,6 +18,9 @@ output {
         fyne
         gtk4
     }
+    kotlin {
+        android
+    }
     none {
         html
     }
@@ -55,6 +58,9 @@ component screen ui.node {
         ui.button #hide(text="h", @click {
             shown = false
         })
+        ui.button #bump(text="b", @click {
+            n += 1
+        })
         ui.button #show(text="s", @click {
             n += 1
             shown = true
@@ -74,6 +80,13 @@ func testBuiltOnceOnReentry(t test.Test, c screen) {
     t.assert(opened == 2)
     t.assert(closed == 1)
     t.assert(updates == 0)
+}
+
+func testRebuiltOnAWriteWhileShown(t test.Test, c screen) {
+    c.bump.click()
+    t.assert(opened == 2)
+    t.assert(closed == 1)
+    t.assert(updates == 1)
 }
 
 ui.window(title="t") {
@@ -295,17 +308,25 @@ func (m *Model) __focusNext() {
 		m.__focusID = 1
 	} else {
 		if m.__focusID == 1 {
-			m.__focusID = 0
+			m.__focusID = 2
+		} else {
+			if m.__focusID == 2 {
+				m.__focusID = 0
+			}
 		}
 	}
 }
 
 func (m *Model) __focusPrev() {
 	if m.__focusID == 0 {
-		m.__focusID = 1
+		m.__focusID = 2
 	} else {
 		if m.__focusID == 1 {
 			m.__focusID = 0
+		} else {
+			if m.__focusID == 2 {
+				m.__focusID = 1
+			}
 		}
 	}
 }
@@ -422,6 +443,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.n += 1
 			m.__effect2_dirty = true
 			m.__effect3_dirty = true
+			m.__effects0_settle()
+		case msg.Code == tea.KeyEnter && m.__focusID == 2:
+			m.n += 1
+			m.__effect2_dirty = true
+			m.__effect3_dirty = true
 			m.shown = true
 			m.__effects0_settle()
 		}
@@ -438,10 +464,19 @@ func (m *Model) hideClick() {
 	m.__focusID = prev
 }
 
+// bumpClick activates the #bump widget the way a keypress does; for tests.
+func (m *Model) bumpClick() {
+	prev := m.__focusID
+	m.__focusID = 1
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID = prev
+}
+
 // showClick activates the #show widget the way a keypress does; for tests.
 func (m *Model) showClick() {
 	prev := m.__focusID
-	m.__focusID = 1
+	m.__focusID = 2
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
@@ -465,14 +500,22 @@ func (m Model) View() tea.View {
 	if part0_1Focused {
 		part0_1Prefix = ">"
 	}
-	part0_1 = lipgloss.NewStyle().Render(part0_1Prefix + " " + fmt.Sprint("s"))
+	part0_1 = lipgloss.NewStyle().Render(part0_1Prefix + " " + fmt.Sprint("b"))
 	part0Children = append(part0Children, part0_1)
 	var part0_2 string
-	if m.shown {
-		part0_2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.label__inst0.Fd)))
+	part0_2Focused := (m.__focusID == 2)
+	part0_2Prefix := " "
+	if part0_2Focused {
+		part0_2Prefix = ">"
 	}
-	if part0_2 != "" {
-		part0Children = append(part0Children, part0_2)
+	part0_2 = lipgloss.NewStyle().Render(part0_2Prefix + " " + fmt.Sprint("s"))
+	part0Children = append(part0Children, part0_2)
+	var part0_3 string
+	if m.shown {
+		part0_3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.label__inst0.Fd)))
+	}
+	if part0_3 != "" {
+		part0Children = append(part0Children, part0_3)
 	}
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	parts = append(parts, part0)
@@ -506,6 +549,15 @@ func TestBuiltOnceOnReentry(t *testing.T) {
 	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
 	if !((c.closed == 1)) { t.Errorf("assert failed: %s", "(c.closed == 1)") }
 	if !((c.updates == 0)) { t.Errorf("assert failed: %s", "(c.updates == 0)") }
+}
+
+func TestRebuiltOnAWriteWhileShown(t *testing.T) {
+	c := newTestComponent()
+	_ = c
+	c.bumpClick()
+	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
+	if !((c.closed == 1)) { t.Errorf("assert failed: %s", "(c.closed == 1)") }
+	if !((c.updates == 1)) { t.Errorf("assert failed: %s", "(c.updates == 1)") }
 }
 
 
@@ -557,6 +609,7 @@ type Model struct {
 
 	__n2 *fyne.Container
 	hide *widget.Button
+	bump *widget.Button
 	show *widget.Button
 }
 
@@ -683,6 +736,15 @@ func (m *Model) hide_click_handler() {
 	m.__effects1_settle()
 }
 
+func (m *Model) bump_click_handler() {
+	m.n += 1
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].SetN(m.n)
+	}
+	m.__effect2_dirty = true
+	m.__effects1_settle()
+}
+
 func (m *Model) show_click_handler() {
 	m.n += 1
 	for __inst0_live_ui, _ := range m.__inst0_live {
@@ -698,6 +760,13 @@ func (m *Model) show_click_handler() {
 func (m *Model) hideClick() {
 	if m.hide.OnTapped != nil {
 		m.hide.OnTapped()
+	}
+}
+
+// bumpClick invokes the OnTapped callback on the #bump widget; for tests.
+func (m *Model) bumpClick() {
+	if m.bump.OnTapped != nil {
+		m.bump.OnTapped()
 	}
 }
 
@@ -755,6 +824,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.hide.SetText("h")
 	m.hide.OnTapped = m.hide_click_handler
 	m.__n2.Add(m.hide)
+	m.bump = widget.NewButton("", nil)
+	m.bump.SetText("b")
+	m.bump.OnTapped = m.bump_click_handler
+	m.__n2.Add(m.bump)
 	m.show = widget.NewButton("", nil)
 	m.show.SetText("s")
 	m.show.OnTapped = m.show_click_handler
@@ -907,6 +980,15 @@ func TestBuiltOnceOnReentry(t *testing.T) {
 	if !((c.updates == 0)) { t.Errorf("assert failed: %s", "(c.updates == 0)") }
 }
 
+func TestRebuiltOnAWriteWhileShown(t *testing.T) {
+	c := newTestComponent()
+	_ = c
+	c.bumpClick()
+	if !((c.opened == 2)) { t.Errorf("assert failed: %s", "(c.opened == 2)") }
+	if !((c.closed == 1)) { t.Errorf("assert failed: %s", "(c.closed == 1)") }
+	if !((c.updates == 1)) { t.Errorf("assert failed: %s", "(c.updates == 1)") }
+}
+
 -- out/go/fyne/testcomponent_test.go --
 package main
 
@@ -971,6 +1053,7 @@ type Model struct {
 	__renderAgain0      bool
 	__n2                gtk4rt.Handle
 	hide                gtk4rt.Handle
+	bump                gtk4rt.Handle
 	show                gtk4rt.Handle
 }
 
@@ -1095,6 +1178,15 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 func (m *Model) hide_clicked_handler() {
 	m.shown = false
 	m.__renderSlot0(m.__n2)
+	m.__effects1_settle()
+}
+
+func (m *Model) bump_clicked_handler() {
+	m.n += 1
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].SetN(m.n)
+	}
+	m.__effect2_dirty = true
 	m.__effects1_settle()
 }
 
@@ -1292,6 +1384,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.hide, "h")
 	gtk4rt.Connect(m.hide, "clicked", m.hide_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.hide)
+	m.bump = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.bump, "b")
+	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
+	gtk4rt.BoxAppend(m.__n2, m.bump)
 	m.show = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.show, "s")
 	gtk4rt.Connect(m.show, "clicked", m.show_clicked_handler)
@@ -1314,9 +1410,245 @@ func (m *Model) hideClick() {
 	gtk4rt.Emit(m.hide, "clicked")
 }
 
+// bumpClick fires the "clicked" signal on the #bump widget; for tests.
+func (m *Model) bumpClick() {
+	gtk4rt.Emit(m.bump, "clicked")
+}
+
 // showClick fires the "clicked" signal on the #show widget; for tests.
 func (m *Model) showClick() {
 	gtk4rt.Emit(m.show, "clicked")
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
+// Code generated by sngl (android) from app.sngl; DO NOT EDIT.
+
+package test.sngl.app
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Button
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
+
+data class File(
+    var fd: Int = 0
+)
+
+data class ErrorEvent(val message: String = "", val kind: String = "")
+
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
+
+fun _snglFloatStr(v: Double): String =
+    if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+
+fun _snglSplit(s: String, sep: String): List<String> =
+    if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+
+lateinit var state: MainScreenState
+
+class MainScreenState {
+    init { state = this }
+    var opened by mutableStateOf(0)
+    var closed by mutableStateOf(0)
+    var updates by mutableStateOf(0)
+    var shown by mutableStateOf(true)
+    var n by mutableStateOf(1)
+    var __effect2_key by mutableStateOf(0)
+    var __effect2_dirty by mutableStateOf(false)
+    var __effect2_absent by mutableStateOf(false)
+    var __effects1_settling by mutableStateOf(false)
+    var __effects1_pending by mutableStateOf(false)
+    var __effects1_torn by mutableStateOf(false)
+    var __effects1_steps by mutableStateOf(0)
+    fun open(fd: Int): File {
+        opened += 1
+        return File(fd = fd)
+    }
+    fun close(f: File) {
+        closed += 1
+    }
+    fun __effect2_update() {
+        updates += 1
+    }
+    fun __effects1_settle() {
+        if (!__effects1_torn) {
+        	if (__effects1_settling) {
+        		__effects1_pending = true
+        	} else {
+        		__effects1_settling = true
+        		__effects1_pending = true
+        		__effects1_steps = 0
+        		while ((__effects1_pending && (__effects1_steps < 512))) {
+        			__effects1_pending = false
+        			__effects1_steps = (__effects1_steps + 1)
+        			var __effect2_seen = false
+        			if (shown) {
+        				if (__effect2_dirty) {
+        					__effect2_dirty = false
+        					if (!__effect2_absent) {
+        						__effect2_key = n
+        						__effect2_update()
+        					}
+        				}
+        				__effect2_seen = true
+        			}
+        			__effect2_absent = !__effect2_seen
+        			if (__effect2_absent) {
+        				__effect2_dirty = false
+        			}
+        		}
+        		__effects1_settling = false
+        		if (__effects1_pending) {
+        			throw SnglRaise(ErrorEvent("effects did not settle in 512 passes; an effect is rekeying itself", "effect"))
+        		}
+        	}
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
+
+    Column(modifier = Modifier.safeDrawingPadding()) {
+        Button(onClick = {
+            state.shown = false
+            state.__effects1_settle()
+        }, modifier = Modifier.testTag("hide")) {
+            Text(text = "h", modifier = Modifier)
+        }
+        Button(onClick = {
+            state.n += 1
+            state.__effect2_dirty = true
+            state.__effects1_settle()
+        }, modifier = Modifier.testTag("bump")) {
+            Text(text = "b", modifier = Modifier)
+        }
+        Button(onClick = {
+            state.n += 1
+            state.__effect2_dirty = true
+            state.shown = true
+            state.__effects1_settle()
+        }, modifier = Modifier.testTag("show")) {
+            Text(text = "s", modifier = Modifier)
+        }
+        if (state.shown) {
+            Holder(n = state.n)
+        }
+    }
+}
+
+@Composable
+fun Holder(n: Int = 0) {
+    var label by remember { mutableStateOf(state.open(n)) }
+    var __effect1_key by remember { mutableStateOf(0) }
+    var __effect1_dirty by remember { mutableStateOf(false) }
+    var __effects0_settling by remember { mutableStateOf(false) }
+    var __effects0_pending by remember { mutableStateOf(false) }
+    var __effects0_torn by remember { mutableStateOf(false) }
+    var __effects0_steps by remember { mutableStateOf(0) }
+
+    fun __effect1_update() {
+        var __old0 = label
+        label = state.open(n)
+        state.close(__old0)
+    }
+
+    fun __effects0_settle() {
+        if (!__effects0_torn) {
+        	if (__effects0_settling) {
+        		__effects0_pending = true
+        	} else {
+        		__effects0_settling = true
+        		__effects0_pending = true
+        		__effects0_steps = 0
+        		while ((__effects0_pending && (__effects0_steps < 512))) {
+        			__effects0_pending = false
+        			__effects0_steps = (__effects0_steps + 1)
+        			if (__effect1_dirty) {
+        				__effect1_dirty = false
+        				__effect1_key = n
+        				__effect1_update()
+        			}
+        		}
+        		__effects0_settling = false
+        		if (__effects0_pending) {
+        			throw SnglRaise(ErrorEvent("effects did not settle in 512 passes; an effect is rekeying itself", "effect"))
+        		}
+        	}
+        }
+    }
+
+    val __prop_n_seen = remember { arrayOf<Any?>(n) }
+    DisposableEffect(n) {
+        if (__prop_n_seen[0] != n) {
+            __prop_n_seen[0] = n
+            __effect1_dirty = true
+            __effects0_settle()
+        }
+        onDispose {}
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            state.close(label)
+        }
+    }
+    Text(text = label.fd.toString(), modifier = Modifier)
+}
+-- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
+// Code generated by sngl (android) from app.sngl; DO NOT EDIT.
+
+package test.sngl.app
+
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class MainScreenTest {
+    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun testBuiltOnceOnReentry() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("hide")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("show")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        org.junit.Assert.assertTrue("(c.opened == 2)", (c.opened == 2))
+        org.junit.Assert.assertTrue("(c.closed == 1)", (c.closed == 1))
+        org.junit.Assert.assertTrue("(c.updates == 0)", (c.updates == 0))
+    }
+
+    @Test fun testRebuiltOnAWriteWhileShown() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        org.junit.Assert.assertTrue("(c.opened == 2)", (c.opened == 2))
+        org.junit.Assert.assertTrue("(c.closed == 1)", (c.closed == 1))
+        org.junit.Assert.assertTrue("(c.updates == 1)", (c.updates == 1))
+    }
+
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -1335,7 +1667,10 @@ body { font-family: system-ui, sans-serif; }
   <button id="$0" data-sngl-id="hide">
     <span>h</span>
   </button>
-  <button id="$1" data-sngl-id="show">
+  <button id="$1" data-sngl-id="bump">
+    <span>b</span>
+  </button>
+  <button id="$2" data-sngl-id="show">
     <span>s</span>
   </button>
   <span data-sngl-slot="0" style="display:contents"></span>
@@ -1360,7 +1695,8 @@ window.__sngl_boot = () => {
   // sngl-entry.js
   var state = { opened: 0, closed: 0, updates: 0, shown: true, n: 1 };
   state.hideClick = () => $0.click();
-  state.showClick = () => $1.click();
+  state.bumpClick = () => $1.click();
+  state.showClick = () => $2.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -1578,6 +1914,7 @@ window.__sngl_boot = () => {
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
+  var $2 = document.getElementById("$2");
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
@@ -1586,6 +1923,16 @@ window.__sngl_boot = () => {
     __effects1_settle();
   });
   $1.addEventListener("click", function() {
+    state.n += 1;
+    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+      ;
+      __inst1_live[__inst1_live_ui].__set_n(state.n);
+    }
+    ;
+    __effect2_dirty = true;
+    __effects1_settle();
+  });
+  $2.addEventListener("click", function() {
     state.n += 1;
     for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
       ;
@@ -1603,10 +1950,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e83c18a8d2c9296d86aab3c72ca2935a
+pass sha256:2cbac252d701333f78f6cccdefecc0f7
 -- run/go/fyne --
-pass sha256:a5b40444092067a3b4a5795f426459d5
+pass sha256:1867c05b9816063d2c052470c3261d6a
 -- run/go/gtk4 --
-pass sha256:10602c23eec901e11dbd67dd276b8064
+pass sha256:727f05f90f6d468b0a1efac582d5e154
+-- run/kotlin/android --
+pass sha256:58fd10d7c1c543522afd3bcef6923079
 -- run/none/html --
-pass sha256:08c01ec5035192ed4abb32371c834e53
+pass sha256:d8d27e16edc4f1deae3e50ed0de79261

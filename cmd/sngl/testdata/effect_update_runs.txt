@@ -177,7 +177,7 @@ func testHarnessPush(t test.Test, c saver) {
     t.assert(c.out.value == "1:1")
 }
 -- testrun/android/kotlin/app.sngl/gated/1 --
-sha256:63d7f62be96b9124d40406219260b117
+sha256:b2c1caf54edc0d377d62ee351d031cf1
 {
   "results": [
     {
