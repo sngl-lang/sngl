@@ -1,0 +1,104 @@
+# A box's parts on bubbletea: the gap between them, a flexing part's share
+# of its row, nothing for what draws nothing, and an image its style's size.
+#
+# A row's parts were written with no space between them, so columns and
+# badges ran together; a part with `flex` took only its own width, so the
+# columns after it never lined up; a loop's copies that drew nothing -- the
+# panels of the tabs not shown -- were each a blank line; and an image was
+# its style's height in columns rather than rows, a dozen blank rows under a
+# picture twice as wide as it is tall. The snapshot is the screen as text.
+#
+# Confirmed against the codegen before: `1   Applesfruit`, three blank lines
+# above `only the third`, and the image twelve rows tall.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+# The loop's one drawn copy is the first line, a gap of one row (16px)
+# between each two parts after it, and no other blank line but the image's
+# second row.
+grep '\Aonly the third' app.sngl.snapshots/table.ansi
+grep -count=6 '(?m)^ *$' app.sngl.snapshots/table.ansi
+# A part is a gap of one column (8px) from the next, and the flexing name
+# takes what the row's 80 columns leave, so the kinds line up.
+grep '(?m)^1    Apples {61}fruit' app.sngl.snapshots/table.ansi
+grep '(?m)^12   Spring onions {54}root' app.sngl.snapshots/table.ansi
+grep '(?m)^one two' app.sngl.snapshots/table.ansi
+# The image is 8 columns by 2 rows, the text a gap beside it.
+grep '(?m)^ {9}beside' app.sngl.snapshots/table.ansi
+
+-- app.sngl --
+import seq "sngl:seq"
+import test "sngl:test"
+import ui "sngl:ui"
+
+output { go { bubbletea } }
+
+// Renders nothing, as a request does.
+component asker(n int) ui.node {
+    var seen = 0
+
+    effect(on=n, @mount(k) { seen = k })
+}
+
+component line(count string, name string, kind string) ui.node {
+    ui.hbox(style={gap=8px}) {
+        ui.text(value=count, style={width=32px})
+        ui.text(value=name, style={flex=1})
+        ui.text(value=kind, style={width=64px})
+    }
+}
+
+component table ui.node {
+    var seen = 0
+    var key = 1
+
+    ui.vbox(style={gap=16px}) {
+        for var i = seq.count(3) {
+            asker(n=i)
+        }
+        asker(n=4)
+        effect(on=key, @mount(k) { seen = k })
+        for var i = seq.count(4) {
+            if i == 2 {
+                ui.text(value="only the third")
+            }
+        }
+        line(count="1", name="Apples", kind="fruit")
+        line(count="12", name="Spring onions", kind="root")
+        ui.hbox(style={gap=8px}) {
+            for var t = ["one", "two"] {
+                ui.text(value=t)
+            }
+        }
+        ui.hbox(style={gap=8px}) {
+            ui.image(alt="nothing", style={width=64px, height=32px}) {
+                ui.file(path="missing.png")
+            }
+            ui.text(value="beside")
+        }
+        ui.text(value="after")
+    }
+}
+
+func testTable(t test.Test, c table) {
+    t.snapshot("table")
+}
+
+ui.window {
+    table
+}
+-- testrun/bubbletea/go/app.sngl/table/1 --
+sha256:8524d7fe0fb9a4e1867584ffbf8c8f78
+{
+  "results": [
+    {
+      "Desc": "Table",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "table.ansi": "b25seSB0aGUgdGhpcmQgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKMSAgICBBcHBsZXMgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgZnJ1aXQgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKMTIgICBTcHJpbmcgb25pb25zICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcm9vdCAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKb25lIHR3byAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgYmVzaWRlICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKYWZ0ZXIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA="
+  }
+}

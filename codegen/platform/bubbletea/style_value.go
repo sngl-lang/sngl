@@ -57,12 +57,18 @@ func (vc *irViewContext) nodeStyle(n *ir.NodeInst) string {
 // styleValueDecl mirrors irStyleCall field for field; a field added there
 // belongs here too.
 func styleValueDecl(scale int) string {
-	return fmt.Sprintf(`func %s(s Style) lipgloss.Style {
+	return fmt.Sprintf(`func %[1]s(s Style) lipgloss.Style {
 	cells := func(v float64) int {
 		if v == 0 {
 			return 0
 		}
-		return max(1, int(v)/%d)
+		return max(1, int(v)/%[2]d)
+	}
+	rows := func(v float64) int {
+		if v == 0 {
+			return 0
+		}
+		return max(1, int(v)/(2*%[2]d))
 	}
 	st := lipgloss.NewStyle()
 	if s.Color != (snglcolor.Color{}) {
@@ -125,13 +131,13 @@ func styleValueDecl(scale int) string {
 	if v := cells(s.Width.Px); v != 0 {
 		st = st.Width(v)
 	}
-	if v := cells(s.Height.Px); v != 0 {
+	if v := rows(s.Height.Px); v != 0 {
 		st = st.Height(v)
 	}
 	if v := cells(s.MaxWidth.Px); v != 0 {
 		st = st.MaxWidth(v)
 	}
-	if v := cells(s.MaxHeight.Px); v != 0 {
+	if v := rows(s.MaxHeight.Px); v != 0 {
 		st = st.MaxHeight(v)
 	}
 	return st

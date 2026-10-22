@@ -524,6 +524,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\ttoasts []snglToast\n")
 	}
 	b.WriteString("\twidth, height int\n")
+	if usesFlexRows(ctx.Pkg) {
+		// The width the box being drawn leaves its children (narrow).
+		b.WriteString("\tavail int\n")
+	}
 	b.WriteString("}\n\n")
 
 	// Binds are initialized sequentially so a later init can read an earlier

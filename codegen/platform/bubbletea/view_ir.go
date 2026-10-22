@@ -33,6 +33,20 @@ type irViewContext struct {
 
 	focusPos  map[string]bool
 	canvasSeq map[string]bool
+
+	// gap is the box being rendered's gap along its axis, in cells, as Go:
+	// what its parts -- a loop's copies and a branch's nodes among them --
+	// are joined with.
+	gap string
+	// weights names the list a flexing row keeps each part's share in, beside
+	// its parts; "" in any other box.
+	weights string
+	// flexRows says the program has a row a part of which flexes, which is
+	// what reads the width a box leaves its children (m.avail).
+	flexRows bool
+	// pictureCols and pictureRows are the box a picture in the image being
+	// rendered is fitted into, zero for the default.
+	pictureCols, pictureRows int
 }
 
 // pendingOverlay records one Overlay primitive deferred out of the inline join
@@ -100,6 +114,15 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		widgets:     info.widgets,
 		buf:         &strings.Builder{},
 		indent:      1,
+		flexRows:    usesFlexRows(ctx.Pkg),
+	}
+	if vc.flexRows {
+		// A terminal that has said no size -- a test's snapshot, a first frame
+		// -- is the conventional 80 columns to a flexing row.
+		vc.line("m.avail = m.width")
+		vc.line("if m.avail == 0 {")
+		vc.line("\tm.avail = 80")
+		vc.line("}")
 	}
 
 	vc.renderBody(bodyStmts, "content")
@@ -187,6 +210,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		buf:         &strings.Builder{},
 		indent:      1,
 		inComponent: true,
+		flexRows:    usesFlexRows(ctx.Pkg),
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -207,15 +231,22 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
+	weights := vc.weights
+	add := func(prefix string) {
+		vc.line("%s%s = append(%s, %s)", prefix, childrenVar, childrenVar, childVar)
+		if weights != "" {
+			vc.line("%s%s = append(%s, %s)", prefix, weights, weights, float32Text(flexOf(child)))
+		}
+	}
 	switch child.(type) {
 	case *ir.If, *ir.Match, *ir.For:
 		// A branch not taken or a loop over nothing renders nothing, and
 		// joining its empty string would put a blank line in the box.
 		vc.line("if %s != \"\" {", childVar)
-		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		add("\t")
 		vc.line("}")
 	default:
-		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		add("")
 	}
 }
 
@@ -238,7 +269,8 @@ func (vc *irViewContext) renderBody(stmts []ir.Stmt, single string) {
 	for i, child := range stmts {
 		vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
 	}
-	vc.line(`%s := lipgloss.JoinVertical(lipgloss.Left, parts...)`, single)
+	vc.requireImport(tuiImportPath)
+	vc.line(`%s := tui.Column(0, parts...)`, single)
 }
 
 // rendersPart reports whether a view statement produces a string for its
@@ -396,11 +428,25 @@ func (vc *irViewContext) renderBranch(stmts []ir.Stmt, resultVar string) {
 	}
 	list := resultVar + "Parts"
 	vc.line("var %s []string", list)
+	weights := vc.weights
+	vc.weights = ""
 	vc.renderSiblings(stmts, resultVar+"Part", list)
+	vc.weights = weights
+	vc.join(resultVar, list)
+}
+
+// join writes the parts in list into resultVar along the box's axis, the
+// box's gap apart, leaving out the parts that draw nothing.
+func (vc *irViewContext) join(resultVar, list string) {
+	vc.requireImport(tuiImportPath)
+	gap := vc.gap
+	if gap == "" {
+		gap = "0"
+	}
 	if vc.horizontal {
-		vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, list)
+		vc.line(`%s = tui.Row(%s, %s...)`, resultVar, gap, list)
 	} else {
-		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, list)
+		vc.line(`%s = tui.Column(%s, %s...)`, resultVar, gap, list)
 	}
 }
 
@@ -436,16 +482,13 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	}
 
 	innerVar := resultVar + "Item"
+	weights := vc.weights
+	vc.weights = ""
 	vc.renderSiblings(s.Body, innerVar, loopVar)
 
 	vc.indent--
 	vc.line("}")
-	sep := `""`
-	if vc.vertical {
-		sep = `"\n"`
-	}
-	vc.requireImport("strings")
-	vc.line(`%s = strings.Join(%s, %s)`, resultVar, loopVar, sep)
+	vc.join(resultVar, loopVar)
 
 	if len(s.Else) > 0 {
 		vc.line("if len(%s) == 0 {", iterExpr)
@@ -454,7 +497,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 			elseVar := resultVar + "Else"
 			vc.line("var %s []string", elseVar)
 			vc.renderSiblings(s.Else, resultVar+"Empty", elseVar)
-			vc.line(`%s = strings.Join(%s, %s)`, resultVar, elseVar, sep)
+			vc.join(resultVar, elseVar)
 		} else {
 			for _, child := range s.Else {
 				vc.renderStmt(child, resultVar)
@@ -464,6 +507,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 		vc.line("}")
 	}
 
+	vc.weights = weights
 	vc.gc = savedGC
 }
 
@@ -605,11 +649,14 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		childrenVar := boxVar + "Children"
 		vc.line("var %s []string", childrenVar)
 		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+		prevGap, prevWeights := vc.gap, vc.weights
 		vc.vertical, vc.horizontal = true, false
+		vc.gap, vc.weights = "0", ""
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", boxVar, i), childrenVar)
 		}
 		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+		vc.gap, vc.weights = prevGap, prevWeights
 		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
 		if style != "lipgloss.NewStyle()" {
 			vc.line(`%s = %s.Render(%s)`, boxVar, style, boxVar)
@@ -636,12 +683,22 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		childrenVar := resultVar + "Children"
 		vc.line("var %s []string", childrenVar)
 		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+		prevGap, prevWeights := vc.gap, vc.weights
+		prevCols, prevRows := vc.pictureCols, vc.pictureRows
 		vc.vertical = bp.Join == joinVertical
 		vc.horizontal = !vc.vertical
+		vc.gap = vc.gapCells(n)
+		vc.weights = ""
+		if vc.horizontal && childFlexes(n.Children) {
+			vc.weights = resultVar + "Weights"
+			vc.line("var %s []float64", vc.weights)
+		}
+		vc.pictureCols, vc.pictureRows = vc.pictureBox(n)
+		restoreAvail := vc.narrow(n, resultVar)
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 		}
-		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+		gap, weights := vc.gap, vc.weights
 		// tooltip: reveal the body text (dim) below the trigger while the wrapped
 		// focusable descendant is focused. The `tooltip` prop carries the text;
 		// the focus expression comes from the focusable descendant's injected
@@ -653,14 +710,22 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 				vc.requireImport("fmt")
 				vc.line(`if %s {`, focusExpr)
 				vc.line(`%s = append(%s, lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(%s)))`, childrenVar, childrenVar, vc.gc.EvalExpr(tip))
+				if weights != "" {
+					vc.line(`%s = append(%s, 0)`, weights, weights)
+				}
 				vc.line(`}`)
 			}
 		}
-		if bp.Join == joinVertical {
-			vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
+		if weights != "" {
+			vc.requireImport(tuiImportPath)
+			vc.line(`%s = tui.FlexRow(m.avail, %s, %s, %s)`, resultVar, gap, childrenVar, weights)
 		} else {
-			vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, childrenVar)
+			vc.join(resultVar, childrenVar)
 		}
+		restoreAvail()
+		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+		vc.gap, vc.weights = prevGap, prevWeights
+		vc.pictureCols, vc.pictureRows = prevCols, prevRows
 		if style != "lipgloss.NewStyle()" {
 			vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
 		}
@@ -925,11 +990,11 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 	case "width":
 		return fmt.Sprintf("Width(%s)", cellVal(expr, gc, scaleFactor))
 	case "height":
-		return fmt.Sprintf("Height(%s)", cellVal(expr, gc, scaleFactor))
+		return fmt.Sprintf("Height(%s)", cellVal(expr, gc, 2*scaleFactor))
 	case "maxWidth":
 		return fmt.Sprintf("MaxWidth(%s)", cellVal(expr, gc, scaleFactor))
 	case "maxHeight":
-		return fmt.Sprintf("MaxHeight(%s)", cellVal(expr, gc, scaleFactor))
+		return fmt.Sprintf("MaxHeight(%s)", cellVal(expr, gc, 2*scaleFactor))
 	case "fontWeight":
 		return enumFlagCall("Bold", expr, val, "bold")
 	case "fontStyle":
