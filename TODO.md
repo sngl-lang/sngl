@@ -49,20 +49,33 @@ under it. Delete this file before the MR leaves draft.
 - [X] A failing verify names the files that changed under the run
   (`reportTreeChange`); a snapshot would cost a cold build cache.
 
-## Part 2: gtk4 reads a node's style
+## Part 2: gtk4 reads a node's style (done)
 
-gtk4 reads no field of `style` but `flex`: sizes, gap, padding, margin, font
-size and weight, colours and border radius are GTK's own. The Pokédex's
-artwork is 90 px where it asks for 192, its cards show no artwork, and its
-columns and badges are unstyled.
-
-- [ ] Width and height as a size request; gap as a box's spacing; padding
+- [X] Width and height as a size request; gap as a box's spacing; padding
   and margin.
-- [ ] Font size, weight and style; foreground and background colours and
-  border radius, through a CSS provider per widget or per class.
-- [ ] A card's artwork on home: find why a picture in a clickable card shows
-  nothing.
-- [ ] Each with a golden, and the screenshots taken again.
+- [X] Font size, weight and style; foreground and background colours and
+  border radius, through CSS: `gtk4rt.SetStyle` takes a `gtk4rt.Style` of
+  the fields gtk4 draws, in pixels, and keeps one class per distinct style on
+  one provider for the display. A literal is read field by field, so a field
+  reading state is written again where the state is; a Style held as a value
+  goes through `snglStyle`, generated from the declaration. An image is
+  exactly its style's size (a custom layout on its frame), since a size
+  request is only a minimum and a picture's natural size is its file's.
+- [X] A card's artwork on home: not the card. A GtkScrolledWindow lays its
+  content out at its minimum height, a picture's minimum is nothing, and once
+  a scroll's text alone was taller than it every picture was drawn at no
+  height; `ScrollNew` sets the viewport's `vscroll-policy` to natural.
+- [X] Found on the way: the Sprites tab's pictures landed under one another's
+  labels, differently each run. A fetch arriving after a re-render painted
+  the new picture GTK made at the freed one's address; `setTexture` asks for
+  its own source.
+- [X] `testdata/gtk4_style.txtar`; `cmd/sngl/testdata/style_gtk4_rendered_runs.txt`
+  (`t.snapshot`s); `pkg/go/gtk4rt` `style_test.go`, `scroll_test.go` and
+  `image_test.go`, each failing with its fix taken out. The example's gtk4
+  screenshots were taken again: artwork at 96 and 192, badges in their
+  colours, bold headings, columns at their widths. Left: a label's text is
+  centred in its box (gtk4 reads no `alignItems` or `textAlign`), and a
+  width is only the least a label is.
 
 ## Part 3: fyne's and bubbletea's layout gaps
 
