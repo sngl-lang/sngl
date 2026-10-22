@@ -126,14 +126,33 @@ stopped reporting passed, and `test_error_runtime.sngl` had carried a directive
 for a message the interpreter no longer gave.
 
 **Simulated natives are the debugging mode.** `sngl test --simulate <target>`
-runs a program on the interpreter specialized for a target rather than `none`,
-so that target's overrides run, with every `#[cnative]` call stubbed: an owned
-result is a fresh handle, anything else the zero value a bodyless declaration
-already answers, every argument checked for use after release, and a
-`#[moves]` or `#[retains]` argument taken by the stub or kept until its node
-unmounts. A native's return steering control flow takes one path. What the
-tracker cannot see is a call the gtk4 translator builds after lowering; moving
-inline-cgo resolution into lowering is what brings those under it.
+runs a program on the interpreter specialized for a target rather than `none`
+(`interp.PrepareFor`, platform axis only: the interpreter is the language), so
+that target's overrides run. A `#[cnative]` call is stubbed always
+(`callCNative`), since the interpreter has nothing else to run: its `Block` is
+the checker's `return <zero>`, so the stub keys on `Foreign.Path == "C"`, not
+on an empty body. An owned result is a fresh handle allocated at the call,
+anything else the zero value; every argument is checked for use after release;
+a `#[moves]` argument is the native's from there (a later use or release says
+"moved"); a `#[retains]` one may not be released until the lifetime that made
+the call ends -- the effect whose handler ran it (`handles.within`, ended by
+`letGo` before its `@unmount`), or the application outside one. A native's
+return steering control flow takes one path.
+
+Simulating is what adds the target's half (`BuildSimulatedEnv`, set before the
+initializers run). Until `CMarshal` makes the conversion IR, a `string`
+argument of a C native allocates a `C.CString` handle the way `wrapCArgs`
+does, which nothing releases: #110, reported with no toolchain
+(`cmd/sngl/testdata/simulate_gtk4_canvas_text_leaks.txt`). And the host
+paints: after every settle, each handler of a mounted primitive in the shape
+family -- the target calling in, which is why such a primitive may carry
+events in an `#[family.eventless]` family -- runs with a zero payload, all of
+them, since a host may call any (`Env.Paint`). Leaks from one site are one
+line with a count, because a frame repeats them. `sngl run` takes no
+`--simulate`: a run ends with no leak check until application teardown exists
+on targets. What the tracker cannot see is a call the gtk4 translator builds
+after lowering; moving inline-cgo resolution into lowering is what brings
+those under it (`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
 
 **Out of scope: a C language target.** It adds `#[owned]` to `string`, and
 decides between per-statement release and a per-frame or per-event arena for

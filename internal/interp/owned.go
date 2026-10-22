@@ -21,6 +21,9 @@ type Handle struct {
 	At         ast.Pos
 	ReleasedAt ast.Pos
 	released   bool
+	// moved says a native took the value at ReleasedAt rather than the
+	// program releasing it there.
+	moved bool
 }
 
 // handles is every owned value a program allocated and has not given back,
@@ -31,6 +34,20 @@ type handles struct {
 	// calls is the call being made, innermost last: where a release or a use
 	// happened.
 	calls []*ir.Call
+	// simulated is the platform a run simulates (BuildSimulatedEnv), empty on
+	// the interpreter's own.
+	simulated string
+	// retained is each value a native keeps a pointer to, by where it was
+	// handed over and the lifetime that call ran in, and lifetime is the one
+	// running now: the zero Key outside every effect, which is the
+	// application's.
+	retained map[*Handle]retention
+	lifetime Key
+}
+
+type retention struct {
+	at       ast.Pos
+	lifetime Key
 }
 
 func (env *Env) owned() *handles {
@@ -104,6 +121,14 @@ func (env *Env) releaseCall(fn *ir.Func, args []any, run func() (any, error)) (a
 	if len(args) == 1 {
 		hd = handleOf(args[0])
 	}
+	if hd != nil && hd.moved {
+		return nil, fmt.Errorf("%s released after it was moved: allocated at %s, moved at %s, released at %s",
+			hd.Def.Name, hd.At, hd.ReleasedAt, h.site())
+	}
+	if r, ok := h.retained[hd]; hd != nil && ok {
+		return nil, fmt.Errorf("%s released while a native retains it: allocated at %s, retained at %s, released at %s",
+			hd.Def.Name, hd.At, r.at, h.site())
+	}
 	if hd != nil && hd.released {
 		return nil, fmt.Errorf("%s released twice: allocated at %s, released at %s and again at %s",
 			hd.Def.Name, hd.At, hd.ReleasedAt, h.site())
@@ -119,12 +144,56 @@ func (env *Env) releaseCall(fn *ir.Func, args []any, run func() (any, error)) (a
 
 func (env *Env) useAfterRelease(s *Struct, how string, at ast.Pos) error {
 	hd := s.Handle
+	if hd.moved {
+		return fmt.Errorf("%s %s after it was moved: allocated at %s, moved at %s, %s at %s",
+			hd.Def.Name, how, hd.At, hd.ReleasedAt, how, at)
+	}
 	return fmt.Errorf("%s %s after its release: allocated at %s, released at %s, %s at %s",
 		hd.Def.Name, how, hd.At, hd.ReleasedAt, how, at)
 }
 
-// Leaks reports every owned value the program still holds. Asked after
-// teardown, each is one nothing will ever give back.
+// move gives hd to the native being called, which releases it itself.
+func (h *handles) move(hd *Handle) {
+	hd.released, hd.moved, hd.ReleasedAt = true, true, h.site()
+	delete(h.live, hd)
+}
+
+// retain records that the native being called keeps hd until the lifetime
+// running now ends.
+func (h *handles) retain(hd *Handle) {
+	if h.retained == nil {
+		h.retained = map[*Handle]retention{}
+	}
+	h.retained[hd] = retention{at: h.site(), lifetime: h.lifetime}
+}
+
+// letGo ends every retention made while the lifetime at k ran: its node is
+// gone, so the native holding the pointer is too.
+func (h *handles) letGo(k Key) {
+	for hd, r := range h.retained {
+		if r.lifetime == k {
+			delete(h.retained, hd)
+		}
+	}
+}
+
+// within runs fn as part of the lifetime at k.
+func (h *handles) within(k Key, fn func() error) error {
+	prev := h.lifetime
+	h.lifetime = k
+	defer func() { h.lifetime = prev }()
+	return fn()
+}
+
+// Unmounted ends every retention: the whole tree is gone, and every native
+// holding a pointer with it.
+func (env *Env) Unmounted() {
+	env.owned().retained = nil
+}
+
+// Leaks reports every owned value the program still holds, one line per
+// place that allocated them. Asked after teardown, each is one nothing will
+// ever give back.
 func (env *Env) Leaks() []string {
 	if env.handles == nil {
 		return nil
@@ -134,9 +203,25 @@ func (env *Env) Leaks() []string {
 		live = append(live, hd)
 	}
 	slices.SortFunc(live, func(a, b *Handle) int { return a.ID - b.ID })
-	out := make([]string, len(live))
-	for i, hd := range live {
-		out[i] = fmt.Sprintf("leak: the %s allocated at %s was never released", hd.Def.Name, hd.At)
+	type site struct {
+		name string
+		at   ast.Pos
+	}
+	var order []site
+	count := map[site]int{}
+	for _, hd := range live {
+		s := site{hd.Def.Name, hd.At}
+		if count[s] == 0 {
+			order = append(order, s)
+		}
+		count[s]++
+	}
+	out := make([]string, len(order))
+	for i, s := range order {
+		out[i] = fmt.Sprintf("leak: the %s allocated at %s was never released", s.name, s.at)
+		if n := count[s]; n > 1 {
+			out[i] += fmt.Sprintf(", %d times", n)
+		}
 	}
 	return out
 }

@@ -62,12 +62,12 @@ on it.
 
 ## Part 2: simulated natives
 
-- [ ] `--simulate <target>` on `sngl test` (and `sngl run` if it fits):
-  `Prepare` specialized for the target, `#[cnative]` calls stubbed as the
-  design says.
-- [ ] A script test leak checking a small program with its own `#[cnative]`
+- [X] `--simulate <target>` on `sngl test`: `Prepare` specialized for the
+  target, `#[cnative]` calls stubbed as the design says. Not `sngl run`: a
+  run has no end to leak check at until Part 6.
+- [X] A script test leak checking a small program with its own `#[cnative]`
   declarations and an owned type, run with no C toolchain.
-- [ ] A script test running gtk4's `canvasText` override under it, expected
+- [X] A script test running gtk4's `canvasText` override under it, expected
   to report today's leak; Part 4 flips it.
 
 ## Part 3: `CMarshal`

@@ -1,0 +1,124 @@
+# A program's own C natives, leak checked on the interpreter: every call is
+# stubbed, so nothing here is compiled or linked. Under --simulate the string a
+# native is handed is the C string the Go backend allocates for it, which
+# nothing frees (#110); without it there is no C at all.
+
+env PATH=
+
+! sngl test --simulate gtk4 app.sngl
+stdout '^--- PASS: /testFreed '
+stdout '^--- PASS: /testMoved '
+stdout '^--- PASS: shows/testRetainedUntilUnmount '
+stdout '^--- PASS: toggles/testRetainedUntilBranchLeaves '
+stdout '^    leak: the C.CString allocated at app.sngl:36:5 was never released$'
+stdout '^    leak: the buf allocated at app.sngl:45:13 was never released$'
+stdout '^    buf passed after it was moved: allocated at app.sngl:50:13, moved at app.sngl:51:5, passed at app.sngl:52:14$'
+stdout '^    buf released while a native retains it: allocated at app.sngl:85:13, retained at app.sngl:88:9, released at app.sngl:89:9$'
+stdout '^not ok   8 tests, 4 failures$'
+
+! sngl test app.sngl
+stdout '^--- PASS: /testWrites '
+! stdout 'C.CString'
+stdout '^not ok   8 tests, 3 failures$'
+
+-- app.sngl --
+import macro "sngl:macro"
+import ui "sngl:ui"
+import "sngl:test"
+import c "sngl:x/c"
+
+#[macro.cnative("buf_t *")]
+#[macro.owned(bufFree)]
+struct buf {}
+
+#[macro.cnative("buf_new")]
+func bufNew(size int) buf
+
+#[macro.cnative("buf_free")]
+func bufFree(b buf)
+
+#[macro.cnative("buf_len")]
+func bufLen(b buf) int
+
+#[macro.cnative("buf_write")]
+func bufWrite(b buf, text string)
+
+#[macro.cnative("sink_take")]
+func sinkTake(#[macro.moves] b buf)
+
+#[macro.cnative("view_show")]
+func viewShow(#[macro.retains] b buf)
+
+func testFreed(t test.Test) {
+    var b = bufNew(4)
+    t.assert(bufLen(b) == 0)
+    bufFree(b)
+}
+
+func testWrites(t test.Test) {
+    var b = bufNew(7)
+    bufWrite(b, "hello")
+    bufFree(b)
+}
+
+func testMoved(t test.Test) {
+    sinkTake(bufNew(1))
+}
+
+func testLeaks(t test.Test) {
+    var b = bufNew(2)
+    t.assert(bufLen(b) == 0)
+}
+
+func testUseAfterMove(t test.Test) {
+    var b = bufNew(3)
+    sinkTake(b)
+    t.assert(bufLen(b) == 0)
+}
+
+component shows ui.node {
+    var b = bufNew(5)
+
+    effect(
+        @mount {
+            viewShow(b)
+        },
+        @unmount {
+            bufFree(b)
+        },
+    )
+}
+
+func testRetainedUntilUnmount(t test.Test, c shows) {
+}
+
+component toggles ui.node {
+    var on = true
+
+    if on {
+        shows
+    }
+}
+
+func testRetainedUntilBranchLeaves(t test.Test, c toggles) {
+    c.on = false
+    t.assert(!c.on)
+}
+
+component freesEarly ui.node {
+    var b = bufNew(6)
+
+    effect(@mount {
+        viewShow(b)
+        bufFree(b)
+    })
+}
+
+func testReleasedWhileRetained(t test.Test, c freesEarly) {
+}
+
+ui.window(title="t") {
+    shows
+}
+
+c.link(include="buf.h")

@@ -1907,6 +1907,9 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	if call.Func != nil && call.Func.BuildOnly {
 		return env.callBuildOnly(call)
 	}
+	if isCNative(call.Func) {
+		return env.callCNative(call)
+	}
 	// i18n by the id, before the call shape is examined: an entry point may
 	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
 	// the wrapper is inlined, so neither is reliably a namespace call by the
