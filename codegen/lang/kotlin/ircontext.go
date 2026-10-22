@@ -1973,6 +1973,16 @@ func ktMapValZero(t *ir.Type) string {
 	if t == nil || len(t.Elems) < 2 {
 		return "null"
 	}
+	// A struct the program declares is a data class whose every field has a
+	// default, so its zero is the class called with none. `null` was no value
+	// of it: `(facts[m] ?: null).kind` did not compile.
+	if v := t.Elems[1]; v.Kind == ir.TypeStruct && !ir.IsColorStruct(v) && !ir.StringReprStruct(v) {
+		if sd, ok := v.Decl.(*ir.StructDef); ok && sd.Foreign.Name == "" {
+			if name := IRTypeToKt(v); name != "String" {
+				return name + "()"
+			}
+		}
+	}
 	return ktZeroFor(t.Elems[1])
 }
 
