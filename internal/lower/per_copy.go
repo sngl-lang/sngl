@@ -124,7 +124,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 	}
 	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
 		n, ok := s.(*ir.NodeInst)
-		if !ok || !isEffectNode(n) || !handlersTouchCells(n, cells, keyed) {
+		if !ok || !isEffectNode(n) || n.Enter || !handlersTouchCells(n, cells, keyed) {
 			return nil
 		}
 		// Keyed by the copy already, by the splice of a component inside this

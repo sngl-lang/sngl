@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -39,7 +40,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	st.reach.instanceState = feats.InstanceState
@@ -385,6 +386,11 @@ type inlineCompState struct {
 	// reaching into it (repointTestReaches).
 	insts []splice
 	reach *testReach
+	// effect is sngl:builtin's `effect`, for restartOnEntry.
+	effect *ir.Component
+	// nativeEffects is Features.Effects: the platform brackets a lifetime
+	// itself, and an Enter bracket runs only in the settle passEffect writes.
+	nativeEffects bool
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -991,9 +997,13 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// position. Not under a `for` -- the body is spliced once and its state
 		// hoisted once, so the copies would share one var.
 		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
+			varStart := len(*st.hoist.vars)
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
+			}
+			if enter := st.restartOnEntry(slices.Clone((*st.hoist.vars)[varStart:]), nil); enter != nil {
+				spliced = append([]ir.Stmt{enter}, spliced...)
 			}
 			return spliced, true, nil
 		}
@@ -1488,20 +1498,71 @@ func clearDemotedReceivers(pkg *ir.Package, demoted map[*ir.Func]bool) {
 func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	varStart, funcStart := len(*st.hoist.vars), len(*st.hoist.funcs)
 	body, err := st.expandCall(n)
-	if err != nil || len(rc.loops) == 0 {
+	if err != nil {
 		return body, true, err
 	}
 	vars := slices.Clone((*st.hoist.vars)[varStart:])
-	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
 	inits := map[*ir.Var]ir.Expr{}
 	for _, v := range vars {
 		inits[v] = v.Init
 	}
+	if rc.in {
+		if enter := st.restartOnEntry(vars, rc.loops); enter != nil {
+			body = append([]ir.Stmt{enter}, body...)
+		}
+	}
+	if len(rc.loops) == 0 {
+		return body, true, nil
+	}
+	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
 	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
 	if err == nil {
 		st.recordCells(n, inits, rc.loops)
 	}
 	return body, true, err
+}
+
+// restartOnEntry is an Enter effect giving each of vars its initializer each
+// time the instance's position is taken, where the instance stands: spliced,
+// its vars are the owner's, and would keep what the last showing left them,
+// where a target building the instance there starts it afresh. Each is
+// declared from its type's zero instead, since the first entry initializes
+// it, and an initializer run twice makes an owned value twice. Under loops
+// the effect is keyed by the copy, which the cells already are.
+func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.NodeInst {
+	if st.nativeEffects {
+		return nil
+	}
+	var block []ir.Stmt
+	for _, v := range vars {
+		if v.IsConst || v.NodeHandle {
+			continue
+		}
+		zero, init := ir.DeclaredDefault(v.Type), v.Init
+		if init == nil {
+			init = zero
+		}
+		if init == nil {
+			continue
+		}
+		block = append(block, &ir.Assign{Target: &ir.Ident{Name: v.Name, Type: v.Type, Sym: v}, Op: ast.AssignSet, Value: deepCloneExpr(init)})
+		if zero != nil {
+			v.Init = zero
+		}
+	}
+	if len(block) == 0 {
+		return nil
+	}
+	if st.effect == nil {
+		st.effect = effectComponent()
+	}
+	n := &ir.NodeInst{Name: "effect", Component: st.effect, Enter: true, Handlers: []ir.EventHandler{
+		{Name: ir.EffectMount, Func: &ir.Func{Pkg: st.pkg, Block: block}},
+	}}
+	if len(loops) > 0 {
+		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyKey(loops)}}
+	}
+	return n
 }
 
 // rendersFocusStop reports whether c's body, or a component it renders, holds

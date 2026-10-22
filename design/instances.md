@@ -417,6 +417,31 @@ component that reads its props, which would be the Model's
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
 
+**A spliced instance starts again each time its position is taken**, as one a
+target builds there does and as the interpreter's `evictUnreached` has it.
+Spliced, its vars are its owner's and were set once, in `New()`, so on
+bubbletea a counter at 1 when its `if` left was 1 when the branch came back,
+and an owned var released at the leave was released again at the next one.
+`restartOnEntry` writes the instance an `effect` marked `ir.NodeInst.Enter`
+whose `@mount` assigns each var its initializer, and declares the var from
+its type's zero instead, since an initializer run twice makes an owned value
+twice. Under loops it is keyed on the copy, and the copy's cells are written
+through. passEffect lowers it to one function (`lowerEnter`) that rebuilds the
+position from its frames and runs the assignments inside it, for each key it
+did not describe at the last pass, where a loop's variables are in scope: a
+prop bound to one, `child(n=x)`, is read where the copy is. It runs ahead of
+every other bracket of the scope, so the owned-state effect, a derived
+value's key and a user's `@mount` all read the fresh values. Its writes are
+neither marked nor settled after: the settle that ran it is already running,
+and a mark would report a write to a lifetime just beginning. A `for` copy
+needed this as much as a branch: its cells are a map nothing removes from, so
+a row that left and came back kept its state. A component that renders
+nothing is spliced under a reactive `if` on every target, not only bubbletea,
+and kept its state on all of them; it gets the same effect, except on a
+target that brackets lifetimes itself (android), whose lifetimes do not run
+through the settle this lowers to (`testdata/bubbletea_state_leaves_with_branch.txtar`,
+`testdata/renders_nothing_state_leaves_with_branch.txtar`).
+
 **A bubbles model a loop renders is one per copy** (`bubbletea/loopwidget.go`):
 a map keyed as a cell of the copy is, each model built the first time View
 renders it and set from the copy's cell -- read off the write-back handler's

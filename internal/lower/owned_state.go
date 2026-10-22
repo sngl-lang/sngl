@@ -126,27 +126,31 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 	return nil
 }
 
+func (st *ownedStateRun) effectComponent() *ir.Component {
+	if st.effect == nil {
+		st.effect = effectComponent()
+	}
+	return st.effect
+}
+
 // effectComponent is sngl:builtin's `effect`, found by its kind in the
 // package that declares the application, which no program imports. A copy:
 // a program that writes no effect does not reach the declaration, so the
 // build shares the library's own, and a pass flagging the component behind a
 // node (InlineComponents' RuntimeInstance) would write the library.
-func (st *ownedStateRun) effectComponent() *ir.Component {
-	if st.effect != nil {
-		return st.effect
-	}
+func effectComponent() *ir.Component {
 	if t := ir.Published().ApplicationType(); t != nil {
 		if app, ok := t.Decl.(*ir.Component); ok && app.Pkg != nil {
 			for _, c := range app.Pkg.Components {
 				if c.Builtin == ir.BuiltinEffect {
 					cp := *c
 					cp.Frozen = false
-					st.effect = &cp
+					return &cp
 				}
 			}
 		}
 	}
-	return st.effect
+	return nil
 }
 
 func (st *ownedStateRun) name(prefix string) string {

@@ -130,7 +130,9 @@ answering an owned type, or a literal of one -- written where its value is only
 read: an argument to a parameter that borrows, a receiver, the operand of a
 field read or an index, a call whose result is discarded. One stored, returned,
 handed to its release or to a `#[moves]` or `#[retains]` parameter has another
-lifetime and is left alone. Each is bound to a `__relN` before the statement,
+lifetime and is left alone. An intrinsic's call allocates nothing: a cell's
+`map.get` reads what a copy holds, and taken for a temp it released the value
+the write it was read for had just stored. Each is bound to a `__relN` before the statement,
 an allocation's own arguments first, and released after it with an explicit
 statement, never Go's `defer` -- that is function-scoped, wrong in a loop in a
 draw callback, and C has none (`testdata/owned_canvas_text.txtar` denies one).
@@ -191,10 +193,8 @@ the effect lowering writes `Teardown` afresh after it; a var assigned
 another's value, which both then release; a var initializer reading an owned
 derived value, which is initialized after the vars; an allocation handed to a
 `#[retains]` parameter outside an effect's handler (an event handler, a
-function); a derived value in a library component's override on a target,
-which the pass reaches only on the interpreter; and on bubbletea an instance
-under an `if` the branch leaves and takes again, which keeps the state it had,
-so its owned vars are released a second time on the next leave.
+function); and a derived value in a library component's override on a
+target, which the pass reaches only on the interpreter.
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`

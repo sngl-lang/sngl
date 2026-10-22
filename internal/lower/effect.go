@@ -195,6 +195,9 @@ type loweredEffect struct {
 	// which reports writes and holds no lifetime.
 	down *ir.Func
 	up   *ir.Func
+	// enter is an Enter bracket's one function (lowerEnter), which has no
+	// down or up.
+	enter *ir.Func
 	// group is the scope's settle entry point, which calls this bracket's two
 	// halves in their place among the others.
 	group *effectGroup
@@ -328,6 +331,10 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFrame) error {
 	prefix := "__effect" + strconv.Itoa(st.counter)
 	st.counter++
+	if n.Enter {
+		st.lowerEnter(n, o, frames, prefix)
+		return nil
+	}
 
 	key := effectKeyExpr(n)
 	fx := &loweredEffect{comp: o.Comp, elem: ir.TypBool, prefix: prefix}
@@ -422,6 +429,83 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		st.byVar[v] = append(st.byVar[v], fx)
 	}
 	return nil
+}
+
+// lowerEnter lowers an Enter bracket to one function the settle runs ahead of
+// every other bracket of the scope, so a key or an @mount written after it
+// already reads what it set. Its @mount is run inside the rebuilt position, a
+// loop's variables in scope, for each key the position describes that it did
+// not at the last pass, and never from outside it: it has no @unmount.
+//
+//	func __effectN_enter() {
+//	    __effectN_desired = []
+//	    <the if/for chain> {
+//	        __effectN_fresh := true
+//	        if __effectN_desired.length() < __effectN_live.length() {
+//	            __effectN_fresh = __effectN_live[__effectN_desired.length()] != <on>
+//	        }
+//	        if __effectN_fresh { <@mount> }
+//	        __effectN_desired.push(<on>)
+//	    }
+//	    __effectN_live = __effectN_desired
+//	}
+func (st *effectState) lowerEnter(n *ir.NodeInst, o *ir.Owner, frames []effectFrame, prefix string) {
+	var mount []ir.Stmt
+	for _, h := range n.Handlers {
+		if h.Name == ir.EffectMount && h.Func != nil {
+			mount = h.Func.Block
+		}
+	}
+	key := effectKeyExpr(n)
+	fx := &loweredEffect{comp: o.Comp, elem: ir.TypBool, prefix: prefix}
+	if key != nil {
+		fx.elem = key.ExprType()
+	}
+	listT := ir.ListOf(fx.elem)
+	fx.live = &ir.Var{Name: prefix + "_live", Type: listT, Init: &ir.ListLit{Type: listT}, Synthesized: true}
+	fx.desired = &ir.Var{Name: prefix + "_desired", Type: listT, Init: &ir.ListLit{Type: listT}, Synthesized: true}
+	st.addVar(o, fx.live)
+	st.addVar(o, fx.desired)
+
+	at := func() ir.Expr { return callListLength(st.varIdent(fx.desired)) }
+	push := func() ir.Expr {
+		if key == nil {
+			return &ir.Literal{Type: ir.TypBool, Value: "true"}
+		}
+		return deepCloneExpr(key)
+	}
+	freshSym := &ir.Var{Name: prefix + "_fresh", Type: ir.TypBool, Synthesized: true}
+	fresh := func() *ir.Ident {
+		return &ir.Ident{Name: freshSym.Name, Type: ir.TypBool, Sym: freshSym, Synthesized: true}
+	}
+	leaf := []ir.Stmt{
+		&ir.LocalVar{Name: freshSym.Name, Type: ir.TypBool, Sym: freshSym, Init: &ir.Literal{Type: ir.TypBool, Value: "true"}},
+		&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinLt, Left: at(), Right: callListLength(st.varIdent(fx.live))},
+			Body: []ir.Stmt{&ir.Assign{Target: fresh(), Op: ast.AssignSet, Value: rebuildDiffers(
+				&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: at()},
+				push(),
+				fx.elem,
+			)}},
+		},
+		&ir.If{Cond: fresh(), Body: mount},
+		callListPush(st.varIdent(fx.desired), push(), fx.elem),
+	}
+	block := []ir.Stmt{&ir.Assign{Target: st.varIdent(fx.desired), Op: ast.AssignSet, Value: &ir.ListLit{Type: listT}}}
+	block = append(block, st.positionBlock(prefix, frames, leaf)...)
+	block = append(block, &ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: st.varIdent(fx.desired)})
+	fx.enter = &ir.Func{
+		Name:        prefix + "_enter",
+		Return:      ir.TypVoid,
+		Purity:      ir.PurityMutates,
+		Synthesized: true,
+		Block:       block,
+	}
+	st.addFunc(o, fx.enter)
+	st.effects = append(st.effects, fx)
+	for _, v := range st.positionVars(key, frames) {
+		st.byVar[v] = append(st.byVar[v], fx)
+	}
 }
 
 // nativeHalf is what a platform bracketing a lifetime itself is left of an
@@ -1088,6 +1172,11 @@ func (st *effectState) buildGroups() {
 			Target: st.varIdent(g.steps), Op: ast.AssignSet,
 			Value: &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: st.varIdent(g.steps), Right: intLiteralLit(1)},
 		})
+		for _, fx := range g.fxs {
+			if fx.enter != nil {
+				pass = append(pass, callOf(fx.enter))
+			}
+		}
 		// Reports before any lifetime moves, in the order the scope wrote
 		// them: a write was made while the bracket it reaches was running.
 		for j, fx := range g.fxs {
@@ -1160,7 +1249,7 @@ func (st *effectState) buildGroups() {
 
 		// A scope whose brackets only report has nothing for a first settle
 		// to do: nothing has been written, and no lifetime begins.
-		if !slices.ContainsFunc(g.fxs, func(fx *loweredEffect) bool { return fx.down != nil }) {
+		if !slices.ContainsFunc(g.fxs, func(fx *loweredEffect) bool { return fx.down != nil || fx.enter != nil }) {
 			continue
 		}
 		// The first settle runs after the body, not where the node was written.
@@ -1272,6 +1361,15 @@ func (st *effectState) injectSettles() {
 	for _, b := range blocks {
 		own[b] = true
 	}
+	// An enter runs ahead of every other bracket in the pass, which so reads
+	// what it wrote, and starts lifetimes no write has yet reached: settling
+	// or marking after it would only report one.
+	enters := map[*[]ir.Stmt]bool{}
+	for _, fx := range st.effects {
+		if fx.enter != nil {
+			enters[&fx.enter.Block] = true
+		}
+	}
 	tests := map[*[]ir.Stmt]bool{}
 	for _, fn := range st.pkg.Funcs {
 		if fn.IsTest {
@@ -1279,6 +1377,9 @@ func (st *effectState) injectSettles() {
 		}
 	}
 	for _, block := range blocks {
+		if enters[block] {
+			continue
+		}
 		hit := map[*effectGroup]bool{}
 		st.collectSettled(*block, own, hit)
 		if len(hit) == 0 {

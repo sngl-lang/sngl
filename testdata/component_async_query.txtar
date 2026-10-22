@@ -190,11 +190,11 @@ window.__sngl_boot = () => {
   function __effect0_unmount() {
     state.attempt__inst1 += 1;
   }
-  async function __effect1_mount() {
+  async function __effect2_mount() {
     state.attempt__inst0__inst0 += 1;
     let mine = state.attempt__inst0__inst0;
     state.pending__inst0 = true;
-    let r = await lookup(__effect1_key.key);
+    let r = await lookup(__effect2_key.key);
     if (mine !== state.attempt__inst0__inst0) {
       ;
       return;
@@ -214,22 +214,24 @@ window.__sngl_boot = () => {
     }
     ;
   }
-  function __effect1_unmount() {
+  function __effect2_unmount() {
     state.attempt__inst0__inst0 += 1;
   }
   function __snglTeardown() {
-    __effect1_teardown();
+    __effect2_teardown();
     __effect0_teardown();
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { lookup, refresh__inst1, __effect0_mount, __effect0_unmount, __effect1_mount, __effect1_unmount, __snglTeardown });
+    Object.assign(window, { lookup, refresh__inst1, __effect0_mount, __effect0_unmount, __effect2_mount, __effect2_unmount, __snglTeardown });
   }
   var __effect0_key = {};
   var __effect0_live = [];
   var __effect0_desired = [];
-  var __effect1_key = {};
   var __effect1_live = [];
   var __effect1_desired = [];
+  var __effect2_key = {};
+  var __effect2_live = [];
+  var __effect2_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
   var __effects0_steps = 0;
@@ -270,44 +272,62 @@ window.__sngl_boot = () => {
     }
     __effect0_live = [];
   }
-  function __effect1_down() {
+  function __effect1_enter() {
     __effect1_desired = [];
     if (state.shown__inst0) {
-      __effect1_desired.push({ key: "slow", n: state.refreshes__inst0__inst0 });
-    }
-    for (const [__effect1_i, _] of __effect1_live.entries()) {
-      let __effect1_j = __effect1_live.length - 1 - __effect1_i;
-      if (__effect1_j >= __effect1_desired.length) {
-        __effect1_key = __effect1_live[__effect1_j];
-        __effect1_unmount();
-      } else {
-        if (__effect1_desired[__effect1_j].key !== __effect1_live[__effect1_j].key || __effect1_desired[__effect1_j].n !== __effect1_live[__effect1_j].n) {
-          __effect1_key = __effect1_live[__effect1_j];
-          __effect1_unmount();
-        }
+      let __effect1_fresh = true;
+      if (__effect1_desired.length < __effect1_live.length) {
+        __effect1_fresh = __effect1_live[__effect1_desired.length] !== true;
       }
-    }
-  }
-  function __effect1_up() {
-    for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
-      if (__effect1_i >= __effect1_live.length) {
-        __effect1_key = __effect1_k;
-        __effect1_mount();
-      } else {
-        if (__effect1_live[__effect1_i].key !== __effect1_k.key || __effect1_live[__effect1_i].n !== __effect1_k.n) {
-          __effect1_key = __effect1_k;
-          __effect1_mount();
-        }
+      if (__effect1_fresh) {
+        state.value__inst0 = null;
+        state.pending__inst0 = false;
+        state.failure__inst1 = null;
+        state.attempt__inst0__inst0 = 0;
+        state.refreshes__inst0__inst0 = 0;
       }
+      __effect1_desired.push(true);
     }
     __effect1_live = __effect1_desired;
   }
-  function __effect1_teardown() {
-    for (const [__effect1_ti, _] of __effect1_live.entries()) {
-      __effect1_key = __effect1_live[__effect1_live.length - 1 - __effect1_ti];
-      __effect1_unmount();
+  function __effect2_down() {
+    __effect2_desired = [];
+    if (state.shown__inst0) {
+      __effect2_desired.push({ key: "slow", n: state.refreshes__inst0__inst0 });
     }
-    __effect1_live = [];
+    for (const [__effect2_i, _] of __effect2_live.entries()) {
+      let __effect2_j = __effect2_live.length - 1 - __effect2_i;
+      if (__effect2_j >= __effect2_desired.length) {
+        __effect2_key = __effect2_live[__effect2_j];
+        __effect2_unmount();
+      } else {
+        if (__effect2_desired[__effect2_j].key !== __effect2_live[__effect2_j].key || __effect2_desired[__effect2_j].n !== __effect2_live[__effect2_j].n) {
+          __effect2_key = __effect2_live[__effect2_j];
+          __effect2_unmount();
+        }
+      }
+    }
+  }
+  function __effect2_up() {
+    for (const [__effect2_i, __effect2_k] of __effect2_desired.entries()) {
+      if (__effect2_i >= __effect2_live.length) {
+        __effect2_key = __effect2_k;
+        __effect2_mount();
+      } else {
+        if (__effect2_live[__effect2_i].key !== __effect2_k.key || __effect2_live[__effect2_i].n !== __effect2_k.n) {
+          __effect2_key = __effect2_k;
+          __effect2_mount();
+        }
+      }
+    }
+    __effect2_live = __effect2_desired;
+  }
+  function __effect2_teardown() {
+    for (const [__effect2_ti, _] of __effect2_live.entries()) {
+      __effect2_key = __effect2_live[__effect2_live.length - 1 - __effect2_ti];
+      __effect2_unmount();
+    }
+    __effect2_live = [];
   }
   function __effects0_settle() {
     if (__effects0_settling) {
@@ -319,10 +339,11 @@ window.__sngl_boot = () => {
       while (__effects0_pending && __effects0_steps < 512) {
         __effects0_pending = false;
         __effects0_steps = __effects0_steps + 1;
-        __effect1_down();
+        __effect1_enter();
+        __effect2_down();
         __effect0_down();
         __effect0_up();
-        __effect1_up();
+        __effect2_up();
       }
       __effects0_settling = false;
       if (__effects0_pending) {
@@ -362,9 +383,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b1311241a4d825a501194b6a0691009b
+pass sha256:ff6979d58c73b6eddbe201221681ef98
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:0ce3fb1fdff82a62fb920f92f7cbc9ea
+sha256:0ec2df828f117ca21a0d87a7601cb042
 {
   "results": [
     {

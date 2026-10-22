@@ -125,6 +125,11 @@ type NodeInst struct {
 	// differently. AttachNodeSite carries it onto the primitive standing for
 	// the node.
 	Document bool `json:",omitempty"`
+	// Enter marks a synthesized `effect` whose @mount is run where the node
+	// stands, each time its position is taken, ahead of every other bracket
+	// of its scope (lower's passEffect): the restart of an instance a target
+	// splices rather than builds (InlineComponents).
+	Enter bool `json:",omitempty"`
 }
 
 // VisualNode is the source node n was built from, or nil where it was

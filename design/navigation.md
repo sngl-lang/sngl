@@ -273,7 +273,8 @@ And from the interpreter, each a rule for every component:
   since one whose only child sat under that `if` renders none and still holds
   it (`testdata/component_state_leaves_with_branch.sngl`). fyne, gtk4, html
   and android build such an instance afresh; bubbletea, which splices it into
-  the Model, does not, and keeps its state across the branch.
+  the Model, sets its vars again as the branch is taken (`restartOnEntry`,
+  design/instances.md).
 - **A handle compares by instance**, the scope the interpreter keeps for it,
   through the test runner's wrapper as well (`InstanceValue`).
 - **An event on a component whose call site handled none of it reaches what

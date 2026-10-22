@@ -132,14 +132,33 @@ The node half.
   recorded. Before it can be, android has to compile an owned value in a
   component under `if`: such a Composable cannot call a package function that
   writes package state (the release, in the fixture), which predates Part 5.
-- [ ] bubbletea keeps an instance's state when the `if` it sits under leaves
+- [X] bubbletea keeps an instance's state when the `if` it sits under leaves
   and comes back, where every other target and the interpreter start it
-  again; with this part that is a second release on the next leave.
+  again; with this part that is a second release on the next leave. A `match`
+  arm and a `for` copy too: an Enter effect sets the vars again where the
+  instance stands, ahead of every other bracket
+  (`testdata/bubbletea_state_leaves_with_branch.txtar`).
 - [X] Found on the way: the interpreter kept a component's state across a
   branch leaving when its parent rendered nothing else
   (`testdata/component_state_leaves_with_branch.sngl`), and an effect's
   `@update` keyed on a prop of a component built at run time never ran on a
   target (`testdata/effect_update_on_prop.txtar`).
+- [X] Found on the way: a component that renders nothing is spliced under a
+  reactive `if` on every target and kept its state across the branch on all
+  of them (`testdata/renders_nothing_state_leaves_with_branch.txtar`, which
+  changes `async.query`'s on html); an owned var in a `for` copy did not
+  generate when its initializer read the loop's variable; and `ReleaseTemps`
+  took a cell's `map.get` for an allocation, releasing the value a write to an
+  owned cell had just stored.
+- [ ] android, which brackets lifetimes itself, gets no restart for a
+  component that renders nothing spliced under a reactive `if`. Whether it
+  keeps that component's state across the branch is unverified: the run
+  cannot be recorded on this host.
+- [ ] The interpreter loses a package write a var initializer makes while a
+  `for` copy mounts: `var f = open()` with `open` counting in a package var
+  leaves the count at 0, and each copy's `f` is the first one opened. The
+  mount runs in a snapshot of the scope (`forStmt`), and nothing carries the
+  write back.
 
 ## Part 6: application teardown on targets
 

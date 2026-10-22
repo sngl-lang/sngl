@@ -421,14 +421,15 @@ func raisingCalls(body []ir.Stmt) []*ir.Call {
 }
 
 // isAllocation reports whether e makes an owned value, rather than reading
-// one something else holds.
+// one something else holds. An intrinsic only reads one out of a collection:
+// a cell's `map.get` is the copy's value, not a new one.
 func isAllocation(e ir.Expr) bool {
 	if e == nil || ir.ReleaseOf(e.ExprType()) == nil {
 		return false
 	}
 	switch x := e.(type) {
 	case *ir.Call:
-		return x.Func != nil
+		return x.Func != nil && x.Func.Intrinsic == ""
 	case *ir.StructLit:
 		return true
 	}

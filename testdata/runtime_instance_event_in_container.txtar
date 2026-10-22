@@ -88,9 +88,11 @@ type modelState struct {
 	items               []int
 	total               int
 	hits__inst0         map[string]int
-	__effect0_key       int
-	__effect0_live      []int
-	__effect0_desired   []int
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effect1_key       int
+	__effect1_live      []int
+	__effect1_desired   []int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -104,9 +106,11 @@ func New() Model {
 	m.items = []int{1, 2}
 	m.total = 0
 	m.hits__inst0 = map[string]int{}
-	m.__effect0_key = 0
-	m.__effect0_live = []int{}
-	m.__effect0_desired = []int{}
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effect1_key = 0
+	m.__effect1_live = []int{}
+	m.__effect1_desired = []int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_steps = 0
@@ -120,30 +124,52 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m *Model) __effect0_mount() {
-	m.total = (m.total + m.__effect0_key)
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, _ := range m.items {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			var __cell1_hits__inst0 int = func() int {
+				if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell1_hits__inst0 = 0
+			m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
 }
 
-func (m *Model) __effect0_down() {
-	m.__effect0_desired = []int{}
+func (m *Model) __effect1_mount() {
+	m.total = (m.total + m.__effect1_key)
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []int{}
 	for _, i := range m.items {
-		m.__effect0_desired = append(m.__effect0_desired, i)
+		m.__effect1_desired = append(m.__effect1_desired, i)
 	}
 }
 
-func (m *Model) __effect0_up() {
-	for __effect0_i, __effect0_k := range m.__effect0_desired {
-		if __effect0_i >= len(m.__effect0_live) {
-			m.__effect0_key = __effect0_k
-			m.__effect0_mount()
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
 		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
-				m.__effect0_key = __effect0_k
-				m.__effect0_mount()
+			if m.__effect1_live[__effect1_i] != __effect1_k {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
 			}
 		}
 	}
-	m.__effect0_live = m.__effect0_desired
+	m.__effect1_live = m.__effect1_desired
 }
 
 func (m *Model) __effects0_settle() {
@@ -156,8 +182,9 @@ func (m *Model) __effects0_settle() {
 		for m.__effects0_pending && (m.__effects0_steps < 512) {
 			m.__effects0_pending = false
 			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
+			m.__effect0_enter()
+			m.__effect1_down()
+			m.__effect1_up()
 		}
 		m.__effects0_settling = false
 		if m.__effects0_pending {
@@ -1036,7 +1063,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a5f1d6365c9c5dc529ae31c1ad72e1ac
+pass sha256:c8c27dce1c2f84ed841976a26eec6977
 -- run/go/fyne --
 pass sha256:c154d12795a2675de4b8177f8b46ea6f
 -- run/go/gtk4 --

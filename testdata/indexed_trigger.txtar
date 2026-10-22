@@ -89,6 +89,11 @@ import (
 	"strings"
 )
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -100,6 +105,13 @@ type modelState struct {
 	log                 string
 	checked__inst0      map[string]bool
 	value__inst0        map[string]string
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effect1_live      []string
+	__effect1_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop1_cursor int
 
@@ -115,10 +127,18 @@ func New() Model {
 	m.log = ""
 	m.checked__inst0 = map[string]bool{}
 	m.value__inst0 = map[string]string{}
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effect1_live = []string{}
+	m.__effect1_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
 	m.widget0 = map[string]textinput.Model{}
 	m.resizeWidgets()
+	m.__effects0_settle()
 	return m
 }
 
@@ -134,6 +154,70 @@ func (m *Model) resizeWidgets() {
 	for key, w := range m.widget0 {
 		w.SetWidth(tui.WidgetWidth(m.width))
 		m.widget0[key] = w
+	}
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, _ := range m.items {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			__cell1_checked__inst0 := func() bool {
+				if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return false
+			}()
+			__cell1_checked__inst0 = false
+			m.checked__inst0[fmt.Sprint(__copy0)] = __cell1_checked__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_enter() {
+	m.__effect1_desired = []string{}
+	for __copy0, it := range m.items {
+		__effect1_fresh := true
+		if len(m.__effect1_desired) < len(m.__effect1_live) {
+			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect1_fresh {
+			__cell1_value__inst0 := func() string {
+				if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return ""
+			}()
+			__cell1_value__inst0 = it
+			m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+		}
+		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_enter()
+			m.__effect1_enter()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
 	}
 }
 
@@ -272,6 +356,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.widget0FocusSync()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.items = []string{"c", "d", "e"}
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
 				__focusPos1 := 0
@@ -295,19 +380,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = it
 					__focusPos1++
 					if m.__focusLoop1_cursor == __focusPos1 {
-						__cell1_checked__inst0 := func() bool {
+						__cell2_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell1_checked__inst0 = !func() bool {
+						__cell2_checked__inst0 = !func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						m.checked__inst0[fmt.Sprint(__copy0)] = __cell1_checked__inst0
+						m.checked__inst0[fmt.Sprint(__copy0)] = __cell2_checked__inst0
 						m.log = ((it + " ") + fmt.Sprint(func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
@@ -337,7 +422,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 							return __v
 						}
-						return it
+						return ""
 					}())
 					w.Focus()
 					__prev := w.Value()
@@ -347,14 +432,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if __v := w.Value(); __v != __prev {
 						__value := __v
 						_ = __value
-						__cell1_value__inst0 := func() string {
+						__cell2_value__inst0 := func() string {
 							if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
-							return it
+							return ""
 						}()
-						__cell1_value__inst0 = __value
-						m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+						__cell2_value__inst0 = __value
+						m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 					}
 					if __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {
 						__change0 := w.Value()
@@ -604,20 +689,20 @@ func (m *Model) fieldInput(v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				return
 			}
 			__n++
@@ -638,20 +723,20 @@ func (m *Model) fieldInputAt(key string, v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				return
 			}
 		}
@@ -671,20 +756,20 @@ func (m *Model) fieldChange(v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				__change0 := v
 				_ = __change0
 				m.log = ((it + "=") + __change0)
@@ -708,20 +793,20 @@ func (m *Model) fieldChangeAt(key string, v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				__change0 := v
 				_ = __change0
 				m.log = ((it + "=") + __change0)
@@ -732,59 +817,62 @@ func (m *Model) fieldChangeAt(key string, v string) {
 }
 
 func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	var parts []string
+	var part0 string
+	var part0Children []string
+	var part0_0 string
+	part0_0Focused := (m.__focusID == 0)
+	part0_0Prefix := " "
+	if part0_0Focused {
+		part0_0Prefix = ">"
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("swap"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
+	part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("swap"))
+	part0Children = append(part0Children, part0_0)
+	var part0_1 string
 	__focusPos1 := 0
 	_ = __focusPos1
-	var content_1Items []string
+	var part0_1Items []string
 	for __copy0, it := range m.items {
 		_ = __copy0
 		_ = it
-		var content_1Item_0 string
-		content_1Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-		content_1Item_0Prefix := " "
-		if content_1Item_0Focused {
-			content_1Item_0Prefix = ">"
+		var part0_1Item_0 string
+		part0_1Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+		part0_1Item_0Prefix := " "
+		if part0_1Item_0Focused {
+			part0_1Item_0Prefix = ">"
 		}
-		content_1Item_0 = lipgloss.NewStyle().Render(content_1Item_0Prefix + " " + fmt.Sprint(it))
+		part0_1Item_0 = lipgloss.NewStyle().Render(part0_1Item_0Prefix + " " + fmt.Sprint(it))
 		__focusPos1++
-		content_1Items = append(content_1Items, content_1Item_0)
-		var content_1Item_1 string
-		content_1Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-		content_1Item_1Prefix := " "
-		if content_1Item_1Focused {
-			content_1Item_1Prefix = ">"
+		part0_1Items = append(part0_1Items, part0_1Item_0)
+		var part0_1Item_1 string
+		part0_1Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+		part0_1Item_1Prefix := " "
+		if part0_1Item_1Focused {
+			part0_1Item_1Prefix = ">"
 		}
-		content_1Item_1 = lipgloss.NewStyle().Render(content_1Item_1Prefix + " " + fmt.Sprint(it))
+		part0_1Item_1 = lipgloss.NewStyle().Render(part0_1Item_1Prefix + " " + fmt.Sprint(it))
 		__focusPos1++
-		content_1Items = append(content_1Items, content_1Item_1)
-		var content_1Item_2 string
-		content_1Item_2 = m.widget0Copy(fmt.Sprint(__copy0), func() string {
+		part0_1Items = append(part0_1Items, part0_1Item_1)
+		var part0_1Item_2 string
+		part0_1Item_2 = m.widget0Copy(fmt.Sprint(__copy0), func() string {
 			if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return it
+			return ""
 		}()).View()
 		__focusPos1++
-		content_1Items = append(content_1Items, content_1Item_2)
+		part0_1Items = append(part0_1Items, part0_1Item_2)
 	}
-	content_1 = strings.Join(content_1Items, "\n")
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
+	part0_1 = strings.Join(part0_1Items, "\n")
+	if part0_1 != "" {
+		part0Children = append(part0Children, part0_1)
 	}
-	var content_2 string
-	content_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.log))
-	contentChildren = append(contentChildren, content_2)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	var part0_2 string
+	part0_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.log))
+	part0Children = append(part0Children, part0_2)
+	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -2357,7 +2445,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4663150d762c81154da52d2c7afca73e
+pass sha256:4b261fd3b42811dda20b51a6f967316d
 -- run/go/fyne --
 pass sha256:b626c98fff73c2c1be8bb7f78fead02a
 -- run/go/gtk4 --
