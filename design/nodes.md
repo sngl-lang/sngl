@@ -390,7 +390,19 @@ something it ships: android's `SnglScroll` (`scroll.kt`), html's
 `sngl-reach-end` element (`reachend.go`), gtk4rt's `Scroll` and fynelayout's
 `ReachScroll`. Each fires as the end arrives and again when the content
 grows while it is there, so a short first page loads the next without a
-scroll. html's sentinel dispatches `reachEnd`, which `html.element` declares,
+scroll. gtk4 and fyne measure on a scroll, a resize of the viewport and the
+content changing size, which neither toolkit reports of its own: each puts a
+probe between the viewport and the content, a box Fyne or GTK lays out again
+as the content's size changes, and gtk4's reads the content's natural height
+there, since the adjustment's upper is never less than the page. Each posts
+its report -- to GTK's idle, or `fynelayout.Post` -- rather than calling the
+handler while the toolkit lays the tree out, and one report answers every
+measure before it runs. fyne used to call it from the renderer and look again
+100 ms later, so a first page fetched slower than that never loaded the next;
+gtk4 never heard content shorter than its viewport grow
+(`pkg/go/fynelayout/scroll_test.go`, `pkg/go/gtk4rt/reach_test.go`). A fyne
+test build queues `fynelayout.Post` for `t.wait`, since fyne's test driver
+runs `fyne.Do` at once. html's sentinel dispatches `reachEnd`, which `html.element` declares,
 because html names a test's invoker after the DOM event a handler listens
 for: an override mapping `@reachend` to `reachEnd()` would have left
 `c.list.reachEnd()` naming an invoker nothing attached. Where an override

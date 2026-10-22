@@ -454,7 +454,7 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
 // A vertical scroll reporting the end of its content coming within half a
 // viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports a scroll
 // and nothing about the content growing, which is what a handler adding a page
-// does.
+// does, so the scroll watches its content itself and posts what it sees.
 const component ReachScroll(style ui.Style = ui.Style{}, @reachEnd(), content ...component option[ui.node]) ui.node {
     Wrapper(
         spec = Spec{
