@@ -114,6 +114,25 @@ func PresentsWindows(platform string) string {
 	return "no display and no headless compositor: a gtk4 program has nowhere to draw"
 }
 
+// DrawsHere reports why a <platform> program this process starts has nowhere
+// to draw, or "" when it has.
+//
+// Narrower than PresentsWindows: a test binary wraps itself in cage, so for
+// it an installed compositor is somewhere to draw, but nothing wraps a
+// program `sngl test` starts -- it draws in this process's display or in the
+// cage this process is already inside. A cage installed that will not start
+// (CI's container) is neither, and gtk_init there ends the program as soon as
+// its first test opens a window, which reads as every test failing.
+func DrawsHere(platform string) string {
+	if platform != "gtk4" {
+		return ""
+	}
+	if headless.Active() || headless.HasDisplay() {
+		return ""
+	}
+	return "no display and not inside a headless compositor: a gtk4 program has nowhere to draw"
+}
+
 func needGo() string {
 	if _, err := exec.LookPath("go"); err != nil {
 		return "go not on PATH"

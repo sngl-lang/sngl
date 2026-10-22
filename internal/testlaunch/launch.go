@@ -25,6 +25,7 @@ import (
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/testrpc"
+	"duckfam.us/sngl/internal/toolchain"
 	"duckfam.us/sngl/internal/trust"
 	"duckfam.us/sngl/ir"
 )
@@ -191,6 +192,11 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 	}
 
 	launch := func() ([]*codegen.TestResult, error) {
+		// Asked here rather than of the platform up front: a run answered
+		// from its record starts no program and needs nowhere to draw.
+		if reason := toolchain.DrawsHere(plat.PlatformIdentifier()); reason != "" {
+			return nil, &codegen.SkipError{Reason: reason}
+		}
 		ch, cleanup, err := launcher.LaunchTest(ctx, tmpDir, lang, opts)
 		if err != nil {
 			if _, ok := errors.AsType[*codegen.SkipError](err); ok {

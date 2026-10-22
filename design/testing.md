@@ -107,6 +107,15 @@ exit, and is recorded as any failure is: the crash is the program's answer,
 not the host's, so it is no launch error, which is never recorded. A program
 that exits with no test running is still one.
 
+So a host that cannot run a program must say so before starting it. A gtk4
+program `sngl test` starts draws in this process's display or in the cage it
+is already inside -- nothing wraps it in one -- and with neither, gtk_init
+ends it at its first test. CI's container has a cage that will not start, so
+`go tool verify` runs the suite unwrapped there, and every gtk4 test failed
+as an exit. `toolchain.DrawsHere` is asked before each launch and skips one
+with nowhere to draw; a run answered from its record starts no program and is
+not asked.
+
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
 written as `deny` lines in the archive comment, naming a golden file (or `*`
