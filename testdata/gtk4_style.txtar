@@ -11,8 +11,8 @@ What a node's style says reaches gtk4, which read no field of it but `flex`.
   does and again as the var changes. A prop spread into a literal where the
   instance is inlined is a literal again, `cell`'s.
 - An image's style reaches gtk4's `Image`, whose width and height are its
-  size whatever its picture's: the Pokédex's artwork was the picture's own
-  size where it asked for 192.
+  size whatever its picture's: a picture was its file's own size where it
+  asked for 96.
 
 -- app.sngl --
 import ui "sngl:ui"
