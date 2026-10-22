@@ -49,6 +49,7 @@ package main
 
 /*
 #include "ctype.h"
+#include <stdlib.h>
 */
 import "C"
 
@@ -197,6 +198,7 @@ package main
 
 /*
 #include "ctype.h"
+#include <stdlib.h>
 */
 import "C"
 
@@ -518,8 +520,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:afdda4f8cb61b2e22dfdb71d895ffb51
+pass sha256:95603e190116c45d265e54a1856a8e93
 -- run/go/fyne --
-pass sha256:d285179224c8840ca2bdcf7dac5b6795
+pass sha256:00b0d2f7a17fcaa854c749bb102f1161
 -- run/go/gtk4 --
 pass sha256:0d1a6b744351a47a1431fd9d8963d654

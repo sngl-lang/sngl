@@ -230,6 +230,14 @@ var orderConstraints = []orderConstraint{
 
 	{"LibFuncs", "CMarshal",
 		"a library helper calling a C function is in the package's func list only once promoted, and one left out keeps a `string` argument cgo will not take"},
+	{"CMarshal", "ReleaseTemps",
+		"the `c.str` a C call's string argument becomes is the temp it releases, and before the conversion there is no owned value to see"},
+	{"ErrorCatch", "ReleaseTemps",
+		"a statement raising while a temp is live releases in a catch block nested in the handler's own, which has to exist to nest in; swapped, the handler's catch takes the raise from inside the release's"},
+	{"ReleaseTemps", "MutatedVars",
+		"a raising `var` declared outside the catch that releases its temps is assigned inside it"},
+	{"ReleaseTemps", "CSE",
+		"CSE binds a call a statement makes twice, and an allocation made twice is two values each released once, not one value read twice"},
 	{"CMarshal", "NoTernary",
 		"a `bool` argument is written as sngl:x/c's `cbool` body, a ternary, which a target with none needs lowered"},
 

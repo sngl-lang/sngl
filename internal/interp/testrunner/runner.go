@@ -155,6 +155,11 @@ func (tv *testingT) teardown() error {
 		}
 	}
 	tv.timers = nil
+	if fn := tv.pkg.Teardown; fn != nil {
+		if _, err := tv.env.CallUserFuncValues(fn, nil); err != nil {
+			return err
+		}
+	}
 	return tv.env.LeakError()
 }
 

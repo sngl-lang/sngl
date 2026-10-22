@@ -1,12 +1,13 @@
 # gtk4's canvasText override under --simulate, with no C toolchain: each frame
 # hands cairo the font family and the text as the `c.str`s CMarshal converts
-# them to, and nothing frees either (#110), so each leaks once per settle at the
-# call it was converted for. ReleaseTemps makes this pass.
+# them to, and ReleaseTemps frees each after the call that read it (#110), so
+# however many frames the host paints, nothing is left held.
 
 env PATH=
 
-! sngl test --simulate gtk4 app.sngl
-stdout -count=2 '^    leak: the str allocated at platform/gtk4/gtk4.sngl:[0-9]+:[0-9]+ was never released, [0-9]+ times$'
+sngl test --simulate gtk4 app.sngl
+stdout '^ok   1 tests, 0 failures$'
+! stdout 'leak'
 
 sngl test app.sngl
 stdout '^PASS$'

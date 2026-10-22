@@ -132,6 +132,8 @@ var alwaysOn = []string{
 	"RefLoop",
 	// A by-reference parameter is copy-in, copy-out on every target.
 	"RefParams",
+	// An owned value a statement borrows is released on every target.
+	"ReleaseTemps",
 	// What a target reserves is read off its marks, and a target reserving
 	// nothing renames nothing; there is no capability to hold.
 	"ReservedNames",

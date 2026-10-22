@@ -334,5 +334,8 @@ func PrepareFor(pkg *ir.Package, platform string) (*ir.Package, error) {
 			return pkg, err
 		}
 	}
-	return pkg, lower.RefParams(pkg)
+	if err := lower.RefParams(pkg); err != nil {
+		return pkg, err
+	}
+	return pkg, lower.ReleaseTemps(pkg)
 }

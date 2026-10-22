@@ -75,18 +75,72 @@ how, so the pass must never grow its own idea of keyable.
 ```
 … → OwnedState   (node half; before Effect so its effects lower like any other)
   → Effect
-  → … → ErrorCatch → …
+  → … → ErrorCatch
   → ReleaseTemps (statement half; after ErrorCatch so a raise path is a catch block)
-  → ReservedNames
+  → MutatedVars → CSE → … → ReservedNames
 ```
 
-`ReleaseTemps` reuses CSE's reach (`imperativeBlocks`): statement-local, never
-hoisting out of a lambda. It releases with an explicit statement after the use,
-never Go's `defer` -- that is function-scoped, wrong in a loop in a draw
-callback, and C has none. A `return` binds its result, releases, then returns.
-An application-lifetime value is a package-level declaration whose release the
-pass appends to the package's teardown function (`ir.Package.Teardown`, beside
-`ir.Package.Run`), which every pass then reads like any other function.
+**`ReleaseTemps` releases what a statement borrows**
+(`internal/lower/release_temps.go`). A temp is an allocation -- a call
+answering an owned type, or a literal of one -- written where its value is only
+read: an argument to a parameter that borrows, a receiver, the operand of a
+field read or an index, a call whose result is discarded. One stored, returned,
+handed to its release or to a `#[moves]` or `#[retains]` parameter has another
+lifetime and is left alone. Each is bound to a `__relN` before the statement,
+an allocation's own arguments first, and released after it with an explicit
+statement, never Go's `defer` -- that is function-scoped, wrong in a loop in a
+draw callback, and C has none (`testdata/owned_canvas_text.txtar` denies one).
+A `return` binds its result to a `__retN`, releases, then returns; an `if` or
+`match` tests a bound head, so a branch that returns skips nothing.
+
+The reach is CSE's (`imperativeBlocks`), statement-local and never hoisting out
+of a lambda, plus each canvas's children (`drawBlocks`): `ShapeDraw` made those
+the statements that paint it, a block a host runs per frame that no view walk
+treats as one, and #110's leak is in it. On the interpreter, `ReleaseTemps`
+reaches every body the program does, library ones included, the way
+`CMarshal` does, since nothing there is spliced.
+
+**A raise releases too.** A statement that may raise while a temp is live runs
+in a catch block of its own (`ir.If.Catch`, nested inside ErrorCatch's), whose
+handler releases and raises the event again. A raise resolved to a boundary's
+or window's handler is turned into one that bubbles, so the nested catch sees
+it, and the raise again is resolved as it was: on Go the outer catch then takes
+the panic, and on the interpreter, which runs a resolved handler at the call,
+the handler runs from there and ends the event handler as before. Running
+ErrorCatch itself on the interpreter was tried and is wrong:
+`cmd/sngl/testdata/error_raise_render_tree_runs.txt` has an emitted handler a
+compiled target inlines into its emitter, and a catch block of its own there
+ended the emitted handler instead of both. `__argN` temps ErrorCatch bound for
+a per-call `@error` are released after the call they were bound for.
+
+**An application-lifetime value is a package-level declaration.** An
+allocation built from constants -- a literal of an owned type whose fields are
+literals or package consts, or a call of a `const func` or of `c.cstring` with
+such arguments -- is declared once as a package `var` (`__relN`, shared by every
+writing of the same value), and its release is appended to
+`ir.Package.Teardown`, which the effect lowering already makes the page's exit
+handler and the pass creates where no `@unmount` did. Every Go target then sets
+it in `New` and frees it in `__snglTeardown`. A const parameter is not constant
+here, although `ir.IsConst` says so: it is constant at each call site, not at
+package level. The interpreter's test teardown runs `Teardown` after the timers
+stop and before the leak check.
+
+**A release must be emitted.** A program's release is otherwise called by
+nothing until lowering, so the shake keeps an owned struct's release with the
+struct, and a library one -- `c.free` -- is promoted by running `LibFuncs` again
+once the pass has called it. `c.free` calls cgo's `C.free`, which `<stdlib.h>`
+declares: gtk4's preamble includes it, and fyne's and bubbletea's
+(`EmitCHeader`) include it beside the program's links, since every `c.str`
+those targets make is freed.
+
+**What it does not release yet**, each left held rather than released wrongly:
+an allocation the statement may not evaluate -- the right of `&&` or `||`, a
+ternary's arm (lowered to statements before the pass on a target without
+ternaries) -- or in a `for` head, which may be evaluated per iteration; a temp
+bound before a later temp of the same statement raises while being bound; and
+a temp passed to a function returning the same owned type, which may return
+the argument itself: the pass releases the argument and the result alike,
+which the tracker reports as a double release.
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`
@@ -124,8 +178,9 @@ always on.
 
 **A test is an application.** When a test function returns, `testingT.teardown`
 ends every running lifetime (`Effects.Retarget(nil, …)`, newest first, so
-every `@unmount` runs), drops the timers, and reports each handle still live
-as a leak naming where it was allocated. Before this a test ended with nothing
+every `@unmount` runs), drops the timers, runs `ir.Package.Teardown` (the
+application-lifetime releases), and reports each handle still live as a leak
+naming where it was allocated. Before this a test ended with nothing
 torn down: no `@unmount` ran at the end of any test. A test that already failed
 is not leak checked, since it stopped wherever it failed. There is no exemption
 list: application-lifetime values are released at teardown too.
@@ -133,7 +188,8 @@ list: application-lifetime values are released at teardown too.
 A fixture declares an owned type whose release is SNGL -- a function that
 appends to a log -- and asserts behavior with the log, while the tracker
 asserts nothing leaked (`testdata/owned_release_by_hand.sngl`,
-`testdata/error_owned_tracker.sngl`). Confirming a pass's fixture fails with
+`testdata/error_owned_tracker.sngl`, and `testdata/owned_release_temps.sngl`,
+where nothing releases by hand). Confirming a pass's fixture fails with
 the change reverted is removing the pass and watching the leak error, which is
 why `TestRunFixtures` now fails an `ERROR(test)` directive no failure matched:
 it used to check only that each failure had a directive, so a tracker that
@@ -157,9 +213,10 @@ return steering control flow takes one path.
 Simulating is what adds the target's half (`BuildSimulatedEnv`, set before the
 initializers run), and `PrepareFor` runs `CMarshal`, so a stubbed native is
 handed the `c.str` the target allocates: an owned result of the stubbed
-`cstring`, which nothing releases -- #110, reported with no toolchain at the C
-call it was converted for (`handles.site` skips a call the pass wrote, having
-no position of its own; `cmd/sngl/testdata/simulate_gtk4_canvas_text_leaks.txt`).
+`cstring`, which `ReleaseTemps` frees as it does on the target. Before that
+pass this was #110, reported with no toolchain at the C call it was converted
+for (`handles.site` skips a call the pass wrote, having no position of its
+own); `cmd/sngl/testdata/simulate_gtk4_canvas_text.txt` now holds it to none.
 The interpreter's own run converts nothing: it has no C. And the host
 paints: after every settle, each handler of a mounted primitive in the shape
 family -- the target calling in, which is why such a primitive may carry

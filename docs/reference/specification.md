@@ -2236,8 +2236,10 @@ four lifetimes that holds it:
   derived value, or handed to a `#[macro.retains]` parameter lives as long as
   the node: it is released when the state is overwritten, when what the
   derived value reads changes, and when the node unmounts.
-- **Application** -- a value built only from constants is made once and
-  released when the application tears down.
+- **Application** -- a value built only from constants, which is a literal of
+  the type, or a call of a `const func`, whose arguments are literals or
+  package constants, is made once and released when the application tears
+  down. The value is made when the application starts.
 - **Moved** -- a value handed to a `#[macro.moves]` parameter belongs to the
   callee, and the program never releases it.
 

@@ -1,20 +1,21 @@
 # A program's own C natives, leak checked on the interpreter: every call is
 # stubbed, so nothing here is compiled or linked. Under --simulate the string a
-# native is handed is the `c.str` CMarshal converts it to, which nothing frees
-# (#110); without it there is no C at all.
+# native is handed is the `c.str` CMarshal converts it to, which ReleaseTemps
+# frees after the call; without it there is no C at all.
 
 env PATH=
 
 ! sngl test --simulate gtk4 app.sngl
 stdout '^--- PASS: /testFreed '
+stdout '^--- PASS: /testWrites '
 stdout '^--- PASS: /testMoved '
 stdout '^--- PASS: shows/testRetainedUntilUnmount '
 stdout '^--- PASS: toggles/testRetainedUntilBranchLeaves '
-stdout '^    leak: the str allocated at app.sngl:36:5 was never released$'
+! stdout 'str allocated'
 stdout '^    leak: the buf allocated at app.sngl:45:13 was never released$'
 stdout '^    buf passed after it was moved: allocated at app.sngl:50:13, moved at app.sngl:51:5, passed at app.sngl:52:14$'
 stdout '^    buf released while a native retains it: allocated at app.sngl:85:13, retained at app.sngl:88:9, released at app.sngl:89:9$'
-stdout '^not ok   8 tests, 4 failures$'
+stdout '^not ok   8 tests, 3 failures$'
 
 ! sngl test app.sngl
 stdout '^--- PASS: /testWrites '

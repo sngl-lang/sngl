@@ -87,21 +87,30 @@ leaks yet.
 
 The statement half; closes the unbounded part of #110.
 
-- [ ] `ir.Package.Teardown`, empty until something appends to it.
-- [ ] The pass: an application-lifetime value is a package-level declaration
+- [X] `ir.Package.Teardown`: it already existed as the effect lowering's exit
+  handler, so the pass appends to it, and makes one where no `@unmount` did.
+- [X] The pass: an application-lifetime value is a package-level declaration
   released in `Teardown`; the rest bind to `__relN` and release after the
-  statement, before a `return`, and in the catch block of a raise. It joins
-  `interp.Prepare`.
-- [ ] Part 1's fixtures stop releasing by hand: statement temps (in a loop, a
-  `return`, a raise into a boundary, inside a lambda) and constants.
-- [ ] Goldens: gtk4 canvas text (`"serif"` application-lifetime, `"count: {n}"` released each frame), a loop, a return. `deny` a `defer` in a draw
-  function.
-- [ ] Part 2's `canvasText` script test reports no leak.
-- [ ] Recorded gtk4 runs `-update`d.
-- [ ] `c.free` calls cgo's `C.free`, declared by `<stdlib.h>`: gtk4's preamble
-  includes it, but a fyne or bubbletea program's holds only the links it
-  reaches (`testdata/c_free.txtar` links it by hand). Release a `c.str` on
-  those only once something links it.
+  statement, before a `return`, and in a catch block of their own that raises
+  again. It joins `interp.Prepare`; ErrorCatch does not, which the design note
+  says why.
+- [X] Statement temps without releasing by hand
+  (`testdata/owned_release_temps.sngl`): in a loop, a `return`, a raise into a
+  boundary, inside a lambda, a discarded result, and a constant.
+  `owned_release_by_hand.sngl` keeps releasing its `var`s by hand: a local
+  `var` is no temp.
+- [X] Goldens: `testdata/owned_canvas_text.txtar` (`"serif"`
+  application-lifetime, `"count: {n}"` freed each frame, `deny` a `defer` in
+  the draw routine) and `testdata/owned_c_string_temps.txtar` (a loop, a
+  return, a constant, a raise).
+- [X] Part 2's `canvasText` script test reports no leak
+  (`simulate_gtk4_canvas_text.txt`, renamed from `…_leaks.txt`).
+- [X] Recorded runs `-update`d.
+- [X] `<stdlib.h>`: fyne's and bubbletea's preambles (`EmitCHeader`) include
+  it beside the program's links, as gtk4's does, so `c.free` compiles wherever
+  a `c.str` is made. A `c.link` in sngl:x/c was the other way, but a library
+  file's links are not collected, and one there would have silenced the
+  checker's unlinked-native error for every program importing sngl:x/c.
 
 ## Part 5: `OwnedState`
 
@@ -185,4 +194,6 @@ same move.
   teardown for a host that outlives the GUI, the keyable limitation and the
   shape that avoids it, and `--simulate` for finding a leak.
 - [ ] Spec and `design/ownership.md` reread against what landed.
+- [ ] `design/ownership.md`'s *What it does not release yet* (Part 4): fix
+  each or say in the spec that it is held.
 - [ ] MR description final; this file deleted.
