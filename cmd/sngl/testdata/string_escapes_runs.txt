@@ -39,7 +39,7 @@ func testAStringKeepsWhatItWrote(t test.Test, c receipt) {
     t.assert(string.length("a\x0cb") == 3 && "$cost" != "")
 }
 -- testrun/android/kotlin/app.sngl/receipt/1 --
-sha256:81ebc8732854f3b4c7d4a75e77645f8c
+sha256:100799d16ac8b066492f7d3e3fd9eb6a
 {
   "results": [
     {

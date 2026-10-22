@@ -64,7 +64,7 @@ func testChipCallsAPureFunc(t test.Test, c page) {
     t.assert(c.picked == "c")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:eb0d186d666896ea5d844b9333ddb523
+sha256:10bcc9600593965e9184b6fc09f2e04c
 {
   "results": [
     {

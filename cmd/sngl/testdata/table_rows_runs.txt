@@ -124,7 +124,7 @@ func testThePanelHoldsTheTable(t test.Test, c main) {
     t.assert(c.crewTable != null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:cecdccdb56985c9d4a660af0bf6c8490
+sha256:69e250a242defb5a215259a5bfa1b134
 {
   "results": [
     {
@@ -138,7 +138,7 @@ sha256:cecdccdb56985c9d4a660af0bf6c8490
   }
 }
 -- testrun/android/kotlin/panel.sngl/main/1 --
-sha256:e43986574aa1f1f8e56d6c30f4a52dd3
+sha256:4fafee16ed0dd7c728af514bf314ffbe
 {
   "results": [
     {

@@ -490,7 +490,7 @@ pass sha256:e682ea84ad77e181c60f54c0ba5fa431
 -- run/go/fyne --
 pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --
-pass sha256:6cfe24e0ce640e7b5df209900992ab96
+pass sha256:3be1eb95ef8aa807d5712450917af6f4
 -- run/none/html --
 pass sha256:61c4d54d0983dc48742f24d8b312abbb
 -- testrun/html/none/component_menu.sngl/main/1 --

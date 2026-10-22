@@ -1,5 +1,5 @@
 An app's theme. `color` set the launcher's background and nothing else: the
-theme took the device's own colours, so the Pokédex asked for red and drew
+theme took the device's own colours, so an app that asked for red drew
 its buttons in the wallpaper's. A `color` the program sets is the theme's
 primary; with none, the device's colours stand.
 

@@ -1,6 +1,6 @@
 A map read in Kotlin falls back to the value type's zero, `m[k] ?: zero`, as
 a key the map lacks reads on every other target. A struct had no zero there
-but `null`, so the Pokédex's `(facts[m] ?: null).kind` did not compile; a
+but `null`, so `(facts[m] ?: null).kind` did not compile; a
 struct the program declares is a data class with a default for every field,
 and its zero is that class called with none.
 
@@ -86,4 +86,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:1eb85a36a284a737ba890cbd7feea5c1
+pass sha256:37d8dd490814bc7b9271a26b3236b6a2

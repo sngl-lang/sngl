@@ -501,7 +501,7 @@ pass sha256:3f15adfd5b9de712ba0a733b8f681412
 -- run/go/fyne --
 pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
-pass sha256:cf78c0617e353f825f151f9f2f225ad2
+pass sha256:4118528347c12a5886b3506b0cb4757a
 -- run/none/html --
 pass sha256:c9662e4445ecd877f2fa9a96098a200c
 -- testrun/html/none/component_radio.sngl/main/1 --

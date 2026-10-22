@@ -226,7 +226,7 @@ window {
     main
 }
 -- testrun/android/kotlin/buttons.sngl/main/1 --
-sha256:c95371673632a889f47afac199d9ab7f
+sha256:3eea8e0a0f5c259c2f6cd929d73f1688
 {
   "results": [
     {
@@ -236,7 +236,7 @@ sha256:c95371673632a889f47afac199d9ab7f
   ]
 }
 -- testrun/android/kotlin/counters.sngl/main/1 --
-sha256:43cc102db98f92c5758868a9030186c0
+sha256:ae135df854672aed2370ed1322ca5f8e
 {
   "results": [
     {
@@ -246,7 +246,7 @@ sha256:43cc102db98f92c5758868a9030186c0
   ]
 }
 -- testrun/android/kotlin/recursion.sngl/main/1 --
-sha256:267c762857577cf991e4554d6cf47f0e
+sha256:170e5afb6f2ecb80fd6bba6f6380e4c7
 {
   "results": [
     {

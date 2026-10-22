@@ -81,4 +81,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:18810ad15a066209f13f6d780a09c93a
+pass sha256:bc52bb43cc145833c5dc001242c18813

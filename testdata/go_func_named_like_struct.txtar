@@ -1,6 +1,6 @@
 Go capitalizes a free function's name to export it, as it does a type's, so
 `func moveRow` beside `struct MoveRow` was emitted as a second `MoveRow` and
-the Pokédex's fyne build failed: "MoveRow redeclared in this block". A free
+a fyne build failed: "MoveRow redeclared in this block". A free
 function whose exported name a type of the package already holds is emitted,
 and called, under that name with `Func` after it.
 

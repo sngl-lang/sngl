@@ -598,7 +598,7 @@ pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
 pass sha256:fc2ce8c7fe35a834757d06622ce91590
 -- run/kotlin/android --
-pass sha256:d9f79f557cef1fcab9fc3b17e77a7ba1
+pass sha256:ee23cedbec76377068253f1b69fd9506
 -- run/none/html --
 pass sha256:69a9b96d7a56ebe55e635ee0c5f6633a
 -- testrun/html/none/component_tooltip.sngl/main/1 --

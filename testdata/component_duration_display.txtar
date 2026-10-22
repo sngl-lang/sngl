@@ -520,7 +520,7 @@ pass sha256:e03b5a95c6ac4231199379b94b1a2fd9
 -- run/go/gtk4 --
 pass sha256:ea80182dbd02f784eb788e613977344d
 -- run/kotlin/android --
-pass sha256:22a5afce0479c6779278db3ce805fae7
+pass sha256:c6f866a972992809270a410fe554725e
 -- run/none/html --
 pass sha256:94f7d9b0a6e88ec9edb741715a53b7fa
 -- testrun/html/none/component_duration_display.sngl/main/1 --

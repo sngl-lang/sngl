@@ -548,7 +548,7 @@ pass sha256:11c55c3d741fa8807110baebc0c01fbc
 -- run/go/gtk4 --
 pass sha256:fa57fed77e9455f316bb248bb80bb3f0
 -- run/kotlin/android --
-pass sha256:b33345640bf92da3379b16df9d6851db
+pass sha256:525f7b2632a06478da4029fb72b48d58
 -- run/none/html --
 pass sha256:7d5bfe82ebce5825f23b8d6614e94b15
 -- testrun/html/none/component_scroll.sngl/main/1 --

@@ -264,4 +264,4 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:d4bbf638801c6ab45d9a114109659b4a
 -- run/kotlin/android --
-pass sha256:c72ed8c1d60a3fb06b46899b9d7e08b1
+pass sha256:9601e340931e5021328c936ba92763d7

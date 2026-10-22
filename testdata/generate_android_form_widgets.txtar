@@ -285,4 +285,4 @@ fun SnglSelect(
     }
 }
 -- run/kotlin/android --
-pass sha256:47d27701917263c70ff0d6ff94d44bd0
+pass sha256:aac005895e89ad48c71206a810cf4ecd

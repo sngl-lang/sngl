@@ -910,7 +910,7 @@ pass sha256:2fd77bcffb016a0b7ed561a6e3711834
 -- run/go/gtk4 --
 pass sha256:3b2ad08a0921c48419dca70f7c44dd08
 -- run/kotlin/android --
-pass sha256:cd6537e12897e2cccf9de673ec51633a
+pass sha256:df65fd992ab49cd445a9c2dc269f5e34
 -- run/none/html --
 pass sha256:2b9e53188391b3a03177d61c95919eea
 -- testrun/html/none/component_nested_capture_shared.sngl/main/1 --

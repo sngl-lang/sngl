@@ -85,7 +85,7 @@ func testEachChoiceTakes(t test.Test, c page) {
     t.assert(c.words().join(",") == "Yellow-a!,Yellow-b!")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:e26f7210dd4d178ee46ca373ee4b9cd8
+sha256:c1cbba2cd49dda5add9436d86d2935b1
 {
   "results": [
     {

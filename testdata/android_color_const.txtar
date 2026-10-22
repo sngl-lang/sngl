@@ -1,6 +1,6 @@
 Kotlin carries SNGL's `color` as a `Color` data class the file declares, and
 the file declared it only for a canvas or a library helper whose signature
-named the type. The Pokédex's `const typeColors map[string, color]` and its
+named the type. A `const typeColors map[string, color]` and its
 `func typeInk(kind string) color` spelled `Color` with no declaration, and
 the build failed on "Unresolved reference 'Color'". A const, var, local or
 signature of the program that holds a color declares it.
@@ -107,4 +107,4 @@ fun typeInk(kind: String): Color {
     return Color(r = 255, g = 255, b = 255, a = 255)
 }
 -- run/kotlin/android --
-pass sha256:a8e38097ac60b5f9aab1ea0aaf5cab12
+pass sha256:f408b598c8441f893bc34e9ce03f3d5a

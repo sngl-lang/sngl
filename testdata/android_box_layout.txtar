@@ -2,7 +2,9 @@ What a box's Style says of its children is an argument Compose takes for the
 Row or Column, not a Modifier: `gap` and `justifyContent` the main axis's
 Arrangement, `alignItems` the cross axis's Alignment. Neither was emitted, so
 on android every box laid its children edge to edge and at its start -- the
-Pokédex's stat rows uncentred and its tabs' lines touching.
+rows of a stats panel uncentred and its lines touching. A bare `0` gap
+arrives converted, `measurement(0)`, and is no space at all, not the fields
+of a literal (`(0).px`), which the calculator's keypad failed to compile on.
 
 -- m.sngl --
 import ui "sngl:ui"
@@ -29,6 +31,10 @@ ui.window {
         }
         ui.vbox(style={justifyContent=end}) {
             ui.text(value="Last")
+        }
+        ui.hbox(style={gap=0}) {
+            ui.text(value="Touching")
+            ui.text(value="Keys")
         }
     }
 }
@@ -96,8 +102,12 @@ fun MainScreen() {
             Column(modifier = Modifier, verticalArrangement = Arrangement.Bottom) {
                 Text(text = "Last", modifier = Modifier)
             }
+            Row(modifier = Modifier, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                Text(text = "Touching", modifier = Modifier)
+                Text(text = "Keys", modifier = Modifier)
+            }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:5f4cd007d8894718eaf4617891364124
+pass sha256:6bd5c87cd49644538656d1998cf8643f

@@ -554,6 +554,6 @@ pass sha256:62b64c49302a0f77315e7053470a5797
 -- run/go/gtk4 --
 pass sha256:9448f7f0e4a71d0fa0204e095ca7c0e0
 -- run/kotlin/android --
-pass sha256:5307c0d28ef027f3d4fd7b884fd10445
+pass sha256:8072f61bbaa7f9bae71ee8b855753427
 -- run/none/html --
 pass sha256:12a7910ee1efd1cf46384dfb3cecfc87

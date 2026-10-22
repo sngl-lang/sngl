@@ -6,7 +6,7 @@
 # An image whose URL changes fetches the new one: `moved` switches from a
 # picture to a 404, and reports the failure. android's loader kept the last
 # URL's picture and reported it loaded, since a picture already there skipped
-# the fetch -- the Pokédex's cards kept their artwork when the dex changed.
+# the fetch -- a grid's cards kept their pictures when its list changed.
 
 sngl test --platform=android --language=kotlin app.sngl
 stdout '3 tests, 0 failures'
@@ -65,7 +65,7 @@ window {
     pictures
 }
 -- testrun/android/kotlin/app.sngl/moved/1 --
-sha256:44bdaed4f7e0185459a1d3f89ff1d87f
+sha256:1f7ecc4849957ffe901d5efa1bb96c60
 {
   "results": [
     {
@@ -75,7 +75,7 @@ sha256:44bdaed4f7e0185459a1d3f89ff1d87f
   ]
 }
 -- testrun/android/kotlin/app.sngl/pictures/1 --
-sha256:0826d85e9fd71dd2a71a21b5a61bfa2e
+sha256:a8d5a5e2257f4b57e946695d8ca4c089
 {
   "results": [
     {

@@ -780,6 +780,6 @@ pass sha256:2c028122674e5c7813caa7e99fea3d57
 -- run/go/gtk4 --
 pass sha256:1e0e968fd78ce2a2c2d85f65cd79bcfd
 -- run/kotlin/android --
-pass sha256:eb5b85f35d852daac7e8b49044236a8f
+pass sha256:06327f885c94aa79d792967ae480cbb9
 -- run/none/html --
 pass sha256:46851efcc78c30e63bc5b5c46e041605

@@ -613,7 +613,7 @@ pass sha256:6b9e53ad4e7409c2b5620b7c1de8cf98
 -- run/go/gtk4 --
 pass sha256:d84ab71ae8ed74b394160b02d570f545
 -- run/kotlin/android --
-pass sha256:f3891588732e45d468b3c1eed1361f82
+pass sha256:25d1cec2b220a0ceca8157414eb66526
 -- run/none/html --
 pass sha256:38c6d2f3f4953b980872c8a9641a800d
 -- testrun/html/none/component_popover.sngl/main/1 --

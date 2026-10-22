@@ -332,10 +332,10 @@ func namesColor(structs []*ir.StructDef) bool {
 }
 
 // programNamesColor reports whether anything the program declares holds a
-// color: a const, a var, a local or a func's signature. The Pokédex's `const typeColors
-// map[string, color]` and its `func typeInk(kind string) color` spelled
-// `Color` in Kotlin, and with no canvas and no library helper naming the type
-// the class was never declared.
+// color: a const, a var, a local or a func's signature. A `const
+// map[string, color]` and a func returning a color spelled `Color` in Kotlin,
+// and with no canvas and no library helper naming the type the class was
+// never declared (`testdata/android_color_const.txtar`).
 func programNamesColor(pkg *ir.Package) bool {
 	if pkg == nil {
 		return false

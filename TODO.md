@@ -308,3 +308,33 @@ Notes:
   each target stands, the document corrections.
 - [ ] A review agent passes over the whole branch; fix what it finds.
 - [ ] Delete this file; take the MR out of draft.
+
+Notes, from looking at it on an android device:
+
+- Done: a select is a read-only field opening its menu (a test's `change`
+  runs the node's `SetText`, as its `click` runs `OnClick`); the detail page
+  scrolls under its back button; the Moves tab gives each move's type, power
+  and accuracy, as lines of `moveLine` rather than a `ui.table`, whose cells
+  are strings; a type is a `typeBadge` in the type's colour; android lays a
+  box out by its Style's `gap`, `justifyContent` and `alignItems`, a flex
+  child stretches only where `alignItems` does, and a bare `gap=0` is no
+  space; a remote image follows its URL on android, and shows nothing on a
+  failed one on fyne; android's Badge takes the Style's colours; Kotlin gives
+  a struct read from a map a zero and declares `Color` wherever the program
+  holds one; Go names a free func clear of a type it would collide with
+  (`MoveRowFunc`); the app is named the Pokédex with `icon.svg`, android's
+  package `us.duckfam.sngl.pokedex`, its theme's primary the `color` red, its
+  bar icons dark.
+- Left: `testAMoveGivesItsTypePowerAndAccuracy` failed once on html (Growl's
+  power was not "—") and passed the next run; fyne's tests time out under
+  load (three at 5 s while a golden run shared the machine). A param whose
+  type comes only from its default (`style = ui.Style{}`) gives a call
+  site's struct literal no context, so `fontWeight=bold` is undefined there;
+  writing the type fixes it -- a checker question for the user, not changed.
+  Whether `ui.table` should take component cells is the user's call too.
+- Goal 1's grep still finds two the plan does not list, from before this
+  session: `testdata/context_hidden_arg_lifted_twice.txtar` ("the Pokédex on
+  fyne") and `cmd/sngl/testdata/async_query_destroyed_instance_runs.txt`
+  ("the Pokédex's detail page"). Reword them or list them under part 3.
+- On the user's device: a launcher red, the status bar's icons dark over
+  white, the stat rows centred.

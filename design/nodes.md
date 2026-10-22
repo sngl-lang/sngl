@@ -438,7 +438,7 @@ value is reported as a choice:
   (`cmd/sngl/testdata/table_rows_runs.txt`).
 - **android**'s `SnglSelect` is a read-only field a tap opens a menu from,
   Kotlin the platform ships as it does `SnglDateField`. A user cannot type
-  into it -- the Pokédex's selects took any text -- but its semantics answer
+  into it -- `examples/pokedex`'s selects took any text -- but its semantics answer
   `SetText` with a choice's label as a pick. A trigger's `change` runs that
   action rather than `performTextReplacement`, which refuses a field that is
   not editable, as its `click` runs `OnClick` rather than a touch.

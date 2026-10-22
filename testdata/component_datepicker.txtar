@@ -882,7 +882,7 @@ pass sha256:95eb24ffec20a57a93b8c2be1eeb39c4
 -- run/go/gtk4 --
 pass sha256:771136eb35f4412c9f59d201c2bf7650
 -- run/kotlin/android --
-pass sha256:065e25d98e6928fcae22e53208439053
+pass sha256:9cdaf99dcadc2d6c3feffb8ba1c9f1db
 -- run/none/html --
 pass sha256:6b658df74fddb5b955d97face1817518
 -- testrun/html/none/component_datepicker.sngl/main/1 --

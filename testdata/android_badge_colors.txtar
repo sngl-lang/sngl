@@ -1,6 +1,6 @@
 A Material Badge paints its own pill, so a Style's background drawn by the
 Modifier was a rectangle behind it and the pill stayed the theme's error red:
-the Pokédex's type badges were all red. Its colours are Compose's arguments,
+a row of coloured badges was all red. Its colours are Compose's arguments,
 `containerColor` the Style's background and `contentColor` its color, and
 the Modifier draws no background.
 
@@ -63,4 +63,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:a68828ed1e0bc6eab512cfae23d5d22e
+pass sha256:49c139f40e218193a48239c99eda06dc

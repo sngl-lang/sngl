@@ -297,4 +297,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:78dad7d4897e6c68e3f7fb22d15687c4
+pass sha256:0383d2dfc66e6d96980d1925bb47eeb7

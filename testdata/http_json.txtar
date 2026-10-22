@@ -1473,6 +1473,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:b3554eb633885dade749c529d0e43bea
 -- run/kotlin/android --
-pass sha256:d5e37f355d2e1247a05fd650be790346
+pass sha256:3a1c292260219f9c811179c7078ccaff
 -- run/none/html --
 pass sha256:a1dcb90f3139929f5515a43f059ea69b

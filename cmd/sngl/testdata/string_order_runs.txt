@@ -52,7 +52,7 @@ func testStringsAreOrdered(t test.Test, c main) {
     t.assert(sorted(c.words).join(", ") == "apple, fig, pear")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:3012a137f71794a8fd7b2f23cd0a85b5
+sha256:0d00d235e4cf7031596493179192729b
 {
   "results": [
     {

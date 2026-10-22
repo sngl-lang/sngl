@@ -889,7 +889,7 @@ pass sha256:9ea9351a44fec1237150c99be5bf3875
 -- run/go/gtk4 --
 pass sha256:6db7f308a56d54e45fca2fa420add7fe
 -- run/kotlin/android --
-pass sha256:5dd1d9c1e179197ee72ad3a5a40ec53a
+pass sha256:01afec3ff10662744021efc70b77b318
 -- run/none/html --
 pass sha256:651bba1bd9c8a72856643604bce8834f
 -- testrun/html/none/component_nested_func.sngl/main/1 --
