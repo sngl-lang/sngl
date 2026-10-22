@@ -33,7 +33,10 @@ Change those, not this file.
 - Subagents get the comment rule from `~/.claude/CLAUDE.md` pasted into their
   prompt.
 - At the end of each part: commit, push, update the MR description, tick the
-  part here, and write the prompt for the next session.
+  part here.
+- When a task is done -- a part, or any item asked for on its own -- end the
+  final message with the prompt for the next session: the next open item or
+  part, what to read first, and how to confirm it, ready to paste.
 
 ## Part 1: marks, checker, tracker
 
