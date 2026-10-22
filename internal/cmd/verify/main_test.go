@@ -75,3 +75,40 @@ func TestRecordPackagesDeclareUpdate(t *testing.T) {
 		t.Errorf("recordPackages = %q, want %q", got, want)
 	}
 }
+
+// A file written, added or removed while the tests ran is what a failure
+// reports as the tree changing under the run; one left alone is not.
+func TestChangedFilesSeesEditsDuringTheRun(t *testing.T) {
+	root := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	write(".gitignore", "scratch\n")
+	write("kept.go", "package a\n")
+	write("edited.go", "package a\n")
+	write("removed.go", "package a\n")
+	before, err := treeState(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("edited.go", "package a // an edit\n")
+	write("added.go", "package a\n")
+	write("scratch", "ignored\n")
+	if err := os.Remove(filepath.Join(root, "removed.go")); err != nil {
+		t.Fatal(err)
+	}
+	after, err := treeState(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := changedFiles(before, after)
+	if want := []string{"added.go", "edited.go", "removed.go"}; !slices.Equal(got, want) {
+		t.Errorf("changedFiles = %q, want %q", got, want)
+	}
+}

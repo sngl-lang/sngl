@@ -63,6 +63,16 @@ verify. `go tool verify -update` runs, under the headless compositor, the
 tests of every package whose tests declare an `update` flag with `-update`
 (`recordPackages`), and a stale record's failure names it.
 
+**A failure while the tree changed says so.** Some suites build from the live
+checkout -- `sngl` proxies to `./cmd/sngl`, `internal/optimize`'s evalstore
+and the scripts' `trust_eval` build modules that replace `duckfam.us/sngl`
+with it, the `serve` script command builds an out-of-tree `sngl` -- so an
+edit made mid-run is what they build, half-written or not. verify reads the
+size and time of every file git keeps before its test steps (`treeState`) and,
+when one fails, names what changed since (`reportTreeChange`). Building from a
+snapshot instead would cost every run a cold build cache, which keys on the
+absolute source directory, and write records into the copy.
+
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
 `func test…` through the same launcher (`internal/testlaunch`, in process),

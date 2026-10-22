@@ -155,7 +155,18 @@ func main() {
 	}
 
 	// Step 7: go test with coverage
-	runTests(*verbose, !*dry, *full, pkgs)
+	// The tests build from the checkout -- `sngl` proxies to ./cmd/sngl, and
+	// a generated module replaces duckfam.us/sngl with it -- so an edit made
+	// while they run is what some of them build. What failed then is the
+	// tree's change and not the code's, and verify says so.
+	before, err := treeState(".")
+	if err != nil {
+		log.Fatalf("reading the tree: %v", err)
+	}
+	if !runTests(*verbose, !*dry, *full, pkgs) {
+		reportTreeChange(".", before)
+		exit(1)
+	}
 
 	// Step 8: SNGL test matrix across every TestRunner-capable platform
 	// whose probe says it can run on this host. Unavailable platforms are
@@ -188,6 +199,7 @@ func main() {
 	testArgs = append(testArgs, "./...")
 	sc, sargs, senv := wrapHeadless("go", testArgs)
 	if !runStepEnv("sngl-test", senv, sc, sargs...) {
+		reportTreeChange(".", before)
 		exit(1)
 	}
 	cleanup()
@@ -235,7 +247,8 @@ func runCheckStep(name string, command string, args ...string) bool {
 	return true
 }
 
-func runTests(verbose, fmtDocs, full bool, pkgs []string) {
+// runTests is step 7, and reports whether it passed.
+func runTests(verbose, fmtDocs, full bool, pkgs []string) bool {
 	profile, err := os.CreateTemp("", "sngl-verify-cover-*.out")
 	if err != nil {
 		log.Fatalf("create coverprofile: %v", err)
@@ -295,11 +308,11 @@ func runTests(verbose, fmtDocs, full bool, pkgs []string) {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Print(err)
-		exit(1)
+		return false
 	}
 	if err := cmd.Start(); err != nil {
 		log.Print(err)
-		exit(1)
+		return false
 	}
 
 	failed := map[string]bool{}
@@ -359,8 +372,67 @@ func runTests(verbose, fmtDocs, full bool, pkgs []string) {
 			100*float64(totalCovered)/float64(totalStmts), totalCovered, totalStmts, count)
 	}
 
-	if cmdErr != nil {
-		exit(1)
+	return cmdErr == nil
+}
+
+// treeState is each file under root git keeps -- tracked, or untracked and
+// not ignored -- with its size and modification time.
+func treeState(root string) (map[string]string, error) {
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files: %w", err)
+	}
+	state := map[string]string{}
+	for f := range strings.SplitSeq(string(out), "\x00") {
+		if f == "" {
+			continue
+		}
+		if info, err := os.Lstat(filepath.Join(root, f)); err == nil {
+			state[f] = fmt.Sprintf("%d %d", info.Size(), info.ModTime().UnixNano())
+		}
+	}
+	return state, nil
+}
+
+// changedFiles is what was written, added or removed between two treeStates,
+// sorted.
+func changedFiles(before, after map[string]string) []string {
+	var changed []string
+	for f, st := range after {
+		if before[f] != st {
+			changed = append(changed, f)
+		}
+	}
+	for f := range before {
+		if _, ok := after[f]; !ok {
+			changed = append(changed, f)
+		}
+	}
+	sort.Strings(changed)
+	return changed
+}
+
+// reportTreeChange says, after a failure, which files changed since before
+// was read: a test that built from the checkout may have built a half-made
+// edit, and fails for the edit rather than the code.
+func reportTreeChange(root string, before map[string]string) {
+	after, err := treeState(root)
+	if err != nil {
+		log.Printf("reading the tree again: %v", err)
+		return
+	}
+	changed := changedFiles(before, after)
+	if len(changed) == 0 {
+		return
+	}
+	const most = 20
+	shown := changed
+	if len(shown) > most {
+		shown = shown[:most]
+	}
+	log.Printf("the tree changed under the run, so a failure above may be the edit's and not the code's -- rerun with nothing editing it. Changed:\n  %s", strings.Join(shown, "\n  "))
+	if len(changed) > most {
+		log.Printf("  ... and %d more", len(changed)-most)
 	}
 }
 
