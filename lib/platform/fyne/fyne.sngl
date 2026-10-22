@@ -383,6 +383,16 @@ const component Hyperlink(style ui.Style = ui.Style{}) ui.node {
     ) {}
 }
 
+const component Separator(style ui.Style = ui.Style{}) ui.node {
+    Widget(
+        spec = Spec{
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewSeparator"},
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Separator"},
+        },
+        style = {...style},
+    ) {}
+}
+
 const component Spacer(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
@@ -626,8 +636,14 @@ const component ui.text[platform](value, style) {
     Label(text=value, style={...style}) {}
 }
 
+// A divider is Fyne's separator, a line; one with a caption is the caption.
+// A blank label stood for the line, a row of nothing.
 const component ui.divider[platform](style, label) {
-    Label(text=label, style={...style}) {}
+    if label == "" {
+        Separator(style={...style})
+    } else {
+        Label(text=label, style={...style}) {}
+    }
 }
 
 const component ui.spinner[platform](label, style) {
