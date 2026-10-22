@@ -271,7 +271,12 @@ func (s *source) setTexture(tex *C.GdkTexture) {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(s.tex)))
 	}
 	s.tex = tex
-	if _, live := sources[s.pic]; !live {
+	// The source still holding its picture, and not one made since at the
+	// address a destroyed picture left: a page drawn again while its pictures
+	// were on their way frees the old ones, GTK hands the new ones the same
+	// memory, and an old fetch arriving painted the new picture -- the
+	// pictures of a gallery landed under one another's labels.
+	if sources[s.pic] != s {
 		return
 	}
 	C.gtk_picture_set_paintable((*C.GtkPicture)(p(s.pic)), (*C.GdkPaintable)(unsafe.Pointer(tex)))
