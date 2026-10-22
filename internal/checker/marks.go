@@ -55,7 +55,7 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 	}
 	c.afterMarks(func() {
 		for _, attr := range a.MacroAttrs() {
-			c.applyMark(attr, a, sym, false)
+			c.applyMark(attr, a, sym, nil)
 		}
 	})
 }
@@ -117,17 +117,19 @@ func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
 	marked := p
 	c.afterMarks(func() {
 		for _, attr := range marked.MacroAttrs() {
-			c.applyMark(attr, marked, prop, true)
+			c.applyMark(attr, marked, prop, paramMarks)
 		}
 	})
 }
 
-func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inParam bool) {
+// applyMark runs one mark. allowed is what a parameter list admits, nil for a
+// declaration.
+func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, allowed map[markKey]bool) {
 	uri, fn, ok := c.resolveMacro(attr)
 	if !ok {
 		return
 	}
-	if inParam && !paramMarks[markKey{uri, attr.Name}] {
+	if allowed != nil && !allowed[markKey{uri, attr.Name}] {
 		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MacroName())
 		return
 	}
@@ -277,6 +279,14 @@ func (a markArgs) index(name string) int {
 func (a markArgs) Has(name string) bool {
 	i := a.index(name)
 	return i >= 0 && a.vals[i].set
+}
+
+// Expr is an argument as written, for a parameter whose form is no constant.
+func (a markArgs) Expr(name string) ast.Expr {
+	if i := a.index(name); i >= 0 {
+		return a.vals[i].expr
+	}
+	return nil
 }
 
 func (a markArgs) String(name string) string {

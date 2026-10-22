@@ -1,0 +1,83 @@
+// #[owned(release)] says a value of a struct must be given back, and names
+// the function that does. The release takes one value of the type and returns
+// nothing; anything else is not a way to give one back. #[retains] and
+// #[moves] say what a native does with an argument past the call, so they mark
+// a parameter of a function with no body, where nothing else could say so.
+import ui "sngl:ui"
+import macro "sngl:macro"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+func close(f file) {
+}
+
+#[macro.owned(missing)] // ERROR(check) "undefined: missing"
+struct a {
+    n int
+}
+
+#[macro.owned(twoArgs)] // ERROR(check) "release twoArgs must be func(b)"
+struct b {
+    n int
+}
+
+func twoArgs(x b, y int) {
+}
+
+#[macro.owned(answers)] // ERROR(check) "release answers must be func(c2)"
+struct c2 {
+    n int
+}
+
+func answers(x c2) => x.n
+
+#[macro.owned(close)] // ERROR(check) "release close must be func(d)"
+struct d {
+    n int
+}
+
+const limit = 3
+
+#[macro.owned(limit)] // ERROR(check) "limit is not a function"
+struct e {
+    n int
+}
+
+#[macro.owned(close)] // ERROR(check) "only a struct is a type a value of which is owned"
+enum shade { light, dark }
+
+#[macro.owned(close)] // ERROR(check) "only a struct is a type a value of which is owned"
+func open() => file{fd=1}
+
+#[macro.cnative("keep")]
+func keep(#[macro.retains] f file)
+
+#[macro.cnative("take")]
+func take(#[macro.moves] f file)
+
+#[macro.cnative("both")]
+func both(#[macro.retains] #[macro.moves] f file) // ERROR(check) "both retains and moves"
+
+func bodied(#[macro.retains] f file) { // ERROR(check) "only a parameter of a function with no body"
+}
+
+func lambdas() {
+    var f = func(#[macro.moves] x file) { // ERROR(check) "cannot mark a parameter"
+    }
+    f(file{fd=1})
+}
+
+component holds(#[macro.retains] f file) ui.node { // ERROR(check) "cannot mark a parameter"
+    ui.text(value="{f.fd}")
+}
+
+#[macro.retains] // ERROR(check) "only a parameter of a function with no body"
+struct g {
+    n int
+}
+
+ui.window(title="t") {
+}

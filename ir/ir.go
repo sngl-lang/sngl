@@ -1333,7 +1333,23 @@ type Param struct {
 	Variadic bool `json:",omitempty"`
 	// Doc is the comment written on a declared function's parameter.
 	Doc string `json:",omitempty"`
+	// Transfer is what a native function does with the argument past the
+	// call, written `#[retains]` or `#[moves]`.
+	Transfer Transfer `json:",omitempty"`
 }
+
+// Transfer is what a callee does with an owned argument once it returns.
+type Transfer int
+
+const (
+	// TransferBorrow copies or reads the argument and keeps nothing.
+	TransferBorrow Transfer = iota
+	// TransferRetains keeps a pointer the caller still owns, so the value
+	// lives as long as the node that made the call.
+	TransferRetains
+	// TransferMoves takes the value: the callee releases it, never the caller.
+	TransferMoves
+)
 
 func (p *Param) SymName() string { return p.Name }
 func (p *Param) SymType() *Type  { return p.Type }
@@ -1380,6 +1396,9 @@ type StructDef struct {
 	// where every type's methods live — struct, enum, unit and component
 	// alike.
 	Methods map[string]*Func `json:"-"`
+	// Release is the function `#[owned(release)]` names: a value of this type
+	// is something the program must give back, and this is how.
+	Release *Func `json:"-"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }

@@ -1140,6 +1140,7 @@ func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
 	child.Pkg = env.Pkg
 	child.handling = env.handling
 	child.wlog = env.writes()
+	child.handles = env.owned()
 	child.Units = env.Units
 	child.Comp = env.Comp
 	child.parent = env

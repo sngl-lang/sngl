@@ -51,7 +51,7 @@ func (c *checker) applyEventMarks(e ast.EventDecl, evt *ir.EventDecl) {
 	marked := e
 	c.afterMarks(func() {
 		for _, attr := range marked.MacroAttrs() {
-			c.applyMark(attr, marked, evt, true)
+			c.applyMark(attr, marked, evt, paramMarks)
 		}
 	})
 }

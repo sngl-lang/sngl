@@ -19,103 +19,8 @@ owned, and a Go-native handle wants the same treatment.
 
 ## The design
 
-**A type declares its release.** `#[owned(release)]` on a type names the
-function that gives one back. `sngl:x/c` declares `str` (`*C.char`, released
-by `free`) and the conversions; gtk4 declares its pixbuf the same way. Nothing
-is recognized by name.
-
-**An owned value has one of four lifetimes**, the narrowest that fits:
-
-| Lifetime        | When                                                                                  | Released                             |
-|-----------------|---------------------------------------------------------------------------------------|--------------------------------------|
-| **Statement**   | passed to a parameter that copies or borrows (GLib's transfer-none)                   | after the statement                  |
-| **Node**        | held in component state, bound by a body `let`, or handed to a `#[retains]` parameter | on overwrite, on key change, unmount |
-| **Application** | built from constants                                                                  | once, at application teardown        |
-| **Moved**       | handed to a `#[moves]` parameter (transfer-full)                                      | never; the host owns it              |
-
-**The application ends before the process does.** `@run` hands the program
-a `run` that presents the windows and runs the loop, and code after `run()`
-keeps going (`testdata/platform_run_handler.txtar` prints "after"), so a CLI
-can wrap the GUI and outlive it. When the loop exits, the application tears
-down before `run` returns: the root tree unmounts (every `@unmount` fires,
-which releases every node-lifetime value), timers stop, and the
-application-lifetime values are released. Nothing owned survives teardown, so
-a host that runs the GUI again, or runs for hours after it, holds nothing the
-GUI allocated. Every entry point a host calls to start the application has a
-teardown paired with it.
-
-**Node lifetime lowers onto `effect`.** A branch leaving, a list row removed,
-a window closing are already `@unmount`, and `on=` already ends the old
-lifetime before the new one starts (`testdata/effect_on_recreates.sngl`). So
-the node half emits ordinary `effect`s and every target's existing `Effect`
-lowering releases them. A body `let` of an owned type becomes an instance cell
-filled in `@mount`, keyed `on=` its inputs, released in `@unmount`.
-
-**What can be a key is one predicate, `ir.Keyable`**, asked by both the
-checker and the pass. An owned `let` whose inputs are not keyable (a function
-value, an async result) is a checker error, not a silent per-frame recompute.
-The limitation is meant to be lifted later -- by function identity, by keying
-on the settled async value, or by a write-counter key -- and widening the
-predicate is how, so the pass must never grow its own idea of keyable.
-
-**Two passes.**
-
-```
-… → OwnedState   (node half; before Effect so its effects lower like any other)
-  → Effect
-  → … → ErrorCatch → …
-  → ReleaseTemps (statement half; after ErrorCatch so a raise path is a catch block)
-  → ReservedNames
-```
-
-`ReleaseTemps` reuses CSE's reach (`imperativeBlocks`): statement-local, never
-hoisting out of a lambda. It releases with an explicit statement after the use,
-never Go's `defer` -- that is function-scoped, wrong in a loop in a draw
-callback, and C has none. A `return` binds its result, releases, then returns.
-An application-lifetime value is a package-level declaration whose release the
-pass appends to the package's teardown function (`ir.Package.Teardown`, beside
-`ir.Package.Run`), which every pass then reads like any other function.
-
-**The interpreter runs the passes and tracks every owned value.** One
-implementation, tested where it lives:
-
-- `interp.Prepare` runs `OwnedState` and `ReleaseTemps` as it already runs
-  `DataFamilies` and `RefParams`. It needs no `Effect`: the interpreter runs
-  `effect` natively.
-- An owned value is a handle carrying an id and the position that allocated
-  it. Releasing one twice, or reading or passing one after its release, is a
-  runtime error naming both positions.
-- A test is an application: when the test function returns, the interpreter
-  tears it down, and a handle still live after that is a leak naming where it
-  was allocated. There is no exemption list, since application-lifetime values
-  are released at teardown too.
-- Only owned values are tracked, so this is always on. `TestRunFixtures` leak
-  checks every fixture.
-
-A fixture declares an owned type whose release is SNGL -- a function that
-appends to a log -- and asserts behavior with the log; the tracker asserts
-nothing leaked while it ran. Confirming a pass's fixture fails with the change
-reverted is removing the pass and watching the leak error.
-
-**Simulated natives are the debugging mode.** `sngl test --simulate <target>`
-(name to settle) runs a program on the interpreter specialized for a target
-rather than `none`, so that target's `[platform]` overrides run, with every
-`#[cnative]` call stubbed: an owned result is a fresh handle, anything else the
-zero value a bodyless declaration already answers, every argument checked for
-use after release, and a `#[moves]` or `#[retains]` argument taken by the stub
-or kept until its node unmounts. That leak checks gtk4's `canvasText`, its
-image override and a program's own C bindings with no GTK and no cgo. A
-native's return steering control flow takes one path; fine for a debugging
-mode.
-
-**What the tracker cannot see** is a call the gtk4 translator builds after
-lowering (Part 9). Part 10 makes those IR, which is what brings them under it.
-
-**Out of scope, recorded in the design note:** a C language target. It adds
-`#[owned]` to `string`, and decides between per-statement release and a
-per-frame/per-event arena for temps. State needs release-on-overwrite either
-way: an arena held for an instance's lifetime keeps every rewrite of a label
-until unmount.
+`design/ownership.md` holds it, and the spec's *Owned values* what it means.
+Change those, not this file.
 
 ## Rules for every part
 
@@ -136,23 +41,24 @@ The language half and the interpreter's tracking, with no pass and no target
 yet. Fixtures release by hand, so the tracker is pinned before anything relies
 on it.
 
-- [ ] `design/ownership.md` with the design above, and a line for it in
+- [X] `design/ownership.md` with the design above, and a line for it in
   CLAUDE.md's index.
-- [ ] `#[owned(release)]`, `#[retains]` and `#[moves]` in `sngl:macro`
+- [X] `#[owned(release)]`, `#[retains]` and `#[moves]` in `sngl:macro`
   beside `cnative`. The checker refuses a release that is not a `func(T)`, an
   `owned` on anything but a type, and `retains`/`moves` on anything but a
   parameter of a bodyless (native) function.
-- [ ] `ir.Keyable` and the checker error for an owned `let` or `var` in a
-  component body whose initializer reads something that is not
-  (`testdata/error_owned_let_unkeyable.sngl`).
-- [ ] Handles in the interpreter: leak, double release and use after release
+- [X] `ir.Keyable` and the checker error for an owned derived value (a
+  component's `func label => …`; SNGL has no `let`) whose body reads
+  something that is not (`testdata/error_owned_let_unkeyable.sngl`). A `var`
+  is exempt, since its initializer runs once and keys nothing.
+- [X] Handles in the interpreter: leak, double release and use after release
   are errors naming the positions. Fixtures that commit each on purpose and
   expect the error, and one that releases correctly by hand and passes.
-- [ ] Application teardown in the interpreter: at the end of a test the root
-  tree unmounts, `@unmount` fires (a fixture logs it), timers stop, then the
-  leak check runs. Check what a test does today first; if `@unmount` already
-  fires at test end, say so in the design note rather than adding it twice.
-- [ ] Spec: owned types, the four lifetimes, and application teardown.
+- [X] Application teardown in the interpreter: at the end of a test the root
+  tree unmounts, `@unmount` fires (a fixture whose `@unmount` releases what
+  would otherwise leak), timers stop, then the leak check runs. Nothing was
+  torn down at test end before, which the design note says.
+- [X] Spec: owned types, the four lifetimes, and application teardown.
 
 ## Part 2: simulated natives
 
@@ -197,12 +103,12 @@ The statement half; closes the unbounded part of #110.
 
 The node half.
 
-- [ ] The pass: an owned body `let` becomes an instance cell plus an
+- [ ] The pass: an owned derived value becomes an instance cell plus an
   `effect(on=inputs, @mount, @unmount)`; an owned `var` gets release on
   overwrite (assign, then release the old value) and an `@unmount`; a
   `#[retains]` argument in an updater takes its node's lifetime. It joins
   `interp.Prepare`.
-- [ ] Fixtures under the tracker: a `var` overwritten, a body `let` re-keyed
+- [ ] Fixtures under the tracker: a `var` overwritten, an owned derived value re-keyed
   and unmounted (branch, list row, window under `if`), a retained argument
   replaced and unmounted, a moved argument never released.
 - [ ] Goldens on Go, JS and Kotlin.
@@ -239,7 +145,7 @@ The adjacent defect in #110: a drawn image is decoded and scaled from disk on
 every frame.
 
 - [ ] Declare gtk4's pixbuf as `#[owned(unrefPixbuf)]` and its loading in
-  `gtk4.sngl`, so the image override is a body `let` that Part 5 keys on
+  `gtk4.sngl`, so the image override is an owned derived value that Part 5 keys on
   `(src, w, h)`.
 - [ ] Leak checked under `--simulate gtk4`; golden showing one load per key;
   recorded run.

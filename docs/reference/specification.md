@@ -2202,6 +2202,63 @@ whether or not the program handles it: a raise under a window whose call site
 wrote no `@error` is caught and dropped. An error no boundary catches goes to
 the platform's default handler.
 
+### Owned values
+
+A struct marked `#[macro.owned(release)]` is **owned**: a value of it is
+something the program allocated and must give back, and `release` is the
+function that does. The release takes exactly one value of the type and
+returns nothing; anything else is an error at the mark. Only a struct may be
+owned, and nothing is owned by its name.
+
+```sngl
+import macro "sngl:macro"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+func close(f file) {
+}
+```
+
+Copying an owned value copies a reference to the one value: releasing any copy
+releases it, and every copy is released from then on. Releasing a value twice,
+or reading or passing one after its release, is a runtime error.
+
+The compiler releases every owned value the program makes, at the narrowest of
+four lifetimes that holds it:
+
+- **Statement** -- a value passed to a parameter that only reads or copies it
+  is released once the statement that made it completes, including when it
+  returns or raises.
+- **Node** -- a value held in a component's state, computed by an owned
+  derived value, or handed to a `#[macro.retains]` parameter lives as long as
+  the node: it is released when the state is overwritten, when what the
+  derived value reads changes, and when the node unmounts.
+- **Application** -- a value built only from constants is made once and
+  released when the application tears down.
+- **Moved** -- a value handed to a `#[macro.moves]` parameter belongs to the
+  callee, and the program never releases it.
+
+`#[macro.retains]` and `#[macro.moves]` mark a parameter of a function with no
+body: a native that keeps a pointer to its argument while the caller still
+owns it, and one that takes the argument. A function with a body says what it
+does with its arguments itself, so the marks are an error there.
+
+A derived value of an owned type is recomputed and released when what it reads
+changes, so what it reads is the key of its lifetime and must be comparable as
+an effect's `on` is: a derived value that reads a function value, a list or a
+map is an error. A `var`'s initializer runs once and is not keyed.
+
+**An application tears down before its process ends.** When the event loop
+exits, the root tree unmounts, so every `@unmount` runs and every node-lifetime
+value is released; timers stop; and every application-lifetime value is
+released. Only then does a platform's `@run` handler's `run` return, so a
+program that goes on after the windows close holds nothing they allocated. A
+test is an application: it tears down when the test function returns, and an
+owned value still held after that is a leak the test fails with.
+
 ## Trees and families
 
 A user interface is a tree, and it is segmented into **families**: a container

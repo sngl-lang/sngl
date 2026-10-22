@@ -1,0 +1,65 @@
+// The interpreter tracks every owned value it allocates. One still held once
+// a test has torn down is a leak; one released twice, or read or passed after
+// its release, is an error where it happens. Each names where the value was
+// allocated, and where it was released.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+func close(f file) {
+}
+
+func open(fd int) => file{fd=fd}
+
+func size(f file) => f.fd
+
+func testNeverReleased(t test.Test) { // ERROR(test) "leak: the file allocated at error_owned_tracker.sngl:17:22 was never released"
+    var f = open(1)
+    t.assert(f.fd == 1)
+}
+
+func testReleasedTwice(t test.Test) { // ERROR(test) "file released twice: allocated at error_owned_tracker.sngl:17:22, released at error_owned_tracker.sngl:29:5 and again at error_owned_tracker.sngl:30:5"
+    var f = open(2)
+    var g = f
+    close(f)
+    close(g)
+}
+
+func testReadAfterRelease(t test.Test) { // ERROR(test) "file read after its release"
+    var f = open(3)
+    close(f)
+    t.assert(f.fd == 3)
+}
+
+func testPassedAfterRelease(t test.Test) { // ERROR(test) "file passed after its release"
+    var f = open(4)
+    close(f)
+    t.assert(size(f) == 4)
+}
+
+func testPassedToALambdaAfterRelease(t test.Test) { // ERROR(test) "file passed after its release"
+    var f = open(5)
+    var fd = func(x file) => x.fd
+    close(f)
+    t.assert(fd(f) == 5)
+}
+
+component holds ui.node {
+    var f = open(6)
+
+    ui.text(value="{f.fd}")
+}
+
+// Teardown unmounts the tree, and nothing in it releases f.
+func testHeldPastUnmount(t test.Test, c holds) { // ERROR(test) "leak: the file allocated at"
+    t.assert(c.f.fd == 6)
+}
+
+ui.window(title="t") {
+    holds
+}

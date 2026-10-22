@@ -183,6 +183,29 @@ func StmtPos(s Stmt) ast.Pos {
 	return ast.Pos{}
 }
 
+// Keyable reports whether a value of t can key a lifetime: an effect's `on`,
+// and the inputs an owned derived value is recomputed on. The checker and the
+// ownership pass both ask this, so widening what a derived value may read is
+// a change here and nowhere else.
+func Keyable(t *Type) bool { return RebuildIncomparable(t) == "" }
+
+// ReleaseOf is the function that gives a value of t back, or nil when t is
+// not owned.
+func ReleaseOf(t *Type) *Func {
+	if t == nil || t.Kind != TypeStruct {
+		return nil
+	}
+	if sd, ok := t.Decl.(*StructDef); ok {
+		return sd.Release
+	}
+	return nil
+}
+
+// IsRelease reports whether fn is the release some owned type declares.
+func IsRelease(fn *Func) bool {
+	return fn != nil && len(fn.Params) == 1 && ReleaseOf(fn.Params[0].Type) == fn
+}
+
 // RebuildIncomparable is "" when two values of t can be asked "is this the
 // same one" and get the same answer on every target, and otherwise the type
 // that is not, with the field path that reaches it in parentheses.

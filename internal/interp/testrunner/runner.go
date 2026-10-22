@@ -116,11 +116,29 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		}
 	}
 
+	if err := tVal.teardown(); err != nil && len(r.Failures) == 0 {
+		r.Failures = append(r.Failures, codegen.TestFailure{Message: err.Error(), Fatal: true})
+	}
+
 	composeFailures(r)
 	r.Log = env.Log
 	r.Passed = len(r.Failures) == 0 && allPassed(r.Children)
 	r.Duration = time.Since(start)
 	return r
+}
+
+// teardown ends the application a test is: the tree unmounts, so every
+// lifetime's `@unmount` runs, newest first; the timers stop; and whatever owned
+// value is still held after that is a leak. A test that already failed
+// stopped where it failed, so what it leaves held says nothing more.
+func (tv *testingT) teardown() error {
+	if cv := tv.comp; cv != nil && cv.fx != nil {
+		if err := cv.fx.Retarget(nil, cv.Env); err != nil {
+			return err
+		}
+	}
+	tv.timers = nil
+	return tv.env.LeakError()
 }
 
 // composeFailures derives the legacy Error / ErrorLine fields from the
