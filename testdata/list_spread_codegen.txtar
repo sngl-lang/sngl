@@ -1021,6 +1021,9 @@ window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var folded = [0, 1, 2, 3];
+  if (typeof window !== "undefined") {
+    Object.assign(window, { folded });
+  }
   var state = { xs: [4, 5], around: null, copied: null, aroundLen: null, widened: null, floats: null, ps: null, holes: null, leading: null };
   state.around = [0, ...state.xs, 9];
   state.copied = [...state.xs];
@@ -1075,4 +1078,4 @@ pass sha256:ad2ded5fbd178a7460373058209d3064
 -- run/kotlin/android --
 pass sha256:3e9d7fa94dd7d633b0dd502662dde4c9
 -- run/none/html --
-pass sha256:1c2cd4295f040a23d40d51b16af7573d
+pass sha256:96616a49027402c21cce75c7b02c72cd

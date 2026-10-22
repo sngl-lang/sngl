@@ -79,7 +79,7 @@ sha256:71f5f59f4ece51072e0171001d42b2b0
   ]
 }
 -- testrun/fyne/go/app.sngl/compass/1 --
-sha256:19c4cfe21efe792d46c75ca34d06c31b
+sha256:d6715c3805c40c7711f020be25bcf16c
 {
   "results": [
     {
@@ -107,7 +107,7 @@ sha256:35af2c465c5a2f024293ac3f467073c8
   ]
 }
 -- testrun/html/none/app.sngl/compass/1 --
-sha256:6096eef17d9c51cac5354eaa5257a3b0
+sha256:11b4d672995e01487265df2ee3a11bac
 {
   "results": [
     {

@@ -552,7 +552,7 @@ pass sha256:525f7b2632a06478da4029fb72b48d58
 -- run/none/html --
 pass sha256:7d5bfe82ebce5825f23b8d6614e94b15
 -- testrun/html/none/component_scroll.sngl/main/1 --
-sha256:622c46450626543c08c33082caa59457
+sha256:c785060353aa52c7b2d9abf23f129110
 {
   "results": [
     {

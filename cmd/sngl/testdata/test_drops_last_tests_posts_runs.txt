@@ -74,3 +74,17 @@ func testBTheNextTestWaitsForItsOwnAnswerAlone(t test.Test, c page) {
 ui.window {
     page()
 }
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:f2a8ceff913d6f0a9a20c1ff3c86104e
+{
+  "results": [
+    {
+      "Desc": "AFirstAnswer",
+      "Passed": true
+    },
+    {
+      "Desc": "BTheNextTestWaitsForItsOwnAnswerAlone",
+      "Passed": true
+    }
+  ]
+}

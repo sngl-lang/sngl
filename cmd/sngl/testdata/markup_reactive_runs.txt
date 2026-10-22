@@ -117,7 +117,7 @@ window {
     main
 }
 -- testrun/fyne/go/list.sngl/main/1 --
-sha256:2f0b6009c819a8d433553b638852b1c9
+sha256:a5ff336db0b71c8a62c500a8425d193a
 {
   "results": [
     {
@@ -127,7 +127,7 @@ sha256:2f0b6009c819a8d433553b638852b1c9
   ]
 }
 -- testrun/fyne/go/para.sngl/main/1 --
-sha256:be7cdb69908ffa49b9b6784c4c8cb3fa
+sha256:16ffccd1815417765ad546b04e45e054
 {
   "results": [
     {
@@ -137,7 +137,7 @@ sha256:be7cdb69908ffa49b9b6784c4c8cb3fa
   ]
 }
 -- testrun/fyne/go/tasks.sngl/main/1 --
-sha256:3aeebacb2b8c8661ec86b0c8dc40d7ab
+sha256:bd9cffb385a645c8ec91749a0d7e5629
 {
   "results": [
     {

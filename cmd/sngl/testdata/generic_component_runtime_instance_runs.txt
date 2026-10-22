@@ -415,7 +415,7 @@ sha256:f84176c364bc674b37f4ca6d8d2bb7e4
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:47e1a29ca2631c4305c74f52a4bf6c48
+sha256:f54b592f6b2cf37fb2640a8574c4259e
 {
   "results": [
     {
@@ -425,7 +425,7 @@ sha256:47e1a29ca2631c4305c74f52a4bf6c48
   ]
 }
 -- testrun/fyne/go/event.sngl/main/1 --
-sha256:dbad5734edf4319fec63f252c3941931
+sha256:bae10c64a0cb2392c4721370818933cb
 {
   "results": [
     {
@@ -435,7 +435,7 @@ sha256:dbad5734edf4319fec63f252c3941931
   ]
 }
 -- testrun/fyne/go/list.sngl/main/1 --
-sha256:51eadc1ef4a60f7517f6c9f26123f43a
+sha256:c107807c0fe5419aea7f7a91241d8b6b
 {
   "results": [
     {
@@ -445,7 +445,7 @@ sha256:51eadc1ef4a60f7517f6c9f26123f43a
   ]
 }
 -- testrun/fyne/go/local.sngl/main/1 --
-sha256:9d2ca1ee9a71c47be4c2b06b99498c64
+sha256:ab0eff12962f2c3556583181b26f4865
 {
   "results": [
     {
@@ -455,7 +455,7 @@ sha256:9d2ca1ee9a71c47be4c2b06b99498c64
   ]
 }
 -- testrun/fyne/go/method.sngl/main/1 --
-sha256:88e3c01091432a61280bd8c8f644440d
+sha256:d2c2272597e6f77aa83faa1e3fe6dd1a
 {
   "results": [
     {
@@ -465,7 +465,7 @@ sha256:88e3c01091432a61280bd8c8f644440d
   ]
 }
 -- testrun/fyne/go/recursive.sngl/main/1 --
-sha256:6319993d0928d177c9b8ac59377805ce
+sha256:e366e1c51498792d9306f14fc364dc7f
 {
   "results": [
     {
@@ -475,7 +475,7 @@ sha256:6319993d0928d177c9b8ac59377805ce
   ]
 }
 -- testrun/fyne/go/state.sngl/main/1 --
-sha256:dc637727450aabe1a7cc1d5aee2301c1
+sha256:2c6fb2aa137bed96544042507b523f64
 {
   "results": [
     {
@@ -515,7 +515,7 @@ sha256:d3f3cead5f289b3af86baf0201eaf8cf
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:ec0ef3d40f651fb800580396ead4cff1
+sha256:963bc814163aed3683c10b5ea4abf85c
 {
   "results": [
     {
@@ -525,7 +525,7 @@ sha256:ec0ef3d40f651fb800580396ead4cff1
   ]
 }
 -- testrun/html/none/list.sngl/main/1 --
-sha256:c4a6256dd0708d111cd8880da05442a7
+sha256:1f7f7f59e137bcbb2d976c9df58f83cd
 {
   "results": [
     {
@@ -535,7 +535,7 @@ sha256:c4a6256dd0708d111cd8880da05442a7
   ]
 }
 -- testrun/html/none/recursive.sngl/main/1 --
-sha256:9c1686317ef81061684d4e21cb8f82cd
+sha256:d99a8eb376c115df66da68bb115f2df1
 {
   "results": [
     {

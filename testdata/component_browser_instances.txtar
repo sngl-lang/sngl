@@ -607,7 +607,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:b58509befbd07da2e28df44054a0f091
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:dc8d7cf3834b7d2a6ae0f67170b84c30
+sha256:75117228a8076cad052606d4b6bd0fff
 {
   "results": [
     {
@@ -617,7 +617,7 @@ sha256:dc8d7cf3834b7d2a6ae0f67170b84c30
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:7fe602a82dfb9fab2db03f879ff81d00
+sha256:5b0fff8edc176a5d232991acc5d8992e
 {
   "results": [
     {
@@ -627,7 +627,7 @@ sha256:7fe602a82dfb9fab2db03f879ff81d00
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:39286bf25664647280be1ebc86f52252
+sha256:e8b1f60d4739c1fd848310cc540989bd
 {
   "results": [
     {
@@ -637,7 +637,7 @@ sha256:39286bf25664647280be1ebc86f52252
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/recursive/1 --
-sha256:8d5b749fe032d59bf30ae4bf5b341748
+sha256:317a130e06d035157487d68151ae6bff
 {
   "results": [
     {
@@ -647,7 +647,7 @@ sha256:8d5b749fe032d59bf30ae4bf5b341748
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/unrolled/1 --
-sha256:e73578a1b0596c01e184b43f1b8748e6
+sha256:fc458173c288652c24e345d3c237b0aa
 {
   "results": [
     {

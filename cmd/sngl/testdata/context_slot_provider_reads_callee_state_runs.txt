@@ -79,3 +79,73 @@ func testTheWrapsPropIsTheTone(t test.Test, c page) {
 ui.window {
     page()
 }
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:6237d71f19de8dbf53be86075d1cb2d1
+{
+  "results": [
+    {
+      "Desc": "TheChoiceIsTheTone",
+      "Passed": true
+    },
+    {
+      "Desc": "TheWrapsPropIsTheTone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:013458773510b000ad72ce394f1748d3
+{
+  "results": [
+    {
+      "Desc": "TheChoiceIsTheTone",
+      "Passed": true
+    },
+    {
+      "Desc": "TheWrapsPropIsTheTone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:177dab9e5a0369219fd1d2e44a5cf069
+{
+  "results": [
+    {
+      "Desc": "TheChoiceIsTheTone",
+      "Passed": true
+    },
+    {
+      "Desc": "TheWrapsPropIsTheTone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:aa71087bad81566d1196f6bfc55fbb45
+{
+  "results": [
+    {
+      "Desc": "TheChoiceIsTheTone",
+      "Passed": true
+    },
+    {
+      "Desc": "TheWrapsPropIsTheTone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:4afd730eedbbdd6046b992aa7acf43d8
+{
+  "results": [
+    {
+      "Desc": "TheChoiceIsTheTone",
+      "Passed": true
+    },
+    {
+      "Desc": "TheWrapsPropIsTheTone",
+      "Passed": true
+    }
+  ]
+}

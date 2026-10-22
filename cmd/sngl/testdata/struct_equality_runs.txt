@@ -50,3 +50,53 @@ func testStructsCompareByValue(t test.Test, c page) {
 ui.window {
     page()
 }
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:4dce825254788e6d6f8da9553c0aeae2
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:12c28e96aec1adab71187e448ee5dc02
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:1dd42116c46dc7774105afef5da66d86
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:c3850ae64b82b702704a9efcaca2f27d
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:0e00b9710470defa0d90123a43f66c37
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}

@@ -86,7 +86,7 @@ sha256:91c0d1f34836a61933e47899e660cac7
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:92180ccc8a15f084fb459ca7f17cc709
+sha256:07d2c63cb23a47f35a02df34983017f8
 {
   "results": [
     {
@@ -124,7 +124,7 @@ sha256:85aca13c4eb13c8b88b223e6ee63b2bc
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:c89f7fc57a21a04a765a285f97a817c3
+sha256:504ba581546eb1630865338ed65d9667
 {
   "results": [
     {
@@ -133,6 +133,12 @@ sha256:c89f7fc57a21a04a765a285f97a817c3
     },
     {
       "Desc": "TheProgramGoesAway",
+      "Error": "exception: Maximum call stack size exceeded",
+      "Failures": [
+        {
+          "Message": "exception: Maximum call stack size exceeded"
+        }
+      ],
       "Log": [
         "exception: Maximum call stack size exceeded"
       ]

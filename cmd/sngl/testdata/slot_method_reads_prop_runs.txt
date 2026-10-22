@@ -142,7 +142,7 @@ sha256:811a1236f7359ecc4ad627ef8e061fd8
   ]
 }
 -- testrun/fyne/go/app.sngl/pick/1 --
-sha256:3dae112765cfddffb80325727a90d297
+sha256:1e9854e3b0b1be1f1a2ee31522e66d27
 {
   "results": [
     {
@@ -152,7 +152,7 @@ sha256:3dae112765cfddffb80325727a90d297
   ]
 }
 -- testrun/fyne/go/app.sngl/pickAgain/1 --
-sha256:29533a55a3e71e1043e1d4864d2dcb9d
+sha256:499f49d2a0ab6edc85d94488b8b5faf9
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:d21371194350078992d88de515f97860
   ]
 }
 -- testrun/html/none/app.sngl/pick/1 --
-sha256:e6a865227bed2b92e57d8d379be4df67
+sha256:9b1504c3efa28c7050ab691db82af1b5
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:e6a865227bed2b92e57d8d379be4df67
   ]
 }
 -- testrun/html/none/app.sngl/pickAgain/1 --
-sha256:eb8aed68f3119a212a3e1dc034025681
+sha256:373c4e3adaf4b77f7fac4cad72c68337
 {
   "results": [
     {

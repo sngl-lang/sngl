@@ -87,3 +87,93 @@ func testATestsValueIsUnderNoProvider(t test.Test, c probe) {
 ui.window {
     probe()
 }
+-- testrun/android/kotlin/app.sngl/probe/1 --
+sha256:28e4d71d7819f1a9bf825b9c9431a740
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/probe/1 --
+sha256:36030c62c6fc5381f16f82e8c074c38f
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/probe/1 --
+sha256:bd9507ff44805bcbe183eea6cd1c5a1f
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/probe/1 --
+sha256:7a805834e9d2c0ad5932b1c93d2f658b
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/probe/1 --
+sha256:d1c75d124ddb811a60f1067a81de7633
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
