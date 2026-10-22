@@ -31,7 +31,7 @@ window {
     main
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:9a95283af083831c021b5057cb9b9f0b
+sha256:5132c6cd4bab3f935a4536fa452a1a8f
 {
   "results": [
     {
@@ -44,7 +44,7 @@ sha256:9a95283af083831c021b5057cb9b9f0b
   }
 }
 -- testrun/html/none/app.sngl/main/2 --
-sha256:b55d311712910163926ce42f0ba5669b
+sha256:45cdbcf17a8c0f949b2ecb226c6f255e
 {
   "results": [
     {

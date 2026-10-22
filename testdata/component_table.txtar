@@ -900,7 +900,7 @@ pass sha256:c7c1f7ee5995768bf87ba91b77d3788c
 -- run/none/html --
 pass sha256:60a03e7db19649a8d985cd09e52055fe
 -- testrun/html/none/component_table.sngl/main/1 --
-sha256:f73b3b17f6277f030620d64ce0145696
+sha256:9460d780e0fc46868f2cf49aa0d8e409
 {
   "results": [
     {

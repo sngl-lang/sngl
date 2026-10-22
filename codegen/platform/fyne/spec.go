@@ -231,8 +231,7 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return toplevelSpec(props), nil
 	}
 	if sp := imageSpecFor(tag, props); sp != nil {
-		// An image's box is sized by its style as any node's is; read nowhere
-		// else, it drew at the size of its file.
+		// An image's box is sized by its style as any node's is.
 		if tag == imageTag {
 			sp.Style = styleFromProps(props)
 		}

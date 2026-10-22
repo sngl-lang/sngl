@@ -79,7 +79,7 @@ sha256:fa97164f06195bf0cab1d9e168ffe247
   ]
 }
 -- testrun/html/none/app.sngl/receipt/1 --
-sha256:f178d1762736662fa8742f33a6454210
+sha256:0de1d51b59d103e7c04200226ad20736
 {
   "results": [
     {

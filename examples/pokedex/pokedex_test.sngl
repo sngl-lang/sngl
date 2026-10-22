@@ -267,19 +267,19 @@ component named ui.node {
     var grass option[poke.TypeDetail] = null
     var overgrow option[poke.AbilityDetail] = null
     var attack option[poke.StatDetail] = null
-    var monster option[poke.EggGroupDetail] = null
+    var plant option[poke.EggGroupDetail] = null
     var grassland option[poke.PokemonHabitatDetail] = null
     var stone option[poke.ItemDetail] = null
-    var tackle option[poke.MoveDetail] = null
+    var doubleEdge option[poke.MoveDetail] = null
 
     poke.server(local) {
         poke.typeRetrieve(id="grass", :value=grass)
         poke.abilityRetrieve(id="overgrow", :value=overgrow)
         poke.statRetrieve(id="special-attack", :value=attack)
-        poke.eggGroupRetrieve(id="plant", :value=monster)
+        poke.eggGroupRetrieve(id="plant", :value=plant)
         poke.pokemonHabitatRetrieve(id="grassland", :value=grassland)
         poke.itemRetrieve(id="thunder-stone", :value=stone)
-        poke.moveRetrieve(id="double-edge", :value=tackle)
+        poke.moveRetrieve(id="double-edge", :value=doubleEdge)
     }
 }
 
@@ -633,9 +633,10 @@ func tackleAndGrowl(rows list[MoveRow]) bool {
     return tackle.name == "Tackle" && tackle.kind == "Normal" && tackle.power == "40" && tackle.accuracy == "100" && growl.name == "Growl" && growl.kind == "Normal" && growl.power == "—" && growl.accuracy == "100"
 }
 
-// A type's badge is drawn in the type's colour, its name dark over a light
-// one and white over the rest.
-func testATypeIsABadgeInItsColour(t test.Test, c seed) {
+// A type's badge carries PokéAPI's name for the type, which picks its
+// colour: the type's own, its name dark over a light one and white over the
+// rest. No target hands a test the style a badge is drawn with.
+func testATypesBadgeTakesItsKindsColour(t test.Test, c seed) {
     t.wait(func() => c.detail.types[0] != null && c.detail.types[1] != null, 5000)
     t.assert(c.detail.types[0] != null && c.detail.types[0].kind == "grass")
     t.assert(c.detail.types[1] != null && c.detail.types[1].kind == "poison")
@@ -665,7 +666,9 @@ func testTheSelectSwitchesTheMethod(t test.Test, c seed) {
 }
 
 // The way chosen is PokéAPI's name, so the moves stay the machine's in
-// another language, whose labels the old one's matches none of.
+// another language, whose labels the old one's matches none of. The select's
+// label follows the language by an effect keyed on the locale, which a
+// test's t.setContext does not move on html or android.
 func testTheMethodOutlivesALanguage(t test.Test, c seed) {
     t.wait(func() => c.detail.mon != null, 5000)
     t.assert(c.detail.tabs != null)
@@ -914,14 +917,14 @@ func testNames(t test.Test, c home) {
 }
 
 func testEveryNameDecodes(t test.Test, c named) {
-    t.wait(func() => c.grass != null && c.overgrow != null && c.attack != null && c.monster != null && c.grassland != null && c.stone != null && c.tackle != null, 5000)
+    t.wait(func() => c.grass != null && c.overgrow != null && c.attack != null && c.plant != null && c.grassland != null && c.stone != null && c.doubleEdge != null, 5000)
     t.assert(c.grass != null && typeNamed(c.grass.names).length() == 6)
     t.assert(c.overgrow != null && abilityNamed(c.overgrow.names).length() == 6)
-    // A stat and an egg group are named in kana alone, a habitat in English
-    // and French alone.
+    // A stat and an egg group are named in kana alone of the two Japanese,
+    // and a habitat in English, French and Spanish alone.
     t.assert(c.attack != null && statNamed(c.attack.names).length() == 5)
-    t.assert(c.monster != null && eggGroupNamed(c.monster.names).length() == 5)
+    t.assert(c.plant != null && eggGroupNamed(c.plant.names).length() == 5)
     t.assert(c.grassland != null && habitatNamed(c.grassland.names).length() == 3)
     t.assert(c.stone != null && itemNamed(c.stone.names).length() == 6)
-    t.assert(c.tackle != null && moveNamed(c.tackle.names).length() == 6)
+    t.assert(c.doubleEdge != null && moveNamed(c.doubleEdge.names).length() == 6)
 }

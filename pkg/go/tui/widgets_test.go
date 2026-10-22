@@ -119,6 +119,27 @@ func TestCursorFreshTable(t *testing.T) {
 	}
 }
 
+// The cursor stays on its row as the rows change, and moves to the last one
+// where its row is gone: emptied before the new rows, it was -1.
+func TestCursorFollowsRowsChanging(t *testing.T) {
+	m := NewTable(10)
+	cols := []string{"Name"}
+	three := [][]string{{"a"}, {"b"}, {"c"}}
+	m, _ = m.Update(nil, cols, three)
+	if got := m.Cursor(); got != 0 {
+		t.Fatalf("Cursor(rows arrived) = %d, want 0", got)
+	}
+	m.table.SetCursor(2)
+	m, _ = m.Update(nil, cols, [][]string{{"a"}, {"b"}, {"c"}, {"d"}})
+	if got := m.Cursor(); got != 2 {
+		t.Errorf("Cursor(a row added) = %d, want 2", got)
+	}
+	m, _ = m.Update(nil, cols, [][]string{{"a"}})
+	if got := m.Cursor(); got != 0 {
+		t.Errorf("Cursor(rows cut to one) = %d, want 0", got)
+	}
+}
+
 // Rows a program hands the table after it is built are the rows it shows,
 // each column as wide as its longest cell.
 func TestTableShowsRowsHandedLater(t *testing.T) {

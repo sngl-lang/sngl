@@ -70,7 +70,7 @@ func testInLoop(t test.Test, c inLoop) {
     t.snapshot("loop_after")
 }
 -- testrun/html/none/app.sngl/byState/1 --
-sha256:22a0572584808a3560b39cf86cc1e739
+sha256:ab6e9deab03da4a943ee1e492a88c834
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:22a0572584808a3560b39cf86cc1e739
   }
 }
 -- testrun/html/none/app.sngl/inLoop/1 --
-sha256:b7a6ee40e75fe7893da58e2d14142b38
+sha256:25f1e5dd9bf3a8002bd4371d766dd32f
 {
   "results": [
     {

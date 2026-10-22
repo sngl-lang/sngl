@@ -334,7 +334,7 @@ sha256:e377aebacaf6864153ec0da7f0568860
   ]
 }
 -- testrun/html/none/app.sngl/box/1 --
-sha256:7635445379e060c1a0cfba216988a5ad
+sha256:e8d49c81188f56d40687224c216c6ddb
 {
   "results": [
     {

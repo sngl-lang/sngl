@@ -526,14 +526,16 @@ func statTotal(stats list[poke.PokemonStat]) int {
     return total
 }
 
-// The effort values defeating a Pokémon gives: "1 Sp. Atk, 1 Sp. Def".
+// The effort values defeating a Pokémon gives: "1 Special Attack, 1 Special
+// Defense".
 func effortOf(stats list[poke.PokemonStat], store map[string, list[Named]]) string {
     var given = stats.filter(func(s poke.PokemonStat) => s.effort > 0)
     return listed(given.map(func(s poke.PokemonStat) => effort(s.effort, statLabel(s.stat.name, store))))
 }
 
-// So many effort values of a stat: "1 Sp. Atk".
-func effort(count int, stat string) => "{count} {stat}"
+// So many effort values of a stat: "1 Special Attack", and in the order the
+// reader's language puts the two.
+func effort(count int, stat string) => $"{count} {stat}"
 
 // PokéAPI's version groups in the order their games came out, which is its
 // `order` and not its ids: red-green-japan is 28 and came first. A group

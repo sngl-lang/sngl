@@ -503,6 +503,9 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 		// anything in what it holds that reports the event: a select in the
 		// panel is the panel's writer's, and the compiled targets press the
 		// tab too (lower.NamePresses).
+		// The arguments are evaluated once, as a compiled test does, whichever
+		// of the two answers the event.
+		handOn := evalArgs
 		if len(args) == 1 {
 			vals, err := evalArgs()
 			if err != nil {
@@ -511,9 +514,10 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 			if n, press := view.Choosing(method[1:], vals[0]); n != nil {
 				return env.InvokeElementEvent(n.Map(), press, func() ([]any, error) { return nil, nil })
 			}
+			handOn = func() ([]any, error) { return vals, nil }
 		}
 		if n := view.Handling(method[1:]); n != nil {
-			return env.InvokeElementEvent(n.Map(), method[1:], evalArgs)
+			return env.InvokeElementEvent(n.Map(), method[1:], handOn)
 		}
 		return nil, true, fmt.Errorf("@%s fired on %s reaches nothing that handles it", method[1:], cv.compName)
 	}

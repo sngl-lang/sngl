@@ -128,12 +128,17 @@ func emitComponentInstance(
 	}
 	// An id a test only null-tests one copy of is kept by key too, with no
 	// invoker to have exposed it.
-	for _, f := range fields {
-		if indexed[f.name] && !slices.Contains(listed, f.name) && !records[f.goType] {
-			modelFieldSink(copiesField(f.name), copyMapType(f.goType))
-			listed = append(listed, f.name)
+	// keepCopies keeps by key, in the Model's map, the copies of every
+	// widget a test reaches one copy of that nothing above listed.
+	keepCopies := func() {
+		for _, f := range fields {
+			if indexed[f.name] && !slices.Contains(listed, f.name) && !records[f.goType] {
+				modelFieldSink(copiesField(f.name), copyMapType(f.goType))
+				listed = append(listed, f.name)
+			}
 		}
 	}
+	keepCopies()
 
 	// A widget a test null-tests is handed over too, and taken back when the
 	// instance goes, so the Model holds it exactly while it is rendered. One a
@@ -260,12 +265,7 @@ func emitComponentInstance(
 	// A widget a render slot of the record builds -- a copy of a loop in it --
 	// is found only by walking that slot's method, above: its copies are kept
 	// in the Model's map as the body's are, under the key the slot gives each.
-	for _, f := range fields {
-		if indexed[f.name] && !slices.Contains(listed, f.name) && !records[f.goType] {
-			modelFieldSink(copiesField(f.name), copyMapType(f.goType))
-			listed = append(listed, f.name)
-		}
-	}
+	keepCopies()
 
 	fmt.Fprintf(b, "// %s is one live instance of the %s component.\ntype %s struct {\n", typeName, comp.Name, typeName)
 	fmt.Fprintf(b, "\t%s fyne.CanvasObject\n", golang.ComponentRootField)

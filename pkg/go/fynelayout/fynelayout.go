@@ -81,8 +81,8 @@ func Share(o fyne.CanvasObject, weight, margin float32) fyne.CanvasObject {
 }
 
 // ShareSized is Share for a child whose style gave it a width or a height,
-// which the box lays it out at in place of its own minimum: Fyne has no size
-// a widget is asked to be, so a picture was as large as its file.
+// which the box lays it out at in place of its own minimum: Fyne asks no
+// widget to be a size.
 func ShareSized(o fyne.CanvasObject, weight, margin, width, height float32) fyne.CanvasObject {
 	p := address(o)
 	if p == nil {

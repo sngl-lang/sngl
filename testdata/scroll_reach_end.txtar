@@ -731,10 +731,10 @@ window.__sngl_boot = () => {
         if (es[es.length - 1].isIntersecting) fire();
       }, { root: box, rootMargin: "0px 0px 50% 0px" });
       this._io.observe(this);
-      let last = -1, asked = false;
-      this._ro = new ResizeObserver(() => {
-        const h = box.scrollHeight;
-        if (h !== last && last >= 0 && !asked) {
+      let last = this.offsetTop, asked = false;
+      const grew = () => {
+        const h = this.offsetTop;
+        if (h !== last && !asked) {
           asked = true;
           requestAnimationFrame(() => {
             asked = false;
@@ -742,15 +742,17 @@ window.__sngl_boot = () => {
           });
         }
         last = h;
-      });
+      };
+      this._ro = new ResizeObserver(grew);
       const watch = (c) => {
         if (c !== this && c.nodeType === 1) this._ro.observe(c);
       };
       for (const c of box.children) watch(c);
       this._mo = new MutationObserver((ms) => {
-        for (const m of ms) m.addedNodes.forEach(watch);
+        for (const m of ms) if (m.target === box) m.addedNodes.forEach(watch);
+        grew();
       });
-      this._mo.observe(box, { childList: true });
+      this._mo.observe(box, { childList: true, subtree: true });
     }
     disconnectedCallback() {
       if (this._io) this._io.disconnect();
@@ -783,4 +785,4 @@ pass sha256:1e0e968fd78ce2a2c2d85f65cd79bcfd
 -- run/kotlin/android --
 pass sha256:06327f885c94aa79d792967ae480cbb9
 -- run/none/html --
-pass sha256:9b884cfa9bd1909e998ee725b80055fe
+pass sha256:cac8baade34f278dcf1871d147dfb894

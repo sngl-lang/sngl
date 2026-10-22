@@ -32,7 +32,7 @@ func SlotAnchor(c *fyne.Container, a fyne.CanvasObject) fyne.CanvasObject {
 
 // Nothing is what an instance whose body renders no node -- a request, an
 // effect -- is in the box holding it: hidden, so the box gives it no room and
-// no gap. A blank label stood there before, a row of space per request.
+// no gap.
 func Nothing() fyne.CanvasObject {
 	r := canvas.NewRectangle(color.Transparent)
 	r.Hide()

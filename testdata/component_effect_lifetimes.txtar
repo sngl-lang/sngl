@@ -3673,7 +3673,7 @@ pass sha256:5720393415765793e9fda2423beffafa
 -- run/none/html --
 pass sha256:b7fd3b22cf293ab89649c233165cf546
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
-sha256:ed38b25efa30646d3135527b7f564e37
+sha256:183ee7e1aa4d3cdc33e5d0f6236402f6
 {
   "results": [
     {
@@ -3683,7 +3683,7 @@ sha256:ed38b25efa30646d3135527b7f564e37
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/keys/1 --
-sha256:9629e74aec000f3b806e923dac5c8ffc
+sha256:91a0c35a64c9e1a2726cb3d12690aa05
 {
   "results": [
     {
@@ -3697,7 +3697,7 @@ sha256:9629e74aec000f3b806e923dac5c8ffc
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:9cba1cdd337a1fe8dff08097cd176ee0
+sha256:8631598401cc5c6a4a24cb76ce393e82
 {
   "results": [
     {
@@ -3711,7 +3711,7 @@ sha256:9cba1cdd337a1fe8dff08097cd176ee0
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/structKey/1 --
-sha256:944c6c9059ab695c070663c7bd3cb038
+sha256:51345543ecd672ef39c46833e113f79b
 {
   "results": [
     {
@@ -3721,7 +3721,7 @@ sha256:944c6c9059ab695c070663c7bd3cb038
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/twoPositions/1 --
-sha256:d2bf6ccd3ced0a045cb15e4b21426fe5
+sha256:654140de50a8a33595d0cbda0835dae4
 {
   "results": [
     {

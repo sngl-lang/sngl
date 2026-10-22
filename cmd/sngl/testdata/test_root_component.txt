@@ -81,7 +81,7 @@ sha256:8eb5bbd7765fa1d79c40c415067f7902
   ]
 }
 -- testrun/html/none/counter.sngl/main/1 --
-sha256:ccd0a1caa6d691d1f4c8672f93cc8e5f
+sha256:42c390f748590dcd30663de5abfb56cd
 {
   "results": [
     {
@@ -91,7 +91,7 @@ sha256:ccd0a1caa6d691d1f4c8672f93cc8e5f
   ]
 }
 -- testrun/html/none/renamed.sngl/counter/1 --
-sha256:ccd0a1caa6d691d1f4c8672f93cc8e5f
+sha256:42c390f748590dcd30663de5abfb56cd
 {
   "results": [
     {

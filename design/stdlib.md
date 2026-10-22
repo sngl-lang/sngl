@@ -417,23 +417,19 @@ Notable stdlib packages:
   into a test body named nothing there.
 
   **A test that sets the locale reads the program's words in it, on every
-  target** (`cmd/sngl/testdata/i18n_test_locale_runs.txt`). Each target had
-  fallen short its own way:
+  target** (`cmd/sngl/testdata/i18n_test_locale_runs.txt`):
   - An entry point is an intrinsic with a body, and `passCallDefaults` fills
-    its defaults as any function's: its emitter stands in for the body and
-    reads every parameter by position, so `i18n.numberFloat(x)` handed the
-    trailing locale to `style`'s slot.
+    its defaults as any function's, since its emitter stands in for the body
+    and reads every parameter by position.
   - The interpreter runs an entry point's body, which reads the `locale`
     context and hands it to the primitive, and answers only the primitives
-    by id; answered by its id, an entry point formatted for `env.Locale`
-    whatever a provider or `t.setContext` said. It translates against the
-    `i18n.manifest.json` beside the package's source (`pkg.SourcePath`), where
-    it had used none.
+    by id. It translates against the `i18n.manifest.json` beside the
+    package's source (`pkg.SourcePath`).
   - android's Robolectric test loads the manifest before it mounts the
-    screen, as `MainActivity.onCreate` does; the test never runs
+    screen, as `MainActivity.onCreate` does, since the test never runs
     MainActivity.
   - JavaScript emits a test body's entry-point call with the locale NoContext
-    threaded, as Go does, where it used the browser's.
+    threaded, as Go does.
 
 ## HTTP and JSON
 

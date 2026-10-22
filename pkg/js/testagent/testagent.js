@@ -80,8 +80,7 @@ async function runOne(sink, name) {
         await fn(t);
     } catch (e) {
         // Reported as an assertion's failure is, a log line and then the
-        // fail, so the run prints what was thrown: a bare log was the
-        // verbose output's alone, under a `--- FAIL:` that said nothing.
+        // fail, so the run prints what was thrown.
         if (!(e instanceof AbortSentinel)) {
             t.error(`exception: ${e.message}`);
         }

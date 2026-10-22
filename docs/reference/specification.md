@@ -1410,7 +1410,7 @@ ArgExprCont =
   not decide the result.
 - Equality `==` / `!=` applies when the operands have the same kind, when both
   are numeric, or when one is `null`; it yields `bool`.
-- The relational operators `<`, `<=`, `>`, `>=` apply to two numbers, to two
+- The relational operators `<`, `<=`, `>`, `>=` apply to two numbers of one type, to two
   values of one single-base unit type, or to two strings.
 - `+` is addition on numbers, concatenation when either operand is a `string`,
   and the per-base sum of two values of one unit type.

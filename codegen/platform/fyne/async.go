@@ -28,9 +28,7 @@ const (
 //
 // Each test starts from a fresh Model, so what the last test's Model posted
 // and the last test never waited for is dropped as the next one starts
-// (dropPostsFunc). Run, it drew the last Model's widgets again inside the
-// next test's waits: a page whose every answer redraws a list took seconds
-// on fyne's test driver, and a wait of the next test ran out.
+// (dropPostsFunc), rather than drawn inside the next test's waits.
 func agentPosts(pkg *ir.Package) string {
 	if !usesPosts(pkg) {
 		return `

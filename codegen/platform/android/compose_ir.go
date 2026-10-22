@@ -404,13 +404,11 @@ func (cc *irComposeContext) flexModifier(val string) string {
 	}
 	switch cc.parentAxis {
 	case "Row":
-		// weight() grows the main axis only. CSS stretches a flex child
-		// across the other one by default, which is why the rows of the
-		// keypad divided the height while the keys in them stayed the height
-		// of their own labels. A row that aligns its children otherwise gets
-		// the share alone: fillMaxHeight fills the most the row may be, not
-		// the height of its tallest child, so a bar in a row of a stats tab
-		// took the whole screen.
+		// weight() grows the main axis only, and CSS stretches a flex child
+		// across the other one by default, so fillMaxHeight stands in for
+		// that stretch. A row that aligns its children otherwise gets the
+		// share alone: fillMaxHeight fills the most the row may be, not the
+		// height of its tallest child.
 		if !cc.parentStretches {
 			return fmt.Sprintf("weight(%s)", ktFloat(val))
 		}
@@ -428,8 +426,7 @@ func (cc *irComposeContext) flexModifier(val string) string {
 // arguments Compose takes for it, since no Modifier says them: `gap` and
 // `justifyContent` its main-axis Arrangement, and `alignItems` its cross-axis
 // Alignment. A Row the override handed a verticalAlignment of its own keeps
-// it. Neither was emitted before, so on android every box laid its children
-// edge to edge and at its start, whatever its Style said.
+// it.
 func (cc *irComposeContext) boxLayoutArgs(n *ir.NodeInst, axis string) []string {
 	if axis != "Row" && axis != "Column" {
 		return nil

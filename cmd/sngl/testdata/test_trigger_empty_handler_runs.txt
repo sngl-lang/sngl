@@ -88,7 +88,7 @@ sha256:6af35164086adf1840d73abec4ac584a
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:8db405094c0cb0a2da96c37bd0400cc0
+sha256:8e8029b2bf9aed042a7150fe14219886
 {
   "results": [
     {

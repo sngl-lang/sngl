@@ -45,9 +45,17 @@ func (t *Table) set(columns []string, rows [][]string) {
 	}
 	// The rows go first: bubbles renders each row against the columns it
 	// holds, and a row wider than the new columns would index past them.
+	// Emptied, bubbles moves the cursor to -1 and the rows after it do not
+	// move it back, so it is put back where it was, on the last row where
+	// that is gone.
+	cursor := t.table.Cursor()
 	t.table.SetRows(nil)
 	t.table.SetColumns(cols)
 	t.table.SetRows(Rows(rows))
+	if cursor >= len(rows) {
+		cursor = len(rows) - 1
+	}
+	t.table.SetCursor(max(cursor, 0))
 	if t.table.Width() < tableWidth(cols) {
 		t.table.SetWidth(tableWidth(cols))
 	}

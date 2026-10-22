@@ -452,7 +452,7 @@ func LabelNew(text string) Handle {
 
 // Nothing is what an instance whose body renders no node -- a request, an
 // effect -- is in the box holding it: a hidden widget, which a box gives no
-// room and no spacing. An empty label stood there before, a row per request.
+// room and no spacing.
 func Nothing() Handle {
 	w := C.gtk_label_new(nil)
 	C.gtk_widget_set_visible(w, 0)

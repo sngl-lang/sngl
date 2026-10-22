@@ -94,7 +94,7 @@ sha256:fb80b691a6e51cbf6f2b98293ea503e2
   ]
 }
 -- testrun/html/none/app.sngl/panes/1 --
-sha256:1977d50174f4bade55a5e4ef9dfe4b60
+sha256:c90e65cdfa451e7aaa734074f24546be
 {
   "results": [
     {

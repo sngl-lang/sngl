@@ -502,5 +502,13 @@
       "es": "{n} kg",
       "ja": "{n} kg"
     }
+  },
+  "{count} {stat}": {
+    "translations": {
+      "fr": "{count} {stat}",
+      "de": "{count} {stat}",
+      "es": "{count} {stat}",
+      "ja": "{count} {stat}"
+    }
   }
 }

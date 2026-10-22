@@ -107,7 +107,7 @@ sha256:35af2c465c5a2f024293ac3f467073c8
   ]
 }
 -- testrun/html/none/app.sngl/compass/1 --
-sha256:11b4d672995e01487265df2ee3a11bac
+sha256:fb4ef3fc711aff9968d17c950f470a0c
 {
   "results": [
     {

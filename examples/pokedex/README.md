@@ -223,7 +223,7 @@ and the select's labels are the app's own words; a move's name is PokéAPI's
 in the reader's language, asked for by name, and the ways with no level order
 by it.
 
-**Pages.** The app is a `nav.stack` of two pages. The detail page's params are
+**Pages.** The app is a `nav.stack` of three pages: home, a species and a form of one. The detail page's params are
 a struct, and its href names their field:
 
 ```sngl
@@ -294,7 +294,7 @@ for var a = mon.abilities {
 language. The lines' functions -- `abilitiesOf`, `effortOf`, `triggerOf`,
 `movesOf` -- take it and still answer strings, through `called`, which reads
 the name in the reader's language and the slug made readable until the answer
-arrives. So the table and the select keep their strings, and choosing
+arrives. So the lines and the select keep their strings, and choosing
 another language asks for nothing again.
 
 What that costs per page, beside the page's own three or four requests:
@@ -344,7 +344,9 @@ for.
 
 Left in English, or as PokéAPI's slug made readable: a card's name on home
 and in Evolution -- a species' name lives on the species, and a card asks for
-nothing -- and a dex's region.
+nothing -- a dex's region, and the dex select's choices, which home maps back
+to a dex by the same readable slug. A page's title is the app's own word left in English too: android reads a
+page's title off its route's declaration, so it is a constant.
 
 ## Where each target stands
 
@@ -369,7 +371,7 @@ which no test reaches, since a `go` would end the run.
 `pokedex_test.sngl` points each screen at `http://127.0.0.1:47819/examples/pokedex`
 through `poke.server`, where `internal/testhttp` answers from `testdata/http`.
 `cmd/sngl/testdata/examples_runs.txt` runs it on all six targets, and
-`go tool verify` on all but android. Without that server nothing answers
+`go tool verify` on all six, android from its recorded run. Without that server nothing answers
 there, so a bare `sngl test` of this directory fails every test that waits
 for a request.
 

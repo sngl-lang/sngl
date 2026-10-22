@@ -1300,7 +1300,7 @@ pass sha256:88eb90c6f9d073f667a5b619f80a95ed
 -- run/none/html --
 pass sha256:c69ea9fbf5e88ae73b5989ced106534b
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:c211930d8356a59e8fc413337cb33fc4
+sha256:edf36f033f884be3873ad4ecc5a427d8
 {
   "results": [
     {

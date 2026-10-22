@@ -16,12 +16,18 @@ const reachEndTag = "sngl-reach-end"
 // showing -- including at once, where the content is too short to scroll --
 // and a ResizeObserver on the parent's content asks again whenever the
 // content changes size while it is there, so a handler that adds a page is
-// asked for the next while the end still shows. That second check waits for
+// asked for the next while the end still shows. The content grew where the
+// element moved: the parent's scroll height stands still while the content
+// is shorter than the parent, so a first page too short to scroll asked for
+// one page more and no further. That second check waits for
 // the next frame: a handler adding rows from inside the observer's callback
 // resizes what it observes again in the same delivery, which the browser
 // reports as an error the page raised. It measures then rather than reading
-// the intersection observer's last answer, which would be a frame stale. A child added to the parent is watched too. Everything disconnects
-// when the element leaves the page.
+// the intersection observer's last answer, which would be a frame stale. A
+// child added to the parent is watched too, and so is anything added below
+// it: content a slot renders into a `display:contents` span has no box of
+// its own for the resize observer to see grow. Everything disconnects when
+// the element leaves the page.
 const reachEndHelper = `if (!customElements.get("sngl-reach-end")) customElements.define("sngl-reach-end", class extends HTMLElement {
   connectedCallback() {
     const box = this.parentElement;
@@ -33,10 +39,10 @@ const reachEndHelper = `if (!customElements.get("sngl-reach-end")) customElement
       if (es[es.length - 1].isIntersecting) fire();
     }, { root: box, rootMargin: "0px 0px 50% 0px" });
     this._io.observe(this);
-    let last = -1, asked = false;
-    this._ro = new ResizeObserver(() => {
-      const h = box.scrollHeight;
-      if (h !== last && last >= 0 && !asked) {
+    let last = this.offsetTop, asked = false;
+    const grew = () => {
+      const h = this.offsetTop;
+      if (h !== last && !asked) {
         asked = true;
         requestAnimationFrame(() => {
           asked = false;
@@ -44,11 +50,15 @@ const reachEndHelper = `if (!customElements.get("sngl-reach-end")) customElement
         });
       }
       last = h;
-    });
+    };
+    this._ro = new ResizeObserver(grew);
     const watch = (c) => { if (c !== this && c.nodeType === 1) this._ro.observe(c); };
     for (const c of box.children) watch(c);
-    this._mo = new MutationObserver((ms) => { for (const m of ms) m.addedNodes.forEach(watch); });
-    this._mo.observe(box, { childList: true });
+    this._mo = new MutationObserver((ms) => {
+      for (const m of ms) if (m.target === box) m.addedNodes.forEach(watch);
+      grew();
+    });
+    this._mo.observe(box, { childList: true, subtree: true });
   }
   disconnectedCallback() {
     if (this._io) this._io.disconnect();

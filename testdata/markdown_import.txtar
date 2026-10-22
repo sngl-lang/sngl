@@ -160,10 +160,10 @@ body { font-family: system-ui, sans-serif; }
         if (es[es.length - 1].isIntersecting) fire();
       }, { root: box, rootMargin: "0px 0px 50% 0px" });
       this._io.observe(this);
-      let last = -1, asked = false;
-      this._ro = new ResizeObserver(() => {
-        const h = box.scrollHeight;
-        if (h !== last && last >= 0 && !asked) {
+      let last = this.offsetTop, asked = false;
+      const grew = () => {
+        const h = this.offsetTop;
+        if (h !== last && !asked) {
           asked = true;
           requestAnimationFrame(() => {
             asked = false;
@@ -171,15 +171,17 @@ body { font-family: system-ui, sans-serif; }
           });
         }
         last = h;
-      });
+      };
+      this._ro = new ResizeObserver(grew);
       const watch = (c) => {
         if (c !== this && c.nodeType === 1) this._ro.observe(c);
       };
       for (const c of box.children) watch(c);
       this._mo = new MutationObserver((ms) => {
-        for (const m of ms) m.addedNodes.forEach(watch);
+        for (const m of ms) if (m.target === box) m.addedNodes.forEach(watch);
+        grew();
       });
-      this._mo.observe(box, { childList: true });
+      this._mo.observe(box, { childList: true, subtree: true });
     }
     disconnectedCallback() {
       if (this._io) this._io.disconnect();
@@ -191,4 +193,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:579a7273a8be5ba2d63f65f0ef5ff2d6
+pass sha256:8f624693403eaddb679209e5a2e10777

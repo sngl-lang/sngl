@@ -109,7 +109,7 @@ sha256:c0cd9d0913f2e8c1b1a4d112992b23bb
   ]
 }
 -- testrun/html/none/app.sngl/cards/1 --
-sha256:383226e28f4e6e11d6153ec88d824351
+sha256:d3b385c72f56ff66a437e6a2517520c4
 {
   "results": [
     {

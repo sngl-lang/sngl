@@ -621,7 +621,7 @@ pass sha256:a5c970bda86a29610e72de8db2dcf8f4
 -- run/none/html --
 pass sha256:791200c7e9aefda403d64d2d74cb56a0
 -- testrun/html/none/component_toggle.sngl/main/1 --
-sha256:3994cb73a85b2e6237556904bd95f9fe
+sha256:1ffb72cf4fe8d71ac3780cf533e522b3
 {
   "results": [
     {

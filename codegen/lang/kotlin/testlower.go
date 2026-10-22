@@ -83,7 +83,7 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerTestAssert(n, surf, compRecvs, mode); ok {
 			return []string{line}
 		}
-		if line, ok := lowerEventTrigger(n); ok {
+		if line, ok := lowerEventTrigger(n, surf, compRecvs); ok {
 			return []string{line}
 		}
 		if line, ok := lowerInstanceRead(n.Call, surf, compRecvs); ok {
@@ -283,7 +283,7 @@ func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]b
 	return fmt.Sprintf("org.junit.Assert.assertTrue(%s, %s)", Quote(expr), expr), true
 }
 
-func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
+func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string]bool) (string, bool) {
 	c := call.Call
 	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
@@ -299,7 +299,9 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s)))%s; composeTestRule.waitForIdle()", tag, tag, clickAction), true
 	}
 	finder := "composeTestRule.onNode(" + tag + ")"
-	action := composeAction(event, c.Args)
+	// The argument is the test's own expression, read as an assertion reads
+	// one: a function of the page it calls is a member of the state object.
+	action := composeAction(event, c.Args, func(e ir.Expr) string { return lowerTestExpr(e, surf, compRecvs) })
 	if action == "" {
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true
 	}
@@ -327,12 +329,12 @@ const (
 // held, as clickAction runs its OnClick: performTextReplacement asks first
 // that the node be an editable text field, and a select is a read-only one
 // that answers SetText with the choice it names.
-func composeAction(event string, args []ir.CallArg) string {
+func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) string {
 	switch event {
 	case "click":
 		return strings.TrimPrefix(clickAction, ".")
 	case "input", "change", "changed":
-		text := extractEventValue(args)
+		text := extractEventValue(args, lower)
 		return fmt.Sprintf("performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(%s)) }", text)
 	case "reachEnd":
 		// A scroll's end is reached by scrolling to it, which SnglScroll's
@@ -357,11 +359,11 @@ func carriesState(args []ir.CallArg) bool {
 // extractEventValue is the Kotlin source for the value a trigger hands an
 // input or change event, its one argument, or an empty literal when it hands
 // none.
-func extractEventValue(args []ir.CallArg) string {
+func extractEventValue(args []ir.CallArg, lower func(ir.Expr) string) string {
 	if len(args) != 1 {
 		return "\"\""
 	}
-	return lowerTestExpr(args[0].Value, TestSurface{}, nil)
+	return lower(args[0].Value)
 }
 
 // lowerTestExpr translates a SNGL test expression to Kotlin source.

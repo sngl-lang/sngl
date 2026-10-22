@@ -1,0 +1,102 @@
+# A wire name holding a `$` -- JSON Schema's `$id` and `$ref` -- is decoded and
+# written by that name on every target. Kotlin's codec quoted wire names as Go
+# does, so `"$id"` was a string template reading a variable `id`, and the
+# android build failed.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import json "sngl:json"
+import test "sngl:test"
+import ui "sngl:ui"
+
+enum Link {
+    #[json.identifier("$ref")]
+    ref
+    inline
+}
+
+struct Schema {
+    #[json.identifier("$id")]
+    id   string
+    link Link
+}
+
+component page ui.node {
+    ui.text(value="schema")
+}
+
+func testADollarWireName(t test.Test, c page) {
+    match var s = json.decode[Schema](`{"$id":"a","link":"$ref"}`) {
+        ok {
+            t.assert(s.id == "a" && s.link == Link.ref)
+            t.assert(json.encode(s) == `{"$id":"a","link":"$ref"}`)
+        }
+        failed { t.assert(s.message == "") }
+    }
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:8b1de56fe34a2fd83e9dbe2b17fef2d8
+{
+  "results": [
+    {
+      "Desc": "ADollarWireName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:cfdfeb0fd13b41243734d447a29e09ce
+{
+  "results": [
+    {
+      "Desc": "ADollarWireName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:74a7fcd7aeb40f0baed4334a283b5b5c
+{
+  "results": [
+    {
+      "Desc": "ADollarWireName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:3c1efaeb46f1d492f44e55d50577d215
+{
+  "results": [
+    {
+      "Desc": "ADollarWireName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:9302f1bdaca37c13ae2dc916490b393b
+{
+  "results": [
+    {
+      "Desc": "ADollarWireName",
+      "Passed": true
+    }
+  ]
+}

@@ -124,7 +124,7 @@ window {
     rootMain
 }
 -- testrun/html/none/method.sngl/main/1 --
-sha256:277630e101e3f22d4e102f7e51b2917c
+sha256:a4ebf739ca157888f29cc6d75ed72527
 {
   "results": [
     {
@@ -137,7 +137,7 @@ sha256:277630e101e3f22d4e102f7e51b2917c
   }
 }
 -- testrun/html/none/order.sngl/main/1 --
-sha256:9468c0ee895f229fabb92225f0273896
+sha256:dfc6ed8055828063429a149773b51e82
 {
   "results": [
     {
@@ -150,7 +150,7 @@ sha256:9468c0ee895f229fabb92225f0273896
   }
 }
 -- testrun/html/none/order.sngl/rootMain/1 --
-sha256:c46d73b066b4219b44a12798dc28dea5
+sha256:82f2e6f7e692017c3306e1a74dff145a
 {
   "results": [
     {

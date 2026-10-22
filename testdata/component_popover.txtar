@@ -617,7 +617,7 @@ pass sha256:25d1cec2b220a0ceca8157414eb66526
 -- run/none/html --
 pass sha256:38c6d2f3f4953b980872c8a9641a800d
 -- testrun/html/none/component_popover.sngl/main/1 --
-sha256:65bcb0946181d78f789d9249ed4064bb
+sha256:e4e976bb2fee4d5ac329dc4c8d9c74f8
 {
   "results": [
     {

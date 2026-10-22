@@ -509,8 +509,7 @@ func (t *fyneTranslator) withShare(id string, sp *fyneSpec, create []ir.Stmt) []
 
 // withTextStyle gives a label the face its style asked for as its own
 // TextStyle, beside the theme that draws it so: a label measures itself in its
-// TextStyle's face, and one drawn bold by its theme alone measured regular and
-// was cut short.
+// TextStyle's face, not its theme's.
 func (t *fyneTranslator) withTextStyle(id string, sp *fyneSpec, create []ir.Stmt) []ir.Stmt {
 	if sp.GoType.Name != "*Label" || (!sp.Style.Bold && !sp.Style.Italic) {
 		return create
