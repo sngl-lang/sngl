@@ -181,7 +181,7 @@ func testAPageNotShowingIsNotMounted(t Test, c site) {
     t.assert(c.aboutMounts == 0)
 }
 -- testrun/android/kotlin/app.sngl/site/1 --
-sha256:635a4fb8c95678801b2c91fe83e63f42
+sha256:c471d129e3d37268187eee3050f33098
 {
   "results": [
     {
@@ -207,7 +207,7 @@ sha256:635a4fb8c95678801b2c91fe83e63f42
   ]
 }
 -- testrun/bubbletea/go/app.sngl/site/1 --
-sha256:45a6bc6532a9769cb9c74e0f1579c62b
+sha256:9002a814a89d9f03a959dea38049fdc8
 {
   "results": [
     {
@@ -233,7 +233,7 @@ sha256:45a6bc6532a9769cb9c74e0f1579c62b
   ]
 }
 -- testrun/fyne/go/app.sngl/site/1 --
-sha256:cddf0ec37f9248664a20f3af4b8d21d3
+sha256:8f9fe7e3961bf398dc2cb42313a53252
 {
   "results": [
     {
@@ -259,7 +259,7 @@ sha256:cddf0ec37f9248664a20f3af4b8d21d3
   ]
 }
 -- testrun/gtk4/go/app.sngl/site/1 --
-sha256:d38e03f1fb31856b0b75b543dc7b99c4
+sha256:a4f8bb0c995a8bcf1b9377f3f65226c1
 {
   "results": [
     {
@@ -285,7 +285,7 @@ sha256:d38e03f1fb31856b0b75b543dc7b99c4
   ]
 }
 -- testrun/html/none/static.sngl/site/1 --
-sha256:ac6f5c2ddf4aa296e27cc26e82627132
+sha256:6cf94683d8fcf764c4307fe8378a2979
 {
   "results": [
     {

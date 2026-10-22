@@ -248,12 +248,16 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*TickerInstance
+	__rendering0   bool
+	__renderAgain0 bool
 	periods        []time.Duration
 
 	__n1    *fynelayout.Toplevel
@@ -267,6 +271,8 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TickerInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
@@ -284,38 +290,48 @@ func __snglDo(f func()) {
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*TickerInstance{}
-	var __inst0_i int = 0
-	for _, p := range m.periods {
-		var __n2 *TickerInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetPeriod(p)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n2__new := newTickerInstance(m, p)
-			__n2 = __n2__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*TickerInstance{}
+			var __inst0_i int = 0
+			for _, p := range m.periods {
+				var __n2 *TickerInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n2 = m.__inst0_live[__inst0_i]
+					__n2.SetPeriod(p)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n2__new := newTickerInstance(m, p)
+					__n2 = __n2__new
+				}
+				__inst0_next = append(__inst0_next, __n2)
+				__inst0_i = (__inst0_i + 1)
+				__n2__el := __n2.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n2)
-		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -366,6 +382,7 @@ type TickerInstance struct {
 	__effect1_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -388,6 +405,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effect1_dirty = false
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -475,33 +493,36 @@ func (c *TickerInstance) __effect1_update() {
 }
 
 func (c *TickerInstance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			if c.__effect1_dirty {
-				c.__effect1_dirty = false
-				if c.__prop_period > (time.Duration(0) * time.Millisecond) {
-					c.__effect1_key = c.__prop_period
-					c.__effect1_update()
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				if c.__effect1_dirty {
+					c.__effect1_dirty = false
+					if c.__prop_period > (time.Duration(0) * time.Millisecond) {
+						c.__effect1_key = c.__prop_period
+						c.__effect1_update()
+					}
 				}
+				c.__effect0_down()
+				c.__effect0_up()
 			}
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *TickerInstance) Destroy() {
+	c.__effects0_torn = true
 	c.__effect0_teardown()
 }
 
@@ -551,12 +572,16 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*TickerInstance
+	__rendering0   bool
+	__renderAgain0 bool
 	periods        []time.Duration
 	__n1           gtk4rt.Handle
 	__built        bool
@@ -570,43 +595,55 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TickerInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*TickerInstance{}
-	var __inst0_i int = 0
-	for _, p := range m.periods {
-		var __n2 *TickerInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetPeriod(p)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n2__new := newTickerInstance(m, p)
-			__n2 = __n2__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*TickerInstance{}
+			var __inst0_i int = 0
+			for _, p := range m.periods {
+				var __n2 *TickerInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n2 = m.__inst0_live[__inst0_i]
+					__n2.SetPeriod(p)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n2__new := newTickerInstance(m, p)
+					__n2 = __n2__new
+				}
+				__inst0_next = append(__inst0_next, __n2)
+				__inst0_i = (__inst0_i + 1)
+				__n2__el := __n2.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n2)
-		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -629,6 +666,7 @@ type TickerInstance struct {
 	__effect0_desired   []time.Duration
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -647,6 +685,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -710,26 +749,29 @@ func (c *TickerInstance) __effect0_teardown() {
 }
 
 func (c *TickerInstance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *TickerInstance) teardown() {
+	c.__effects0_torn = true
 	c.__effect0_teardown()
 }
 
@@ -810,6 +852,7 @@ body { font-family: system-ui, sans-serif; }
     let __effect0_desired = [];
     let __effects0_settling = false;
     let __effects0_pending = false;
+    let __effects0_torn = false;
     let __effects0_steps = 0;
     let __slot02 = [];
     function __effect0_mount() {
@@ -859,25 +902,28 @@ body { font-family: system-ui, sans-serif; }
       __effect0_live = [];
     }
     function __effects0_settle() {
-      if (__effects0_settling) {
-        __effects0_pending = true;
-      } else {
-        __effects0_settling = true;
-        __effects0_pending = true;
-        __effects0_steps = 0;
-        while (__effects0_pending && __effects0_steps < 512) {
-          __effects0_pending = false;
-          __effects0_steps = __effects0_steps + 1;
-          __effect0_down();
-          __effect0_up();
-        }
-        __effects0_settling = false;
-        if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects0_torn) {
+        if (__effects0_settling) {
+          __effects0_pending = true;
+        } else {
+          __effects0_settling = true;
+          __effects0_pending = true;
+          __effects0_steps = 0;
+          while (__effects0_pending && __effects0_steps < 512) {
+            __effects0_pending = false;
+            __effects0_steps = __effects0_steps + 1;
+            __effect0_down();
+            __effect0_up();
+          }
+          __effects0_settling = false;
+          if (__effects0_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
     function __snglTeardown() {
+      __effects0_torn = true;
       __effect0_teardown();
     }
     function __set_period(__v) {
@@ -899,49 +945,61 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const p of [100, 250]) {
-      let __n2 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set_period(p);
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const p of [100, 250]) {
+          let __n2 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n2 = __inst1_live[__inst1_i];
+            __n2.__set_period(p);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n2__new = __cf_ticker({ period: p });
+            __n2 = __n2__new;
+          }
+          __inst1_next.push(__n2);
+          __inst1_i = __inst1_i + 1;
+          let __n2__el = __n2.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2__el, __place0_i_ref0);
+          }
+          __slot0.push(__n2__el);
         }
-        let __n2__new = __cf_ticker({ period: p });
-        __n2 = __n2__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n2);
-      __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n2__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
-      }
-      __slot0.push(__n2__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -955,8 +1013,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c3560649d8a0cfdafdeb591f6a0d957d
 -- run/go/fyne --
-pass sha256:0d73897c84a549b8a29a6e5a5d8cefd9
+pass sha256:a8403b9d2e2114078872d40e31461be9
 -- run/go/gtk4 --
-pass sha256:c2cc90448ece5940f37cc04e062f2436
+pass sha256:7bdeac0b4f20d899e7c553f51d812ca7
 -- run/none/html --
-pass sha256:0505301a708e989283f7fc9ca82628b6
+pass sha256:567c45bd07f9832414e347bf7931ff47

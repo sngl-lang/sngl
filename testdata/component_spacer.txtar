@@ -474,6 +474,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Spacer
 
@@ -518,7 +519,7 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:row">
   <span>left</span>
-  <div style="flex:1">
+  <div style="flex:1;min-width:0;min-height:0">
   </div>
   <span>right</span>
 </div>
@@ -537,6 +538,6 @@ pass sha256:7d934b8493e0d0bec13b43c9c2d5007b
 -- run/go/gtk4 --
 pass sha256:e9ad44213624b454ce852115a1e03634
 -- run/kotlin/android --
-pass sha256:729e274cc33069789c622a2e6495ef18
+pass sha256:de5315701920fb6c7d1d59653a052231
 -- run/none/html --
-pass sha256:697fe50a7651e8d70ca2cdf176305238
+pass sha256:60a0e40bc83164b0d0cac9d7d71aaaac

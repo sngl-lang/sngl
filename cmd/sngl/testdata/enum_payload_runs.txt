@@ -174,7 +174,7 @@ func testComponent(t Test, c panel) {
     t.assert(c.outcome.value == "failed: odd")
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:01802d122499bde2119154f63bf1f1be
+sha256:d532e0690c00032e7c7d36a3a4a3229e
 {
   "results": [
     {
@@ -234,7 +234,7 @@ sha256:ea70b7f235d1bc9294a6453eae2bd059
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:3ce3e951daa883061ed99c6829ec10a7
+sha256:4e6851283980d3d50c883f9d12c01170
 {
   "results": [
     {
@@ -264,7 +264,7 @@ sha256:3ce3e951daa883061ed99c6829ec10a7
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:5d1dfebfb04f1d8fbfea2d171c9be965
+sha256:2da1db66c5026edca42873725019e9b3
 {
   "results": [
     {
@@ -294,7 +294,7 @@ sha256:5d1dfebfb04f1d8fbfea2d171c9be965
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:f2ab6ff9eed0594589938ad2bd806128
+sha256:cdf1680a6d99e00aee1313e11cc94ce6
 {
   "results": [
     {

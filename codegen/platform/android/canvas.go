@@ -331,6 +331,42 @@ func namesColor(structs []*ir.StructDef) bool {
 	return false
 }
 
+// programNamesColor reports whether anything the program declares holds a
+// color: a const, a var, a local or a func's signature. A `const
+// map[string, color]` and a func returning a color spelled `Color` in Kotlin,
+// and with no canvas and no library helper naming the type the class was
+// never declared (`testdata/android_color_const.txtar`).
+func programNamesColor(pkg *ir.Package) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, v := range slices.Concat(pkg.Consts, pkg.Vars) {
+		if typeNamesColor(v.Type) {
+			return true
+		}
+	}
+	funcs := slices.Clone(pkg.Funcs)
+	for _, c := range pkg.Components {
+		funcs = append(funcs, c.Funcs...)
+	}
+	for _, fn := range funcs {
+		if typeNamesColor(fn.Return) || slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return typeNamesColor(p.Type) }) {
+			return true
+		}
+	}
+	// A local or a component's state is declared with its type. A color a
+	// Style holds is not asked: the emitter writes it as Compose's own.
+	found := false
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && typeNamesColor(lv.Type) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
 func typeNamesColor(t *ir.Type) bool {
 	if t == nil {
 		return false

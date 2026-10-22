@@ -277,6 +277,9 @@ import (
 	"os"
 )
 
+var entries []Entry = []Entry{Entry{Title: "Home", Href: "/"}, Entry{Title: "About", Href: "/about.html"}}
+var labels map[string]string = map[string]string{"home": "Start", "about": "Us"}
+
 type Entry struct {
 	Title string
 	Href  string
@@ -422,6 +425,9 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+var entries []Entry = []Entry{Entry{Title: "Home", Href: "/"}, Entry{Title: "About", Href: "/about.html"}}
+var labels map[string]string = map[string]string{"home": "Start", "about": "Us"}
 
 type Entry struct {
 	Title string
@@ -599,8 +605,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e89838f515c0ca6c94a4b65dbd9f7cee
 -- run/go/fyne --
-pass sha256:7ce8666bdfda1b891f4b76af6080b335
+pass sha256:12518890e760f05203a9394b94ce49e2
 -- run/go/gtk4 --
-pass sha256:ba1a461f5b7537f6671b36ae0ef34431
+pass sha256:74ff955084dba2b5b1198ff9ac84e1b7
 -- run/none/html --
 pass sha256:2608b26bd2bc03c32f990746024e9d6e

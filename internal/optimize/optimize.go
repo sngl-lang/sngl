@@ -137,6 +137,10 @@ type evalCtx struct {
 	// (ir.NullTestedIDs). Nil until the first splice asks.
 	nullTested    map[string]bool
 	nullTestedSet bool
+	// propRead is every `#id` a test reads a prop of (ir.PropReadIDs). Nil
+	// until the first splice asks.
+	propRead    map[string]bool
+	propReadSet bool
 	// foldingProp is the node props currently being folded, so a prop that
 	// reads itself stops rather than recursing. Built in foldPkg so that every
 	// child ctx shares the one map: created on first use instead, a child

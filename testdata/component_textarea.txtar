@@ -319,6 +319,7 @@ type Model struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	entry               gtk4rt.Handle
 	__root              gtk4rt.Handle
@@ -334,6 +335,7 @@ func New() *Model {
 	m.__effect0_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -365,21 +367,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -561,13 +565,13 @@ pass sha256:d11931f600bb9031f8244b234d207b16
 -- run/go/fyne --
 pass sha256:70ff8dcc203e63490968bb37b9878017
 -- run/go/gtk4 --
-pass sha256:42a8dc8be76ecc2521b9eed746f1de4c
+pass sha256:3d55d4fb561e4b00dbde33a35c57e20c
 -- run/kotlin/android --
-pass sha256:59f0c531a4025cbe5b306ec5cb37d34f
+pass sha256:c4d66f1723763fc23686b2f23af539ca
 -- run/none/html --
 pass sha256:9b69b71c0efd09f934030dfb060ecba7
 -- testrun/html/none/component_textarea.sngl/main/1 --
-sha256:edf6db7af9fb3dfefaabed9c575123dc
+sha256:7b1afce2e5b20c96e3d90dd61aebd395
 {
   "results": [
     {

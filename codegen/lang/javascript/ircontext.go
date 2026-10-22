@@ -552,6 +552,14 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if jc.EventVar != "" && jc.EventParam != nil && n.Sym == jc.EventParam {
 		return jc.EventVar
 	}
+	// A read of the state a local of the function shadows -- except in an
+	// html instance factory, whose component's vars are the factory's own
+	// closure locals.
+	if !jc.Ctx.ClosureMethods {
+		if _, ok := jc.Ctx.ShadowedStateVar(n.Sym); ok {
+			return jc.stateRecv() + "." + name
+		}
+	}
 	sym, kind := jc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
@@ -1040,6 +1048,9 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	for _, p := range n.Func.Params {
 		bodyJC = bodyJC.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(n.Func.Block) {
+		bodyJC = bodyJC.WithLocal(name)
+	}
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := bodyJC.EvalExpr(ret.Value)
@@ -1148,46 +1159,45 @@ func jsBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 	case "*.sqrt":
 		return "Math.sqrt(" + a(0) + ")"
 	// map
+	// i18n -- an entry point a test body still calls by name, where the
+	// program's own have been inlined to the primitives: NoContext threads the
+	// active locale as its trailing argument, and the runtime's per-locale
+	// entry point takes it first, as Go's emitter answers it. With no locale
+	// threaded, the process translator answers. Without this a test's read of
+	// a `$"..."` the program wrote was translated for the browser's locale
+	// whatever the test's t.setContext said.
 	case "i18n.tr":
-		// Args from translateIRTypeMethodCall: a(0)=key, a(1)=argsMap.
-		// The JS runtime's Translator.tr(key, inlinedTemplate, args) takes three
-		// arguments. The compiler holds no separate manifest key — the template
-		// string doubles as both the lookup key and the inline fallback, so it is
-		// passed twice. A future manifest-backed build can replace a(0) with the
-		// manifest key without changing the call shape.
+		// Wrapper params: (key, args, __ctx_locale). The key doubles as the
+		// inlined template.
+		if len(argExprs) >= 3 {
+			return "i18n.translate(" + a(2) + ", " + a(0) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.getTranslator().tr(" + a(0) + ", " + a(0) + ", " + a(1) + ")"
 	case "i18n.trInline":
-		// Args: a(0)=key, a(1)=inlinedTemplate, a(2)=argsMap. The $"..."
-		// lowering emits this 3-arg form so the runtime can fall back to the
-		// inlined template when the manifest misses the key.
+		// Wrapper params: (key, inlinedTemplate, args, __ctx_locale).
+		if len(argExprs) >= 4 {
+			return "i18n.translate(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		}
 		return "i18n.getTranslator().tr(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
 	case "i18n.format":
-		// Args: template string, args map.
+		// Wrapper params: (template, args, __ctx_locale).
+		if len(argExprs) >= 3 {
+			return "i18n.format(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
 		return "i18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"
-	case "i18n.numberInt":
-		// Args: n int, style string.
-		return "i18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ")"
-	case "i18n.numberFloat":
-		// Args: n float, style string.
-		return "i18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ")"
-	case "i18n.date":
-		// Args: d date, style string.
-		return "i18n.getTranslator().date(" + a(0) + ", " + a(1) + ")"
-	case "i18n.time":
-		// Args: t time, style string.
-		return "i18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
+	case "i18n.numberInt", "i18n.numberFloat", "i18n.date", "i18n.time", "i18n.select", "i18n.plural", "i18n.selectordinal":
+		// Wrapper params: (value, style or cases, __ctx_locale).
+		name := strings.TrimPrefix(qualName, "i18n.")
+		if len(argExprs) >= 3 {
+			return "i18n." + name + "(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+		}
+		return "i18n.getTranslator()." + name + "(" + a(0) + ", " + a(1) + ")"
 	case "i18n.datetime":
-		// Args: dt datetime, dateStyle string, timeStyle string.
+		// Wrapper params: (dt, dateStyle, timeStyle, __ctx_locale).
+		if len(argExprs) >= 4 {
+			return "i18n.datetime(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		}
 		return "i18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
-	case "i18n.select":
-		// Args: value string, cases map.
-		return "i18n.getTranslator().select(" + a(0) + ", " + a(1) + ")"
-	case "i18n.plural":
-		// Args: count, forms. a(0)=count, a(1)=forms.
-		return "i18n.getTranslator().plural(" + a(0) + ", " + a(1) + ")"
-	case "i18n.selectordinal":
-		// Args: count, forms. a(0)=count, a(1)=forms.
-		return "i18n.getTranslator().selectordinal(" + a(0) + ", " + a(1) + ")"
 	case "i18n.defaultLocale":
 		// No args. Returns the process-startup BCP-47 locale string.
 		return "i18n.defaultLocale()"
@@ -1220,6 +1230,9 @@ func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
 	bodyJC := jc
 	for _, p := range fn.Params {
 		bodyJC = bodyJC.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		bodyJC = bodyJC.WithLocal(name)
 	}
 	for _, stmt := range fn.Block {
 		for _, line := range bodyJC.EvalStmt(stmt) {

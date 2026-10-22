@@ -22,6 +22,10 @@ type irComposeContext struct {
 	// one, and "" at the top of a composable. weight() lives on those two
 	// scopes, and which one it is decides which axis it grows.
 	parentAxis string
+	// parentStretches is whether that Row or Column stretches its children
+	// across its other axis, as CSS's default `alignItems` does: a parent
+	// whose Style names another alignment does not.
+	parentStretches bool
 	// screen is the window the view draws, which the system back closes.
 	screen *codegen.Screen
 	// atRoot marks the window's own content, which is the node the display
@@ -209,9 +213,6 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		return
 	}
 	if n.Component != nil {
-		if cc.renderStdlibComposable(n) {
-			return
-		}
 		if !codegen.DeclinesNode(n.Component) {
 			// A user component the optimizer eliminated — its body was empty,
 			// so there is no composable to call and nothing to draw. Lowering
@@ -224,33 +225,6 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 	// A library declaration with no android override and no body here: another
 	// platform's element, or a component this one never implemented.
 	cc.ctx.Fail(codegen.UnimplementedNode(n.Component, n.AST, n.Name, "android"))
-}
-
-// emitInputHandlerCall lowers one @change handler attached to select, the
-// last composable whose body is written here. The handler body runs inside
-// Compose's onClick lambda with the chosen option bound to `newValueVar`,
-// which is the event's one parameter.
-func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newValueVar string) {
-	h := codegen.NodeHandler(n, eventName)
-	if h == nil || h.Func == nil {
-		return
-	}
-	// Each handler body runs in its own block so two handlers with
-	// the same event-param name (e.g. both `@input(e)` and
-	// `@change(e)`) don't collide on a single Kotlin scope.
-	cc.line("run {")
-	cc.indent++
-	if len(h.Func.Params) > 0 {
-		param := h.Func.Params[0]
-		cc.line("val %s = %s", param.Name, newValueVar)
-	}
-	for _, stmt := range h.Func.Block {
-		for _, line := range cc.kc.EvalStmt(stmt) {
-			cc.line("%s", line)
-		}
-	}
-	cc.indent--
-	cc.line("}")
 }
 
 func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
@@ -266,85 +240,6 @@ func declaredName(n *ir.NodeInst) string {
 		return n.Component.Name
 	}
 	return n.Name
-}
-
-// handWrittenComposables names what renderStdlibComposable has a case for.
-// Kept beside it so the one other question asked about that set -- whether a
-// node reaches emitInputHandlerCall, and so needs the event holder declared --
-// reads the same list rather than a copy of it.
-var handWrittenComposables = []string{"select"}
-
-func handWrittenComposable(n *ir.NodeInst) bool {
-	return slices.Contains(handWrittenComposables, declaredName(n))
-}
-
-// renderStdlibComposable emits the components whose android body is still
-// written here rather than declared in codegen/platform/android. It reports
-// whether it recognised n; an unrecognised one is a missing override, which
-// renderNode panics on.
-//
-// Each is here for a reason a declaration cannot yet state, and the comment on
-// its `component ui.X()` stub in widgets.sngl is where that reason is written
-// down.
-func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
-	style := cc.buildModifier(n)
-
-	switch declaredName(n) {
-	case "select":
-		// Two-way `:value` dropdown. The binding pass synthesizes the
-		// write-back as a @change handler (like `input`), so selecting an
-		// option calls it with the chosen label. `expanded` is per-instance
-		// local state controlling the menu.
-		// The choices arrive as records (a choice is data), and the menu shows
-		// each one's label.
-		optionsExpr := "listOf<String>()"
-		if o := codegen.NodeProp(n, "options"); o != nil {
-			optionsExpr = "(" + cc.kc.EvalExpr(o) + ").map { it.label }"
-		}
-		valueExpr := "\"\""
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			valueExpr = cc.kc.EvalExpr(v)
-		}
-		placeholder, _ := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder"))
-		cc.widgetSeq++
-		exp := fmt.Sprintf("expanded%d", cc.widgetSeq)
-		stateDelegate(cc.kc)
-		cc.line("var %s by %s { %s(false) }", exp, cc.kc.Name(ktRemember), cc.kc.Name(ktMutableStateOf))
-		cc.line("%s(%s) {", cc.kc.Name(ktBox), style)
-		cc.indent++
-		cc.line("%s(onClick = { %s = true }) {", cc.kc.Name(ktOutlinedButton), exp)
-		cc.indent++
-		if placeholder != "" {
-			cc.line("%s(if (%s.isNotEmpty()) %s else %q)", cc.kc.Name(ktText), valueExpr, valueExpr, placeholder)
-		} else {
-			cc.line("%s(%s)", cc.kc.Name(ktText), valueExpr)
-		}
-		cc.indent--
-		cc.line("}")
-		cc.line("%s(expanded = %s, onDismissRequest = { %s = false }) {", cc.kc.Name(ktDropdownMenu), exp, exp)
-		cc.indent++
-		cc.line("%s.forEach { opt ->", optionsExpr)
-		cc.indent++
-		cc.line("%s(text = { %s(opt) }, onClick = {", cc.kc.Name(ktDropdownMenuItem), cc.kc.Name(ktText))
-		cc.indent++
-		// Two-way `:value` write-back (the bound var is an assignable lvalue),
-		// then any user @change handler, then close the menu.
-		cc.line("%s = opt", valueExpr)
-		emitInputHandlerCall(cc, n, "change", "opt")
-		cc.line("%s = false", exp)
-		cc.indent--
-		cc.line("})")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-		cc.indent--
-		cc.line("}")
-
-	default:
-		return false
-	}
-	return true
 }
 
 func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
@@ -509,15 +404,110 @@ func (cc *irComposeContext) flexModifier(val string) string {
 	}
 	switch cc.parentAxis {
 	case "Row":
-		// weight() grows the main axis only. CSS stretches a flex child
-		// across the other one by default, which is why the rows of the
-		// keypad divided the height while the keys in them stayed the height
-		// of their own labels.
+		// weight() grows the main axis only, and CSS stretches a flex child
+		// across the other one by default, so fillMaxHeight stands in for
+		// that stretch. A row that aligns its children otherwise gets the
+		// share alone: fillMaxHeight fills the most the row may be, not the
+		// height of its tallest child.
+		if !cc.parentStretches {
+			return fmt.Sprintf("weight(%s)", ktFloat(val))
+		}
 		return fmt.Sprintf("weight(%s).%s()", ktFloat(val), cc.kc.Name(ktFillMaxHeight))
 	case "Column":
+		if !cc.parentStretches {
+			return fmt.Sprintf("weight(%s)", ktFloat(val))
+		}
 		return fmt.Sprintf("weight(%s).%s()", ktFloat(val), cc.kc.Name(ktFillMaxWidth))
 	}
 	return cc.kc.Name(ktFillMaxSize) + "()"
+}
+
+// boxLayoutArgs are what a Row or Column's Style says of its children as the
+// arguments Compose takes for it, since no Modifier says them: `gap` and
+// `justifyContent` its main-axis Arrangement, and `alignItems` its cross-axis
+// Alignment. A Row the override handed a verticalAlignment of its own keeps
+// it.
+func (cc *irComposeContext) boxLayoutArgs(n *ir.NodeInst, axis string) []string {
+	if axis != "Row" && axis != "Column" {
+		return nil
+	}
+	var gap, justify, align string
+	for _, sf := range codegen.NodeStyleFieldsOf(n, "modifier") {
+		switch sf.Name {
+		case "gap":
+			gap = dp(cc.kc, cc.styleValue(sf.Value))
+		case "justifyContent":
+			justify = enumMember(sf.Value)
+		case "alignItems":
+			align = enumMember(sf.Value)
+		}
+	}
+	arrangement, alignment := "horizontalArrangement", "verticalAlignment"
+	start, center, end := "Top", "CenterVertically", "Bottom"
+	if axis == "Column" {
+		arrangement, alignment = "verticalArrangement", "horizontalAlignment"
+		start, center, end = "Start", "CenterHorizontally", "End"
+	}
+	var args []string
+	if a := cc.arrangement(axis, gap, justify); a != "" {
+		args = append(args, arrangement+" = "+a)
+	}
+	if codegen.NodeProp(n, alignment) == nil {
+		member := map[string]string{"start": start, "center": center, "end": end}[align]
+		if member != "" {
+			args = append(args, alignment+" = "+cc.kc.Name(ktAlignment)+"."+member)
+		}
+	}
+	return args
+}
+
+// arrangement is a box's main-axis Arrangement: its children spaced by `gap`
+// and placed as `justify` says. A spread of the free space leaves the gap to
+// it, as CSS's minimum between children is no more than what spreads them.
+func (cc *irComposeContext) arrangement(axis, gap, justify string) string {
+	arr := cc.kc.Name(ktArrangement)
+	switch justify {
+	case "spaceBetween":
+		return arr + ".SpaceBetween"
+	case "spaceAround":
+		return arr + ".SpaceAround"
+	case "spaceEvenly":
+		return arr + ".SpaceEvenly"
+	}
+	// Where the children sit: an Arrangement's own name without a gap, and
+	// the Alignment spacedBy takes beside one.
+	var whole, place string
+	switch {
+	case justify == "center":
+		whole, place = "Center", "CenterHorizontally"
+		if axis == "Column" {
+			place = "CenterVertically"
+		}
+	case justify == "end" && axis == "Row":
+		whole, place = "End", "End"
+	case justify == "end":
+		whole, place = "Bottom", "Bottom"
+	}
+	switch {
+	case gap == "" && whole == "":
+		return ""
+	case gap == "":
+		return arr + "." + whole
+	case place == "":
+		return arr + ".spacedBy(" + gap + ")"
+	}
+	return arr + ".spacedBy(" + gap + ", " + cc.kc.Name(ktAlignment) + "." + place + ")"
+}
+
+// stretches reports whether a Row or Column's Style leaves its children
+// stretched across its other axis: no `alignItems`, or `stretch`.
+func stretches(n *ir.NodeInst) bool {
+	for _, sf := range codegen.NodeStyleFieldsOf(n, "modifier") {
+		if sf.Name == "alignItems" {
+			return enumMember(sf.Value) == "stretch"
+		}
+	}
+	return true
 }
 
 // declaresProp reports whether comp declares a prop of this name.
@@ -787,6 +777,16 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			if c := cc.buttonColorsExpr(n, p.Name); c != "" {
 				args = append(args, p.Name+" = "+c)
 			}
+		case (p.Name == "containerColor" || p.Name == "contentColor") && isStyleType(p.Type):
+			// A Badge paints its own pill, as a Button does, so its colours
+			// are arguments: the Style's background the pill's, its color the
+			// text's. A Modifier's background drew a rectangle behind the pill.
+			field := map[string]string{"containerColor": "background", "contentColor": "color"}[p.Name]
+			for _, sf := range codegen.NodeStyleFieldsOf(n, p.Name) {
+				if sf.Name == field {
+					args = append(args, p.Name+" = "+cc.colorExpr(sf.Value))
+				}
+			}
 		default:
 			if isStyleType(p.Type) {
 				if ts := cc.textStyleExpr(n, p.Name); ts != "" {
@@ -805,6 +805,7 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
 		}
 	}
+	args = append(args, cc.boxLayoutArgs(n, axis)...)
 	args = append(args, cc.slotArgs(n, comp)...)
 	call := fmt.Sprintf("%s(%s)", composable, strings.Join(args, ", "))
 	if comp.ChildrenType == nil {
@@ -816,13 +817,13 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	// weight() lives on RowScope and ColumnScope, so whether a child may ask
 	// for a share -- and along which axis -- depends on which composable is
 	// about to receive it. Nothing below here is the window's content.
-	outerAxis, outerRoot := cc.parentAxis, cc.atRoot
+	outerAxis, outerStretches, outerRoot := cc.parentAxis, cc.parentStretches, cc.atRoot
 	cc.parentAxis = ""
 	if axis == "Row" || axis == "Column" {
-		cc.parentAxis = axis
+		cc.parentAxis, cc.parentStretches = axis, stretches(n)
 	}
 	cc.atRoot = false
-	defer func() { cc.parentAxis, cc.atRoot = outerAxis, outerRoot }()
+	defer func() { cc.parentAxis, cc.parentStretches, cc.atRoot = outerAxis, outerStretches, outerRoot }()
 	for _, child := range n.Children {
 		cc.renderStmt(child)
 	}
@@ -886,7 +887,7 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component
 	// A widget that takes its own colours takes the background with them, so
 	// the Modifier must not draw one too.
 	skip := map[string]bool{}
-	if declaresProp(comp, "colors") {
+	if declaresProp(comp, "colors") || declaresProp(comp, "containerColor") {
 		skip["background"] = true
 	}
 	mod.WriteString(cc.modifierRawExcept(n, "modifier", skip))
@@ -940,6 +941,9 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) st
 	kc := cc.kc
 	for _, p := range lam.Func.Params {
 		kc = kc.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(lam.Func.Block) {
+		kc = kc.WithLocal(name)
 	}
 	saved := cc.kc
 	cc.kc = kc

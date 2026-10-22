@@ -294,6 +294,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -517,11 +518,15 @@ fun SnglAssetImage(url: String) {
 }
 
 // SnglRemoteImage is the picture a URL names, fetched while the program runs:
-// nothing until it arrives, and nothing if it does not.
+// nothing until it arrives, and nothing if it does not. produceState takes its
+// initial value once, so a new URL starts again from what the cache holds for
+// it: the last URL's picture is not this one's, and stood in its place for
+// good, since a value already there skipped the fetch.
 @Composable
 fun SnglRemoteImage(url: String) {
     val events by rememberUpdatedState(LocalSnglImageEvents.current)
     val bmp by produceState(SnglAssets.cached(url), url) {
+        value = SnglAssets.cached(url)
         if (value != null) {
             events?.load?.invoke()
             return@produceState
@@ -575,6 +580,8 @@ body { font-family: system-ui, sans-serif; }
     ctx.lineWidth = style.strokeWidth;
   }
   var __slot0 = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function _canvasDraw0(ctx) {
     ctx.save();
     paintStyle(ctx, { fill: { r: 255, g: 0, b: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
@@ -584,27 +591,37 @@ body { font-family: system-ui, sans-serif; }
     ctx.restore();
   }
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    if (state.on) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "on";
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        if (state.on) {
+          let __n1 = document.createElement("span");
+          __n1.textContent = "on";
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n1) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n1, __place0_i_ref0);
+          }
+          __slot0.push(__n1);
+        }
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      if (__place0_i_ref0 === __n1) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n1, __place0_i_ref0);
-      }
-      __slot0.push(__n1);
-    }
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
@@ -658,6 +675,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3567f3b9ab66f55d22072597945e925f
 -- run/kotlin/android --
-pass sha256:e99e5fce6f9a4816e20a244995c3c50a
+pass sha256:cfcb5a863d21d816e646c5a77d7f7a5f
 -- run/none/html --
-pass sha256:809eeaec1ec0c54e2319bdff09ff02f0
+pass sha256:7f4fb7a67c4f8811b56a35374658a7d7

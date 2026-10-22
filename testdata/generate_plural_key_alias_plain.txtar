@@ -562,13 +562,14 @@ body { font-family: system-ui, sans-serif; }
     return __toCommonJS(i18n_entry_exports);
   })();
   var state = { n__inst0: 2, visible__inst0: true };
+  var __ctx_locale__inst0 = i18n.defaultLocale();
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n1.textContent = i18n.getTranslator().plural(state.n__inst0, { ["one"]: "one item", ["other"]: "many items" });
+    __n1.textContent = i18n.plural(__ctx_locale__inst0, state.n__inst0, { ["one"]: "one item", ["other"]: "many items" });
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:35914c359d495e096538742cf595ab5c
+pass sha256:fbc614e20d4fb352565d8794777117ea

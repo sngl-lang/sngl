@@ -1,0 +1,119 @@
+# A component with state of its own under a `for` in a tab's panel. The panel
+# is a record's content, rendered by one iteration of the strip's loop over its
+# records, so that loop is no part of a copy's key (lower.BlockLoops). The
+# inliner counted it when bubbletea spliced the card a cell per copy, keying
+# each `k/copy`, and a test's `c.c[0].size` named no cell: the Go test did not
+# build (`c.c undefined`).
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component card(name string) ui.node {
+    var size option[int] = null
+    async.query(on=name, fetch=lookup, :value=size)
+    ui.text #len(value=size != null ? "{name} {size}" : name)
+}
+
+component shelf ui.node {
+    var names = ["blueberry", "fig"]
+    var tab = 0
+
+    ui.tabs #tabs(:selected=tab) {
+        ui.tab(label="One") {
+            ui.text(value="one")
+        }
+        ui.tab(label="Two") {
+            for var n = names {
+                card #c(name=n)
+            }
+        }
+    }
+    ui.button #swap(text="Swap", @click { names = ["grape"] })
+}
+
+func testACardInAPanelIsItsCopy(t test.Test, c shelf) {
+    c.tabs.change(1)
+    t.assert(c.c[0].len.value == "blueberry 9")
+    t.assert(c.c[1].size == 3)
+    c.swap.click()
+    t.wait(func() => c.c[0].size == 5, 2000)
+    t.assert(c.c[0].len.value == "grape 5")
+}
+
+ui.window {
+    shelf()
+}
+-- testrun/android/kotlin/app.sngl/shelf/1 --
+sha256:42b0bd7d910a6479c1186a33c265a690
+{
+  "results": [
+    {
+      "Desc": "ACardInAPanelIsItsCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shelf/1 --
+sha256:edf8af27a0b4e0285c3e9e1bbb7a8b03
+{
+  "results": [
+    {
+      "Desc": "ACardInAPanelIsItsCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shelf/1 --
+sha256:34beedee7ef0d17980ed47c725200dd1
+{
+  "results": [
+    {
+      "Desc": "ACardInAPanelIsItsCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shelf/1 --
+sha256:c1521705b6097b7ba247e2b73389c855
+{
+  "results": [
+    {
+      "Desc": "ACardInAPanelIsItsCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/shelf/1 --
+sha256:dd94b797147df8791548c9925b55f3a8
+{
+  "results": [
+    {
+      "Desc": "ACardInAPanelIsItsCopy",
+      "Passed": true
+    }
+  ]
+}

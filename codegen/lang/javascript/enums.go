@@ -45,16 +45,17 @@ func enumSelectJS(member, operand string) string {
 	return "((e) => e.tag === " + strconv.Quote(member) + " ? e.value : null)(" + operand + ")"
 }
 
-// enumEqualJS is == or != between two values of a payload enum, or options of
-// one: the same member and equal payloads, compared as each payload's type
-// compares, since JavaScript's === is an object's identity.
+// enumEqualJS is == or != between two values of a payload enum or a struct,
+// or options of one: the same member and equal payloads, or equal fields,
+// each compared as its type compares, since JavaScript's === is an object's
+// identity -- two colours written alike were unequal.
 func enumEqualJS(n *ir.Binary, left, right string) (string, bool) {
 	lt, rt := n.Left.ExprType(), n.Right.ExprType()
 	t := optionElemJS(lt)
-	if ir.PayloadEnum(t) == nil {
+	if !comparedFieldwiseJS(t) {
 		t = optionElemJS(rt)
 	}
-	if ir.PayloadEnum(t) == nil || (n.Op != ast.BinEq && n.Op != ast.BinNeq) {
+	if !comparedFieldwiseJS(t) || (n.Op != ast.BinEq && n.Op != ast.BinNeq) {
 		return "", false
 	}
 	if lt.Kind == ir.TypeNull || rt.Kind == ir.TypeNull {
@@ -65,6 +66,28 @@ func enumEqualJS(n *ir.Binary, left, right string) (string, bool) {
 		return "!" + eq, true
 	}
 	return eq, true
+}
+
+// comparedFieldwiseJS reports whether t's == is more than JavaScript's ===:
+// a payload enum's, or a struct's.
+func comparedFieldwiseJS(t *ir.Type) bool {
+	return ir.PayloadEnum(t) != nil || structDefJS(t) != nil
+}
+
+// structDefJS is the struct whose fields a value of t is compared by: a
+// program's or a library's, and `color`, which JavaScript holds as an object
+// of its channels.
+func structDefJS(t *ir.Type) *ir.StructDef {
+	if def := ir.CopiedStruct(t); def != nil {
+		return def
+	}
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil
+	}
+	if def, ok := t.Decl.(*ir.StructDef); ok && def.Builtin == "color" {
+		return def
+	}
+	return nil
 }
 
 func optionElemJS(t *ir.Type) *ir.Type {
@@ -96,7 +119,7 @@ func jsEqualExpr(t *ir.Type, a, b string) string {
 	if ud := ir.UnitDeclOf(t); ud != nil && !ud.IsSingleBase() {
 		return multiBaseUnitEqualJS(ud, ast.BinEq, a, b)
 	}
-	if def := ir.CopiedStruct(t); def != nil {
+	if def := structDefJS(t); def != nil {
 		bind := map[string]*ir.Type{}
 		for i, tp := range def.TypeParams {
 			if i < len(t.Elems) {

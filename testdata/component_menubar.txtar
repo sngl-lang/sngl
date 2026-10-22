@@ -306,6 +306,6 @@ pass sha256:cd4034bd63796bc11bb61b71b002891c
 -- run/go/fyne --
 pass sha256:f6ea91638ac70fafc28b54c4810256fb
 -- run/kotlin/android --
-pass sha256:185c0fdc0e4c5d822fc04248a229eb7a
+pass sha256:c03d88e0c385e67c409b6412241cbb51
 -- run/none/html --
 pass sha256:cbd191691bd5be366d001da4788660f5

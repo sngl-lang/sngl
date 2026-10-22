@@ -378,6 +378,7 @@ type Model struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__n0                gtk4rt.Handle
 	__n1                gtk4rt.Handle
@@ -397,6 +398,7 @@ func New() *Model {
 	m.__effect0_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -428,21 +430,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -620,8 +624,8 @@ pass sha256:5c0d287bf4b918c49e5bbc610ebc211d
 -- run/go/fyne --
 pass sha256:967d42aa92a874c4539336652f51cd2b
 -- run/go/gtk4 --
-pass sha256:7a71bb3a0e6d5ba0201e5186805d91f0
+pass sha256:90f4f1a8bf50625f68b42e748e6b0a6b
 -- run/kotlin/android --
-pass sha256:f19548d805a1228d182f618c05603c63
+pass sha256:d3bdb1a7f6c584c13316e67f55877c3b
 -- run/none/html --
 pass sha256:f39fdae2d442a337629e986f0f3199e3

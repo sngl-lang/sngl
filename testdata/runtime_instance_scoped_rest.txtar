@@ -99,6 +99,7 @@ type modelState struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -116,6 +117,7 @@ func New() Model {
 	m.__effect0_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__effects0_settle()
@@ -160,21 +162,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -374,12 +378,14 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	items        []int
-	mounted      string
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__inst0_live []*Card__slot0Instance
+	items          []int
+	mounted        string
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*Card__slot0Instance
+	__rendering0   bool
+	__renderAgain0 bool
 
 	__n3 *fyne.Container
 	add  *widget.Button
@@ -394,48 +400,60 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Card__slot0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*Card__slot0Instance{}
-	var __inst0_i int = 0
-	for _, i := range m.items {
-		var __n2 *Card__slot0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetStart(i)
-			__n2.Set__p0(i)
-			__n2.Set__on0(func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n2__new := newCard__slot0Instance(m, i, i, func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-			__n2 = __n2__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*Card__slot0Instance{}
+			var __inst0_i int = 0
+			for _, i := range m.items {
+				var __n2 *Card__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n2 = m.__inst0_live[__inst0_i]
+					__n2.Set__on0(func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n2.SetStart(i)
+					__n2.Set__p0(i)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n2__new := newCard__slot0Instance(m, i, i, func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n2 = __n2__new
+				}
+				__inst0_next = append(__inst0_next, __n2)
+				__inst0_i = (__inst0_i + 1)
+				__n2__el := __n2.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n2)
-		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) add_click_handler() {
@@ -491,6 +509,7 @@ type Card__slot0Instance struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -510,6 +529,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effect0_desired = []string{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -550,21 +570,23 @@ func (c *Card__slot0Instance) __effect0_up() {
 }
 
 func (c *Card__slot0Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -648,14 +670,16 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	items        []int
-	mounted      string
-	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__inst0_live []*Card__slot0Instance
-	__n3         gtk4rt.Handle
-	add          gtk4rt.Handle
+	items          []int
+	mounted        string
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__inst0_live   []*Card__slot0Instance
+	__rendering0   bool
+	__renderAgain0 bool
+	__n3           gtk4rt.Handle
+	add            gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -668,48 +692,60 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Card__slot0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*Card__slot0Instance{}
-	var __inst0_i int = 0
-	for _, i := range m.items {
-		var __n2 *Card__slot0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetStart(i)
-			__n2.Set__p0(i)
-			__n2.Set__on0(func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n2__new := newCard__slot0Instance(m, i, i, func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-			__n2 = __n2__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*Card__slot0Instance{}
+			var __inst0_i int = 0
+			for _, i := range m.items {
+				var __n2 *Card__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n2 = m.__inst0_live[__inst0_i]
+					__n2.Set__on0(func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n2.SetStart(i)
+					__n2.Set__p0(i)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n2__new := newCard__slot0Instance(m, i, i, func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n2 = __n2__new
+				}
+				__inst0_next = append(__inst0_next, __n2)
+				__inst0_i = (__inst0_i + 1)
+				__n2__el := __n2.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n2)
-		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) add_clicked_handler() {
@@ -730,6 +766,7 @@ type Card__slot0Instance struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -749,6 +786,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effect0_desired = []string{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -792,21 +830,23 @@ func (c *Card__slot0Instance) __effect0_up() {
 }
 
 func (c *Card__slot0Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -896,6 +936,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
@@ -957,7 +998,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1040,6 +1080,7 @@ window.__sngl_boot = () => {
     let __effect0_desired = [];
     let __effects0_settling = false;
     let __effects0_pending = false;
+    let __effects0_torn = false;
     let __effects0_steps = 0;
     let __slot02 = [];
     function __effect0_mount() {
@@ -1064,21 +1105,23 @@ window.__sngl_boot = () => {
       __effect0_live = __effect0_desired;
     }
     function __effects0_settle() {
-      if (__effects0_settling) {
-        __effects0_pending = true;
-      } else {
-        __effects0_settling = true;
-        __effects0_pending = true;
-        __effects0_steps = 0;
-        while (__effects0_pending && __effects0_steps < 512) {
-          __effects0_pending = false;
-          __effects0_steps = __effects0_steps + 1;
-          __effect0_down();
-          __effect0_up();
-        }
-        __effects0_settling = false;
-        if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects0_torn) {
+        if (__effects0_settling) {
+          __effects0_pending = true;
+        } else {
+          __effects0_settling = true;
+          __effects0_pending = true;
+          __effects0_steps = 0;
+          while (__effects0_pending && __effects0_steps < 512) {
+            __effects0_pending = false;
+            __effects0_steps = __effects0_steps + 1;
+            __effect0_down();
+            __effect0_up();
+          }
+          __effects0_settling = false;
+          if (__effects0_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
@@ -1115,55 +1158,67 @@ window.__sngl_boot = () => {
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const i of state.items) {
-      let __n2 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set_start(i);
-        __n2.__set___p0(i);
-        __n2.__set___on0((k) => {
-          state.mounted = state.mounted + k + " ";
-        });
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const i of state.items) {
+          let __n2 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n2 = __inst1_live[__inst1_i];
+            __n2.__set___on0((k) => {
+              state.mounted = state.mounted + k + " ";
+            });
+            __n2.__set_start(i);
+            __n2.__set___p0(i);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n2__new = __cf_Card__slot0({ start: i, __p0: i, __on0: (k) => {
+              state.mounted = state.mounted + k + " ";
+            } });
+            __n2 = __n2__new;
+          }
+          __inst1_next.push(__n2);
+          __inst1_i = __inst1_i + 1;
+          let __n2__el = __n2.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2__el, __place0_i_ref0);
+          }
+          __slot0.push(__n2__el);
         }
-        let __n2__new = __cf_Card__slot0({ start: i, __p0: i, __on0: (k) => {
-          state.mounted = state.mounted + k + " ";
-        } });
-        __n2 = __n2__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n2);
-      __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n2__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
-      }
-      __slot0.push(__n2__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -1182,12 +1237,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6903359e591904ad79e1da8bfdc093f0
+pass sha256:96f39facbcab24282886cd9406e0f312
 -- run/go/fyne --
-pass sha256:1a4121c6a530ca8032df27964d854f49
+pass sha256:82f3dbb57e9cb88dd865c0e95712bced
 -- run/go/gtk4 --
-pass sha256:574897b514b04935739884a49ba68a67
+pass sha256:f948375cbcd0d68d6d395aaa991fc6b2
 -- run/kotlin/android --
-pass sha256:02353f3f9a6541f79cfa8f44a180a296
+pass sha256:64898ece2e8d8fb2c1d8ae7651d658f7
 -- run/none/html --
-pass sha256:c96e991643af44ec3cb81178a9075529
+pass sha256:0f431269f474ceae07e2c09a919ef1c5

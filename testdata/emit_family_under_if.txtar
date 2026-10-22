@@ -145,6 +145,7 @@ type Model struct {
 	__effect3_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -175,6 +176,7 @@ func New() *Model {
 	m.__effect3_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -296,27 +298,29 @@ func (m *Model) __effect3_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect3_down()
-			m.__effect2_down()
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-			m.__effect2_up()
-			m.__effect3_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect3_down()
+				m.__effect2_down()
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+				m.__effect2_up()
+				m.__effect3_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -485,6 +489,7 @@ type Model struct {
 	__effect3_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__n0                gtk4rt.Handle
 	__n2                gtk4rt.Handle
@@ -515,6 +520,7 @@ func New() *Model {
 	m.__effect3_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -636,27 +642,29 @@ func (m *Model) __effect3_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect3_down()
-			m.__effect2_down()
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-			m.__effect2_up()
-			m.__effect3_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect3_down()
+				m.__effect2_down()
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+				m.__effect2_up()
+				m.__effect3_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -771,6 +779,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:8831f7160c47143bd7a3627369689bc6
+pass sha256:fde97a3674cba8b1310985fec1fccfa4
 -- run/go/gtk4 --
-pass sha256:a17f3898a03223fb4bb67ddccc1bffc6
+pass sha256:2eb72cbfb77143d1cf5da8d2d5fc99d3

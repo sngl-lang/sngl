@@ -1,0 +1,31 @@
+// SKIP(codegen) "names sngl:platform/none, which a per-platform harness does not register; the interpreter runs it"
+
+// An override may restate the type of a prop its declaration types by its
+// default alone, held to that type: the declaration's defaults are checked
+// ahead of every body, the override's included.
+
+import "sngl:platform/none"
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Pad {
+    size int
+}
+
+component main ui.node {
+    tag #t(value="hi", pad={size=3})
+}
+
+component tag(value string, pad = Pad{size=1}) ui.node
+
+component tag[none.platform](value string, pad Pad) {
+    ui.text(value="{value} {pad.size}")
+}
+
+func testTheOverrideRestatesTheType(t test.Test, c main) {
+    t.assert(c.t.pad.size == 3)
+}
+
+ui.window {
+    main
+}

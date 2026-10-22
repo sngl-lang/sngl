@@ -1,10 +1,10 @@
 # The package an openapi: import writes, run against the local server the
-# script harness runs at 127.0.0.1:47819 (cmd/sngl/httpserver_test.go) on
+# script harness runs at 127.0.0.1:47819 (internal/testhttp) on
 # every target.
 
 sngl test --platform=none app.sngl
 stdout '4 tests, 0 failures'
-stderr 'import "openapi:./pokeapi.yml": field evolution_chain of PokemonSpeciesDetail is left out: a map of any value'
+stderr 'import "openapi:./petstore.yml": field breed_lineage of PetBreedDetail is left out: a map of any value'
 
 sngl test --platform=fyne --language=go app.sngl
 stdout '4 tests, 0 failures'
@@ -28,30 +28,30 @@ stdout '4 tests, 0 failures'
 // asking again when its key changes.
 
 import async "sngl:async"
-import poke "openapi:./pokeapi.yml"
+import pets "openapi:./petstore.yml"
 import . "sngl:test"
 import . "sngl:ui"
 
 const local = "http://127.0.0.1:47819"
 
 func testRetrieve(t Test) {
-    t.setContext(poke.server, local)
-    match var p = poke.pokemonRetrieveCall(id="bulbasaur") {
+    t.setContext(pets.server, local)
+    match var p = pets.petRetrieveCall(id="rex") {
         ok {
             t.assert(p.id == 1)
-            t.assert(p.baseExperience == 64)
-            t.assert(p.types.length() == 2)
-            t.assert(p.types[1].type.name == "poison")
-            t.assert(p.sprites.frontDefault == "https://example.com/1.png")
-            t.assert(p.stats[0].baseStat == 45)
+            t.assert(p.adoptionFee == 120)
+            t.assert(p.tags.length() == 2)
+            t.assert(p.tags[1].type.name == "small")
+            t.assert(p.photos.thumbnailUrl == "https://example.com/1.png")
+            t.assert(p.measurements[0].baseValue == 45)
         }
         failed { t.assert(p.message == "") }
     }
 }
 
 func testNotFound(t Test) {
-    t.setContext(poke.server, local)
-    match var f = poke.pokemonRetrieveCall(id="missingno") {
+    t.setContext(pets.server, local)
+    match var f = pets.petRetrieveCall(id="nobody") {
         ok { t.assert(false) }
         failed {
             t.assert(f.kind == async.FailureKind.request)
@@ -61,12 +61,12 @@ func testNotFound(t Test) {
 }
 
 func testListQuery(t Test) {
-    t.setContext(poke.server, local)
-    match var page = poke.pokemonListCall(limit=2, offset=1) {
+    t.setContext(pets.server, local)
+    match var page = pets.petListCall(limit=2, offset=1) {
         ok {
             t.assert(page.count == 5)
             t.assert(page.results.length() == 2)
-            t.assert(page.results[0].name == "ivysaur")
+            t.assert(page.results[0].name == "bella")
             t.assert(page.next != null)
             t.assert(page.previous != null)
         }
@@ -76,37 +76,37 @@ func testListQuery(t Test) {
 
 component pager node {
     var offset = 0
-    var page option[poke.PaginatedPokemonSummaryList] = null
-    poke.server(local) {
-        poke.pokemonList(limit=2, offset=offset, :value=page)
+    var page option[pets.PaginatedPetSummaryList] = null
+    pets.server(local) {
+        pets.petList(limit=2, offset=offset, :value=page)
     }
     text #first(value=page != null && page.results.length() > 0 ? page.results[0].name : "-")
     button #more(text="More", @click { offset += 2 })
 }
 
 func testAdapterAsksAgain(t Test, c pager) {
-    t.wait(func() => c.first.value == "bulbasaur", 5000)
-    t.assert(c.first.value == "bulbasaur")
+    t.wait(func() => c.first.value == "rex", 5000)
+    t.assert(c.first.value == "rex")
     c.more.click()
-    t.wait(func() => c.first.value == "venusaur", 5000)
-    t.assert(c.first.value == "venusaur")
+    t.wait(func() => c.first.value == "milo", 5000)
+    t.assert(c.first.value == "milo")
 }
 
 window {
     pager
 }
--- pokeapi.yml --
+-- petstore.yml --
 openapi: 3.1.0
 info:
-  title: PokéAPI
-  version: 2.10.0
+  title: Petstore
+  version: 1.0.0
 servers:
-- url: https://pokeapi.co
+- url: https://petstore.example
 paths:
-  /api/v2/pokemon/:
+  /api/v1/pets/:
     get:
-      operationId: pokemon_list
-      summary: List pokemon
+      operationId: pet_list
+      summary: List pets
       parameters:
       - name: limit
         required: false
@@ -125,12 +125,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPokemonSummaryList'
+                $ref: '#/components/schemas/PaginatedPetSummaryList'
           description: ''
-  /api/v2/pokemon/{id}/:
+  /api/v1/pets/{id}/:
     get:
-      operationId: pokemon_retrieve
-      summary: Get pokemon
+      operationId: pet_retrieve
+      summary: Get pet
       parameters:
       - in: path
         name: id
@@ -143,12 +143,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PokemonDetail'
+                $ref: '#/components/schemas/PetDetail'
           description: ''
-  /api/v2/pokemon-species/{id}/:
+  /api/v1/pet-breeds/{id}/:
     get:
-      operationId: pokemon_species_retrieve
-      summary: Get pokemon species
+      operationId: pet_breed_retrieve
+      summary: Get pet breed
       parameters:
       - in: path
         name: id
@@ -160,14 +160,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PokemonSpeciesDetail'
+                $ref: '#/components/schemas/PetBreedDetail'
           description: ''
 components:
   schemas:
-    PaginatedPokemonSummaryList:
+    PaginatedPetSummaryList:
       type: object
       required:
       - count
+      - next
+      - previous
       - results
       properties:
         count:
@@ -184,8 +186,8 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/PokemonSummary'
-    PokemonSummary:
+            $ref: '#/components/schemas/PetSummary'
+    PetSummary:
       type: object
       properties:
         name:
@@ -198,7 +200,7 @@ components:
       required:
       - name
       - url
-    PokemonDetail:
+    PetDetail:
       type: object
       properties:
         id:
@@ -207,62 +209,62 @@ components:
         name:
           type: string
           maxLength: 200
-        base_experience:
+        adoption_fee:
           type:
           - integer
           - 'null'
-        height:
+        age:
           type:
           - integer
           - 'null'
-        is_default:
+        is_available:
           type: boolean
-        species:
-          $ref: '#/components/schemas/PokemonSpeciesSummary'
-        sprites:
+        breed:
+          $ref: '#/components/schemas/PetBreedSummary'
+        photos:
           allOf:
-          - $ref: '#/components/schemas/PokemonSprites'
+          - $ref: '#/components/schemas/PetPhotos'
           readOnly: true
-        stats:
+        measurements:
           type: array
           items:
-            $ref: '#/components/schemas/PokemonStat'
+            $ref: '#/components/schemas/PetMeasurement'
           readOnly: true
-        types:
+        tags:
           type: array
           items:
-            $ref: '#/components/schemas/PokemonType'
+            $ref: '#/components/schemas/PetTag'
           readOnly: true
       required:
       - id
       - name
-      - species
-      - sprites
-      - stats
-      - types
-    PokemonSprites:
+      - breed
+      - photos
+      - measurements
+      - tags
+    PetPhotos:
       type: object
       properties:
-        front_default:
+        thumbnail_url:
           type:
           - string
           - 'null'
       required:
-      - front_default
-    PokemonStat:
+      - thumbnail_url
+    PetMeasurement:
       type: object
       properties:
-        base_stat:
+        base_value:
           type: integer
-        effort:
+        margin:
           type: integer
-        stat:
-          $ref: '#/components/schemas/StatSummary'
+        measure:
+          $ref: '#/components/schemas/MeasureSummary'
       required:
-      - base_stat
-      - effort
-      - stat
-    StatSummary:
+      - base_value
+      - margin
+      - measure
+    MeasureSummary:
       type: object
       properties:
         name:
@@ -273,17 +275,17 @@ components:
       required:
       - name
       - url
-    PokemonType:
+    PetTag:
       type: object
       properties:
         slot:
           type: integer
         type:
-          $ref: '#/components/schemas/TypeSummary'
+          $ref: '#/components/schemas/TagSummary'
       required:
       - slot
       - type
-    TypeSummary:
+    TagSummary:
       type: object
       properties:
         name:
@@ -294,7 +296,7 @@ components:
       required:
       - name
       - url
-    PokemonSpeciesSummary:
+    PetBreedSummary:
       type: object
       properties:
         name:
@@ -305,26 +307,26 @@ components:
       required:
       - name
       - url
-    PokemonSpeciesDetail:
+    PetBreedDetail:
       type: object
       properties:
         id:
           type: integer
         name:
           type: string
-        evolves_from_species:
+        parent_breed:
           oneOf:
-          - $ref: '#/components/schemas/PokemonSpeciesSummary'
+          - $ref: '#/components/schemas/PetBreedSummary'
           - type: 'null'
-        evolution_chain:
+        breed_lineage:
           type: object
           additionalProperties: {}
       required:
       - id
       - name
-      - evolves_from_species
+      - parent_breed
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:4b6b14454c1416f878a2dc09a9e27702
+sha256:4224119d4fe960fd7a26ef8ae820007a
 {
   "results": [
     {
@@ -342,7 +344,7 @@ sha256:4b6b14454c1416f878a2dc09a9e27702
   ]
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
-sha256:367932935c0b9293da4d3c9742efcfba
+sha256:ed16ad92613608929b3df5541215db9a
 {
   "results": [
     {
@@ -352,7 +354,7 @@ sha256:367932935c0b9293da4d3c9742efcfba
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:ea63e50eacecb949c3e14ee31422f1ab
+sha256:7620738703e33631ddce2ce4dc628175
 {
   "results": [
     {
@@ -370,7 +372,7 @@ sha256:ea63e50eacecb949c3e14ee31422f1ab
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pager/1 --
-sha256:bac01233f80db2a55a186c54b8c9d18a
+sha256:8291f60795b2303e68cb3d2afc782222
 {
   "results": [
     {
@@ -380,7 +382,7 @@ sha256:bac01233f80db2a55a186c54b8c9d18a
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:162916d8a4b7525480993ab8960b86c3
+sha256:4c3cd33e799f2f47bb4b6c6fc77d7f83
 {
   "results": [
     {
@@ -398,7 +400,7 @@ sha256:162916d8a4b7525480993ab8960b86c3
   ]
 }
 -- testrun/fyne/go/app.sngl/pager/1 --
-sha256:b7e6a6b21f5cb810deb1322a542c838a
+sha256:6e525bfaa00b2c5c2f71dc86983378c6
 {
   "results": [
     {
@@ -408,7 +410,7 @@ sha256:b7e6a6b21f5cb810deb1322a542c838a
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:2aa42adc044f87287f9fb8884ddf6fc5
+sha256:78d9a7ee2dfce5d6efc8593874e7ee10
 {
   "results": [
     {
@@ -426,7 +428,7 @@ sha256:2aa42adc044f87287f9fb8884ddf6fc5
   ]
 }
 -- testrun/gtk4/go/app.sngl/pager/1 --
-sha256:1e537e3b36a8b086f11f3695a28802cc
+sha256:1117725ed1ce5f8f9817ce069d2ad826
 {
   "results": [
     {
@@ -436,7 +438,7 @@ sha256:1e537e3b36a8b086f11f3695a28802cc
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:ba9a68f966c4e8c080e1523e2bb58150
+sha256:f9cedffd245a7550df3fde04752ef096
 {
   "results": [
     {
@@ -454,7 +456,7 @@ sha256:ba9a68f966c4e8c080e1523e2bb58150
   ]
 }
 -- testrun/html/none/app.sngl/pager/1 --
-sha256:3f64334a9327d0b9d04d60abdb59e46f
+sha256:e4a5d04c3d969ca80950dc2fb605fb66
 {
   "results": [
     {

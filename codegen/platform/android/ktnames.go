@@ -22,8 +22,8 @@ const (
 	ktCanvas     = "androidx.compose.foundation.Canvas"
 	ktCornerRect = "androidx.compose.foundation.shape.RoundedCornerShape"
 
-	ktBox                = ktLayout + "Box"
 	ktColumn             = ktLayout + "Column"
+	ktArrangement        = ktLayout + "Arrangement"
 	ktAspectRatio        = ktLayout + "aspectRatio"
 	ktFillMaxHeight      = ktLayout + "fillMaxHeight"
 	ktFillMaxSize        = ktLayout + "fillMaxSize"
@@ -36,11 +36,8 @@ const (
 
 	ktButton                   = ktM3 + "Button"
 	ktButtonDefaults           = ktM3 + "ButtonDefaults"
-	ktDropdownMenu             = ktM3 + "DropdownMenu"
-	ktDropdownMenuItem         = ktM3 + "DropdownMenuItem"
 	ktExperimentalMaterial3Api = ktM3 + "ExperimentalMaterial3Api"
 	ktMaterialTheme            = ktM3 + "MaterialTheme"
-	ktOutlinedButton           = ktM3 + "OutlinedButton"
 	ktText                     = ktM3 + "Text"
 
 	ktComposable         = ktRT + "Composable"
@@ -53,6 +50,7 @@ const (
 	ktToMutableStateList = ktRT + "toMutableStateList"
 
 	ktModifier      = ktUI + "Modifier"
+	ktAlignment     = ktUI + "Alignment"
 	ktComposed      = ktUI + "composed"
 	ktAlpha         = ktUI + "draw.alpha"
 	ktColor         = ktUI + "graphics.Color"

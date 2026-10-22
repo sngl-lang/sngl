@@ -108,9 +108,24 @@ component main node {
 		t.Errorf("expected __renderSlot0(parent dyn); got params %v", found.Params)
 	}
 	// Body should contain at least teardown For + reset Assign + If with body.
-	if len(found.Block) < 3 {
-		t.Errorf("expected at least 3 stmts in __renderSlot0 body, got %d", len(found.Block))
+	if body := slotRenderBody(t, found); len(body) < 3 {
+		t.Errorf("expected at least 3 stmts in __renderSlot0 body, got %d", len(body))
 	}
+}
+
+// slotRenderBody is what a render slot func renders, inside the guard renderOnce
+// wraps it in: the loop's body after its reset of the flag.
+func slotRenderBody(t *testing.T, fn *ir.Func) []ir.Stmt {
+	t.Helper()
+	guard, ok := fn.Block[0].(*ir.If)
+	if !ok || len(fn.Block) != 1 || len(guard.Else) != 4 {
+		t.Fatalf("expected %s to be one renderOnce guard; got %d stmts", fn.Name, len(fn.Block))
+	}
+	loop, ok := guard.Else[2].(*ir.For)
+	if !ok {
+		t.Fatalf("expected the guard's loop third; got %T", guard.Else[2])
+	}
+	return loop.Body[1:]
 }
 
 func funcSliceNames(fs []*ir.Func) []string {
@@ -178,10 +193,11 @@ component main node {
 		t.Fatal("expected __renderSlot0 Func with else branch")
 	}
 	// Body shape: teardown For + reset Assign + If with non-empty Body and Else.
-	if len(found.Block) < 3 {
-		t.Fatalf("expected ≥3 stmts in __renderSlot0 body, got %d", len(found.Block))
+	body := slotRenderBody(t, found)
+	if len(body) < 3 {
+		t.Fatalf("expected ≥3 stmts in __renderSlot0 body, got %d", len(body))
 	}
-	ifStmt, ok := found.Block[2].(*ir.If)
+	ifStmt, ok := body[2].(*ir.If)
 	if !ok {
 		t.Fatalf("expected stmt 3 to be *ir.If, got %T", found.Block[2])
 	}

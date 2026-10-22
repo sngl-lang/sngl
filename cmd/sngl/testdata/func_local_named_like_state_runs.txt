@@ -1,0 +1,105 @@
+# A function's local named like state of the component a test takes: a test
+# build roots at `page`, whose `label` prop is a var of what it builds, and
+# labelOf's own `var label` read as that var -- `m.label` on the Go targets,
+# `state.label` on html and android -- since each emitter bound a function's
+# parameters as locals and not what its body declares (codegen.BodyLocals).
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Tag {
+    label string
+}
+
+// Reads a local named like the page's prop, narrowed.
+func labelOf(tags list[option[Tag]]) string {
+    var out list[string] = []
+    for var t = tags {
+        var label = t
+        if label != null {
+            out.push(label.label)
+        }
+    }
+    return out.join(",")
+}
+
+component page(label = "") ui.node {
+    ui.text #shown(value=labelOf([Tag{label="a"}, null, Tag{label="b"}]) + label)
+}
+
+func testTheLocalIsItsOwn(t test.Test, c page) {
+    t.assert(c.shown.value == "a,b")
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:1c491d4bce63bb50d731802ac935097b
+{
+  "results": [
+    {
+      "Desc": "TheLocalIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:e9698562da2bc3e8039743874495c1b5
+{
+  "results": [
+    {
+      "Desc": "TheLocalIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:48bf9081a9795a92269d689124eba5d5
+{
+  "results": [
+    {
+      "Desc": "TheLocalIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:184ccfb5bbadfbb10cdd40303c41b31f
+{
+  "results": [
+    {
+      "Desc": "TheLocalIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:ad6a264ec719f07e88d9dbaa2d53eafa
+{
+  "results": [
+    {
+      "Desc": "TheLocalIsItsOwn",
+      "Passed": true
+    }
+  ]
+}

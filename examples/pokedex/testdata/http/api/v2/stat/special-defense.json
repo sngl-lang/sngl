@@ -1,0 +1,121 @@
+{
+ "affecting_items": [
+  {
+   "name": "zinc",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/52/"
+  },
+  {
+   "name": "x-sp-def",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/62/"
+  }
+ ],
+ "affecting_moves": {
+  "decrease": [
+   {
+    "change": -1,
+    "move": {
+     "name": "acid",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/51/"
+    }
+   },
+   {
+    "change": -1,
+    "move": {
+     "name": "psychic",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/94/"
+    }
+   }
+  ],
+  "increase": [
+   {
+    "change": 2,
+    "move": {
+     "name": "amnesia",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/133/"
+    }
+   },
+   {
+    "change": 1,
+    "move": {
+     "name": "ancient-power",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/246/"
+    }
+   }
+  ]
+ },
+ "affecting_natures": {
+  "decrease": [
+   {
+    "name": "rash",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/15/"
+   },
+   {
+    "name": "naughty",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/17/"
+   }
+  ],
+  "increase": [
+   {
+    "name": "calm",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/4/"
+   },
+   {
+    "name": "gentle",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/9/"
+   }
+  ]
+ },
+ "characteristics": [
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/5/"
+  },
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/11/"
+  }
+ ],
+ "game_index": 6,
+ "id": 5,
+ "is_battle_only": false,
+ "move_damage_class": {
+  "name": "special",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-damage-class/3/"
+ },
+ "name": "special-defense",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "とくぼう"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Défense Spéciale"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Spezialverteidigung"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Defensa Especial"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Special Defense"
+  }
+ ]
+}

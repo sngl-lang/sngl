@@ -54,6 +54,12 @@ The digest does not cover `pkg/<lang>/` runtimes, which the generated program
 imports from the checkout -- a change there wants a `-verify` the digest will
 not ask for, the same gap a golden's record has.
 
+**verify launches nothing a record answers.** It runs no `sngl test` of its
+own: the examples are all `./...` reaches, and `examples_runs.txt` runs them
+on every target from its records. Run unrecorded in verify, every launch
+needed every toolchain and a display, so gtk4 failed in CI, where cage does
+not start, and a slow fyne run timed out there.
+
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
 `func test…` through the same launcher (`internal/testlaunch`, in process),
@@ -78,6 +84,15 @@ module those files import, transitively -- so an edit to `gtk4rt` asks for a
 run as an edit to the codegen does, and only a run that succeeded is recorded.
 The program never depends on the host's GIR, because no test reads one (see
 gtk4 in design/architecture.md).
+
+**A test program that goes away before it answers its run fails it**
+(`exitedEarly`, `cmd/sngl/testdata/test_program_exits_runs.txt`): a Go
+target's stack overflow ends the program where no recover reaches, and the
+driver read the end of its output as the end of the run, `ok 0 tests`, which
+a script's `stdout ok` accepted. The test that was running fails, naming the
+exit, and is recorded as any failure is: the crash is the program's answer,
+not the host's, so it is no launch error, which is never recorded. A program
+that exits with no test running is still one.
 
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
@@ -131,6 +146,15 @@ These rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
   an unannotated component var has no type until its body is read.
+- **A call of an instance's method carries the instance in front of its
+  arguments** on Kotlin, where the composable's own call leaves it implicit,
+  so the emitter splits it off (`carriedReceiver`) wherever the call is
+  spelled -- by the scope's name or as a component's method -- or it was
+  handed to the method as an argument once the call sat inside another,
+  `c.g.rows().length()` (`cmd/sngl/testdata/test_method_answer_receiver_runs.txt`).
+  The imports what a test body spells requires -- the i18n runtime a
+  context's default names -- are written into the Kotlin test file beside
+  the fixed list it starts from (`i18n_test_state_class_runs.txt`).
 - **A test holds its instance, not `m` or `state`**: package state and the
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
@@ -147,7 +171,7 @@ These rules keep them agreeing:
   (`cmd/sngl/testdata/test_group_no_component_runs.txt`).
 - **An event invoker takes the event's arguments**: `c.f.input("v")` hands
   the invoker `"v"`, which it puts in the widget before firing the one event,
-  as android's `performTextReplacement` does.
+  as android's `SetText` semantics action does.
 - **Effects settle after every statement**: a compiled test settles after
   each write (`settleAfterWrites`), and the interpreter's runner after each
   statement as well as on each read through the instance, since a read of
@@ -167,14 +191,32 @@ members by name, so the lowering says the rest in those terms, first in
 moves a node out of the body that wrote it:
 
 - **A one-way prop is the expression its call site gave**, read through the
-  instance (`rewriteTestPropRead`): `"{hits}"` in `bar`'s body is
-  `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
+  instance (`rewriteTestPropRead`), under the providers around the node on the
+  way from the test's instance, each value read through the instance it is
+  written in (`underProviders`): a test is a root, so it read a page's words in
+  its own language where a select above the page chose another
+  (`cmd/sngl/testdata/test_reach_prop_under_provider_runs.txt`). `"{hits}"`
+  in `bar`'s body is `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
   indexed was handed -- the loop's list at that index, the number a
-  `sngl:seq` sequence counts there, or the index itself (`loopBindings`). A
+  `sngl:seq` sequence counts there, or the index itself (`loopBindings`). An
+  inner loop's list is read with the outer loops' bindings in it, so
+  `for var cell = row` under `for var row = cells` hands `cells[i][j]`, never
+  a `row` nothing in the test binds; a fire's handler read that and the Go
+  targets did not build (`cmd/sngl/testdata/test_reach_nested_loop_fire_runs.txt`).
+  A method of the component its own body calls with the instance left
+  implicit, `for var row = rows()`, is called through the instance, as a
+  test calls one (`test_reach_prop_through_method_runs.txt`). A
   prop reading what a test cannot name -- a slot's parameter, a local, a pull
   sequence's element -- is left as written for a node of the test's own
   instance and refused with a position for one reached through another
-  instance (`unnamedTestPropRead`).
+  instance (`unnamedTestPropRead`). What a function literal in the
+  expression binds is no such name: `names.map(func(n) => …)` reads `n`
+  wherever it is read, a test included -- refused before, and so was any
+  prop whose pure helper the optimizer inlined into one
+  (`cmd/sngl/testdata/test_reach_prop_lambda_runs.txt`). The call has to
+  still be there: the optimizer splices no node whose prop a test reads
+  (`ir.PropReadIDs`), which left html's badge the `span` it draws one with
+  and the read `""` (`test_reach_spliced_prop_runs.txt`).
 - **A node is one of the test's instance's own**: `c.b.hit` becomes `c.hit`,
   and `c.r[1].tap` the copy of `c.tap` under key "1", the indices of each step
   kept outermost first -- the copy key a node inside an instance built at run

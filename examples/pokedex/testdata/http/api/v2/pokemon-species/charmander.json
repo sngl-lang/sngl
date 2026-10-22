@@ -1,0 +1,362 @@
+{
+ "base_happiness": 70,
+ "capture_rate": 45,
+ "color": {
+  "name": "red",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-color/8/"
+ },
+ "egg_groups": [
+  {
+   "name": "monster",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/1/"
+  },
+  {
+   "name": "dragon",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/14/"
+  }
+ ],
+ "evolution_chain": {
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/2/"
+ },
+ "evolves_from_species": null,
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Obviously prefers\nhot places. When\nit rains, steam\fis said to spout\nfrom the tip of\nits tail.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
+   }
+  },
+  {
+   "flavor_text": "La flamme de sa queue symbolise sa\nvitalité. Elle est intense quand il\nest en bonne santé.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "black",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/17/"
+   }
+  },
+  {
+   "flavor_text": "しっぽの　ほのおは　ヒトカゲの\nせいめいりょくの　あかし。\nげんきだと　さかんに　もえさかる。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Die Flamme auf seiner Schweifspitze zeigt die\nLebensenergie an. Ist es gesund, leuchtet sie hell.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "La llama de su cola indica la fuerza vital de\nCharmander. Será brillante si está sano.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "尻尾の　炎は\nヒトカゲの　生命力の　証。\n元気だと　さかんに　燃えさかる。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "うまれたときから　しっぽに　ほのおが\nともっている。　ほのおが　きえたとき\nその　いのちは　おわって　しまう。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Depuis sa naissance, une petite flamme brûle\nau bout de sa queue. Si cette flamme s’éteint,\nla vie de ce Pokémon s’éteindra elle aussi.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Von Geburt an brennt die Flamme auf seiner\nSchwanzspitze. Sobald sie verglimmt, erlischt\nauch sein Lebenslicht.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Este Pokémon nace con una llama en la punta de\nla cola. Si se le apagara, fallecería.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "From the time it is born, a flame burns at the tip\nof its tail. Its life would end if the flame were to\ngo out.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "生まれたときから　しっぽに　炎が\nともっている。　炎が　消えたとき\nその　命は　終わって　しまう。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  }
+ ],
+ "form_descriptions": [],
+ "forms_switchable": false,
+ "gender_rate": 1,
+ "genera": [
+  {
+   "genus": "とかげポケモン",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   }
+  },
+  {
+   "genus": "Pokémon Lézard",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "genus": "Echsen-Pokémon",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "genus": "Pokémon Lagartija",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
+   "genus": "Lizard Pokémon",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  },
+  {
+   "genus": "とかげポケモン",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-i",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+ },
+ "growth_rate": {
+  "name": "medium-slow",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/growth-rate/4/"
+ },
+ "habitat": {
+  "name": "mountain",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-habitat/4/"
+ },
+ "has_gender_differences": false,
+ "hatch_counter": 20,
+ "id": 4,
+ "is_baby": false,
+ "is_legendary": false,
+ "is_mythical": false,
+ "name": "charmander",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ヒトカゲ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Salamèche"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Glumanda"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Charmander"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Charmander"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ヒトカゲ"
+  }
+ ],
+ "order": 4,
+ "pal_park_encounters": [
+  {
+   "area": {
+    "name": "field",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pal-park-area/2/"
+   },
+   "base_score": 50,
+   "rate": 30
+  }
+ ],
+ "pokedex_numbers": [
+  {
+   "entry_number": 4,
+   "pokedex": {
+    "name": "national",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
+   }
+  },
+  {
+   "entry_number": 4,
+   "pokedex": {
+    "name": "kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/2/"
+   }
+  },
+  {
+   "entry_number": 229,
+   "pokedex": {
+    "name": "original-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/3/"
+   }
+  },
+  {
+   "entry_number": 234,
+   "pokedex": {
+    "name": "updated-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/7/"
+   }
+  },
+  {
+   "entry_number": 109,
+   "pokedex": {
+    "name": "conquest-gallery",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/11/"
+   }
+  },
+  {
+   "entry_number": 83,
+   "pokedex": {
+    "name": "kalos-central",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/12/"
+   }
+  },
+  {
+   "entry_number": 4,
+   "pokedex": {
+    "name": "letsgo-kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/26/"
+   }
+  },
+  {
+   "entry_number": 378,
+   "pokedex": {
+    "name": "galar",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/27/"
+   }
+  },
+  {
+   "entry_number": 167,
+   "pokedex": {
+    "name": "blueberry",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/33/"
+   }
+  },
+  {
+   "entry_number": 151,
+   "pokedex": {
+    "name": "lumiose-city",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/34/"
+   }
+  }
+ ],
+ "shape": {
+  "name": "upright",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-shape/6/"
+ },
+ "varieties": [
+  {
+   "is_default": true,
+   "pokemon": {
+    "name": "charmander",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/4/"
+   }
+  }
+ ]
+}

@@ -130,6 +130,7 @@ type Model struct {
 	__effect2_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -155,6 +156,7 @@ func New() *Model {
 	m.__effect2_dirty = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -283,33 +285,36 @@ func (m *Model) __effect2_update() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			if m.__effect2_dirty {
-				m.__effect2_dirty = false
-				m.__effect2_key = (time.Duration(100) * time.Millisecond)
-				m.__effect2_update()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				if m.__effect2_dirty {
+					m.__effect2_dirty = false
+					m.__effect2_key = (time.Duration(100) * time.Millisecond)
+					m.__effect2_update()
+				}
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
 			}
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect1_teardown()
 }
 
@@ -444,6 +449,7 @@ body { font-family: system-ui, sans-serif; }
     clearInterval(state.handle__inst0);
   }
   function __snglTeardown() {
+    __effects0_torn = true;
     __effect1_teardown();
   }
   var __effect0_live = [];
@@ -453,6 +459,7 @@ body { font-family: system-ui, sans-serif; }
   var __effect1_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function _canvasDraw0(ctx) {
     ctx.save();
@@ -516,23 +523,25 @@ body { font-family: system-ui, sans-serif; }
     __effect1_live = [];
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect1_down();
-        __effect0_down();
-        __effect0_up();
-        __effect1_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -585,6 +594,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:beb4d30e58872afcc7e4e5bb4c68f5ba
+pass sha256:9d55e0d70b0a7965f9964902d3d6737d
 -- run/none/html --
-pass sha256:605647f3bf0f2589139868f92622d51d
+pass sha256:92e53af97a7246e0fa0d8ce4443aacdb

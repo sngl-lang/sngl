@@ -341,14 +341,18 @@ type Tab__record struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	idx          int
-	changed      int
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__inst0_live []*__child0Instance
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
+	idx            int
+	changed        int
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*__child0Instance
+	__rendering0   bool
+	__renderAgain0 bool
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__rendering1   bool
+	__renderAgain1 bool
 
 	__n5 *fyne.Container
 	__n6 *fyne.Container
@@ -363,92 +367,116 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__child0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*__child0Instance{}
-	var __inst0_i int = 0
-	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-		var __n1 *__child0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n1 = m.__inst0_live[__inst0_i]
-			__n1.Set__p0(t)
-			__n1.Set__p1(k)
-			__n1.Set__p2(m.idx)
-			__n1.Set__on0(func() {
-				m.idx = k
-				for __inst0_live_ui, _ := range m.__inst0_live {
-					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-				}
-				m.__renderSlot1(m.__n5)
-				m.changed = k
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n1__new := new__child0Instance(m, t, k, m.idx, func() {
-				m.idx = k
-				for __inst0_live_ui, _ := range m.__inst0_live {
-					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				var __n1 *__child0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n1 = m.__inst0_live[__inst0_i]
+					__n1.Set__on0(func() {
+						m.idx = k
+						for __inst0_live_ui, _ := range m.__inst0_live {
+							m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+						}
+						m.__renderSlot1(m.__n5)
+						m.changed = k
+					})
+					__n1.Set__p0(t)
+					__n1.Set__p1(k)
+					__n1.Set__p2(m.idx)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n1__new := new__child0Instance(m, t, k, m.idx, func() {
+						m.idx = k
+						for __inst0_live_ui, _ := range m.__inst0_live {
+							m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+						}
+						m.__renderSlot1(m.__n5)
+						m.changed = k
+					})
+					__n1 = __n1__new
 				}
-				m.__renderSlot1(m.__n5)
-				m.changed = k
-			})
-			__n1 = __n1__new
+				__inst0_next = append(__inst0_next, __n1)
+				__inst0_i = (__inst0_i + 1)
+				__n1__el := __n1.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
+				m.__slot0 = append(m.__slot0, __n1__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n1)
-		__inst0_i = (__inst0_i + 1)
-		__n1__el := __n1.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
-		m.__slot0 = append(m.__slot0, __n1__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range m.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-		if k == m.idx {
-			if t.__id == 0 {
-				__n2 := widget.NewLabel("")
-				__n2.SetText("Overview content")
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n2)
-				m.__slot1 = append(m.__slot1, __n2)
-			} else {
-				if t.__id == 1 {
-					__n3 := widget.NewLabel("")
-					__n3.SetText("Detail content")
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
-					m.__slot1 = append(m.__slot1, __n3)
-				} else {
-					if t.__id == 2 {
-						__n4 := widget.NewLabel("")
-						__n4.SetText("Settings content")
-						fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
-						m.__slot1 = append(m.__slot1, __n4)
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				if k == m.idx {
+					if t.__id == 0 {
+						__n2 := widget.NewLabel("")
+						__n2.SetText("Overview content")
+						fynelayout.InsertBefore(__parent, m.__slot1_at, __n2)
+						m.__slot1 = append(m.__slot1, __n2)
+					} else {
+						if t.__id == 1 {
+							__n3 := widget.NewLabel("")
+							__n3.SetText("Detail content")
+							fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
+							m.__slot1 = append(m.__slot1, __n3)
+						} else {
+							if t.__id == 2 {
+								__n4 := widget.NewLabel("")
+								__n4.SetText("Settings content")
+								fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
+								m.__slot1 = append(m.__slot1, __n4)
+							}
+						}
 					}
 				}
 			}
 		}
+		m.__rendering1 = false
 	}
 }
 
@@ -627,15 +655,19 @@ type Tab__record struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	idx          int
-	changed      int
-	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__inst0_live []*__child0Instance
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__n5         gtk4rt.Handle
+	idx            int
+	changed        int
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__inst0_live   []*__child0Instance
+	__rendering0   bool
+	__renderAgain0 bool
+	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
+	__rendering1   bool
+	__renderAgain1 bool
+	__n5           gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -648,92 +680,116 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__child0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*__child0Instance{}
-	var __inst0_i int = 0
-	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-		var __n1 *__child0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n1 = m.__inst0_live[__inst0_i]
-			__n1.Set__p0(t)
-			__n1.Set__p1(k)
-			__n1.Set__p2(m.idx)
-			__n1.Set__on0(func() {
-				m.idx = k
-				for __inst0_live_ui, _ := range m.__inst0_live {
-					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
-				}
-				m.__renderSlot1(m.__n5)
-				m.changed = k
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n1__new := new__child0Instance(m, t, k, m.idx, func() {
-				m.idx = k
-				for __inst0_live_ui, _ := range m.__inst0_live {
-					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				var __n1 *__child0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n1 = m.__inst0_live[__inst0_i]
+					__n1.Set__on0(func() {
+						m.idx = k
+						for __inst0_live_ui, _ := range m.__inst0_live {
+							m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+						}
+						m.__renderSlot1(m.__n5)
+						m.changed = k
+					})
+					__n1.Set__p0(t)
+					__n1.Set__p1(k)
+					__n1.Set__p2(m.idx)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n1__new := new__child0Instance(m, t, k, m.idx, func() {
+						m.idx = k
+						for __inst0_live_ui, _ := range m.__inst0_live {
+							m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+						}
+						m.__renderSlot1(m.__n5)
+						m.changed = k
+					})
+					__n1 = __n1__new
 				}
-				m.__renderSlot1(m.__n5)
-				m.changed = k
-			})
-			__n1 = __n1__new
+				__inst0_next = append(__inst0_next, __n1)
+				__inst0_i = (__inst0_i + 1)
+				__n1__el := __n1.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
+				m.__slot0 = append(m.__slot0, __n1__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n1)
-		__inst0_i = (__inst0_i + 1)
-		__n1__el := __n1.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
-		m.__slot0 = append(m.__slot0, __n1__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot1 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-		if k == m.idx {
-			if t.__id == 0 {
-				__n2 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n2, "Overview content")
-				gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
-				m.__slot1 = append(m.__slot1, __n2)
-			} else {
-				if t.__id == 1 {
-					__n3 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n3, "Detail content")
-					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
-					m.__slot1 = append(m.__slot1, __n3)
-				} else {
-					if t.__id == 2 {
-						__n4 := gtk4rt.LabelNew("")
-						gtk4rt.LabelSetText(__n4, "Settings content")
-						gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
-						m.__slot1 = append(m.__slot1, __n4)
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
+			}
+			m.__slot1 = nil
+			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+			for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+				if k == m.idx {
+					if t.__id == 0 {
+						__n2 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetText(__n2, "Overview content")
+						gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
+						m.__slot1 = append(m.__slot1, __n2)
+					} else {
+						if t.__id == 1 {
+							__n3 := gtk4rt.LabelNew("")
+							gtk4rt.LabelSetText(__n3, "Detail content")
+							gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
+							m.__slot1 = append(m.__slot1, __n3)
+						} else {
+							if t.__id == 2 {
+								__n4 := gtk4rt.LabelNew("")
+								gtk4rt.LabelSetText(__n4, "Settings content")
+								gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
+								m.__slot1 = append(m.__slot1, __n4)
+							}
+						}
 					}
 				}
 			}
 		}
+		m.__rendering1 = false
 	}
 }
 
@@ -879,6 +935,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -907,7 +964,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         TabRow(selectedTabIndex = state.idx) {
             for ((k, t) in listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
-                Tab(selected = (k == state.idx), enabled = !t.disabled, onClick = {
+                Tab(modifier = Modifier, selected = (k == state.idx), enabled = !t.disabled, onClick = {
                     state.idx = k
                     state.changed = k
                 }, text = {
@@ -1071,129 +1128,153 @@ window.__sngl_boot = () => {
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   var __slot1 = [];
+  var __rendering1 = false;
+  var __renderAgain1 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const [k, t] of [{ label: "Overview", disabled: false, __id: 0 }, { label: "Details", disabled: false, __id: 1 }, { label: "Settings", disabled: true, __id: 2 }].entries()) {
-      let __n1 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n1 = __inst1_live[__inst1_i];
-        __n1.__set___p0(t);
-        __n1.__set___p1(k);
-        __n1.__set___p2(state.idx);
-        __n1.__set___on0(() => {
-          state.idx = k;
-          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-            ;
-            __inst1_live[__inst1_live_ui].__set___p2(state.idx);
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const [k, t] of [{ label: "Overview", disabled: false, __id: 0 }, { label: "Details", disabled: false, __id: 1 }, { label: "Settings", disabled: true, __id: 2 }].entries()) {
+          let __n1 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n1 = __inst1_live[__inst1_i];
+            __n1.__set___on0(() => {
+              state.idx = k;
+              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                ;
+                __inst1_live[__inst1_live_ui].__set___p2(state.idx);
+              }
+              ;
+              __renderSlot1(__slotAnchor_1);
+              state.changed = k;
+            });
+            __n1.__set___p0(t);
+            __n1.__set___p1(k);
+            __n1.__set___p2(state.idx);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n1__new = __cf___child0({ __p0: t, __p1: k, __p2: state.idx, __on0: () => {
+              state.idx = k;
+              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                ;
+                __inst1_live[__inst1_live_ui].__set___p2(state.idx);
+              }
+              ;
+              __renderSlot1(__slotAnchor_1);
+              state.changed = k;
+            } });
+            __n1 = __n1__new;
           }
-          ;
-          __renderSlot1(__slotAnchor_1);
-          state.changed = k;
-        });
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+          __inst1_next.push(__n1);
+          __inst1_i = __inst1_i + 1;
+          let __n1__el = __n1.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n1__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n1__el, __place0_i_ref0);
+          }
+          __slot0.push(__n1__el);
         }
-        let __n1__new = __cf___child0({ __p0: t, __p1: k, __p2: state.idx, __on0: () => {
-          state.idx = k;
-          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-            ;
-            __inst1_live[__inst1_live_ui].__set___p2(state.idx);
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
           }
-          ;
-          __renderSlot1(__slotAnchor_1);
-          state.changed = k;
-        } });
-        __n1 = __n1__new;
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n1);
-      __inst1_i = __inst1_i + 1;
-      let __n1__el = __n1.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n1__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n1__el, __place0_i_ref0);
-      }
-      __slot0.push(__n1__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
-    let __place2_prev = __slot1;
-    let __place2_i = 0;
-    __slot1 = [];
-    for (const [k, t] of [{ label: "Overview", disabled: false, __id: 0 }, { label: "Details", disabled: false, __id: 1 }, { label: "Settings", disabled: true, __id: 2 }].entries()) {
-      if (k === state.idx) {
-        if (t.__id === 0) {
-          let __n2 = document.createElement("span");
-          __n2.textContent = "Overview content";
-          let __place2_i_ref0 = null;
-          if (__place2_i < __place2_prev.length) {
-            __place2_i_ref0 = __place2_prev[__place2_i];
-          }
-          if (__place2_i_ref0 === __n2) {
-            __place2_i = __place2_i + 1;
-          } else {
-            parent.insertBefore(__n2, __place2_i_ref0);
-          }
-          __slot1.push(__n2);
-        } else {
-          if (t.__id === 1) {
-            let __n3 = document.createElement("span");
-            __n3.textContent = "Detail content";
-            let __place2_i_ref1 = null;
-            if (__place2_i < __place2_prev.length) {
-              __place2_i_ref1 = __place2_prev[__place2_i];
-            }
-            if (__place2_i_ref1 === __n3) {
-              __place2_i = __place2_i + 1;
-            } else {
-              parent.insertBefore(__n3, __place2_i_ref1);
-            }
-            __slot1.push(__n3);
-          } else {
-            if (t.__id === 2) {
-              let __n4 = document.createElement("span");
-              __n4.textContent = "Settings content";
-              let __place2_i_ref2 = null;
+    if (__rendering1) {
+      __renderAgain1 = true;
+    } else {
+      __rendering1 = true;
+      __renderAgain1 = true;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place2_prev = __slot1;
+        let __place2_i = 0;
+        __slot1 = [];
+        for (const [k, t] of [{ label: "Overview", disabled: false, __id: 0 }, { label: "Details", disabled: false, __id: 1 }, { label: "Settings", disabled: true, __id: 2 }].entries()) {
+          if (k === state.idx) {
+            if (t.__id === 0) {
+              let __n2 = document.createElement("span");
+              __n2.textContent = "Overview content";
+              let __place2_i_ref0 = null;
               if (__place2_i < __place2_prev.length) {
-                __place2_i_ref2 = __place2_prev[__place2_i];
+                __place2_i_ref0 = __place2_prev[__place2_i];
               }
-              if (__place2_i_ref2 === __n4) {
+              if (__place2_i_ref0 === __n2) {
                 __place2_i = __place2_i + 1;
               } else {
-                parent.insertBefore(__n4, __place2_i_ref2);
+                parent.insertBefore(__n2, __place2_i_ref0);
               }
-              __slot1.push(__n4);
+              __slot1.push(__n2);
+            } else {
+              if (t.__id === 1) {
+                let __n3 = document.createElement("span");
+                __n3.textContent = "Detail content";
+                let __place2_i_ref1 = null;
+                if (__place2_i < __place2_prev.length) {
+                  __place2_i_ref1 = __place2_prev[__place2_i];
+                }
+                if (__place2_i_ref1 === __n3) {
+                  __place2_i = __place2_i + 1;
+                } else {
+                  parent.insertBefore(__n3, __place2_i_ref1);
+                }
+                __slot1.push(__n3);
+              } else {
+                if (t.__id === 2) {
+                  let __n4 = document.createElement("span");
+                  __n4.textContent = "Settings content";
+                  let __place2_i_ref2 = null;
+                  if (__place2_i < __place2_prev.length) {
+                    __place2_i_ref2 = __place2_prev[__place2_i];
+                  }
+                  if (__place2_i_ref2 === __n4) {
+                    __place2_i = __place2_i + 1;
+                  } else {
+                    parent.insertBefore(__n4, __place2_i_ref2);
+                  }
+                  __slot1.push(__n4);
+                }
+              }
             }
           }
         }
+        for (const __place2_prev_e of __place2_prev) {
+          if (__slot1.indexOf(__place2_prev_e) < 0) {
+            parent.removeChild(__place2_prev_e);
+          }
+        }
       }
-    }
-    for (const __place2_prev_e of __place2_prev) {
-      if (__slot1.indexOf(__place2_prev_e) < 0) {
-        parent.removeChild(__place2_prev_e);
-      }
+      __rendering1 = false;
     }
   }
   function _snglStyleKeyword(m) {
@@ -1211,15 +1292,15 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:440f71bab44e313d99019b4493bee3d2
 -- run/go/fyne --
-pass sha256:1dfc6033a56c43fa2e732b715b4cf180
+pass sha256:9c5ea564b100bd8d125a92f16f5c37a3
 -- run/go/gtk4 --
-pass sha256:7c3d8ef45bc61c1a38dc30ee5bbbb2d0
+pass sha256:74a9e8535578a447c3af163dda654d8c
 -- run/kotlin/android --
-pass sha256:225a36a54547a35ba9dcf3b85ffb4903
+pass sha256:88eb90c6f9d073f667a5b619f80a95ed
 -- run/none/html --
-pass sha256:43294f1a77359bfce09eced0c9475e59
+pass sha256:c69ea9fbf5e88ae73b5989ced106534b
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:e9abdb3860afca2aa478e63581a6cce4
+sha256:edf36f033f884be3873ad4ecc5a427d8
 {
   "results": [
     {

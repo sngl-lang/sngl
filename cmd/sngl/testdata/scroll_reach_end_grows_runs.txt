@@ -1,0 +1,60 @@
+# A scroll's @reachEnd asks again as its content grows while its end still
+# shows, on html, where the browser lays the page out -- the content a slot
+# renders included, and a first page shorter than the scroll.
+#
+# The sentinel asked again when the scroll's height grew, and that stands
+# still while the content is shorter than the scroll, so a short first page
+# asked for one page more and no further. And it watched the scroll's direct
+# children alone, where content under an `if` renders into a
+# `display:contents` span, which has no box to grow. It now asks where it has
+# moved, and watches what is added anywhere below the scroll.
+#
+# html alone: no other target's test driver lays a page out, so none fires
+# @reachEnd of itself there; a test's trigger does (component_scroll.txtar).
+
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import seq "sngl:seq"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component page ui.node {
+    var shown = 1
+
+    ui.scroll #list(style={height=400px}, @reachEnd {
+        if shown < 5 {
+            shown += 1
+        }
+    }) {
+        if shown > 0 {
+            ui.vbox {
+                for var i = seq.count(shown) {
+                    ui.text(value="row {i}", style={height=150px})
+                }
+            }
+        }
+    }
+}
+
+func testAScrollOfALoopAsksUntilItsEndIsGone(t test.Test, c page) {
+    // Each row is 150px of a 400px box: the end shows until three rows fill
+    // it, and the grid stops asking there.
+    t.wait(func() => c.shown >= 4, 3000)
+    t.assert(c.shown >= 4)
+}
+
+ui.window {
+    page()
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:0970e445855acd09d414a7efdae11629
+{
+  "results": [
+    {
+      "Desc": "AScrollOfALoopAsksUntilItsEndIsGone",
+      "Passed": true
+    }
+  ]
+}

@@ -60,6 +60,18 @@ component _example_stack node {
 // scroll-linked effects. `showScrollbar` is "auto", "always", or
 // "never". `@scroll` fires continuously while scrolling; `@scrollEnd`
 // fires once motion settles.
+//
+// `@reachEnd` fires when the end of the content comes within half a
+// viewport of being shown: once when it arrives, and again whenever the
+// content changes size while it is there. A handler that adds content
+// is how a list loads its next page as it is scrolled to -- and since
+// content too short to scroll has its end shown already, it fires on
+// arrival, so a first page shorter than the viewport loads the next
+// without waiting for a scroll that cannot happen. A handler that adds
+// nothing is not called again until the end is scrolled away from and
+// back. bubbletea draws a scroll as its content, cut off by the
+// terminal, and the interpreter lays nothing out: both fire it only when
+// a test does.
 component scroll(
     style         Style = Style{},
     direction     string = "",
@@ -68,6 +80,7 @@ component scroll(
     showScrollbar string = "",
     @scroll(),
     @scrollEnd(),
+    @reachEnd(),
     content       ...component option[node],
 ) node
 
@@ -151,8 +164,10 @@ component _example_splitview node {
 
 // Styled container for grouping related content. `variant` selects
 // the surface treatment ("outlined", "elevated", "filled"). Set
-// `clickable=true` to make the entire card respond to `@click` —
-// useful for building tappable list items.
+// `clickable=true` to make the entire card respond to `@click` --
+// useful for building tappable list items. The flag is what makes the
+// card look and act pressable (a pointer, a ripple, a focus stop), so a
+// card that is not one does not; `@click` fires only on a clickable card.
 component card(
     style     Style = Style{},
     variant   string = "",

@@ -1,0 +1,103 @@
+# A panel the program builds at run time reads a context its page never
+# provides, through a function: the panel is handed the context's value as a
+# prop, read where the panel is written.
+#
+# html declares a context's default as a binding of the page, and the lift
+# rebuilt the read it hands the panel unmarked, so html read it off `state`,
+# where nothing is: the page raised as it loaded.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import i18n "sngl:i18n"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// The language of the active locale, lower-cased.
+func lowered() => string.lower(i18n.locale)
+
+component page ui.node {
+    var shown = true
+
+    ui.vbox {
+        ui.button #toggle(text="toggle", @click { shown = !shown })
+        if shown {
+            ui.text #lang(value=lowered())
+        }
+    }
+}
+
+ui.window {
+    page()
+}
+
+func testAPanelReadsTheLocale(t test.Test, c page) {
+    t.setContext(i18n.locale, "FR")
+    t.assert(c.lang != null && c.lang.value == "fr")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:a29311085e1accc069389ec7d9cd44d4
+{
+  "results": [
+    {
+      "Desc": "APanelReadsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:48cc755c3fbc701e9d71b23b4603c06b
+{
+  "results": [
+    {
+      "Desc": "APanelReadsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:9cb5985d0d8857101d8066c324e2e6cc
+{
+  "results": [
+    {
+      "Desc": "APanelReadsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:c09621c7d8afaa2480733b8505e290c3
+{
+  "results": [
+    {
+      "Desc": "APanelReadsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:bac94e89fc4564a4c361867532315017
+{
+  "results": [
+    {
+      "Desc": "APanelReadsTheLocale",
+      "Passed": true
+    }
+  ]
+}

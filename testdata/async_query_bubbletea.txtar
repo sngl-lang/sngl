@@ -24,7 +24,7 @@ func lookup(name string) async.Result[int] {
 }
 
 component detail node {
-    var name = "pikachu"
+    var name = "apricot"
     var length option[int] = null
     var loading = false
     var failure option[async.Failure] = null
@@ -34,7 +34,7 @@ component detail node {
     text(value=length != null ? "{length}" : "-")
     text(value="{loading}")
     text(value=failure != null ? failure.message : "")
-    button(text="mew", @click { name = "mew" })
+    button(text="fig", @click { name = "fig" })
     button(text="again", @click { q.refresh() })
 }
 
@@ -107,6 +107,7 @@ type modelState struct {
 	__effect0_desired   []__anon_key_n_a1dba7
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -116,7 +117,7 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.name__inst0 = "pikachu"
+	m.name__inst0 = "apricot"
 	m.length__inst0 = nil
 	m.loading__inst0 = false
 	m.failure__inst0 = nil
@@ -128,6 +129,7 @@ func New() Model {
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__effects0_settle()
@@ -236,26 +238,29 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
@@ -450,7 +455,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.name__inst0 = "mew"
+			m.name__inst0 = "fig"
 			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.refresh__inst0()
@@ -491,7 +496,7 @@ func (m Model) View() tea.View {
 		if part0Part_7Focused {
 			part0Part_7Prefix = ">"
 		}
-		part0Part_7 = lipgloss.NewStyle().Render(part0Part_7Prefix + " " + fmt.Sprint("mew"))
+		part0Part_7 = lipgloss.NewStyle().Render(part0Part_7Prefix + " " + fmt.Sprint("fig"))
 		part0Parts = append(part0Parts, part0Part_7)
 		var part0Part_8 string
 		part0Part_8Focused := (m.__focusID == 1)
@@ -543,4 +548,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:eff36ac45a3721f2e074d477e0a8b0fc
+pass sha256:2e590ed25f0acab93380a229cec6fd09

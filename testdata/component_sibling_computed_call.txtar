@@ -445,11 +445,11 @@ pass sha256:a8e40c44c4d466f1e10cdbd2a06eb163
 -- run/go/gtk4 --
 pass sha256:cb263fa7b19a21118ce632815adc3d4e
 -- run/kotlin/android --
-pass sha256:8a213560a0b3d68db3256b6364052562
+pass sha256:01d8f2f7bbb4deca6ef1df1508e969ce
 -- run/none/html --
 pass sha256:60c53a794e1e1340e3c58a85819e472a
 -- testrun/html/none/component_sibling_computed_call.sngl/main/1 --
-sha256:ade0d9d7b2d68f32ae6cd1a009930aae
+sha256:9ac429daf992d9adfef2414a7b860260
 {
   "results": [
     {

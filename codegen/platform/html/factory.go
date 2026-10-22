@@ -517,6 +517,9 @@ func (g *htmlGen) instancePropJS(v ir.Expr) string {
 	for _, p := range lam.Func.Params {
 		jc = jc.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(lam.Func.Block) {
+		jc = jc.WithLocal(name)
+	}
 	fn := *lam.Func
 	fn.Block = codegen.WalkLowered(context.Background(), lam.Func.Block, g.newHTMLTranslator(jc))
 	for _, s := range fn.Block {

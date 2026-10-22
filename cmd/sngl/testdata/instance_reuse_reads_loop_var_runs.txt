@@ -1,0 +1,107 @@
+# A query's @load reads the loop variable it was written under, on every
+# target.
+#
+# A new kind hands each copy's query a new word. On the instance runtimes the
+# render hands a kept instance its props one at a time, each setter settling
+# it: the new key mounted, the fetch answered at once, and the @load the last
+# render handed over ran, writing under the last word. A function prop is now
+# handed over first. bubbletea splices the query per copy and runs its
+# handlers from the settle, outside the loop, which refused the read of `w`;
+# the handler now binds it from the copy's key.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A word as a lookup answers it, at once: itself, marked.
+func lookUp(word string) async.Result[string] {
+    return {ok="{word}!"}
+}
+
+component page ui.node {
+    var kind = "Red"
+    var seen map[string, string] = {}
+
+    ui.vbox {
+        for var w = ["{kind}-a", "{kind}-b"] {
+            async.query(on=w, fetch=lookUp, @load(got) { seen[w] = got })
+        }
+        ui.button #next(text="next", @click { kind = "Green" })
+    }
+}
+
+ui.window {
+    page()
+}
+
+func testEachAnswerLandsUnderItsWord(t test.Test, c page) {
+    t.assert(c.seen.get("Red-a", "") == "Red-a!")
+    c.next.click()
+    t.wait(func() => c.seen.length() == 4, 2000)
+    t.assert(c.seen.get("Green-a", "") == "Green-a!")
+    t.assert(c.seen.get("Green-b", "") == "Green-b!")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:1f75d003d151fade442281a602b273aa
+{
+  "results": [
+    {
+      "Desc": "EachAnswerLandsUnderItsWord",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:6e1ffbd1b4d9994f3800010010109bc6
+{
+  "results": [
+    {
+      "Desc": "EachAnswerLandsUnderItsWord",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:b8dafe48aeeaaa639e241b8cfce7cd46
+{
+  "results": [
+    {
+      "Desc": "EachAnswerLandsUnderItsWord",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:61bf0834c95a4889e492e865e4a7375b
+{
+  "results": [
+    {
+      "Desc": "EachAnswerLandsUnderItsWord",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:8dbd87bab115344909a86b581c0c2b20
+{
+  "results": [
+    {
+      "Desc": "EachAnswerLandsUnderItsWord",
+      "Passed": true
+    }
+  ]
+}

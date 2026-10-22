@@ -77,6 +77,7 @@ type Model struct {
 	__effect1_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -100,6 +101,7 @@ func New() *Model {
 	m.__effect1_dirty = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -191,31 +193,34 @@ func (m *Model) __effect1_update() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			if m.__effect1_dirty {
-				m.__effect1_dirty = false
-				m.__effect1_key = (time.Duration(1000) * time.Millisecond)
-				m.__effect1_update()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					m.__effect1_key = (time.Duration(1000) * time.Millisecond)
+					m.__effect1_update()
+				}
+				m.__effect0_down()
+				m.__effect0_up()
 			}
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
@@ -314,4 +319,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:9964c37fa8ca2ecf9b4de1ae384dc837
+pass sha256:16b5f303ed1631f618782c5a32d2dea9

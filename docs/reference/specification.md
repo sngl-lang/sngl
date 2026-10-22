@@ -1294,6 +1294,10 @@ From lowest to highest binding:
 
 <!-- END GENERATED: precedence -->
 
+The comparison operators order two numbers of one type, two values of a
+single-base unit, or two strings, which compare character by character by
+their codes: `"apple" < "fig"`, and `"pear" < "pears"`.
+
 The ternary operator `c ? a : b` evaluates `a` when `c` is true and `b`
 otherwise; `c` must be `bool`. The unary operators are `!` (logical negation,
 on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
@@ -1402,10 +1406,11 @@ ArgExprCont =
 ### Operator semantics
 
 - The logical operators `&&`, `||`, `!` require `bool` operands and yield
-  `bool`.
+  `bool`. `&&` and `||` evaluate their right operand only when the left does
+  not decide the result.
 - Equality `==` / `!=` applies when the operands have the same kind, when both
   are numeric, or when one is `null`; it yields `bool`.
-- The relational operators `<`, `<=`, `>`, `>=` apply to two numbers, to two
+- The relational operators `<`, `<=`, `>`, `>=` apply to two numbers of one type, to two
   values of one single-base unit type, or to two strings.
 - `+` is addition on numbers, concatenation when either operand is a `string`,
   and the per-base sum of two values of one unit type.
@@ -1827,7 +1832,11 @@ A component parameter is one of four kinds:
 
 - a **regular parameter** — `name Type = default` — an input supplied by the
   caller, with an optional default, and constant at every call site when
-  written `const name Type` (see [the const prefix](#the-const-prefix));
+  written `const name Type` (see [the const prefix](#the-const-prefix)). One
+  written `name = default` takes its default's type, and is typed exactly as
+  if that type were written: a call site gives an argument the same context,
+  so `style={fontWeight=bold}` is a `ui.Style` for `style = ui.Style{}`,
+  wherever the component is declared, and an override may restate the type;
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
   passes an lvalue with `:name = target`, and an assignment the component makes
   to `name` is written back to that lvalue, so parent and child stay in sync.

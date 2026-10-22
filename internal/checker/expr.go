@@ -3433,6 +3433,9 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 	defer c.popScope()
 	if isScope {
 		c.declareOwnNodeIDs(block, headNames...)
+		for _, s := range block.Stmts {
+			c.preSpecializeHandles(s, false)
+		}
 	}
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {

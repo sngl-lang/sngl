@@ -1,0 +1,379 @@
+{
+ "base_happiness": 70,
+ "capture_rate": 45,
+ "color": {
+  "name": "green",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-color/5/"
+ },
+ "egg_groups": [
+  {
+   "name": "monster",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/1/"
+  },
+  {
+   "name": "plant",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/7/"
+  }
+ ],
+ "evolution_chain": {
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/1/"
+ },
+ "evolves_from_species": {
+  "name": "ivysaur",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/2/"
+ },
+ "flavor_text_entries": [
+  {
+   "flavor_text": "The plant blooms\nwhen it is\nabsorbing solar\fenergy. It stays\non the move to\nseek sunlight.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
+   }
+  },
+  {
+   "flavor_text": "Le parfum de sa fleur se fait plus\npénétrant les lendemains de pluie.\nCela appâte les autres Pokémon.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "black",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/17/"
+   }
+  },
+  {
+   "flavor_text": "おおきな　はなびらを　ひろげ\nたいようの　ひかりを　あびていると\nからだに　げんきが　みなぎっていく。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Es spreizt die breiten Blätter seiner Blüte,\num seinen Körper mit Sonnenenergie\nzu durchfluten.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Llena su cuerpo de energía con los rayos solares que\ncaptan los anchos pétalos de su flor.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "大きな　花びらを　広げ\n太陽の　光を　浴びていると\n体に　元気が　みなぎっていく。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "はなから　うっとりする　かおりが\nただよい　たたかうものの　きもちを\nなだめてしまう。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Une douce senteur émane de sa plante.\nCette fragrance calme tous ceux qui sont\nengagés dans un combat.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Die Blume verströmt einen zauberhaften Duft.\nEr beschwichtigt erhitzte Kämpfer.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "La flor que tiene en el lomo libera un delicado\naroma, que tiene un efecto relajante en combate.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "A bewitching aroma wafts from its flower.\nThe fragrance becalms those engaged\nin a battle.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "花から　うっとりする　香りが\nただよい　戦うものの　気持ちを\nなだめてしまう。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  }
+ ],
+ "form_descriptions": [],
+ "forms_switchable": true,
+ "gender_rate": 1,
+ "genera": [
+  {
+   "genus": "たねポケモン",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   }
+  },
+  {
+   "genus": "Pokémon Graine",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "genus": "Samen-Pokémon",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "genus": "Pokémon Semilla",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
+   "genus": "Seed Pokémon",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  },
+  {
+   "genus": "たねポケモン",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-i",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+ },
+ "growth_rate": {
+  "name": "medium-slow",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/growth-rate/4/"
+ },
+ "habitat": {
+  "name": "grassland",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-habitat/3/"
+ },
+ "has_gender_differences": true,
+ "hatch_counter": 20,
+ "id": 3,
+ "is_baby": false,
+ "is_legendary": false,
+ "is_mythical": false,
+ "name": "venusaur",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "フシギバナ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Florizarre"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Bisaflor"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Venusaur"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Venusaur"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "フシギバナ"
+  }
+ ],
+ "order": 3,
+ "pal_park_encounters": [
+  {
+   "area": {
+    "name": "field",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pal-park-area/2/"
+   },
+   "base_score": 90,
+   "rate": 3
+  }
+ ],
+ "pokedex_numbers": [
+  {
+   "entry_number": 3,
+   "pokedex": {
+    "name": "national",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
+   }
+  },
+  {
+   "entry_number": 3,
+   "pokedex": {
+    "name": "kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/2/"
+   }
+  },
+  {
+   "entry_number": 228,
+   "pokedex": {
+    "name": "original-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/3/"
+   }
+  },
+  {
+   "entry_number": 233,
+   "pokedex": {
+    "name": "updated-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/7/"
+   }
+  },
+  {
+   "entry_number": 82,
+   "pokedex": {
+    "name": "kalos-central",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/12/"
+   }
+  },
+  {
+   "entry_number": 3,
+   "pokedex": {
+    "name": "letsgo-kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/26/"
+   }
+  },
+  {
+   "entry_number": 70,
+   "pokedex": {
+    "name": "isle-of-armor",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/28/"
+   }
+  },
+  {
+   "entry_number": 166,
+   "pokedex": {
+    "name": "blueberry",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/33/"
+   }
+  },
+  {
+   "entry_number": 150,
+   "pokedex": {
+    "name": "lumiose-city",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/34/"
+   }
+  },
+  {
+   "entry_number": 3,
+   "pokedex": {
+    "name": "champions",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/36/"
+   }
+  }
+ ],
+ "shape": {
+  "name": "quadruped",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-shape/8/"
+ },
+ "varieties": [
+  {
+   "is_default": true,
+   "pokemon": {
+    "name": "venusaur",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/3/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "venusaur-mega",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10033/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "venusaur-gmax",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10195/"
+   }
+  }
+ ]
+}

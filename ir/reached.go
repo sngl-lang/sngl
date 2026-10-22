@@ -56,6 +56,35 @@ func NullTestedIDs(pkg *Package) map[string]bool {
 	return out
 }
 
+// PropReadIDs is every `#id` a test reads a prop of -- `c.label.value`,
+// `c.row[1].value`. Such a read is answered from what the node's call site
+// wrote, so the call must still be there to read when the lowering asks.
+func PropReadIDs(pkg *Package) map[string]bool {
+	out := map[string]bool{}
+	walkTests(pkg, func(n Node) {
+		sel, ok := n.(*Select)
+		if !ok {
+			return
+		}
+		ref := sel.Operand
+		for {
+			switch x := ref.(type) {
+			case *Conversion:
+				ref = x.Operand
+				continue
+			case *Index:
+				ref = x.Operand
+				continue
+			}
+			break
+		}
+		if node, ok := ref.(*Select); ok && node.Ref != RefNone {
+			out[node.Field] = true
+		}
+	})
+	return out
+}
+
 func walkTests(pkg *Package, visit func(Node)) {
 	if pkg == nil {
 		return

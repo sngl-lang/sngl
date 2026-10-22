@@ -1,0 +1,90 @@
+# A test build on fyne queues what an answer posts back to the drawing
+# thread, and a test's wait runs it. What the last test's Model posted and the
+# last test never waited for is dropped as the next test starts, since that
+# test starts from a fresh Model: run, it drew the last Model's widgets inside
+# the next test's waits, and a wait ran out.
+#
+# The first test asks twenty questions, each answer's handler slow, and waits
+# for the first answer alone; the rest have arrived while that handler ran.
+# The second, run next on the same component and so in the same program,
+# waits a second for the one answer it asks for, which the twenty would have
+# queued behind.
+#
+# fyne alone: every other target's test driver draws an answer in well under
+# the time this one takes, and so none of them waits behind the last test.
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import seq "sngl:seq"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(k string) async.Result[string] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+        failed { return {failed=r} }
+        ok { return {ok=k} }
+    }
+}
+
+// Work that takes a while, and returns something so it is not left out.
+func spin(n int) int {
+    var total = 0
+    for var i = seq.count(n) {
+        total = (total + i) % 7919
+    }
+    return total
+}
+
+// A page asking one question as it opens, and twenty more, each answer's
+// handler slow, once `ask` is clicked.
+component page ui.node {
+    var answer option[string] = null
+    var asking = false
+    var answered = 0
+    var spun = 0
+
+    async.query(on="one", fetch=lookup, :value=answer)
+    if asking {
+        for var i = seq.count(20) {
+            async.query(on="{i}", fetch=lookup, @load(got) {
+                spun += spin(60000000 + got.length())
+                answered += 1
+            })
+        }
+    }
+    ui.text(value=answer != null ? answer : "-")
+    ui.button #ask(text="Ask", @click { asking = true })
+}
+
+func testAFirstAnswer(t test.Test, c page) {
+    c.ask.click()
+    t.wait(func() => c.answered > 0, 20000)
+    t.assert(c.answered > 0 && c.answered < 20)
+}
+
+func testBTheNextTestWaitsForItsOwnAnswerAlone(t test.Test, c page) {
+    t.wait(func() => c.answer != null, 1000)
+    t.assert(c.answer != null && c.answer == "one")
+}
+
+ui.window {
+    page()
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:31f1079512123a8bef191a72c195e7ba
+{
+  "results": [
+    {
+      "Desc": "AFirstAnswer",
+      "Passed": true
+    },
+    {
+      "Desc": "BTheNextTestWaitsForItsOwnAnswerAlone",
+      "Passed": true
+    }
+  ]
+}

@@ -2,6 +2,7 @@ package fynelayout
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -28,4 +29,9 @@ func (t *Tap) Tapped(*fyne.PointEvent) {
 	if t.OnTapped != nil {
 		t.OnTapped()
 	}
+}
+
+// Cursor is the pointer a link shows, which says the object can be tapped.
+func (t *Tap) Cursor() desktop.Cursor {
+	return desktop.PointerCursor
 }

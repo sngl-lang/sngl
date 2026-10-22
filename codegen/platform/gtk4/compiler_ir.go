@@ -189,10 +189,18 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				if strings.HasPrefix(ctxGoType, "time.") {
 					gc.RequireImport("time")
 				}
+				init := irVarInit(v, ctxGC)
+				// Written in a context of its own, as a component's var is
+				// below: its imports are the file's -- the i18n runtime a
+				// locale's default names, which a test build rooted at the
+				// component wrote with none.
+				for _, p := range ctxGC.Imports() {
+					gc.RequireImport(p)
+				}
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
 					goType:      ctxGoType,
-					init:        irVarInit(v, ctxGC),
+					init:        init,
 					noAccessors: true,
 				})
 				continue
@@ -290,7 +298,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)
@@ -508,6 +516,9 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	if c.ctx != nil && c.ctx.Pkg != nil && c.ctx.Pkg.UsesErrorHandling {
 		td.LangHelpers += golang.ErrorEventDecl
 	}
+	if c.ctx != nil && c.ctx.Pkg != nil {
+		td.LangHelpers += golang.PackageConstDecls(c.ctx.Pkg, gc)
+	}
 
 	var modelBuf, callbacksBuf strings.Builder
 	writeModelHead(&modelBuf, td)
@@ -539,6 +550,7 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 		NeedsGObjectSet:   c.shared.gObjectSet,
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,
+		NeedsDropDown:     c.shared.dropDown,
 		Wrapped:           c.wrapped,
 		CLinks:            golang.CPreambleLines(ir.ReachedCLinks(c.ctx.Pkg)),
 	}
@@ -690,10 +702,11 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 // `@toggled(b) { checked = checkActive(b) }` is how the value a change
 // reports reaches the program.
 var widgetReads = map[string]string{
-	"gtk4.checkActive":  "GtkCheckButton",
-	"gtk4.switchActive": "GtkSwitch",
-	"gtk4.entryText":    "GtkEntry",
-	"gtk4.calendarDate": "GtkCalendar",
+	"gtk4.checkActive":   "GtkCheckButton",
+	"gtk4.switchActive":  "GtkSwitch",
+	"gtk4.entryText":     "GtkEntry",
+	"gtk4.calendarDate":  "GtkCalendar",
+	"gtk4.dropDownLabel": "GtkDropDown",
 }
 
 // widgetWrites are the setters gtk4.sngl declares for an override to write
@@ -899,6 +912,19 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 			Func: &ir.Func{Name: calendarDateHelper, Foreign: ir.Foreign{Name: calendarDateHelper}},
 			Args: []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
 		}
+	case "GtkDropDown":
+		label := &ir.Call{
+			Type:     ir.NativePointerOf("char"),
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("sngl_drop_down_label"),
+			Args:     []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
+		}
+		return &ir.Call{
+			Type:     ir.TypString,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("GoString"),
+			Args:     []ir.CallArg{{Value: label}},
+		}
 	}
 	return nil
 }
@@ -953,6 +979,19 @@ func collectImages(pkg *ir.Package) map[string]string {
 	for id, tag := range prims {
 		if imagePrimitive(tag) {
 			out[id] = tag
+		}
+	}
+	return out
+}
+
+// collectScrolls is every Scroll primitive id, for the reason
+// collectToplevels is.
+func collectScrolls(pkg *ir.Package) map[string]bool {
+	_, prims := collectNodeTags(pkg)
+	out := map[string]bool{}
+	for id, tag := range prims {
+		if tag == scrollTag {
+			out[id] = true
 		}
 	}
 	return out
@@ -1177,7 +1216,7 @@ func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 		return
 	}
 	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Name)
+	fnCopy.Name = gc.FreeFuncName(fn.Name)
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
@@ -1413,9 +1452,10 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	var trailer string
 	switch tops := tr.topLevel; {
 	case len(tops) == 0 && wrapped:
-		trailer = "\treturn gtk4rt.LabelNew(\"\")\n"
+		trailer = "\treturn gtk4rt.Nothing()\n"
 	case len(tops) == 0:
-		trailer = "\treturn C.gtk_label_new(nil)\n"
+		// Hidden, so the box holding it gives it no room (gtk4rt.Nothing).
+		trailer = "\tnothing := C.gtk_label_new(nil)\n\tC.gtk_widget_set_visible(nothing, 0)\n\treturn nothing\n"
 	case len(tops) == 1 && wrapped:
 		ref := tr.qualifyNodeExpr(&ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true})
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(ref))
@@ -1490,8 +1530,16 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 			continue // duplicate id+event — keep the first
 		}
 		seen[methodName] = true
-		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
-			methodName, inv.GTKSignal, inv.IDLabel)
+		if inv.WidgetType == "GtkDropDown" {
+			fmt.Fprintf(b, "// %s selects the choice labelled v on the #%s widget; for tests.\n",
+				methodName, inv.IDLabel)
+		} else if inv.RtFire != "" {
+			fmt.Fprintf(b, "// %s fires %q on the #%s widget; for tests.\n",
+				methodName, inv.SnglEvent, inv.IDLabel)
+		} else {
+			fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
+				methodName, inv.GTKSignal, inv.IDLabel)
+		}
 		emitEventInvoker(b, inv, methodName, "", "m."+inv.FieldName, wrapped)
 		if !keyed[inv.IDLabel] {
 			continue
@@ -1526,6 +1574,17 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 			preFire = fmt.Sprintf("%s((*C.GtkCalendar)(unsafe.Pointer(%s)), v)", calendarSelectHelper, w)
 		}
 	}
+	// A drop-down's carries the label chosen, which the invoker selects: the
+	// selection notifies, as a click on the choice does, so nothing is fired
+	// after it.
+	if inv.WidgetType == "GtkDropDown" {
+		valueParam = "v string"
+		if wrapped {
+			preFire = fmt.Sprintf("gtk4rt.DropDownSelect(%s, v)", w)
+		} else {
+			preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_drop_down_select((*C.GtkDropDown)(unsafe.Pointer(%s)), __v)", w)
+		}
+	}
 	params := func(p string) string {
 		if lead == "" {
 			return p
@@ -1552,7 +1611,15 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 	if preFire != "" {
 		fmt.Fprintf(b, "\t%s\n", preFire)
 	}
+	if inv.WidgetType == "GtkDropDown" {
+		b.WriteString("}\n\n")
+		return
+	}
 	switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
+	case inv.RtFire != "" && wrapped:
+		fmt.Fprintf(b, "\tgtk4rt.%s(%s)\n", inv.RtFire, w)
+	case inv.RtFire != "":
+		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s)))\n", inv.RtFire, w)
 	case inv.GTKSignal == "pressed":
 		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
 	case notify:

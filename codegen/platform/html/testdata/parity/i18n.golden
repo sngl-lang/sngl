@@ -542,7 +542,7 @@ body { font-family: system-ui, sans-serif; }
   })();
   var state = { count: 1, visible__inst0: true };
   function label(__ctx_locale) {
-    return i18n.getTranslator().tr("You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
+    return i18n.translate(__ctx_locale, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
   }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");

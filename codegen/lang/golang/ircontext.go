@@ -680,23 +680,6 @@ func (gc *GoIRContext) ElseHead() string                    { return "} else {" 
 func (gc *GoIRContext) BlockEnd() string                    { return "}" }
 func (gc *GoIRContext) Indent() string                      { return "\t" }
 
-// shadowedStateVar reports a read of a state var whose name a local of the
-// emitted scope also binds -- a render slot's `parent` parameter beside a
-// program's `var parent` -- which Resolve, asking by name, answers as the local.
-func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
-	v, ok := sym.(*ir.Var)
-	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
-		return nil, false
-	}
-	if !gc.Ctx.IsLocal(v.Name) {
-		return nil, false
-	}
-	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {
-		return v, true
-	}
-	return v, gc.Ctx.Pkg != nil && slices.Contains(gc.Ctx.Pkg.Vars, v)
-}
-
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
@@ -857,6 +840,7 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
 	if ir.IsI18nPluralKey(n) {
 		if goName := i18nPluralKeyGoName(n.Name); goName != "" {
+			gc.RequireImport(SnglI18nImportPath)
 			return "i18n." + goName
 		}
 	}
@@ -909,7 +893,8 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// package body's as much as a component's. Asking about the component
 		// alone left a package const read as a bare name against the `m.blank`
 		// field the same build declared, once the package body was the scope.
-		if gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App {
+		// A free function is written from that scope too, and has no `m`.
+		if !gc.Ctx.FreeBody && (gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App) {
 			return gc.recvFor(sym) + "." + name
 		}
 		return name
@@ -931,8 +916,8 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// A func emitted free is named the way a call to it is, exported and
 		// with no receiver: handed as a value to a component's func-typed
 		// prop, `render=encode` came out `m.encode` beside `func Encode`.
-		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] {
-			return ExportName(name)
+		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] != "" {
+			return gc.FreeFuncName(name)
 		}
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
@@ -1098,8 +1083,8 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			// A free-function scope has no Model receiver, so the call uses
 			// the exported name. A func not emitted into the lib then yields
 			// a clean "undefined" Go error rather than silent bad code.
-			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname]) {
-				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
+			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] != "") {
+				return gc.FreeFuncName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
 			// Route mode emits these as State methods under their exported
 			// name, which is also what a reference to one as a value renders
@@ -1314,6 +1299,7 @@ func (gc *GoIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	// An i18n.* entry point is the runtime package's.
 	if ir.IsI18nCall(n) {
 		if result := goBuiltinMethodFromArgs("i18n."+n.Func.Name, gc.evalCallArgs(n.Args)); result != "" {
+			gc.RequireImport(SnglI18nImportPath)
 			return result, true
 		}
 	}
@@ -2022,6 +2008,9 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	for _, p := range n.Func.Params {
 		gc = gc.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(n.Func.Block) {
+		gc = gc.WithLocal(name)
+	}
 
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -2556,10 +2545,17 @@ func (gc *GoIRContext) emitFuncBody(lines []string, fn *ir.Func, _ []string) []s
 	// from the pointer answer rather than inheriting the caller's.
 	inner := *gc
 	inner.ModelIsValue = false
+	if gc.Ctx != nil {
+		inner.Ctx = gc.Ctx.Clone()
+		inner.Ctx.FreeBody = !fn.IsMethod() && gc.MethodRecvType == "" && gc.ExtraParam == ""
+	}
 	inner.ExtraParam = ""
 	bodyGC := &inner
 	for _, p := range fn.Params {
 		bodyGC = bodyGC.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		bodyGC = bodyGC.WithLocal(name)
 	}
 	for _, stmt := range fn.Block {
 		for _, line := range bodyGC.EvalStmt(stmt) {
@@ -2709,4 +2705,13 @@ func switchCase(m *ir.MatchArms, i int, patterns []string) string {
 // writes a match expression as a switch assigning a temp.
 func (gc *GoIRContext) MatchExpr(*ir.MatchExpr) string {
 	panic("ir.MatchExpr reached Go codegen — NoTernary lifts it into a switch for every Go platform")
+}
+
+// shadowedStateVar is ExprCtx.ShadowedStateVar, for a context that may have
+// none.
+func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
+	if gc.Ctx == nil {
+		return nil, false
+	}
+	return gc.Ctx.ShadowedStateVar(sym)
 }

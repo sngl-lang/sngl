@@ -1,0 +1,97 @@
+# A function's local named like the page's var, written, on every target.
+#
+# android's test build holds the page's state in a class and respells each
+# of its vars `state.<name>`; a write was respelled by name, so the local
+# was too, and `state.count = state.count * 2` did not compile. A write is
+# respelled only for a var the package or a component declares -- sngl:http's
+# `checked()` names a local `kind`, which a page's `var kind` turned into
+# the page's.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+// Twice n, through a local named like the page's var.
+func doubled(n int) int {
+    var count = n
+    count = count * 2
+    return count
+}
+
+component page ui.node {
+    var count = 1
+
+    ui.button #twice(text="{count}", @click { count = doubled(count) })
+}
+
+ui.window {
+    page()
+}
+
+func testALocalIsNotThePagesVar(t test.Test, c page) {
+    c.twice.click()
+    t.assert(c.count == 2)
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:19b97bca9ad0036d36d6ad7c647b5a68
+{
+  "results": [
+    {
+      "Desc": "ALocalIsNotThePagesVar",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:d037d176a7fdf8dc790cbfed1bb4cf33
+{
+  "results": [
+    {
+      "Desc": "ALocalIsNotThePagesVar",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:75185c3f47488cfca7eb73f0e2dc4ab7
+{
+  "results": [
+    {
+      "Desc": "ALocalIsNotThePagesVar",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:c6dfd04dde13c8556c3011cff770de0a
+{
+  "results": [
+    {
+      "Desc": "ALocalIsNotThePagesVar",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:f38523fe08458378159dbec49ab8350b
+{
+  "results": [
+    {
+      "Desc": "ALocalIsNotThePagesVar",
+      "Passed": true
+    }
+  ]
+}

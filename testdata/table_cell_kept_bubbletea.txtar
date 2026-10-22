@@ -30,7 +30,6 @@ ui.window(title="table") {
 package main
 
 import (
-	"charm.land/bubbles/v2/table"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"duckfam.us/sngl/pkg/go/tui"
@@ -54,8 +53,8 @@ type modelState struct {
 	visible__inst0  bool
 	__focusID       int
 
-	widget0 table.Model
-	widget1 table.Model
+	widget0 tui.Table
+	widget1 tui.Table
 
 	width, height int
 }
@@ -67,20 +66,8 @@ func New() Model {
 	m.selected__inst1 = 0
 	m.visible__inst0 = true
 	m.__focusID = 0
-	m.widget0 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
-		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
-		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
-			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
-		}
-		return __out
-	}()), 10)
-	m.widget1 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
-		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
-		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
-			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
-		}
-		return __out
-	}()), 10)
+	m.widget0 = tui.NewTable(10)
+	m.widget1 = tui.NewTable(10)
 	m.resizeWidgets()
 	return m
 }
@@ -199,14 +186,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if m.__focusID == 0 {
-		m.widget0, cmd = m.widget0.Update(msg)
+		m.widget0, cmd = m.widget0.Update(msg, []string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}())
 		cmds = append(cmds, cmd)
-		m.selected__inst0 = tui.Cursor(m.widget0)
+		m.selected__inst0 = m.widget0.Cursor()
 	}
 	if m.__focusID == 1 {
-		m.widget1, cmd = m.widget1.Update(msg)
+		m.widget1, cmd = m.widget1.Update(msg, []string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}())
 		cmds = append(cmds, cmd)
-		m.selected__inst1 = tui.Cursor(m.widget1)
+		m.selected__inst1 = m.widget1.Cursor()
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -216,10 +215,22 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		content_0 = m.widget0.View()
+		content_0 = m.widget0.View([]string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}())
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
-		content_1 = m.widget1.View()
+		content_1 = m.widget1.View([]string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}())
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		content_2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.selected__inst0)))
@@ -240,4 +251,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:7864f50e298511c02be5c3ef6783b104
+pass sha256:d13e0dc7be72fe881604d27d1df39b3e

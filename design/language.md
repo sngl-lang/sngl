@@ -424,7 +424,16 @@ accepts. Both hooks now descend to lambda bodies and hoist nothing into the
 initializer, so the reason they are no-ops survives.
 `testdata/ternary_in_lambda_initializer.txtar` and
 `testdata/indexed_iter_in_lambda_initializer.txtar` pin the pair; `passNoRef`,
-the third, already had an `*ir.Lambda` arm in its rewriter.
+the third, already had an `*ir.Lambda` arm in its rewriter. A third position
+came from `passNoListLambdas`, which makes `xs.map(func(x) => …)` a loop calling
+the literal in place: the literal is then a call's `Callee`, which
+`transformExpr` never visited, so a ternary or a match in it reached the Go
+emitters from a test body or a prop
+(`cmd/sngl/testdata/list_lambda_branch_runs.txt`). The loop it makes of a call
+in a ternary's branch, a match's arm or the right side of `&&` or `||` is
+written in that branch, its value a temp each branch sets: ahead of the
+expression, `b != null ? b.items.map(f) : []` read `b.items` with `b` null
+(`cmd/sngl/testdata/list_lambda_conditional_runs.txt`).
 
 That was latent in a second place until a timer became an effect: the tick is
 then a closure handed to a host scheduler, so the same defects came back on
@@ -645,7 +654,7 @@ and the adapter's own `code`. **The latest attempt wins**: each mount numbers
 its attempt, an unmount bumps the number, and an answer whose number is stale
 writes nothing.
 
-Three general things it needed, each of its own:
+The general things it needed, each of its own:
 
 - **An effect's handler is started, not awaited** (`ir.Call.Detached`, written
   by `startOf` in the effect lowering). A call marked so colours nothing async
@@ -669,6 +678,32 @@ Three general things it needed, each of its own:
   prop, so `fetch`'s signature is never coloured: it is every check's
   declaration, and the call through it is a direct or a literal call by the
   time it is emitted.
+- **A query built at run time waits as its fetch does** (`passAsyncProps`): a
+  query written straight under a `for` is the instance itself, so `fetch`
+  stays its prop, which nothing coloured. A func-typed prop of a component
+  built at run time is typed as a function that waits wherever a call site
+  hands it one, before passEffect colours the mount; html read the Promise
+  its fetch returned as the answer, fyne and gtk4 fetched on the drawing
+  thread, and android's composable took a suspend function as a plain one;
+  Kotlin spells a function type that waits `suspend`. The value the call goes
+  through is bound ahead of the goroutine with the arguments, since a setter
+  writes it (`testdata/async_query_fetch_prop.txtar`,
+  `cmd/sngl/testdata/async_query_fetch_prop_runs.txt`).
+- **An effect whose key reads a node mounts again wherever the node is
+  built** (`remountOnBuild`): a call after the node lets go of the keys the
+  bracket holds, unmounting them, and the next settle mounts it. A render
+  that builds the node afresh frees the old one, and the new one may be handed
+  its address, so a key holding the node compared equal: gtk4's select offered
+  a rebuilt drop-down nothing. Such a bracket settles on any write to its
+  owner's state, which is what may build the node again
+  (`cmd/sngl/testdata/select_rebuilt_slot_runs.txt`).
+- **A torn-down scope settles nothing** (`effectGroup.torn`): the teardown
+  sets the flag before it ends any bracket, and a settle after it returns. An
+  answer reaching a destroyed instance is stale, but a stale answer still
+  settles when another bracket keys on what it writes, and that settle found
+  the brackets the teardown had let go of wanted and mounted them again: a
+  second request, and a render into the box the destroy had freed, which
+  crashed gtk4 (`cmd/sngl/testdata/async_query_destroyed_instance_runs.txt`).
 
 On bubbletea the mount's tail is posted back through Update like any other
 `async.do` (see the bubbletea platform), so a fetch that waits runs there too
@@ -715,6 +750,22 @@ callback cannot supply. So **taking a function is reading what it reads**:
 or a component that takes one (an adapter's `fetch=lookup`) under a provider
 its caller wrote was no reader of the context, was handed no value, and bound
 the default (`testdata/context_func_value_under_provider.txtar`).
+
+**An effect handler with no statements is a function that returns**
+(`handlerFunc`): still declared, since `@update {}` decides which handler a
+write reaches, but an empty body is a signature to the Go emitter, which wrote
+no method for the call the effect makes, and the Go targets did not build
+(`cmd/sngl/testdata/effect_empty_handler_runs.txt`).
+
+**Slot content stands under the providers its component wraps the slot in.**
+The content is the caller's, so the lowering hands it the provider's value as
+the callee wrote it (`collectSlotEnv`) -- a read of the callee's var or prop
+in the caller's content. The splice binds those reads as it binds the callee's
+own body, by symbol, after putting the content in the slot
+(`calleeReadsInContent`): it had renamed the var and bound the prop in the
+body only, so `tone(picked) { content }` left the content reading a `picked`
+the caller never declared, and the Go targets did not build
+(`cmd/sngl/testdata/context_slot_provider_reads_callee_state_runs.txt`).
 
 **A context a directory or scheme package declares is part of what it
 exports** (`mergePkgInto`), as a library's is: `p.server(v) { … }` provides

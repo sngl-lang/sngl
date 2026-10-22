@@ -188,6 +188,16 @@ func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component)
 				}
 				pd.Type = nil
 			}
+			// A prop its default types has its type once the declaration's
+			// defaults are checked, ahead of every body (ensurePropDefaults),
+			// and a restated type is held to it then.
+			if prop := props[pd.Name]; prop != nil && pd.Type != nil && prop.Type.Kind == ir.TypeInvalid {
+				restated := pd.Type
+				pd.Type = nil
+				c.afterPropDefaults = append(c.afterPropDefaults, func() {
+					c.bindParamType(restated, prop.Type, bindParamWhat(pd.Name, "override "+strconv.Quote(decl.Name)))
+				})
+			}
 			if !c.selectEntry(decl.Name, pd, want, found, seen) {
 				continue
 			}

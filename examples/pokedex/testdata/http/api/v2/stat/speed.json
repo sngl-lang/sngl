@@ -1,0 +1,118 @@
+{
+ "affecting_items": [
+  {
+   "name": "carbos",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/48/"
+  },
+  {
+   "name": "x-speed",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/59/"
+  }
+ ],
+ "affecting_moves": {
+  "decrease": [
+   {
+    "change": -1,
+    "move": {
+     "name": "bubble-beam",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/61/"
+    }
+   },
+   {
+    "change": -2,
+    "move": {
+     "name": "string-shot",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/81/"
+    }
+   }
+  ],
+  "increase": [
+   {
+    "change": 2,
+    "move": {
+     "name": "agility",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/97/"
+    }
+   },
+   {
+    "change": 1,
+    "move": {
+     "name": "rapid-spin",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/229/"
+    }
+   }
+  ]
+ },
+ "affecting_natures": {
+  "decrease": [
+   {
+    "name": "brave",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/21/"
+   },
+   {
+    "name": "relaxed",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/22/"
+   }
+  ],
+  "increase": [
+   {
+    "name": "timid",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/5/"
+   },
+   {
+    "name": "hasty",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/10/"
+   }
+  ]
+ },
+ "characteristics": [
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/6/"
+  },
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/12/"
+  }
+ ],
+ "game_index": 4,
+ "id": 6,
+ "is_battle_only": false,
+ "move_damage_class": null,
+ "name": "speed",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "すばやさ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Vitesse"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Initiative"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Velocidad"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Speed"
+  }
+ ]
+}

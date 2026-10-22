@@ -1,4 +1,5 @@
 import async "sngl:async"
+import i18n "sngl:i18n"
 import poke "openapi:./pokeapi.yml"
 import ui "sngl:ui"
 
@@ -6,70 +7,350 @@ import ui "sngl:ui"
 // against.
 const maxStat = 255
 
-// One Pokémon: its picture, its types, its base stats as bars, and the
-// Pokémon it evolves from and into. The evolution chain is two requests
-// behind the first -- the species names its chain, and the chain names its
-// stages -- each a query under an `if` on the answer before it, keyed on
-// what that answer said.
-component detailPage(name string, @open(name string)) ui.node {
+// One species: a header of its artwork, name, number, genus and types over
+// tabs about it. The page asks for the species, and then for the Pokémon it
+// shows -- `form`, one of its varieties, or its default variety where that is
+// "" -- keyed on what the species said: a species name is not always a
+// Pokémon's. Its evolution chain is a third request, keyed on the chain's id;
+// a stage of it, or a form, opens that page, `form` "" for a species' own.
+// Every name the page shows of a resource of its own -- a type, an ability,
+// a move -- is a request keyed on it, made where the name is shown, and
+// `names` keeps each answer's names in every language.
+component detailPage(name string, form = "", @back(), @open(name string, form string)) ui.node {
+    var about option[poke.PokemonSpeciesDetail] = null
     var mon option[poke.PokemonDetail] = null
+    var shape option[poke.PokemonFormDetail] = null
     var loading = false
     var failure option[async.Failure] = null
+    var monFailure option[async.Failure] = null
+    var evolution option[poke.EvolutionChainDetail] = null
+    var tab = 0
+    var method = "level-up"
+    var methodLabel = $"Level"
+    var names map[string, list[Named]] = {}
+    var moveFacts map[string, MoveFact] = {}
 
-    poke.pokemonRetrieve(id=name, :value=mon, :pending=loading, :failure=failure)
+    // The Pokémon the page shows: the form asked for, or the species' default.
+    func shown() => about != null ? form != "" ? form : defaultVariety(about.varieties, about.name) : form
 
-    ui.vbox(style={gap=8px, padding=8px}) {
-        ui.text #title(value=display(name), style={fontSize=24px, fontWeight=bold})
-        if mon == null && loading {
-            ui.spinner(label="Loading {name}")
+    // The official artwork of the Pokémon shown, as the `artwork` context says
+    // where: a form's is numbered by its Pokémon, not its species.
+    func picture() => about != null ? artworkOf(artwork, varietyId(about.varieties, shown(), "{about.id}")) : ""
+
+    // The page's title: the species' name, or the form's where it shows one.
+    func heading() string {
+        if about != null {
+            var species = speciesName(about.names, about.name)
+            return form != "" && shape != null ? formName(shape.names, species) : species
         }
-        if failure != null {
-            ui.text #failed(value="Could not load {name}: {failure.message}")
+        return display(name)
+    }
+
+    // The Pokémon's pictures, labelled.
+    func pictures() list[Sprite] {
+        return mon != null ? gallery(mon.sprites) : []
+    }
+
+    // The species' other varieties, each a form the Sprites tab lists by name.
+    func forms() list[string] {
+        return about != null ? otherVarieties(about.varieties, shown()).map(func(v poke.PokemonSpeciesVariety) => v.pokemon.name) : []
+    }
+
+    // Opens the species' page showing `pokemon`, `form` "" for its default.
+    func formOf(pokemon string) => about != null && pokemon == defaultVariety(about.varieties, about.name) ? "" : pokemon
+
+    // The moves the Pokémon learns the way PokéAPI names `method`, in the
+    // latest game of the dex chosen on home that it learns any in.
+    func moveRows() list[MoveRow] {
+        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), method, moveFacts, names) : []
+    }
+
+    // The moves the Moves tab shows, each once.
+    func moveSlugs() => slugsOf(moveRows().map(func(r MoveRow) => "move/{r.move}"), `move`)
+
+    // The types of the moves the Moves tab shows, each once, as their answers
+    // arrive.
+    func moveTypes() => slugsOf(moveSlugs().filter(func(m string) => moveFacts.contains(m)).map(func(m string) => "type/{moveFacts[m].kind}"), `type`)
+
+    // The names of `kind` the Evolution tab shows.
+    func chainSlugs(kind string) list[string] {
+        return evolution != null ? chainNames(evolution.chain, kind) : []
+    }
+
+    // The species' evolution chain, a row for each line through it.
+    func chainRows() list[list[Stage]] {
+        return evolution != null ? evolutionRows(evolution.chain, names) : []
+    }
+
+    poke.pokemonSpeciesRetrieve(id=name, :value=about, :pending=loading, :failure=failure)
+    if about != null {
+        poke.pokemonRetrieve(id=shown(), :value=mon, :failure=monFailure)
+        poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=evolution)
+    }
+    if form != "" && mon != null && mon.forms.length() > 0 {
+        poke.pokemonFormRetrieve(id=mon.forms[0].name, :value=shape)
+    }
+
+    ui.vbox(style={gap=8px, padding=8px, flex=1}) {
+        ui.hbox {
+            ui.button #backButton(text=$"‹ Back", @click { back() })
         }
-        if mon != null {
-            if mon.sprites.frontDefault != null {
-                ui.image(alt=name, style={width=96px, height=96px}) {
-                    ui.remote(url=mon.sprites.frontDefault)
+        ui.scroll(style={flex=1}) {
+            ui.vbox(style={gap=8px}) {
+                if about == null && loading {
+                    ui.spinner(label=loadingName(display(name)))
+                }
+                if failure != null {
+                    ui.text #failed(value=couldNotLoad(display(name), failure.message))
+                }
+                if monFailure != null {
+                    ui.text(value=couldNotLoadMon(display(name), monFailure.message))
+                }
+                if about != null {
+                    ui.hbox(style={gap=16px, alignItems=center}) {
+                        ui.image(alt=about.name, style={width=192px, height=192px}) {
+                            ui.remote(url=picture())
+                        }
+                        ui.vbox(style={gap=4px}) {
+                            ui.text #title(value=heading(), style={fontSize=28px, fontWeight=bold})
+                            ui.text #nationalNo(value=number(about.id))
+                            ui.text #genus(value=genusOf(about.genera))
+                            if mon != null {
+                                ui.hbox(style={gap=4px}) {
+                                    for var t = mon.types {
+                                        poke.typeRetrieve(id=t.type.name, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                        typeBadge #types(kind=t.type.name, value=called(names, `type`, t.type.name))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ui.tabs #tabs(:selected=tab) {
+                        ui.tab(label=$"About") {
+                            ui.vbox(style={gap=6px, padding=8px}) {
+                                ui.text #flavor(value=latestFlavor(about.flavorTextEntries))
+                                if mon != null {
+                                    for var a = mon.abilities {
+                                        poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
+                                    }
+                                    fact(label=$"Height") {
+                                        ui.text #height(value=mon.height != null ? metres(heightOf(mon.height)) : $"Unknown")
+                                    }
+                                    fact(label=$"Weight") {
+                                        ui.text #weight(value=mon.weight != null ? kilograms(weightOf(mon.weight)) : $"Unknown")
+                                    }
+                                    fact(label=$"Abilities") {
+                                        ui.text #abilities(value=abilitiesOf(mon.abilities, names))
+                                    }
+                                }
+                                if about.habitat != null {
+                                    poke.pokemonHabitatRetrieve(id=about.habitat.name, @load(got) { names["habitat/{got.name}"] = habitatNamed(got.names) })
+                                }
+                                for var g = about.eggGroups {
+                                    poke.eggGroupRetrieve(id=g.name, @load(got) { names["egg-group/{got.name}"] = eggGroupNamed(got.names) })
+                                }
+                                fact(label=$"Habitat") {
+                                    ui.text #habitat(value=about.habitat != null ? called(names, `habitat`, about.habitat.name) : $"Unknown")
+                                }
+                                fact(label=$"Egg groups") {
+                                    ui.text #eggGroups(value=namesOf(`egg-group`, about.eggGroups.map(func(g poke.EggGroupSummary) => g.name), names))
+                                }
+                                fact(label=$"Gender") {
+                                    ui.text #gender(value=about.genderRate != null ? genderOf(about.genderRate) : $"Unknown")
+                                }
+                                fact(label=$"Capture rate") {
+                                    ui.text #capture(value=about.captureRate != null ? i18n.numberInt(about.captureRate) : $"Unknown")
+                                }
+                            }
+                        }
+                        ui.tab(label=$"Stats") {
+                            ui.vbox(style={gap=6px, padding=8px}) {
+                                if mon != null {
+                                    for var s = mon.stats {
+                                        poke.statRetrieve(id=s.stat.name, @load(got) { names["stat/{got.name}"] = statNamed(got.names) })
+                                        ui.hbox(style={gap=8px, alignItems=center}) {
+                                            ui.text #statName(value=statLabel(s.stat.name, names), style={width=120px})
+                                            ui.text #base(value="{s.baseStat}", style={width=40px})
+                                            ui.progress(value=float(s.baseStat), max=float(maxStat), label=statLabel(s.stat.name, names), style={flex=1})
+                                        }
+                                    }
+                                    fact(label=$"Total") {
+                                        ui.text #total(value="{statTotal(mon.stats)}")
+                                    }
+                                    fact(label=$"EVs given") {
+                                        ui.text #effort(value=effortOf(mon.stats, names))
+                                    }
+                                }
+                            }
+                        }
+                        ui.tab(label=$"Evolution") {
+                            ui.vbox(style={gap=12px, padding=8px}) {
+                                for var slug = chainSlugs(`item`) {
+                                    poke.itemRetrieve(id=slug, @load(got) { names["item/{got.name}"] = itemNamed(got.names) })
+                                }
+                                for var slug = chainSlugs(`type`) {
+                                    poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                }
+                                for var slug = chainSlugs(`move`) {
+                                    poke.moveRetrieve(id=slug, @load(got) { names["move/{got.name}"] = moveNamed(got.names) })
+                                }
+                                for var slug = chainSlugs(`trigger`) {
+                                    poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{got.name}"] = triggerNamed(got.names) })
+                                }
+                                for var row = chainRows() {
+                                    ui.hbox(style={gap=8px, alignItems=center}) {
+                                        for var stage = row {
+                                            ui.vbox(style={gap=8px}) {
+                                                ui.hbox(style={gap=8px, alignItems=center}) {
+                                                    if stage.trigger != "" {
+                                                        ui.vbox(style={alignItems=center, width=96px}) {
+                                                            ui.text(value="→")
+                                                            ui.text #trigger(value=stage.trigger)
+                                                        }
+                                                    }
+                                                    stageCard #step(stage=stage, @open { open(stage.name, "") })
+                                                }
+                                                for var f = stage.forms {
+                                                    ui.hbox(style={gap=8px, alignItems=center}) {
+                                                        ui.vbox(style={alignItems=center, width=96px}) {
+                                                            ui.text(value="→")
+                                                            ui.text #formTrigger(value=f.trigger)
+                                                        }
+                                                        formCard #formStep(form=f.form, @open(p) { open(stage.name, p) })
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ui.tab(label=$"Sprites") {
+                            ui.vbox(style={gap=8px, padding=8px}) {
+                                for var row = rows(pictures(), 4) {
+                                    ui.hbox(style={gap=8px}) {
+                                        for var p = row {
+                                            ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+                                                ui.image(alt=p.label, style={width=96px, height=96px}) {
+                                                    ui.remote(url=p.url)
+                                                }
+                                                ui.text #spriteLabel(value=p.label)
+                                            }
+                                        }
+                                    }
+                                }
+                                if forms().length() > 0 {
+                                    ui.text(value=$"Forms", style={fontWeight=bold})
+                                    ui.hbox(style={gap=8px}) {
+                                        for var v = forms() {
+                                            formCard #variety(form=v, @open(p) { open(name, formOf(p)) })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ui.tab(label=$"Moves") {
+                            ui.vbox(style={gap=8px, padding=8px}) {
+                                for var slug = moveSlugs() {
+                                    poke.moveRetrieve(id=slug, @load(got) {
+                                        names["move/{got.name}"] = moveNamed(got.names)
+                                        moveFacts[got.name] = moveFactOf(got)
+                                    })
+                                }
+                                for var slug = moveTypes() {
+                                    poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                }
+                                // The way is PokéAPI's name, and the select
+                                // shows its label in the reader's language,
+                                // written again as the language changes.
+                                effect(on=i18n.locale, @mount(l) { methodLabel = methodLabelled(method) })
+                                ui.select #methodPick(:value=methodLabel, @change(v) { method = methodNamed(v) }) {
+                                    for var m = learnMethods() {
+                                        ui.choice(label=m.label)
+                                    }
+                                }
+                                ui.vbox #moveTable(style={gap=4px}) {
+                                    moveLine(level=$"Level", name=$"Move", power=$"Power", accuracy=$"Accuracy", style={fontWeight=bold}) {
+                                        ui.text(value=$"Type", style={fontWeight=bold})
+                                    }
+                                    ui.divider()
+                                    for var r = moveRows() {
+                                        moveLine(level=r.level, name=r.name, power=r.power, accuracy=r.accuracy) {
+                                            if r.kind != "" {
+                                                typeBadge(kind=r.kindSlug, value=r.kind)
+                                            }
+                                        }
+                                    }
+                                }
+                                if mon != null {
+                                    ui.text #movesCount(value=movesNote(moveRows().length()))
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            ui.text #number(value="No. {mon.id}")
-            ui.hbox(style={gap=4px}) {
-                for var t = mon.types {
-                    ui.badge(value=t.type.name)
-                }
-            }
-            for var s = mon.stats {
-                ui.hbox(style={gap=8px, alignItems=center}) {
-                    ui.text(value=s.stat.name, style={width=120px})
-                    ui.progress(value=float(s.baseStat), max=float(maxStat), label=s.stat.name, style={flex=1})
-                    ui.text(value="{s.baseStat}")
-                }
-            }
-            evolution(species=mon.species.name, @open(n) { open(n) })
         }
     }
 }
 
-// The stages of the evolution chain `species` belongs to, each a link to
-// its own page but the one showing.
-component evolution(species string, @open(name string)) ui.node {
-    var about option[poke.PokemonSpeciesDetail] = null
-    var chain option[poke.EvolutionChainDetail] = null
+// A type as a badge in the type's own colour: `value`, its name in the
+// reader's language, and `kind`, PokéAPI's, which picks the colour.
+component typeBadge(kind string, value string) ui.node {
+    ui.badge(value=value, style={background=typeColor(kind), color=typeInk(kind)})
+}
 
-    poke.pokemonSpeciesRetrieve(id=species, :value=about)
-    if about != null {
-        poke.evolutionChainRetrieve(id=idOf(about.evolutionChain.url), :value=chain)
+// One line of the Moves tab, the headings' or a move's: its level, name,
+// type, power and accuracy, each in a column of its own width so the lines
+// line up. The type is a slot, so a move's can be its badge.
+component moveLine(level string, name string, power string, accuracy string, style = ui.Style{}, kind ...component ui.node) ui.node {
+    ui.hbox(style={gap=8px, alignItems=center}) {
+        ui.text(value=level, style={width=48px, ...style})
+        ui.text(value=name, style={flex=1, ...style})
+        ui.hbox(style={width=88px}) {
+            kind
+        }
+        ui.text(value=power, style={width=56px, ...style})
+        ui.text(value=accuracy, style={width=80px, ...style})
     }
-    if chain != null {
-        ui.hbox #chainRow(style={gap=8px, alignItems=center}) {
-            ui.text(value="Evolution:")
-            for var stage = stages(chain.chain) {
-                if stage == species {
-                    ui.text(value=display(stage), style={fontWeight=bold})
-                } else {
-                    ui.button(text=display(stage), @click { open(stage) })
-                }
+}
+
+// One line of a tab: what it says, and the value beside it.
+component fact(label string, value ...component ui.node) ui.node {
+    ui.hbox(style={gap=8px}) {
+        ui.text(value=label, style={width=120px, fontWeight=bold})
+        value
+    }
+}
+
+// One stage of an evolution chain: its artwork and its name, which opens its
+// page. Its picture comes from the species id, so a card asks for nothing.
+component stageCard(stage Stage, @open()) ui.node {
+    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+        ui.image(alt=stage.name, style={width=96px, height=96px}) {
+            ui.remote(url=artworkOf(artwork, stage.id))
+        }
+        ui.button(text=display(stage.name), @click { open() })
+    }
+}
+
+// A form of a species -- a Pokémon of it, as Alolan Vulpix is of Vulpix --
+// as its picture and its name, which opens its species' page showing it. A
+// form is not a species, so nothing in the species says its name or which
+// artwork is its own: the card asks for the form, named as PokéAPI names a
+// variety's form after the Pokémon, and the answer names the Pokémon whose
+// number the artwork is.
+component formCard(form string, @open(pokemon string)) ui.node {
+    var got option[poke.PokemonFormDetail] = null
+
+    poke.pokemonFormRetrieve(id=form, :value=got)
+
+    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+        if got != null {
+            ui.image(alt=form, style={width=96px, height=96px}) {
+                ui.remote(url=artworkOf(artwork, idOf(got.pokemon.url)))
             }
         }
+        ui.button #formLabel(text=got != null ? formName(got.names, display(form)) : display(form), @click { open(got != null ? got.pokemon.name : form) })
     }
 }

@@ -1,0 +1,2329 @@
+# Every example's own tests, on all six targets, copied in as the repository
+# ships them. An example's recorded answers are its testdata/http, which the
+# script harness's server serves under /examples/{name}/
+# (internal/testhttp), and `./...` leaves testdata out of the walk.
+#
+# html runs each component a test takes as a page of its own, so an example
+# whose window is served in route mode is tested as a static page there too.
+#
+# 80 is every example's tests together, so one dropping out of the walk fails.
+#
+# A test that sets no locale reads the process's, and the examples' tests that
+# set none read English.
+
+env LC_ALL=en_US.UTF-8
+exec cp -r $SNGL_ROOT/examples .
+
+sngl test --platform=none ./examples/...
+stdout '^ok +80 tests, 0 failures$'
+! stdout SKIP
+
+sngl test --platform=html ./examples/...
+stdout '^ok +80 tests, 0 failures$'
+! stdout SKIP
+
+sngl test --platform=fyne --language=go ./examples/...
+stdout '^ok +80 tests, 0 failures$'
+! stdout SKIP
+
+sngl test --platform=gtk4 --language=go ./examples/...
+stdout '^ok +80 tests, 0 failures$'
+! stdout SKIP
+
+sngl test --platform=bubbletea --language=go ./examples/...
+stdout '^ok +80 tests, 0 failures$'
+! stdout SKIP
+
+sngl test --platform=android --language=kotlin ./examples/...
+stdout '^ok +80 tests, 0 failures$'
+! stdout SKIP
+-- testrun/android/kotlin/app.sngl/Calculator/1 --
+sha256:33fa3324b288a1ff05b14ed755114ed2
+{
+  "results": [
+    {
+      "Desc": "PressingKeysDrivesTheCalculator",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/Tour/1 --
+sha256:a4857caa5df44691604187e7833de54b
+{
+  "results": [
+    {
+      "Desc": "GreetingDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "InitialCount",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:3bd937f286d363085b088148ee33fa53
+{
+  "results": [
+    {
+      "Desc": "ANewOperationReplacesTheRepeat",
+      "Passed": true
+    },
+    {
+      "Desc": "Addition",
+      "Passed": true
+    },
+    {
+      "Desc": "AdditionDoesNotLeakFloatNoise",
+      "Passed": true
+    },
+    {
+      "Desc": "AsciiRows",
+      "Passed": true
+    },
+    {
+      "Desc": "Backspace",
+      "Passed": true
+    },
+    {
+      "Desc": "ChainedOperatorsSettleAsYouGo",
+      "Passed": true
+    },
+    {
+      "Desc": "DigitsAccumulate",
+      "Passed": true
+    },
+    {
+      "Desc": "DivideByZeroIsAnErrorState",
+      "Passed": true
+    },
+    {
+      "Desc": "DivisionRounds",
+      "Passed": true
+    },
+    {
+      "Desc": "EntryIsCappedAtTheDisplayWidth",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsAloneIsInert",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "GlyphSegments",
+      "Passed": true
+    },
+    {
+      "Desc": "KeypadCoversEveryKey",
+      "Passed": true
+    },
+    {
+      "Desc": "LeadingZeroIsReplaced",
+      "Passed": true
+    },
+    {
+      "Desc": "NegateAndPercent",
+      "Passed": true
+    },
+    {
+      "Desc": "PendingLine",
+      "Passed": true
+    },
+    {
+      "Desc": "PointOnceOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "PointWithNothingTypedStartsAtZero",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadoutCells",
+      "Passed": true
+    },
+    {
+      "Desc": "RepeatKeepsTheRightOperand",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/alolan/1 --
+sha256:63a2c5dbba03060aa85a313a741530e3
+{
+  "results": [
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/back/1 --
+sha256:a460dd0c63b74ac9da1ef2848c52cc38
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheDexChosen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/bud/1 --
+sha256:14d2edd63993bfb573ee19775064a483
+{
+  "results": [
+    {
+      "Desc": "StatsGiveEveryEffort",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/chains/1 --
+sha256:45b296138884dd803bf1dc3fd374b7cc
+{
+  "results": [
+    {
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/dexes/1 --
+sha256:333d9741a6fc8f6322fe9e575ea478bc
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/flame/1 --
+sha256:14338fc0124cf7c682adcbdeb095453a
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/fluff/1 --
+sha256:3d372a5ebd7b3076305d0e3b4f721207
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/fox/1 --
+sha256:d4500f5cd2c379893ff37d2d5cb62035
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/home/1 --
+sha256:270563b3694ceb548938e90664175c06
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/mons/1 --
+sha256:de779eaa9f3c97951713923fde621268
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/mouse/1 --
+sha256:64ffbad5b6b91d2dc5fa0b15a66cadb7
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/named/1 --
+sha256:b533bad43ff91685814f1ef92e9fc4ac
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/roam/1 --
+sha256:ffd15fe4c0562f53c6d9c79af4c89ebb
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/seed/1 --
+sha256:bd5372cc51276706416511ee554c5bf0
+{
+  "results": [
+    {
+      "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ALanguageTheAPILacksFallsBack",
+      "Passed": true
+    },
+    {
+      "Desc": "AMethodWithNoMoves",
+      "Passed": true
+    },
+    {
+      "Desc": "AMoveGivesItsTypePowerAndAccuracy",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInJapanese",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypeAndAnAbilityInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypesBadgeTakesItsKindsColour",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
+      "Passed": true
+    },
+    {
+      "Desc": "HowManyMovesIsAPlural",
+      "Passed": true
+    },
+    {
+      "Desc": "JapaneseFallsBackToKana",
+      "Passed": true
+    },
+    {
+      "Desc": "MovesAreByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheAppsOwnWordsInGerman",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheMethodOutlivesALanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/shapes/1 --
+sha256:9e1d8b61e11749281ed92c878deb53bf
+{
+  "results": [
+    {
+      "Desc": "EveryFormDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/shell/1 --
+sha256:e171c95abc860ebdc67e1b92a6c31284
+{
+  "results": [
+    {
+      "Desc": "TheLanguageChoiceTranslatesThePages",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/spark/1 --
+sha256:3897b71192b64d245ca0340ff56714b9
+{
+  "results": [
+    {
+      "Desc": "TappingAnAlolanFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/species/1 --
+sha256:090a520372bef831c4beef797944118b
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/trip/1 --
+sha256:c34a59d4d7c5e1a75ffd4c90934e5b9d
+{
+  "results": [
+    {
+      "Desc": "MovesFollowTheDexChosenAtHome",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/walk/1 --
+sha256:a379a8462bb87fb53dfebadde61f3df1
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/Calculator/1 --
+sha256:a50db25153cd92cb0c25ad8329d89313
+{
+  "results": [
+    {
+      "Desc": "PressingKeysDrivesTheCalculator",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/Tour/1 --
+sha256:0607a0f415ddde52b2ab460bb76b1c9e
+{
+  "results": [
+    {
+      "Desc": "GreetingDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "InitialCount",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:0813353cfea9008d3012a4661f9e7d02
+{
+  "results": [
+    {
+      "Desc": "ANewOperationReplacesTheRepeat",
+      "Passed": true
+    },
+    {
+      "Desc": "Addition",
+      "Passed": true
+    },
+    {
+      "Desc": "AdditionDoesNotLeakFloatNoise",
+      "Passed": true
+    },
+    {
+      "Desc": "AsciiRows",
+      "Passed": true
+    },
+    {
+      "Desc": "Backspace",
+      "Passed": true
+    },
+    {
+      "Desc": "ChainedOperatorsSettleAsYouGo",
+      "Passed": true
+    },
+    {
+      "Desc": "DigitsAccumulate",
+      "Passed": true
+    },
+    {
+      "Desc": "DivideByZeroIsAnErrorState",
+      "Passed": true
+    },
+    {
+      "Desc": "DivisionRounds",
+      "Passed": true
+    },
+    {
+      "Desc": "EntryIsCappedAtTheDisplayWidth",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsAloneIsInert",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "GlyphSegments",
+      "Passed": true
+    },
+    {
+      "Desc": "KeypadCoversEveryKey",
+      "Passed": true
+    },
+    {
+      "Desc": "LeadingZeroIsReplaced",
+      "Passed": true
+    },
+    {
+      "Desc": "NegateAndPercent",
+      "Passed": true
+    },
+    {
+      "Desc": "PendingLine",
+      "Passed": true
+    },
+    {
+      "Desc": "PointOnceOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "PointWithNothingTypedStartsAtZero",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadoutCells",
+      "Passed": true
+    },
+    {
+      "Desc": "RepeatKeepsTheRightOperand",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/alolan/1 --
+sha256:774ce4d24e13ab106840b698f56dae61
+{
+  "results": [
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/back/1 --
+sha256:bc38cc93249ccfd035669f8bee726dd4
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheDexChosen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/bud/1 --
+sha256:38c3c486db5b2f7cd17a5372b782a759
+{
+  "results": [
+    {
+      "Desc": "StatsGiveEveryEffort",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/chains/1 --
+sha256:1555c13c42ca1606af19664fd260f9b7
+{
+  "results": [
+    {
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/dexes/1 --
+sha256:4c988e97a49eecca196644bef939e9cd
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/flame/1 --
+sha256:199f1c8b7d2b854093d96a0d61a17a49
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/fluff/1 --
+sha256:76f16e73bd6b95a7a19091dd06d2c72d
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/fox/1 --
+sha256:20dd125a8ecc8c8d40e50433c6420514
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/home/1 --
+sha256:3f5cfacfc1daebd0828185b331b676d5
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/mons/1 --
+sha256:a9a53d16401f7287fdacb73a7c6d7b3c
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/mouse/1 --
+sha256:1ca53197181caff8af1b901f2d9ad5f5
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/named/1 --
+sha256:415480d4873c17330c08b08c064c0137
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/roam/1 --
+sha256:2321a2c25b49796173a58523f45d061c
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/seed/1 --
+sha256:6b6e16bd4f927083a4dacfc1a4f428f3
+{
+  "results": [
+    {
+      "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ALanguageTheAPILacksFallsBack",
+      "Passed": true
+    },
+    {
+      "Desc": "AMethodWithNoMoves",
+      "Passed": true
+    },
+    {
+      "Desc": "AMoveGivesItsTypePowerAndAccuracy",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInJapanese",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypeAndAnAbilityInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypesBadgeTakesItsKindsColour",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
+      "Passed": true
+    },
+    {
+      "Desc": "HowManyMovesIsAPlural",
+      "Passed": true
+    },
+    {
+      "Desc": "JapaneseFallsBackToKana",
+      "Passed": true
+    },
+    {
+      "Desc": "MovesAreByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheAppsOwnWordsInGerman",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheMethodOutlivesALanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shapes/1 --
+sha256:38e5b241971ce5a44b2497e8d9d5ed6c
+{
+  "results": [
+    {
+      "Desc": "EveryFormDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shell/1 --
+sha256:b23918033e758ef93920d94ff81e0757
+{
+  "results": [
+    {
+      "Desc": "TheLanguageChoiceTranslatesThePages",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/spark/1 --
+sha256:2c0aadba920e611b9b5442b28bfc3b90
+{
+  "results": [
+    {
+      "Desc": "TappingAnAlolanFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/species/1 --
+sha256:52e8ed36de66af2766ce67740833a0eb
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/trip/1 --
+sha256:f305a012809426054c7ca39abb80fdb0
+{
+  "results": [
+    {
+      "Desc": "MovesFollowTheDexChosenAtHome",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/walk/1 --
+sha256:4c92f2c395c689496e54e4160947dadb
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/Calculator/1 --
+sha256:8b483394f04a6dc7e3d116cc74516bed
+{
+  "results": [
+    {
+      "Desc": "PressingKeysDrivesTheCalculator",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/Tour/1 --
+sha256:e363af8f69afc7178c2ef0ced2f3e536
+{
+  "results": [
+    {
+      "Desc": "GreetingDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "InitialCount",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:6c5b4fc9a458fab68eecd18680d0564f
+{
+  "results": [
+    {
+      "Desc": "ANewOperationReplacesTheRepeat",
+      "Passed": true
+    },
+    {
+      "Desc": "Addition",
+      "Passed": true
+    },
+    {
+      "Desc": "AdditionDoesNotLeakFloatNoise",
+      "Passed": true
+    },
+    {
+      "Desc": "AsciiRows",
+      "Passed": true
+    },
+    {
+      "Desc": "Backspace",
+      "Passed": true
+    },
+    {
+      "Desc": "ChainedOperatorsSettleAsYouGo",
+      "Passed": true
+    },
+    {
+      "Desc": "DigitsAccumulate",
+      "Passed": true
+    },
+    {
+      "Desc": "DivideByZeroIsAnErrorState",
+      "Passed": true
+    },
+    {
+      "Desc": "DivisionRounds",
+      "Passed": true
+    },
+    {
+      "Desc": "EntryIsCappedAtTheDisplayWidth",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsAloneIsInert",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "GlyphSegments",
+      "Passed": true
+    },
+    {
+      "Desc": "KeypadCoversEveryKey",
+      "Passed": true
+    },
+    {
+      "Desc": "LeadingZeroIsReplaced",
+      "Passed": true
+    },
+    {
+      "Desc": "NegateAndPercent",
+      "Passed": true
+    },
+    {
+      "Desc": "PendingLine",
+      "Passed": true
+    },
+    {
+      "Desc": "PointOnceOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "PointWithNothingTypedStartsAtZero",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadoutCells",
+      "Passed": true
+    },
+    {
+      "Desc": "RepeatKeepsTheRightOperand",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/alolan/1 --
+sha256:0af0a880d78ac1463e3b13257627a54b
+{
+  "results": [
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/back/1 --
+sha256:086c02847af9005a7a6de3aa6b734678
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheDexChosen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/bud/1 --
+sha256:7966129485f9c3ed4e97ceb147911dd7
+{
+  "results": [
+    {
+      "Desc": "StatsGiveEveryEffort",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/chains/1 --
+sha256:5fa560a4fda07a4fbf818fa4ae9ba9ce
+{
+  "results": [
+    {
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/dexes/1 --
+sha256:8834450a59ac27cea2a87b5d0771aca1
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/flame/1 --
+sha256:2ebc9218b03495b41beaa2271aa06cc5
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/fluff/1 --
+sha256:ffbe611009905e09a3c1194ee7525de2
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/fox/1 --
+sha256:a81dc59ca09d34b06528c0536606fb90
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/home/1 --
+sha256:c9769e4b0d4715e8e0c6facd6693ff5d
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/mons/1 --
+sha256:5c41cfa957b0cd40f9ed8de5dc0dff82
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/mouse/1 --
+sha256:75be6a6d01d6176ebbcf0556401e7c6a
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/named/1 --
+sha256:dbf7895f22afe24affde349c59da1462
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/roam/1 --
+sha256:2ff670efd9d718b8b8c4a4c72db3822c
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/seed/1 --
+sha256:63c12119b356a4923061222ef10c450d
+{
+  "results": [
+    {
+      "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ALanguageTheAPILacksFallsBack",
+      "Passed": true
+    },
+    {
+      "Desc": "AMethodWithNoMoves",
+      "Passed": true
+    },
+    {
+      "Desc": "AMoveGivesItsTypePowerAndAccuracy",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInJapanese",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypeAndAnAbilityInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypesBadgeTakesItsKindsColour",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
+      "Passed": true
+    },
+    {
+      "Desc": "HowManyMovesIsAPlural",
+      "Passed": true
+    },
+    {
+      "Desc": "JapaneseFallsBackToKana",
+      "Passed": true
+    },
+    {
+      "Desc": "MovesAreByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheAppsOwnWordsInGerman",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheMethodOutlivesALanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shapes/1 --
+sha256:9d4d52ea40d3c04b35493410d0cdd45c
+{
+  "results": [
+    {
+      "Desc": "EveryFormDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shell/1 --
+sha256:9abbed28d981b542662ab4a0ea06810f
+{
+  "results": [
+    {
+      "Desc": "TheLanguageChoiceTranslatesThePages",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/spark/1 --
+sha256:bfbe555aae133aad483b154e91597662
+{
+  "results": [
+    {
+      "Desc": "TappingAnAlolanFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/species/1 --
+sha256:64e57e163ed2bacaf6bb50b4cb7dd677
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/trip/1 --
+sha256:94f5f8885d9259fb4b305e27043b65e4
+{
+  "results": [
+    {
+      "Desc": "MovesFollowTheDexChosenAtHome",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/walk/1 --
+sha256:61d5c07d89949918d9124a0c9fb943dc
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/Calculator/1 --
+sha256:7d71581ff53f272419661abb4706dac0
+{
+  "results": [
+    {
+      "Desc": "PressingKeysDrivesTheCalculator",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/Tour/1 --
+sha256:de0cd3876dc5b161f785496a00e48ba2
+{
+  "results": [
+    {
+      "Desc": "GreetingDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "InitialCount",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:d0c03bcbf84c799fe5ee57edda2bacf2
+{
+  "results": [
+    {
+      "Desc": "ANewOperationReplacesTheRepeat",
+      "Passed": true
+    },
+    {
+      "Desc": "Addition",
+      "Passed": true
+    },
+    {
+      "Desc": "AdditionDoesNotLeakFloatNoise",
+      "Passed": true
+    },
+    {
+      "Desc": "AsciiRows",
+      "Passed": true
+    },
+    {
+      "Desc": "Backspace",
+      "Passed": true
+    },
+    {
+      "Desc": "ChainedOperatorsSettleAsYouGo",
+      "Passed": true
+    },
+    {
+      "Desc": "DigitsAccumulate",
+      "Passed": true
+    },
+    {
+      "Desc": "DivideByZeroIsAnErrorState",
+      "Passed": true
+    },
+    {
+      "Desc": "DivisionRounds",
+      "Passed": true
+    },
+    {
+      "Desc": "EntryIsCappedAtTheDisplayWidth",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsAloneIsInert",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "GlyphSegments",
+      "Passed": true
+    },
+    {
+      "Desc": "KeypadCoversEveryKey",
+      "Passed": true
+    },
+    {
+      "Desc": "LeadingZeroIsReplaced",
+      "Passed": true
+    },
+    {
+      "Desc": "NegateAndPercent",
+      "Passed": true
+    },
+    {
+      "Desc": "PendingLine",
+      "Passed": true
+    },
+    {
+      "Desc": "PointOnceOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "PointWithNothingTypedStartsAtZero",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadoutCells",
+      "Passed": true
+    },
+    {
+      "Desc": "RepeatKeepsTheRightOperand",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/alolan/1 --
+sha256:fbd150911914ae3f614ace58d2ce6538
+{
+  "results": [
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/back/1 --
+sha256:a3d61f23bec6fcbb07a0539e912664ce
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheDexChosen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/bud/1 --
+sha256:9840679a28262427ca75f162d07874f3
+{
+  "results": [
+    {
+      "Desc": "StatsGiveEveryEffort",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/chains/1 --
+sha256:98a9c8f94dc8cef41337d06ea8839dbe
+{
+  "results": [
+    {
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/dexes/1 --
+sha256:055670ccd2090a82f155735928e84b74
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/flame/1 --
+sha256:1d423602d0403f82f1463729822cb271
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/fluff/1 --
+sha256:72d70d737d84fe7405aa5f0203890091
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/fox/1 --
+sha256:9f2dfc26c3df549e5d858f4750a992ad
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/home/1 --
+sha256:f594305bc54d308a44daf1721ccf634d
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/mons/1 --
+sha256:79382d0d02893bb8e2f42c6d65413833
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/mouse/1 --
+sha256:7c1dd5853ab5a62db86175a9e91afc1f
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/named/1 --
+sha256:62fcdd15cf05cfa7a80f820c8147ba8d
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/roam/1 --
+sha256:25a30fb97c9cd23e84b826ee7a8f0c6d
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/seed/1 --
+sha256:72a65bb9e6104977f434ae7e7ee069fb
+{
+  "results": [
+    {
+      "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ALanguageTheAPILacksFallsBack",
+      "Passed": true
+    },
+    {
+      "Desc": "AMethodWithNoMoves",
+      "Passed": true
+    },
+    {
+      "Desc": "AMoveGivesItsTypePowerAndAccuracy",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInJapanese",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypeAndAnAbilityInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypesBadgeTakesItsKindsColour",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
+      "Passed": true
+    },
+    {
+      "Desc": "HowManyMovesIsAPlural",
+      "Passed": true
+    },
+    {
+      "Desc": "JapaneseFallsBackToKana",
+      "Passed": true
+    },
+    {
+      "Desc": "MovesAreByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheAppsOwnWordsInGerman",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheMethodOutlivesALanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shapes/1 --
+sha256:82666996a661cf99052949fd81c411de
+{
+  "results": [
+    {
+      "Desc": "EveryFormDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shell/1 --
+sha256:42bc7f4e43007eebfe0e466fa60e0f6d
+{
+  "results": [
+    {
+      "Desc": "TheLanguageChoiceTranslatesThePages",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/spark/1 --
+sha256:e33e7dd2f416b5123ed52bd1a9c1328b
+{
+  "results": [
+    {
+      "Desc": "TappingAnAlolanFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/species/1 --
+sha256:4d90b3f5d8346e9602a0ce39ff720e69
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/trip/1 --
+sha256:2778d13ee408909c77b6a240726d272d
+{
+  "results": [
+    {
+      "Desc": "MovesFollowTheDexChosenAtHome",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/walk/1 --
+sha256:11a47a5d4701958fe950de96a255f280
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/Calculator/1 --
+sha256:d915ae5ae10a0f4f5e3b600b0ecd40e3
+{
+  "results": [
+    {
+      "Desc": "PressingKeysDrivesTheCalculator",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/Tour/1 --
+sha256:5af86b38cba38b6f2bb6858921652b23
+{
+  "results": [
+    {
+      "Desc": "GreetingDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "InitialCount",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:cc37d4cb9f1e0e3d581a1cd3c8978f7c
+{
+  "results": [
+    {
+      "Desc": "ANewOperationReplacesTheRepeat",
+      "Passed": true
+    },
+    {
+      "Desc": "Addition",
+      "Passed": true
+    },
+    {
+      "Desc": "AdditionDoesNotLeakFloatNoise",
+      "Passed": true
+    },
+    {
+      "Desc": "AsciiRows",
+      "Passed": true
+    },
+    {
+      "Desc": "Backspace",
+      "Passed": true
+    },
+    {
+      "Desc": "ChainedOperatorsSettleAsYouGo",
+      "Passed": true
+    },
+    {
+      "Desc": "DigitsAccumulate",
+      "Passed": true
+    },
+    {
+      "Desc": "DivideByZeroIsAnErrorState",
+      "Passed": true
+    },
+    {
+      "Desc": "DivisionRounds",
+      "Passed": true
+    },
+    {
+      "Desc": "EntryIsCappedAtTheDisplayWidth",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsAloneIsInert",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualsRepeatsTheLastOperation",
+      "Passed": true
+    },
+    {
+      "Desc": "GlyphSegments",
+      "Passed": true
+    },
+    {
+      "Desc": "KeypadCoversEveryKey",
+      "Passed": true
+    },
+    {
+      "Desc": "LeadingZeroIsReplaced",
+      "Passed": true
+    },
+    {
+      "Desc": "NegateAndPercent",
+      "Passed": true
+    },
+    {
+      "Desc": "PendingLine",
+      "Passed": true
+    },
+    {
+      "Desc": "PointOnceOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "PointWithNothingTypedStartsAtZero",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadoutCells",
+      "Passed": true
+    },
+    {
+      "Desc": "RepeatKeepsTheRightOperand",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/alolan/1 --
+sha256:c07d076a5d9ebc324205250a163bc676
+{
+  "results": [
+    {
+      "Desc": "AFormsMovesAreItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "AFormsPageIsTheForm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/back/1 --
+sha256:8e6bef5894075ab8c9bd73b890f3efa1
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheDexChosen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/bud/1 --
+sha256:af7322d8328fe5ad1c8ce574f4ff6209
+{
+  "results": [
+    {
+      "Desc": "StatsGiveEveryEffort",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/chains/1 --
+sha256:593bab4ba09193f5ed11d5ef67afa52e
+{
+  "results": [
+    {
+      "Desc": "EveryChainDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/dexes/1 --
+sha256:e8eb9e3dac5eee716fc7dc0d2fd86fab
+{
+  "results": [
+    {
+      "Desc": "EveryDexDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/flame/1 --
+sha256:f92922b0af4427bd4d361431e7d47bb9
+{
+  "results": [
+    {
+      "Desc": "EvolutionIsEachSpeciesChain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/fluff/1 --
+sha256:8fb16989ab1f93659331aeb17c61ac2b
+{
+  "results": [
+    {
+      "Desc": "ABranchingChainIsRows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/fox/1 --
+sha256:9d6be89cc6606e70a4f7bad328364d8a
+{
+  "results": [
+    {
+      "Desc": "EvolutionShowsAFormFromAForm",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheFirstDefaultDetail",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/home/1 --
+sha256:18586f026e6d904d9023ba6d23a33407
+{
+  "results": [
+    {
+      "Desc": "HomeStartsAtTheNationalDex",
+      "Passed": true
+    },
+    {
+      "Desc": "Names",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndOfTheGridAddsTheRest",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGridIsRowsOfThree",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSearchCoversTheWholeDex",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheDex",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/mons/1 --
+sha256:4d9c82610dee2d04b7234113754d0252
+{
+  "results": [
+    {
+      "Desc": "EveryMonDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/mouse/1 --
+sha256:770bb008de69372b79c2363985a02d4f
+{
+  "results": [
+    {
+      "Desc": "AboutIsEachSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionByFriendshipAndStone",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionShowsTheAlolanForms",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLabelEveryPicture",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesListTheForms",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/named/1 --
+sha256:fedda9731fb0146689e3f0647faecd0e
+{
+  "results": [
+    {
+      "Desc": "EveryNameDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/roam/1 --
+sha256:78e1401d9eb2903717575c58c524faa5
+{
+  "results": [
+    {
+      "Desc": "TappingAFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/seed/1 --
+sha256:7770cfe350efe6c9cd097373a0ea701f
+{
+  "results": [
+    {
+      "Desc": "ADecimalCommaInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ALanguageTheAPILacksFallsBack",
+      "Passed": true
+    },
+    {
+      "Desc": "AMethodWithNoMoves",
+      "Passed": true
+    },
+    {
+      "Desc": "AMoveGivesItsTypePowerAndAccuracy",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ASpeciesInJapanese",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypeAndAnAbilityInFrench",
+      "Passed": true
+    },
+    {
+      "Desc": "ATypesBadgeTakesItsKindsColour",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesGenderAndCaptureRate",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHabitatAndEggGroups",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutGivesHeightAndWeight",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutMarksTheHiddenAbility",
+      "Passed": true
+    },
+    {
+      "Desc": "AboutTellsTheLatestDescription",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionIsTheChainByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "EvolutionTabShowsTheTriggers",
+      "Passed": true
+    },
+    {
+      "Desc": "HowManyMovesIsAPlural",
+      "Passed": true
+    },
+    {
+      "Desc": "JapaneseFallsBackToKana",
+      "Passed": true
+    },
+    {
+      "Desc": "MovesAreByLevel",
+      "Passed": true
+    },
+    {
+      "Desc": "SpritesLeaveOutAFemaleTheyLack",
+      "Passed": true
+    },
+    {
+      "Desc": "StatsTotalAndEffort",
+      "Passed": true
+    },
+    {
+      "Desc": "TheAppsOwnWordsInGerman",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderGoesBack",
+      "Passed": true
+    },
+    {
+      "Desc": "TheHeaderNamesTheSpecies",
+      "Passed": true
+    },
+    {
+      "Desc": "TheMethodOutlivesALanguage",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectSwitchesTheMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "TheTabsSwitchToStats",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/shapes/1 --
+sha256:b5670d01b10fa5ef67ffd287de3e35b2
+{
+  "results": [
+    {
+      "Desc": "EveryFormDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/shell/1 --
+sha256:79deb3d84028469f8216cca98e36079d
+{
+  "results": [
+    {
+      "Desc": "TheLanguageChoiceTranslatesThePages",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/spark/1 --
+sha256:0e6ba06129de6d6940e7c598e52c2438
+{
+  "results": [
+    {
+      "Desc": "TappingAnAlolanFormOpensIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/species/1 --
+sha256:159565274d1f6c3f7c7a8b3d31172403
+{
+  "results": [
+    {
+      "Desc": "EverySpeciesDecodes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/trip/1 --
+sha256:5fe4c8f679ccfd8f173aa397312bc9d8
+{
+  "results": [
+    {
+      "Desc": "MovesFollowTheDexChosenAtHome",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/walk/1 --
+sha256:973bf63ad333f03d762b5bf4585272e4
+{
+  "results": [
+    {
+      "Desc": "TappingAStageOpensIt",
+      "Passed": true
+    }
+  ]
+}

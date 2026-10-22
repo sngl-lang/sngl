@@ -138,6 +138,10 @@ type fyneStyle struct {
 	Margin  float64
 	Gap     float64
 	Padding float64
+	// Width and Height are the size the parent's layout gives the node in
+	// place of its own minimum, zero where the style gave none.
+	Width  float64
+	Height float64
 
 	Background   *fyneColor
 	Color        *fyneColor
@@ -227,6 +231,10 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return toplevelSpec(props), nil
 	}
 	if sp := imageSpecFor(tag, props); sp != nil {
+		// An image's box is sized by its style as any node's is.
+		if tag == imageTag {
+			sp.Style = styleFromProps(props)
+		}
 		return sp, nil
 	}
 	raw := props[specPropName]
@@ -291,6 +299,17 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if sp.New.Name == "" || sp.GoType.Name == "" {
 		return nil, fmt.Errorf("fyne primitive %s: Spec needs both `new` and `goType`", tag)
 	}
+	// A prop an Arg hands the constructor and no Setter writes is the
+	// constructor's alone: a grid's column count. Its first write is answered
+	// by the constructor, and any other is reported as reaching nothing.
+	for _, a := range sp.Args {
+		if _, set := sp.Setters[a.Prop]; a.Prop != "" && !set {
+			if sp.CtorOnly == nil {
+				sp.CtorOnly = map[string]bool{}
+			}
+			sp.CtorOnly[a.Prop] = true
+		}
+	}
 	sp.Style = styleFromProps(props)
 	switch v := props[stylePropName].(type) {
 	case nil:
@@ -339,6 +358,10 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 			into = &st.Gap
 		case "padding":
 			into = &st.Padding
+		case "width":
+			into = &st.Width
+		case "height":
+			into = &st.Height
 		case "fontSize":
 			into = &st.FontSize
 		case "borderRadius":

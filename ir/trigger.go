@@ -252,3 +252,57 @@ func stripConversions(e Expr) Expr {
 	}
 	return e
 }
+
+// EmittedIndex is the loop variable block emits event with when the emit hands
+// on that and nothing else -- a tab strip's `@click { selected = k; change(k) }`
+// -- or nil. A trigger of event on a component whose body emits it so, from a
+// node a loop renders, is a press of that node's copy at the index the
+// trigger names: `c.strip.change(1)` presses the second tab.
+func EmittedIndex(block []Stmt, event string) *LoopVar {
+	var found *LoopVar
+	_ = Walk(block, func(n Node) error {
+		e, ok := n.(*Emit)
+		if !ok || e.Name != event {
+			return nil
+		}
+		if len(e.Args) == 1 {
+			if id, ok := e.Args[0].Value.(*Ident); ok {
+				if lv, ok := id.Sym.(*LoopVar); ok {
+					found = lv
+				}
+			}
+		}
+		return SkipDir
+	})
+	return found
+}
+
+// RecordBranchOf is the loop among loops whose element cond picks one record
+// of, `t.__id == 3`, or nil. A data family's content is a population branching
+// on the record's number (RecordID), and once the container's body is spliced
+// that branch sits in the container's loop over its records. Numbers are
+// unique, so at most one iteration renders what the branch holds: the loop
+// makes no copies of it, and a node written there is counted, as the checker
+// and the interpreter count it, by the loops around where it was written.
+func RecordBranchOf(cond Expr, loops []*For) *For {
+	b, ok := cond.(*Binary)
+	if !ok || b.Op != ast.BinEq {
+		return nil
+	}
+	for _, side := range []Expr{b.Left, b.Right} {
+		sel, ok := side.(*Select)
+		if !ok || sel.Field != RecordID {
+			continue
+		}
+		id, ok := sel.Operand.(*Ident)
+		if !ok {
+			continue
+		}
+		for _, f := range loops {
+			if f.ValueSym != nil && id.Sym == Symbol(f.ValueSym) {
+				return f
+			}
+		}
+	}
+	return nil
+}

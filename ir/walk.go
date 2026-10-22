@@ -157,6 +157,9 @@ func (w *walker) stmt(s Stmt) {
 		for i := range n.Props {
 			w.expr(n.Props[i].Value)
 		}
+		for i := range n.Bindings {
+			w.expr(n.Bindings[i].Target)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				w.fn(h.Func)

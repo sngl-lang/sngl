@@ -1,0 +1,95 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "This Pokémon's Speed is doubled during strong sunlight.\n\nThis bonus does not count as a stat modifier.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Doubles Speed during strong sunlight."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Raises SPEED in sunshine.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "ruby-sapphire",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/5/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iii",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/3/"
+ },
+ "id": 34,
+ "is_main_series": true,
+ "name": "chlorophyll",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ようりょくそ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Chlorophylle"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Chlorophyll"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Clorofila"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Chlorophyll"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ようりょくそ"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": true,
+   "pokemon": {
+    "name": "bulbasaur",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/1/"
+   },
+   "slot": 3
+  },
+  {
+   "is_hidden": true,
+   "pokemon": {
+    "name": "ivysaur",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/2/"
+   },
+   "slot": 3
+  }
+ ]
+}

@@ -3,7 +3,7 @@ import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
 
 // Names a struct field or an enum member in JSON, where the wire name is not
-// the SNGL one: `#[json.identifier("front_default")] frontDefault option[string]`.
+// the SNGL one: `#[json.identifier("page_count")] pageCount option[int]`.
 func identifier(name string) ir.Macro
 
 // Reads text as a value of T: the value, or a `decode` failure saying what in

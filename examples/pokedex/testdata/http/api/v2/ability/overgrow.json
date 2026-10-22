@@ -1,0 +1,95 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "When this Pokémon has 1/3 or less of its HP remaining, its Grass-type moves inflict 1.5× as much regular damage.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Strengthens Grass moves to inflict 1.5× damage at 1/3 max HP or less."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Ups GRASS moves in a pinch.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "ruby-sapphire",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/5/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iii",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/3/"
+ },
+ "id": 65,
+ "is_main_series": true,
+ "name": "overgrow",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "しんりょく"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Engrais"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Notdünger"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Espesura"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Overgrow"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "しんりょく"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "bulbasaur",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/1/"
+   },
+   "slot": 1
+  },
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "ivysaur",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/2/"
+   },
+   "slot": 1
+  }
+ ]
+}

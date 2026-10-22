@@ -32,6 +32,15 @@ func MeasurementPx(e ir.Expr, emPx float64) (float64, bool) {
 			return mag, true
 		}
 		return IRLiteralNumber(x)
+	case *ir.Conversion:
+		// The bare `0` any unit takes arrives converted, `measurement(0)`:
+		// android's `gap=0` read the base fields off the literal, `(0).px`.
+		if lit, ok := x.Operand.(*ir.Literal); ok {
+			if n, ok := IRLiteralNumber(lit); ok && n == 0 {
+				return 0, true
+			}
+		}
+		return 0, false
 	case *ir.Binary:
 		if x.Op != ast.BinAdd && x.Op != ast.BinSub {
 			return 0, false

@@ -20,7 +20,7 @@ func lookup(name string) async.Result[int] {
 }
 
 component detail node {
-    var name = "pikachu"
+    var name = "apricot"
     var length option[int] = null
     var loading = false
     var failure option[async.Failure] = null
@@ -49,7 +49,7 @@ func testAsksAtMount(t Test, c detail) {
 }
 
 func testAsksAgainOnAChangeOfKey(t Test, c detail) {
-    c.name = "mew"
+    c.name = "fig"
     t.assert(c.len.value == "3")
     t.assert(c.loads == 2)
 }
@@ -59,7 +59,7 @@ func testAFailureKeepsTheLastAnswer(t Test, c detail) {
     t.assert(c.err.value == "could not load : no name")
     t.assert(c.len.value == "7")
     t.assert(c.loads == 1)
-    c.name = "eevee"
+    c.name = "lemon"
     t.assert(c.err.value == "")
     t.assert(c.len.value == "5")
 }

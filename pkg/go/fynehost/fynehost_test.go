@@ -231,9 +231,9 @@ component main node {
 	if !ok {
 		t.Fatal("#s is not mounted")
 	}
-	sc, ok := obj.(*container.Scroll)
+	sc, ok := obj.(*fynelayout.ReachScroll)
 	if !ok {
-		t.Fatalf("#s is a %T, want a *container.Scroll", obj)
+		t.Fatalf("#s is a %T, want a *fynelayout.ReachScroll", obj)
 	}
 	if sc.Content == nil {
 		t.Fatal("the scroll has no content; its Content field was never assigned")
@@ -378,11 +378,13 @@ component main node {
 	if !w.Horizontal {
 		t.Error("an hbox laid out vertically")
 	}
-	if len(w.Weights) != 2 || w.Weights[0] != 1 || w.Weights[1] != 2 {
-		t.Errorf("weights are %v, want [1 2]", w.Weights)
+	// 400 - 2*6 padding - 4 gap - 2*3 margin = 378, split 1:2.
+	c.Resize(fyne.NewSize(400, 50))
+	if got := c.Objects[0].Size().Width; got != 126 {
+		t.Errorf("flex=1 child with margin 3 got width %v, want 126", got)
 	}
-	if len(w.Margins) != 2 || w.Margins[0] != 3 {
-		t.Errorf("margins are %v, want the first child's 3", w.Margins)
+	if got := c.Objects[1].Size().Width; got != 252 {
+		t.Errorf("flex=2 child got width %v, want 252", got)
 	}
 	if w.Gap != 4 || w.Padding != 6 {
 		t.Errorf("gap/padding are %v/%v, want 4/6", w.Gap, w.Padding)

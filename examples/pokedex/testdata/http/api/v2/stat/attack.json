@@ -1,0 +1,121 @@
+{
+ "affecting_items": [
+  {
+   "name": "protein",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/46/"
+  },
+  {
+   "name": "x-attack",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/57/"
+  }
+ ],
+ "affecting_moves": {
+  "decrease": [
+   {
+    "change": -1,
+    "move": {
+     "name": "growl",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/45/"
+    }
+   },
+   {
+    "change": -1,
+    "move": {
+     "name": "aurora-beam",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/62/"
+    }
+   }
+  ],
+  "increase": [
+   {
+    "change": 2,
+    "move": {
+     "name": "swords-dance",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/14/"
+    }
+   },
+   {
+    "change": 1,
+    "move": {
+     "name": "growth",
+     "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/74/"
+    }
+   }
+  ]
+ },
+ "affecting_natures": {
+  "decrease": [
+   {
+    "name": "bold",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/2/"
+   },
+   {
+    "name": "modest",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/3/"
+   }
+  ],
+  "increase": [
+   {
+    "name": "lonely",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/6/"
+   },
+   {
+    "name": "adamant",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/nature/11/"
+   }
+  ]
+ },
+ "characteristics": [
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/2/"
+  },
+  {
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/characteristic/8/"
+  }
+ ],
+ "game_index": 2,
+ "id": 2,
+ "is_battle_only": false,
+ "move_damage_class": {
+  "name": "physical",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-damage-class/2/"
+ },
+ "name": "attack",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "こうげき"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Attaque"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Angriff"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Ataque"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Attack"
+  }
+ ]
+}

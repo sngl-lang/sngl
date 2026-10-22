@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -56,6 +57,7 @@ func lowerListLambdas(pkg *ir.Package, _ Features, _ Options) error {
 type listLambdaState struct {
 	listCounter int
 	itemCounter int
+	condCounter int
 	// view says the block being transformed is a view's: a component's
 	// body, the package's, a node's children. A statement hoisted there is a
 	// statement of the view, which reactivity makes a render slot when the
@@ -93,6 +95,35 @@ func (st *listLambdaState) freshList() string {
 	n := st.listCounter
 	st.listCounter++
 	return "__list" + strconv.Itoa(n)
+}
+
+// condRef names a fresh temp holding the value of a conditional expression
+// whose branch needed statements of its own.
+func (st *listLambdaState) condRef(t *ir.Type) *ir.Ident {
+	name := "__when" + strconv.Itoa(st.condCounter)
+	st.condCounter++
+	return &ir.Ident{Name: name, Type: t, Sym: &ir.Var{Name: name, Type: t, Synthesized: true}, Synthesized: true}
+}
+
+// condDecl declares the temp ref names, starting at init.
+func (st *listLambdaState) condDecl(ref *ir.Ident, init ir.Expr) ir.Stmt {
+	return &ir.LocalVar{Name: ref.Name, Type: ref.Type, Init: init, Sym: ref.Sym.(*ir.Var)}
+}
+
+// setCond assigns v to the temp ref names.
+func setCond(ref *ir.Ident, v ir.Expr) ir.Stmt {
+	return &ir.Assign{Target: &ir.Ident{Name: ref.Name, Type: ref.Type, Sym: ref.Sym, Synthesized: true}, Op: ast.AssignSet, Value: v}
+}
+
+// shortCircuit evaluates `&&` or `||` into a temp, the right operand's
+// statements running only where the left one does not decide the answer.
+func (st *listLambdaState) shortCircuit(x *ir.Binary, rightPre []ir.Stmt) ([]ir.Stmt, *ir.Ident) {
+	ref := st.condRef(x.Type)
+	var cond ir.Expr = &ir.Ident{Name: ref.Name, Type: ref.Type, Sym: ref.Sym, Synthesized: true}
+	if x.Op == ast.BinOr {
+		cond = &ir.Unary{Op: ast.UnaryNot, Operand: cond, Type: ir.TypBool}
+	}
+	return []ir.Stmt{st.condDecl(ref, x.Left), &ir.If{Cond: cond, Body: append(rightPre, setCond(ref, x.Right))}}, ref
 }
 
 func (st *listLambdaState) freshItem() string {
@@ -224,8 +255,12 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 		pre = append(pre, p...)
 		x.Left = l
 		p, r := st.transformExpr(x.Right)
-		pre = append(pre, p...)
 		x.Right = r
+		if len(p) > 0 && (x.Op == ast.BinAnd || x.Op == ast.BinOr) {
+			stmts, ref := st.shortCircuit(x, p)
+			return append(pre, stmts...), ref
+		}
+		pre = append(pre, p...)
 		return pre, x
 	case *ir.Unary:
 		p, op := st.transformExpr(x.Operand)
@@ -236,13 +271,22 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 		p, c := st.transformExpr(x.Cond)
 		pre = append(pre, p...)
 		x.Cond = c
-		p, t := st.transformExpr(x.Then)
-		pre = append(pre, p...)
+		tp, t := st.transformExpr(x.Then)
 		x.Then = t
-		p, el := st.transformExpr(x.Else)
-		pre = append(pre, p...)
+		ep, el := st.transformExpr(x.Else)
 		x.Else = el
-		return pre, x
+		if len(tp) == 0 && len(ep) == 0 {
+			return pre, x
+		}
+		// A branch's loop runs where the branch is taken: hoisted ahead of
+		// the ternary, `d != null ? d.xs.map(f) : []` read d.xs with d null.
+		ref := st.condRef(x.Type)
+		pre = append(pre, st.condDecl(ref, nil), &ir.If{
+			Cond: x.Cond,
+			Body: append(tp, setCond(ref, x.Then)),
+			Else: append(ep, setCond(ref, x.Else)),
+		})
+		return pre, ref
 	case *ir.MatchExpr:
 		var pre []ir.Stmt
 		if x.Subject != nil {
@@ -250,12 +294,30 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 			pre = append(pre, p...)
 			x.Subject = s
 		}
-		for _, arm := range x.Arms {
-			p, v := st.transformExpr(arm.Value)
-			pre = append(pre, p...)
-			arm.Value = v
+		armPre := make([][]ir.Stmt, len(x.Arms))
+		lifted := false
+		for i, arm := range x.Arms {
+			armPre[i], arm.Value = st.transformExpr(arm.Value)
+			lifted = lifted || len(armPre[i]) > 0
 		}
-		return pre, x
+		if !lifted {
+			return pre, x
+		}
+		// An arm's loop runs where the arm is taken, as a ternary branch's.
+		ref := st.condRef(x.Type)
+		stmt := &ir.Match{Subject: x.Subject, Exhaustive: x.Exhaustive, FromValue: true}
+		if x.AST != nil {
+			stmt.AST = &ast.MatchStmt{Pos: x.AST.Pos}
+		}
+		for i, arm := range x.Arms {
+			stmt.Arms = append(stmt.Arms, &ir.MatchArm{
+				Pos:      arm.Pos,
+				Patterns: arm.Patterns,
+				Else:     arm.Else,
+				Body:     append(armPre[i], setCond(ref, arm.Value)),
+			})
+		}
+		return append(pre, st.condDecl(ref, nil), stmt), ref
 	case *ir.Conversion:
 		p, op := st.transformExpr(x.Operand)
 		x.Operand = op

@@ -36,13 +36,13 @@ func TestScript(t *testing.T) {
 		}
 	}
 	goEnvFile = hostGoEnvFile()
-	// A script copies what the repository ships -- examples/pokedex -- from
-	// here rather than holding a second copy of it.
+	// A script copies what the repository ships -- the examples -- from here
+	// rather than holding a second copy of it.
 	root, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	startTestHTTP(t)
+	startTestHTTP(t, root)
 	conds := scripttest.DefaultConds()
 	// `gtk4` is true when the gtk4 development libraries are installed, so the
 	// generated cgo can be compiled.

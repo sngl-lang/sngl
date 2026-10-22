@@ -196,6 +196,13 @@ func (st *ternState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 		return p, x
 	case *ir.Call:
 		var pre []ir.Stmt
+		// A function literal called in place -- what NoListLambdas makes of
+		// `xs.map(func(x) => c ? a : b)` -- holds a body of its own.
+		if x.Callee != nil {
+			p, v := st.transformExpr(x.Callee)
+			pre = append(pre, p...)
+			x.Callee = v
+		}
 		if x.Receiver != nil {
 			p, v := st.transformExpr(x.Receiver)
 			pre = append(pre, p...)

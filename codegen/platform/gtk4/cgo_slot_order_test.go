@@ -89,7 +89,10 @@ func TestASlotReRendersInPlace(t *testing.T) {
 // wrapped, rather than after every sibling written below it.
 func TestCgoSlotReRendersInPlace(t *testing.T) {
 	files := goFiles(generateGTK4FilesBuilt(t, cgoSlotOrderSrc))
-	if strings.Contains(files["model.go"], "gtk4rt.") {
+	// The widgets are C pointers on the cgo path. gtk4rt is still reached
+	// for its own primitives -- the scroll is gtk4rt's -- as it is for an
+	// image, so its name alone does not say which path the file took.
+	if !strings.Contains(files["model.go"], "*C.GtkBox") {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])
 	}
 	files["entry.go"] = "package main\n\nfunc main() {}\n"

@@ -1,0 +1,89 @@
+# A test reads a prop through an instance when what the call site wrote
+# holds a function literal: the literal's own parameters are bound wherever
+# the expression is read, the test included, so they are no name a test
+# lacks. Only a slot's parameter, a local or a loop variable of the body is.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component shelf ui.node {
+    var names = ["ash", "elm"]
+    ui.text #joined(value=names.map(func(n string) => string.upper(n)).join(", "))
+}
+
+component wrapped ui.node {
+    shelf #inner()
+}
+
+func testALambdaInAPropIsRead(t test.Test, c wrapped) {
+    t.assert(c.inner.joined.value == "ASH, ELM")
+}
+-- testrun/android/kotlin/app.sngl/wrapped/1 --
+sha256:55b3c3234c0c46f410855ad5eff7b46a
+{
+  "results": [
+    {
+      "Desc": "ALambdaInAPropIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/wrapped/1 --
+sha256:58806edaeaff098071e8d9ae02709730
+{
+  "results": [
+    {
+      "Desc": "ALambdaInAPropIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/wrapped/1 --
+sha256:6a89d94f5e8e9ab631cd924198d9e266
+{
+  "results": [
+    {
+      "Desc": "ALambdaInAPropIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/wrapped/1 --
+sha256:29e14bcb755cd9a5cb6f5a221228c484
+{
+  "results": [
+    {
+      "Desc": "ALambdaInAPropIsRead",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/wrapped/1 --
+sha256:316e05b2c3f2e2a6d93254273584e0a7
+{
+  "results": [
+    {
+      "Desc": "ALambdaInAPropIsRead",
+      "Passed": true
+    }
+  ]
+}

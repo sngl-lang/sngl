@@ -1141,6 +1141,7 @@ type Model struct {
 	__effect1_desired   []*time.Time
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	box                 *C.GtkCheckButton
 	sw                  *C.GtkSwitch
@@ -1170,6 +1171,7 @@ func New() *Model {
 	m.__effect1_desired = []*time.Time{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -1236,23 +1238,25 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1493,6 +1497,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
@@ -1650,7 +1655,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1693,7 +1697,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performTextReplacement("ada"); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("ada")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"input ada ada\")", (c.seen == "input ada ada"))
         org.junit.Assert.assertTrue("(c.name == \"ada\")", (c.name == "ada"))
     }
@@ -1703,7 +1707,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         var d = "2024-03-05"
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performTextReplacement(d); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(d)) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.picked == d)", (c.picked == d))
         org.junit.Assert.assertTrue("(c.seen == \"day\")", (c.seen == "day"))
     }
@@ -1854,8 +1858,8 @@ pass sha256:21e696a381f8606e7b47cfe6749abb19
 -- run/go/fyne --
 pass sha256:7afd12707a166b11f90f0b791c169384
 -- run/go/gtk4 --
-pass sha256:4755310a073f4cf84e85ee5114f48152
+pass sha256:2f9d215b9c70676e1d30d0cd0571a957
 -- run/kotlin/android --
-pass sha256:eeedac8ed7bfa9790127488c6bfa0863
+pass sha256:99f4fbe926de8290d623f5ffa0d69d7f
 -- run/none/html --
 pass sha256:39a7ec5df31369c005bacf45496efdcf

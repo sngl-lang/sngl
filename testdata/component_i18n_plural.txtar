@@ -418,6 +418,7 @@ func (m *Model) addClick() {
 
 package test.sngl.app
 
+import us.duckfam.git.jonathan.sngl.i18n.I18n
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -429,7 +430,6 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
-import us.duckfam.git.jonathan.sngl.i18n.I18n
 import androidx.compose.ui.platform.testTag
 
 fun _snglFloatStr(v: Double): String =
@@ -952,7 +952,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1540,11 +1539,12 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  var __ctx_locale = i18n.defaultLocale();
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
     state.count = state.count + 1;
-    state.label = i18n.getTranslator().tr("You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
+    state.label = i18n.translate(__ctx_locale, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
     __n0.textContent = state.label;
   });
   function __sngl_init() {
@@ -1563,11 +1563,11 @@ pass sha256:02c29a19d8e168acdd196a917cf1ae21
 -- run/go/gtk4 --
 pass sha256:ac4f1f2e69efe6b96163c2f50b961f60
 -- run/kotlin/android --
-pass sha256:c525132dbbe79cd5c2b000f4f60917b2
+pass sha256:b54f421a1c596c3c0c9547974c26636e
 -- run/none/html --
-pass sha256:f7c63032170d2efbe8656378b0833cfb
+pass sha256:2903c323df14d80d717cd6e173e9c041
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --
-sha256:791b21bf75a995c323ae05679b1026d2
+sha256:b5129df83b212d0e185956a29465ca64
 {
   "results": [
     {

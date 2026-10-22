@@ -119,7 +119,7 @@ sha256:762d57e05916ac79b05c0a6e75b29d75
   ]
 }
 -- testrun/fyne/go/click.sngl/counter/1 --
-sha256:ce9b2499e17833e6aef70eba7a532067
+sha256:0e04821e6d48020b285d602066cb2c8d
 {
   "results": [
     {
@@ -139,7 +139,7 @@ sha256:a1ba580046ea6437173841992ff68734
   ]
 }
 -- testrun/html/none/click.sngl/counter/1 --
-sha256:dac9f9898c563909a32fde83163b8a4a
+sha256:64389c7862d17ee7fead699bd13fcce3
 {
   "results": [
     {

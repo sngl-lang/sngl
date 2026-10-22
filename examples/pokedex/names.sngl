@@ -1,3 +1,5 @@
+import i18n "sngl:i18n"
+import seq "sngl:seq"
 import poke "openapi:./pokeapi.yml"
 
 // The last segment of a PokéAPI resource URL, which is the resource's id:
@@ -10,24 +12,748 @@ func idOf(url string) string {
 
 // A name as the games print it: "mr-mime" is "Mr Mime".
 func display(name string) string {
-    var words = string.split(name, "-")
-    var out list[string] = []
-    for var w = words {
+    var out builder
+    var first = true
+    for var w = string.split(name, "-") {
         if string.length(w) > 0 {
-            out.push(string.upper(string.substring(w, 0, 1)) + string.substring(w, 1, string.length(w)))
+            if !first {
+                out.add(" ")
+            }
+            first = false
+            out.add(string.upper(string.substring(w, 0, 1)))
+            out.add(string.substring(w, 1, string.length(w)))
         }
     }
-    return out.join(" ")
+    return out.string()
 }
 
-// The species of an evolution chain, each stage once, in the order the
-// chain walks them: a parent before what it evolves into.
-func stages(link poke.EvolutionChainLink) list[string] {
-    var out = [link.species.name]
+// One stage of an evolution chain as its card shows it: the species, its
+// national number, how the stage before becomes it ("" for the first), and
+// the regional forms the same stage evolves into besides.
+struct Stage {
+    name    string
+    id      string
+    trigger string
+    forms   list[FormStep]
+}
+
+// A regional form an evolution reaches beside its species -- Alolan Raichu
+// by a Thunder Stone -- named as PokéAPI names the form, and how it is
+// reached.
+struct FormStep {
+    form    string
+    trigger string
+}
+
+// An evolution chain as rows, one for each line from its first stage to a
+// last: Bulbasaur's is one row of three, Eevee's eight rows of two.
+func evolutionRows(link poke.EvolutionChainLink, store map[string, list[Named]]) list[list[Stage]] {
+    return rowsFrom(link, Stage{name=link.species.name, id=idOf(link.species.url), trigger="", forms=[]}, store)
+}
+
+// The rows of the chain from `link` on, each starting at `here`, the stage
+// `link` is.
+func rowsFrom(link poke.EvolutionChainLink, here Stage, store map[string, list[Named]]) list[list[Stage]] {
+    if link.evolvesTo.length() == 0 {
+        return [[here]]
+    }
+    var out list[list[Stage]] = []
     for var next = link.evolvesTo {
-        for var s = stages(next) {
-            out.push(s)
+        var step = Stage{name=next.species.name, id=idOf(next.species.url), trigger=evolutionStep(next.evolutionDetails, store), forms=formSteps(next.evolutionDetails, store)}
+        for var rest = rowsFrom(next, step, store) {
+            var row = [here]
+            for var s = rest {
+                row.push(s)
+            }
+            out.push(row)
         }
     }
     return out
 }
+
+// How a stage is reached, from the details of its link: the first marked
+// default that reaches the species rather than a form of it, or the first
+// where none is. A link has several where games differ -- Leafeon by a Leaf
+// Stone or a mossy rock.
+func evolutionStep(details list[poke.PokemonEvolution], store map[string, list[Named]]) string {
+    var shown = stepDetail(details)
+    return shown.length() > 0 ? triggerOf(shown[0], store) : ""
+}
+
+// The detail `evolutionStep` tells, none where a link has none.
+func stepDetail(details list[poke.PokemonEvolution]) list[poke.PokemonEvolution] {
+    var marked = details.filter(func(d poke.PokemonEvolution) => d.isDefault == true && d.evolvedPokemonForm == null)
+    if marked.length() > 0 {
+        return [marked[0]]
+    }
+    return details.length() > 0 ? [details[0]] : []
+}
+
+// The details `formSteps` tells, a form each.
+func formDetails(details list[poke.PokemonEvolution]) list[poke.PokemonEvolution] {
+    return details.filter(func(d poke.PokemonEvolution) => d.isDefault == true && d.evolvedPokemonForm != null)
+}
+
+// Every detail a chain's cards tell, from `link` on.
+func shownDetails(link poke.EvolutionChainLink) list[poke.PokemonEvolution] {
+    var out list[poke.PokemonEvolution] = []
+    for var next = link.evolvesTo {
+        for var d = stepDetail(next.evolutionDetails) {
+            out.push(d)
+        }
+        for var d = formDetails(next.evolutionDetails) {
+            out.push(d)
+        }
+        for var d = shownDetails(next) {
+            out.push(d)
+        }
+    }
+    return out
+}
+
+// The names of `kind` a chain's cards show, each once: the items, types,
+// moves and triggers its steps name, each a request of its own.
+func chainNames(link poke.EvolutionChainLink, kind string) list[string] {
+    var keys list[string] = []
+    for var d = shownDetails(link) {
+        for var k = namedBy(d) {
+            keys.push(k)
+        }
+    }
+    return slugsOf(keys, kind)
+}
+
+// The regional forms a stage evolves into besides its species: each default
+// detail carrying `evolved_pokemon_form`, as Raichu's Alolan form by a
+// Thunder Stone and Ninetales' by an Ice Stone from Alolan Vulpix.
+func formSteps(details list[poke.PokemonEvolution], store map[string, list[Named]]) list[FormStep] {
+    var out list[FormStep] = []
+    for var d = formDetails(details) {
+        var form = d.evolvedPokemonForm
+        if form != null {
+            out.push(FormStep{form=form.name, trigger=triggerOf(d, store)})
+        }
+    }
+    return out
+}
+
+// What an evolution asks, as the games say it: "Lv. 16", "Thunder Stone",
+// "High Friendship, day". Each word is the app's own, to translate; an item,
+// a type, a move or a trigger is PokéAPI's name for it out of `store`.
+func triggerOf(d poke.PokemonEvolution, store map[string, list[Named]]) string {
+    var parts list[string] = []
+    var level = d.minLevel
+    if level != null {
+        parts.push($"Lv. {level}")
+    }
+    var item = d.item
+    if item != null {
+        parts.push(called(store, `item`, item.name))
+    }
+    var held = d.heldItem
+    if held != null {
+        var holding = called(store, `item`, held.name)
+        parts.push($"holding {holding}")
+    }
+    if d.minHappiness != null {
+        parts.push($"High Friendship")
+    }
+    if d.minAffection != null {
+        parts.push($"High Affection")
+    }
+    var moveType = d.knownMoveType
+    if moveType != null {
+        var kind = called(store, `type`, moveType.name)
+        parts.push($"knowing a {kind} move")
+    }
+    var move = d.knownMove
+    if move != null {
+        var knowing = called(store, `move`, move.name)
+        parts.push($"knowing {knowing}")
+    }
+    var time = d.timeOfDay
+    if time != null && time != "" {
+        parts.push(time == "day" ? $"day" : time == "night" ? $"night" : display(time))
+    }
+    if d.trigger.name == "trade" {
+        parts.push($"Trade")
+    }
+    if parts.length() == 0 {
+        return called(store, `trigger`, d.trigger.name)
+    }
+    return listed(parts)
+}
+
+// `parts` as one line, "a, b, c", each comma the app's own word.
+func listed(parts list[string]) string {
+    if parts.length() == 0 {
+        return ""
+    }
+    var text = parts[0]
+    for var p = parts.slice(1, parts.length()) {
+        text = $"{text}, {p}"
+    }
+    return text
+}
+
+// What `triggerOf` names of PokéAPI's own for `d`, each as `called` keys it:
+// "item/thunder-stone", "type/fairy".
+func namedBy(d poke.PokemonEvolution) list[string] {
+    var out list[string] = []
+    var item = d.item
+    if item != null {
+        out.push("item/{item.name}")
+    }
+    var held = d.heldItem
+    if held != null {
+        out.push("item/{held.name}")
+    }
+    var moveType = d.knownMoveType
+    if moveType != null {
+        out.push("type/{moveType.name}")
+    }
+    var move = d.knownMove
+    if move != null {
+        out.push("move/{move.name}")
+    }
+    var time = d.timeOfDay
+    var timed = time != null && time != ""
+    if d.minLevel == null && item == null && held == null && d.minHappiness == null && d.minAffection == null && moveType == null && move == null && !timed && d.trigger.name != "trade" {
+        out.push("trigger/{d.trigger.name}")
+    }
+    return out
+}
+
+// Where a Pokémon's official artwork is, `{id}` standing for its national
+// number. A test provides one with no `{id}` in it, so every picture is the
+// one its server answers.
+context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`)
+
+// The official artwork of the species numbered `id`, as `template` says where
+// it is. A dex entry names its species by URL, whose last segment is the id.
+func artworkOf(template string, id string) => string.replace(template, `{id}`, id)
+
+// The colour each type is drawn in, as the games' own type labels have it.
+const typeColors map[string, color] = {
+    "normal" = #a8a77a,
+    "fire" = #ee8130,
+    "water" = #6390f0,
+    "electric" = #f7d02c,
+    "grass" = #7ac74c,
+    "ice" = #96d9d6,
+    "fighting" = #c22e28,
+    "poison" = #a33ea1,
+    "ground" = #e2bf65,
+    "flying" = #a98ff3,
+    "psychic" = #f95587,
+    "bug" = #a6b91a,
+    "rock" = #b6a136,
+    "ghost" = #735797,
+    "dragon" = #6f35fc,
+    "dark" = #705746,
+    "steel" = #b7b7ce,
+    "fairy" = #d685ad,
+}
+
+// The colour of the type PokéAPI names `kind`, grey for one it adds later.
+func typeColor(kind string) => typeColors.get(kind, #68a090)
+
+// The colour a type's name is written in over its own: dark over the light
+// ones, white over the rest.
+func typeInk(kind string) color {
+    if kind == "electric" || kind == "ice" || kind == "ground" || kind == "steel" {
+        return #222222
+    }
+    return #ffffff
+}
+
+// A number in a dex as the games print it: 7 is "#007".
+func number(n int) string {
+    var digits = "{n}"
+    for string.length(digits) < 3 {
+        digits = "0" + digits
+    }
+    return "#" + digits
+}
+
+// The language of a SNGL locale, lower-cased and without its region or
+// encoding: "fr-CA" and "fr_CA.UTF-8" are "fr", "C" is "c".
+func languageOf(locale string) string {
+    var lang = string.lower(locale)
+    for var sep = ["-", "_", "."] {
+        var at = string.indexOf(lang, sep)
+        if at >= 0 {
+            lang = string.substring(lang, 0, at)
+        }
+    }
+    return lang
+}
+
+// PokéAPI's names for the language of `locale`, in the order to look for
+// them, English last: Japanese in kanji where PokéAPI has it, as the newer
+// games print it, and in kana where only that is there. English alone for a
+// language the app does not offer.
+func pokeLanguages(locale string) list[string] {
+    return match languageOf(locale) {
+        "fr" => ["fr", "en"]
+        "de" => ["de", "en"]
+        "es" => ["es", "en"]
+        "ja" => ["ja", "ja-hrkt", "en"]
+        else => ["en"]
+    }
+}
+
+// What PokéAPI gives in the reader's language out of `entries`, one per
+// language or more -- a name, a genus, a game's description -- `text` of the
+// last entry `language` says is in the first of the reader's languages that
+// has one, then in English, or `otherwise` where neither has. Every name or
+// text the app shows from PokéAPI is picked here.
+func inLanguage[T any](entries list[T], language func(T) string, text func(T) string, otherwise string) string {
+    for var want = pokeLanguages(i18n.locale) {
+        var found = entries.filter(func(e T) => language(e) == want)
+        if found.length() > 0 {
+            return text(found[found.length() - 1])
+        }
+    }
+    return otherwise
+}
+
+// One name of a resource in one language, whichever resource it names: what
+// a page keeps of a type, an ability or a move it asked for.
+struct Named {
+    language string
+    name     string
+}
+
+// `entries` as a page keeps them.
+func namedIn[T any](entries list[T], language func(T) string, name func(T) string) list[Named] {
+    return entries.map(func(e T) => Named{language=language(e), name=name(e)})
+}
+
+// The name of the resource `slug` of `kind` in the reader's language, out of
+// what a page has asked for, keyed "kind/slug"; `slug` made readable until
+// its answer arrives, or where it gives none.
+func called(store map[string, list[Named]], kind string, slug string) string {
+    return inLanguage(store.get("{kind}/{slug}", []), func(n Named) => n.language, func(n Named) => n.name, display(slug))
+}
+
+// The slugs of `kind` among `keys`, each once, in the order they come.
+func slugsOf(keys list[string], kind string) list[string] {
+    var prefix = "{kind}/"
+    var out list[string] = []
+    for var k = keys {
+        if string.startsWith(k, prefix) {
+            var slug = string.substring(k, string.length(prefix), string.length(k))
+            if out.filter(func(s string) => s == slug).length() == 0 {
+                out.push(slug)
+            }
+        }
+    }
+    return out
+}
+
+// A dex's name, or its own name made readable where it has none.
+func dexTitle(names list[poke.PokedexName], name string) => inLanguage(names, func(n poke.PokedexName) => n.language.name, func(n poke.PokedexName) => n.name, display(name))
+
+// `items` in rows of `width`, the last holding what is left: a grid, since a
+// `Style` neither wraps a row nor lays out columns.
+func rows[T any](items list[T], width int) list[list[T]] {
+    var out list[list[T]] = []
+    for var start = seq.step(0, items.length(), width) {
+        out.push(items.slice(start, int.min(start + width, items.length())))
+    }
+    return out
+}
+
+// The Pokémon a species' page shows: its default variety, whose name is not
+// always the species' -- the species deoxys is the Pokémon deoxys-normal.
+func defaultVariety(varieties list[poke.PokemonSpeciesVariety], species string) string {
+    for var v = varieties {
+        if v.isDefault {
+            return v.pokemon.name
+        }
+    }
+    return species
+}
+
+// A form's name -- "Alolan Vulpix" -- or `otherwise` where PokéAPI gives it
+// none, as for a species' default form.
+func formName(names list[poke.PokemonFormName], otherwise string) => inLanguage(names, func(n poke.PokemonFormName) => n.language.name, func(n poke.PokemonFormName) => n.name, otherwise)
+
+// The varieties of a species other than `shown`, the one a page shows: the
+// forms its Sprites tab lists.
+func otherVarieties(varieties list[poke.PokemonSpeciesVariety], shown string) list[poke.PokemonSpeciesVariety] {
+    return varieties.filter(func(v poke.PokemonSpeciesVariety) => v.pokemon.name != shown)
+}
+
+// The national number of the Pokémon `pokemon` among a species' varieties,
+// out of its URL, or `otherwise` where it is none of them: a form's artwork is
+// numbered by its Pokémon, not its species.
+func varietyId(varieties list[poke.PokemonSpeciesVariety], pokemon string, otherwise string) string {
+    for var v = varieties {
+        if v.pokemon.name == pokemon {
+            return idOf(v.pokemon.url)
+        }
+    }
+    return otherwise
+}
+
+// One picture of a Pokémon's gallery: what it shows, and where it is.
+struct Sprite {
+    label string
+    url   string
+}
+
+// A Pokémon's pictures, each labelled: front and back, normal and shiny,
+// female where it looks different, and its official artwork and Home
+// picture. A picture PokéAPI has none of -- a female one, for a Pokémon that
+// looks the same either way -- is left out.
+func gallery(s poke.PokemonSprites) list[Sprite] {
+    var art = s.other.officialArtwork
+    var home = s.other.home
+    return [
+        Sprite{label=$"Front", url=orNone(s.frontDefault)},
+        Sprite{label=$"Back", url=orNone(s.backDefault)},
+        Sprite{label=$"Shiny front", url=orNone(s.frontShiny)},
+        Sprite{label=$"Shiny back", url=orNone(s.backShiny)},
+        Sprite{label=$"Female front", url=orNone(s.frontFemale)},
+        Sprite{label=$"Female back", url=orNone(s.backFemale)},
+        Sprite{label=$"Shiny female front", url=orNone(s.frontShinyFemale)},
+        Sprite{label=$"Shiny female back", url=orNone(s.backShinyFemale)},
+        Sprite{label=$"Official artwork", url=orNone(art.frontDefault)},
+        Sprite{label=$"Shiny official artwork", url=orNone(art.frontShiny)},
+        Sprite{label=$"Home", url=orNone(home.frontDefault)},
+        Sprite{label=$"Shiny Home", url=orNone(home.frontShiny)},
+        Sprite{label=$"Female Home", url=orNone(home.frontFemale)},
+        Sprite{label=$"Shiny female Home", url=orNone(home.frontShinyFemale)},
+    ].filter(func(p Sprite) => p.url != "")
+}
+
+// A picture's URL, or "" where there is none.
+func orNone(url option[string]) => url != null ? url : ""
+
+// A species' name, or its own name made readable where it has none.
+func speciesName(names list[poke.PokemonSpeciesName], name string) => inLanguage(names, func(n poke.PokemonSpeciesName) => n.language.name, func(n poke.PokemonSpeciesName) => n.name, display(name))
+
+// What kind of Pokémon a species is: "Seed Pokémon".
+func genusOf(genera list[poke.PokemonSpeciesGenus]) => inLanguage(genera, func(g poke.PokemonSpeciesGenus) => g.language.name, func(g poke.PokemonSpeciesGenus) => g.genus, "")
+
+// A species' last description, the newest game's, on one line: the games
+// break a description where their text box did, with newlines and form
+// feeds.
+func latestFlavor(entries list[poke.PokemonSpeciesFlavorText]) => oneLine(inLanguage(entries, func(e poke.PokemonSpeciesFlavorText) => e.language.name, func(e poke.PokemonSpeciesFlavorText) => e.flavorText, ""))
+
+// `s` with every run of whitespace a single space, and none at either end.
+func oneLine(s string) string {
+    var spaced = s
+    for var ws = ["\n", "\x0c", "\r", "\t"] {
+        spaced = string.replace(spaced, ws, " ")
+    }
+    var out builder
+    var first = true
+    for var w = string.split(spaced, " ") {
+        if w != "" {
+            if !first {
+                out.add(" ")
+            }
+            first = false
+            out.add(w)
+        }
+    }
+    return out.string()
+}
+
+// A length in metres.
+unit length { m }
+
+// A mass in kilograms.
+unit mass { kg }
+
+// A Pokémon's height, which PokéAPI gives in tenths of a metre.
+func heightOf(decimetres int) length {
+    return 1m * (float(decimetres) / 10.0)
+}
+
+// A Pokémon's weight, which PokéAPI gives in tenths of a kilogram.
+func weightOf(hectograms int) mass {
+    return 1kg * (float(hectograms) / 10.0)
+}
+
+// A height as the reader writes a number: "0.7 m", "0,7 m".
+func metres(l length) string {
+    var n = i18n.numberFloat(float(l))
+    return $"{n} m"
+}
+
+// A weight as the reader writes a number: "6.9 kg", "6,9 kg".
+func kilograms(w mass) string {
+    var n = i18n.numberFloat(float(w))
+    return $"{n} kg"
+}
+
+// A Pokémon's abilities, a hidden one marked: "Overgrow, Chlorophyll (hidden)".
+func abilitiesOf(abilities list[poke.PokemonAbility], store map[string, list[Named]]) string {
+    return listed(abilities.map(func(a poke.PokemonAbility) => a.isHidden == true ? hidden(called(store, `ability`, a.ability.name)) : called(store, `ability`, a.ability.name)))
+}
+
+// An ability marked as hidden.
+func hidden(ability string) => $"{ability} (hidden)"
+
+// Names of `kind` in the reader's language, in a list: "Monster, Plant".
+func namesOf(kind string, slugs list[string], store map[string, list[Named]]) => listed(slugs.map(func(s string) => called(store, kind, s)))
+
+// The share of a species that is each gender, from its gender rate: how
+// many eighths are female, or -1 for a species that has no gender.
+func genderOf(rate int) string {
+    if rate < 0 {
+        return $"Genderless"
+    }
+    var female = float(rate) * 12.5
+    var males = i18n.numberFloat(100.0 - female)
+    var females = i18n.numberFloat(female)
+    return $"{males}% male, {females}% female"
+}
+
+// A base stat's name in the reader's language.
+func statLabel(name string, store map[string, list[Named]]) => called(store, `stat`, name)
+
+// The sum of a Pokémon's base stats.
+func statTotal(stats list[poke.PokemonStat]) int {
+    var total = 0
+    for var s = stats {
+        total += s.baseStat
+    }
+    return total
+}
+
+// The effort values defeating a Pokémon gives: "1 Special Attack, 1 Special
+// Defense".
+func effortOf(stats list[poke.PokemonStat], store map[string, list[Named]]) string {
+    var given = stats.filter(func(s poke.PokemonStat) => s.effort > 0)
+    return listed(given.map(func(s poke.PokemonStat) => effort(s.effort, statLabel(s.stat.name, store))))
+}
+
+// So many effort values of a stat: "1 Special Attack", and in the order the
+// reader's language puts the two.
+func effort(count int, stat string) => $"{count} {stat}"
+
+// PokéAPI's version groups in the order their games came out, which is its
+// `order` and not its ids: red-green-japan is 28 and came first. A group
+// PokéAPI adds after these counts as the newest.
+const versionGroups = [
+    "red-green-japan",
+    "blue-japan",
+    "red-blue",
+    "yellow",
+    "gold-silver",
+    "crystal",
+    "ruby-sapphire",
+    "emerald",
+    "colosseum",
+    "xd",
+    "firered-leafgreen",
+    "diamond-pearl",
+    "platinum",
+    "heartgold-soulsilver",
+    "black-white",
+    "black-2-white-2",
+    "x-y",
+    "omega-ruby-alpha-sapphire",
+    "sun-moon",
+    "ultra-sun-ultra-moon",
+    "lets-go-pikachu-lets-go-eevee",
+    "sword-shield",
+    "the-isle-of-armor",
+    "the-crown-tundra",
+    "brilliant-diamond-shining-pearl",
+    "legends-arceus",
+    "scarlet-violet",
+    "the-teal-mask",
+    "the-indigo-disk",
+    "legends-za",
+    "mega-dimension",
+    "champions",
+]
+
+// Where a version group came out among `versionGroups`.
+func released(group string) int {
+    for var i, g = versionGroups {
+        if g == group {
+            return i
+        }
+    }
+    return versionGroups.length()
+}
+
+// The version group whose moves a Pokémon's page lists: the newest it learns
+// moves in among those `covered` names -- the groups of the dex chosen -- or
+// among all of them where it names none, as the National dex does. "" where
+// it learns none there.
+func latestGroup(covered list[string], moves list[poke.PokemonMove]) string {
+    var best = ""
+    for var m = moves {
+        for var d = m.versionGroupDetails {
+            var g = d.versionGroup.name
+            var offered = covered.length() == 0 || covered.filter(func(c string) => c == g).length() > 0
+            if offered && (best == "" || released(g) > released(best)) {
+                best = g
+            }
+        }
+    }
+    return best
+}
+
+// The version groups a dex covers, none where no dex is chosen.
+func dexGroups(dex option[poke.PokedexDetail]) list[string] {
+    return dex != null ? dex.versionGroups.map(func(g poke.VersionGroupSummary) => g.name) : []
+}
+
+// A way a Pokémon learns a move, as the Moves tab offers it: its label, and
+// PokéAPI's name for it.
+struct LearnMethod {
+    label string
+    name  string
+}
+
+// The ways the Moves tab offers, by level first.
+func learnMethods() list[LearnMethod] {
+    return [
+        LearnMethod{label=$"Level", name="level-up"},
+        LearnMethod{label=$"Machine", name="machine"},
+        LearnMethod{label=$"Egg", name="egg"},
+        LearnMethod{label=$"Tutor", name="tutor"},
+    ]
+}
+
+// PokéAPI's name for the way labelled `label`, by level where none is.
+func methodNamed(label string) string {
+    for var m = learnMethods() {
+        if m.label == label {
+            return m.name
+        }
+    }
+    return "level-up"
+}
+
+// The label of the way PokéAPI names `name`, by level's where it is none of
+// them.
+func methodLabelled(name string) string {
+    for var m = learnMethods() {
+        if m.name == name {
+            return m.label
+        }
+    }
+    return learnMethods()[0].label
+}
+
+// One row of the Moves tab: the level a move is learned at, "" for a way
+// that has none, the move's name in the reader's language, its type's and
+// PokéAPI's name for the type, its power and accuracy, and PokéAPI's name for
+// the move. The type, power and accuracy are "" until the move's answer
+// arrives, and a power or an accuracy the move has none of is "—".
+struct MoveRow {
+    level    string
+    name     string
+    kind     string
+    kindSlug string
+    power    string
+    accuracy string
+    move     string
+}
+
+// What a page keeps of a move it asked for: its type, and its power and
+// accuracy, each `null` for a move with none -- Growl deals no damage, and
+// Swords Dance never misses.
+struct MoveFact {
+    kind     string
+    power    option[int]
+    accuracy option[int]
+}
+
+// What the Moves tab keeps of `m`.
+func moveFactOf(m poke.MoveDetail) => MoveFact{kind=m.type.name, power=m.power, accuracy=m.accuracy}
+
+// A move's power or accuracy as its row shows it.
+func amount(n option[int]) => n != null ? i18n.numberInt(n) : "—"
+
+// A move as `movesOf` orders it.
+struct learned {
+    level int
+    order int
+    name  string
+    move  string
+}
+
+// Whether `a` comes before `b`: by level, then by PokéAPI's order where moves
+// share one -- Tackle before Growl at level 1 -- then by name.
+func before(a learned, b learned) bool {
+    if a.level != b.level {
+        return a.level < b.level
+    }
+    if a.order != b.order {
+        return a.order < b.order
+    }
+    return a.name < b.name
+}
+
+// The moves a Pokémon learns by `method` in `group`, as the Moves tab's rows,
+// in the order `before` says, each with what `facts` holds of it.
+func movesOf(moves list[poke.PokemonMove], group string, method string, facts map[string, MoveFact], store map[string, list[Named]]) list[MoveRow] {
+    var sorted list[learned] = []
+    for var m = moves {
+        for var d = m.versionGroupDetails {
+            if d.versionGroup.name == group && d.moveLearnMethod.name == method {
+                var order = d.order
+                var it = learned{level=d.levelLearnedAt, order=order != null ? order : 0, name=called(store, `move`, m.move.name), move=m.move.name}
+                var at = sorted.length()
+                for at > 0 && before(it, sorted[at - 1]) {
+                    at -= 1
+                }
+                sorted.insert(at, it)
+            }
+        }
+    }
+    return sorted.map(func(l learned) => moveRow(l, method == "level-up" ? "{l.level}" : "", facts, store))
+}
+
+// `l`'s row, at `level`, with what `facts` holds of it.
+func moveRow(l learned, level string, facts map[string, MoveFact], store map[string, list[Named]]) MoveRow {
+    if !facts.contains(l.move) {
+        return MoveRow{level=level, name=l.name, move=l.move}
+    }
+    var f = facts[l.move]
+    return MoveRow{level=level, name=l.name, kind=called(store, `type`, f.kind), kindSlug=f.kind, power=amount(f.power), accuracy=amount(f.accuracy), move=l.move}
+}
+
+// What the Moves tab says under its table: how many moves the way chosen
+// teaches.
+func movesNote(count int) => $"{count, plural, =0{It learns no moves this way.} one{It learns # move this way.} other{It learns # moves this way.}}"
+
+// How many Pokémon a dex holds: "1 Pokémon", "40 Pokémon".
+func dexCount(count int) => $"{count, plural, one{# Pokémon} other{# Pokémon}}"
+
+// What a page keeps of each kind of resource it asks a name of.
+func typeNamed(names list[poke.TypeName]) => namedIn(names, func(n poke.TypeName) => n.language.name, func(n poke.TypeName) => n.name)
+
+func abilityNamed(names list[poke.AbilityName]) => namedIn(names, func(n poke.AbilityName) => n.language.name, func(n poke.AbilityName) => n.name)
+
+func statNamed(names list[poke.StatName]) => namedIn(names, func(n poke.StatName) => n.language.name, func(n poke.StatName) => n.name)
+
+func eggGroupNamed(names list[poke.EggGroupName]) => namedIn(names, func(n poke.EggGroupName) => n.language.name, func(n poke.EggGroupName) => n.name)
+
+func habitatNamed(names list[poke.PokemonHabitatName]) => namedIn(names, func(n poke.PokemonHabitatName) => n.language.name, func(n poke.PokemonHabitatName) => n.name)
+
+func itemNamed(names list[poke.ItemName]) => namedIn(names, func(n poke.ItemName) => n.language.name, func(n poke.ItemName) => n.name)
+
+func triggerNamed(names list[poke.EvolutionTriggerName]) => namedIn(names, func(n poke.EvolutionTriggerName) => n.language.name, func(n poke.EvolutionTriggerName) => n.name)
+
+func moveNamed(names list[poke.MoveName]) => namedIn(names, func(n poke.MoveName) => n.language.name, func(n poke.MoveName) => n.name)
+
+// What a page says while it waits for `name`.
+func loadingName(name string) => $"Loading {name}"
+
+// What a page says where `name` failed to load, and why.
+func couldNotLoad(name string, why string) => $"Could not load {name}: {why}"
+
+// What a page says where `name`'s Pokémon failed to load, and why.
+func couldNotLoadMon(name string, why string) => $"Could not load {name}'s types and stats: {why}"

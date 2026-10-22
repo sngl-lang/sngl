@@ -1,0 +1,87 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "Doubles this Pokémon's Speed on Electric Terrain.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Doubles this Pokémon's Speed on Electric Terrain."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Doubles the Pokémon’s Speed stat on\nElectric Terrain.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "sun-moon",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/17/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-vii",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/7/"
+ },
+ "id": 207,
+ "is_main_series": true,
+ "name": "surge-surfer",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "サーフテール"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Surf Caudal"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Surf-Schweif"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Cola Surf"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Surge Surfer"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "サーフテール"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "raichu-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10100/"
+   },
+   "slot": 1
+  }
+ ]
+}

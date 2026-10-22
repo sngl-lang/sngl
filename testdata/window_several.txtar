@@ -75,6 +75,8 @@ type Model struct {
 	visible__inst1 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
+	__rendering0   bool
+	__renderAgain0 bool
 
 	main    *fynelayout.Toplevel
 	__n0    *widget.Label
@@ -93,20 +95,32 @@ func New() *Model {
 	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	if m.closes > 2 {
-		__n2 := widget.NewLabel("")
-		__n2.SetText("closed often")
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
-		m.__slot0 = append(m.__slot0, __n2)
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			if m.closes > 2 {
+				__n2 := widget.NewLabel("")
+				__n2.SetText("closed often")
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
+				m.__slot0 = append(m.__slot0, __n2)
+			}
+		}
+		m.__rendering0 = false
 	}
 }
 
@@ -271,6 +285,8 @@ type Model struct {
 	visible__inst1 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
+	__rendering0   bool
+	__renderAgain0 bool
 	main           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 	__n3           gtk4rt.Handle
@@ -289,20 +305,32 @@ func New() *Model {
 	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	if m.closes > 2 {
-		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n2, "closed often")
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
-		m.__slot0 = append(m.__slot0, __n2)
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
+			}
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			if m.closes > 2 {
+				__n2 := gtk4rt.LabelNew("")
+				gtk4rt.LabelSetText(__n2, "closed often")
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
+				m.__slot0 = append(m.__slot0, __n2)
+			}
+		}
+		m.__rendering0 = false
 	}
 }
 
@@ -442,28 +470,40 @@ dialog { margin: auto; padding: 1em; }
   // sngl-entry.js
   var state = { closes: 0, visible__inst0: true, visible__inst1: true };
   var __slot0 = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    if (state.closes > 2) {
-      let __n2 = document.createElement("span");
-      __n2.textContent = "closed often";
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        if (state.closes > 2) {
+          let __n2 = document.createElement("span");
+          __n2.textContent = "closed often";
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2, __place0_i_ref0);
+          }
+          __slot0.push(__n2);
+        }
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      if (__place0_i_ref0 === __n2) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2, __place0_i_ref0);
-      }
-      __slot0.push(__n2);
-    }
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -504,8 +544,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f48fe617691ff34d9841685e53df1e8f
+pass sha256:52e09601be8b3d28e2415d64e73af1a6
 -- run/go/gtk4 --
-pass sha256:3e771afdd83b86a5f02a21b0450103d9
+pass sha256:b242164f13a969f8599992687ca7e16e
 -- run/none/html --
-pass sha256:985011345cfacf8126898da71975ea61
+pass sha256:a86500ef7c8982821d4940a0198b11df
