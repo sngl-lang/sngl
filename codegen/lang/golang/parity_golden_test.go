@@ -150,8 +150,9 @@ func generateRouteServer(t *testing.T, path string) string {
 		Platforms: []ir.Platform{&htmlplat.Generator{}},
 		// And the JavaScript translator, whatever the target language: the
 		// page html writes carries script either way, and html.sngl declares
-		// its setInterval with #[js.native] off sngl:language/js.
-		Languages: []ir.Language{&golang.Translator{}, &javascript.Translator{}},
+		// its setInterval with #[js.native] off sngl:language/js. And none,
+		// which html's node names to say a static site is served.
+		Languages: []ir.Language{&golang.Translator{}, &javascript.Translator{}, codegen.LookupLang("none")},
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "go"}},
 	})
 	for _, d := range diags {

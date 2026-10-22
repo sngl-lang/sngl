@@ -112,6 +112,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 		Main:       opts.Main,
 		Executable: opts.Executable,
 		Framework:  framework,
+		Listen:     opts.Listen,
 		Routes:     routes,
 		RenderHTML: func(idx int) string {
 			if idx < 0 || idx >= len(perWindow) {

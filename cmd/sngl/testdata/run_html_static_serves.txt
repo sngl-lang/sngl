@@ -1,0 +1,15 @@
+# `sngl run` on html with no server language serves the static site it wrote:
+# the page at /, not a listing of the directory.
+
+serve run --platform html --lang none --opt listen=127.0.0.1:0 app.sngl
+fetch $URL/
+stdout '<!DOCTYPE html>'
+stdout 'served statically'
+! stdout 'index.html'
+
+-- app.sngl --
+import ui "sngl:ui"
+
+ui.window {
+    ui.text(value="served statically")
+}

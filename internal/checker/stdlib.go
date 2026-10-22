@@ -988,6 +988,9 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				}
 				dot := strings.IndexByte(decl.Name, '.')
 				if dot <= 0 {
+					if decl.Target != nil && decl.Name == targetTierMember(tier) {
+						c.addNodeOverride(decl, owner, name, tier, aliases)
+					}
 					continue
 				}
 				ns := decl.Name[:dot]
@@ -1053,6 +1056,42 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 	})
 }
 
+// addNodeOverride records a target package's override of its own
+// build-directive node for a target of the other tier --
+// `component platform[static.language](listen) { gen.run(…) }` in html -- which
+// is the node's body when building for that pair, so the command it holds wins
+// over the node's own and the other target's (build.findCommand).
+//
+// The target it names is another package's, which the merge's scope does not
+// hold: it is reached through the document's own import of it.
+func (c *checker) addNodeOverride(decl *ast.ComponentDecl, owner *ir.Package, name string, tier ir.BuiltinKind, aliases map[string]string) {
+	node := ir.TargetNodeOf(owner, tier)
+	if node == nil {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	if sel, ok := decl.Target.(*ast.SelectExpr); ok {
+		if id, ok := sel.Operand.(*ast.IdentExpr); ok {
+			if uri, ok := aliases[id.Name]; ok {
+				if pkg := c.libPkg(uri); pkg != nil {
+					c.scope.Replace(&ir.Namespace{Name: id.Name, Pkg: pkg})
+				}
+			}
+		}
+	}
+	other, kind, ok := c.resolveTargetIndex(decl.Target)
+	if !ok {
+		return
+	}
+	if kind == tier {
+		c.error(decl.Pos, "package for %q may not override its %s for %q, a %s like itself", name, decl.Name, other, decl.Name)
+		return
+	}
+	selection := c.overrideSelection(decl, node)
+	c.addOverrideBody(decl.Pos, node, kind, other, "", decl.Name, decl.Body, false, selection, decl.Const)
+}
+
 // inTargetLoad runs check as part of loading the target package pkgName:
 // library source, declaring into that package.
 func (c *checker) inTargetLoad(pkgName string, check func()) {
@@ -1103,13 +1142,17 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		return
 	}
 	var userPkg *ir.Package
+	var home string
 	if user {
 		userPkg = c.declPkg()
+	} else if c.overrideOwner != nil {
+		home = strings.TrimPrefix(c.overrideOwner.Path, "sngl:")
 	}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:      comp,
 		pos:       pos,
 		platform:  target,
+		home:      home,
 		kind:      kind,
 		body:      body,
 		user:      user,
@@ -1245,6 +1288,10 @@ type pendingExtension struct {
 	// scope, where the file's imports are; a target package's body is
 	// compiler-internal and deliberately resolves where they are not.
 	user bool
+	// home is the target package that wrote a library override, whose scope
+	// its body resolves in: the target it names, but for a package's override
+	// of its own node for a target of the other tier.
+	home string
 	// isConst is the override's own `const` prefix, and name how it spelled
 	// what it overrides.
 	isConst bool
@@ -1276,7 +1323,10 @@ func (c *checker) checkExtensions(pending []pendingExtension) {
 	var order []string
 	byTarget := map[string][]pendingExtension{}
 	for _, pe := range pending {
-		uri := targetTierMember(pe.kind) + "/" + pe.platform
+		uri := pe.home
+		if uri == "" {
+			uri = targetTierMember(pe.kind) + "/" + pe.platform
+		}
 		if _, seen := byTarget[uri]; !seen {
 			order = append(order, uri)
 		}

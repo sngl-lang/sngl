@@ -43,6 +43,7 @@ func TestScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	startTestHTTP(t, root)
+	defer removeSnglBin()
 	conds := scripttest.DefaultConds()
 	// `gtk4` is true when the gtk4 development libraries are installed, so the
 	// generated cgo can be compiled.
@@ -124,6 +125,7 @@ func TestScript(t *testing.T) {
 			}
 			testRuns = testlaunch.NewRecords(records, *updateTestRuns, *verifyTestRuns)
 			defer func() { testRuns = nil }()
+			defer stopServers()
 			scripttest.Run(t, engine, s, file, bytes.NewReader(a.Comment))
 			if *updateTestRuns && !t.Failed() {
 				if err := testlaunch.WriteArchive(file, a, rest, testRuns.Written()); err != nil {
@@ -145,6 +147,8 @@ func scriptCmds() map[string]script.Cmd {
 	cmds := scripttest.DefaultCmds()
 	cmds["sngl"] = snglCmd()
 	cmds["cmpgen"] = cmpGenCmd()
+	cmds["serve"] = serveCmd()
+	cmds["fetch"] = fetchCmd()
 	return cmds
 }
 

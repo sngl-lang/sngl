@@ -94,7 +94,14 @@ The tiers, and the split between them is the whole point of the system:
   the body of its build-tree node (`lib/x/gen/command.sngl`). The platform
   node's override for the language wins, then the platform node's body, then
   the language node's (`internal/build/command.go`), so `go run` is written
-  once on `sngl:language/go` and fyne, gtk4 and bubbletea say nothing. The
+  once on `sngl:language/go` and fyne, gtk4 and bubbletea say nothing. html
+  serves the directory only for `none`, in
+  `const component platform[static.language](listen)`, its node's override for
+  that language (`addNodeOverride`): a server language's build is a program,
+  which the language's own command runs -- under a platform body it was served
+  as a file listing (`run_html_go_serves.txt`, `run_html_static_serves.txt`).
+  A target package may override its own node only for a target of the other
+  tier; its body resolves in the package's scope, not the named target's. The
   handler runs in the interpreter with the node's props bound to the target's
   options; `gen.shell` runs a process on the user's terminal, and what only Go
   can do is a build intrinsic the target registers with

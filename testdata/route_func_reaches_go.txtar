@@ -44,6 +44,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html"
+	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -180,7 +182,16 @@ func handleIndexAction(__w http.ResponseWriter, __r *http.Request) {
 }
 
 func main() {
-	http.ListenAndServe(":8080", Handler())
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	host, port, _ := net.SplitHostPort(ln.Addr().String())
+	if ip := net.ParseIP(host); ip == nil || ip.IsUnspecified() {
+		host = "localhost"
+	}
+	fmt.Println("http://" + net.JoinHostPort(host, port))
+	log.Fatal(http.Serve(ln, Handler()))
 }
 -- run/go/html --
-pass sha256:658ce7f633a4691e8b25f82a688b94c0
+pass sha256:38c38f9efc6c1d37d4e8a70730075475

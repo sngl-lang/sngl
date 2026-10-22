@@ -10,6 +10,7 @@ import math "sngl:math"
 import gen "sngl:x/gen"
 import nav "sngl:ui/nav"
 import family "sngl:family"
+import static "sngl:language/none"
 
 // Serves dir over HTTP at listen, ":0" when empty, printing the address, until
 // the process is stopped. What `sngl run` does with a site. Declared above the
@@ -64,7 +65,8 @@ component platform(
     const main          bool,
     // Route mode: HTTP framework (default "net/http").
     const framework     string,
-    // Route mode: host:port for `sngl run` to listen on.
+    // Host:port `sngl run` listens on: the static server's, ":0" when
+    // empty, or the route server's, ":8080" when empty.
     const listen        string,
     // Minify emitted HTML and inline JS via esbuild.
     const minify        bool,
@@ -107,7 +109,11 @@ component platform(
         "clearInterval",
         "requestAnimationFrame",
     ],
-) build.platform {
+) build.platform
+
+// A static site is served from the directory it was written to. A server
+// language's build is a program of its own, which its language runs.
+const component platform[static.language](listen) {
     gen.run(@run(dir, args) {
         serve(dir, listen)
     })
