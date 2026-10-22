@@ -1497,6 +1497,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
@@ -1654,7 +1655,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1697,7 +1697,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performTextReplacement("ada"); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("ada")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"input ada ada\")", (c.seen == "input ada ada"))
         org.junit.Assert.assertTrue("(c.name == \"ada\")", (c.name == "ada"))
     }
@@ -1707,7 +1707,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         var d = "2024-03-05"
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performTextReplacement(d); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(d)) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.picked == d)", (c.picked == d))
         org.junit.Assert.assertTrue("(c.seen == \"day\")", (c.seen == "day"))
     }
@@ -1860,6 +1860,6 @@ pass sha256:7afd12707a166b11f90f0b791c169384
 -- run/go/gtk4 --
 pass sha256:2f9d215b9c70676e1d30d0cd0571a957
 -- run/kotlin/android --
-pass sha256:eeedac8ed7bfa9790127488c6bfa0863
+pass sha256:e0939716c0650e0e9486525022c2d251
 -- run/none/html --
 pass sha256:39a7ec5df31369c005bacf45496efdcf

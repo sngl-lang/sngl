@@ -1216,8 +1216,8 @@ func Paint(ctx *C.cairo_t, style Style) {
 	}
 	if style.Stroke.A > 0 {
 		C.cairo_set_line_width(ctx, C.double(style.StrokeWidth))
-		C.cairo_set_line_cap(ctx, LineCap(style.LineCap))
-		C.cairo_set_line_join(ctx, LineJoin(style.LineJoin))
+		C.cairo_set_line_cap(ctx, LineCapFunc(style.LineCap))
+		C.cairo_set_line_join(ctx, LineJoinFunc(style.LineJoin))
 		Source(ctx, style.Stroke)
 		C.cairo_stroke(ctx)
 	}
@@ -1227,7 +1227,7 @@ func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
 	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(cap__r0 string) C.cairo_line_cap_t {
+func LineCapFunc(cap__r0 string) C.cairo_line_cap_t {
 	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
@@ -1237,7 +1237,7 @@ func LineCap(cap__r0 string) C.cairo_line_cap_t {
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(join string) C.cairo_line_join_t {
+func LineJoinFunc(join string) C.cairo_line_join_t {
 	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
@@ -2244,7 +2244,7 @@ pass sha256:4e1e85f17b4a2065817399c5fe88588a
 -- run/go/fyne --
 pass sha256:fc0b46b1fbd1b24a4c0099a0b408ca6d
 -- run/go/gtk4 --
-pass sha256:145bf05d6d413892ff7fdbaf1b0bbcf8
+pass sha256:aea44ab7f2dd4e632d3026a8b6121cba
 -- run/kotlin/android --
 pass sha256:88a57580f196d2809bd0024df9efbc41
 -- run/none/html --

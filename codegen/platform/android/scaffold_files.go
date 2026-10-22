@@ -3,6 +3,8 @@ package android
 import (
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/lang/kotlin"
@@ -132,6 +134,7 @@ func writeActivityKt(w io.Writer, d scaffoldData, class, screenImport string) {
 	e.RequireImport("androidx.activity.ComponentActivity")
 	e.RequireImport("androidx.activity.compose.setContent")
 	e.RequireImport("androidx.activity.enableEdgeToEdge")
+	e.RequireImport("androidx.activity.SystemBarStyle")
 	e.RequireImport(d.Package + ".ui.theme.AppTheme")
 	screen := "MainScreen"
 	if screenImport != "" {
@@ -143,7 +146,13 @@ func writeActivityKt(w io.Writer, d scaffoldData, class, screenImport string) {
 	fmt.Fprintf(e, `class %s : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()`, class)
+        // The theme is always light, so the bars' icons are always dark.
+        // The default follows the device's dark mode, which on a dark device
+        // drew white icons over the app's white.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )`, class)
 	if d.HasI18n {
 		io.WriteString(e, `
         I18n.init(this)`)
@@ -170,12 +179,38 @@ func writeActivityKt(w io.Writer, d scaffoldData, class, screenImport string) {
 	e.Close()
 }
 
+// writeThemeKt writes AppTheme: Material's light scheme with the program's
+// accent as its primary where `color` sets one, and otherwise the device's
+// own colours where it has them (Android 12 on), Material's baseline before.
 func writeThemeKt(w io.Writer, d scaffoldData) {
 	e := kotlinFile(w, d.Package+".ui.theme")
 	e.RequireImport("androidx.compose.material3.MaterialTheme")
-	e.RequireImport("androidx.compose.material3.dynamicLightColorScheme")
 	e.RequireImport("androidx.compose.material3.lightColorScheme")
 	e.RequireImport("androidx.compose.runtime.Composable")
+	if a, ok := accentARGB(d.Accent); ok {
+		e.RequireImport("androidx.compose.ui.graphics.Color")
+		fmt.Fprintf(e, `private val Accent = Color(0x%s)
+
+private val AccentColorScheme = lightColorScheme(
+    primary = Accent,
+    onPrimary = Color.White,
+    secondary = Accent,
+    onSecondary = Color.White,
+    tertiary = Accent,
+)
+
+@Composable
+fun AppTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = AccentColorScheme,
+        content = content
+    )
+}
+`, a)
+		e.Close()
+		return
+	}
+	e.RequireImport("androidx.compose.material3.dynamicLightColorScheme")
 	e.RequireImport("androidx.compose.ui.platform.LocalContext")
 	io.WriteString(e, `private val DefaultColorScheme = lightColorScheme()
 
@@ -193,6 +228,19 @@ fun AppTheme(content: @Composable () -> Unit) {
 }
 `)
 	e.Close()
+}
+
+// accentARGB is a `#RRGGBB` color as the hex of an opaque ARGB Long, which
+// Compose's Color takes; false for anything else.
+func accentARGB(hex string) (string, bool) {
+	h, ok := strings.CutPrefix(hex, "#")
+	if !ok || len(h) != 6 {
+		return "", false
+	}
+	if _, err := strconv.ParseUint(h, 16, 32); err != nil {
+		return "", false
+	}
+	return "FF" + strings.ToUpper(h), true
 }
 
 func writeAppBuildGradle(w io.Writer, d scaffoldData) {

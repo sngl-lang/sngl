@@ -48,9 +48,17 @@ type Config struct {
 	// Nav is set when the program renders a sngl:ui/nav stack, which is a
 	// NavHost and wants navigation-compose and kotlinx.serialization.
 	Nav bool
+	// accent is Color as the program wrote it, before withDefaults fills in
+	// the launcher's default: the theme's primary where it is set, and the
+	// device's own colours where it is not.
+	accent    string
+	defaulted bool
 }
 
 func (c Config) withDefaults() Config {
+	if !c.defaulted {
+		c.accent, c.defaulted = c.Color, true
+	}
 	if c.Package == "" {
 		c.Package = "test.sngl.app"
 	}
@@ -663,7 +671,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// collision is: SNGL's own struct is `color`, so a switch over the source
 	// spelling matched nothing and the class was emitted twice.
 	hasCanvas := packageHasCanvas(ctx.Canvases)
-	if hasCanvas || namesColor(info.Structs) {
+	if hasCanvas || namesColor(info.Structs) || programNamesColor(ctx.Pkg) {
 		body.WriteString(colorKotlinDecl(declaredStructs))
 	}
 

@@ -244,7 +244,11 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			// The Gradle project, the manifest, MainActivity and the theme:
 			// what a build needs around the program rather than anything the
 			// program said. A sink that files output for review takes the
-			// digest of these and the text of the rest.
+			// digest of these and the text of the rest. The theme is the
+			// program's where its `color` is the theme's primary.
+			if strings.HasSuffix(f.Name, "/Theme.kt") && cfg.accent != "" {
+				continue
+			}
 			codegen.MarkBoilerplate(sink, f.Name)
 		}
 		if iconRes, err := iconFiles(cfg); err == nil {

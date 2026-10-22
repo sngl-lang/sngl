@@ -256,6 +256,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
@@ -317,6 +318,6 @@ pass sha256:e9a76606e68ab3c08358da133228bbda
 -- run/go/fyne --
 pass sha256:35fee985a83712d726cf61b51efb73b5
 -- run/kotlin/android --
-pass sha256:025754c2fb30c7205821c393012a8880
+pass sha256:24e2e9842289c7e511d058ddf7a6ef33
 -- run/none/html --
 pass sha256:b3513fe47c3f81b5fb55ebe052d11274

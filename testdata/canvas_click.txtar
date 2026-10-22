@@ -663,8 +663,8 @@ func Paint(ctx *C.cairo_t, style Style) {
 	}
 	if style.Stroke.A > 0 {
 		C.cairo_set_line_width(ctx, C.double(style.StrokeWidth))
-		C.cairo_set_line_cap(ctx, LineCap(style.LineCap))
-		C.cairo_set_line_join(ctx, LineJoin(style.LineJoin))
+		C.cairo_set_line_cap(ctx, LineCapFunc(style.LineCap))
+		C.cairo_set_line_join(ctx, LineJoinFunc(style.LineJoin))
 		Source(ctx, style.Stroke)
 		C.cairo_stroke(ctx)
 	}
@@ -674,7 +674,7 @@ func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
 	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(cap__r0 string) C.cairo_line_cap_t {
+func LineCapFunc(cap__r0 string) C.cairo_line_cap_t {
 	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
@@ -684,7 +684,7 @@ func LineCap(cap__r0 string) C.cairo_line_cap_t {
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(join string) C.cairo_line_join_t {
+func LineJoinFunc(join string) C.cairo_line_join_t {
 	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
@@ -1111,6 +1111,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:fcee23b184f35e77e0e5edf7737d256b
 -- run/go/gtk4 --
-pass sha256:2bfee9c2affcace8e7816ccd57458aff
+pass sha256:848ed2b507a5cb76b6ea4bf4f0f8ed15
 -- run/none/html --
 pass sha256:63b9b3df0eb6219c1dbaecb24f3034f3

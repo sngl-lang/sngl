@@ -13,6 +13,7 @@ type scaffoldData struct {
 	HasIcon         bool
 	HasAdaptiveIcon bool   // true when icon is SVG (produces VectorDrawable foreground)
 	Color           string // e.g. "#6750A4" (empty if not set)
+	Accent          string // the theme's primary as the program set it; "" for the device's colours
 	Gradle          bool   // true for Gradle scaffold
 	HasGoLib        bool   // true when Go module (golib.aar) is included
 	// Activities, when non-empty, replaces the default MainActivity
@@ -80,6 +81,7 @@ func newScaffoldData(cfg Config) scaffoldData {
 		HasIcon:         cfg.Icon != "",
 		HasAdaptiveIcon: cfg.Icon != "" && strings.HasSuffix(strings.ToLower(cfg.Icon), ".svg"),
 		Color:           cfg.Color,
+		Accent:          cfg.accent,
 		Gradle:          cfg.UseGradle(),
 		HasGoLib:        cfg.GoLib,
 		GradleVersion:   combo.Gradle,
