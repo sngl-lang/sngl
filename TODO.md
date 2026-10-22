@@ -77,27 +77,38 @@ under it. Delete this file before the MR leaves draft.
   centred in its box (gtk4 reads no `alignItems` or `textAlign`), and a
   width is only the least a label is.
 
-## Part 3: fyne's and bubbletea's layout gaps
+## Part 3: fyne's and bubbletea's layout gaps (done)
 
-- [ ] fyne paints no label's background, so a `ui.badge` is plain text: a
-  label with a background needs a rectangle behind it, kept in step when the
-  colour is a run-time value.
-- [ ] fyne's box ignores `alignItems`, so a card's lines are not centred.
-- [ ] An adopted fyne box (`fynelayout.Adopt`) takes Fyne's gap where a box
-  codegen builds takes the style's.
-- [ ] fyne's `@reachEnd` fires from the renderer synchronously and looks
-  again only 100 ms after firing, so a short first page fetched slower than
-  that never loads the next; gtk4 posts to idle. Make them one behaviour, with
-  a runtime test of each.
-- [ ] bubbletea: a row's columns and badges are written with no space between
-  them (`moveLine`'s `flex=1` and widths), blank lines stand where requests
-  are, and the artwork leaves blank rows under it.
-- [ ] fyne lays a whole table out again for each answer that lands in it:
-  the detail page's move table takes 2-5 s for its fifteen answers, text
-  shaping first in the profile, and `pokedex_test.sngl` waits 20 s for it.
-  Lay out what changed, and bring the wait back down.
-- [ ] Runtime tests for `fynelayout.ShareSized`/`Weighted`'s size math and
-  `Nothing`, which a golden alone does not hold to.
+- [X] A fyne label with a background is drawn on a `fynetheme.Backdrop`,
+  painting the colour its theme override answers, so a badge is no longer
+  plain text and a colour read from state repaints with its override.
+- [X] A fyne box whose style names a gap, padding or alignment is
+  `fynelayout.New`'s from the start, so `Adopt` only ever adopts a box whose
+  style said nothing; `alignItems` places each child at its own minimum
+  (`NewAligned`).
+- [X] `@reachEnd` is one rule on fyne and gtk4: measure on a scroll, a
+  resize and the content changing size, through a probe box between the
+  viewport and the content, and post one report. gtk4 had a gap too: its
+  adjustment's upper never drops below the page, so content shorter than the
+  viewport grew unheard. A fyne test build queues `fynelayout.Post`.
+- [X] bubbletea joins a box's parts with `tui.Row`/`tui.Column` (the gap
+  between them, nothing for what draws nothing -- the blank lines were the
+  tab panels not shown), a flexing row is `tui.FlexRow` over `m.avail`, a
+  height is in rows and a picture fits its image's box.
+- [X] fyne's slow move table was `InsertBefore` refreshing its whole box:
+  a refreshed theme override is a new scope for Fyne's text cache, so every
+  themed label was shaped again per row. That test went from 3-5 s to 0.06 s
+  and its wait is 5 s.
+- [X] Runtime tests for `ShareSized`/`Weighted`'s size math, alignment and
+  `Nothing`. Found on the way: fyne's caption-less `ui.divider` was a blank
+  label; it is a separator.
+- [X] `testdata/fyne_box_align_backdrop.txtar`,
+  `cmd/sngl/testdata/style_fyne_rendered_runs.txt`,
+  `cmd/sngl/testdata/layout_bubbletea_rendered_runs.txt`, and runtime tests in
+  `pkg/go/fynetheme`, `pkg/go/fynelayout`, `pkg/go/gtk4rt` and `pkg/go/tui`,
+  each failing with its fix taken out. The example's fyne and bubbletea
+  screenshots were taken again. Left: bubbletea centres nothing
+  (`alignItems`), so the evolution cards' names sit left.
 
 ## Part 4: what the review found and left
 
