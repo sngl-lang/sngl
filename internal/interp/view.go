@@ -934,6 +934,7 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
 	nodes, err := m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	cenv.writeBackMountCopies()
 	m.owner, m.iters, m.supplied, m.base = prevOwner, prevIters, prevSupplied, prevBase
 	m.push(frame)
 	// Content that renders nothing is the fallback's place as much as no
@@ -989,7 +990,9 @@ func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, err
 	owner := m.owner
 	m.owner = nil
 	defer func() { m.owner = owner }()
-	return m.stmts(cenv, content.Body, path+"/supplied:"+x.Name)
+	nodes, err := m.stmts(cenv, content.Body, path+"/supplied:"+x.Name)
+	cenv.writeBackMountCopies()
+	return nodes, err
 }
 
 // mountBody mounts a component instance's own body, whose nodes are that
@@ -1041,6 +1044,7 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 		m.iters = append(slices.Clip(iters), copyPath)
 		m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: f})
 		nodes, err := m.stmts(child, f.Body, copyPath)
+		child.writeBackMountCopies()
 		if err != nil {
 			return nil, err
 		}

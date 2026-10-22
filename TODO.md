@@ -154,11 +154,11 @@ The node half.
   component that renders nothing spliced under a reactive `if`. Whether it
   keeps that component's state across the branch is unverified: the run
   cannot be recorded on this host.
-- [ ] The interpreter loses a package write a var initializer makes while a
-  `for` copy mounts: `var f = open()` with `open` counting in a package var
-  leaves the count at 0, and each copy's `f` is the first one opened. The
-  mount runs in a snapshot of the scope (`forStmt`), and nothing carries the
-  write back.
+- [X] The interpreter lost a package write a var initializer made while a
+  `for` copy or a scoped population mounted: `var f = open()` with `open`
+  counting in a package var left the count at 0, and each copy's `f` was the
+  first one opened. The mount carries the copy's writes back as a handler does
+  (`testdata/for_copy_initializer_writes_package.sngl`).
 
 ## Part 6: application teardown on targets
 

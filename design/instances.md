@@ -442,6 +442,17 @@ target that brackets lifetimes itself (android), whose lifetimes do not run
 through the settle this lowers to (`testdata/bubbletea_state_leaves_with_branch.txtar`,
 `testdata/renders_nothing_state_leaves_with_branch.txtar`).
 
+**The interpreter mounts a `for` copy or a scoped population in a snapshot
+of the scope around it** (`forStmt`, `slotInst`, `entryInst`), where the loop's
+variables and the population's parameters are bound. What the mount writes to
+a binding that scope holds is carried back once the copy has mounted
+(`writeBackMountCopies`), as a handler's writes are when it returns
+(`runHandler`), and the next copy's snapshot is taken after that. Nothing
+carried it before: a var initializer counting in a package var left the count
+at 0, and every copy got the first value. A copy's own state is its
+component's scope, cached by the copy's path, which no snapshot holds, so it
+stays per copy (`testdata/for_copy_initializer_writes_package.sngl`).
+
 **A bubbles model a loop renders is one per copy** (`bubbletea/loopwidget.go`):
 a map keyed as a cell of the copy is, each model built the first time View
 renders it and set from the copy's cell -- read off the write-back handler's
