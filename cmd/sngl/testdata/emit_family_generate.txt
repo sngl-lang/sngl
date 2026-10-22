@@ -33,7 +33,7 @@ stderr 'gen.emit @generate: nothing to say'
 
 # A handler writes a path inside the output directory.
 ! sngl generate --lang go --platform bubbletea -o outr escape.sngl
-stderr 'out.write: "../x.txt" is not a path inside the output directory'
+stderr 'out.file: "../x.txt" is not a path inside the output directory'
 
 -- app.sngl --
 import blk "./blk"
@@ -99,17 +99,16 @@ struct Entry {
     text string
 }
 
-func lines(members list[gen.Member[Entry]], indent string) string {
-    var s = ""
+func lines(f gen.File, members list[gen.Member[Entry]], indent string) {
     for var m = members {
-        s = s + indent + m.value.text + "\n" + lines(m.children, indent + "  ")
+        f.line(indent + m.value.text)
+        lines(f, m.children, indent + "  ")
     }
-    return s
 }
 
 component block[go.language] {
     gen.emit(@generate(out, members list[gen.Member[Entry]]) {
-        out.write("blocks.txt", lines(members, ""))
+        lines(out.file("blocks.txt"), members, "")
     })
 }
 
@@ -156,7 +155,7 @@ component loud[go.language] {
         for var line = gen.exec(cmd=["tr", "a-z", "A-Z"], stdin=input).stdout {
             s = s + line + "\n"
         }
-        out.write("shout.txt", s)
+        out.file("shout.txt").add(s)
     })
 }
 
@@ -218,7 +217,7 @@ component host(items ...component fam) root
 
 component fam[go.language] {
     gen.emit(@generate(out, members list[gen.Member[string]]) {
-        out.write("../x.txt", "x")
+        out.file("../x.txt").add("x")
     })
 }
 

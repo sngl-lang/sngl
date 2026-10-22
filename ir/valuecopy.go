@@ -12,7 +12,7 @@ package ir
 const ValueCopyIntrinsic = "value.copy"
 
 // HoldsValue reports whether a value of t is one a store has to copy: a list,
-// a map, a struct the program declares, or an option of one. A builtin struct
+// a map, a struct the program declares, a builder, or an option of one. A builtin struct
 // (a color, a date) is never written field by field, and a host's type is
 // the host's to copy.
 func HoldsValue(t *Type) bool {
@@ -25,7 +25,7 @@ func HoldsValue(t *Type) bool {
 	case TypeOption, TypeReadonly:
 		return len(t.Elems) > 0 && HoldsValue(t.Elems[0])
 	case TypeStruct:
-		return CopiedStruct(t) != nil
+		return CopiedStruct(t) != nil || IsBuilder(t)
 	}
 	return false
 }

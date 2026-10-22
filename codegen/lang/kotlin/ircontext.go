@@ -314,6 +314,9 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if member, _, ok := ir.EnumLitMember(n); ok {
 		return enumLitKt(n.Type, member, fieldStrs[0])
 	}
+	if ir.IsBuilder(n.Type) {
+		return "StringBuilder()"
+	}
 	name := "Any"
 	if n.Def != nil {
 		name = exportName(n.Def.Name)
@@ -1695,6 +1698,9 @@ func IRTypeToKt(t *ir.Type) string {
 		}
 		return "Any?"
 	case ir.TypeStruct:
+		if ir.IsBuilder(t) {
+			return "StringBuilder"
+		}
 		// A color is the emitted Color data class, matching the
 		// `Color(r=…, g=…, b=…, a=…)` every color *value* already renders as
 		// and what `color.hex` and composeColorExpr read. Answering String
@@ -1813,6 +1819,9 @@ func IRLiteralToKt(e ir.Expr) string {
 	case *ir.StructLit:
 		if member, payload, ok := ir.EnumLitMember(n); ok {
 			return enumLitKt(n.Type, member, IRLiteralToKt(payload))
+		}
+		if ir.IsBuilder(n.Type) {
+			return "StringBuilder()"
 		}
 		name := "Any"
 		if n.Def != nil {

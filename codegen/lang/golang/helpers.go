@@ -56,7 +56,11 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]string {
 		if fn.IsTest || fn.IsMethod() || fn.Synthesized || componentFuncs[fn] || fn.Lowered.Event != "" {
 			continue
 		}
-		if isComputedSig(fn) || stateFuncs[fn] {
+		// A computed stays a Model method so the runtime can re-read it. The
+		// question is the one each platform's emit loop asks: a zero-arg
+		// function that writes, even a local, is no computed and is emitted
+		// free, so its call sites must say so too.
+		if codegen.IsComputed(fn) || stateFuncs[fn] {
 			continue
 		}
 		name := ExportName(fn.Name)
@@ -180,13 +184,6 @@ func hostDeclared(decl ir.Symbol) bool {
 		return d.Foreign.Path != "" && !d.Foreign.Marked
 	}
 	return false
-}
-
-// isComputedSig mirrors codegen.IsComputed without the import: a zero-arg
-// function with a return type is derived state, and those stay Model methods
-// so the runtime can re-read them.
-func isComputedSig(fn *ir.Func) bool {
-	return len(fn.Params) == 0 && fn.Return != nil && fn.Return.Kind != ir.TypeVoid
 }
 
 // translateIRLiteral renders an ir.Literal as its Go source form. Used by

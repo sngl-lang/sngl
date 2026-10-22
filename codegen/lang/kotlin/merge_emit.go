@@ -41,6 +41,9 @@ func KtFieldZero(t *ir.Type) string {
 			if ir.IsColorStruct(t) {
 				return colorKtType + "()"
 			}
+			if ir.IsBuilder(t) {
+				return "StringBuilder()"
+			}
 			if ir.StringReprStruct(t) {
 				return `""`
 			}

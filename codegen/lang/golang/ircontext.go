@@ -438,6 +438,11 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isChanLit(n) {
 		return "nil"
 	}
+	// A builder is Go's []byte, and its zero the empty one, typed so that
+	// `b := …` declares a []byte.
+	if ir.IsBuilder(n.Type) {
+		return "[]byte(nil)"
+	}
 	gc.requireForeignStructImport(n)
 	name := structLitTypeName(n)
 	// A native type whose host spelling is a pointer has no composite literal:
@@ -2121,6 +2126,9 @@ func IRTypeToGo(t *ir.Type) string {
 		// channel that is receive-only reaches a program as a field read and
 		// is selected on rather than bound, so no Go type is written for it;
 		// binding one to a var would spell this and not compile.
+		if ir.IsBuilder(t) {
+			return "[]byte"
+		}
 		if isChanType(t) {
 			if len(t.Elems) == 1 {
 				return "chan " + IRTypeToGo(t.Elems[0])

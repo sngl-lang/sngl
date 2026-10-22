@@ -1621,6 +1621,9 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		}
 		return EnumValue{Type: e.Type, Member: member, Payload: copyOf(v, payload.ExprType())}, nil
 	}
+	if e.Def != nil && e.Def.Intrinsic == ir.BuilderIntrinsic {
+		return &Builder{}, nil
+	}
 	s := NewStruct(e.Def, e.Type)
 	for _, f := range e.Fields {
 		v, err := env.Eval(f.Value)

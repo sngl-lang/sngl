@@ -24,6 +24,7 @@ import gen "sngl:x/gen"
     matches,
     matchValues,
     optionMatches,
+    stringBuilders,
 )]
 #[gen.name("kotlin")]
 #[gen.native("kotlin")]

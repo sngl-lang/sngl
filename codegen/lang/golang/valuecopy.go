@@ -46,6 +46,9 @@ func (c *goCopier) copy(t *ir.Type, v string) string {
 	if ir.SharesNothing(t) {
 		return v
 	}
+	if ir.IsBuilder(t) {
+		return "append([]byte(nil), " + v + "...)"
+	}
 	switch t.Kind {
 	case ir.TypeList:
 		e := t.Elems[0]

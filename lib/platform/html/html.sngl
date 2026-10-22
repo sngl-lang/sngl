@@ -29,7 +29,9 @@ func serve(dir string, listen string)
 // in a handler that already runs on its own goroutine. The goroutine itself is
 // withdrawn again: what html spawns work onto is the browser, which has none. And
 // a DOM parent can put a child at a position, so a keyed run moves one child
-// rather than rebuilding from the first change.
+// rather than rebuilding from the first change. A builder is the string it
+// builds in the page's script, whatever the language holds one as, since a
+// JavaScript engine joins `+=` as a rope.
 #[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents, matches)]
 #[gen.cannot(
     viewStatements,
@@ -42,6 +44,7 @@ func serve(dir string, listen string)
     inlineComponents,
     reactivity,
     structSpread,
+    stringBuilders,
 )]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas, navigationHrefs)]
 #[gen.name("html")]

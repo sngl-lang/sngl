@@ -33,7 +33,7 @@ gen.scheme(name="run", @generate(out, importPath) {
     for var l = p.stdout {
         line = l
     }
-    out.write("x.sngl", "const line = \"" + line + "\"\n")
+    out.file("x.sngl").add("const line = \"" + line + "\"\n")
 })
 `)
 

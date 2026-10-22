@@ -31,7 +31,7 @@ ui.window(title="t") {
 import gen "sngl:x/gen"
 
 gen.scheme(name="greet", @generate(out, importPath) {
-    out.write("greet.sngl", "const message = \"hello, " + importPath + "\"\n")
+    out.file("greet.sngl").add("const message = \"hello, " + importPath + "\"\n")
 })
 -- files/a.sngl --
 import ui "sngl:ui"
@@ -46,7 +46,7 @@ import "./greet"
 import gen "sngl:x/gen"
 
 gen.scheme(name="greet", @generate(out, importPath) {
-    out.write("greet.sngl", "const message = \"hello, " + importPath + "\"\n")
+    out.file("greet.sngl").add("const message = \"hello, " + importPath + "\"\n")
 })
 -- lib/app.sngl --
 import ui "sngl:ui"
@@ -65,5 +65,5 @@ const unused = 1
 import gen "sngl:x/gen"
 
 gen.scheme(name="greet", @generate(out, importPath) {
-    out.write("greet.sngl", "const message = \"hello, " + importPath + "\"\n")
+    out.file("greet.sngl").add("const message = \"hello, " + importPath + "\"\n")
 })
