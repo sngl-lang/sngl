@@ -179,7 +179,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   goroutine (`agentPosts`): fyne's test driver runs `fyne.Do` on the goroutine
   that calls it, so a request's answer rebuilt a list's widgets while the test
   clicked others, and fyne crashed laying them out
-  (`examples/pokedex`'s tests, in `cmd/sngl/testdata/examples_runs.txt`). So a callback that must reach the drawing
+  (`examples/pokedex`'s tests, in `cmd/sngl/testdata/examples_runs.txt`). What the
+  last test's Model posted and the last test never waited for is dropped as the
+  next test starts (`__snglDropPosts`): run, it drew the old Model's widgets
+  inside the next test's waits, seconds on fyne's test driver for a page whose
+  every answer redraws a list (`cmd/sngl/testdata/test_drops_last_tests_posts_runs.txt`). So a callback that must reach the drawing
   thread asks for that in one word instead of a package re-spelling it. The id
   is also the second thing `nativeCallbackFuncs` treats as scheduling, for the
   reason the `schedules` flag exists: a post runs its closure from the loop the
@@ -438,7 +442,7 @@ value is reported as a choice:
   (`cmd/sngl/testdata/table_rows_runs.txt`).
 - **android**'s `SnglSelect` is a read-only field a tap opens a menu from,
   Kotlin the platform ships as it does `SnglDateField`. A user cannot type
-  into it -- `examples/pokedex`'s selects took any text -- but its semantics answer
+  into it -- an editable field took any text -- but its semantics answer
   `SetText` with a choice's label as a pick. A trigger's `change` runs that
   action rather than `performTextReplacement`, which refuses a field that is
   not editable, as its `click` runs `OnClick` rather than a touch.

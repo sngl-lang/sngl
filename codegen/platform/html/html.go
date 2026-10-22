@@ -552,6 +552,17 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			// routes is the platform's to know, and a page under a `for` has
 			// its href only once the copy is known.
 			h, ok := codegen.IRLiteralString(href)
+			if (!ok || len(extractRouteParams(h)) > 0) && opts.Test {
+				// A test runs in the document it is loaded in, the stack's
+				// page at "/", and a `go` loads another, which ends the run
+				// whatever it loads: a page at a pattern is one no test
+				// reaches, so a test build writes no document for it.
+				doc, docErr, ok = following, followingErr, more
+				if ok {
+					following, followingErr, more = next()
+				}
+				continue
+			}
 			if !ok || len(extractRouteParams(h)) > 0 {
 				at := "a pattern"
 				if ok {

@@ -1,6 +1,5 @@
 # A query in a component built at run time, the component removed before its
-# answer lands: the shape of the Pokédex's detail page, left while it is
-# still asking.
+# answer lands: a detail page under an `if`, left while it is still asking.
 #
 # The removal tears the instance down, and the teardown bumps the query's
 # attempt, so the answer is stale -- but a stale answer still settles, and a

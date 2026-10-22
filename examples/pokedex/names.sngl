@@ -617,6 +617,17 @@ func methodNamed(label string) string {
     return "level-up"
 }
 
+// The label of the way PokéAPI names `name`, by level's where it is none of
+// them.
+func methodLabelled(name string) string {
+    for var m = learnMethods() {
+        if m.name == name {
+            return m.label
+        }
+    }
+    return learnMethods()[0].label
+}
+
 // One row of the Moves tab: the level a move is learned at, "" for a way
 // that has none, the move's name in the reader's language, its type's and
 // PokéAPI's name for the type, its power and accuracy, and PokéAPI's name for

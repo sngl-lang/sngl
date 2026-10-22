@@ -1,0 +1,68 @@
+# A test build on html writes no document for a page served at a pattern.
+# A test runs in the document it is loaded in, the stack's page at "/", and a
+# `go` loads another, which ends the run whatever it loads, so no test
+# reaches a page at a pattern; `sngl generate` still refuses one for a static
+# site. The build refused it before, so a test of a program whose stack holds
+# such a page -- a list and a page per item -- did not build on html at all.
+#
+# The test also changes a select beside the stack, which writes the item
+# page's label as well as the home page's heading; the home document holds no
+# label (testdata/nav_stack_html_other_pages_writes.txtar).
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import nav "sngl:ui/nav"
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Item {
+    name string
+}
+
+context #tone("plain")
+
+func shout(s string) => tone == "loud" ? "{s}!" : s
+
+component list(@open(name string)) ui.node {
+    ui.text #heading(value=shout("items"))
+    ui.button #first(text="first", @click { open("first") })
+}
+
+component shown(name string) ui.node {
+    ui.text #label(value=shout(name))
+}
+
+component site ui.node {
+    var picked = "plain"
+
+    ui.select #pick(:value=picked) {
+        ui.choice(label="plain")
+        ui.choice(label="loud")
+    }
+    tone(picked) {
+        nav.stack #pages {
+            nav.page #item(href=`/items/{name}`, title="Item", params=Item{name="first"}) {
+                component content(p) {
+                    shown(name=p.name)
+                }
+            }
+            nav.page #home(href="/", title="Items") {
+                list #items(@open(name) { pages.go(item, Item{name=name}) })
+            }
+        }
+    }
+}
+
+func testTheToneReachesThePage(t test.Test, c site) {
+    t.assert(c.items != null && c.items.heading.value == "items")
+    c.pick.change("loud")
+    t.assert(c.items != null && c.items.heading.value == "items!")
+}
+
+ui.window {
+    site()
+}

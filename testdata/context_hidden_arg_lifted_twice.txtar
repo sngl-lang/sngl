@@ -5,8 +5,8 @@ The context lowering seeds a component body with one read of its hidden
 as the hidden argument. passSlotChildInstances lifts each `ui.vbox` below into
 a component of its own and repoints every read it lifts at the new prop, in
 place -- so lifting the first vbox renamed the second's argument too, and the
-second was built with `__p0`, a name only the first declares. go build refused
-the Pokédex on fyne over it.
+second was built with `__p0`, a name only the first declares, and go build
+refused it on fyne.
 
 -- main.sngl --
 import ui "sngl:ui"

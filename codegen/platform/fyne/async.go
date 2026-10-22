@@ -16,18 +16,27 @@ import (
 // open. A test build queues the closure instead (postFunc), and a test's wait
 // runs what arrived on the test's own goroutine, which is the driver's there.
 const (
-	postFunc     = "__snglDo"
-	testPostsVar = "__snglTestPosts"
-	runPostsFunc = "__snglRunPosts"
+	postFunc      = "__snglDo"
+	testPostsVar  = "__snglTestPosts"
+	runPostsFunc  = "__snglRunPosts"
+	dropPostsFunc = "__snglDropPosts"
 )
 
 // agentPosts is what a test build declares beside the model for t.wait: it
 // turns the queue on where the program posts, and runs what arrived; where
 // nothing posts it only lets time pass.
+//
+// Each test starts from a fresh Model, so what the last test's Model posted
+// and the last test never waited for is dropped as the next one starts
+// (dropPostsFunc). Run, it drew the last Model's widgets again inside the
+// next test's waits: a page whose every answer redraws a list took seconds
+// on fyne's test driver, and a wait of the next test ran out.
 func agentPosts(pkg *ir.Package) string {
 	if !usesPosts(pkg) {
 		return `
 func ` + runPostsFunc + `(d time.Duration) { time.Sleep(d) }
+
+func ` + dropPostsFunc + `() {}
 `
 	}
 	return `
@@ -38,6 +47,16 @@ func ` + runPostsFunc + `(d time.Duration) {
 	case f := <-` + testPostsVar + `:
 		f()
 	case <-time.After(d):
+	}
+}
+
+func ` + dropPostsFunc + `() {
+	for {
+		select {
+		case <-` + testPostsVar + `:
+		default:
+			return
+		}
 	}
 }
 `

@@ -154,6 +154,15 @@ component back ui.node {
     }
 }
 
+// The app itself, its language choice around its stack of pages.
+component shell ui.node {
+    poke.server(local) {
+        artwork(dot) {
+            Pokedex #app
+        }
+    }
+}
+
 // Every recorded Pokédex, Pokémon, species and chain, each its own query, so a
 // recording the document cannot decode leaves its `got` null.
 component dexes ui.node {
@@ -607,11 +616,32 @@ func testAMoveGivesItsTypePowerAndAccuracy(t test.Test, c seed) {
     if c.detail.tabs != null {
         c.detail.tabs.change(4)
     }
-    t.wait(func() => c.detail.moveRows()[0].kind == "Normal" && c.detail.moveRows()[1].power != "", 5000)
-    var tackle = c.detail.moveRows()[0]
-    t.assert(tackle.name == "Tackle" && tackle.kind == "Normal" && tackle.power == "40" && tackle.accuracy == "100")
-    var growl = c.detail.moveRows()[1]
-    t.assert(growl.name == "Growl" && growl.power == "—" && growl.accuracy == "100")
+    t.wait(func() => tackleAndGrowl(c.detail.moveRows()), 5000)
+    t.assert(tackleAndGrowl(c.detail.moveRows()))
+    // Each move's type is a badge in its own colour.
+    t.assert(c.detail.moveRows()[0].kindSlug == "normal" && typeColor(c.detail.moveRows()[0].kindSlug) == #a8a77a)
+}
+
+// Whether Bulbasaur's first two moves have arrived as the Moves tab gives
+// them: Tackle a Normal move of 40 power, and Growl one of none.
+func tackleAndGrowl(rows list[MoveRow]) bool {
+    if rows.length() < 2 {
+        return false
+    }
+    var tackle = rows[0]
+    var growl = rows[1]
+    return tackle.name == "Tackle" && tackle.kind == "Normal" && tackle.power == "40" && tackle.accuracy == "100" && growl.name == "Growl" && growl.kind == "Normal" && growl.power == "—" && growl.accuracy == "100"
+}
+
+// A type's badge is drawn in the type's colour, its name dark over a light
+// one and white over the rest.
+func testATypeIsABadgeInItsColour(t test.Test, c seed) {
+    t.wait(func() => c.detail.types[0] != null && c.detail.types[1] != null, 5000)
+    t.assert(c.detail.types[0] != null && c.detail.types[0].kind == "grass")
+    t.assert(c.detail.types[1] != null && c.detail.types[1].kind == "poison")
+    t.assert(typeColor("grass") == #7ac74c && typeInk("grass") == #ffffff)
+    t.assert(typeColor("electric") == #f7d02c && typeInk("electric") == #222222)
+    t.assert(typeColor("stellar") == #68a090)
 }
 
 func testTheSelectSwitchesTheMethod(t test.Test, c seed) {
@@ -624,7 +654,7 @@ func testTheSelectSwitchesTheMethod(t test.Test, c seed) {
     if c.detail.methodPick != null {
         c.detail.methodPick.change("Machine")
     }
-    t.assert(c.detail.method == "Machine")
+    t.assert(c.detail.method == "machine")
     t.wait(func() => movesLine(c.detail.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic", 5000)
     t.assert(movesLine(c.detail.moveRows()) == "Body Slam, Curse, Double-Edge, Rest, Seed Bomb, Solar Beam, Swords Dance, Take Down, Toxic")
     t.assert(c.detail.moveRows()[0].level == "")
@@ -632,6 +662,23 @@ func testTheSelectSwitchesTheMethod(t test.Test, c seed) {
         c.detail.methodPick.change("Egg")
     }
     t.assert(movesLine(c.detail.moveRows()) == "Curse, Ingrain, Petal Dance, Toxic")
+}
+
+// The way chosen is PokéAPI's name, so the moves stay the machine's in
+// another language, whose labels the old one's matches none of.
+func testTheMethodOutlivesALanguage(t test.Test, c seed) {
+    t.wait(func() => c.detail.mon != null, 5000)
+    t.assert(c.detail.tabs != null)
+    if c.detail.tabs != null {
+        c.detail.tabs.change(4)
+    }
+    if c.detail.methodPick != null {
+        c.detail.methodPick.change("Machine")
+    }
+    t.setContext(i18n.locale, "fr")
+    t.assert(c.detail.method == "machine")
+    t.assert(c.detail.moveRows().length() == 9 && c.detail.moveRows()[0].level == "")
+    t.assert(methodLabelled("machine") == "CT" && methodLabelled("egg") == "Œuf")
 }
 
 func testAMethodWithNoMoves(t test.Test, c seed) {
@@ -794,6 +841,19 @@ func testJapaneseFallsBackToKana(t test.Test, c seed) {
     }
     t.wait(func() => c.detail.effort != null && c.detail.effort.value == "1 とくこう", 5000)
     t.assert(c.detail.effort != null && c.detail.effort.value == "1 とくこう")
+}
+
+// The shell's choice of language is the locale of every page under it: home's
+// dex in Spanish, and its own words.
+func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
+    t.wait(func() => c.app.homeList != null && c.app.homeList.about != null, 5000)
+    t.assert(c.app.language == "English")
+    t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Search this Pokédex")
+    c.app.languagePick.change("Español")
+    t.assert(c.app.language == "Español")
+    t.wait(func() => c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon", 5000)
+    t.assert(c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon")
+    t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex")
 }
 
 // Takes a component as every test here does: on html a group of tests that

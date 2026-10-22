@@ -1832,7 +1832,11 @@ A component parameter is one of four kinds:
 
 - a **regular parameter** — `name Type = default` — an input supplied by the
   caller, with an optional default, and constant at every call site when
-  written `const name Type` (see [the const prefix](#the-const-prefix));
+  written `const name Type` (see [the const prefix](#the-const-prefix)). One
+  written `name = default` takes its default's type, and is typed exactly as
+  if that type were written: a call site gives an argument the same context,
+  so `style={fontWeight=bold}` is a `ui.Style` for `style = ui.Style{}`,
+  wherever the component is declared, and an override may restate the type;
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
   passes an lvalue with `:name = target`, and an assignment the component makes
   to `name` is written back to that lvalue, so parent and child stay in sync.

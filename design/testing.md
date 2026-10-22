@@ -185,8 +185,12 @@ members by name, so the lowering says the rest in those terms, first in
 moves a node out of the body that wrote it:
 
 - **A one-way prop is the expression its call site gave**, read through the
-  instance (`rewriteTestPropRead`): `"{hits}"` in `bar`'s body is
-  `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
+  instance (`rewriteTestPropRead`), under the providers around the node on the
+  way from the test's instance, each value read through the instance it is
+  written in (`underProviders`): a test is a root, so it read a page's words in
+  its own language where a select above the page chose another
+  (`cmd/sngl/testdata/test_reach_prop_under_provider_runs.txt`). `"{hits}"`
+  in `bar`'s body is `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
   indexed was handed -- the loop's list at that index, the number a
   `sngl:seq` sequence counts there, or the index itself (`loopBindings`). An
   inner loop's list is read with the outer loops' bindings in it, so

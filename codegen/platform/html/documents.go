@@ -91,7 +91,7 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 			dfold := fold.Child()
 			body := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone(root.Stmts) })
 			page := pageDocument(&body, pc, dfold, true)
-			body = dfold.Stmts(body)
+			body = dropOtherPagesWrites(dfold.Stmts(body), stack)
 			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dfold, static) {
 				return
 			}
@@ -235,6 +235,7 @@ func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, want func
 		if err := dfold.Err(); err != nil {
 			return false, err
 		}
+		doc.Children = dropOtherPagesWrites(doc.Children, stack)
 		if !yield(i, &codegen.Document{Surface: doc, Body: doc.Children, Page: page.node}, dfold) {
 			return false, nil
 		}
@@ -384,6 +385,55 @@ func cloneWithOnly(stack *ir.NodeInst, pc pageCopy, clone func() []ir.Stmt) []ir
 	stack.Children = []ir.Stmt{kids[pc.path[0].idx]}
 	defer func() { stack.Children = kids }()
 	return clone()
+}
+
+// dropOtherPagesWrites is body, a document holding one of stack's pages,
+// without its writes to the nodes of the others. A handler outside the stack
+// -- a select above it -- writes every node that shows what it changed,
+// whichever page that node is on, and a document holds no other page's node
+// to write to: the write threw, and the rest of the handler never ran.
+func dropOtherPagesWrites(body []ir.Stmt, stack *ir.NodeInst) []ir.Stmt {
+	here := map[string]bool{}
+	_ = ir.Walk(body, func(n ir.Node) error {
+		if x, ok := n.(*ir.NodeInst); ok && x.ID != "" {
+			here[x.ID] = true
+		}
+		return nil
+	})
+	gone := map[string]bool{}
+	_ = ir.Walk(stack.Children, func(n ir.Node) error {
+		if x, ok := n.(*ir.NodeInst); ok && x.ID != "" && !here[x.ID] {
+			gone[x.ID] = true
+		}
+		return nil
+	})
+	if len(gone) == 0 {
+		return body
+	}
+	return ir.RewriteBlocks(body, func(block []ir.Stmt) []ir.Stmt {
+		return slices.DeleteFunc(block, func(s ir.Stmt) bool {
+			a, ok := s.(*ir.Assign)
+			return ok && writesNodeOf(a.Target, gone)
+		})
+	})
+}
+
+// writesNodeOf reports whether target is a prop of a node whose handle is
+// one of ids.
+func writesNodeOf(target ir.Expr, ids map[string]bool) bool {
+	for {
+		switch x := target.(type) {
+		case *ir.Select:
+			target = x.Operand
+		case *ir.Index:
+			target = x.Operand
+		case *ir.Ident:
+			v, handle := x.Sym.(*ir.Var)
+			return (x.IsElementRef || handle && v.NodeHandle) && ids[x.Name]
+		default:
+			return false
+		}
+	}
 }
 
 // documentPage is the page a document is written for.

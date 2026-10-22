@@ -856,8 +856,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// The stacks come before the computeds and funcs that go to a page or read
 	// one's current: Kotlin declares a local where it is written, and a local
-	// fun naming a controller declared below it does not compile
-	// (examples/pokedex's show).
+	// fun naming a controller declared below it does not compile.
 	emitNavState(&body, mainStacks, kc, testMode)
 
 	// Computed state. In test mode computeds live on MainScreenState (emitted

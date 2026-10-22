@@ -25,7 +25,8 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     var monFailure option[async.Failure] = null
     var evolution option[poke.EvolutionChainDetail] = null
     var tab = 0
-    var method = $"Level"
+    var method = "level-up"
+    var methodLabel = $"Level"
     var names map[string, list[Named]] = {}
     var moveFacts map[string, MoveFact] = {}
 
@@ -58,10 +59,10 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     // Opens the species' page showing `pokemon`, `form` "" for its default.
     func formOf(pokemon string) => about != null && pokemon == defaultVariety(about.varieties, about.name) ? "" : pokemon
 
-    // The moves the Pokémon learns the way `method` labels, in the latest game
-    // of the dex chosen on home that it learns any in.
+    // The moves the Pokémon learns the way PokéAPI names `method`, in the
+    // latest game of the dex chosen on home that it learns any in.
     func moveRows() list[MoveRow] {
-        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), methodNamed(method), moveFacts, names) : []
+        return mon != null ? movesOf(mon.moves, latestGroup(dexGroups(chosenDex), mon.moves), method, moveFacts, names) : []
     }
 
     // The moves the Moves tab shows, each once.
@@ -259,7 +260,11 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                 for var slug = moveTypes() {
                                     poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
                                 }
-                                ui.select #methodPick(:value=method) {
+                                // The way is PokéAPI's name, and the select
+                                // shows its label in the reader's language,
+                                // written again as the language changes.
+                                effect(on=i18n.locale, @mount(l) { methodLabel = methodLabelled(method) })
+                                ui.select #methodPick(:value=methodLabel, @change(v) { method = methodNamed(v) }) {
                                     for var m = learnMethods() {
                                         ui.choice(label=m.label)
                                     }
@@ -298,7 +303,7 @@ component typeBadge(kind string, value string) ui.node {
 // One line of the Moves tab, the headings' or a move's: its level, name,
 // type, power and accuracy, each in a column of its own width so the lines
 // line up. The type is a slot, so a move's can be its badge.
-component moveLine(level string, name string, power string, accuracy string, style ui.Style = ui.Style{}, kind ...component ui.node) ui.node {
+component moveLine(level string, name string, power string, accuracy string, style = ui.Style{}, kind ...component ui.node) ui.node {
     ui.hbox(style={gap=8px, alignItems=center}) {
         ui.text(value=level, style={width=48px, ...style})
         ui.text(value=name, style={flex=1, ...style})
