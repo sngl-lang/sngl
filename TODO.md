@@ -79,6 +79,10 @@ columns and badges are unstyled.
 - [ ] bubbletea: a row's columns and badges are written with no space between
   them (`moveLine`'s `flex=1` and widths), blank lines stand where requests
   are, and the artwork leaves blank rows under it.
+- [ ] fyne lays a whole table out again for each answer that lands in it:
+  the detail page's move table takes 2-5 s for its fifteen answers, text
+  shaping first in the profile, and `pokedex_test.sngl` waits 20 s for it.
+  Lay out what changed, and bring the wait back down.
 - [ ] Runtime tests for `fynelayout.ShareSized`/`Weighted`'s size math and
   `Nothing`, which a golden alone does not hold to.
 
