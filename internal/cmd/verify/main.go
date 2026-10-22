@@ -28,11 +28,13 @@
 // the raised 20m timeout for it). The gating itself lives in the tests
 // (testing.Short() / the `[short]` scripttest cond).
 //
-// -full reaches step 8 as well, where android is the same cost by a different
-// route -- a Gradle project built and run per fixture. There the gating is a
-// flag on the command, `--skip-platform`, since a CLI has no -short.
+// There is no `sngl test --platform=all ./...` step: the examples are the
+// only tests ./... reaches, and cmd/sngl's examples_runs.txt runs them on every
+// target, answered from its records -- a launch is rerun only when what it
+// launches moved. Run unrecorded here, every launch needed every toolchain and
+// a display, which CI does not have.
 //
-// -only lint runs steps 1-6 and -only test steps 7-8.
+// -only lint runs steps 1-6 and -only test step 7.
 //
 // -update runs none of them. It reruns, under the same headless compositor,
 // the tests of every package that holds recorded runs or goldens -- each
@@ -62,7 +64,6 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/headless"
-	"duckfam.us/sngl/internal/testhttp"
 )
 
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
@@ -118,8 +119,8 @@ func main() {
 
 	verbose := flag.Bool("v", false, "pass -v to go test")
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
-	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric, the android sngl-test matrix); default skips them")
-	only := flag.String("only", "", "run only the `lint` steps (1-6) or the `test` steps (7-8); both when empty")
+	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric); default skips them")
+	only := flag.String("only", "", "run only the `lint` steps (1-6) or the `test` step (7); both when empty")
 	update := flag.Bool("update", false, "rerecord every package's recorded runs and goldens instead of verifying")
 	flag.Parse()
 
@@ -168,40 +169,6 @@ func main() {
 		exit(1)
 	}
 
-	// Step 8: SNGL test matrix across every TestRunner-capable platform
-	// whose probe says it can run on this host. Unavailable platforms are
-	// skipped, not failed.
-	//
-	// --opt goModExtra="replace duckfam.us/sngl => <root>"
-	// points temp Go modules built by platform test runners (today: fyne)
-	// at the project root, so generated code that imports
-	// `duckfam.us/sngl/pkg/go/*` resolves locally instead of
-	// failing on the public proxy.
-	root, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("getwd: %v", err)
-	}
-	replaceDirective := fmt.Sprintf("replace duckfam.us/sngl => %s", root)
-	testArgs := []string{"tool", "sngl", "test",
-		"--platform=all", "--opt", "goModExtra=" + replaceDirective}
-	// android builds a whole Gradle project per fixture and runs it, which is
-	// minutes against seconds for every other platform -- the same weight that
-	// puts its Go tests behind -short, so it answers to the same flag. Its
-	// ProbeTest does not cover this: the toolchain is present on a developer's
-	// machine, which is exactly when it runs and costs.
-	if !*full {
-		testArgs = append(testArgs, "--skip-platform=android")
-	}
-	// An example's tests ask the server the script harness runs.
-	if err := testhttp.Start(root); err != nil {
-		log.Printf("test HTTP server not started: %v", err)
-	}
-	testArgs = append(testArgs, "./...")
-	sc, sargs, senv := wrapHeadless("go", testArgs)
-	if !runStepEnv("sngl-test", senv, sc, sargs...) {
-		reportTreeChange(".", before)
-		exit(1)
-	}
 	cleanup()
 }
 

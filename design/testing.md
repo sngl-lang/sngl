@@ -73,6 +73,12 @@ when one fails, names what changed since (`reportTreeChange`). Building from a
 snapshot instead would cost every run a cold build cache, which keys on the
 absolute source directory, and write records into the copy.
 
+**verify launches nothing a record answers.** It runs no `sngl test` of its
+own: the examples are all `./...` reaches, and `examples_runs.txt` runs them
+on every target from its records. Run unrecorded in verify, every launch
+needed every toolchain and a display, so gtk4 failed in CI, where cage does
+not start, and a slow fyne run timed out there.
+
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
 `func test…` through the same launcher (`internal/testlaunch`, in process),
@@ -106,15 +112,6 @@ a script's `stdout ok` accepted. The test that was running fails, naming the
 exit, and is recorded as any failure is: the crash is the program's answer,
 not the host's, so it is no launch error, which is never recorded. A program
 that exits with no test running is still one.
-
-So a host that cannot run a program must say so before starting it. A gtk4
-program `sngl test` starts draws in this process's display or in the cage it
-is already inside -- nothing wraps it in one -- and with neither, gtk_init
-ends it at its first test. CI's container has a cage that will not start, so
-`go tool verify` runs the suite unwrapped there, and every gtk4 test failed
-as an exit. `toolchain.DrawsHere` is asked before each launch and skips one
-with nowhere to draw; a run answered from its record starts no program and is
-not asked.
 
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
