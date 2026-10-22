@@ -26,7 +26,8 @@ import (
 
 // Weighted lays children along one axis. A child whose weight is zero keeps
 // its minimum size on that axis; the rest share what is left in proportion to
-// theirs. On the cross axis every child fills the box.
+// theirs. On the cross axis every child fills the box, unless Align places
+// each at its own minimum instead.
 //
 // A child's weight and margin are its own, set by Share where it is built,
 // rather than a position in the box: a render slot inserts its content and
@@ -38,12 +39,31 @@ type Weighted struct {
 	// them.
 	Gap     float32
 	Padding float32
+	// Align is where a child sits on the cross axis: a style's `alignItems`.
+	Align Alignment
 }
+
+// Alignment is a style's `alignItems`: where a child sits across the box.
+type Alignment int
+
+const (
+	// Stretch fills the box, which is what a box says when its style names
+	// no alignment.
+	Stretch Alignment = iota
+	Start
+	Center
+	End
+)
 
 // New returns the layout as the interface, which is what the generated
 // `container.New(...)` call takes.
 func New(horizontal bool, gap, padding float32) fyne.Layout {
 	return Weighted{Horizontal: horizontal, Gap: gap, Padding: padding}
+}
+
+// NewAligned is New for a box whose style places its children across it.
+func NewAligned(horizontal bool, gap, padding float32, align Alignment) fyne.Layout {
+	return Weighted{Horizontal: horizontal, Gap: gap, Padding: padding, Align: align}
 }
 
 // share is what one child asked of the box holding it: a weight and a margin,
@@ -152,7 +172,9 @@ func minSizeOf(o fyne.CanvasObject) fyne.Size {
 // own boxes, which would pack it at its minimum: a box the source wrote with
 // no flexing child of its own may still be handed one -- a page a navigation
 // stack shows, a slot's content -- and the generated code built it as Fyne's
-// box. The gap Fyne's box puts between children is kept.
+// box. The gap Fyne's box puts between children is kept: the generated code
+// builds a box as Fyne's only where its style named no gap, padding or
+// alignment, so the theme's gap is the one it showed.
 func Adopt(c *fyne.Container, o fyne.CanvasObject) {
 	if c == nil {
 		return
@@ -261,17 +283,26 @@ func (l Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 		} else {
 			slot, _ = l.axes(minSizeOf(o))
 		}
-		ocross := cross - l.Padding*2 - margin*2
-		if ocross < 0 {
-			ocross = 0
+		room := max(cross-l.Padding*2-margin*2, 0)
+		ocross := room
+		if l.Align != Stretch {
+			_, ocross = l.axes(minSizeOf(o))
 		}
-		// A child whose style gave its cross size keeps it, at the start.
-		if a := askOf(o); l.Horizontal && a.height > 0 && a.height < ocross {
+		// A child whose style gave its cross size keeps it.
+		if a := askOf(o); l.Horizontal && a.height > 0 {
 			ocross = a.height
-		} else if !l.Horizontal && a.width > 0 && a.width < ocross {
+		} else if !l.Horizontal && a.width > 0 {
 			ocross = a.width
 		}
-		o.Move(l.pos(offset+margin, l.Padding+margin))
+		ocross = min(ocross, room)
+		at := l.Padding + margin
+		switch l.Align {
+		case Center:
+			at += (room - ocross) / 2
+		case End:
+			at += room - ocross
+		}
+		o.Move(l.pos(offset+margin, at))
 		o.Resize(l.size(slot, ocross))
 		offset += slot + margin*2 + l.Gap
 	}

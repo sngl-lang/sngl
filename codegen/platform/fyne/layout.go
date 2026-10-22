@@ -14,27 +14,46 @@ import (
 const fyneLayoutImportPath = "duckfam.us/sngl/pkg/go/fynelayout"
 
 // flexLayoutCall returns the `container.New(fynelayout.New(...))` constructor
-// for a box some child asked for a share of, and nil when the box's own
-// constructor will do.
+// for a box whose style or children ask for what only this layout answers, and
+// nil when the box's own constructor will do.
 //
-// The decision is the children's rather than the box's: a box of fixed
-// children is exactly what container.NewVBox already does, and swapping a
-// layout in there would change a tree nothing asked to change. What each child
-// asked for is its own (shareStmt), since a render slot puts its anchor and
-// content among the children written here.
+// A box of fixed children whose style says nothing is exactly what
+// container.NewVBox already does. One whose style names a gap, a padding or an
+// alignment is this layout from the start: Fyne's box spaces its children by
+// the theme, and a box adopted later (fynelayout.Adopt) cannot know the gap
+// its style asked for. What each child asked for is its own (shareStmt),
+// since a render slot puts its anchor and content among the children written
+// here.
 func (t *fyneTranslator) flexLayoutCall(sp *fyneSpec) ir.Expr {
-	if sp == nil || sp.Axis == "" || !t.anyChildFlexes(sp) {
+	if sp == nil || sp.Axis == "" || !(sp.lays() || t.anyChildFlexes(sp)) {
 		return nil
 	}
-	newLayout := fyneNative{Path: fyneLayoutImportPath, Name: "New"}.qualify(t.gc)
 	newContainer := fyneNative{Path: "fyne.io/fyne/v2/container", Name: "New"}.qualify(t.gc)
-	layout := fmt.Sprintf("%s(%t, %s, %s)",
-		newLayout,
-		sp.Axis == "horizontal",
-		float32Lit(sp.Style.Gap),
-		float32Lit(sp.Style.Padding),
-	)
+	args := fmt.Sprintf("%t, %s, %s", sp.Axis == "horizontal", float32Lit(sp.Style.Gap), float32Lit(sp.Style.Padding))
+	var layout string
+	if align := alignments[sp.Style.Align]; align != "" {
+		layout = fmt.Sprintf("%s(%s, %s)", fyneNative{Path: fyneLayoutImportPath, Name: "NewAligned"}.qualify(t.gc), args,
+			fyneNative{Path: fyneLayoutImportPath, Name: align}.qualify(t.gc))
+	} else {
+		layout = fmt.Sprintf("%s(%s)", fyneNative{Path: fyneLayoutImportPath, Name: "New"}.qualify(t.gc), args)
+	}
 	return rawGoExpr(newContainer+"("+layout+")", ir.NativeGoPointerOf("fyne.Container"))
+}
+
+// alignments is the fynelayout.Alignment each `alignItems` member is, of the
+// ones that place a child at its own minimum; stretch is the layout's default,
+// and a baseline Fyne cannot read is the start.
+var alignments = map[string]string{
+	"start":    "Start",
+	"baseline": "Start",
+	"center":   "Center",
+	"end":      "End",
+}
+
+// lays reports whether a box's own style asks its layout for something Fyne's
+// box does not do.
+func (sp *fyneSpec) lays() bool {
+	return sp.Style.Gap > 0 || sp.Style.Padding > 0 || alignments[sp.Style.Align] != ""
 }
 
 // shares reports whether a node asks the box holding it for anything.

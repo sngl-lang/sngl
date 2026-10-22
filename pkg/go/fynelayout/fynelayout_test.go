@@ -156,3 +156,95 @@ func TestInsertingAFixedChildKeepsTheBox(t *testing.T) {
 		t.Error("a box given no weighted child was made a Weighted one")
 	}
 }
+
+// A child whose style gave it a width is laid out at that width along a row,
+// whatever its own minimum: Fyne asks no widget to be a size.
+func TestSizedChildTakesItsWidthAlongARow(t *testing.T) {
+	sized, next := box(10, 10), box(10, 10)
+	fynelayout.ShareSized(sized, 0, 0, 40, 0)
+	l := fynelayout.New(true, 5, 0)
+	l.Layout([]fyne.CanvasObject{sized, next}, fyne.NewSize(200, 50))
+
+	if got := sized.Size().Width; got != 40 {
+		t.Errorf("sized child got width %v, want its style's 40", got)
+	}
+	if got := next.Position().X; got != 45 {
+		t.Errorf("next child starts at %v, want 40 + the gap 5", got)
+	}
+	if got := l.MinSize([]fyne.CanvasObject{sized, next}).Width; got != 55 {
+		t.Errorf("row's min width %v, want 40 + 5 + 10", got)
+	}
+}
+
+// Across a column, a sized child keeps its width rather than filling, and is
+// never wider than the column.
+func TestSizedChildKeepsItsCrossSize(t *testing.T) {
+	sized, wide := box(10, 10), box(10, 10)
+	fynelayout.ShareSized(sized, 0, 0, 50, 0)
+	fynelayout.ShareSized(wide, 0, 0, 500, 0)
+	l := fynelayout.New(false, 0, 0)
+	l.Layout([]fyne.CanvasObject{sized, wide}, fyne.NewSize(100, 200))
+
+	if got := sized.Size().Width; got != 50 {
+		t.Errorf("sized child got width %v, want 50", got)
+	}
+	if got := wide.Size().Width; got != 100 {
+		t.Errorf("child sized wider than its column got width %v, want the column's 100", got)
+	}
+}
+
+// Saying a child asks for nothing takes back what it asked before.
+func TestShareOfNothingForgetsTheShare(t *testing.T) {
+	o := shared(box(10, 10), 1, 0)
+	fynelayout.ShareSized(o, 0, 0, 0, 0)
+	l := fynelayout.New(true, 0, 0)
+	l.Layout([]fyne.CanvasObject{o}, fyne.NewSize(400, 50))
+	if got := o.Size().Width; got != 10 {
+		t.Errorf("child that asked for nothing got width %v, want its minimum 10", got)
+	}
+}
+
+// A box whose style aligns its children places each at its own minimum across
+// it, at the start, middle or end; one with no alignment stretches them.
+func TestAlignPlacesChildrenAcrossTheBox(t *testing.T) {
+	for _, tc := range []struct {
+		align       fynelayout.Alignment
+		x, width    float32
+		description string
+	}{
+		{fynelayout.Stretch, 4, 92, "stretch"},
+		{fynelayout.Start, 4, 20, "start"},
+		{fynelayout.Center, 40, 20, "center"},
+		{fynelayout.End, 76, 20, "end"},
+	} {
+		o := box(20, 10)
+		l := fynelayout.NewAligned(false, 0, 4, tc.align)
+		l.Layout([]fyne.CanvasObject{o}, fyne.NewSize(100, 50))
+		if got := o.Position().X; got != tc.x {
+			t.Errorf("%s: child at x %v, want %v", tc.description, got, tc.x)
+		}
+		if got := o.Size().Width; got != tc.width {
+			t.Errorf("%s: child width %v, want %v", tc.description, got, tc.width)
+		}
+	}
+}
+
+// Nothing -- an instance whose body renders no node -- takes no room and no
+// gap in either kind of box.
+func TestNothingTakesNoRoom(t *testing.T) {
+	a, b := box(10, 10), box(10, 10)
+	l := fynelayout.New(false, 6, 0)
+	objects := []fyne.CanvasObject{a, fynelayout.Nothing(), b}
+	l.Layout(objects, fyne.NewSize(100, 200))
+	if got := b.Position().Y; got != 16 {
+		t.Errorf("child after Nothing starts at %v, want 10 + one gap 6", got)
+	}
+	if got := l.MinSize(objects).Height; got != 26 {
+		t.Errorf("min height %v, want 10 + 6 + 10", got)
+	}
+
+	c := container.NewVBox(box(10, 10), fynelayout.Nothing(), box(10, 10))
+	if got, want := c.MinSize().Height, 20+theme.Padding(); got != want {
+		t.Errorf("Fyne's box with Nothing in it is %v tall, want %v", got, want)
+	}
+}

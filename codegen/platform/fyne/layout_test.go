@@ -36,11 +36,31 @@ window {
 	}
 }
 
-// TestNoFlexKeepsTheBoxConstructor: the layout is the children's decision, so
-// a box nothing claimed a share of stays exactly what it was -- swapping a
-// layout in there would change a tree nothing asked to change.
+// TestNoFlexKeepsTheBoxConstructor: a box whose style and children ask for
+// nothing stays exactly what it was -- swapping a layout in there would change
+// a tree nothing asked to change. One whose style names a gap is the weighted
+// layout, the only one that reads it.
 func TestNoFlexKeepsTheBoxConstructor(t *testing.T) {
 	out := generateFyneModel(t, `
+import . "sngl:ui"
+output { go { fyne } }
+window {
+    vbox {
+        text(value="a")
+        text(value="b")
+    }
+}
+`)
+	if !strings.Contains(out, "container.NewVBox()") {
+		t.Errorf("box asking for nothing should keep NewVBox\n--- generated ---\n%s", out)
+	}
+	// fynelayout is imported for the window's Toplevel either way; the
+	// weighted layout is what a flexing child would pull in.
+	if strings.Contains(out, "fynelayout.New(") {
+		t.Errorf("box asking for nothing should not pull in the weighted layout\n--- generated ---\n%s", out)
+	}
+
+	gapped := generateFyneModel(t, `
 import . "sngl:ui"
 output { go { fyne } }
 window {
@@ -50,12 +70,7 @@ window {
     }
 }
 `)
-	if !strings.Contains(out, "container.NewVBox()") {
-		t.Errorf("box with no flexing child should keep NewVBox\n--- generated ---\n%s", out)
-	}
-	// fynelayout is imported for the window's Toplevel either way; the
-	// weighted layout is what a flexing child would pull in.
-	if strings.Contains(out, "fynelayout.New(") {
-		t.Errorf("box with no flexing child should not pull in the weighted layout\n--- generated ---\n%s", out)
+	if !strings.Contains(gapped, "container.New(fynelayout.New(false, 4, 0))") {
+		t.Errorf("box with a gap should be the weighted layout with that gap\n--- generated ---\n%s", gapped)
 	}
 }

@@ -182,12 +182,22 @@ func (t *fyneTranslator) themed(child ir.Expr, sp *fyneSpec, id string) ir.Expr 
 	}
 	name := (fyneNative{Path: "fyne.io/fyne/v2/container", Name: "NewThemeOverride"}).qualify(t.gc)
 	var themed ir.Expr = nativeCallAt(name, "fyne.io/fyne/v2/container",
-		[]ir.Expr{child, rawGoExpr(sp.ThemeVar, fyneTheme())}, ir.NativeGoPointerOf("container.ThemeOverride"))
+		[]ir.Expr{t.backed(child, sp), rawGoExpr(sp.ThemeVar, fyneTheme())}, ir.NativeGoPointerOf("container.ThemeOverride"))
 	// The override is what the box holds, so it is what asks for a share.
 	if sp.shares() {
 		themed = shareCall(themed, sp)
 	}
 	return themed
+}
+
+// backed puts a label whose style gives it a background on a backdrop, which
+// paints the theme's answer for it behind the label; anything else is itself.
+func (t *fyneTranslator) backed(node ir.Expr, sp *fyneSpec) ir.Expr {
+	if sp == nil || !sp.Backed {
+		return node
+	}
+	name := (fyneNative{Path: ThemeImportPath, Name: "NewBackdrop"}).qualify(t.gc)
+	return nativeCallAt(name, ThemeImportPath, []ir.Expr{node}, ir.NativeGoPointerOf("fynetheme.Backdrop"))
 }
 
 func goColorLit(c fyneColor) string {
@@ -244,10 +254,10 @@ func (t *fyneTranslator) themeOverrideRef(id string) ir.Expr {
 // createThemeOverride wraps a runtime-themed node in its override as soon as
 // the node exists, so the style write that follows has something to set. The
 // children appended later are themed when the override first renders.
-func (t *fyneTranslator) createThemeOverride(id string, node ir.Expr) ir.Stmt {
+func (t *fyneTranslator) createThemeOverride(id string, sp *fyneSpec, node ir.Expr) ir.Stmt {
 	path := "fyne.io/fyne/v2/container"
 	ctor := nativeCallAt((fyneNative{Path: path, Name: "NewThemeOverride"}).qualify(t.gc), path,
-		[]ir.Expr{node, t.baseTheme()}, ir.NativeGoPointerOf("container.ThemeOverride"))
+		[]ir.Expr{t.backed(node, sp), t.baseTheme()}, ir.NativeGoPointerOf("container.ThemeOverride"))
 	if t.isLocalRef(id) {
 		return &ir.LocalVar{Name: themeOverrideField(id), Init: ctor}
 	}

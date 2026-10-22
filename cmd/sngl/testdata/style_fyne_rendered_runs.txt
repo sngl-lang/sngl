@@ -1,0 +1,81 @@
+# A box's alignment and a label's background, drawn by fyne.
+#
+# Fyne's box stretched every child across it whatever `alignItems` said, and
+# its theme colours no label's box, so a badge drew as plain text. `plain`
+# and `badged` write the same text, the second as a badge; `left` and
+# `centred` the same column, the second centred; `flips` a badge whose colour
+# is state, before and after it changes. testdata/fyne_box_align_backdrop.txtar
+# shows the calls, and pkg/go/fynelayout and pkg/go/fynetheme measure them.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=fyne app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+exists app.sngl.snapshots/plain.png
+! cmp app.sngl.snapshots/plain.png app.sngl.snapshots/badged.png
+! cmp app.sngl.snapshots/left.png app.sngl.snapshots/centred.png
+! cmp app.sngl.snapshots/before.png app.sngl.snapshots/after.png
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+output { go { fyne } }
+
+component plain ui.node {
+    ui.hbox(style={gap=8px, alignItems=start}) {
+        ui.text(value="Grass")
+    }
+}
+
+component badged ui.node {
+    ui.hbox(style={gap=8px, alignItems=start}) {
+        ui.badge(value="Grass", style={background=#339933, color=#ffffff})
+    }
+}
+
+component left ui.node {
+    ui.vbox {
+        ui.text(value="Centre me")
+    }
+}
+
+component centred ui.node {
+    ui.vbox(style={alignItems=center}) {
+        ui.text(value="Centre me")
+    }
+}
+
+component flips ui.node {
+    var hot = false
+    ui.hbox(style={gap=8px, alignItems=start}) {
+        ui.badge(value="Shifting", style={background=hot ? #cc3333 : #339933, color=#ffffff})
+        ui.button #flip(text="flip", @click { hot = true })
+    }
+}
+
+func testPlain(t test.Test, c plain) {
+    t.snapshot("plain")
+}
+
+func testBadged(t test.Test, c badged) {
+    t.snapshot("badged")
+}
+
+func testLeft(t test.Test, c left) {
+    t.snapshot("left")
+}
+
+func testCentred(t test.Test, c centred) {
+    t.snapshot("centred")
+}
+
+func testFlips(t test.Test, c flips) {
+    t.snapshot("before")
+    c.flip.click()
+    t.snapshot("after")
+}
+
+ui.window {
+    badged
+}

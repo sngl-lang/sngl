@@ -527,7 +527,7 @@ func (t *fyneTranslator) withThemeOverride(id string, sp *fyneSpec, create ir.St
 	if !sp.RuntimeTheme {
 		return []ir.Stmt{create}
 	}
-	return []ir.Stmt{create, t.createThemeOverride(id, t.nodeRefFor(id))}
+	return []ir.Stmt{create, t.createThemeOverride(id, sp, t.nodeRefFor(id))}
 }
 
 // OnCreateComponent binds a name to a live instance of a non-inlinable user

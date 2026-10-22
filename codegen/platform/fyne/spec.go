@@ -125,6 +125,10 @@ type fyneSpec struct {
 	// StyleValue is set when the style is a whole value rather than a literal
 	// -- a Style held in state -- so the theme is read off it field by field.
 	StyleValue bool
+	// Backed is set on a label whose style may give it a background, which
+	// it is drawn on (fynetheme.Backdrop): Fyne's theme paints no label's
+	// box.
+	Backed bool
 }
 
 // fyneStyle is the part of sngl.Style this platform can answer, in the
@@ -142,6 +146,8 @@ type fyneStyle struct {
 	// place of its own minimum, zero where the style gave none.
 	Width  float64
 	Height float64
+	// Align is the style's `alignItems` member, "" where it named none.
+	Align string
 
 	Background   *fyneColor
 	Color        *fyneColor
@@ -315,9 +321,12 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	case nil:
 	case *ir.StructLit:
 		sp.RuntimeTheme = readsRuntimePaint(v)
+		sp.Backed = structField(v, "background") != nil
 	default:
 		sp.RuntimeTheme, sp.StyleValue = true, true
+		sp.Backed = true
 	}
+	sp.Backed = sp.Backed && sp.GoType.Name == "*Label"
 	return sp, nil
 }
 
@@ -346,6 +355,9 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 			continue
 		case "fontStyle":
 			st.Italic = enumOrString(f.Value) == "italic"
+			continue
+		case "alignItems":
+			st.Align = enumOrString(f.Value)
 			continue
 		}
 		var into *float64

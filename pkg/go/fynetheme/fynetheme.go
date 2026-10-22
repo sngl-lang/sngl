@@ -42,6 +42,11 @@ func (t Theme) Color(n fyne.ThemeColorName, v fyne.ThemeVariant) color.Color {
 		if t.Foreground != nil {
 			return t.Foreground
 		}
+	case ColorNameBox:
+		if t.Background != nil {
+			return t.Background
+		}
+		return color.Transparent
 	}
 	return t.Theme.Color(n, v)
 }
