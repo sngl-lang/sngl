@@ -154,6 +154,11 @@ type Features struct {
 	// switch would compare the option's pointer, so Go withholds it, and so
 	// does JavaScript; passMatch writes such a match as the chain.
 	OptionMatch bool
+	// StringBuilders says the language holds sngl:builtin's builder as a
+	// buffer of its own -- Go's `[]byte`, Kotlin's `StringBuilder` -- and
+	// answers its intrinsics. Withheld, passStringBuilders writes a builder
+	// as the string it builds, and each add as a `+=`.
+	StringBuilders bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -233,6 +238,7 @@ func NoLowering() Features {
 		MatchValue:        true,
 		ViewMatch:         true,
 		OptionMatch:       true,
+		StringBuilders:    true,
 	}
 }
 
@@ -292,6 +298,7 @@ func (f Features) String() string {
 		{"MatchValue", f.MatchValue},
 		{"ViewMatch", f.ViewMatch},
 		{"OptionMatch", f.OptionMatch},
+		{"StringBuilders", f.StringBuilders},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

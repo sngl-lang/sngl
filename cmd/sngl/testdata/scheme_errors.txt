@@ -41,12 +41,30 @@ stderr 'nested.sngl:5:[0-9]+: gen.scheme may only be written at the root of a fi
 ! sngl check raise/app.sngl
 stderr 'raise/app.sngl:1:1: import "boom:x": scheme "boom": no such thing as x'
 
+# A file is opened once: what is added to it is the file, so a second open
+# naming it is an error rather than a second file of the same name.
+! sngl check twice/app.sngl
+stderr 'twice/app.sngl:1:1: import "twice:x": tw/tw.sngl:5:17: out.file: x.sngl opened twice'
+
 # A handler is gated like any build-time SNGL: an unasked command is refused,
 # and the refusal is reported at the import that ran the plugin.
 ! sngl check exec/app.sngl
 stderr 'exec/app.sngl:1:1: import "run:x": pc/pc.sngl:4:13: \./pc may not run sh -c ''echo hi'': running it needs --allow-command="\./pc=sh"'
 sngl check --allow-command='./pc=sh' exec/app.sngl
 
+-- twice/app.sngl --
+import x "twice:x"
+import "./tw"
+
+const v = x.v
+-- twice/tw/tw.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="twice", @generate(out, importPath) {
+    out.file("x.sngl").line("const v = 1")
+    var again = out.file("x.sngl")
+    again.line("const w = 2")
+})
 -- unknown/app.sngl --
 import x "nosuch:thing"
 
@@ -59,7 +77,7 @@ const v = 1
 import gen "sngl:x/gen"
 
 gen.scheme(name="go", @generate(out, importPath) {
-    out.write("x.sngl", "const v = 1\n")
+    out.file("x.sngl").add("const v = 1\n")
 })
 -- shadowlib/app.sngl --
 import "./c"
@@ -69,7 +87,7 @@ const v = 1
 import gen "sngl:x/gen"
 
 gen.scheme(name="c", @generate(out, importPath) {
-    out.write("x.sngl", "const v = 1\n")
+    out.file("x.sngl").add("const v = 1\n")
 })
 -- dup/app.sngl --
 import x "dup:x"
@@ -81,13 +99,13 @@ const v = x.v
 import gen "sngl:x/gen"
 
 gen.scheme(name="dup", @generate(out, importPath) {
-    out.write("x.sngl", "const v = 1\n")
+    out.file("x.sngl").add("const v = 1\n")
 })
 -- dup/two/two.sngl --
 import gen "sngl:x/gen"
 
 gen.scheme(name="dup", @generate(out, importPath) {
-    out.write("x.sngl", "const v = 2\n")
+    out.file("x.sngl").add("const v = 2\n")
 })
 -- self/app.sngl --
 import "./self"
@@ -98,7 +116,7 @@ import gen "sngl:x/gen"
 import x "self:x"
 
 gen.scheme(name="self", @generate(out, importPath) {
-    out.write("x.sngl", "const v = 1\n")
+    out.file("x.sngl").add("const v = 1\n")
 })
 -- cycle/app.sngl --
 import "./a"
@@ -110,7 +128,7 @@ import y "b:y"
 import "../b"
 
 gen.scheme(name="a", @generate(out, importPath) {
-    out.write("x.sngl", "const v = 1\n")
+    out.file("x.sngl").add("const v = 1\n")
 })
 -- cycle/b/b.sngl --
 import gen "sngl:x/gen"
@@ -118,7 +136,7 @@ import "../a"
 import x "a:x"
 
 gen.scheme(name="b", @generate(out, importPath) {
-    out.write("x.sngl", "const v = 1\n")
+    out.file("x.sngl").add("const v = 1\n")
 })
 -- nested/app.sngl --
 import "./nested"
@@ -130,7 +148,7 @@ import ui "sngl:ui"
 
 component c ui.node {
     gen.scheme(name="n", @generate(out, importPath) {
-        out.write("x.sngl", "const v = 1\n")
+        out.file("x.sngl").add("const v = 1\n")
     })
 }
 -- raise/app.sngl --
@@ -158,5 +176,5 @@ gen.scheme(name="run", @generate(out, importPath) {
     for var l = p.stdout {
         line = l
     }
-    out.write("x.sngl", "const line = \"" + line + "\"\n")
+    out.file("x.sngl").add("const line = \"" + line + "\"\n")
 })

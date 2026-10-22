@@ -1,0 +1,34 @@
+// A builder is how a function makes a string; what a view shows is the
+// string. So no state holds one -- a var of the package or a component, a
+// `var` in a block of a view, a prop, a context -- since an add is a write in
+// place, which a reactive cell would have to report on every piece.
+
+import ui "sngl:ui"
+
+struct Doc {
+    text builder
+}
+
+var log builder // ERROR(check) "var log holds a builder, which is no state"
+
+context #draft(Doc{}) // ERROR(check) "context draft holds a builder"
+
+component page(seed builder) ui.node { // ERROR(check) "prop seed of page holds a builder"
+    var doc Doc                        // ERROR(check) "var doc holds a builder"
+    ui.vbox {
+        var scratch builder // ERROR(check) "var scratch holds a builder"
+        ui.text(value="x")
+    }
+    // A handler's local is no state: building a string there is the point.
+    ui.button(text="go", @click {
+        var b builder
+        b.add("ok")
+    })
+}
+
+// So is a function's.
+func make() string {
+    var b builder
+    b.add("ok")
+    return b.string()
+}

@@ -26,7 +26,7 @@ import marks "sngl:internal/marks"
 // body -- and the fourth that its switch compares an option subject as `==`
 // does; the pass writes the rest as the if chain.
 //
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches, optionMatches }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches, optionMatches, stringBuilders }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component
@@ -168,7 +168,7 @@ func renders(these list[Rendered]) ir.Macro
 // **What a handler writes**, when `@generate` is handled: the walk reads the
 // host at build time, as it does for a file, and hands the handler each
 // member's `node` value with what that member holds. The handler writes the
-// files with `out.write`, each a path inside the output directory, and may run
+// files with `out.file`, each a path inside the output directory, and may run
 // another process over what it was handed with `exec`. It runs at build time
 // under the host API, gated as the package that wrote it and recorded, so what
 // it writes is stored and replayed until the members, its code or anything it
@@ -176,7 +176,7 @@ func renders(these list[Rendered]) ir.Macro
 //
 //     component block[go.language] {
 //         gen.emit(@generate(out, members list[gen.Member[Entry]]) {
-//             out.write("blocks.json", encode(members))
+//             out.file("blocks.json").add(encode(members))
 //         })
 //     }
 //

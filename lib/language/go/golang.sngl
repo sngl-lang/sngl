@@ -150,6 +150,7 @@ const emitted = [
     asyncSpawn,
     matches,
     matchValues,
+    stringBuilders,
 )]
 #[gen.name("go")]
 #[gen.native("go")]

@@ -56,7 +56,7 @@ gen.scheme(name="openapi", @generate(out, importPath) {
     for var n = pkg.notes {
         out.note(n)
     }
-    out.write(pkg.file, pkg.source)
+    out.file(pkg.file).add(pkg.source)
 })
 
 // What an import resolves to.

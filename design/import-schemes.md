@@ -29,8 +29,8 @@ library plugins loaded off the check's `libCache`.
 (`internal/plugin`, reached through `build.Resolver.GenerateScheme`; a
 resolver that is not a `checker.SchemeRunner` resolves no plugin scheme). Its
 calls are gated by the plugin's origin -- a library plugin is trusted -- and
-recorded, `out.write(name, src)` writes one `.sngl` file of the package and
-records nothing, and a raise that leaves the handler is the import's error. The
+recorded, `out.file(name)` opens one `.sngl` file of the package and records
+nothing, and a raise that leaves the handler is the import's error. The
 output is checked as a package with no directory, so it may not import by
 path, and is stored as `sngl.scheme` (see *Performance*). Fixtures:
 `cmd/sngl/testdata/scheme_order.txt`, `scheme_errors.txt`,
