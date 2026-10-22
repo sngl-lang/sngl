@@ -80,7 +80,9 @@ brackets them. Three things become node lifetime:
   bracket shows a render a value not yet made or already released. `@update`
   runs after the render that made the write, which reads the old value, still
   live. It reports a write where a bracket compares, so writing a var the
-  value it holds remakes the value; a prop reports only a new value. Cells
+  value it holds remakes the value; a prop reports only a new value. A
+  write before the instance's lifetime began is not reported, so the value
+  is made once when its branch comes back (design/instances.md). Cells
   follow the component's vars, ordered so one derived value reading another
   follows it (`testdata/owned_state.sngl`, `testdata/owned_state.txtar`).
 - **An allocation an effect's handler hands a `#[retains]` parameter** is

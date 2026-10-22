@@ -159,6 +159,22 @@ The node half.
   counting in a package var left the count at 0, and each copy's `f` was the
   first one opened. The mount carries the copy's writes back as a handler does
   (`testdata/for_copy_initializer_writes_package.sngl`).
+- [X] A write to an owned derived value's key while its branch is hidden left
+  the `@update`'s dirty flag set, so on bubbletea the settle that took the
+  branch back built the value in the enter function and again in the report.
+  An `@update` under an `if` taken in the same pass as a write to its key
+  ran on every target, where the interpreter reports only writes made while
+  the bracket ran: a report now skips a bracket its position did not describe
+  at the last pass
+  (`testdata/owned_derived_built_once_on_entry.txtar`).
+- [ ] An `@update` under a `for` whose key does not step into the loop still
+  runs for a copy that entered in the pass a write reached its key: only a
+  position of `if`s remembers what it described. It needs the copies keyed, as
+  a cell under a loop has them (`dirtyAt`). android keeps nothing either:
+  whether it reports to a bracket its `if` took back in the same pass as the
+  write is unverified, since this host has no Android SDK to record the run
+  (`testdata/owned_derived_built_once_on_entry.txtar` with kotlin/android in
+  its `output` block).
 
 ## Part 6: application teardown on targets
 

@@ -364,6 +364,7 @@ type TickerInstance struct {
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
 	__effect1_dirty     bool
+	__effect1_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -386,6 +387,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effect0_desired = []bool{}
 	c.__effect1_key = (time.Duration(0) * time.Millisecond)
 	c.__effect1_dirty = false
+	c.__effect1_absent = false
 	c.__effects0_settling = false
 	c.__effects0_pending = false
 	c.__effects0_steps = 0
@@ -484,12 +486,20 @@ func (c *TickerInstance) __effects0_settle() {
 		for c.__effects0_pending && (c.__effects0_steps < 512) {
 			c.__effects0_pending = false
 			c.__effects0_steps = (c.__effects0_steps + 1)
-			if c.__effect1_dirty {
-				c.__effect1_dirty = false
-				if c.__prop_period > (time.Duration(0) * time.Millisecond) {
-					c.__effect1_key = c.__prop_period
-					c.__effect1_update()
+			__effect1_seen := false
+			if c.__prop_period > (time.Duration(0) * time.Millisecond) {
+				if c.__effect1_dirty {
+					c.__effect1_dirty = false
+					if !c.__effect1_absent {
+						c.__effect1_key = c.__prop_period
+						c.__effect1_update()
+					}
 				}
+				__effect1_seen = true
+			}
+			c.__effect1_absent = !__effect1_seen
+			if c.__effect1_absent {
+				c.__effect1_dirty = false
 			}
 			c.__effect0_down()
 			c.__effect0_up()
@@ -958,7 +968,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c3560649d8a0cfdafdeb591f6a0d957d
 -- run/go/fyne --
-pass sha256:e154d1e36031fe0a81c351f2e8d725a9
+pass sha256:0afbb47d139de7cffa37d01f9e378a19
 -- run/go/gtk4 --
 pass sha256:c2cc90448ece5940f37cc04e062f2436
 -- run/none/html --

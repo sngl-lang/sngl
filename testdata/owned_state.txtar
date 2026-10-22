@@ -106,6 +106,7 @@ type modelState struct {
 	__effect1_desired   []bool
 	__effect2_key       __anon_extra_n_d477fc
 	__effect2_dirty     bool
+	__effect2_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -130,6 +131,7 @@ func New() Model {
 	m.__effect1_desired = []bool{}
 	m.__effect2_key = __anon_extra_n_d477fc{}
 	m.__effect2_dirty = false
+	m.__effect2_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_steps = 0
@@ -215,12 +217,20 @@ func (m *Model) __effects0_settle() {
 			m.__effects0_pending = false
 			m.__effects0_steps = (m.__effects0_steps + 1)
 			m.__effect0_enter()
-			if m.__effect2_dirty {
-				m.__effect2_dirty = false
-				if m.shown {
-					m.__effect2_key = __anon_extra_n_d477fc{N: m.n, Extra: m.extra__inst0}
-					m.__effect2_update()
+			__effect2_seen := false
+			if m.shown {
+				if m.__effect2_dirty {
+					m.__effect2_dirty = false
+					if !m.__effect2_absent {
+						m.__effect2_key = __anon_extra_n_d477fc{N: m.n, Extra: m.extra__inst0}
+						m.__effect2_update()
+					}
 				}
+				__effect2_seen = true
+			}
+			m.__effect2_absent = !__effect2_seen
+			if m.__effect2_absent {
+				m.__effect2_dirty = false
 			}
 			m.__effect1_down()
 			m.__effect1_up()
@@ -1274,7 +1284,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:67cd9f556c9909110d92409e339439fe
+pass sha256:43a2edea97b657697fb4fbd645843f11
 -- run/go/fyne --
 pass sha256:6098d4702b7488c58e734632101a5c02
 -- run/go/gtk4 --

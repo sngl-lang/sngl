@@ -90,6 +90,7 @@ type Model struct {
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
 	__effect1_dirty     bool
+	__effect1_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -115,6 +116,7 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_dirty = false
+	m.__effect1_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_steps = 0
@@ -233,10 +235,18 @@ func (m *Model) __effects0_settle() {
 		for m.__effects0_pending && (m.__effects0_steps < 512) {
 			m.__effects0_pending = false
 			m.__effects0_steps = (m.__effects0_steps + 1)
+			__effect1_seen := false
 			if m.__effect1_dirty {
 				m.__effect1_dirty = false
-				m.__effect1_key = (time.Duration(200) * time.Millisecond)
-				m.__effect1_update()
+				if !m.__effect1_absent {
+					m.__effect1_key = (time.Duration(200) * time.Millisecond)
+					m.__effect1_update()
+				}
+			}
+			__effect1_seen = true
+			m.__effect1_absent = !__effect1_seen
+			if m.__effect1_absent {
+				m.__effect1_dirty = false
 			}
 			m.__effect0_down()
 			m.__effect0_up()
@@ -631,6 +641,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:e698f21725cc2b9e4d55912fcbd82498
+pass sha256:e38e1c6fe55989ff774743f2d22c5e18
 -- run/go/gtk4 --
 pass sha256:3d1a37a9b61c31ab778b3bc97a1d1acf

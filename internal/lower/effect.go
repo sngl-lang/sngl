@@ -167,6 +167,13 @@ type loweredEffect struct {
 	// settle evaluates the key and the position from when it does.
 	update *ir.Func
 	dirty  *ir.Var
+	// absent says the position described no key at the last report, for a
+	// bracket under an `if` but no loop: one it describes now began its
+	// lifetime in this pass, after every write that set dirty. False to start,
+	// since an instance may never settle before its first write. A loop's
+	// copies would need keys, so it keeps none, and nor does a platform that
+	// brackets lifetimes itself, whose runs this has not been held to.
+	absent *ir.Var
 	// mark sets dirty, for a test body: a test reaches the instance's state
 	// through the instance, and html keeps a synthesized var where only the
 	// page's script can name it. Built the first time a test needs it.
@@ -379,6 +386,9 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		if fx.cell != nil && fx.cell.loop != nil {
 			fx.dirtyAt = &ir.Var{Name: prefix + "_dirtyAt", Type: ir.ListOf(ir.TypInt), Init: &ir.ListLit{Type: ir.ListOf(ir.TypInt)}, Synthesized: true}
 			st.addVar(o, fx.dirtyAt)
+		} else if !st.native && len(frames) > 0 && !slices.ContainsFunc(frames, func(f effectFrame) bool { return f.loop != nil && !f.loopElse }) {
+			fx.absent = &ir.Var{Name: prefix + "_absent", Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Synthesized: true}
+			st.addVar(o, fx.absent)
 		}
 		if fx.cell != nil {
 			st.cellBy[fx.cell.root] = append(st.cellBy[fx.cell.root], fx)
@@ -800,12 +810,27 @@ func (st *effectState) emptyLoopBlock(name string, loop *ir.For, leaf []ir.Stmt)
 
 // reportBlock is what a settle pass runs for one bracket's `@update` before any
 // lifetime moves: the handler, once, if a write has reached the key since the
-// last pass and the position still describes the bracket.
+// last pass and the position still describes the bracket. Under an `if`, a
+// bracket the position did not describe at the last pass is owed nothing: the
+// interpreter reports to a bracket only the writes made while it ran.
 //
 //	if __effectN_dirty {
 //	    __effectN_dirty = false
 //	    <the if chain> { __effectN_key = <on>; __effectN_update() }
 //	}
+//
+// or, under an `if`:
+//
+//	__effectN_seen := false
+//	<the if chain> {
+//	    if __effectN_dirty {
+//	        __effectN_dirty = false
+//	        if !__effectN_absent { __effectN_key = <on>; __effectN_update() }
+//	    }
+//	    __effectN_seen = true
+//	}
+//	__effectN_absent = !__effectN_seen
+//	if __effectN_absent { __effectN_dirty = false }
 func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
 	if fx.dirtyAt != nil {
 		return st.copyReportBlock(prefix, fx)
@@ -818,10 +843,31 @@ func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
 		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
 	}
 	run = append(run, callHandler(fx.update)...)
-	return append(out, &ir.If{
-		Cond: st.varIdent(fx.dirty),
-		Body: append([]ir.Stmt{st.setFlag(fx.dirty, false)}, st.positionBlock(prefix, fx.frames, run)...),
-	})
+	if fx.absent == nil {
+		return append(out, &ir.If{
+			Cond: st.varIdent(fx.dirty),
+			Body: append([]ir.Stmt{st.setFlag(fx.dirty, false)}, st.positionBlock(prefix, fx.frames, run)...),
+		})
+	}
+	not := func(e ir.Expr) ir.Expr { return &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: e} }
+	seen := &ir.Var{Name: fx.prefix + "_seen", Type: ir.TypBool, Synthesized: true}
+	ref := &ir.Ident{Name: seen.Name, Type: seen.Type, Sym: seen, Synthesized: true}
+	leaf := []ir.Stmt{
+		&ir.If{
+			Cond: st.varIdent(fx.dirty),
+			Body: []ir.Stmt{
+				st.setFlag(fx.dirty, false),
+				&ir.If{Cond: not(st.varIdent(fx.absent)), Body: run},
+			},
+		},
+		&ir.Assign{Target: deepCloneExpr(ref), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: "true"}},
+	}
+	out = append(out, &ir.LocalVar{Name: seen.Name, Type: ir.TypBool, Sym: seen, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}})
+	out = append(out, st.positionBlock(prefix, fx.frames, leaf)...)
+	return append(out,
+		&ir.Assign{Target: st.varIdent(fx.absent), Op: ast.AssignSet, Value: not(deepCloneExpr(ref))},
+		&ir.If{Cond: st.varIdent(fx.absent), Body: []ir.Stmt{st.setFlag(fx.dirty, false)}},
+	)
 }
 
 // checkHandlerScope refuses a handler body that reads a loop variable of an

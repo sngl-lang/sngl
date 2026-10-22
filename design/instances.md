@@ -294,6 +294,21 @@ against. Before this, fyne's setter settled with nothing marked and html's did
 not settle, so such an `@update` never ran on a target. An owned derived value
 reading a prop is one (`testdata/effect_update_on_prop.txtar`).
 
+**An `@update` is owed only the writes made while its bracket ran**, as the
+interpreter has it: a bracket mounted after a write starts reading the log
+past it. A target's dirty flag outlived the position, so a write while an
+`if` was hidden and the branch taken back in the same settle ran the
+`@update` of a bracket just begun, and on bubbletea, where the enter function
+had just built an owned derived value, built it a second time. A report under
+an `if` remembers whether its position described the bracket at the last pass
+(`__effectN_absent`) and runs nothing for one it describes only now; the dirty
+flag is cleared either way. It starts false: an instance whose only brackets are `@update`s is not settled when it is built, so starting true missed a write made straight after (`effect_update_runs.txt`'s `testGated`). A bracket under a loop stepping into its key keeps its per-copy
+queue. One under a loop that does not keeps nothing, since that would need the
+copies keyed: a copy entered in the pass a write reached its key is still
+reported. Nor does android, which brackets lifetimes itself and has no recorded
+run of this yet
+(`testdata/owned_derived_built_once_on_entry.txtar`).
+
 **A two-way prop the caller leaves unbound is state of the instance**
 (`ir.UnboundProps`): a cell that starts from what the call site gave the prop,
 or its default, or its type's zero, and that the host's reports write, as if

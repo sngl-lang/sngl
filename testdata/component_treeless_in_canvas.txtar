@@ -373,6 +373,7 @@ type Model struct {
 	__effect1_desired   []bool
 	__effect2_key       time.Duration
 	__effect2_dirty     bool
+	__effect2_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -399,6 +400,7 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effect2_key = (time.Duration(0) * time.Millisecond)
 	m.__effect2_dirty = false
+	m.__effect2_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_steps = 0
@@ -538,10 +540,18 @@ func (m *Model) __effects0_settle() {
 		for m.__effects0_pending && (m.__effects0_steps < 512) {
 			m.__effects0_pending = false
 			m.__effects0_steps = (m.__effects0_steps + 1)
+			__effect2_seen := false
 			if m.__effect2_dirty {
 				m.__effect2_dirty = false
-				m.__effect2_key = (time.Duration(100) * time.Millisecond)
-				m.__effect2_update()
+				if !m.__effect2_absent {
+					m.__effect2_key = (time.Duration(100) * time.Millisecond)
+					m.__effect2_update()
+				}
+			}
+			__effect2_seen = true
+			m.__effect2_absent = !__effect2_seen
+			if m.__effect2_absent {
+				m.__effect2_dirty = false
 			}
 			m.__effect1_down()
 			m.__effect0_down()
@@ -1632,7 +1642,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0a76a5c02d0bd32c4813a8908331ef7d
 -- run/go/fyne --
-pass sha256:2c3904adac4f53c16cc93c2ed8d38428
+pass sha256:004a47ad823914c0c5cc4b28612df424
 -- run/go/gtk4 --
 pass sha256:76193da8ee485f930fd8f41c8014dcea
 -- run/kotlin/android --
