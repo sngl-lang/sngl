@@ -1217,6 +1217,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier as Modifier_2
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
@@ -1470,6 +1471,6 @@ pass sha256:faa6fc02a77d043e6adea0f07a6d99d7
 -- run/go/gtk4 --
 pass sha256:e270e6e54c1389a0564b0906f3f91e1f
 -- run/kotlin/android --
-pass sha256:45b8fdea83065b477379d2a8239e1673
+pass sha256:43af8e44e41d10f21f3bcc0da595d04e
 -- run/none/html --
 pass sha256:17a6a33e49004b1f50ff20c16652838f

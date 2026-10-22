@@ -68,7 +68,7 @@ ui.window {
     shelf()
 }
 -- testrun/android/kotlin/app.sngl/shelf/1 --
-sha256:da981298f020a1af24aad98f2f24fc83
+sha256:ad6c36946b2297ed210e34631b342d24
 {
   "results": [
     {

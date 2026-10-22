@@ -1346,7 +1346,7 @@ sha256:1eaadf111f350fa0c5077d6767e946f7
   ]
 }
 -- testrun/android/kotlin/headless.sngl/box/1 --
-sha256:0b379e1788d6c986aade33920950ef88
+sha256:c2655b26f1471fe7d3e26dfdd1d20276
 {
   "results": [
     {
@@ -1356,7 +1356,7 @@ sha256:0b379e1788d6c986aade33920950ef88
   ]
 }
 -- testrun/android/kotlin/kret.sngl/main/1 --
-sha256:b53f34f50f74e427110fb6e103939108
+sha256:82004693f94882291052646577bf7fa5
 {
   "results": [
     {
@@ -1366,7 +1366,7 @@ sha256:b53f34f50f74e427110fb6e103939108
   ]
 }
 -- testrun/android/kotlin/lat.sngl/main/1 --
-sha256:a3e724d1543a1277b9df061935bb0953
+sha256:2df1dd4a1c4651df682cd503a244b48f
 {
   "results": [
     {
@@ -1376,7 +1376,7 @@ sha256:a3e724d1543a1277b9df061935bb0953
   ]
 }
 -- testrun/android/kotlin/method.sngl/main/1 --
-sha256:76dd6a5cd9a71e4ea1fc55b866a37eb5
+sha256:2b2bc848e0079042f0611581b65ba3a0
 {
   "results": [
     {
@@ -1386,7 +1386,7 @@ sha256:76dd6a5cd9a71e4ea1fc55b866a37eb5
   ]
 }
 -- testrun/android/kotlin/method2.sngl/main/1 --
-sha256:5b42d523b6aa47889621db5fe47421d8
+sha256:d8faa4489121227ce930a324cb46648c
 {
   "results": [
     {
@@ -1424,7 +1424,7 @@ sha256:52ce1a12145da83899a1e3f70a9939a9
   ]
 }
 -- testrun/android/kotlin/same.sngl/main/1 --
-sha256:ff9ffc563e3c490c728e2817b07ae961
+sha256:c53d363ee38fdc42f4080edea12b0573
 {
   "results": [
     {
@@ -1434,7 +1434,7 @@ sha256:ff9ffc563e3c490c728e2817b07ae961
   ]
 }
 -- testrun/android/kotlin/slotrec.sngl/main/1 --
-sha256:20a6c6fe28b13584b57d2d44a9d95343
+sha256:0acf5b23910600e239d59d95b3f606dc
 {
   "results": [
     {
@@ -1444,7 +1444,7 @@ sha256:20a6c6fe28b13584b57d2d44a9d95343
   ]
 }
 -- testrun/android/kotlin/twoway.sngl/main/1 --
-sha256:90ee314bb0c0210e7ec34cf3f9fc98d5
+sha256:7d07804c777a3687e145df3c3797c77d
 {
   "results": [
     {

@@ -424,6 +424,84 @@ func (cc *irComposeContext) flexModifier(val string) string {
 	return cc.kc.Name(ktFillMaxSize) + "()"
 }
 
+// boxLayoutArgs are what a Row or Column's Style says of its children as the
+// arguments Compose takes for it, since no Modifier says them: `gap` and
+// `justifyContent` its main-axis Arrangement, and `alignItems` its cross-axis
+// Alignment. A Row the override handed a verticalAlignment of its own keeps
+// it. Neither was emitted before, so on android every box laid its children
+// edge to edge and at its start, whatever its Style said.
+func (cc *irComposeContext) boxLayoutArgs(n *ir.NodeInst, axis string) []string {
+	if axis != "Row" && axis != "Column" {
+		return nil
+	}
+	var gap, justify, align string
+	for _, sf := range codegen.NodeStyleFieldsOf(n, "modifier") {
+		switch sf.Name {
+		case "gap":
+			gap = dp(cc.kc, cc.styleValue(sf.Value))
+		case "justifyContent":
+			justify = enumMember(sf.Value)
+		case "alignItems":
+			align = enumMember(sf.Value)
+		}
+	}
+	arrangement, alignment := "horizontalArrangement", "verticalAlignment"
+	start, center, end := "Top", "CenterVertically", "Bottom"
+	if axis == "Column" {
+		arrangement, alignment = "verticalArrangement", "horizontalAlignment"
+		start, center, end = "Start", "CenterHorizontally", "End"
+	}
+	var args []string
+	if a := cc.arrangement(axis, gap, justify); a != "" {
+		args = append(args, arrangement+" = "+a)
+	}
+	if codegen.NodeProp(n, alignment) == nil {
+		member := map[string]string{"start": start, "center": center, "end": end}[align]
+		if member != "" {
+			args = append(args, alignment+" = "+cc.kc.Name(ktAlignment)+"."+member)
+		}
+	}
+	return args
+}
+
+// arrangement is a box's main-axis Arrangement: its children spaced by `gap`
+// and placed as `justify` says. A spread of the free space leaves the gap to
+// it, as CSS's minimum between children is no more than what spreads them.
+func (cc *irComposeContext) arrangement(axis, gap, justify string) string {
+	arr := cc.kc.Name(ktArrangement)
+	switch justify {
+	case "spaceBetween":
+		return arr + ".SpaceBetween"
+	case "spaceAround":
+		return arr + ".SpaceAround"
+	case "spaceEvenly":
+		return arr + ".SpaceEvenly"
+	}
+	// Where the children sit: an Arrangement's own name without a gap, and
+	// the Alignment spacedBy takes beside one.
+	var whole, place string
+	switch {
+	case justify == "center":
+		whole, place = "Center", "CenterHorizontally"
+		if axis == "Column" {
+			place = "CenterVertically"
+		}
+	case justify == "end" && axis == "Row":
+		whole, place = "End", "End"
+	case justify == "end":
+		whole, place = "Bottom", "Bottom"
+	}
+	switch {
+	case gap == "" && whole == "":
+		return ""
+	case gap == "":
+		return arr + "." + whole
+	case place == "":
+		return arr + ".spacedBy(" + gap + ")"
+	}
+	return arr + ".spacedBy(" + gap + ", " + cc.kc.Name(ktAlignment) + "." + place + ")"
+}
+
 // stretches reports whether a Row or Column's Style leaves its children
 // stretched across its other axis: no `alignItems`, or `stretch`.
 func stretches(n *ir.NodeInst) bool {
@@ -720,6 +798,7 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
 		}
 	}
+	args = append(args, cc.boxLayoutArgs(n, axis)...)
 	args = append(args, cc.slotArgs(n, comp)...)
 	call := fmt.Sprintf("%s(%s)", composable, strings.Join(args, ", "))
 	if comp.ChildrenType == nil {

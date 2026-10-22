@@ -935,6 +935,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -1295,7 +1296,7 @@ pass sha256:9c5ea564b100bd8d125a92f16f5c37a3
 -- run/go/gtk4 --
 pass sha256:74a9e8535578a447c3af163dda654d8c
 -- run/kotlin/android --
-pass sha256:ef10211d13b2127fe52e7bbcface5061
+pass sha256:62946c219f50148cc7b7b01dd28b8d79
 -- run/none/html --
 pass sha256:c69ea9fbf5e88ae73b5989ced106534b
 -- testrun/html/none/component_tabs.sngl/main/1 --

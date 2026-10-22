@@ -1244,6 +1244,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
@@ -1675,6 +1676,6 @@ pass sha256:b99602cf9946c857a594dba6727bfe62
 -- run/go/gtk4 --
 pass sha256:a23ddc6628999b09e16b6b697db62225
 -- run/kotlin/android --
-pass sha256:3a1bff6da2550ef090837c7652bdffba
+pass sha256:e61cc18e5e354ab52fbc9b3c14344190
 -- run/none/html --
 pass sha256:6a6c3abc239651b30b1b4cf48405797e

@@ -226,7 +226,7 @@ window {
     main
 }
 -- testrun/android/kotlin/buttons.sngl/main/1 --
-sha256:1fe748eb96c63ace6c19c02f73eab91c
+sha256:c95371673632a889f47afac199d9ab7f
 {
   "results": [
     {
@@ -236,7 +236,7 @@ sha256:1fe748eb96c63ace6c19c02f73eab91c
   ]
 }
 -- testrun/android/kotlin/counters.sngl/main/1 --
-sha256:81456d0ab6c6b18c0ff4a17c1e913098
+sha256:43cc102db98f92c5758868a9030186c0
 {
   "results": [
     {

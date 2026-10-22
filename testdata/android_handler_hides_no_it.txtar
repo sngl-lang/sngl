@@ -53,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
@@ -154,4 +155,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:65e83b5d48733af5cd7fbb6cbdf84b13
+pass sha256:3b04c9da223a2aa15b4d00b3a6c860ee

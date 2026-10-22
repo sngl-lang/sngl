@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.TextStyle
@@ -78,7 +79,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier.padding(8.dp).safeDrawingPadding()) {
+        Column(modifier = Modifier.padding(8.dp).safeDrawingPadding(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = "with units", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
             Button(onClick = {}, modifier = Modifier.width(100.dp).height(40.dp), shape = RoundedCornerShape(12.dp)) {
                 Text(text = "rounded", modifier = Modifier)
@@ -87,4 +88,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:22eede1ada80b9cc70a9fd4a9c6d3d34
+pass sha256:19367ac8fc2aed18352c41fa4dc502c8

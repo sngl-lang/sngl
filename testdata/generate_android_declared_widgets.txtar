@@ -75,6 +75,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
@@ -83,6 +84,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.background
@@ -132,7 +134,7 @@ fun MainScreen() {
             SnglImage(modifier = Modifier, onLoad = {}, onError = {}) {
                 SnglRemoteImage(url = "/logo.png")
             }
-            Row(modifier = Modifier.alpha(1.0f)) {
+            Row(modifier = Modifier.alpha(1.0f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Tag", modifier = Modifier)
             }
             Column(modifier = Modifier.padding(9.dp)) {
@@ -295,4 +297,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:cad1159f2340853fb43eac3f44dbacc0
+pass sha256:78dad7d4897e6c68e3f7fb22d15687c4

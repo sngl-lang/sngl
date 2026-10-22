@@ -1216,7 +1216,7 @@ func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 		return
 	}
 	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Name)
+	fnCopy.Name = gc.FreeFuncName(fn.Name)
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')

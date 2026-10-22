@@ -822,6 +822,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 
@@ -1097,6 +1098,6 @@ pass sha256:b5ee2b1fb56fa2c7ce0f54cebafa54e5
 -- run/go/gtk4 --
 pass sha256:b1f0c6d7347c70b3a3ae73e6643659ec
 -- run/kotlin/android --
-pass sha256:02559815f0ba5a01414706f295640298
+pass sha256:25120792fc6f150dff516295336edb0d
 -- run/none/html --
 pass sha256:b1b1100d7b9770803d2d73e3e63f7ee3

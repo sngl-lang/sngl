@@ -181,7 +181,7 @@ func testAPageNotShowingIsNotMounted(t Test, c site) {
     t.assert(c.aboutMounts == 0)
 }
 -- testrun/android/kotlin/app.sngl/site/1 --
-sha256:7aae03380180e6fb5cd9db02da404104
+sha256:822ff21effef56bddeaccb9d8c8b48f8
 {
   "results": [
     {

@@ -1051,6 +1051,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
@@ -1105,7 +1106,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1126,7 +1126,7 @@ class MainScreenTest {
         composeRule.setContent { MainScreen(c) }
         composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("box") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("box")))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.on == true)", (c.on == true))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performTextReplacement("q"); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("q")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.v == \"x!\")", (c.v == "x!"))
         composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("sw") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("sw")))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"true true\")", (c.seen == "true true"))
@@ -1242,6 +1242,6 @@ pass sha256:add6a6ae64172d01f90330d3869f638a
 -- run/go/gtk4 --
 pass sha256:0eac5d10a40532642398f7bec9eaa128
 -- run/kotlin/android --
-pass sha256:0c7c3f78371594bd084d9909ef63848b
+pass sha256:0ce7086ba48d8d17d316e7aa85b2c3fa
 -- run/none/html --
 pass sha256:d9a22e06ac7c7078ebf883f1fa768a48

@@ -911,8 +911,8 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// A func emitted free is named the way a call to it is, exported and
 		// with no receiver: handed as a value to a component's func-typed
 		// prop, `render=encode` came out `m.encode` beside `func Encode`.
-		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] {
-			return ExportName(name)
+		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] != "" {
+			return gc.FreeFuncName(name)
 		}
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
@@ -1078,8 +1078,8 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			// A free-function scope has no Model receiver, so the call uses
 			// the exported name. A func not emitted into the lib then yields
 			// a clean "undefined" Go error rather than silent bad code.
-			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname]) {
-				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
+			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] != "") {
+				return gc.FreeFuncName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
 			// Route mode emits these as State methods under their exported
 			// name, which is also what a reference to one as a value renders

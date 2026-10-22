@@ -23,6 +23,7 @@ const (
 	ktCornerRect = "androidx.compose.foundation.shape.RoundedCornerShape"
 
 	ktColumn             = ktLayout + "Column"
+	ktArrangement        = ktLayout + "Arrangement"
 	ktAspectRatio        = ktLayout + "aspectRatio"
 	ktFillMaxHeight      = ktLayout + "fillMaxHeight"
 	ktFillMaxSize        = ktLayout + "fillMaxSize"
@@ -49,6 +50,7 @@ const (
 	ktToMutableStateList = ktRT + "toMutableStateList"
 
 	ktModifier      = ktUI + "Modifier"
+	ktAlignment     = ktUI + "Alignment"
 	ktComposed      = ktUI + "composed"
 	ktAlpha         = ktUI + "draw.alpha"
 	ktColor         = ktUI + "graphics.Color"

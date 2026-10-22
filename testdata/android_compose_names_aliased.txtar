@@ -94,6 +94,7 @@ import androidx.compose.ui.Modifier as Modifier_2
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment as Alignment_2
 import androidx.compose.material3.Checkbox
@@ -234,4 +235,4 @@ fun SnglScroll(
     Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:6486535b973182229858a4363250e33c
+pass sha256:fff8b9fc4acf2d88ca89d7a55522f4e5

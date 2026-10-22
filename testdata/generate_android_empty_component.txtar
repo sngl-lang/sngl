@@ -53,6 +53,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
@@ -80,4 +81,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:a6420f33012e90e878078717a4b7f62e
+pass sha256:18810ad15a066209f13f6d780a09c93a

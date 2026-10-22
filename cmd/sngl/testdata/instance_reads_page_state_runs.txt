@@ -61,7 +61,7 @@ func testComesBack(t test.Test, c main) {
     t.assert(c.c != null && c.c.shown() == "picked b")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:7d0ef695d7a23610e2c43243dfe5e7dd
+sha256:13b2eb1769a5e98ef94aa04fce3a532f
 {
   "results": [
     {

@@ -70,7 +70,7 @@ ui.window {
     names()
 }
 -- testrun/android/kotlin/app.sngl/names/1 --
-sha256:ebaec14e456e5917711f8bee1cb9ee03
+sha256:2d7c008a7aadc87187bedeacb98e3a02
 {
   "results": [
     {

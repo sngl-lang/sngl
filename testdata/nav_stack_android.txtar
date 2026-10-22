@@ -100,6 +100,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.navigation.compose.NavHost
 import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.composable
@@ -228,4 +229,4 @@ fun Counter() {
     }
 }
 -- run/kotlin/android --
-pass sha256:43adbc951123869febf0caa2badcb5ad
+pass sha256:ff96c4c1ebce62b02c9a7f5eebf9b7fd

@@ -54,7 +54,7 @@ func testPresentInAPanel(t test.Test, c panes) {
     t.assert(c.mark[2] != null && c.mark[2].value == "c")
 }
 -- testrun/android/kotlin/app.sngl/panes/1 --
-sha256:7d3b43876c4b7166dc662db5fda3821e
+sha256:fed8aaf038a01bcf851336a5cbdf9b89
 {
   "results": [
     {

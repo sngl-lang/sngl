@@ -64,8 +64,18 @@ func testRemoteFails(t Test, c pictures) {
 window {
     pictures
 }
+-- testrun/android/kotlin/app.sngl/moved/1 --
+sha256:44bdaed4f7e0185459a1d3f89ff1d87f
+{
+  "results": [
+    {
+      "Desc": "RemoteFollowsItsURL",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/app.sngl/pictures/1 --
-sha256:f701463529c8a55a1c1538754c09c10e
+sha256:0826d85e9fd71dd2a71a21b5a61bfa2e
 {
   "results": [
     {
@@ -74,6 +84,16 @@ sha256:f701463529c8a55a1c1538754c09c10e
     },
     {
       "Desc": "RemoteLoads",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/moved/1 --
+sha256:da15acd4fa5ac21cdbf9a66d8d74a2c5
+{
+  "results": [
+    {
+      "Desc": "RemoteFollowsItsURL",
       "Passed": true
     }
   ]
@@ -88,6 +108,16 @@ sha256:4ccbf4a11cfead436392f620ad5489bc
     },
     {
       "Desc": "RemoteLoads",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/moved/1 --
+sha256:0120565c942831406ec2db045a6a36b8
+{
+  "results": [
+    {
+      "Desc": "RemoteFollowsItsURL",
       "Passed": true
     }
   ]

@@ -322,7 +322,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 
@@ -352,16 +355,16 @@ fun MainScreen() {
             }
         }
         Row(modifier = Modifier.safeDrawingPadding()) {
-            Row(modifier = Modifier.alpha(1.0f)) {
+            Row(modifier = Modifier.alpha(1.0f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Tag", modifier = Modifier)
             }
-            Row(modifier = Modifier.alpha(1.0f)) {
+            Row(modifier = Modifier.alpha(1.0f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Removable", modifier = Modifier)
                 Button(onClick = {}, modifier = Modifier) {
                     Text(text = "×", modifier = Modifier)
                 }
             }
-            Row(modifier = Modifier.alpha(1.0f)) {
+            Row(modifier = Modifier.alpha(1.0f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Success", modifier = Modifier)
             }
         }
@@ -405,6 +408,6 @@ pass sha256:571e6a43618ba10d81f6764bc735f689
 -- run/go/fyne --
 pass sha256:6054910742b05cd065a388153a0d6d30
 -- run/kotlin/android --
-pass sha256:83dd8b2e522cd866aebe7d0a77ab11e8
+pass sha256:b6f642283e9d191d515277c606f9b2a5
 -- run/none/html --
 pass sha256:be53fdf14e7d01ce332e06ea00848b80

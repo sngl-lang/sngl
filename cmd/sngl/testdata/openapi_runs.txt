@@ -344,7 +344,7 @@ sha256:4a2564fb1459faa2e344fb65abd117ee
   ]
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
-sha256:f5c8a1920d7e0fd3c57fca10f1959a9c
+sha256:192f5eab5f6a9b77c07bbcdf6f712038
 {
   "results": [
     {

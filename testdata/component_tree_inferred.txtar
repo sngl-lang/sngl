@@ -294,6 +294,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -674,6 +675,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3567f3b9ab66f55d22072597945e925f
 -- run/kotlin/android --
-pass sha256:3f76611cc5929428365f2549a65db020
+pass sha256:03b07d635d6d6a03a650c69bca5fb815
 -- run/none/html --
 pass sha256:7f4fb7a67c4f8811b56a35374658a7d7

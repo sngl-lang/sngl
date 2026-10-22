@@ -489,6 +489,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 
@@ -623,7 +624,7 @@ pass sha256:1a2e884e35749454365be1cd422ff10f
 -- run/go/gtk4 --
 pass sha256:558ff9edcc3868510b607156402b8f01
 -- run/kotlin/android --
-pass sha256:4262f40f0fbcb35b9448d273572e9bee
+pass sha256:5c5df8c0957eb5a540face4f78c94125
 -- run/none/html --
 pass sha256:e1ba13d732f6bf00dac271a5b3667705
 -- testrun/html/none/component_input.sngl/main/1 --

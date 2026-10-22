@@ -341,6 +341,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 
@@ -464,7 +465,7 @@ pass sha256:950e5072df6b199d99e1c43db61ebaa4
 -- run/go/gtk4 --
 pass sha256:02fe8b3d1870c6ee5a68279c498d1679
 -- run/kotlin/android --
-pass sha256:bf380c48a11746ee4e1db5977e51f3de
+pass sha256:7aa05f3d8c64238c6540e15b58298d3c
 -- run/none/html --
 pass sha256:27c9e2fe7bbadf5619a97dcc833aac6c
 -- testrun/html/none/component_checkbox.sngl/main/1 --

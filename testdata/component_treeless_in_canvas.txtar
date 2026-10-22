@@ -1217,6 +1217,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -1658,6 +1659,6 @@ pass sha256:3ef58c1c7642f5dd519d7f072265ec04
 -- run/go/gtk4 --
 pass sha256:b0635bcdeb1342b96cd62a155aa86a3f
 -- run/kotlin/android --
-pass sha256:65cb2d2b0411b80a553adfd328e74487
+pass sha256:132d958862b59bdb8a617a95a4528243
 -- run/none/html --
 pass sha256:c0734e24e4c62eb54ec0d72b6bc15710

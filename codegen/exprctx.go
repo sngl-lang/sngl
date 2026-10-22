@@ -88,7 +88,9 @@ type ExprCtx struct {
 	// component state; there is nothing for a receiver to carry. Emitting one
 	// as a method anyway is what left a type method — which is free, having no
 	// receiver to be a method on — calling `m.format(…)` with no `m` in sight.
-	FreeFuncs map[string]bool
+	//
+	// Each maps to the name it is emitted under, which a call spells.
+	FreeFuncs map[string]string
 	// ModelParamFuncs names the methods on a user type that are lifted to a
 	// free function and touch package state: those take the Model as a
 	// trailing parameter. golang.ModelParamFuncs builds it and says why.

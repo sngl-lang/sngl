@@ -71,6 +71,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
@@ -149,4 +150,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:732c85733620494c646e946c2c9b362f
+pass sha256:48597d11942e4894cf9237e80e5d9c3a
