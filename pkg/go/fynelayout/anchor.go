@@ -62,5 +62,17 @@ func InsertBefore(c *fyne.Container, anchor, o fyne.CanvasObject) {
 		return
 	}
 	c.Objects = slices.Insert(c.Objects, i, o)
-	c.Refresh()
+	relayout(c)
+}
+
+// relayout lays c out again and asks for it to be drawn, as Container.Add
+// does, without refreshing what c already held. A refresh reaches every child,
+// and a theme override refreshed is a new theme scope for Fyne's text cache,
+// so every label under one was measured again: a table a render slot filled
+// row by row shaped all its text again for each row.
+func relayout(c *fyne.Container) {
+	if c.Layout != nil {
+		c.Layout.Layout(c.Objects, c.Size())
+	}
+	canvas.Refresh(c)
 }

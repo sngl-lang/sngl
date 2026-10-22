@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 
 	"duckfam.us/sngl/pkg/go/fynelayout"
 )
@@ -246,5 +247,43 @@ func TestNothingTakesNoRoom(t *testing.T) {
 	c := container.NewVBox(box(10, 10), fynelayout.Nothing(), box(10, 10))
 	if got, want := c.MinSize().Height, 20+theme.Padding(); got != want {
 		t.Errorf("Fyne's box with Nothing in it is %v tall, want %v", got, want)
+	}
+}
+
+// counted is a widget that counts its refreshes.
+type counted struct {
+	widget.Label
+	refreshes int
+}
+
+func newCounted() *counted {
+	c := &counted{}
+	c.ExtendBaseWidget(c)
+	return c
+}
+
+func (c *counted) Refresh() {
+	c.refreshes++
+	c.Label.Refresh()
+}
+
+// A render slot inserting a row lays its box out again, and refreshes none of
+// the rows already there: a refresh reaches every child, a theme override
+// refreshed is a new theme scope for Fyne's text cache, and a table filled
+// row by row measured all its text again for each row -- seconds for a
+// table of fifteen.
+func TestInsertingRefreshesNoOtherChild(t *testing.T) {
+	old := newCounted()
+	c := container.New(fynelayout.New(false, 0, 0), old)
+	c.Resize(fyne.NewSize(100, 200))
+	anchor := fynelayout.SlotAnchor(c, nil)
+	before := old.refreshes
+	added := box(10, 30)
+	fynelayout.InsertBefore(c, anchor, added)
+	if old.refreshes != before {
+		t.Errorf("inserting a row refreshed the row already there %d times", old.refreshes-before)
+	}
+	if got := added.Position().Y; got != old.MinSize().Height {
+		t.Errorf("the inserted row is at %v, want laid out after the first, at %v", got, old.MinSize().Height)
 	}
 }
