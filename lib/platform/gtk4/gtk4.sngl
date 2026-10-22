@@ -8,6 +8,7 @@ import markup "sngl:ui/markup"
 import math "sngl:math"
 import go "sngl:language/go"
 import gen "sngl:x/gen"
+import c "sngl:x/c"
 import family "sngl:family"
 import gtk "gir:Gtk-4.0"
 
@@ -557,9 +558,9 @@ const component time.timer[platform](interval, enabled, @tick) {
 // `cairo_t*`, so cairo's own functions are the drawing vocabulary. Declared
 // with `#[cnative(…)]`, which names a C identifier and no language: each is a
 // free function taking the context first, which is the shape a native gets by
-// default. The backend that can call C supplies the conversions its own ABI
-// needs from the declared parameter types -- for the Go one that is
-// `C.double`/`C.int`. Nothing here is Go's.
+// default. Each argument crosses through the `c` conversion its declared
+// parameter type names (`c.cdouble`, `c.cstring`), which is why this package
+// imports one. Nothing here is Go's.
 //
 // Named as the cgo pointer it is, so a helper that takes the context has the
 // right type in its own signature -- the draw function's own parameter type

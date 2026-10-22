@@ -3,11 +3,26 @@
 A value the program allocates and something must give back -- a C string
 handed to cairo, a pixbuf, a widget a C library keeps a pointer to -- is
 owned, and the IR says so. The spec's *Owned values* is what it means; this is
-how the compiler holds it. #110 is the bug: `wrapCArgs`/`cTypeFor`
-(`codegen/lang/golang/ircontext.go`) write `C.CString` into the printed Go
-and the gtk4 translator invents more after lowering, so no pass that can add a
-statement ever sees an allocation, and every canvas that draws text leaks per
-frame.
+how the compiler holds it. #110 is the bug: the Go printer wrote `C.CString`
+into each C call's arguments (`wrapCArgs`, since gone) and the gtk4 translator
+invents more after lowering, so no pass that can add a statement ever saw an
+allocation, and every canvas that draws text leaks per frame.
+
+**A C call's arguments are converted in the IR.** `lower.CMarshal` wraps each
+argument of a call whose `Foreign.Path` is `"C"` in the `sngl:x/c` conversion
+its parameter's type names: `cstring` for a `string`, `cint`, `cdouble`, and
+`cbool`, whose `=>` body is written at the call, since a library function is
+emitted only when the program reaches it. Each is a `#[builtin]` function,
+found by kind among what the program and the C function's own package import
+-- which is why gtk4.sngl imports `sngl:x/c` it never names. The pass runs
+after `LibFuncs`, so a promoted library helper's calls are reached, and before
+`NoTernary`, which lowers `cbool`'s. `cstring` answers a `c.str`, which is
+`#[owned(free)]`, so a C string is an owned value like any other and
+`ReleaseTemps` will see it. The printer keeps only the other direction, a C
+number coming back as `int(...)`. A `bool` argument used to panic the printer,
+cgo having no conversion for one (`testdata/c_bool_argument.txtar`); `free`
+reaches cgo's `C.free` through `unsafe.Pointer`, a qualified native name the
+printer spells as written (`testdata/c_free.txtar`).
 
 **A type declares its release.** `#[owned(release)]` (`lib/macro/owned.sngl`)
 marks a struct and names the function that gives one back, stored as
@@ -140,10 +155,12 @@ the call ends -- the effect whose handler ran it (`handles.within`, ended by
 return steering control flow takes one path.
 
 Simulating is what adds the target's half (`BuildSimulatedEnv`, set before the
-initializers run). Until `CMarshal` makes the conversion IR, a `string`
-argument of a C native allocates a `C.CString` handle the way `wrapCArgs`
-does, which nothing releases: #110, reported with no toolchain
-(`cmd/sngl/testdata/simulate_gtk4_canvas_text_leaks.txt`). And the host
+initializers run), and `PrepareFor` runs `CMarshal`, so a stubbed native is
+handed the `c.str` the target allocates: an owned result of the stubbed
+`cstring`, which nothing releases -- #110, reported with no toolchain at the C
+call it was converted for (`handles.site` skips a call the pass wrote, having
+no position of its own; `cmd/sngl/testdata/simulate_gtk4_canvas_text_leaks.txt`).
+The interpreter's own run converts nothing: it has no C. And the host
 paints: after every settle, each handler of a mounted primitive in the shape
 family -- the target calling in, which is why such a primitive may carry
 events in an `#[family.eventless]` family -- runs with a zero payload, all of

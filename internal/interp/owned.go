@@ -72,16 +72,19 @@ func (h *handles) call() *ir.Call {
 }
 
 // site is where the call being made is written: its callee, since a call's
-// own position is its parenthesis.
+// own position is its parenthesis. A call a pass wrote -- an argument's
+// `c.cstring` -- is written nowhere, and is the call it converts for.
 func (h *handles) site() ast.Pos {
-	c := h.call()
-	switch {
-	case c == nil || c.AST == nil:
-		return ast.Pos{}
-	case c.AST.Func != nil:
-		return *c.AST.Func.ExprPos()
+	for _, c := range slices.Backward(h.calls) {
+		switch {
+		case c.AST == nil:
+			continue
+		case c.AST.Func != nil:
+			return *c.AST.Func.ExprPos()
+		}
+		return c.AST.Pos
 	}
-	return c.AST.Pos
+	return ast.Pos{}
 }
 
 // enterCall records call as the site of whatever it releases or uses.

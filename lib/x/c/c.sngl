@@ -1,4 +1,5 @@
 import marks "sngl:internal/marks"
+import macro "sngl:macro"
 
 // A header a target's C preamble includes, and the flags compiling and
 // linking against it needs. Written at the root of a file, once per header; a
@@ -9,3 +10,53 @@ import marks "sngl:internal/marks"
 // (`"lib/math.h"`).
 #[marks.builtin("cLink")]
 component link(const include string, const system bool = false, const cflags list[string] = [], const ldflags list[string] = []) root {}
+
+// A C string: a NUL-terminated copy of a `string` the program allocated, which
+// `free` gives back.
+#[macro.cnative("*C.char")]
+#[macro.owned(free)]
+struct str {}
+
+// A C `int` and a C `double`, the types a SNGL `int` and `float` cross as.
+#[macro.cnative("C.int")]
+struct integer {}
+
+#[macro.cnative("C.double")]
+struct double {}
+
+// The conversions a call of a C function makes of each argument, chosen by
+// the parameter's type. Nothing calls them by name: the compiler finds each by
+// its mark and writes the call, so a `string` handed to C is a `str` the
+// program holds and must give back.
+#[marks.builtin("cString")]
+#[macro.cnative("C.CString")]
+func cstring(s string) str
+
+#[marks.builtin("cInt")]
+#[macro.cnative("C.int")]
+const func cint(i int) integer
+
+#[marks.builtin("cDouble")]
+#[macro.cnative("C.double")]
+const func cdouble(f float) double
+
+// C spells a boolean as an `int`, 1 or 0, which is what GLib's `gboolean` is.
+// The body is written at each call in place of a call to this function.
+#[marks.builtin("cBool")]
+const func cbool(b bool) => cint(b ? 1 : 0)
+
+// C's `void *`, which `free` takes.
+#[macro.cnative("unsafe.Pointer")]
+struct pointer {}
+
+#[macro.cnative("unsafe.Pointer")]
+const func pointerTo(s str) pointer
+
+#[macro.cnative("free")]
+func cfree(p pointer)
+
+// Gives back a C string. Its header is `<stdlib.h>`, which a package calling
+// this names with a `link` of its own.
+func free(s str) {
+    cfree(pointerTo(s))
+}

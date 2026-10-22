@@ -75,12 +75,12 @@ on it.
 Move the C conversions out of the printer into IR, with no change in what
 leaks yet.
 
-- [ ] `sngl:x/c`: `str` (`#[owned(free)]`), `cstring`, `free`, and a `cbool`
+- [X] `sngl:x/c`: `str` (`#[owned(free)]`), `cstring`, `free`, and a `cbool`
   in place of `cTypeFor`'s bool panic.
-- [ ] A `CMarshal` pass converting each argument of a `Foreign.Path == "C"`
+- [X] A `CMarshal` pass converting each argument of a `Foreign.Path == "C"`
   call explicitly; `wrapCArgs` and `cTypeFor` go. It runs under `--simulate`
   too, so the stubbed calls see the same `c.cstring`s the target does.
-- [ ] Every golden byte-identical except a `bool` argument, which now
+- [X] Every golden byte-identical except a `bool` argument, which now
   compiles (fixture for that).
 
 ## Part 4: `ReleaseTemps`
@@ -98,6 +98,10 @@ The statement half; closes the unbounded part of #110.
   function.
 - [ ] Part 2's `canvasText` script test reports no leak.
 - [ ] Recorded gtk4 runs `-update`d.
+- [ ] `c.free` calls cgo's `C.free`, declared by `<stdlib.h>`: gtk4's preamble
+  includes it, but a fyne or bubbletea program's holds only the links it
+  reaches (`testdata/c_free.txtar` links it by hand). Release a `c.str` on
+  those only once something links it.
 
 ## Part 5: `OwnedState`
 

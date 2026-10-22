@@ -4,11 +4,6 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// cStringDef is the type of the C string a target's Go backend allocates for
-// each string argument of a C function (wrapCArgs), named the way it is
-// written. Nothing frees one: that is #110.
-var cStringDef = &ir.StructDef{Name: "C.CString"}
-
 // isCNative reports whether fn is a C function. Its Block is the checker's
 // `return <zero>`, nothing the author wrote.
 func isCNative(fn *ir.Func) bool {
@@ -45,9 +40,6 @@ func (env *Env) callCNative(call *ir.Call) (any, error) {
 			case ir.TransferRetains:
 				h.retain(hd)
 			}
-		}
-		if h.simulated != "" && p.Type != nil && p.Type.Kind == ir.TypeString {
-			h.alloc(cStringDef, h.site())
 		}
 	}
 	return env.nativeResult(fn.Return)

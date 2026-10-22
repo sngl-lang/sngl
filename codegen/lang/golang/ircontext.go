@@ -1133,15 +1133,16 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	}
 	args := gc.evalCallArgs(n.Args)
 	name := n.Func.Foreign.Name
-	// The renderer adds the "C." prefix to a bare C identifier; a caller that
-	// already prefixed it keeps what it wrote.
-	if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
-		name = "C." + name
-	} else if n.Func.Foreign.Path != "C" {
+	// The renderer adds the "C." prefix to a bare C identifier; a qualified
+	// name is spelled as written, which is how sngl:x/c reaches cgo's
+	// `unsafe.Pointer` for a `void *`.
+	switch {
+	case n.Func.Foreign.Path != "C":
 		gc.RequireImport(n.Func.Foreign.Path)
-	}
-	if n.Func.Foreign.Path == "C" {
-		args = wrapCArgs(n.Func.Params, args)
+	case strings.HasPrefix(name, "unsafe."):
+		gc.RequireImport("unsafe")
+	case !strings.Contains(name, "."):
+		name = "C." + name
 	}
 	// Context-taking native call: inject the context expression as the first
 	// argument. When the importer flagged HasContextArg, supply
@@ -1166,8 +1167,9 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
 	}
 	call := name + "(" + strings.Join(args, ", ") + ")"
-	// The other direction of wrapCArgs: a C function's number comes back as
-	// cgo's type for it, which a Go int or float64 is not assignable from.
+	// The arguments went the other way in lower.CMarshal: a C function's
+	// number comes back as cgo's type for it, which a Go int or float64 is
+	// not assignable from.
 	if n.Func.Foreign.Path == "C" && n.Func.Return != nil {
 		switch n.Func.Return.Kind {
 		case ir.TypeInt:
@@ -1177,77 +1179,6 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 		}
 	}
 	return call, true
-}
-
-// wrapCArgs converts each argument to the C type of the parameter it fills.
-//
-// cgo gives every C numeric type a defined Go type, so a `float64` is not
-// assignable to a `C.double` and a call to a C function needs the conversion
-// written out. A hand-written emitter does this itself -- gtk4's `dbl` helper
-// wraps every cairo coordinate -- and a native declaration has no way to say
-// it, so the backend that knows cgo does it from the declared parameter types.
-//
-// Aligned from the end: a native written in the receiver-first shape is called
-// with the receiver as argument zero and no parameter declares it.
-//
-// A type with no C counterpart here is left alone, which makes the mismatch a
-// Go compile error rather than a silent conversion -- `string` in particular,
-// where the C type is a `char*` somebody has to allocate and free.
-func wrapCArgs(params []*ir.Param, args []string) []string {
-	off := len(args) - len(params)
-	if off < 0 {
-		return args
-	}
-	out := make([]string, len(args))
-	copy(out, args)
-	for i, p := range params {
-		ct := cTypeFor(p.Type)
-		if ct == "" {
-			continue
-		}
-		out[off+i] = ct + "(" + out[off+i] + ")"
-	}
-	return out
-}
-
-// cTypeFor is the cgo type a SNGL type crosses as, or "" for one that has no
-// single answer.
-func cTypeFor(t *ir.Type) string {
-	if t == nil {
-		return ""
-	}
-	switch t.Kind {
-	case ir.TypeFloat:
-		return "C.double"
-	case ir.TypeInt:
-		return "C.int"
-	case ir.TypeString:
-		// C.CString allocates and the caller owns the result. Nothing here
-		// frees it, which is the same trade every hand-written call in the
-		// gtk4 emitter already makes (`C.CString("label")`): a widget label
-		// and a text run outlive the call, and the alternative is a defer this
-		// has no statement to put one in.
-		return "C.CString"
-	case ir.TypeBool:
-		// C spells a boolean as 1 or 0 and Go will not convert one to the
-		// other: `C.int(true)` does not compile, and passing the bool through
-		// unconverted does not either. There is no inline Go expression for it
-		// -- it needs a helper or an `if` -- so the declaration has to say what
-		// it means, `#[cnative]` on a parameter typed `int` with the override
-		// choosing the value. Loud, because silently returning "" here emitted
-		// a call that failed in the user's own `go build` with no hint of
-		// where it came from.
-		panic(fmt.Sprintf("cnative: a bool parameter has no C spelling; declare it as int and convert in the override (parameter type %s)", t))
-	default:
-		// Everything else passes through, which is what an opaque handle
-		// wants: a `#[cnative("*C.cairo_t")]` struct, a nullable pointer, an
-		// enum already converted by a native of its own. A conversion is only
-		// written where it is a representation detail and nothing else --
-		// `C.double(x)` says how a float64 crosses and loses nothing, whereas
-		// a float reaching an int parameter is a decision about rounding and
-		// so is the override's to write in SNGL.
-		return ""
-	}
 }
 
 // methodTail is the last segment of a qualified native name, which is the

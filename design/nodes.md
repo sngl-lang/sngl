@@ -45,8 +45,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   `kotlin.native`, which android needs to describe Compose, and by
   **`#[cnative]` in `sngl:macro`** — C is an ABI rather than a target, so a
   platform built on a C library (gtk4 on cairo) names C identifiers and no
-  language at all. The Go backend renders those as cgo and supplies the
-  `C.double`/`C.int` conversions from the declared parameter types. Which
+  language at all. The Go backend renders those as cgo. Each argument is
+  converted before any backend sees the call, by `lower.CMarshal`, through the
+  `sngl:x/c` conversion its parameter's type names (`cstring`, `cint`,
+  `cdouble`, `cbool`), so a C string is an owned `c.str` in the IR rather than
+  a `C.CString` only the printed Go held (`testdata/c_bool_argument.txtar`). Which
   header declares one is the program's `c.link` (`sngl:x/c`), and every Go target writes the links the program
   reaches (`ir.ReachedCLinks`) into its cgo preamble: fyne and bubbletea as a
   preamble of their own, gtk4 inside the one inline mode already has, which a

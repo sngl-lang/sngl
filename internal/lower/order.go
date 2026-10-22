@@ -228,6 +228,11 @@ var orderConstraints = []orderConstraint{
 	{"ComponentProps", "NoReactivity",
 		"a prop promoted to a var is a reactive cell, and the updater injection has to see it as one -- that is how a setter comes to re-fire the slots reading the prop"},
 
+	{"LibFuncs", "CMarshal",
+		"a library helper calling a C function is in the package's func list only once promoted, and one left out keeps a `string` argument cgo will not take"},
+	{"CMarshal", "NoTernary",
+		"a `bool` argument is written as sngl:x/c's `cbool` body, a ternary, which a target with none needs lowered"},
+
 	{"NoReactivity", "NoTernary",
 		"the value-only `if` NoTernary synthesizes would be misread as a reactive render slot and relocated into a __renderSlotN func, orphaning the `var __ltN` it assigns into"},
 
