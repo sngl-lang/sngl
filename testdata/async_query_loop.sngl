@@ -22,7 +22,7 @@ component card(name string) node {
 }
 
 component cards node {
-    var names = ["bulbasaur", "mew"]
+    var names = ["blueberry", "fig"]
     var shown = true
 
     if shown {
@@ -30,15 +30,15 @@ component cards node {
             card #c(name=n)
         }
     }
-    button #add(text="Add", @click { names.push("ditto") })
+    button #add(text="Add", @click { names.push("grape") })
     button #toggle(text="Toggle", @click { shown = !shown })
 }
 
 func testEachCopyAsksForItsOwn(t Test, c cards) {
-    t.assert(c.c[0].len.value == "bulbasaur 9")
-    t.assert(c.c[1].len.value == "mew 3")
+    t.assert(c.c[0].len.value == "blueberry 9")
+    t.assert(c.c[1].len.value == "fig 3")
     c.add.click()
-    t.assert(c.c[2].len.value == "ditto 5")
+    t.assert(c.c[2].len.value == "grape 5")
 }
 
 func testAnUnmountedQueryIsAskedAgainWhenItReturns(t Test, c cards) {

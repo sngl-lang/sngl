@@ -11,7 +11,7 @@ import (
 // names hands out SNGL names in one namespace, each once. A name SNGL's
 // grammar refuses, or one already taken, is changed, and the change is said.
 // Two names differing only in their first letter's case are one name: Go
-// exports both, `pokemonList` and `PokemonList`, as the same identifier.
+// exports both, `petList` and `PetList`, as the same identifier.
 type names struct {
 	taken map[string]bool
 	// fields are each struct's own namespace.
@@ -75,7 +75,7 @@ func (n *names) field(decl *Schema, wire, owner string, r *reader) string {
 }
 
 // camel is a wire name as a SNGL identifier: each run of letters and digits
-// after the first starts upper case, `front_default` → `frontDefault`, and
+// after the first starts upper case, `page_count` → `pageCount`, and
 // the first keeps its case. A name starting with a digit is given a letter
 // to start with, since `_` would make it unexported.
 func camel(s string) string {

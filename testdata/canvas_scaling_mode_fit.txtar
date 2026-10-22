@@ -467,8 +467,8 @@ func Paint(ctx *C.cairo_t, style Style) {
 	}
 	if style.Stroke.A > 0 {
 		C.cairo_set_line_width(ctx, C.double(style.StrokeWidth))
-		C.cairo_set_line_cap(ctx, LineCap(style.LineCap))
-		C.cairo_set_line_join(ctx, LineJoin(style.LineJoin))
+		C.cairo_set_line_cap(ctx, LineCapFunc(style.LineCap))
+		C.cairo_set_line_join(ctx, LineJoinFunc(style.LineJoin))
 		Source(ctx, style.Stroke)
 		C.cairo_stroke(ctx)
 	}
@@ -478,7 +478,7 @@ func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
 	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(cap__r0 string) C.cairo_line_cap_t {
+func LineCapFunc(cap__r0 string) C.cairo_line_cap_t {
 	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
@@ -488,7 +488,7 @@ func LineCap(cap__r0 string) C.cairo_line_cap_t {
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(join string) C.cairo_line_join_t {
+func LineJoinFunc(join string) C.cairo_line_join_t {
 	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
@@ -785,11 +785,15 @@ fun SnglAssetImage(url: String) {
 }
 
 // SnglRemoteImage is the picture a URL names, fetched while the program runs:
-// nothing until it arrives, and nothing if it does not.
+// nothing until it arrives, and nothing if it does not. produceState takes its
+// initial value once, so a new URL starts again from what the cache holds for
+// it: the last URL's picture is not this one's, and stood in its place for
+// good, since a value already there skipped the fetch.
 @Composable
 fun SnglRemoteImage(url: String) {
     val events by rememberUpdatedState(LocalSnglImageEvents.current)
     val bmp by produceState(SnglAssets.cached(url), url) {
+        value = SnglAssets.cached(url)
         if (value != null) {
             events?.load?.invoke()
             return@produceState
@@ -884,8 +888,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:f1f8ecc157e5f593223d578140191ee4
+pass sha256:146ee72c6c33901f542a92fb6493d077
 -- run/kotlin/android --
-pass sha256:478554f5e578a753c052cf97a665b969
+pass sha256:b7b01539244ce74b590e5551fc4ab778
 -- run/none/html --
 pass sha256:774b31d51405558e8a0332ed7aee6ec7

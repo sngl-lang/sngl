@@ -37,7 +37,7 @@ ui.window {
     counter
 }
 -- testrun/html/none/app.sngl/counter/1 --
-sha256:e9efd86938ac8d498e1f014c884fe53f
+sha256:0820f1de20ff999c15de90ed1d3846d2
 {
   "results": [
     {

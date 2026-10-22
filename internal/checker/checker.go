@@ -439,6 +439,12 @@ type checker struct {
 	// bodyChecked is the components whose body pass2 has already walked. A
 	// body may register another as it is checked, so the walk is resumable.
 	bodyChecked map[*ir.Component]bool
+	// propDefaultsChecked is each component whose prop defaults are checked,
+	// ahead of its body where a call site above it needs their types.
+	propDefaultsChecked map[*ir.Component]bool
+	// afterPropDefaults is what waits on a prop's type that only its default
+	// gives: an override's restatement of it, held to it once it is known.
+	afterPropDefaults []func()
 	// lateOverrides is a program's overrides of a declaration the program
 	// also wrote, which checkBodyOnce checks after that declaration's body.
 	lateOverrides map[*ir.Component][]pendingExtension
@@ -3545,6 +3551,9 @@ func (c *checker) checkPackageBody() {
 	c.pushScope()
 	defer c.popScope()
 	for _, st := range c.pendingPkgBody {
+		inStmtFile(c, st, func() { c.preSpecializeHandles(st, true) })
+	}
+	for _, st := range c.pendingPkgBody {
 		inStmtFile(c, st, func() {
 			if checked := c.checkStmt(st); checked != nil {
 				c.pkg.Body = append(c.pkg.Body, checked)
@@ -3870,6 +3879,7 @@ func (c *checker) pass2() {
 	c.inferComponentFamilies()
 
 	c.finishDeclarations(c.pkg)
+	c.refuseBuilderState()
 }
 
 // hasDeclaredBody reports whether fn has a body of its own to analyze: one
@@ -4444,6 +4454,15 @@ func (c *checker) noteBodyOwner(owner *ir.Component, sym ir.Symbol) {
 // checkComponentBodies checks every component body in the package, including
 // one registered mid-walk -- a range would snapshot pkg.Components' length.
 func (c *checker) checkComponentBodies(pkg *ir.Package) {
+	for _, comp := range pkg.Components {
+		if !strings.Contains(comp.Name, ".") {
+			c.ensurePropDefaults(comp)
+		}
+	}
+	for _, f := range c.afterPropDefaults {
+		f()
+	}
+	c.afterPropDefaults = nil
 	for i := 0; i < len(pkg.Components); i++ {
 		// A dotted name is an extension declaration, `component sngl.X`:
 		// mergePlatformExtensions splices its blocks into the component it
@@ -4453,6 +4472,94 @@ func (c *checker) checkComponentBodies(pkg *ir.Package) {
 		}
 		c.checkBodyOnce(pkg.Components[i])
 	}
+}
+
+// checkPropDefaults checks comp's prop defaults against what each prop takes
+// under declBindings, and gives an unannotated prop the type of its default.
+func (c *checker) checkPropDefaults(comp *ir.Component, declBindings map[string]*ir.Type) {
+	if c.propDefaultsChecked == nil {
+		c.propDefaultsChecked = map[*ir.Component]bool{}
+	}
+	c.propDefaultsChecked[comp] = true
+	// param entry we declare below picks up the inferred type.
+	if comp.AST != nil {
+		// Matched by name: an override's copy holds only the props its list
+		// selected, and a slot is a Param too without being a prop.
+		byName := make(map[string]*ir.Prop, len(comp.Props))
+		for _, p := range comp.Props {
+			byName[p.Name] = p
+		}
+		for _, p := range comp.AST.Props.Props {
+			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
+				// A default is the declaration's, written in its file against
+				// its imports. An override installed on the declaration has
+				// no business reading it again from the override's file, where
+				// `task Task = Task.none` names a type nothing there imports;
+				// once the declaration's own check has set it, it stands.
+				prop := byName[pd.Name]
+				if prop != nil && pd.Default != nil && !(c.installedOverride == comp && prop.Default != nil) {
+					// A default states a value of what the prop takes here,
+					// which for `on T = 0` under `<T = int>` is an int. A
+					// parameter with no default of its own leaves the prop type
+					// standing, and then the declaration says nothing the
+					// default could disagree with.
+					want := prop.Type.Substitute(declBindings)
+					// `T{}` is the zero of whatever T is bound to, the default
+					// T's own default makes it here included.
+					s := defaultSlot(comp.AST.Pos)
+					s.accept = func(val ir.Expr, _ *ir.Type) bool { return typeParamZero(val) }
+					prop.Default = c.checkExprAs(pd.Default, want, s)
+					if prop.Const {
+						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
+					}
+					// A family's default is what every member omitting the
+					// prop holds, and no call site sets it.
+					if comp.IsFamily() {
+						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, fmt.Sprintf("the default of %s's prop %q", comp.Name, prop.Name))
+						c.inheritDefault(prop)
+					}
+					initType := exprType(prop.Default)
+					if pd.Type == nil && initType.Kind != ir.TypeInvalid && initType.Kind != ir.TypeVoid {
+						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
+					}
+				}
+			}
+		}
+	}
+}
+
+// ensurePropDefaults types comp's unannotated props from their defaults
+// before any body is checked, in the scope comp's own body check gives them.
+// A prop typed by its default is typed: a call site gives it what it gives an
+// annotated one, a struct literal its type included, wherever the component
+// is declared -- `box(style={fontWeight=bold})` above `component box(style =
+// ui.Style{})` read `bold` as a name of its own.
+func (c *checker) ensurePropDefaults(comp *ir.Component) {
+	if c.propDefaultsChecked[comp] || comp.AST == nil || !hasUntypedDefault(comp.AST) {
+		return
+	}
+	defer c.fileOf(c.bodyFilePos(comp))()
+	c.scope = ir.NewScope(c.scope)
+	defer c.popScope()
+	prevComp, prevScope := c.currentComponent, c.componentScope
+	c.currentComponent, c.componentScope = comp, c.scope
+	defer func() { c.currentComponent, c.componentScope = prevComp, prevScope }()
+	c.declareEnclosingBody(comp)
+	if len(comp.TypeParams) > 0 {
+		defer pushTypeParams(c, comp.TypeParams)()
+	}
+	c.checkPropDefaults(comp, declTypeBindings(comp))
+}
+
+// hasUntypedDefault reports whether a component declares a prop whose type
+// only its default gives.
+func hasUntypedDefault(comp *ast.ComponentDecl) bool {
+	for _, p := range comp.Props.Props {
+		if pd, ok := p.(ast.Param); ok && !pd.IsSlot() && pd.Type == nil && pd.Default != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // checkBodyOnce checks comp's body, and the body that declared it first: an
@@ -4579,50 +4686,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 	// Check prop defaults first (before declaring props as params in scope) so
 	// that an unannotated prop's type can be inferred from its default and the
-	// param entry we declare below picks up the inferred type.
-	if comp.AST != nil {
-		// Matched by name: an override's copy holds only the props its list
-		// selected, and a slot is a Param too without being a prop.
-		byName := make(map[string]*ir.Prop, len(comp.Props))
-		for _, p := range comp.Props {
-			byName[p.Name] = p
-		}
-		for _, p := range comp.AST.Props.Props {
-			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
-				// A default is the declaration's, written in its file against
-				// its imports. An override installed on the declaration has
-				// no business reading it again from the override's file, where
-				// `task Task = Task.none` names a type nothing there imports;
-				// once the declaration's own check has set it, it stands.
-				prop := byName[pd.Name]
-				if prop != nil && pd.Default != nil && !(c.installedOverride == comp && prop.Default != nil) {
-					// A default states a value of what the prop takes here,
-					// which for `on T = 0` under `<T = int>` is an int. A
-					// parameter with no default of its own leaves the prop type
-					// standing, and then the declaration says nothing the
-					// default could disagree with.
-					want := prop.Type.Substitute(declBindings)
-					// `T{}` is the zero of whatever T is bound to, the default
-					// T's own default makes it here included.
-					s := defaultSlot(comp.AST.Pos)
-					s.accept = func(val ir.Expr, _ *ir.Type) bool { return typeParamZero(val) }
-					prop.Default = c.checkExprAs(pd.Default, want, s)
-					if prop.Const {
-						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
-					}
-					// A family's default is what every member omitting the
-					// prop holds, and no call site sets it.
-					if comp.IsFamily() {
-						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, fmt.Sprintf("the default of %s's prop %q", comp.Name, prop.Name))
-						c.inheritDefault(prop)
-					}
-					initType := exprType(prop.Default)
-					if pd.Type == nil && initType.Kind != ir.TypeInvalid && initType.Kind != ir.TypeVoid {
-						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
-					}
-				}
-			}
-		}
+	// param entry we declare below picks up the inferred type. A component a
+	// call site above it names had them checked ahead (ensurePropDefaults).
+	if !c.propDefaultsChecked[comp] {
+		c.checkPropDefaults(comp, declBindings)
 	}
 
 	// Declare props as params now that any default-driven type inference has
@@ -4671,6 +4738,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			case *ast.VarDecl:
 				c.checkComponentVars(s, comp)
 			}
+		}
+		// With the vars typed, so a prop reading one binds.
+		for _, stmt := range comp.AST.Body.Stmts {
+			c.preSpecializeHandles(stmt, true)
 		}
 	}
 

@@ -1,0 +1,83 @@
+// A builder grows text in place: `add` and `line` put a string on the end, and
+// `string()` -- the builder's string form, so `"{b}"` and `string(b)` too --
+// reads what has been built. It is a value, as a list is: storing one stores a
+// copy, a parameter is a copy, and `ref[builder]` is the caller's.
+
+import . "sngl:test"
+
+struct Page {
+    title string
+    body  builder
+}
+
+func lines(names list[string]) string {
+    var b builder
+    for var n = names {
+        b.line(n)
+    }
+    return b.string()
+}
+
+// A builder handed by reference is the caller's.
+func heading(b ref[builder], title string) {
+    b.add("# ")
+    b.line(title)
+}
+
+// One handed by value is a copy.
+func touched(b builder) string {
+    b.add("!")
+    return b.string()
+}
+
+func testAddAndLine(t Test) {
+    t.assert(lines(["a", "b"]) == "a\nb\n")
+    t.assert(lines([]) == "")
+    var b builder
+    b.add("x")
+    b.line()
+    t.assert(b.string() == "x\n")
+}
+
+func testStringForm(t Test) {
+    var b builder
+    b.add("hi")
+    t.assert("{b}" == "hi")
+    t.assert(string(b) == "hi")
+}
+
+func testValue(t Test) {
+    var b builder
+    b.add("x")
+    var c = b
+    c.add("y")
+    t.assert(b.string() == "x")
+    t.assert(c.string() == "xy")
+    t.assert(touched(b) == "x!")
+    t.assert(b.string() == "x")
+}
+
+func testRef(t Test) {
+    var b builder
+    heading(&b, "Title")
+    b.line("text")
+    t.assert(b.string() == "# Title\ntext\n")
+}
+
+func testField(t Test) {
+    var p = Page{title="t"}
+    p.body.line("one")
+    var q = p
+    q.body.line("two")
+    t.assert(p.body.string() == "one\n")
+    t.assert(q.body.string() == "one\ntwo\n")
+}
+
+func testInLambda(t Test) {
+    var b builder
+    var words = ["a", "b", "c"]
+    for var w = words.filter(func(x string) => x != "b") {
+        b.add(w)
+    }
+    t.assert(b.string() == "ac")
+}

@@ -218,6 +218,7 @@ window.__sngl_boot = () => {
     state.attempt__inst0__inst0 += 1;
   }
   function __snglTeardown() {
+    __effects0_torn = true;
     __effect2_teardown();
     __effect0_teardown();
   }
@@ -234,6 +235,7 @@ window.__sngl_boot = () => {
   var __effect2_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
@@ -330,24 +332,26 @@ window.__sngl_boot = () => {
     __effect2_live = [];
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect1_enter();
-        __effect2_down();
-        __effect0_down();
-        __effect0_up();
-        __effect2_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect1_enter();
+          __effect2_down();
+          __effect0_down();
+          __effect0_up();
+          __effect2_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -383,9 +387,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ff6979d58c73b6eddbe201221681ef98
+pass sha256:8de18aa91e11decaef7a0053495eacfe
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:0ec2df828f117ca21a0d87a7601cb042
+sha256:5a051cb58242bd5216566fe48050f94b
 {
   "results": [
     {
@@ -395,7 +399,7 @@ sha256:0ec2df828f117ca21a0d87a7601cb042
   ]
 }
 -- testrun/html/none/component_async_query.sngl/latest/1 --
-sha256:9b0835d7b980f990220777152b5d6d20
+sha256:dc224c2b3371b2091845f8fdae6d4131
 {
   "results": [
     {

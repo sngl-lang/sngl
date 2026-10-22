@@ -406,6 +406,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	if ctx.Pkg.UsesErrorHandling {
 		td.LangHelpers += golang.ErrorEventDecl
 	}
+	td.LangHelpers += golang.PackageConstDecls(ctx.Pkg, gc)
 	if decls := emitThemeDecls(themes); decls != "" {
 		td.LangHelpers += decls
 		for _, path := range themeImports(themes) {
@@ -615,7 +616,7 @@ func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 		return
 	}
 	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Name)
+	fnCopy.Name = gc.FreeFuncName(fn.Name)
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
@@ -765,7 +766,9 @@ func renderIRComponentMethod(
 	var trailer string
 	switch len(tops) {
 	case 0:
-		trailer = "\treturn widget.NewLabel(\"\")\n"
+		// Hidden, so the box holding it gives it no room (fynelayout.Nothing).
+		importSink(fyneLayoutImportPath)
+		trailer = "\treturn " + compGC.AliasFor(fyneLayoutImportPath) + ".Nothing()\n"
 	case 1:
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(topRef(tr, tops[0])))
 	default:

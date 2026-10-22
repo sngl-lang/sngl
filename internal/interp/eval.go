@@ -741,11 +741,7 @@ func (env *Env) ContextVal(ctx *ir.Context) any {
 
 // translatorFor returns a Translator for the env's current locale.
 func (env *Env) translatorFor() *goi18n.Translator {
-	loc := env.Locale
-	if loc == "" {
-		loc = "en"
-	}
-	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
+	return env.translatorForLocale("")
 }
 
 // translatorForLocale returns a translator for the given BCP-47 locale,
@@ -757,7 +753,13 @@ func (env *Env) translatorForLocale(loc string) *goi18n.Translator {
 	if loc == "" {
 		loc = "en"
 	}
-	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
+	// The package's i18n.manifest.json, what a `$"..."` is translated
+	// against, as a generated program embeds it.
+	var m goi18n.Manifest
+	if env.Pkg != nil {
+		m = manifestBeside(env.Pkg.SourcePath)
+	}
+	return goi18n.NewTranslator(m, loc)
 }
 
 // evalI18nPrimitiveCall dispatches a call to one of the unexported i18n._*
@@ -1629,6 +1631,9 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		}
 		return EnumValue{Type: e.Type, Member: member, Payload: copyOf(v, payload.ExprType())}, nil
 	}
+	if e.Def != nil && e.Def.Intrinsic == ir.BuilderIntrinsic {
+		return &Builder{}, nil
+	}
 	s := NewStruct(e.Def, e.Type)
 	if e.Def != nil && e.Def.Release != nil {
 		var at ast.Pos
@@ -1723,6 +1728,9 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if lb, ok := left.(bool); ok && (e.Op == ast.BinAnd && !lb || e.Op == ast.BinOr && lb) {
+		return lb, nil
+	}
 	right, err := env.Eval(e.Right)
 	if err != nil {
 		return nil, err
@@ -1816,7 +1824,7 @@ func (env *Env) binaryValues(e *ir.Binary, left, right any) (any, error) {
 		if err := orderable(left, right); err != nil {
 			return nil, err
 		}
-		switch cmp := compareNum(left, right); e.Op {
+		switch cmp := compareOrdered(left, right); e.Op {
 		case ast.BinLt:
 			return cmp < 0, nil
 		case ast.BinLte:
@@ -1910,18 +1918,22 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	if isCNative(call.Func) {
 		return env.callCNative(call)
 	}
-	// i18n by the id, before the call shape is examined: an entry point may
-	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
-	// the wrapper is inlined, so neither is reliably a namespace call by the
-	// time it gets here. The interpreter is the only implementation of these
-	// — the primitives' bodies were dropped as placeholders after checking.
+	// i18n by the id, before the call shape is examined: the `i18n._*`
+	// primitives arrive plain once the wrapper is inlined, so they are not
+	// reliably a namespace call by the time they get here. The interpreter is
+	// the only implementation of these -- the primitives' bodies were dropped
+	// as placeholders after checking. An entry point with a body runs it, as
+	// every target does: the body reads the `locale` context and hands it to
+	// the primitive, and its parameters bind their defaults. Answered by its
+	// id, `i18n.numberFloat(x)` lost the `style` it defaults and formatted for
+	// env.Locale whatever a provider or a test's t.setContext said.
 	if call.Func != nil {
-		if id := call.Func.Intrinsic; strings.HasPrefix(id, "i18n.") {
-			if strings.HasPrefix(id, "i18n._") {
-				if result, handled, err := env.evalI18nPrimitiveCall(id, call.Args); handled {
-					return result, err
-				}
-			} else if result, handled, err := env.evalI18nCall(strings.TrimPrefix(id, "i18n."), call.Args); handled {
+		if id := call.Func.Intrinsic; strings.HasPrefix(id, "i18n._") {
+			if result, handled, err := env.evalI18nPrimitiveCall(id, call.Args); handled {
+				return result, err
+			}
+		} else if strings.HasPrefix(id, "i18n.") && len(call.Func.Block) == 0 {
+			if result, handled, err := env.evalI18nCall(strings.TrimPrefix(id, "i18n."), call.Args); handled {
 				return result, err
 			}
 		}
@@ -3148,7 +3160,15 @@ func orderable(a, b any) error {
 	return nil
 }
 
-func compareNum(a, b any) int {
+// compareOrdered orders two values `<` may compare: numbers and units by
+// magnitude, strings byte by byte as Go and the constant folder do. Read as
+// numbers, every string was 0 and none came before another.
+func compareOrdered(a, b any) int {
+	if sa, ok := a.(string); ok {
+		if sb, ok := b.(string); ok {
+			return strings.Compare(sa, sb)
+		}
+	}
 	fa, fb := toFloat(a), toFloat(b)
 	if fa < fb {
 		return -1

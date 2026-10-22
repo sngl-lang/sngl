@@ -493,6 +493,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 
@@ -616,11 +617,11 @@ pass sha256:378dc747678c3dece285ec5ec7cc108c
 -- run/go/gtk4 --
 pass sha256:e6afb07bbdc9aa1032dfaba1c43c6fb4
 -- run/kotlin/android --
-pass sha256:b047c58b5fb76b302904b1b225e24e03
+pass sha256:a5c970bda86a29610e72de8db2dcf8f4
 -- run/none/html --
 pass sha256:791200c7e9aefda403d64d2d74cb56a0
 -- testrun/html/none/component_toggle.sngl/main/1 --
-sha256:dc42015468963c5bf05ced85b8c4b26c
+sha256:1ffb72cf4fe8d71ac3780cf533e522b3
 {
   "results": [
     {

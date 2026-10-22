@@ -1275,6 +1275,13 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 			c.error(x.Pos, "%s(): %s carries a magnitude per base, so it has no single number; read one with %s",
 				name, from, baseNameList(ud))
 		} else if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
+			// A type that declares its string form is converted by it, as
+			// it is interpolated by it.
+			if target.Kind == ir.TypeString {
+				if fn, ok := c.lookupMethod(from.String(), "string"); ok {
+					return &ir.Call{AST: x, Type: TypString, Func: fn, Args: []ir.CallArg{{Value: argExpr}}}
+				}
+			}
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
@@ -3426,6 +3433,9 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 	defer c.popScope()
 	if isScope {
 		c.declareOwnNodeIDs(block, headNames...)
+		for _, s := range block.Stmts {
+			c.preSpecializeHandles(s, false)
+		}
 	}
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {

@@ -134,10 +134,12 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 // notifyProps are the properties whose change a widget reports only through
 // GObject's `notify::<prop>`, declared as `@notify<Prop>`. GtkSwitch's own
 // `state-set` returns a gboolean and passes the state, which the connect
-// trampoline cannot carry. Every property notifies, and declaring an event
-// per property on every class would be most of the generated package.
+// trampoline cannot carry; GtkDropDown has no signal for a choice at all.
+// Every property notifies, and declaring an event per property on every class
+// would be most of the generated package.
 var notifyProps = map[string][]string{
-	"GtkSwitch": {"active"},
+	"GtkSwitch":   {"active"},
+	"GtkDropDown": {"selected"},
 }
 
 // notifySignal is the GObject signal behind a `@notify<Prop>` event, or ""

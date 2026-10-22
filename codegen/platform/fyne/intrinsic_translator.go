@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -473,13 +474,13 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
 		// widget temp rather than clobbering a shared Model field.
-		return t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor})
+		return t.withShare(id, sp, t.withTextStyle(id, sp, t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor})))
 	}
-	create := t.withThemeOverride(id, sp, &ir.Assign{
+	create := t.withShare(id, sp, t.withTextStyle(id, sp, t.withThemeOverride(id, sp, &ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
-	})
+	})))
 	if t.indexed[id] {
 		t.sinkField(copiesField(id), copyMapType(goType))
 	}
@@ -489,6 +490,37 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		create = append(create, &ir.Assign{Target: t.modelPresentRef(named), Op: ast.AssignSet, Value: t.fieldRef(id)})
 	}
 	return create
+}
+
+// withShare follows a node's creation with what it asks of the box it will be
+// put in, said on the object that box holds: the node, or the theme override
+// built with it. A theme the build reads is put on at the append instead
+// (themed), and says it there.
+func (t *fyneTranslator) withShare(id string, sp *fyneSpec, create []ir.Stmt) []ir.Stmt {
+	if !sp.shares() || (!sp.RuntimeTheme && sp.ThemeVar != "") {
+		return create
+	}
+	obj := t.nodeRefFor(id)
+	if sp.RuntimeTheme {
+		obj = t.themeOverrideRef(id)
+	}
+	return append(create, &ir.CallStmt{Call: shareCall(obj, sp)})
+}
+
+// withTextStyle gives a label the face its style asked for as its own
+// TextStyle, beside the theme that draws it so: a label measures itself in its
+// TextStyle's face, not its theme's.
+func (t *fyneTranslator) withTextStyle(id string, sp *fyneSpec, create []ir.Stmt) []ir.Stmt {
+	if sp.GoType.Name != "*Label" || (!sp.Style.Bold && !sp.Style.Italic) {
+		return create
+	}
+	style := fyneNative{Path: "fyne.io/fyne/v2", Name: "TextStyle"}.qualify(t.gc)
+	value := fmt.Sprintf("%s{Bold: %t, Italic: %t}", style, sp.Style.Bold, sp.Style.Italic)
+	return append(create, &ir.Assign{
+		Target: &ir.Select{Operand: t.nodeRefFor(id), Field: "TextStyle", Type: ir.NativeGoNamed(style)},
+		Op:     ast.AssignSet,
+		Value:  rawGoExpr(value, ir.NativeGoNamed(style)),
+	})
 }
 
 func (t *fyneTranslator) withThemeOverride(id string, sp *fyneSpec, create ir.Stmt) []ir.Stmt {
@@ -646,9 +678,16 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
 			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))}, ir.TypVoid)}}
 	}
+	unqualified := parent
 	parent = t.qualifyParentExpr(parent)
 	child = t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
 	if sp != nil && sp.isSingleChild() {
+		// A select's operand is written as it stands, so a parent the
+		// program named -- `ui.scroll #list` -- came out a bare `list` no
+		// scope declares. It is named as a handler names its node.
+		if parent == unqualified {
+			parent = t.qualifyHandlerNode(parent, codegen.IdentBareName(parent))
+		}
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: fyneObject()},
 			Op:     ast.AssignSet,
@@ -881,7 +920,9 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		// `style`.
 		return codegen.KeepLocalsRead(value)
 	}
-	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
+	// The constructor answers the write it was built from, and a copy of
+	// that write a pass made: the expression, not the pointer, is the value.
+	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) {
 		return nil
 	}
 	// A window that names no title is built with none.
@@ -991,8 +1032,11 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 	}}
 }
 
+// OnIter reads a slot's list, a field the scope declares, through the
+// receiver. Any other name a pass made is a local of the code it is in: the
+// accumulator a `map` or `filter` builds, which a second one ranges over.
 func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
-	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
+	if id, ok := iter.(*ir.Ident); ok && id.Synthesized && (id.IsElementRef || ir.IsSlotVarName(id.Name)) {
 		return t.nodeFieldRef(id)
 	}
 	return iter

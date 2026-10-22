@@ -28,7 +28,7 @@ func testGreeterSnapshot(t Test, c greeter) {
 window {
 }
 -- testrun/fyne/go/app.sngl/greeter/1 --
-sha256:0a40c070a4b7b2d2808e911a03f4af06
+sha256:efbac9521c2a6b7f604c44d287fd8154
 {
   "results": [
     {
@@ -41,7 +41,7 @@ sha256:0a40c070a4b7b2d2808e911a03f4af06
   }
 }
 -- testrun/fyne/go/app.sngl/greeter/2 --
-sha256:1d873e7c11a6d8c5597e37697ba59482
+sha256:4e7f0f3bebe61ba2129d3be3d36fa015
 {
   "results": [
     {

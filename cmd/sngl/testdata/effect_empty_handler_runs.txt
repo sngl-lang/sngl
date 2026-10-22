@@ -1,0 +1,97 @@
+# An effect handler with no statements is a function that returns, and still
+# declared, since `@update {}` decides which handler a write reaches
+# (effect_changes_runs.txt). `@mount(k) {}` became a function with an empty
+# body, which the Go emitter writes as a signature and
+# so as no method at all, and the call the effect makes to it did not build on
+# bubbletea, fyne or gtk4 ("m.__effect0_mount undefined"), in the component's
+# body and in an instance built per copy alike.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import seq "sngl:seq"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component asker(n int) ui.node {
+    effect(on=n, @mount(k) {})
+}
+
+component page ui.node {
+    var count = 2
+
+    for var i = seq.count(count) {
+        asker(n=i)
+    }
+    ui.button #more(text="More", @click { count += 1 })
+}
+
+func testAnEmptyMountBuilds(t test.Test, c page) {
+    c.more.click()
+    t.assert(c.count == 3)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:50609e27c0c348a9c1b058862bf17877
+{
+  "results": [
+    {
+      "Desc": "AnEmptyMountBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:a816ddfa8a110f01700c6819882a7bb1
+{
+  "results": [
+    {
+      "Desc": "AnEmptyMountBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:267a99b7b8fd0769c4d90f70e3e790d9
+{
+  "results": [
+    {
+      "Desc": "AnEmptyMountBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:930a0d17997de3fa36ff7af00dcce021
+{
+  "results": [
+    {
+      "Desc": "AnEmptyMountBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:995040a3f98c1d00f8f58874eb2580c0
+{
+  "results": [
+    {
+      "Desc": "AnEmptyMountBuilds",
+      "Passed": true
+    }
+  ]
+}

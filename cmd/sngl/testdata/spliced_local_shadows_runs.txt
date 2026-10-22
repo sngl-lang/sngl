@@ -1,0 +1,120 @@
+# A component with state of its own under a `for`, built at run time, whose
+# var is named like a local of a component spliced into it: async.query's
+# `match var got = r` beside the call site's `:value=got`. Spliced as it
+# stood, the two `got`s were one name wherever a target spells a local bare,
+# so html, fyne and gtk4 wrote `got = got` -- the answer never reached the
+# var, or Go refused the program. A local of the spliced body whose name the
+# call site reads is renamed, as its parameters already were
+# (freshenShadowingParams).
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+// async_query_loop.sngl, its card's var named `got`.
+
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+// Each copy is an instance of its own: the instance is the key, so nothing
+// caches per argument.
+component card(name string) ui.node {
+    var got option[int] = null
+    async.query(on=name, fetch=lookup, :value=got)
+    ui.text #len(value=got != null ? "{name} {got}" : name)
+}
+
+component cards ui.node {
+    var names = ["blueberry", "fig"]
+    var shown = true
+
+    if shown {
+        for var n = names {
+            card #c(name=n)
+        }
+    }
+    ui.button #add(text="Add", @click { names.push("grape") })
+    ui.button #toggle(text="Toggle", @click { shown = !shown })
+}
+
+func testEachCopyAsksForItsOwn(t test.Test, c cards) {
+    t.assert(c.c[0].len.value == "blueberry 9")
+    t.assert(c.c[1].len.value == "fig 3")
+    c.add.click()
+    t.assert(c.c[2].len.value == "grape 5")
+    t.assert(c.c[2].got == 5)
+}
+
+ui.window {
+    cards()
+}
+-- testrun/android/kotlin/app.sngl/cards/1 --
+sha256:9fbf0bd54bafc6919d19b1c2b23dbe3e
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/cards/1 --
+sha256:0ff1f5d2a2e537acade40c1fd7a32bf2
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/cards/1 --
+sha256:a69d83685feb9bc118d78d9375ac010d
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/cards/1 --
+sha256:c0cd9d0913f2e8c1b1a4d112992b23bb
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/cards/1 --
+sha256:d3b385c72f56ff66a437e6a2517520c4
+{
+  "results": [
+    {
+      "Desc": "EachCopyAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}

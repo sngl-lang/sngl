@@ -1,0 +1,29 @@
+// A prop its default types is typed as if the type were written: a call site
+// gives its argument the same context, a struct literal its type and each
+// field its own, wherever the component is declared. `card` is declared below
+// `page`, which calls it, and `bold` is a member of ui.Style's fontWeight, not
+// a name of the page's.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Pad {
+    size int
+}
+
+component page ui.node {
+    card #c(style={fontWeight=bold}, pad={size=3})
+}
+
+component card(style = ui.Style{}, pad = Pad{size=1}) ui.node {
+    ui.text #label(value="{pad.size}", style={...style})
+}
+
+func testACallSiteTypesItsLiteralsByTheDefaults(t test.Test, c page) {
+    t.assert(c.c.label.value == "3")
+    t.assert(c.c.pad.size == 3)
+}
+
+ui.window {
+    page()
+}

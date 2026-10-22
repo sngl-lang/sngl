@@ -85,6 +85,7 @@ type modelState struct {
 	__effect1_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -103,6 +104,7 @@ func New() Model {
 	m.__effect1_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__effects0_settle()
@@ -156,22 +158,24 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_enter()
-			m.__effect1_down()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_down()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -351,6 +355,7 @@ type Model struct {
 	__effect1_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0 *fyne.Container
@@ -369,6 +374,7 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -414,22 +420,24 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_enter()
-			m.__effect1_down()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_down()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -555,6 +563,7 @@ type Model struct {
 	__effect1_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	t                   gtk4rt.Handle
 	__root              gtk4rt.Handle
@@ -573,6 +582,7 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -618,22 +628,24 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_enter()
-			m.__effect1_down()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_down()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -750,6 +762,7 @@ window.__sngl_boot = () => {
   var __effect1_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function __effect0_enter() {
     __effect0_desired = [];
@@ -784,22 +797,24 @@ window.__sngl_boot = () => {
     __effect1_live = __effect1_desired;
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect0_enter();
-        __effect1_down();
-        __effect1_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect0_enter();
+          __effect1_down();
+          __effect1_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -821,10 +836,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ee1bac5f1c0d50d12bac27d24e848819
+pass sha256:73cbf885db479ccbc6e9070f8ee9238b
 -- run/go/fyne --
-pass sha256:d3f0a1fbb6c52fcfddda131b4a694396
+pass sha256:456f83f3bef91fae27280d8bd67f710a
 -- run/go/gtk4 --
-pass sha256:510c3da67b9e18492f9d3eef388731ad
+pass sha256:0ba775d39ad04fb9cae434c8f8b69c41
 -- run/none/html --
-pass sha256:16a988c396de019399e581644771e9dc
+pass sha256:3dd149596b4e6b14ce81ce62ff7da33d

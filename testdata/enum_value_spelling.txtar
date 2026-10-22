@@ -132,6 +132,7 @@ type modelState struct {
 	__effect0_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -152,6 +153,7 @@ func New() Model {
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__effects0_settle()
@@ -203,20 +205,22 @@ func (m *Model) __effect0_enter() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_enter()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -673,48 +677,60 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    if (state.open) {
-      let __n3 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n3 = __inst1_live[__inst1_i];
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        if (state.open) {
+          let __n3 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n3 = __inst1_live[__inst1_i];
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n3__new = __cf_row__slot0({});
+            __n3 = __n3__new;
+          }
+          __inst1_next.push(__n3);
+          __inst1_i = __inst1_i + 1;
+          let __n3__el = __n3.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n3__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n3__el, __place0_i_ref0);
+          }
+          __slot0.push(__n3__el);
         }
-        let __n3__new = __cf_row__slot0({});
-        __n3 = __n3__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n3);
-      __inst1_i = __inst1_i + 1;
-      let __n3__el = __n3.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n3__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n3__el, __place0_i_ref0);
-      }
-      __slot0.push(__n3__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -740,8 +756,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:59f26f39b64234b7568dd8c59dcbe678
+pass sha256:c60a44ffd528f27f42b008fd011a3b5e
 -- run/kotlin/android --
-pass sha256:087735fa4ad46de84f439568a2a30312
+pass sha256:b068d326e55c52036385dfbcf0617aec
 -- run/none/html --
-pass sha256:28f76c774e10e181697cde7cf2e27c09
+pass sha256:5a09015a5de14556db9c18ca3cec06c6

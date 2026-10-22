@@ -1,0 +1,101 @@
+# A `map` over a `filter`, in a function of an instance built at run time, on
+# every target.
+#
+# On the Go targets each becomes a loop filling a list, and the second ranges
+# over the first's. fyne and gtk4 read any name a pass made that a loop
+# ranges over as a field of the receiver -- right for a slot's list, which
+# the instance declares -- so the second loop ranged over `c.__list0`, a field
+# no record has, and the program did not build. A pass's own local is read as
+# the local it is.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component card(base int) ui.node {
+    var n = 2
+
+    // The doubled values of those above one.
+    func doubled() list[int] {
+        return [base, n, n + 1].filter(func(x int) => x > 1).map(func(x int) => x * 2)
+    }
+
+    ui.text(value="{doubled().length()}")
+}
+
+component main ui.node {
+    var shown = false
+
+    ui.button #show(text="show", @click { shown = true })
+    if shown {
+        card #c(base=1)
+    }
+}
+
+func testDoubles(t test.Test, c main) {
+    c.show.click()
+    t.assert(c.c != null && c.c.doubled().length() == 2)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:607179ff5d6dd5548a476d9542290c9b
+{
+  "results": [
+    {
+      "Desc": "Doubles",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:7e366941cd0d739ad4f10308821b04d4
+{
+  "results": [
+    {
+      "Desc": "Doubles",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:15d85519283d31a3758f0511abdd213d
+{
+  "results": [
+    {
+      "Desc": "Doubles",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:9c1ef126fa3b724d9f560621822c4be2
+{
+  "results": [
+    {
+      "Desc": "Doubles",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:66e11b82c54670bbc1e6a8aa44288f8e
+{
+  "results": [
+    {
+      "Desc": "Doubles",
+      "Passed": true
+    }
+  ]
+}

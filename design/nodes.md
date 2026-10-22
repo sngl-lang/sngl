@@ -182,7 +182,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   goroutine (`agentPosts`): fyne's test driver runs `fyne.Do` on the goroutine
   that calls it, so a request's answer rebuilt a list's widgets while the test
   clicked others, and fyne crashed laying them out
-  (`cmd/sngl/testdata/pokedex_runs.txt`). So a callback that must reach the drawing
+  (`examples/pokedex`'s tests, in `cmd/sngl/testdata/examples_runs.txt`). What the
+  last test's Model posted and the last test never waited for is dropped as the
+  next test starts (`__snglDropPosts`): run, it drew the old Model's widgets
+  inside the next test's waits, seconds on fyne's test driver for a page whose
+  every answer redraws a list (`cmd/sngl/testdata/test_drops_last_tests_posts_runs.txt`). So a callback that must reach the drawing
   thread asks for that in one word instead of a package re-spelling it. The id
   is also the second thing `nativeCallbackFuncs` treats as scheduling, for the
   reason the `schedules` flag exists: a post runs its closure from the loop the
@@ -255,7 +259,10 @@ lists its root under that key where it binds it -- `ComponentRoot`'s second
 argument, after the setter has re-keyed an instance a slot reuses: html's
 `data-sngl-copy` beside `data-sngl-instance`, fyne's and gtk4's
 `__copies_<id>`, one map for every record: a re-key replaces the entry and a
-record's `Destroy` takes its root out, and android's `SnglPresent` entry
+record's `Destroy` takes its root out -- a record holding a nested instance
+lists none of it, since the nested one takes its own root out
+(`golang.InstanceRecordTypes`; listed with the widgets, it compared a widget
+with a record and the program did not build) -- and android's `SnglPresent` entry
 `id[key]`, each asked only for an id some such instance carries
 (`codegen.KeyedInstanceIDs`); html places a static instance's root, built
 once at a fixed position, with the same marks. bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
@@ -379,6 +386,114 @@ bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
 `ui_event_params.txtar` and `canvas_click.txtar` are the code,
 `cmd/sngl/testdata/toggle_change_payload_runs.txt` and
 `ui_event_params_runs.txt` the answer.
+
+**An event no host widget reports is a primitive of the platform's own.**
+`ui.scroll`'s `@reachEnd` has no signal on any target, so each answers it with
+something it ships: android's `SnglScroll` (`scroll.kt`), html's
+`sngl-reach-end` element (`reachend.go`), gtk4rt's `Scroll` and fynelayout's
+`ReachScroll`. Each fires as the end arrives and again when the content
+grows while it is there, so a short first page loads the next without a
+scroll. html's sentinel dispatches `reachEnd`, which `html.element` declares,
+because html names a test's invoker after the DOM event a handler listens
+for: an override mapping `@reachend` to `reachEnd()` would have left
+`c.list.reachEnd()` naming an invoker nothing attached. Where an override
+writes the control beneath the node the call site named -- bubbletea's
+clickable card is a box holding a focusable `›` -- the invoker is the named
+node's (`triggerOwners`), and a looped copy is keyed by that node's copy key.
+bubbletea fires no `@reachEnd`, and a test firing one on a layout -- which no
+key reaches -- runs the handler directly (`emitBtDirectInvokers`)
+(`testdata/card_click.txtar`, `testdata/scroll_reach_end.txtar`).
+
+**A select is one control on every target**, so its `#id` names the widget a
+test's `c.pick.change("Banana")` chooses through, as a user does: html's
+`<select>`, fyne's Select, gtk4's GtkDropDown, bubbletea's `tui.Select`,
+android's `SnglSelect` and the interpreter's own
+(`cmd/sngl/testdata/select_change_runs.txt`). A select laid out as one widget
+per choice leaves the id on the box around them, which no trigger reaches,
+and a menu the trigger cannot type into is no input path a test has. Each
+holds the bound value even before a choice carries it, since choices may
+be state that arrives later, and neither offering choices nor writing the
+value is reported as a choice:
+
+- **gtk4** offers a GtkStringList through `offerChoices`, a platform
+  intrinsic calling the template's `snglDropDownOffer` (gtk4rt in wrapped
+  mode, cgo otherwise), whose C blocks `notify::selected` meanwhile; the
+  handler reads `dropDownLabel`. The invoker selects the label, which
+  notifies, and fires nothing after it. Each splice of the override has its
+  own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's
+  one handle, shared, made two selects in a component one handle rendered
+  twice, which the build refused. A select a render slot builds reads its
+  dropdown through the signal's parameter, which `readWidgets` leaves for
+  `signalLambda` as above; spelled early, it read an unbound `d`
+  (`cmd/sngl/testdata/controls_several_runs.txt`). The invoker holds the
+  drop-down until the selection is done: a choice whose handler renders afresh
+  the slot the select is in let go of its last reference while
+  `gtk_drop_down_set_selected` was still running
+  (`cmd/sngl/testdata/select_rebuilt_by_its_choice_runs.txt`). The offer is
+  keyed on the drop-down as well as the labels, so a render that builds it
+  afresh offers the new one its choices (see *Queries* in `language.md` for
+  why a key reading a node mounts again;
+  `cmd/sngl/testdata/select_rebuilt_slot_runs.txt`), and a drop-down not built
+  yet is offered nothing.
+- **bubbletea**'s `tui.Select` is handed the choices on each view and update
+  (`View(options)`, `Update(msg, options)`), its value is the truth and the
+  cursor follows it, and a choice is the cursor moving or Enter on the row it
+  is on, so `@change` fires when an update changed the value
+  (`choosesOnMove`). A table is handed its headings and rows the same way
+  (`tui.Table`): built once from the rows it started with, it showed
+  headings alone where the rows were a request's answer
+  (`cmd/sngl/testdata/table_rows_runs.txt`).
+- **android**'s `SnglSelect` is a read-only field a tap opens a menu from,
+  Kotlin the platform ships as it does `SnglDateField`. A user cannot type
+  into it -- an editable field took any text -- but its semantics answer
+  `SetText` with a choice's label as a pick. A trigger's `change` runs that
+  action rather than `performTextReplacement`, which refuses a field that is
+  not editable, as its `click` runs `OnClick` rather than a touch.
+
+**A tab is chosen by pressing it.** No node of a `ui.tabs` reports `@change`:
+each tab of the strip a loop renders emits `change(k)` from its click, so the
+`#id` a test fires through lands on the box around them and named nothing
+that answers -- the interpreter said so, html chose nothing, and the Go
+targets called an invoker nobody wrote. A trigger of an event the node the
+id lands on does not report, where the body emits it from a looped node's
+handler or callback handing on the loop's index (`ir.EmittedIndex`), is a
+press of that node's copy at the index the trigger hands: `c.strip.change(1)`
+clicks the tab at 1, which writes `selected` and fires `@change` as a user's
+click does. `lower.NamePresses` gives the node the id `<id>__<event>` and
+turns the trigger into `c.strip__change[1].click()`, the invoker each target
+already has for one copy of a node loops render; both inliners call it,
+before the emits are substituted, since the optimizer splices a body no
+target overrides. Only a node under exactly one loop of the body is pressed,
+since one index names one copy, and the optimizer rewrites a trigger only
+once it keeps the splice. A trigger an earlier splice rewrote names the node
+too, so two components each holding a `#strip` are each pressed through
+their own. The interpreter finds the copy by evaluating the index in each
+node's scope (`interp.View.Choosing`), among the nodes the component's own
+body wrote and before any node that reports the event: a select in a panel
+is the panel's writer's, and the press chooses the tab all the same. Android's `Tab` takes a
+`modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
+runs it on all six, through an instance as well.
+
+**A record's content is counted by where it was written.** A data family's
+content becomes a population of its container's hidden content slot,
+branching on the record's number (`ir.RecordID`), and once the container is
+spliced that branch sits in the container's loop over its records -- a tab's
+panel in the strip's `for var k, t = items`. One iteration renders it, so a
+`for` in the panel makes the only copies a test indexes, as the checker types
+`c.cell` and the interpreter mounts it. `ir.RecordBranchOf` names the loop a
+`t.__id == N` branch picks one record of, and `lower.BlockLoops` leaves it out
+of a copy's key (`passCopyKeys`) and of the loops a copy's prop read binds
+(`nodeUnderLoops`), of the loops whose index keys a stateful component's cells
+where bubbletea splices one under a `for` in a panel
+(`cmd/sngl/testdata/tabs_panel_cells_runs.txt`), and of the key bubbletea's
+presence check matches a copy by, which put the tab's index in front of it
+(`cmd/sngl/testdata/tabs_panel_presence_runs.txt`); the interpreter found no loop at all, since `refLoops` did
+not look in slot populations, and walks `ir.ViewBlocks` now. A panel with
+state of its own is an instance whose render slot builds the copies: fyne and
+gtk4 declare the Model's map of them once that slot's method is walked. And
+`sngl test` lowers each group with that group's tests alone, as it generates
+it: a key stamped for another group's test named a map this group never
+declared. `cmd/sngl/testdata/tabs_runs.txt` runs it on all six.
 
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the

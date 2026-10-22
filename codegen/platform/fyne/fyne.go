@@ -111,6 +111,7 @@ func currentTestModel() *Model     { return currentModel }
 // assigned by BuildUI, so a test that never renders would nil-deref on the
 // first state change. The test app has to exist before any widget does.
 func newTestComponent() *Model {
+	` + dropPostsFunc + `()
 	test.NewApp()
 	m := New()
 	m.BuildUI()

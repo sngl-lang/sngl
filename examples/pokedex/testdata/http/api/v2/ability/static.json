@@ -1,0 +1,125 @@
+{
+ "effect_changes": [
+  {
+   "effect_entries": [
+    {
+     "effect": "N'a pas d'effet en dehors du combat.",
+     "language": {
+      "name": "fr",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+     }
+    },
+    {
+     "effect": "Hat außerhalb vom Kampf keinen Effekt.",
+     "language": {
+      "name": "de",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+     }
+    },
+    {
+     "effect": "Whenever a move makes contact with this Pokémon, the move's user has a 30% chance of being paralyzed. Pokémon that are immune to Electric-type moves can still be paralyzed by this ability.",
+     "language": {
+      "name": "en",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+     }
+    }
+   ],
+   "version_group": {
+    "name": "emerald",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/6/"
+   }
+  }
+ ],
+ "effect_entries": [
+  {
+   "effect": "Whenever a move makes contact with this Pokémon, the move's user has a 30% chance of being paralyzed.\n\nPokémon that are immune to Electric-type moves can still be paralyzed by this ability.\n\nOverworld: If the lead Pokémon has this ability, there is a 50% chance that encounters will be with an Electric Pokémon, if applicable.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Has a 30% chance of paralyzing attacking Pokémon on contact."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Paralyzes on contact.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "ruby-sapphire",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/5/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iii",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/3/"
+ },
+ "id": 9,
+ "is_main_series": true,
+ "name": "static",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "せいでんき"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Statik"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Statik"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Electricidad Estática"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Static"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "せいでんき"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "pikachu",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/25/"
+   },
+   "slot": 1
+  },
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "raichu",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/26/"
+   },
+   "slot": 1
+  }
+ ]
+}

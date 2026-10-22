@@ -25,10 +25,12 @@ func Ctors() map[string]any {
 	return map[string]any{
 		"duckfam.us/sngl/pkg/go/fynelayout.NewImage":       fynelayout.NewImage,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewImageSource": fynelayout.NewImageSource,
+		"duckfam.us/sngl/pkg/go/fynelayout.NewReachScroll": fynelayout.NewReachScroll,
+		"duckfam.us/sngl/pkg/go/fynelayout.NewTap":         fynelayout.NewTap,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewToplevel":    fynelayout.NewToplevel,
+		"fyne.io/fyne/v2/container.NewGridWithColumns":     container.NewGridWithColumns,
 		"fyne.io/fyne/v2/container.NewHBox":                container.NewHBox,
 		"fyne.io/fyne/v2/container.NewVBox":                container.NewVBox,
-		"fyne.io/fyne/v2/container.NewVScroll":             container.NewVScroll,
 		"fyne.io/fyne/v2/layout.NewSpacer":                 layout.NewSpacer,
 		"fyne.io/fyne/v2/widget.NewButton":                 widget.NewButton,
 		"fyne.io/fyne/v2/widget.NewCheck":                  widget.NewCheck,

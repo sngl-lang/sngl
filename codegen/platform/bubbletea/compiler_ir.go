@@ -221,6 +221,8 @@ type irAnalysis struct {
 	gc        *golang.GoIRContext
 	// loopTimers are the schedules written under a loop (loop_timers.go).
 	timers []codegen.LoopTimer
+	// owners is triggerOwners' answer for the view, in a test build.
+	owners map[*ir.NodeInst]*ir.NodeInst
 	// screen is the window, the one Screen the view draws, and nil for a
 	// harness that isolated a component.
 	screen *codegen.Screen
@@ -481,17 +483,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString(golang.ErrorEventDecl)
 	}
 
-	// A top-level const gets a file-scope Go `var` so the free functions, which
-	// are not Model methods, can name it. A component-level const lives only as
-	// a Model field.
-	if len(ctx.Pkg.Consts) > 0 {
-		for _, c := range ctx.Pkg.Consts {
-			init := golang.LowerVarInit(c, gc)
-			goType := golang.IRTypeToGo(c.Type)
-			fmt.Fprintf(&b, "var %s %s = %s\n", c.Name, goType, init)
-		}
-		b.WriteString("\n")
-	}
+	b.WriteString(golang.PackageConstDecls(ctx.Pkg, gc))
 
 	emitTimerTypes(&b, info.timers)
 
@@ -745,6 +737,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		eventInvokers = append(eventInvokers, inv)
 	})
 	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg))
+	emitBtDirectInvokers(&b, viewStmts(ctx), eventInvokers, info, gc, codegen.TriggeredEvents(ctx.Pkg))
 	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
 	emitPresenceChecks(&b, ctx.Pkg, viewStmts(ctx), presentIDs, gc)
 	emitKeyedPresenceChecks(&b, viewStmts(ctx), keyedPresent, gc)
@@ -818,7 +811,7 @@ func emitIRFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 		return
 	}
 	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Name)
+	fnCopy.Name = gc.FreeFuncName(fn.Name)
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
@@ -1072,6 +1065,9 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// each background case so its activation keys don't fire while frozen;
 	// handlers inside an Overlay primitive stay unguarded (see
 	// emitIRButtonHandlers) so overlay-content buttons keep working.
+	if invokerSink != nil {
+		info.owners = triggerOwners(viewStmts(ctx), codegen.TriggeredEvents(ctx.Pkg))
+	}
 	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
 
 	b.WriteString("\t\t}\n") // end switch
@@ -1106,7 +1102,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		}
 		val, hasInput, hasChange := widgetPayloadEvents(w)
 		get := val.get
-		if hasInput {
+		picks := choosesOnMove(w)
+		if hasInput || hasChange && picks {
 			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
 		}
 		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
@@ -1119,7 +1116,10 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		if hasInput {
 			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "input"), fwdIndent)
 		}
-		if hasChange {
+		switch {
+		case hasChange && picks:
+			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "change"), fwdIndent)
+		case hasChange:
 			fmt.Fprintf(b, "%s\tif __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {\n%s\t\tm.%s(%s)\n%s\t}\n", fwdIndent, fwdIndent, widgetEventMethod(w, "change"), bindReadBack(w.fieldName, get), fwdIndent)
 		}
 		fmt.Fprintf(b, "%s}\n", fwdIndent)
@@ -1211,9 +1211,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 					continue
 				}
 				emitNodeCase(n, guard, h.Func.Block)
-				if invokerSink != nil && n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
+				if id := info.triggerID(n); invokerSink != nil && id != nil {
 					if idx := nodeFocusSlotIdx(n); idx >= 0 {
-						invokerSink(btEventInvoker{IDLabel: n.ID, SnglEvent: ev.On, SlotIdx: idx, KeyExpr: teaKeyMsg(ev.Key)})
+						invokerSink(btEventInvoker{IDLabel: id.ID, SnglEvent: ev.On, SlotIdx: idx, KeyExpr: teaKeyMsg(ev.Key)})
 					}
 				}
 			}
@@ -1359,6 +1359,48 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 	}
 }
 
+// emitBtDirectInvokers writes an invoker for each event a test fires on a
+// layout, which no key reaches: one this platform has no input for, as a
+// scroll's `@reachEnd` on a terminal that draws a scroll as its content. The invoker runs the
+// node's handler as Update would on the key, which is what the interpreter
+// does with a trigger. A node a loop renders is left alone: which copy's
+// handler to run is the cursor's to say, and only a key moves it.
+func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventInvoker, info *irAnalysis, gc *golang.GoIRContext, triggered map[string]bool) {
+	done := map[string]bool{}
+	for _, inv := range keyed {
+		done[inv.IDLabel+"."+inv.SnglEvent] = true
+	}
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		if _, ok := s.(*ir.For); ok {
+			return false
+		}
+		// A layout takes no input, so nothing else answers its events; a
+		// control's are its keys' and its widget's.
+		n, ok := s.(*ir.NodeInst)
+		if !ok || !programID(n) || extractBlueprint(n).Kind != bpLayout {
+			return true
+		}
+		for _, h := range n.Handlers {
+			key := n.ID + "." + h.Name
+			if h.Func == nil || len(h.Func.Params) > 0 || !triggered[key] || done[key] {
+				continue
+			}
+			done[key] = true
+			name := n.ID + golang.ExportName(h.Name)
+			fmt.Fprintf(b, "// %s runs the #%s node's @%s handler, which no key reaches; for tests.\n", name, n.ID, h.Name)
+			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+			for _, stmt := range h.Func.Block {
+				for _, line := range gc.EvalStmt(stmt) {
+					fmt.Fprintf(b, "\t%s\n", line)
+				}
+			}
+			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			b.WriteString("}\n\n")
+		}
+		return true
+	})
+}
+
 // emitBtLoopInvokers writes the invokers of a node a loop renders: a copy is
 // driven by putting the slot's cursor on that copy's ordinal, which the loop
 // is walked to find as View counts it. The plain invoker drives the last copy
@@ -1405,7 +1447,8 @@ var widgetValues = []widgetValue{
 
 // widgetPayloadEvents reports which of a widget's payload events the program
 // handles, and the value they carry. @input fires when an Update changed the
-// value; @change, on Enter in a single-line field, is the commit. Only a
+// value; @change, on Enter in a single-line field, is the commit, and in a
+// select is the cursor moving to another choice (choosesOnMove). Only a
 // widget bound through one of widgetValues carries a value.
 func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 	if w.node == nil {
@@ -1428,9 +1471,19 @@ func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 		h := codegen.NodeHandler(w.node, event)
 		return h != nil && h.Func != nil
 	}
-	singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
-	return val, has("input"), has("change") && singleLine
+	return val, has("input"), has("change") && commits(w)
 }
+
+// commits reports whether a widget has a commit for @change to fire on: Enter
+// in a single-line field, or a select's cursor moving.
+func commits(w widgetInfo) bool {
+	return w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput" || choosesOnMove(w)
+}
+
+// choosesOnMove reports whether a widget's value is the row its cursor is on,
+// so that moving it is the choice and @change fires on it rather than on
+// Enter.
+func choosesOnMove(w widgetInfo) bool { return w.model.Type == "tui.Select" }
 
 func widgetEventMethod(w widgetInfo, event string) string {
 	return "__" + w.fieldName + "_" + event
@@ -1464,13 +1517,12 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 		// test's value: into the widget, and back into the var the way
 		// Update writes it.
 		named := w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n")
-		singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
 		for _, ev := range []struct {
 			name string
 			want bool
 		}{
-			{"input", get != "" && !hasInput && val.goType == "string"},
-			{"change", get != "" && !hasChange && singleLine},
+			{"input", get != "" && !hasInput && val.goType == "string" && !choosesOnMove(w)},
+			{"change", get != "" && !hasChange && commits(w)},
 		} {
 			if !ev.want || !named {
 				continue

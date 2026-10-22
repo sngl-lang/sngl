@@ -181,8 +181,13 @@ func (t *fyneTranslator) themed(child ir.Expr, sp *fyneSpec, id string) ir.Expr 
 		return child
 	}
 	name := (fyneNative{Path: "fyne.io/fyne/v2/container", Name: "NewThemeOverride"}).qualify(t.gc)
-	return nativeCallAt(name, "fyne.io/fyne/v2/container",
+	var themed ir.Expr = nativeCallAt(name, "fyne.io/fyne/v2/container",
 		[]ir.Expr{child, rawGoExpr(sp.ThemeVar, fyneTheme())}, ir.NativeGoPointerOf("container.ThemeOverride"))
+	// The override is what the box holds, so it is what asks for a share.
+	if sp.shares() {
+		themed = shareCall(themed, sp)
+	}
+	return themed
 }
 
 func goColorLit(c fyneColor) string {

@@ -215,6 +215,7 @@ func (t *Toplevel) Add(o fyne.CanvasObject) {
 		t.applyIcon()
 		return
 	}
+	Adopt(t.Container, o)
 	t.Container.Add(o)
 }
 

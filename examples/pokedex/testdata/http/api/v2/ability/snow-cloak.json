@@ -1,0 +1,95 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "During hail, this Pokémon has 1.25× its evasion, and it does not take hail damage regardless of type.\n\nThe evasion bonus does not count as a stat modifier.\n\nOverworld: If the lead Pokémon has this ability, the wild encounter rate is halved in snow.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Increases evasion to 1.25× during hail.  Protects against hail damage."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Raises evasion in a\nhailstorm.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "diamond-pearl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/8/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iv",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/4/"
+ },
+ "id": 81,
+ "is_main_series": true,
+ "name": "snow-cloak",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ゆきがくれ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Rideau Neige"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Schneemantel"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Manto Níveo"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Snow Cloak"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ゆきがくれ"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": true,
+   "pokemon": {
+    "name": "articuno",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/144/"
+   },
+   "slot": 3
+  },
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "swinub",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/220/"
+   },
+   "slot": 2
+  }
+ ]
+}

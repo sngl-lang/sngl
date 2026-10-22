@@ -1084,7 +1084,14 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		return spliced, true, nil
 	case *ir.If:
 		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops}
-		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
+		// A record's content, in its container's loop over the records, is
+		// rendered by one iteration of it, so that loop keys none of its
+		// copies -- of a stateful card under a `for` in a tab's panel, the
+		// cells a test's `c.card[0].size` reads by the card's index alone
+		// (cmd/sngl/testdata/tabs_panel_cells_runs.txt).
+		withBody := inner
+		withBody.loops = BlockLoops(n, &n.Body, rc.loops)
+		body, ch1, err := st.inlineStmtsCtx(n.Body, withBody)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1362,7 +1369,9 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
-		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
+		fn := (*hoist.funcs)[i]
+		fn.Block = substituteParams(fn.Block, bindings)
+		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
 	}
 	// The caller's handlers land inside the body's own, so a parameter of the
 	// body's sharing a name they read is renamed first (freshenShadowingParams).
@@ -1378,6 +1387,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		(*hoist.funcs)[i].Block = substituteEvents((*hoist.funcs)[i].Block, n.Handlers)
 	}
 	body = substituteSlots(body, n)
+	body = calleeReadsInContent(body, calleeProps(comp, bindings), renames, symRenames)
 	// A library body -- a builtin node this target composes, and the
 	// override it renders -- was written in the library, and a diagnostic
 	// about what it became belongs where the program wrote the node.
@@ -1400,6 +1410,41 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 
 	return body, nil
+}
+
+// calleeReadsInContent is body, the callee's spliced around the call site's
+// slot content, with the content's reads of the callee bound as the body's
+// were. The content is the caller's, but the context lowering handed it the
+// value of a provider the callee wraps the slot in as the callee wrote it
+// (collectSlotEnv): `picked`, a var the splice renamed `picked__inst0`, or
+// `level`, a prop it bound to the call site's argument. Both by symbol, so the
+// caller's own names stand, a prop of the caller's named like the callee's
+// included.
+func calleeReadsInContent(body []ir.Stmt, props map[ir.Symbol]ir.Expr, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) []ir.Stmt {
+	body = renameIdents(body, renames, symRenames)
+	if len(props) == 0 {
+		return body
+	}
+	return newExprWalker(func(e ir.Expr) ir.Expr {
+		if id, ok := e.(*ir.Ident); ok && id.Sym != nil {
+			if v, ok := props[id.Sym]; ok {
+				return deepCloneExpr(v)
+			}
+		}
+		return e
+	}).stmts(body)
+}
+
+// calleeProps is what bindings binds each of comp's props to, keyed by the
+// param the prop is read by.
+func calleeProps(comp *ir.Component, bindings map[string]ir.Expr) map[ir.Symbol]ir.Expr {
+	props := map[ir.Symbol]ir.Expr{}
+	for _, p := range comp.Props {
+		if v, ok := bindings[p.Name]; ok && p.Sym != nil {
+			props[p.Sym] = v
+		}
+	}
+	return props
 }
 
 // carryPointsTo copies one slot's candidates and colour onto a second key, for
@@ -1455,6 +1500,40 @@ func cloneHoistedVar(v *ir.Var, name string, typeArgs map[string]*ir.Type) *ir.V
 
 // renameVarList is vs with each var its clone renames, in a list of its own:
 // the clone shares the original's slice.
+// withSubstitutedReads is reads plus the vars the props' values bring into
+// block: a method reading its component's prop reads, once spliced, whatever
+// the call site handed the prop -- the caller's `var chosen` behind
+// `rest()`'s `chosen` -- and the reactivity pass learns what a call reads
+// from Func.Reads, so a slot over `rest()` re-rendered on nothing the caller
+// wrote (cmd/sngl/testdata/slot_method_reads_prop_runs.txt).
+func withSubstitutedReads(reads []*ir.Var, block []ir.Stmt, bindings map[string]ir.Expr) []*ir.Var {
+	brought := map[*ir.Var]bool{}
+	for _, val := range bindings {
+		_ = ir.WalkExprs(val, func(e ir.Expr) error {
+			if id, ok := e.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && !v.NodeHandle {
+					brought[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	if len(brought) == 0 {
+		return reads
+	}
+	_ = ir.WalkExprs(block, func(e ir.Expr) error {
+		id, ok := e.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if v, ok := id.Sym.(*ir.Var); ok && brought[v] && !slices.Contains(reads, v) {
+			reads = append(slices.Clip(reads), v)
+		}
+		return nil
+	})
+	return reads
+}
+
 func renameVarList(vs []*ir.Var, symRenames map[ir.Symbol]ir.Symbol) []*ir.Var {
 	if len(vs) == 0 {
 		return vs

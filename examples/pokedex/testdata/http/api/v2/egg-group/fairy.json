@@ -1,0 +1,51 @@
+{
+ "id": 6,
+ "name": "fairy",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ようせい"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Féerique"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Fee"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Hada"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Fairy"
+  }
+ ],
+ "pokemon_species": [
+  {
+   "name": "pikachu",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/25/"
+  },
+  {
+   "name": "raichu",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/26/"
+  }
+ ]
+}

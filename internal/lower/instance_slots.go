@@ -121,7 +121,7 @@ func wantsCopy(n *ir.NodeInst) bool {
 func (st *instanceSlots) liftContent(n *ir.NodeInst, comp *ir.Component) {
 	l := newLift(comp, n)
 	lift := func(body []ir.Stmt, params []*ir.Param) {
-		local := declaredWithin(body)
+		local := handlerParams(body, declaredWithin(body))
 		for _, p := range params {
 			local[p] = true
 		}

@@ -151,7 +151,15 @@ stack. Refused with a position:
 `cmd/sngl/testdata/nav_html_refused.txt`. `testdata/nav_stack_html.txtar` and
 `nav_stack_html_route.txtar` are the code, and `nav_stack_runs.txt` runs what
 a document answers without leaving itself -- a test runs inside the document
-it was loaded in, and a navigation ends it.
+it was loaded in, and a navigation ends it. So a test build writes no document
+for a page at a pattern, which no test reaches, rather than refusing it as
+`generate` does (`nav_stack_html_pattern_page_test_runs.txt`).
+
+A document holds no other page's node, so it leaves out a handler's writes to
+one (`dropOtherPagesWrites`): a select beside the stack writes every node that
+shows what it changed, on whichever page, and the home document's write to the
+item page's label threw before the handler reached the heading it does hold
+(`testdata/nav_stack_html_other_pages_writes.txtar`).
 
 **A stack's pages are fixed when it is built, and need not be written one by
 one.** A `for` over a constant writes a page per element, an `if` over
@@ -214,10 +222,13 @@ and html writes the same documents from it. A `var` written in a page's body is 
 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --
-the divergence a window under an `if` has there. A `nav.link` above its
-`nav.page` in source does not check (`cannot use page as page[struct {}]`):
-`specializeHandle` completes a handle's type only when its node is checked, so
-a read above the node sees the bare declaration. And a node in a page's
+the divergence a window under an `if` has there. A page's handle read above
+its `nav.page` in source has the type arguments its props bind -- its params
+-- since the checker reads them quietly before the body around the node
+(`preSpecializeHandles`, `cmd/sngl/testdata/nav_page_named_above_runs.txt`);
+what the children bind, a stack's meta type, still waits for the node, so a
+`go` above a stack whose pages carry a meta does not check
+(`cannot pass page[struct {}, Meta] as page[struct {}, struct {}]`). And a node in a page's
 content is rendered only while the page shows, and a component there is built
 at run time on the targets that keep an instance's state, so a compiled test
 reads neither (`c.label.value`, `c.tally.hits`), which is why `nav_stack_runs`

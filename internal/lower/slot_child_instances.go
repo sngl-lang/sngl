@@ -239,8 +239,10 @@ func isDrawShape(n *ir.NodeInst) bool {
 // every local and loop variable a body under n declares, which no lifting may
 // make a prop of: nothing outside n binds them. A lambda in a prop's value
 // (`options.map(func(o) => o.label)`) is one: lifting its parameter handed
-// the instance an `o` the site never declared.
-func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
+// the instance an `o` the site never declared. A runtime instance's content
+// lifted whole (liftContent) and a test's read rebased through an instance
+// (rebaseKeeping) ask it too.
+func handlerParams(n any, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 	add := func(f *ir.Func) {
 		if f != nil {
 			for _, p := range f.Params {
@@ -425,10 +427,12 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] || l.relayed[x.Sym] {
 				return node, nil
 			}
-			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &ir.Ident{
-				// The read as the site wrote it, before this walk repoints it.
-				Name: x.Name, Type: x.Type, Sym: x.Sym,
-			})
+			// The read as the site wrote it, before this walk repoints it, and
+			// marked as it was: a synthesized one -- the __ctx_locale the
+			// context lowering declares -- is the page's own binding, and
+			// rebuilt unmarked html read it off `state`, where nothing is.
+			site := *x
+			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &site)
 			x.Name = p.Name
 			x.Sym = p
 			return node, nil

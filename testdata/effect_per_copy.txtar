@@ -115,6 +115,7 @@ type modelState struct {
 	__effect0_dirtyAt   []int
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -138,6 +139,7 @@ func New() Model {
 	m.__effect0_dirtyAt = []int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	return m
@@ -158,46 +160,48 @@ func (m *Model) __effect0_insert() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			for __forIdx0, _ := range m.xs__inst0 {
-				for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
-					if m.__effect0_copies[__effect0_ci] == __forIdx0 {
-						m.__effect0_at = m.__effect0_ats[__effect0_ci]
-						m.__effect0_item = m.__effect0_items[__effect0_ci]
-						if __effect0_ck == 0 {
-							m.__effect0_insert()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				for __forIdx0, _ := range m.xs__inst0 {
+					for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
+						if m.__effect0_copies[__effect0_ci] == __forIdx0 {
+							m.__effect0_at = m.__effect0_ats[__effect0_ci]
+							m.__effect0_item = m.__effect0_items[__effect0_ci]
+							if __effect0_ck == 0 {
+								m.__effect0_insert()
+							}
 						}
 					}
-				}
-				__effect0_hit := m.__effect0_dirty
-				for _, __effect0_p := range m.__effect0_dirtyAt {
-					if __effect0_p == __forIdx0 {
-						__effect0_hit = true
+					__effect0_hit := m.__effect0_dirty
+					for _, __effect0_p := range m.__effect0_dirtyAt {
+						if __effect0_p == __forIdx0 {
+							__effect0_hit = true
+						}
+					}
+					if __effect0_hit {
+						m.__effect0_key = m.xs__inst0[__forIdx0].Items
+						m.__effect0_update()
 					}
 				}
-				if __effect0_hit {
-					m.__effect0_key = m.xs__inst0[__forIdx0].Items
-					m.__effect0_update()
-				}
+				m.__effect0_dirty = false
+				m.__effect0_dirtyAt = []int{}
+				m.__effect0_kinds = []int{}
+				m.__effect0_ats = []int{}
+				m.__effect0_items = []int{}
+				m.__effect0_copies = []int{}
 			}
-			m.__effect0_dirty = false
-			m.__effect0_dirtyAt = []int{}
-			m.__effect0_kinds = []int{}
-			m.__effect0_ats = []int{}
-			m.__effect0_items = []int{}
-			m.__effect0_copies = []int{}
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -457,6 +461,7 @@ type Model struct {
 	__effect0_dirtyAt   []int
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -486,6 +491,7 @@ func New() *Model {
 	m.__effect0_dirtyAt = []int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -501,46 +507,48 @@ func (m *Model) __effect0_insert() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			for __forIdx0, _ := range m.xs__inst0 {
-				for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
-					if m.__effect0_copies[__effect0_ci] == __forIdx0 {
-						m.__effect0_at = m.__effect0_ats[__effect0_ci]
-						m.__effect0_item = m.__effect0_items[__effect0_ci]
-						if __effect0_ck == 0 {
-							m.__effect0_insert()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				for __forIdx0, _ := range m.xs__inst0 {
+					for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
+						if m.__effect0_copies[__effect0_ci] == __forIdx0 {
+							m.__effect0_at = m.__effect0_ats[__effect0_ci]
+							m.__effect0_item = m.__effect0_items[__effect0_ci]
+							if __effect0_ck == 0 {
+								m.__effect0_insert()
+							}
 						}
 					}
-				}
-				__effect0_hit := m.__effect0_dirty
-				for _, __effect0_p := range m.__effect0_dirtyAt {
-					if __effect0_p == __forIdx0 {
-						__effect0_hit = true
+					__effect0_hit := m.__effect0_dirty
+					for _, __effect0_p := range m.__effect0_dirtyAt {
+						if __effect0_p == __forIdx0 {
+							__effect0_hit = true
+						}
+					}
+					if __effect0_hit {
+						m.__effect0_key = m.xs__inst0[__forIdx0].Items
+						m.__effect0_update()
 					}
 				}
-				if __effect0_hit {
-					m.__effect0_key = m.xs__inst0[__forIdx0].Items
-					m.__effect0_update()
-				}
+				m.__effect0_dirty = false
+				m.__effect0_dirtyAt = []int{}
+				m.__effect0_kinds = []int{}
+				m.__effect0_ats = []int{}
+				m.__effect0_items = []int{}
+				m.__effect0_copies = []int{}
 			}
-			m.__effect0_dirty = false
-			m.__effect0_dirtyAt = []int{}
-			m.__effect0_kinds = []int{}
-			m.__effect0_ats = []int{}
-			m.__effect0_items = []int{}
-			m.__effect0_copies = []int{}
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -715,6 +723,7 @@ type Model struct {
 	__effect0_dirtyAt   []int
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__n0                gtk4rt.Handle
 	__n2                gtk4rt.Handle
@@ -744,6 +753,7 @@ func New() *Model {
 	m.__effect0_dirtyAt = []int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -759,46 +769,48 @@ func (m *Model) __effect0_insert() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			for __forIdx0, _ := range m.xs__inst0 {
-				for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
-					if m.__effect0_copies[__effect0_ci] == __forIdx0 {
-						m.__effect0_at = m.__effect0_ats[__effect0_ci]
-						m.__effect0_item = m.__effect0_items[__effect0_ci]
-						if __effect0_ck == 0 {
-							m.__effect0_insert()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				for __forIdx0, _ := range m.xs__inst0 {
+					for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
+						if m.__effect0_copies[__effect0_ci] == __forIdx0 {
+							m.__effect0_at = m.__effect0_ats[__effect0_ci]
+							m.__effect0_item = m.__effect0_items[__effect0_ci]
+							if __effect0_ck == 0 {
+								m.__effect0_insert()
+							}
 						}
 					}
-				}
-				__effect0_hit := m.__effect0_dirty
-				for _, __effect0_p := range m.__effect0_dirtyAt {
-					if __effect0_p == __forIdx0 {
-						__effect0_hit = true
+					__effect0_hit := m.__effect0_dirty
+					for _, __effect0_p := range m.__effect0_dirtyAt {
+						if __effect0_p == __forIdx0 {
+							__effect0_hit = true
+						}
+					}
+					if __effect0_hit {
+						m.__effect0_key = m.xs__inst0[__forIdx0].Items
+						m.__effect0_update()
 					}
 				}
-				if __effect0_hit {
-					m.__effect0_key = m.xs__inst0[__forIdx0].Items
-					m.__effect0_update()
-				}
+				m.__effect0_dirty = false
+				m.__effect0_dirtyAt = []int{}
+				m.__effect0_kinds = []int{}
+				m.__effect0_ats = []int{}
+				m.__effect0_items = []int{}
+				m.__effect0_copies = []int{}
 			}
-			m.__effect0_dirty = false
-			m.__effect0_dirtyAt = []int{}
-			m.__effect0_kinds = []int{}
-			m.__effect0_ats = []int{}
-			m.__effect0_items = []int{}
-			m.__effect0_copies = []int{}
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -939,6 +951,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 
@@ -974,6 +987,7 @@ fun MainScreen() {
     val __effect0_dirtyAt = remember { mutableStateListOf<Int>() }
     var __effects0_settling by remember { mutableStateOf(false) }
     var __effects0_pending by remember { mutableStateOf(false) }
+    var __effects0_torn by remember { mutableStateOf(false) }
     var __effects0_steps by remember { mutableStateOf(0) }
 
 
@@ -988,46 +1002,48 @@ fun MainScreen() {
 
 
     fun __effects0_settle() {
-        if (__effects0_settling) {
-        	__effects0_pending = true
-        } else {
-        	__effects0_settling = true
-        	__effects0_pending = true
-        	__effects0_steps = 0
-        	while ((__effects0_pending && (__effects0_steps < 512))) {
-        		__effects0_pending = false
-        		__effects0_steps = (__effects0_steps + 1)
-        		for ((__forIdx0, _) in xs__inst0.withIndex()) {
-        			for ((__effect0_ci, __effect0_ck) in __effect0_kinds.withIndex()) {
-        				if ((__effect0_copies[__effect0_ci] == __forIdx0)) {
-        					__effect0_at = __effect0_ats[__effect0_ci]
-        					__effect0_item = __effect0_items[__effect0_ci]
-        					if ((__effect0_ck == 0)) {
-        						__effect0_insert()
+        if (!__effects0_torn) {
+        	if (__effects0_settling) {
+        		__effects0_pending = true
+        	} else {
+        		__effects0_settling = true
+        		__effects0_pending = true
+        		__effects0_steps = 0
+        		while ((__effects0_pending && (__effects0_steps < 512))) {
+        			__effects0_pending = false
+        			__effects0_steps = (__effects0_steps + 1)
+        			for ((__forIdx0, _) in xs__inst0.withIndex()) {
+        				for ((__effect0_ci, __effect0_ck) in __effect0_kinds.withIndex()) {
+        					if ((__effect0_copies[__effect0_ci] == __forIdx0)) {
+        						__effect0_at = __effect0_ats[__effect0_ci]
+        						__effect0_item = __effect0_items[__effect0_ci]
+        						if ((__effect0_ck == 0)) {
+        							__effect0_insert()
+        						}
         					}
         				}
-        			}
-        			var __effect0_hit = __effect0_dirty
-        			for (__effect0_p in __effect0_dirtyAt) {
-        				if ((__effect0_p == __forIdx0)) {
-        					__effect0_hit = true
+        				var __effect0_hit = __effect0_dirty
+        				for (__effect0_p in __effect0_dirtyAt) {
+        					if ((__effect0_p == __forIdx0)) {
+        						__effect0_hit = true
+        					}
+        				}
+        				if (__effect0_hit) {
+        					(xs__inst0[__forIdx0].items).let { __v -> __effect0_key.clear(); __effect0_key.addAll(__v) }
+        					__effect0_update()
         				}
         			}
-        			if (__effect0_hit) {
-        				(xs__inst0[__forIdx0].items).let { __v -> __effect0_key.clear(); __effect0_key.addAll(__v) }
-        				__effect0_update()
-        			}
+        			__effect0_dirty = false
+        			(listOf<Int>()).let { __v -> __effect0_dirtyAt.clear(); __effect0_dirtyAt.addAll(__v) }
+        			(listOf<Int>()).let { __v -> __effect0_kinds.clear(); __effect0_kinds.addAll(__v) }
+        			(listOf<Int>()).let { __v -> __effect0_ats.clear(); __effect0_ats.addAll(__v) }
+        			(listOf<Int>()).let { __v -> __effect0_items.clear(); __effect0_items.addAll(__v) }
+        			(listOf<Int>()).let { __v -> __effect0_copies.clear(); __effect0_copies.addAll(__v) }
         		}
-        		__effect0_dirty = false
-        		(listOf<Int>()).let { __v -> __effect0_dirtyAt.clear(); __effect0_dirtyAt.addAll(__v) }
-        		(listOf<Int>()).let { __v -> __effect0_kinds.clear(); __effect0_kinds.addAll(__v) }
-        		(listOf<Int>()).let { __v -> __effect0_ats.clear(); __effect0_ats.addAll(__v) }
-        		(listOf<Int>()).let { __v -> __effect0_items.clear(); __effect0_items.addAll(__v) }
-        		(listOf<Int>()).let { __v -> __effect0_copies.clear(); __effect0_copies.addAll(__v) }
-        	}
-        	__effects0_settling = false
-        	if (__effects0_pending) {
-        		throw SnglRaise(ErrorEvent("effects did not settle in 512 passes; an effect is rekeying itself", "effect"))
+        		__effects0_settling = false
+        		if (__effects0_pending) {
+        			throw SnglRaise(ErrorEvent("effects did not settle in 512 passes; an effect is rekeying itself", "effect"))
+        		}
         	}
         }
     }
@@ -1151,48 +1167,51 @@ body { font-family: system-ui, sans-serif; }
   var __effect0_dirtyAt = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        for (const [__forIdx0, _] of state.xs__inst0.entries()) {
-          for (const [__effect0_ci, __effect0_ck] of __effect0_kinds.entries()) {
-            if (__effect0_copies[__effect0_ci] === __forIdx0) {
-              __effect0_at = __effect0_ats[__effect0_ci];
-              __effect0_item = __effect0_items[__effect0_ci];
-              if (__effect0_ck === 0) {
-                __effect0_insert();
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          for (const [__forIdx0, _] of state.xs__inst0.entries()) {
+            for (const [__effect0_ci, __effect0_ck] of __effect0_kinds.entries()) {
+              if (__effect0_copies[__effect0_ci] === __forIdx0) {
+                __effect0_at = __effect0_ats[__effect0_ci];
+                __effect0_item = __effect0_items[__effect0_ci];
+                if (__effect0_ck === 0) {
+                  __effect0_insert();
+                }
               }
             }
-          }
-          let __effect0_hit = __effect0_dirty;
-          for (const __effect0_p of __effect0_dirtyAt) {
-            if (__effect0_p === __forIdx0) {
-              __effect0_hit = true;
+            let __effect0_hit = __effect0_dirty;
+            for (const __effect0_p of __effect0_dirtyAt) {
+              if (__effect0_p === __forIdx0) {
+                __effect0_hit = true;
+              }
+            }
+            if (__effect0_hit) {
+              __effect0_key = state.xs__inst0[__forIdx0].items;
+              __effect0_update();
             }
           }
-          if (__effect0_hit) {
-            __effect0_key = state.xs__inst0[__forIdx0].items;
-            __effect0_update();
-          }
+          __effect0_dirty = false;
+          __effect0_dirtyAt = [];
+          __effect0_kinds = [];
+          __effect0_ats = [];
+          __effect0_items = [];
+          __effect0_copies = [];
         }
-        __effect0_dirty = false;
-        __effect0_dirtyAt = [];
-        __effect0_kinds = [];
-        __effect0_ats = [];
-        __effect0_items = [];
-        __effect0_copies = [];
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -1249,12 +1268,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b84775808416e06018a72326981f7490
+pass sha256:16b63369cd5d76b7d8e0bc3b434db151
 -- run/go/fyne --
-pass sha256:e1055289e2cae79715d0f8100297a5af
+pass sha256:9103aa9e633b2117dbe331983818f424
 -- run/go/gtk4 --
-pass sha256:8896a3a9513592537dfaf3551579e054
+pass sha256:8fc3c98e2d10048a4a341fcc8d48370a
 -- run/kotlin/android --
-pass sha256:f10e8d5f78a1ddef1e100ec58a974943
+pass sha256:b7de94c036d9cc4b10616190e172ee78
 -- run/none/html --
-pass sha256:73acd352c4bab0db689a61d559f28679
+pass sha256:98f4b29ea97008e012cbe3593bcc86b0

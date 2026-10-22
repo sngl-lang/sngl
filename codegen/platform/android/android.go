@@ -195,7 +195,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := src.write(sink, "MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
-		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+		if err := emitShippedComposables(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		if err := emitCodecFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
@@ -209,7 +209,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := src.write(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
-		if err := emitDateFieldFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
+		if err := emitShippedComposables(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		if err := emitCodecFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
@@ -244,7 +244,11 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			// The Gradle project, the manifest, MainActivity and the theme:
 			// what a build needs around the program rather than anything the
 			// program said. A sink that files output for review takes the
-			// digest of these and the text of the rest.
+			// digest of these and the text of the rest. The theme is the
+			// program's where its `color` is the theme's primary.
+			if strings.HasSuffix(f.Name, "/Theme.kt") && cfg.accent != "" {
+				continue
+			}
 			codegen.MarkBoilerplate(sink, f.Name)
 		}
 		if iconRes, err := iconFiles(cfg); err == nil {
@@ -258,7 +262,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := src.write(sink, "MainScreen.kt", req.Lang, ktOpts); err != nil {
 			return err
 		}
-		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+		if err := emitShippedComposables(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		if err := emitCodecFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
@@ -420,7 +424,7 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 		// kotlin/<pkg>/ regardless of where the rest of the sources go
 		// (AGP scans only that sourceset for unit tests).
 		testPrefix := "app/src/test/kotlin/" + pkgToPath(cfg.Package) + "/"
-		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, activeCounters(req.Pkg))); err != nil {
+		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, activeCounters(req.Pkg), hasI18nCalls(req.Pkg))); err != nil {
 			return err
 		}
 	case "device":
@@ -454,6 +458,10 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // work each runtime counts as well -- the bodies SnglCodec.start began, the
 // pictures SnglAssets is fetching -- so a test reads what an answer wrote
 // rather than what was there before it arrived.
+//
+// A program that translates loads its manifest before the screen mounts, as
+// MainActivity.onCreate does: the test never runs MainActivity, and every
+// `$"..."` answered its inlined English template whatever the locale.
 // activeCounters is the counter of work in flight each runtime the program
 // carries keeps.
 func activeCounters(pkg *ir.Package) []string {
@@ -467,8 +475,16 @@ func activeCounters(pkg *ir.Package) []string {
 	return out
 }
 
-func robolectricAgentTestKotlin(pkg string, counters []string) []byte {
+func robolectricAgentTestKotlin(pkg string, counters []string, i18n bool) []byte {
 	rule, waiter := "composeRule", "composeRule"
+	i18nImport, i18nInit := "", ""
+	if i18n {
+		i18nImport = "import " + kotlin.SnglI18nKotlinPackage + ".I18n\n"
+		i18nInit = `
+        // The manifest, as MainActivity.onCreate loads it.
+        I18n.init(composeRule.activity)
+`
+	}
 	if len(counters) > 0 {
 		busy := make([]string, len(counters))
 		for i, c := range counters {
@@ -503,7 +519,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import us.duckfam.git.jonathan.sngl.testagent.Snapshots
 import us.duckfam.git.jonathan.sngl.testagent.TestAgent
-import java.io.ByteArrayOutputStream
+` + i18nImport + `import java.io.ByteArrayOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -522,7 +538,7 @@ class MainScreenAgentTest {
         // every test function into the testagent Registry before the
         // driver issues its first "list"/"run".
         SnglTestRegistration.ensure()
-
+` + i18nInit + `
         // setContent may be called once per rule, so one composition shows
         // whichever model the running test installed.
         composeRule.setContent { CurrentTestScreen() }

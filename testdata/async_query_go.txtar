@@ -26,7 +26,7 @@ func lookup(name string) async.Result[int] {
 }
 
 component detail node {
-    var name = "pikachu"
+    var name = "apricot"
     var length option[int] = null
     var loading = false
     var failure option[async.Failure] = null
@@ -36,7 +36,7 @@ component detail node {
     text(value=length != null ? "{length}" : "-")
     text(value="{loading}")
     text(value=failure != null ? failure.message : "")
-    button(text="mew", @click { name = "mew" })
+    button(text="fig", @click { name = "fig" })
     button(text="again", @click { q.refresh() })
 }
 
@@ -47,11 +47,11 @@ component card(name string) node {
 }
 
 component cards node {
-    var names = ["bulbasaur", "mew"]
+    var names = ["blueberry", "fig"]
     for var n = names {
         card(name=n)
     }
-    button(text="add", @click { names.push("ditto") })
+    button(text="add", @click { names.push("grape") })
 }
 
 window {
@@ -123,10 +123,13 @@ type Model struct {
 	__effect0_desired   []__anon_key_n_a1dba7
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__slot0             []fyne.CanvasObject
 	__slot0_at          fyne.CanvasObject
 	__inst0_live        []*CardInstance
+	__rendering0        bool
+	__renderAgain0      bool
 
 	__n1    *fynelayout.Toplevel
 	__n2    *widget.Label
@@ -141,11 +144,11 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.name__inst0 = "pikachu"
+	m.name__inst0 = "apricot"
 	m.length__inst0 = nil
 	m.loading__inst0 = false
 	m.failure__inst0 = nil
-	m.names__inst0 = []string{"bulbasaur", "mew"}
+	m.names__inst0 = []string{"blueberry", "fig"}
 	m.visible__inst0 = true
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
@@ -154,10 +157,13 @@ func New() *Model {
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*CardInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
@@ -285,62 +291,75 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*CardInstance{}
-	var __inst0_i int = 0
-	for _, n := range m.names__inst0 {
-		var __n5 *CardInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n5 = m.__inst0_live[__inst0_i]
-			__n5.SetName(n)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n5__new := newCardInstance(m, n)
-			__n5 = __n5__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*CardInstance{}
+			var __inst0_i int = 0
+			for _, n := range m.names__inst0 {
+				var __n5 *CardInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n5 = m.__inst0_live[__inst0_i]
+					__n5.SetName(n)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n5__new := newCardInstance(m, n)
+					__n5 = __n5__new
+				}
+				__inst0_next = append(__inst0_next, __n5)
+				__inst0_i = (__inst0_i + 1)
+				__n5__el := __n5.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+				m.__slot0 = append(m.__slot0, __n5__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n5)
-		__inst0_i = (__inst0_i + 1)
-		__n5__el := __n5.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
-		m.__slot0 = append(m.__slot0, __n5__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -352,7 +371,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n6_click_handler() {
-	m.name__inst0 = "mew"
+	m.name__inst0 = "fig"
 	m.__effects0_settle()
 }
 
@@ -361,7 +380,7 @@ func (m *Model) __n7_click_handler() {
 }
 
 func (m *Model) __n8_click_handler() {
-	m.names__inst0 = append(m.names__inst0, "ditto")
+	m.names__inst0 = append(m.names__inst0, "grape")
 	m.__renderSlot0(m.__n1.Container)
 }
 
@@ -461,7 +480,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4.SetText(__lt7)
 	m.__n1.Add(m.__n4)
 	m.__n6 = widget.NewButton("", nil)
-	m.__n6.SetText("mew")
+	m.__n6.SetText("fig")
 	m.__n6.OnTapped = m.__n6_click_handler
 	m.__n1.Add(m.__n6)
 	m.__n7 = widget.NewButton("", nil)
@@ -493,6 +512,7 @@ type CardInstance struct {
 	__effect1_desired   []__anon_key_n_a1dba7
 	__effects1_settling bool
 	__effects1_pending  bool
+	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -514,6 +534,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__effect1_desired = []__anon_key_n_a1dba7{}
 	c.__effects1_settling = false
 	c.__effects1_pending = false
+	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -618,26 +639,29 @@ func (c *CardInstance) __effect1_teardown() {
 }
 
 func (c *CardInstance) __effects1_settle() {
-	if c.__effects1_settling {
-		c.__effects1_pending = true
-	} else {
-		c.__effects1_settling = true
-		c.__effects1_pending = true
-		c.__effects1_steps = 0
-		for c.__effects1_pending && (c.__effects1_steps < 512) {
-			c.__effects1_pending = false
-			c.__effects1_steps = (c.__effects1_steps + 1)
-			c.__effect1_down()
-			c.__effect1_up()
-		}
-		c.__effects1_settling = false
-		if c.__effects1_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects1_torn {
+		if c.__effects1_settling {
+			c.__effects1_pending = true
+		} else {
+			c.__effects1_settling = true
+			c.__effects1_pending = true
+			c.__effects1_steps = 0
+			for c.__effects1_pending && (c.__effects1_steps < 512) {
+				c.__effects1_pending = false
+				c.__effects1_steps = (c.__effects1_steps + 1)
+				c.__effect1_down()
+				c.__effect1_up()
+			}
+			c.__effects1_settling = false
+			if c.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *CardInstance) Destroy() {
+	c.__effects1_torn = true
 	c.__effect1_teardown()
 }
 
@@ -728,10 +752,13 @@ type Model struct {
 	__effect0_desired   []__anon_key_n_a1dba7
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__slot0             []gtk4rt.Handle
 	__slot0_at          gtk4rt.Handle
 	__inst0_live        []*CardInstance
+	__rendering0        bool
+	__renderAgain0      bool
 	__n1                gtk4rt.Handle
 	__n2                gtk4rt.Handle
 	__n3                gtk4rt.Handle
@@ -746,11 +773,11 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.name__inst0 = "pikachu"
+	m.name__inst0 = "apricot"
 	m.length__inst0 = nil
 	m.loading__inst0 = false
 	m.failure__inst0 = nil
-	m.names__inst0 = []string{"bulbasaur", "mew"}
+	m.names__inst0 = []string{"blueberry", "fig"}
 	m.visible__inst0 = true
 	m.attempt__inst0 = 0
 	m.refreshes__inst0 = 0
@@ -759,10 +786,13 @@ func New() *Model {
 	m.__effect0_desired = []__anon_key_n_a1dba7{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*CardInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
@@ -878,62 +908,75 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*CardInstance{}
-	var __inst0_i int = 0
-	for _, n := range m.names__inst0 {
-		var __n5 *CardInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n5 = m.__inst0_live[__inst0_i]
-			__n5.SetName(n)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n5__new := newCardInstance(m, n)
-			__n5 = __n5__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*CardInstance{}
+			var __inst0_i int = 0
+			for _, n := range m.names__inst0 {
+				var __n5 *CardInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n5 = m.__inst0_live[__inst0_i]
+					__n5.SetName(n)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n5__new := newCardInstance(m, n)
+					__n5 = __n5__new
+				}
+				__inst0_next = append(__inst0_next, __n5)
+				__inst0_i = (__inst0_i + 1)
+				__n5__el := __n5.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
+				m.__slot0 = append(m.__slot0, __n5__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n5)
-		__inst0_i = (__inst0_i + 1)
-		__n5__el := __n5.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
-		m.__slot0 = append(m.__slot0, __n5__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -945,7 +988,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n6_clicked_handler() {
-	m.name__inst0 = "mew"
+	m.name__inst0 = "fig"
 	m.__effects0_settle()
 }
 
@@ -954,7 +997,7 @@ func (m *Model) __n7_clicked_handler() {
 }
 
 func (m *Model) __n8_clicked_handler() {
-	m.names__inst0 = append(m.names__inst0, "ditto")
+	m.names__inst0 = append(m.names__inst0, "grape")
 	m.__renderSlot0(m.__n1)
 }
 
@@ -973,6 +1016,7 @@ type CardInstance struct {
 	__effect1_desired   []__anon_key_n_a1dba7
 	__effects1_settling bool
 	__effects1_pending  bool
+	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -994,6 +1038,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__effect1_desired = []__anon_key_n_a1dba7{}
 	c.__effects1_settling = false
 	c.__effects1_pending = false
+	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1099,26 +1144,29 @@ func (c *CardInstance) __effect1_teardown() {
 }
 
 func (c *CardInstance) __effects1_settle() {
-	if c.__effects1_settling {
-		c.__effects1_pending = true
-	} else {
-		c.__effects1_settling = true
-		c.__effects1_pending = true
-		c.__effects1_steps = 0
-		for c.__effects1_pending && (c.__effects1_steps < 512) {
-			c.__effects1_pending = false
-			c.__effects1_steps = (c.__effects1_steps + 1)
-			c.__effect1_down()
-			c.__effect1_up()
-		}
-		c.__effects1_settling = false
-		if c.__effects1_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects1_torn {
+		if c.__effects1_settling {
+			c.__effects1_pending = true
+		} else {
+			c.__effects1_settling = true
+			c.__effects1_pending = true
+			c.__effects1_steps = 0
+			for c.__effects1_pending && (c.__effects1_steps < 512) {
+				c.__effects1_pending = false
+				c.__effects1_steps = (c.__effects1_steps + 1)
+				c.__effect1_down()
+				c.__effect1_up()
+			}
+			c.__effects1_settling = false
+			if c.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (c *CardInstance) teardown() {
+	c.__effects1_torn = true
 	c.__effect1_teardown()
 }
 
@@ -1240,7 +1288,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetText(m.__n4, __lt7)
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	m.__n6 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n6, "mew")
+	gtk4rt.ButtonSetLabel(m.__n6, "fig")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n6)
 	m.__n7 = gtk4rt.ButtonNew()
@@ -1263,6 +1311,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:0c913d329a9e613928d6bc65e56b04f1
+pass sha256:bdb42a3c8065b6fe2d1453a86ea1d92d
 -- run/go/gtk4 --
-pass sha256:7c0fc8f608e456a34cff4b8286971c87
+pass sha256:17bb224dd9e1a97eb711799886a6387c

@@ -1,16 +1,21 @@
 # An image fetched while the program runs, from the local server the script
-# harness runs at 127.0.0.1:47819 (cmd/sngl/httpserver_test.go): the image
+# harness runs at 127.0.0.1:47819 (internal/testhttp): the image
 # reports @load when its picture arrives and @error when the fetch fails, on
 # every target that fetches one. android ships its own loader for it.
+#
+# An image whose URL changes fetches the new one: `moved` switches from a
+# picture to a 404, and reports the failure. android's loader kept the last
+# URL's picture and reported it loaded, since a picture already there skipped
+# the fetch -- a grid's cards kept their pictures when its list changed.
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout '2 tests, 0 failures'
+stdout '3 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -29,6 +34,23 @@ component pictures node {
     }
 }
 
+component moved node {
+    var url = "{server}/dot.png"
+    var loaded = false
+    var failed = ""
+    image(@load { loaded = true }, @error(e) { failed = e.message }) {
+        remote(url=url)
+    }
+    button #away(text="Away", @click { url = "{server}/status/404" })
+}
+
+func testRemoteFollowsItsURL(t Test, c moved) {
+    t.wait(func() => c.loaded, 5000)
+    c.away.click()
+    t.wait(func() => c.failed != "", 5000)
+    t.assert(c.failed != "")
+}
+
 func testRemoteLoads(t Test, c pictures) {
     t.wait(func() => c.loaded, 5000)
     t.assert(c.loaded)
@@ -42,8 +64,18 @@ func testRemoteFails(t Test, c pictures) {
 window {
     pictures
 }
+-- testrun/android/kotlin/app.sngl/moved/1 --
+sha256:1f7ecc4849957ffe901d5efa1bb96c60
+{
+  "results": [
+    {
+      "Desc": "RemoteFollowsItsURL",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/app.sngl/pictures/1 --
-sha256:f701463529c8a55a1c1538754c09c10e
+sha256:a8d5a5e2257f4b57e946695d8ca4c089
 {
   "results": [
     {
@@ -56,8 +88,18 @@ sha256:f701463529c8a55a1c1538754c09c10e
     }
   ]
 }
+-- testrun/fyne/go/app.sngl/moved/1 --
+sha256:9b9669ba7e9d5a19a5d5ec7e85734ee7
+{
+  "results": [
+    {
+      "Desc": "RemoteFollowsItsURL",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/pictures/1 --
-sha256:4ccbf4a11cfead436392f620ad5489bc
+sha256:bb744b6dfebfc5101a70190b0ad3cc76
 {
   "results": [
     {
@@ -66,6 +108,16 @@ sha256:4ccbf4a11cfead436392f620ad5489bc
     },
     {
       "Desc": "RemoteLoads",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/moved/1 --
+sha256:0120565c942831406ec2db045a6a36b8
+{
+  "results": [
+    {
+      "Desc": "RemoteFollowsItsURL",
       "Passed": true
     }
   ]

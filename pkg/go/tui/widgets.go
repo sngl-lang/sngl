@@ -93,24 +93,6 @@ func Rows(rows [][]string) []table.Row {
 	return out
 }
 
-// NewTable builds a table.Model pre-configured for a SNGL `table` widget. It
-// centralizes the bubbles table construction: columns, rows, a viewport height
-// (a zero-height table renders no rows), a viewport width wide enough for the
-// columns (the bubbles v2 table renders only the header row until its viewport
-// has a non-zero width), and focus enabled so the table responds to
-// cursor-movement keys when the SNGL focus engine routes input to it. Callers
-// can re-set any of these via the table.Model setters afterward.
-func NewTable(cols []table.Column, rows []table.Row, height int) table.Model {
-	width := tableWidth(cols)
-	return table.New(
-		table.WithColumns(cols),
-		table.WithRows(rows),
-		table.WithHeight(height),
-		table.WithWidth(width),
-		table.WithFocused(true),
-	)
-}
-
 // tableWidth sums the column widths plus inter-column padding so the table's
 // viewport is wide enough to show every column (and therefore its rows). A
 // table with no columns still gets a minimum width so an empty table renders a
@@ -125,13 +107,6 @@ func tableWidth(cols []table.Column) int {
 		w = 1
 	}
 	return w
-}
-
-// Cursor returns the table's current 0-based cursor row, for read-back into a
-// SNGL `selected int` bind. It mirrors table.Model.Cursor so the codegen can
-// emit a `tui.`-prefixed getter consistent with the other widget helpers.
-func Cursor(m table.Model) int {
-	return m.Cursor()
 }
 
 // WidgetWidth returns the cell width a bubbles widget should occupy given the

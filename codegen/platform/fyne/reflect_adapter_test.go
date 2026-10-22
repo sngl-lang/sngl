@@ -54,6 +54,8 @@ var fyneCtors = map[string]any{
 	"duckfam.us/sngl/pkg/go/fynelayout.NewToplevel":    fynelayout.NewToplevel,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewImage":       fynelayout.NewImage,
 	"duckfam.us/sngl/pkg/go/fynelayout.NewImageSource": fynelayout.NewImageSource,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewReachScroll": fynelayout.NewReachScroll,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewTap":         fynelayout.NewTap,
 }
 
 // allSpecs decodes every Spec the fyne overrides reach, keyed by the stdlib

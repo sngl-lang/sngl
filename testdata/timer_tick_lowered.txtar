@@ -287,6 +287,7 @@ type Model struct {
 	__effect1_absent     bool
 	__effects0_settling  bool
 	__effects0_pending   bool
+	__effects0_torn      bool
 	__effects0_steps     int
 
 	main    *fynelayout.Toplevel
@@ -311,6 +312,7 @@ func New() *Model {
 	m.__effect1_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -414,39 +416,42 @@ func (m *Model) __effect1_update() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			__effect1_seen := false
-			if m.__effect1_dirty {
-				m.__effect1_dirty = false
-				if !m.__effect1_absent {
-					m.__effect1_key = (time.Duration(50) * time.Millisecond)
-					m.__effect1_update()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				__effect1_seen := false
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					if !m.__effect1_absent {
+						m.__effect1_key = (time.Duration(50) * time.Millisecond)
+						m.__effect1_update()
+					}
 				}
+				__effect1_seen = true
+				m.__effect1_absent = !__effect1_seen
+				if m.__effect1_absent {
+					m.__effect1_dirty = false
+				}
+				m.__effect0_down()
+				m.__effect0_up()
 			}
-			__effect1_seen = true
-			m.__effect1_absent = !__effect1_seen
-			if m.__effect1_absent {
-				m.__effect1_dirty = false
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 			}
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
@@ -560,4 +565,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:b1086526dd9f6309a533f231b657b964
 -- run/go/fyne --
-pass sha256:9a7c3beac6620e76de0e92029596321f
+pass sha256:120fd97b208f135bba208066fcc26322

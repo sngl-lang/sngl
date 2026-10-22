@@ -344,6 +344,7 @@ type Model struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	entry               gtk4rt.Handle
 	__n0                gtk4rt.Handle
@@ -360,6 +361,7 @@ func New() *Model {
 	m.__effect0_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -391,21 +393,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -485,6 +489,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 
@@ -617,13 +622,13 @@ pass sha256:fa09e4ce7301b04d9fb1a2528972ef87
 -- run/go/fyne --
 pass sha256:1a2e884e35749454365be1cd422ff10f
 -- run/go/gtk4 --
-pass sha256:44b1763a21ca04f20f911f764bff9af1
+pass sha256:558ff9edcc3868510b607156402b8f01
 -- run/kotlin/android --
-pass sha256:4262f40f0fbcb35b9448d273572e9bee
+pass sha256:0586812b24447ee46d1da1313501a3cf
 -- run/none/html --
 pass sha256:e1ba13d732f6bf00dac271a5b3667705
 -- testrun/html/none/component_input.sngl/main/1 --
-sha256:e54308ce3ae95b156e8e2c100ef1eafe
+sha256:6b202c20db46ba6672e962d3fb27bbaa
 {
   "results": [
     {

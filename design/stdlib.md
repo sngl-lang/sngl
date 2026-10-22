@@ -13,6 +13,23 @@ because grouping by kind splits every subject in two.
 The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`, the error channel and `root`, the family a package body accepts. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
+
+  **A builder** (`lib/builtin/strings.sngl`, `ir/builder.go`) grows text in
+  place: `b.add(x)`, `b.line(x)` and `b.string()`, which is its string form,
+  so `"{b}"` and `string(b)` read it too (`inferBuiltinConversion` converts
+  to a string through a declared `string()`). Adding to a string with `+`
+  copies it, so a loop building one that way is quadratic; a builder is not.
+  It is a value, copied by a store as a list is (`ir.HoldsValue`), and no
+  state: a package or component var, a view block's `var`, a prop and a
+  context may not hold one (`refuseBuilderState`), since a view shows the
+  string. The interpreter holds a `[]byte` (`internal/interp/builder.go`), Go
+  a `[]byte` and Kotlin a `StringBuilder`, each declaring
+  `#[gen.can(stringBuilders)]` and answering the three intrinsics;
+  everywhere else `passStringBuilders` writes the builder as a string, which
+  is what html's script gets under any `--lang`, a JavaScript engine joining
+  `+=` as a rope (`testdata/builder.sngl`, `builder.txtar`,
+  `error_builder_state.sngl`). The optimizer does not rewrite a `s = s + x`
+  loop into one.
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums and `measurement`. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
@@ -71,7 +88,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/browser/` → `sngl:test/browser`** — what a page shows, read in the browser a test runs in: an element's text, attribute, markup and computed style, how many elements a node renders, and a pixel it paints. Each takes the node a test reaches by its `#id` and is answered by html's JavaScript alone, so a fixture importing it builds for html only -- `sngl:test` stays portable, and a question about the document is asked where only a document answers it.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not this vocabulary but targets, described below — under `lib/platform/` and `lib/language/` once moved.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishFamilyMarks` rather than in the handler, which measures it against the return position `bindFamily` read, beside the other rules about what a component's marks say of its tree.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`), and what a handler writes through (`scheme.sngl`): `out.file(name)` opens one file and hands back a `gen.File` handle whose `add` and `line` write into a buffer the build host owns (`buildhost.Output`), so a file built a line at a time costs its length; each file is written when the handler returns, and a name opened twice is an error at the open (`cmd/sngl/testdata/scheme_errors.txt`). Where a mark may be written is checked in `finishFamilyMarks` rather than in the handler, which measures it against the return position `bindFamily` read, beside the other rules about what a component's marks say of its tree.
   **`sngl run` and `sngl build` are commands a target writes**, not Go
   interfaces: a `gen.run(@run(dir, args))` or `gen.build(@build(dir, out))` in
   the body of its build-tree node (`lib/x/gen/command.sngl`). The platform
@@ -369,7 +386,7 @@ the type a macro returns, and the flag enums the marks take.
 
 Notable stdlib packages:
 
-- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
+- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Go imports the runtime where an emitted spelling names it, as it does every package: `ir.Package.UsesI18n` counts a method of a component a test build rooted elsewhere never emits, and the import it raised was unused (`cmd/sngl/testdata/i18n_test_build_runs.txt`). Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
 
   **A translation's arguments are a struct**, a field per placeholder:
   `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
@@ -399,6 +416,21 @@ Notable stdlib packages:
   module is bundled beside the page, and an i18n call the optimizer inlined
   into a test body named nothing there.
 
+  **A test that sets the locale reads the program's words in it, on every
+  target** (`cmd/sngl/testdata/i18n_test_locale_runs.txt`):
+  - An entry point is an intrinsic with a body, and `passCallDefaults` fills
+    its defaults as any function's, since its emitter stands in for the body
+    and reads every parameter by position.
+  - The interpreter runs an entry point's body, which reads the `locale`
+    context and hands it to the primitive, and answers only the primitives
+    by id. It translates against the `i18n.manifest.json` beside the
+    package's source (`pkg.SourcePath`).
+  - android's Robolectric test loads the manifest before it mounts the
+    screen, as `MainActivity.onCreate` does, since the test never runs
+    MainActivity.
+  - JavaScript emits a test body's entry-point call with the locale NoContext
+    threaded, as Go does.
+
 ## HTTP and JSON
 
 **`sngl:json` reads text as a declared type and writes a value back**:
@@ -410,11 +442,11 @@ and `time.date` RFC 3339 text. A key the type does not name is ignored, a
 field that is no option and has no key fails, writing leaves an absent
 option's key out and visits a map's keys in order. A failure is a `decode`
 `async.Failure` whose message every target words alike: `not JSON`,
-`$.types[0].slot: want an integer`, `$.name: missing`
+`$.genres[0].rank: want an integer`, `$.name: missing`
 (`testdata/json.sngl`, `cmd/sngl/testdata/json_runs.txt` on all six).
 
 **A name on the wire is a fact about the format**, so it is the format's
-mark: `#[json.identifier("base_experience")]` on a struct field or an enum
+mark: `#[json.identifier("page_count")]` on a struct field or an enum
 member, `#[http.identifier("page-size")]` on a query struct's field, landing
 on `ir.StructField.JSON`/`.HTTP` and `ir.EnumMember.JSON` and read by an
 encoder alone (`WireName`). An enum member takes marks as a struct field does
@@ -472,7 +504,7 @@ too (gtk4 pumping its loop meanwhile and bubbletea running what was posted,
 `cmd/sngl/testdata/http_runs.txt` runs requests, a waiting handler and an
 `async.query` over a request on six targets against the
 server the script harness runs at `127.0.0.1:47819`
-(`cmd/sngl/httpserver_test.go`), and `testdata/http_json.txtar` is the code.
+(`internal/testhttp`), and `testdata/http_json.txtar` is the code.
 
 Three general things it needed. A method a library declares on a struct of
 its own is promoted into the program like a library helper (`passLibFuncs`),

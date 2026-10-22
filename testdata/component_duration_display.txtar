@@ -397,6 +397,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
 
@@ -519,11 +520,11 @@ pass sha256:e03b5a95c6ac4231199379b94b1a2fd9
 -- run/go/gtk4 --
 pass sha256:ea80182dbd02f784eb788e613977344d
 -- run/kotlin/android --
-pass sha256:842637d2d20d0ea0bef0a1ab099846c3
+pass sha256:c6f866a972992809270a410fe554725e
 -- run/none/html --
 pass sha256:94f7d9b0a6e88ec9edb741715a53b7fa
 -- testrun/html/none/component_duration_display.sngl/main/1 --
-sha256:c0fd6a003d3ce16985129d3870f34978
+sha256:a9d30d743d33baaa620b4a60a9d26ca7
 {
   "results": [
     {

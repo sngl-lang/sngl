@@ -1,0 +1,136 @@
+# A test reads a node's one-way prop, `c.g.quiet[1][0].value`, which is the
+# expression its call site gave read through the instance: here the element of
+# a loop walking what a method of the component answers. The method was called
+# as the component's own body calls it, with no instance, which no compiled
+# test can name (`/* unresolved method grid.plain */`); it is called through
+# the instance now, a method reading a context included.
+
+sngl test --platform=none app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+context #suffix("!")
+
+func shout(s string) => s + suffix
+
+// Each loop walks what a method of the component answers.
+component grid ui.node {
+    var cells = [["a", "b"], ["c", "d"]]
+
+    func plain() => cells
+
+    func loud() => cells.map(func(r list[string]) => r.map(func(s string) => shout(s)))
+
+    ui.vbox {
+        for var row = plain() {
+            for var cell = row {
+                ui.text #quiet(value=cell)
+            }
+        }
+        for var row = loud() {
+            for var cell = row {
+                ui.text #noisy(value=cell)
+            }
+        }
+    }
+}
+
+component host ui.node {
+    grid #g()
+}
+
+func testReadsThroughAMethod(t test.Test, c host) {
+    t.assert(c.g.quiet[1][0].value == "c")
+}
+
+func testReadsThroughAMethodReadingAContext(t test.Test, c host) {
+    t.assert(c.g.noisy[1][0].value == "c!")
+}
+-- testrun/android/kotlin/app.sngl/host/1 --
+sha256:9fc0cbc6d713d91da175e5c79ee42815
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadsThroughAMethodReadingAContext",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/host/1 --
+sha256:1553205d82949ad4212fb33e153f6822
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadsThroughAMethodReadingAContext",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/host/1 --
+sha256:ace2d5f3bfc0b797d01a288518b001bd
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadsThroughAMethodReadingAContext",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/host/1 --
+sha256:820eb645fd9d4c10a8bac3fa7876d991
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadsThroughAMethodReadingAContext",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/host/1 --
+sha256:a6871d88bd316427d8b3adfca4b8137b
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "ReadsThroughAMethodReadingAContext",
+      "Passed": true
+    }
+  ]
+}

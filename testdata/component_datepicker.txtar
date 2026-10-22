@@ -254,9 +254,9 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_pick_handler(d *time.Time) {
-	if d != m.value__inst0 {
-		m.value__inst0 = d
+func (m *Model) __n0_pick_handler(d__p0 *time.Time) {
+	if d__p0 != m.value__inst0 {
+		m.value__inst0 = d__p0
 		m.__n0.SetDate(m.value__inst0)
 	}
 }
@@ -538,6 +538,7 @@ type Model struct {
 	__effect0_desired   []*time.Time
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	cal                 *C.GtkCalendar
 	__root              *C.GtkBox
@@ -554,6 +555,7 @@ func New() *Model {
 	m.__effect0_desired = []*time.Time{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -594,21 +596,23 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -874,15 +878,15 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:4c0af4220760b1b381b136ac2d5b831e
 -- run/go/fyne --
-pass sha256:f9dc8c9663526b87f49da77edabefd13
+pass sha256:95eb24ffec20a57a93b8c2be1eeb39c4
 -- run/go/gtk4 --
-pass sha256:c9b8e27786c7c37b5c49d3f3d1ce3f0c
+pass sha256:771136eb35f4412c9f59d201c2bf7650
 -- run/kotlin/android --
-pass sha256:065e25d98e6928fcae22e53208439053
+pass sha256:9cdaf99dcadc2d6c3feffb8ba1c9f1db
 -- run/none/html --
 pass sha256:6b658df74fddb5b955d97face1817518
 -- testrun/html/none/component_datepicker.sngl/main/1 --
-sha256:ab30d6da86bc0bae4db44f527c4cb306
+sha256:2d30cd48be375a7e4bddc835731b9b45
 {
   "results": [
     {

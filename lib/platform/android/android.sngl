@@ -150,6 +150,12 @@ const func Modifier.fillMaxWidth() Modifier
 #[kt.native("fillMaxHeight", "androidx.compose.foundation.layout.fillMaxHeight", method)]
 const func Modifier.fillMaxHeight() Modifier
 
+// A share of the main axis of the Row or Column it is read in, which is where
+// it is in scope: Compose declares it on RowScope and ColumnScope, so it needs
+// no import. Unlike a Style's `flex`, it leaves the other axis to the content.
+#[kt.native("weight", "", method)]
+const func Modifier.weight(share float) Modifier
+
 #[kt.native("androidx.compose.foundation.ScrollState")]
 struct ScrollState {}
 
@@ -280,15 +286,20 @@ component Button(
 ) ui.node
 
 #[gen.renders(identity)]
+// `containerColor` and `contentColor` are the Style's background and color,
+// which Compose takes as the pill's and the text's.
 #[kt.native("Badge", "androidx.compose.material3.Badge")]
 component Badge(
-    modifier ui.Style,
-    children ...component,
+    modifier       ui.Style,
+    containerColor ui.Style,
+    contentColor   ui.Style,
+    children       ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("Card", "androidx.compose.material3.Card")]
 component Card(
+    onClick  func(),
     modifier ui.Style,
     children ...component,
 ) ui.node
@@ -301,9 +312,11 @@ component TabRow(
 ) ui.node
 
 // One tab of a TabRow; `text` is its label, which Compose takes as content.
+// `modifier` carries the testTag a test presses one by.
 #[gen.renders(identity)]
 #[kt.native("Tab", "androidx.compose.material3.Tab")]
 component Tab(
+    modifier ui.Style,
     selected bool,
     enabled  bool,
     onClick  func(),
@@ -361,6 +374,37 @@ component SnglDateField(
     enabled       bool,
     modifier      ui.Style,
     onValueChange func(value option[time.date]),
+) ui.node
+
+// SnglScroll is a scroll: a column scrolled vertically, reporting its end
+// coming into view. Kotlin the platform ships with the app
+// (codegen/platform/android/scroll.kt), since how far it has scrolled and how
+// tall its content is are state its effect reads. `onReachEnd` is called as
+// the end of the content comes within half a viewport of showing, and again
+// when the content changes size while it is there.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglScroll")]
+component SnglScroll(
+    modifier   ui.Style,
+    onReachEnd func(),
+    children   ...component,
+) ui.node
+
+// SnglSelect is a select: a read-only field showing the label chosen, which a
+// tap opens a menu of the choices from. It is Kotlin the platform ships with
+// the app (codegen/platform/android/select.kt), since whether the menu is open
+// is state its render reads. `onValueChange` is a label picked in the menu, or
+// a choice's label a test sets as the field's text, and never the value it
+// already has.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglSelect")]
+component SnglSelect(
+    value         string,
+    options       list[string],
+    label         string,
+    enabled       bool,
+    modifier      ui.Style,
+    onValueChange func(value string),
 ) ui.node
 
 #[gen.renders(identity)]

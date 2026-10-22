@@ -48,9 +48,17 @@ type Config struct {
 	// Nav is set when the program renders a sngl:ui/nav stack, which is a
 	// NavHost and wants navigation-compose and kotlinx.serialization.
 	Nav bool
+	// accent is Color as the program wrote it, before withDefaults fills in
+	// the launcher's default: the theme's primary where it is set, and the
+	// device's own colours where it is not.
+	accent    string
+	defaulted bool
 }
 
 func (c Config) withDefaults() Config {
+	if !c.defaulted {
+		c.accent, c.defaulted = c.Color, true
+	}
 	if c.Package == "" {
 		c.Package = "test.sngl.app"
 	}
@@ -462,8 +470,16 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// declares -- so a func reading one has to be declared inside it; beside
 	// it, `log__inst0 = log__inst0 + "!"` names something no file-scope
 	// declaration binds.
+	// A func of a component composed on its own stays in that composable,
+	// beside the component's state, and reaches the page's as the
+	// composable does: through the file.
 	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
+	composedOwn := componentOwnedFuncs(ctx)
 	for fn := range stateReaching {
+		if composedOwn[fn] {
+			delete(stateReaching, fn)
+			continue
+		}
 		mainOwnFuncs[fn] = true
 	}
 	// Two sets, not one: a func belongs inside exactly one composable, and the
@@ -655,7 +671,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// collision is: SNGL's own struct is `color`, so a switch over the source
 	// spelling matched nothing and the class was emitted twice.
 	hasCanvas := packageHasCanvas(ctx.Canvases)
-	if hasCanvas || namesColor(info.Structs) {
+	if hasCanvas || namesColor(info.Structs) || programNamesColor(ctx.Pkg) {
 		body.WriteString(colorKotlinDecl(declaredStructs))
 	}
 
@@ -730,7 +746,17 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// reference for assertions/mutations from outside the
 	// composition.
 	if testMode {
+		// A composable other than MainScreen that reads the page's state is
+		// handed no `state`, so the file holds the one the test made, which
+		// each new one replaces. Its reads spell `state.x` as MainScreen's do.
+		shared := len(info.shared) > 0
+		if shared {
+			body.WriteString("lateinit var state: MainScreenState\n\n")
+		}
 		body.WriteString("class MainScreenState {\n")
+		if shared {
+			body.WriteString("    init { state = this }\n")
+		}
 		if len(present) > 0 {
 			fmt.Fprintf(&body, "    init { %s.clear() }\n", kotlin.PresentRegistry)
 		}
@@ -740,8 +766,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// Init expressions inside the class body resolve sibling state vars
 		// via implicit `this`, NOT the `state` parameter (which doesn't exist
 		// here). Use a rewrite-free context so e.g. `__ctx_locale__inst1 =
-		// __ctx_locale` rather than `state.__ctx_locale`.
-		classKC := kotlin.NewIRContext(exprCtx)
+		// __ctx_locale` rather than `state.__ctx_locale`, requiring its
+		// imports of the file all the same.
+		classKC := kc.Unrewritten()
 		for _, bind := range info.binds {
 			initVal := bind.init
 			if bind.initEx != nil {
@@ -766,7 +793,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// with no IdentRewrites: inside the class, `__ctx_locale`
 		// resolves via implicit `this`, not `state.__ctx_locale`.
 		if len(stateFuncs) > 0 {
-			memberKC := kotlin.NewIRContext(exprCtx)
+			memberKC := kc.Unrewritten()
 			for _, fn := range stateFuncs {
 				emitIRKtMemberFunc(&body, fn, memberKC)
 			}
@@ -826,6 +853,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			}
 		}
 	}
+
+	// The stacks come before the computeds and funcs that go to a page or read
+	// one's current: Kotlin declares a local where it is written, and a local
+	// fun naming a controller declared below it does not compile.
+	emitNavState(&body, mainStacks, kc, testMode)
 
 	// Computed state. In test mode computeds live on MainScreenState (emitted
 	// above) so the test accessor can read them; here they're locals only in
@@ -891,8 +923,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("        }\n")
 		body.WriteString("    }\n\n")
 	}
-
-	emitNavState(&body, mainStacks, kc, testMode)
 
 	// Visual tree
 	cc := &irComposeContext{
@@ -1034,6 +1064,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		}
 		decls++
 	}
+	// Before the computeds and funcs, which may read a stack, as MainScreen's.
+	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 	for _, fn := range cc.Computeds {
 		comp := irAndroidComputed{name: fn.Name, ktType: irFuncReturnKt(fn), fn: fn}
 		stateDelegate(kc)
@@ -1059,7 +1091,6 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		b.WriteString("\n")
 	}
 	emitInstanceRegistration(b, own, kc)
-	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 
 	vc := &irComposeContext{
 		nav:     nav,
@@ -1109,6 +1140,12 @@ func emitInstanceRegistration(b *strings.Builder, reads []codegen.InstanceRead, 
 	fmt.Fprintf(b, "    %s(%s) {\n", kc.Name(ktDisposableEffect), key)
 	fmt.Fprintf(b, "        %s[%s] = mapOf<String, (List<Any?>) -> Any?>(\n", kotlin.InstanceRegistry, key)
 	for _, r := range reads {
+		// A computed is a derived value the composable remembers, read by
+		// name rather than called.
+		if r.Func != nil && codegen.IsComputed(r.Func) {
+			fmt.Fprintf(b, "            %q to { _ -> %s },\n", r.Member, r.Func.Name)
+			continue
+		}
 		if r.Func != nil {
 			var args []string
 			i := 0
@@ -1161,6 +1198,9 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	localKC := kc
 	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		localKC = localKC.WithLocal(name)
 	}
 
 	if len(fn.Block) == 1 {
@@ -1257,6 +1297,9 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		localKC = localKC.WithLocal(name)
+	}
 
 	// Expression body
 	if len(fn.Block) == 1 {
@@ -1341,6 +1384,8 @@ func listElementTypeKt(ktType string) string {
 func literalStructLit(n *ir.StructLit) string {
 	name := ""
 	switch {
+	case ir.IsBuilder(n.Type):
+		return "StringBuilder()"
 	case n.Type != nil && ir.IsColorStruct(n.Type):
 		name = "Color"
 	case n.Def != nil:
@@ -1435,9 +1480,28 @@ func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Fun
 	if fn.OnComponent() || reaches[fn] {
 		return true
 	}
+	// State is matched by name, so what fn binds itself is no read of it: a
+	// parameter, a loop's variable or a local named like a var of the page --
+	// `display(name string)` beside a page's `name` -- put a pure function
+	// on the state class, where a composable built on its own called it
+	// through a `state` it does not have.
+	own := map[ir.Symbol]bool{}
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && lv.Sym != nil {
+			own[lv.Sym] = true
+		}
+		return nil
+	})
 	found := false
 	ir.WalkExprs(fn.Block, func(e ir.Expr) error {
 		if id, ok := e.(*ir.Ident); ok {
+			switch id.Sym.(type) {
+			case *ir.Param, *ir.LoopVar:
+				return nil
+			}
+			if own[id.Sym] {
+				return nil
+			}
 			if _, isState := state[id.Name]; isState {
 				found = true
 			}

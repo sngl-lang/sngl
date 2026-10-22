@@ -131,6 +131,10 @@ component Styled(
     // Fired by the key an `events` record maps "change" to. A key press
     // carries nothing, so the override says here what the press reports.
     @change,
+    // Fired by the key an `events` record maps "click" to, for a Styled an
+    // override writes beneath its root, which a call site's `@click` does
+    // not land on.
+    @click(),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -322,18 +326,21 @@ const component ui.toggle[platform](label, checked, style, @change) {
     ) {}
 }
 
+// A select is tui.Select: a list whose cursor is the choice, holding the
+// value even before a choice carries it. Its choices are handed to every
+// view and update, since they are the program's and may arrive after it
+// starts.
 const component ui.select[platform](style, options) {
     Widget(
         model = Model{
-            type = "list.Model",
-            new = "tui.NewList(tui.StringItems($\{options\}), 40, 10)",
-            view = ".View()",
-            update = ".Update(msg)",
-            pkg = "charm.land/bubbles/v2/list",
+            type = "tui.Select",
+            new = "tui.NewSelect(40, 10)",
+            view = ".View($\{options\})",
+            update = ".Update(msg, $\{options\})",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
         focus = Focus{enabled=true},
-        binds = [Bind{prop="value", get="tui.SelectedString"}],
+        binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
         style = {...style},
     ) {}
@@ -431,9 +438,22 @@ const component ui.divider[platform](style) {
     Styled(content="─", style={...style}) {}
 }
 
-const component ui.card[platform](style, content) {
-    Layout(join=JoinDir.vertical, style={...style}) {
-        content
+// A terminal focuses controls rather than regions, so a clickable card is its
+// content beside a `›` that takes the focus and fires `@click` on enter, as a
+// button's label does.
+const component ui.card[platform](style, clickable, @click, content) {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        if clickable {
+            Styled(
+                content = "› ",
+                focus = Focus{enabled=true},
+                events = [Event{on="click", key="enter"}],
+                @click { click() },
+            ) {}
+        }
+        Layout(join=JoinDir.vertical) {
+            content
+        }
     }
 }
 
@@ -488,18 +508,19 @@ const component ui.splitview[platform](style, panes) {
     }
 }
 
+// The headings and rows are handed to the table on each view and update, as a
+// select's choices are: rows a request answers arrive after it is built.
 const component ui.table[platform](style, columns, rows) {
     Widget(
         model = Model{
-            type = "table.Model",
-            new = "tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
-            view = ".View()",
-            update = ".Update(msg)",
-            pkg = "charm.land/bubbles/v2/table",
+            type = "tui.Table",
+            new = "tui.NewTable(10)",
+            view = ".View($\{columns\}, $\{rows\})",
+            update = ".Update(msg, $\{columns\}, $\{rows\})",
             resize = ".SetWidth($\{w\})",
         },
         focus = Focus{enabled=true},
-        binds = [Bind{prop="selected", get="tui.Cursor"}],
+        binds = [Bind{prop="selected", get=".Cursor()"}],
         columns = columns,
         rows = rows.map(func(r) => r.cells),
         style = {...style},

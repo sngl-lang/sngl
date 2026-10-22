@@ -13,7 +13,7 @@ import gen "sngl:x/gen"
 // in reasonable time: GTK's takes a C parser minutes.
 gen.scheme(name="c", @generate(out, importPath) {
     if !importPath.startsWith("pkg:") {
-        out.write("c.sngl", link(importPath, false, [], [], []))
+        link(out.file("c.sngl"), importPath, false, [], [], [])
         return
     }
     var spec = importPath.substring(4, importPath.length())
@@ -41,7 +41,7 @@ gen.scheme(name="c", @generate(out, importPath) {
     if pcdir.length() > 0 {
         inputs.push("cache.file(path=" + quote(pcdir[0] + "/" + lib + ".pc") + ")")
     }
-    out.write("c.sngl", link(header, true, cflags, ldflags, inputs))
+    link(out.file("c.sngl"), header, true, cflags, ldflags, inputs)
 })
 
 // The fields pkg-config prints for args, which fail the import when it does.
@@ -65,26 +65,27 @@ func pkgConfig(args list[string]) list[string] {
     return fields
 }
 
-// The package an import resolves to: one c.link, and the inputs pkg-config
-// read.
-func link(include string, system bool, cflags list[string], ldflags list[string], inputs list[string]) string {
-    var src = ""
+// The package an import resolves to, written into f: one c.link, and the
+// inputs pkg-config read.
+func link(f gen.File, include string, system bool, cflags list[string], ldflags list[string], inputs list[string]) {
     if inputs.length() > 0 {
-        src = src + "import cache \"sngl:x/gen/cache\"\n"
+        f.line("import cache \"sngl:x/gen/cache\"")
     }
-    src = src + "import c \"sngl:x/c\"\n\n"
+    f.line("import c \"sngl:x/c\"")
+    f.line()
     if inputs.length() > 0 {
-        src = src + "cache.inputs \{\n"
+        f.line("cache.inputs \{")
         for var in = inputs {
-            src = src + "    " + in + "\n"
+            f.line("    " + in)
         }
-        src = src + "\}\n\n"
+        f.line("\}")
+        f.line()
     }
     var sys = "false"
     if system {
         sys = "true"
     }
-    return src + "c.link(include=" + quote(include) + ", system=" + sys + ", cflags=" + quoteAll(cflags) + ", ldflags=" + quoteAll(ldflags) + ")\n"
+    f.line("c.link(include=" + quote(include) + ", system=" + sys + ", cflags=" + quoteAll(cflags) + ", ldflags=" + quoteAll(ldflags) + ")")
 }
 
 const func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\{", "\\\{").replace("\}", "\\\}") + "\""

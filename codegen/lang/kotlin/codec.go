@@ -100,7 +100,7 @@ func ktCodec(p *ir.CodecPlan) string {
 			wires := make([]string, len(n.Members))
 			values := make([]string, len(n.Members))
 			for i, m := range n.Members {
-				wires[i] = strconv.Quote(m.WireName())
+				wires[i] = Quote(m.WireName())
 				values[i] = EnumName(n.Type.Decl) + "." + EnumEntry(m.Name)
 			}
 			fmt.Fprintf(&b, "c%d.wires = listOf(%s); c%d.values = listOf(%s); ", n.ID, strings.Join(wires, ", "), n.ID, strings.Join(values, ", "))
@@ -111,7 +111,7 @@ func ktCodec(p *ir.CodecPlan) string {
 		args := make([]string, len(n.Fields))
 		reads := make([]string, len(n.Fields))
 		for i, f := range n.Fields {
-			fields[i] = fmt.Sprintf("SnglCodecField(%s, %s)", strconv.Quote(f.Wire), ktCodecNode(f.Codec))
+			fields[i] = fmt.Sprintf("SnglCodecField(%s, %s)", Quote(f.Wire), ktCodecNode(f.Codec))
 			args[i] = fmt.Sprintf("%s = a[%d] as %s", SafeIdent(f.Name), i, IRTypeToKt(f.Codec.Type))
 			reads[i] = "it." + SafeIdent(f.Name)
 		}

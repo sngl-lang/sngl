@@ -1,0 +1,169 @@
+# A test drives a select on every target: `c.pick.change("Banana")` chooses
+# the choice labelled Banana, which the `:value` binding writes back and the
+# program's @change hears, once -- including where the choices are state that
+# arrives after the select is built, and through an instance.
+#
+# Each target's select is a control a test chooses through, as a user does:
+# html's <select>, fyne's Select, gtk4's GtkDropDown (the invoker selects the
+# label, which notifies), bubbletea's tui.Select (a list whose cursor is the
+# choice), android's SnglSelect (a field a label is typed into, with a menu of
+# text a test sets to a label) and the interpreter's own.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component chooser ui.node {
+    var fruits list[string] = []
+    var chosen = "Apple"
+    var picked = ""
+    var changes = 0
+
+    ui.button #fill(text="Fill", @click { fruits = ["Apple", "Banana", "Cherry"] })
+    ui.select #pick(:value=chosen, @change(v) {
+        picked = v
+        changes += 1
+    }) {
+        for var f = fruits {
+            ui.choice(label=f)
+        }
+    }
+    ui.text(value=chosen)
+}
+
+component wrapped ui.node {
+    chooser #inner()
+}
+
+func testChangePicksTheChoiceNamed(t test.Test, c chooser) {
+    c.fill.click()
+    c.pick.change("Banana")
+    t.assert(c.picked == "Banana")
+    t.assert(c.chosen == "Banana")
+    t.assert(c.changes == 1)
+}
+
+func testChangeReachesThroughAnInstance(t test.Test, c wrapped) {
+    c.inner.fill.click()
+    c.inner.pick.change("Cherry")
+    t.assert(c.inner.picked == "Cherry")
+    t.assert(c.inner.chosen == "Cherry")
+}
+-- testrun/android/kotlin/app.sngl/chooser/1 --
+sha256:9b48758d5a11b749e80c3ac9e8c1d155
+{
+  "results": [
+    {
+      "Desc": "ChangePicksTheChoiceNamed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/wrapped/1 --
+sha256:77b34c98dc838d18a50cad2ce3f4bc20
+{
+  "results": [
+    {
+      "Desc": "ChangeReachesThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/chooser/1 --
+sha256:68d181e1ffcc1cd22ca380b563658e41
+{
+  "results": [
+    {
+      "Desc": "ChangePicksTheChoiceNamed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/wrapped/1 --
+sha256:e05f0112c508a6fc8af0c953dc8cb8f5
+{
+  "results": [
+    {
+      "Desc": "ChangeReachesThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/chooser/1 --
+sha256:20ad9651da495bd8a6af561e498155ef
+{
+  "results": [
+    {
+      "Desc": "ChangePicksTheChoiceNamed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/wrapped/1 --
+sha256:f3076954df1a77800f3cfba536896f2f
+{
+  "results": [
+    {
+      "Desc": "ChangeReachesThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/chooser/1 --
+sha256:7fc9499b749c61d3fd3c8c3886867b9b
+{
+  "results": [
+    {
+      "Desc": "ChangePicksTheChoiceNamed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/wrapped/1 --
+sha256:9be073155c2515e935802b236a3398e6
+{
+  "results": [
+    {
+      "Desc": "ChangeReachesThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/chooser/1 --
+sha256:9bd5cc507eb426e0d90a00a959640c4d
+{
+  "results": [
+    {
+      "Desc": "ChangePicksTheChoiceNamed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/wrapped/1 --
+sha256:27629390cf3f60737dbaeb5bd8c142c7
+{
+  "results": [
+    {
+      "Desc": "ChangeReachesThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}

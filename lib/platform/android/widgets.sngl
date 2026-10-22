@@ -48,11 +48,8 @@ const component ui.spacer[platform](style) {
     Spacer(modifier={...style}) {}
 }
 
-const component ui.scroll[platform](style, content) {
-    Column(
-        modifier = {...style},
-        then = [modifier.verticalScroll(rememberScrollState())],
-    ) {
+const component ui.scroll[platform](style, @reachEnd, content) {
+    SnglScroll(modifier={...style}, onReachEnd=func() { reachEnd() }) {
         content
     }
 }
@@ -200,17 +197,21 @@ const component ui.toggle[platform](label, checked, style, @change) {
     }
 }
 
-// Not converted. The menu needs per-call-site state, and an override may
-// declare a var -- passInlinePure hoists one onto the enclosing composable
-// under a `__instN` suffix. What it does not survive is a `for`: two call
-// sites at one level get `__inst0` and `__inst1`, but one inside a loop and
-// one outside both get `__inst0`, and the emitted Kotlin then declares the
-// same name twice. One cell per call site is one cell for every row of the
-// loop besides, which is not what `expanded` means. compose_ir.go numbers
-// `expandedN` per rendered node, which is the thing an override cannot ask
-// for.
-const component ui.select() {
-    OutlinedTextField(value=value, readOnly=true) {}
+// The menu's open state is SnglSelect's own, in Kotlin, as a datepicker's
+// dialog is: an override declaring a var gets one cell per call site, and a
+// select inside a `for` is many selects.
+const component ui.select[platform](placeholder, value, disabled, style, @change, options) {
+    SnglSelect(
+        value = value,
+        options = options.map(func(o) => o.label),
+        label = placeholder,
+        enabled = disabled == false,
+        modifier = {...style},
+        onValueChange = func(v) {
+            value = v
+            change(v)
+        },
+    ) {}
 }
 
 const component ui.textarea[platform](value, style, @input, @change) {
@@ -229,7 +230,7 @@ const component ui.textarea[platform](value, style, @input, @change) {
 // A date is typed as YYYY-MM-DD, or picked in Material's dialog from the
 // button beside the field. The half-typed text and the dialog's open state are
 // SnglDateField's own, in Kotlin, because a const override has nowhere to hold
-// state its render reads (see select). An
+// state its render reads. An
 // unpicked date shows nothing -- the `option` is what distinguishes that from
 // the zero date, the first day of year one.
 const component ui.datepicker[platform](placeholder, value, disabled, style, @change) {
@@ -270,7 +271,7 @@ const component ui.spinner[platform](style) {
 }
 
 const component ui.badge[platform](value, style) {
-    Badge(modifier={...style}) {
+    Badge(modifier={...style}, containerColor={...style}, contentColor={...style}) {
         Text(text=value) {}
     }
 }
@@ -279,9 +280,18 @@ const component ui.divider[platform](style) {
     HorizontalDivider(modifier={...style}) {}
 }
 
-const component ui.card[platform](style, content) {
-    Card(modifier={...style}) {
-        content
+// A clickable card is Material's clickable Card, the overload taking
+// `onClick`, which gives it the ripple and the focus stop a pressable surface
+// has; any other card is the plain one, which a press passes through.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        Card(onClick=func() { click() }, modifier={...style}) {
+            content
+        }
+    } else {
+        Card(modifier={...style}) {
+            content
+        }
     }
 }
 
@@ -355,8 +365,30 @@ const component ui.splitview[platform](style, panes) {
     }
 }
 
-const component ui.table[platform] {
-    Text(text="") {}
+// A table is a column of rows, the headings first and then each row's cells,
+// every cell an equal share of its row so that it lines up under its heading.
+// The share is `weight` rather than a Style's `flex`, which would stretch
+// each row down the whole column too.
+const component ui.table[platform](style, columns, rows) {
+    Column(modifier={...style}) {
+        Row {
+            for var col = columns {
+                Box(then=[modifier.weight(f32(1.0))]) {
+                    Text(text=col, style={fontWeight=bold}) {}
+                }
+            }
+        }
+        HorizontalDivider() {}
+        for var row = rows {
+            Row {
+                for var cell = row.cells {
+                    Box(then=[modifier.weight(f32(1.0))]) {
+                        Text(text=cell) {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 const component ui.tree[platform] {

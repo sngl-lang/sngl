@@ -443,6 +443,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
@@ -524,4 +525,4 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:824ddfe71b23cab441145d413f499105
 -- run/kotlin/android --
-pass sha256:48dd5868ee889360ec57a046834451fe
+pass sha256:f63c876d0decab478eafb02f65a3dd25

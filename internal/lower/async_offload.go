@@ -621,6 +621,16 @@ func (st *offloadState) bindArgs(s ir.Stmt) []ir.Stmt {
 			}
 			return
 		}
+		// So is the value a call through a var calls: a prop's cell, which a
+		// setter on the drawing thread may write while the goroutine reads it.
+		if id, ok := c.Callee.(*ir.Ident); ok && c.Func == nil {
+			if _, isVar := id.Sym.(*ir.Var); isVar {
+				name := st.freshArg()
+				sym := &ir.Var{Name: name, Type: id.Type, Synthesized: true}
+				pre = append(pre, &ir.LocalVar{Name: name, Type: id.Type, Init: id, Sym: sym})
+				c.Callee = &ir.Ident{Name: name, Type: id.Type, Sym: sym, Synthesized: true}
+			}
+		}
 		for i, a := range c.Args {
 			if a.Value == nil || st.exprWaits(a.Value) || isConstLeaf(a.Value) {
 				continue

@@ -1,0 +1,131 @@
+import async "sngl:async"
+import poke "openapi:./pokeapi.yml"
+import ui "sngl:ui"
+
+// The Pokédexes to choose from: every one PokéAPI has fits in one page of
+// this size, so the list is one request.
+const dexLimit = 50
+
+// How many cards a row holds.
+const columns = 3
+
+// The Pokédex chosen on home, by name and as PokéAPI answers it. Both outlive
+// the page: home starts at the dex chosen when it is shown again, and a
+// Pokémon's page lists the moves of the latest game the dex covers.
+var dexName = "national"
+
+var chosenDex option[poke.PokedexDetail] = null
+
+// Home: a choice of Pokédex, what it is, and a grid of its Pokémon,
+// `pageSize` cards at a time, the next page shown as the grid is scrolled to
+// its end. The dex is one request keyed on its name, so choosing another moves
+// the key; every entry arrives with it, so the search covers the whole dex and
+// a page more asks for nothing.
+component homePage(pageSize = 30, @open(name string)) ui.node {
+    var dexes list[poke.PokedexSummary] = []
+    var chosen = display(dexName)
+    var loading = false
+    var failure option[async.Failure] = null
+    var shown = pageSize
+    var search = ""
+
+    // Shows the dex whose label is `label`, from its first page of cards.
+    func pick(label string) {
+        for var d = dexes {
+            if display(d.name) == label {
+                dexName = d.name
+                shown = pageSize
+            }
+        }
+    }
+
+    // The dex's entries the search matches, all of them.
+    func matching() list[poke.PokemonDexNumber] {
+        var q = string.lower(search)
+        var all list[poke.PokemonDexNumber] = []
+        if chosenDex != null {
+            all = chosenDex.pokemonEntries
+        }
+        return all.filter(func(e poke.PokemonDexNumber) => string.contains(e.pokemonSpecies.name, q))
+    }
+
+    // The matches the grid shows.
+    func visible() list[poke.PokemonDexNumber] {
+        var all = matching()
+        return all.slice(0, int.min(shown, all.length()))
+    }
+
+    // The grid, a row of `columns` cards at a time.
+    func grid() => rows(visible(), columns)
+
+    // Shows a page more of the matches, where there are more to show.
+    func more() {
+        if matching().length() > shown {
+            shown += pageSize
+        }
+    }
+
+    poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
+    poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
+
+    ui.vbox(style={gap=8px, padding=8px, flex=1}) {
+        ui.hbox(style={gap=8px, alignItems=center}) {
+            ui.select #dexPick(:value=chosen, @change(v) { pick(v) }) {
+                for var d = dexes {
+                    ui.choice(label=display(d.name))
+                }
+            }
+            if chosenDex != null {
+                ui.text #about(value=dexLine(chosenDex))
+            }
+        }
+        ui.input #searchBox(placeholder=$"Search this Pokédex", :value=search)
+        if failure != null {
+            ui.text(value=couldNotLoadDex(failure.message))
+        }
+        if chosenDex == null && loading {
+            ui.spinner(label=$"Loading")
+        }
+        ui.scroll #cards(style={flex=1}, @reachEnd { more() }) {
+            ui.vbox(style={gap=8px}) {
+                for var row = grid() {
+                    ui.hbox(style={gap=8px}) {
+                        for var entry = row {
+                            card(entry=entry, @open { open(entry.pokemonSpecies.name) })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// One Pokémon of a dex: its artwork, its number in this dex and its name,
+// opened by a click anywhere on it. The picture's URL comes from the species
+// id in the entry, so a card asks for nothing.
+component card(entry poke.PokemonDexNumber, @open()) ui.node {
+    ui.card(clickable=true, style={width=128px}, @click { open() }) {
+        ui.vbox(style={gap=4px, alignItems=center}) {
+            ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
+                ui.remote(url=artworkOf(artwork, idOf(entry.pokemonSpecies.url)))
+            }
+            ui.text(value=number(entry.entryNumber))
+            ui.text(value=display(entry.pokemonSpecies.name))
+        }
+    }
+}
+
+// What a dex is: its name, its region and how many Pokémon it holds,
+// "Kanto · Kanto · 40 Pokémon".
+func dexLine(dex poke.PokedexDetail) string {
+    var line builder
+    line.add(dexTitle(dex.names, dex.name))
+    line.add(" · ")
+    line.add(dex.region != null ? display(dex.region.name) : $"every region")
+    line.add(" · ")
+    line.add(dexCount(dex.pokemonEntries.length()))
+    return line.string()
+}
+
+// What home says where the dex failed to load, and why.
+func couldNotLoadDex(why string) => $"Could not load the Pokédex: {why}"

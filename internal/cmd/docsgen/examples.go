@@ -54,8 +54,7 @@ func exampleArchive(fsys fs.FS) (source string, ok bool, err error) {
 		}
 		// The go: scheme needs a Go toolchain, which the browser has none of,
 		// and openapi: reads its document through the project's import root,
-		// which an archive is not -- examples/pokedex, whose detail page is a
-		// route a static page cannot serve either, has a page of its own.
+		// which an archive is not.
 		if bytes.Contains(files[n], []byte(`"go:`)) || bytes.Contains(files[n], []byte(`"openapi:`)) {
 			return "", false, nil
 		}

@@ -61,6 +61,8 @@ type Model struct {
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst0_live   []*__child0Instance
+	__rendering1   bool
+	__renderAgain1 bool
 
 	__n0    *fynelayout.Toplevel
 	__n4    *fyne.Container
@@ -77,43 +79,55 @@ func New() *Model {
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst0_live = []*__child0Instance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range m.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-	__inst0_next := []*__child0Instance{}
-	var __inst0_i int = 0
-	for _, row := range m.rows__inst0 {
-		var __n3 *__child0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.Set__p0(row)
-			__n3.Set__p1(m.tick__inst0)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n3__new := new__child0Instance(m, row, m.tick__inst0)
-			__n3 = __n3__new
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			for _, row := range m.rows__inst0 {
+				var __n3 *__child0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n3 = m.__inst0_live[__inst0_i]
+					__n3.Set__p0(row)
+					__n3.Set__p1(m.tick__inst0)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := new__child0Instance(m, row, m.tick__inst0)
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__el)
+				m.__slot1 = append(m.__slot1, __n3__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__el)
-		m.__slot1 = append(m.__slot1, __n3__el)
+		m.__rendering1 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -185,16 +199,18 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
-	Root        fyne.CanvasObject
-	__model     *Model
-	__prop___p0 []string
-	__prop___p1 int
-	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
-	__n2        *fyne.Container
+	Root           fyne.CanvasObject
+	__model        *Model
+	__prop___p0    []string
+	__prop___p1    int
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__rendering0   bool
+	__renderAgain0 bool
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__n2           *fyne.Container
 }
 
 func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__child0Instance {
@@ -204,6 +220,8 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__prop___p1 = __a___p1
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
+	c.__rendering0 = false
+	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__n2 = container.NewHBox()
 	c.__renderSlot0(c.__n2)
@@ -222,16 +240,26 @@ func (c *__child0Instance) Set__p1(__v int) {
 }
 
 func (c *__child0Instance) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range c.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot0 = nil
-	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
-	for _, cell := range c.__prop___p0 {
-		__n1 := widget.NewLabel("")
-		__n1.SetText(((cell + " ") + fmt.Sprint(c.__prop___p1)))
-		fynelayout.InsertBefore(__parent, c.__slot0_at, __n1)
-		c.__slot0 = append(c.__slot0, __n1)
+	if c.__rendering0 {
+		c.__renderAgain0 = true
+	} else {
+		c.__rendering0 = true
+		c.__renderAgain0 = true
+		for c.__renderAgain0 {
+			c.__renderAgain0 = false
+			for _, __entry := range c.__slot0 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			c.__slot0 = nil
+			c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
+			for _, cell := range c.__prop___p0 {
+				__n1 := widget.NewLabel("")
+				__n1.SetText(((cell + " ") + fmt.Sprint(c.__prop___p1)))
+				fynelayout.InsertBefore(__parent, c.__slot0_at, __n1)
+				c.__slot0 = append(c.__slot0, __n1)
+			}
+		}
+		c.__rendering0 = false
 	}
 }
 
@@ -275,6 +303,8 @@ type Model struct {
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst0_live   []*__child0Instance
+	__rendering1   bool
+	__renderAgain1 bool
 	__n0           gtk4rt.Handle
 	__n4           gtk4rt.Handle
 	bump           gtk4rt.Handle
@@ -291,43 +321,55 @@ func New() *Model {
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst0_live = []*__child0Instance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot1 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-	__inst0_next := []*__child0Instance{}
-	var __inst0_i int = 0
-	for _, row := range m.rows__inst0 {
-		var __n3 *__child0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.Set__p0(row)
-			__n3.Set__p1(m.tick__inst0)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n3__new := new__child0Instance(m, row, m.tick__inst0)
-			__n3 = __n3__new
+			m.__slot1 = nil
+			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			for _, row := range m.rows__inst0 {
+				var __n3 *__child0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n3 = m.__inst0_live[__inst0_i]
+					__n3.Set__p0(row)
+					__n3.Set__p1(m.tick__inst0)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := new__child0Instance(m, row, m.tick__inst0)
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3__el)
+				m.__slot1 = append(m.__slot1, __n3__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3__el)
-		m.__slot1 = append(m.__slot1, __n3__el)
+		m.__rendering1 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -347,16 +389,18 @@ func (m *Model) bump_clicked_handler() {
 
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
-	Root        gtk4rt.Handle
-	__model     *Model
-	__prop___p0 []string
-	__prop___p1 int
-	__root      gtk4rt.Handle
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__n2        gtk4rt.Handle
+	Root           gtk4rt.Handle
+	__model        *Model
+	__prop___p0    []string
+	__prop___p1    int
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__rendering0   bool
+	__renderAgain0 bool
+	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
+	__n2           gtk4rt.Handle
 }
 
 func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__child0Instance {
@@ -366,6 +410,8 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__prop___p1 = __a___p1
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
+	c.__rendering0 = false
+	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(c.__n2, gtk4rt.OrientationHorizontal)
@@ -387,16 +433,26 @@ func (c *__child0Instance) Set__p1(__v int) {
 }
 
 func (c *__child0Instance) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot0 = nil
-	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
-	for _, cell := range c.__prop___p0 {
-		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
-		gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
-		c.__slot0 = append(c.__slot0, __n1)
+	if c.__rendering0 {
+		c.__renderAgain0 = true
+	} else {
+		c.__rendering0 = true
+		c.__renderAgain0 = true
+		for c.__renderAgain0 {
+			c.__renderAgain0 = false
+			for _, __entry := range c.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
+			}
+			c.__slot0 = nil
+			c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
+			for _, cell := range c.__prop___p0 {
+				__n1 := gtk4rt.LabelNew("")
+				gtk4rt.LabelSetText(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
+				gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
+				c.__slot0 = append(c.__slot0, __n1)
+			}
+		}
+		c.__rendering0 = false
 	}
 }
 
@@ -501,6 +557,8 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __slot0 = [];
+    let __rendering0 = false;
+    let __renderAgain0 = false;
     let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
@@ -511,27 +569,37 @@ body { font-family: system-ui, sans-serif; }
       __renderSlot0(__slotAnchor_0);
     }
     function __renderSlot0(parent) {
-      let __place0_prev = __slot0;
-      let __place0_i = 0;
-      __slot0 = [];
-      for (const cell of __prop___p0) {
-        let __n1 = document.createElement("span");
-        __n1.textContent = cell + " " + String(__prop___p1);
-        let __place0_i_ref0 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref0 = __place0_prev[__place0_i];
+      if (__rendering0) {
+        __renderAgain0 = true;
+      } else {
+        __rendering0 = true;
+        __renderAgain0 = true;
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          for (const cell of __prop___p0) {
+            let __n1 = document.createElement("span");
+            __n1.textContent = cell + " " + String(__prop___p1);
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n1) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n1, __place0_i_ref0);
+            }
+            __slot0.push(__n1);
+          }
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
+          }
         }
-        if (__place0_i_ref0 === __n1) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n1, __place0_i_ref0);
-        }
-        __slot0.push(__n1);
-      }
-      for (const __place0_prev_e of __place0_prev) {
-        if (__slot0.indexOf(__place0_prev_e) < 0) {
-          parent.removeChild(__place0_prev_e);
-        }
+        __rendering0 = false;
       }
     }
     let __n2 = document.createElement("div");
@@ -551,50 +619,62 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slot1 = [];
   var __inst2_live = [];
+  var __rendering1 = false;
+  var __renderAgain1 = false;
   function __renderSlot1(parent) {
-    let __place1_prev = __slot1;
-    let __place1_i = 0;
-    __slot1 = [];
-    let __inst2_next = [];
-    let __inst2_i = 0;
-    for (const row of state.rows__inst0) {
-      let __n3 = null;
-      if (__inst2_live.length > __inst2_i) {
-        __n3 = __inst2_live[__inst2_i];
-        __n3.__set___p0(row);
-        __n3.__set___p1(state.tick__inst0);
-      } else {
-        if (__inst2_live.length > __inst2_i) {
-          __inst2_live[__inst2_i].__destroy();
+    if (__rendering1) {
+      __renderAgain1 = true;
+    } else {
+      __rendering1 = true;
+      __renderAgain1 = true;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place1_prev = __slot1;
+        let __place1_i = 0;
+        __slot1 = [];
+        let __inst2_next = [];
+        let __inst2_i = 0;
+        for (const row of state.rows__inst0) {
+          let __n3 = null;
+          if (__inst2_live.length > __inst2_i) {
+            __n3 = __inst2_live[__inst2_i];
+            __n3.__set___p0(row);
+            __n3.__set___p1(state.tick__inst0);
+          } else {
+            if (__inst2_live.length > __inst2_i) {
+              __inst2_live[__inst2_i].__destroy();
+            }
+            let __n3__new = __cf___child0({ __p0: row, __p1: state.tick__inst0 });
+            __n3 = __n3__new;
+          }
+          __inst2_next.push(__n3);
+          __inst2_i = __inst2_i + 1;
+          let __n3__el = __n3.__root;
+          let __place1_i_ref0 = null;
+          if (__place1_i < __place1_prev.length) {
+            __place1_i_ref0 = __place1_prev[__place1_i];
+          }
+          if (__place1_i_ref0 === __n3__el) {
+            __place1_i = __place1_i + 1;
+          } else {
+            parent.insertBefore(__n3__el, __place1_i_ref0);
+          }
+          __slot1.push(__n3__el);
         }
-        let __n3__new = __cf___child0({ __p0: row, __p1: state.tick__inst0 });
-        __n3 = __n3__new;
+        for (const [__inst2_i_d, _] of __inst2_live.entries()) {
+          let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
+          if (__inst2_i_j >= __inst2_i) {
+            __inst2_live[__inst2_i_j].__destroy();
+          }
+        }
+        __inst2_live = __inst2_next;
+        for (const __place1_prev_e of __place1_prev) {
+          if (__slot1.indexOf(__place1_prev_e) < 0) {
+            parent.removeChild(__place1_prev_e);
+          }
+        }
       }
-      __inst2_next.push(__n3);
-      __inst2_i = __inst2_i + 1;
-      let __n3__el = __n3.__root;
-      let __place1_i_ref0 = null;
-      if (__place1_i < __place1_prev.length) {
-        __place1_i_ref0 = __place1_prev[__place1_i];
-      }
-      if (__place1_i_ref0 === __n3__el) {
-        __place1_i = __place1_i + 1;
-      } else {
-        parent.insertBefore(__n3__el, __place1_i_ref0);
-      }
-      __slot1.push(__n3__el);
-    }
-    for (const [__inst2_i_d, _] of __inst2_live.entries()) {
-      let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
-      if (__inst2_i_j >= __inst2_i) {
-        __inst2_live[__inst2_i_j].__destroy();
-      }
-    }
-    __inst2_live = __inst2_next;
-    for (const __place1_prev_e of __place1_prev) {
-      if (__slot1.indexOf(__place1_prev_e) < 0) {
-        parent.removeChild(__place1_prev_e);
-      }
+      __rendering1 = false;
     }
   }
   function String(v) {
@@ -615,8 +695,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4c018976672de5b0d05821308fd5198b
+pass sha256:f6507e7f034c4e3dd636146126d60e66
 -- run/go/gtk4 --
-pass sha256:451887046b6d957a4ef0cb5052c0b3dd
+pass sha256:500bef5455ea3cffa405cd36c9373936
 -- run/none/html --
-pass sha256:82912b1cbccf8a9e2efc860bf21ee4ad
+pass sha256:91f3e79fa67701ffabfb3f7ef37f37e6

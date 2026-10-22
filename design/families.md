@@ -228,7 +228,7 @@ parameter its event names (`bindFromHandlers`). It runs in the interpreter
 under the build host (`internal/plugin`'s `Runner.Emit`) as the package the
 family's override is written in -- `ir.Override.Pkg`, nil for a target package's,
 which is library source -- so `gen.exec`, which takes a `stdin`, is that
-package's grant and not the program's. `out.write` takes any path inside the
+package's grant and not the program's. `out.file` opens any path inside the
 output directory, and what it wrote is stored as `sngl.emit` keyed by the
 members' encoded values behind the package's closure digest
 (`cmd/sngl/testdata/emit_family_generate.txt`). A `render` beside a

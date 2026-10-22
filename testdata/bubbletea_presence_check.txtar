@@ -164,6 +164,7 @@ type modelState struct {
 	__effect6_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -198,6 +199,7 @@ func New() Model {
 	m.__effect6_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__effects0_settle()
@@ -316,26 +318,28 @@ func (m *Model) __effect6_enter() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_enter()
-			m.__effect1_enter()
-			m.__effect2_enter()
-			m.__effect3_enter()
-			m.__effect4_enter()
-			m.__effect5_enter()
-			m.__effect6_enter()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_enter()
+				m.__effect2_enter()
+				m.__effect3_enter()
+				m.__effect4_enter()
+				m.__effect5_enter()
+				m.__effect6_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -700,4 +704,4 @@ func TestPresence(t *testing.T) {
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:288275b3876ad8aa839930358210010d
+pass sha256:de77230be49903715402679c400ebd0e

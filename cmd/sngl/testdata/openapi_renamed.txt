@@ -9,7 +9,7 @@ env SNGL_GENCACHE=off
 sngl check app.sngl
 stderr 'import "openapi:./api.yml": thing is declared as Thing2: Thing is taken or reserved'
 stderr 'import "openapi:./api.yml": field for of Thing is for_'
-stderr 'import "openapi:./api.yml": field frontDefault of Thing is frontDefault2'
+stderr 'import "openapi:./api.yml": field pageCount of Thing is pageCount2'
 stderr 'import "openapi:./api.yml": member "a-b" of ThingKind is aB2'
 stderr 'import "openapi:./api.yml": parameter value of GET /things is value2'
 stderr 'import "openapi:./api.yml": listThings is declared as listThings2: the name is taken or reserved'
@@ -19,7 +19,7 @@ import ui "sngl:ui"
 import api "openapi:./api.yml"
 
 func read(t api.Thing, u api.Thing2) string {
-    return "{t.for_} {t.frontDefault} {t.frontDefault2} {u.a}"
+    return "{t.for_} {t.pageCount} {t.pageCount2} {u.a}"
 }
 
 func kinds() list[api.ThingKind] {
@@ -53,8 +53,8 @@ components:
       type: object
       properties:
         for: {type: string}
-        front_default: {type: string}
-        frontDefault: {type: string}
+        page_count: {type: string}
+        pageCount: {type: string}
         kind: {type: string, enum: [aB, a-b]}
     thing:
       type: object

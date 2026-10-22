@@ -91,6 +91,19 @@ func init() {
 	reg("math.atan", func(a []string) string { return "Math.atan(" + a[0] + ")" })
 	reg("math.atan2", func(a []string) string { return "Math.atan2(" + a[0] + ", " + a[1] + ")" })
 
+	// --- builder ---
+	// A builder is a StringBuilder, added to in place. `line()` arrives with
+	// no argument, since an intrinsic's defaults are not written into its
+	// calls.
+	reg(ir.BuilderAdd, func(a []string) string { return a[0] + ".append(" + a[1] + ")" })
+	reg(ir.BuilderLine, func(a []string) string {
+		if len(a) < 2 {
+			return a[0] + ".append('\\n')"
+		}
+		return a[0] + ".append(" + a[1] + ").append('\\n')"
+	})
+	reg(ir.BuilderString, func(a []string) string { return a[0] + ".toString()" })
+
 	// --- list (in-place mutations) ---
 	reg("list.push", func(a []string) string { return a[0] + ".add(" + a[1] + ")" })
 	// removeAt throws out of range; an out-of-range index is documented to

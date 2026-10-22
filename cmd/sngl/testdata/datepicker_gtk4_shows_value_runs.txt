@@ -35,7 +35,7 @@ func testShowsBoundDate(t Test, c main) {
 }
 
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:0dae5fc158eae1d7ac853945c05dbab8
+sha256:7aefe8530ed30dc235ac23ea65d45bcb
 {
   "results": [
     {

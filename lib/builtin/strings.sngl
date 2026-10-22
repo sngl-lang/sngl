@@ -54,3 +54,35 @@ const func string.startsWith(s string, prefix string) bool { return string.subst
 
 // True if s ends with suffix. An empty suffix always matches.
 const func string.endsWith(s string, suffix string) bool { return string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix }
+
+// Text built a piece at a time. `add` puts a string on the end, in place, and
+// `string()` is what has been built:
+//
+//     var b builder
+//     for var name = names {
+//         b.line(name)
+//     }
+//     out = b.string()
+//
+// Adding to a string with `+` copies all of it each time, so a loop building
+// one that way costs the square of its length; a builder costs its length.
+//
+// A builder is a value, as a list is: storing one stores a copy, and adding
+// to the copy leaves the original as it was. It is not state -- a component's
+// or the package's var may not hold one -- since what a view shows is the
+// string, and a builder is how a function makes one.
+#[_intrinsic("builtin:builder")]
+struct builder {}
+
+// Puts text on the end of the receiver, in place.
+#[_intrinsic("builder.add", mutates, mutatesReceiver)]
+func builder.add(text string)
+
+// Puts text and then a newline on the end of the receiver, in place.
+#[_intrinsic("builder.line", mutates, mutatesReceiver)]
+func builder.line(text string = "")
+
+// What has been built, as a string. It is the builder's string form, so
+// `"{b}"` and `string(b)` read it too.
+#[_intrinsic("builder.string")]
+const func builder.string() string

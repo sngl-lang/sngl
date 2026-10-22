@@ -49,10 +49,13 @@ func modelPreamble(d scaffoldData) string {
 		return ""
 	}
 	var b strings.Builder
-	b.Grow(len(cgoModelHead) + len(d.CLinks) + len(cgoPreamble) + len(cgoSlotAnchor) + len(cgoEntryText) + len(cgoGObjectSet) + len(cgoCanvas) + len(cgoModelTail))
+	b.Grow(len(cgoModelHead) + len(d.CLinks) + len(cgoPreamble) + len(cgoDropDown) + len(cgoSlotAnchor) + len(cgoEntryText) + len(cgoGObjectSet) + len(cgoCanvas) + len(cgoModelTail))
 	b.WriteString(cgoModelHead)
 	b.WriteString(d.CLinks)
 	b.WriteString(cgoPreamble)
+	if d.NeedsDropDown {
+		b.WriteString(cgoDropDown)
+	}
 	if d.NeedsSlotAnchor {
 		b.WriteString(cgoSlotAnchor)
 	}
@@ -84,6 +87,13 @@ func writeModelHead(w io.Writer, d scaffoldData) {
 	io.WriteString(w, d.LangHelpers)
 	if d.NeedsCalendarDate {
 		io.WriteString(w, calendarDateHelpers)
+	}
+	if d.NeedsDropDown {
+		if d.Wrapped {
+			io.WriteString(w, dropDownOfferWrapped)
+		} else {
+			io.WriteString(w, dropDownOfferCgo)
+		}
 	}
 	if d.NeedsBoolToInt {
 		io.WriteString(w, `
@@ -293,6 +303,95 @@ static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }`
+
+// cgoDropDown is a select's drop-down, for gtk4's select override
+// (offerChoices, dropDownLabel) and a test's invoker.
+const cgoDropDown = `
+
+// A select's drop-down. Its choices are a GtkStringList, since no SNGL
+// expression produces a GListModel, offered as the labels joined with
+// newlines -- so a label holding a newline is offered as two choices. Offering
+// them, or the value bound, is no choice anyone made, so notify::selected is
+// blocked meanwhile; and a model is replaced only for labels that differ,
+// which would otherwise drop the popup a user has open.
+// A drop-down a render has not built yet is offered nothing: a settle the
+// render's own instances ask for runs before it, and the drop-down's build
+// mounts the offer again (remountOnBuild).
+static void sngl_drop_down_offer(GtkDropDown *d, const char *labels, const char *chosen) {
+    if (d == NULL) return;
+    guint notify = g_signal_lookup("notify", G_TYPE_OBJECT);
+    GQuark selected = g_quark_from_static_string("selected");
+    g_signal_handlers_block_matched(d, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL, notify, selected, NULL, NULL, NULL);
+    gchar **split = g_strsplit(labels, "\n", -1);
+    guint n = g_strv_length(split);
+    GListModel *cur = gtk_drop_down_get_model(d);
+    gboolean same = cur != NULL && GTK_IS_STRING_LIST(cur) && g_list_model_get_n_items(cur) == n;
+    for (guint i = 0; same && i < n; i++) {
+        same = strcmp(gtk_string_list_get_string(GTK_STRING_LIST(cur), i), split[i]) == 0;
+    }
+    if (!same) {
+        GtkStringList *list = gtk_string_list_new((const char *const *)split);
+        gtk_drop_down_set_model(d, G_LIST_MODEL(list));
+        g_object_unref(list);
+    }
+    guint at = GTK_INVALID_LIST_POSITION;
+    for (guint i = 0; i < n; i++) {
+        if (strcmp(split[i], chosen) == 0) {
+            at = i;
+            break;
+        }
+    }
+    gtk_drop_down_set_selected(d, at);
+    g_strfreev(split);
+    g_signal_handlers_unblock_matched(d, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL, notify, selected, NULL, NULL, NULL);
+}
+
+// The label a drop-down has selected, or "" where it has none.
+static const char *sngl_drop_down_label(GtkDropDown *d) {
+    gpointer item = gtk_drop_down_get_selected_item(d);
+    if (item == NULL || !GTK_IS_STRING_OBJECT(item)) return "";
+    return gtk_string_object_get_string(GTK_STRING_OBJECT(item));
+}
+
+// Selects the choice labelled label, as a click on it does; one no choice
+// carries selects nothing. The selection's handler may render the page the
+// drop-down is on afresh, which drops the drop-down while GTK is still
+// setting it, so it is held until the selection is done.
+static void sngl_drop_down_select(GtkDropDown *d, const char *label) {
+    GListModel *m = gtk_drop_down_get_model(d);
+    if (m == NULL || !GTK_IS_STRING_LIST(m)) return;
+    guint n = g_list_model_get_n_items(m);
+    for (guint i = 0; i < n; i++) {
+        if (strcmp(gtk_string_list_get_string(GTK_STRING_LIST(m), i), label) == 0) {
+            g_object_ref(d);
+            gtk_drop_down_set_selected(d, i);
+            g_object_unref(d);
+            return;
+        }
+    }
+}`
+
+const (
+	// dropDownOfferWrapped is gtk4's select offering its choices
+	// (offerChoices) through gtk4rt.
+	dropDownOfferWrapped = `
+// snglDropDownOffer is gtk4's select offering its choices (offerChoices).
+func snglDropDownOffer(d gtk4rt.Handle, labels, chosen string) {
+	gtk4rt.DropDownOffer(d, labels, chosen)
+}
+`
+	// dropDownOfferCgo is dropDownOfferWrapped through the preamble's
+	// sngl_drop_down_offer.
+	dropDownOfferCgo = `
+// snglDropDownOffer is gtk4's select offering its choices (offerChoices).
+func snglDropDownOffer(d *C.GtkDropDown, labels, chosen string) {
+	l, c := C.CString(labels), C.CString(chosen)
+	defer C.free(unsafe.Pointer(l))
+	defer C.free(unsafe.Pointer(c))
+	C.sngl_drop_down_offer(d, l, c)
+}
+`
+)
 
 const cgoSlotAnchor = `
 

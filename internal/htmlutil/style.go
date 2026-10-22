@@ -68,6 +68,11 @@ func stylePropCSS(prop, val string) string {
 		return fmt.Sprintf("margin-top:%s;margin-bottom:%s", px, px)
 	case "borderWidth":
 		return fmt.Sprintf("border-width:%s;border-style:solid", addPx(val))
+	case "flex":
+		// A flex item's minimum is its content's by default, which a box
+		// given a share would grow to; a share is the box's size instead,
+		// as fyne and gtk4 give it, so a scroll in it scrolls.
+		return fmt.Sprintf("flex:%s;min-width:0;min-height:0", val)
 	case "maxLines":
 		return fmt.Sprintf("-webkit-line-clamp:%s;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical", val)
 	}

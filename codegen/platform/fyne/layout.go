@@ -3,7 +3,6 @@ package fyne
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"duckfam.us/sngl/ir"
 )
@@ -20,39 +19,50 @@ const fyneLayoutImportPath = "duckfam.us/sngl/pkg/go/fynelayout"
 //
 // The decision is the children's rather than the box's: a box of fixed
 // children is exactly what container.NewVBox already does, and swapping a
-// layout in there would change a tree nothing asked to change.
+// layout in there would change a tree nothing asked to change. What each child
+// asked for is its own (shareStmt), since a render slot puts its anchor and
+// content among the children written here.
 func (t *fyneTranslator) flexLayoutCall(sp *fyneSpec) ir.Expr {
 	if sp == nil || sp.Axis == "" || !t.anyChildFlexes(sp) {
 		return nil
 	}
-	weights := make([]string, 0, len(sp.Children))
-	margins := make([]string, 0, len(sp.Children))
-	for _, id := range sp.Children {
-		var flex, margin float64
-		if child := t.specs[id]; child != nil {
-			flex, margin = child.Style.Flex, child.Style.Margin
-		}
-		weights = append(weights, float32Lit(flex))
-		margins = append(margins, float32Lit(margin))
-	}
-
 	newLayout := fyneNative{Path: fyneLayoutImportPath, Name: "New"}.qualify(t.gc)
 	newContainer := fyneNative{Path: "fyne.io/fyne/v2/container", Name: "New"}.qualify(t.gc)
-	layout := fmt.Sprintf("%s(%t, []float32{%s}, []float32{%s}, %s, %s)",
+	layout := fmt.Sprintf("%s(%t, %s, %s)",
 		newLayout,
 		sp.Axis == "horizontal",
-		strings.Join(weights, ", "),
-		strings.Join(margins, ", "),
 		float32Lit(sp.Style.Gap),
 		float32Lit(sp.Style.Padding),
 	)
 	return rawGoExpr(newContainer+"("+layout+")", ir.NativeGoPointerOf("fyne.Container"))
 }
 
-// anyChildFlexes reports whether some child claimed a share of this box.
+// shares reports whether a node asks the box holding it for anything.
+func (sp *fyneSpec) shares() bool {
+	return sp != nil && (sp.Style.Flex > 0 || sp.Style.Margin > 0 || sp.sized())
+}
+
+// sized reports whether the node's style gave it a width or a height.
+func (sp *fyneSpec) sized() bool {
+	return sp.Style.Width > 0 || sp.Style.Height > 0
+}
+
+// shareCall records on obj, the object the node's box holds, what the node
+// asks of that box, and is obj.
+func shareCall(obj ir.Expr, sp *fyneSpec) *ir.Call {
+	args := []ir.Expr{obj, rawGoExpr(float32Lit(sp.Style.Flex), ir.TypFloat), rawGoExpr(float32Lit(sp.Style.Margin), ir.TypFloat)}
+	if sp.sized() {
+		args = append(args, rawGoExpr(float32Lit(sp.Style.Width), ir.TypFloat), rawGoExpr(float32Lit(sp.Style.Height), ir.TypFloat))
+		return nativeCallAt("fynelayout.ShareSized", fyneLayoutImportPath, args, fyneObject())
+	}
+	return nativeCallAt("fynelayout.Share", fyneLayoutImportPath, args, fyneObject())
+}
+
+// anyChildFlexes reports whether some child claimed a share of this box, or a
+// size of its own, which only this layout reads.
 func (t *fyneTranslator) anyChildFlexes(sp *fyneSpec) bool {
 	for _, id := range sp.Children {
-		if child := t.specs[id]; child != nil && child.Style.Flex > 0 {
+		if child := t.specs[id]; child != nil && (child.Style.Flex > 0 || child.sized()) {
 			return true
 		}
 	}

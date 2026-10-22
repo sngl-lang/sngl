@@ -91,6 +91,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if n.Handle != nil && comp.PkgPath() == "" && ctx.reachedThrough()[n.Handle] {
 		return nil
 	}
+	// A node a test reads a prop of is answered from the call as written
+	// (passNodePropReads): spliced here, a badge became the span its target
+	// draws it with, whose props name no `value`, and the read folded to "".
+	if n.ID != "" && ctx.propReadIDs()[n.ID] {
+		return nil
+	}
 
 	propNames := make(map[string]bool, len(comp.Props))
 	for _, p := range comp.Props {
@@ -221,6 +227,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// emit became one of the caller's events -- `emit("change", k)` in a
 	// root component that declares none, against nothing the Go targets
 	// define -- and a handler the call site did write was never run.
+	press := lower.NamePresses(ctx.pkg, cloned, n)
 	cloned = lower.SubstituteEvents(cloned, n.Handlers)
 	cloned = substituteSlots(cloned, site)
 	// Component-body platform override at inline time: optimize splices the
@@ -294,6 +301,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		ir.AttachNodeID(folded, n.ID, n.Handle)
 	}
 	ir.AttachNodeSite(folded, n)
+	press()
 	return folded
 }
 
@@ -634,6 +642,14 @@ func (ctx *evalCtx) nullTestedIDs() map[string]bool {
 		ctx.nullTested = ir.NullTestedIDs(ctx.pkg)
 	}
 	return ctx.nullTested
+}
+
+func (ctx *evalCtx) propReadIDs() map[string]bool {
+	if !ctx.propReadSet {
+		ctx.propReadSet = true
+		ctx.propRead = ir.PropReadIDs(ctx.pkg)
+	}
+	return ctx.propRead
 }
 
 func (ctx *evalCtx) reachedThrough() map[*ir.Var]bool {

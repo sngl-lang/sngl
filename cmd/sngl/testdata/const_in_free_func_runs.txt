@@ -1,0 +1,99 @@
+# A package const a free function reads is the file-scope name, on every
+# target.
+#
+# A list const is not folded into its readers, so the Go targets declare it:
+# a field of the Model, read through the receiver inside a method, and a
+# file-scope `var`, read by name in a function that is no method. `rank`
+# reads nothing of the Model and is written as a free function, but from the
+# package body's scope, which spelled the const `m.fruits` in a function with
+# no `m`. bubbletea declared the file-scope `var`; fyne and gtk4 declared none.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+const fruits = ["apple", "fig", "pear"]
+
+// Where `name` comes among the fruits, or after them all.
+func rank(name string) int {
+    for var i, f = fruits {
+        if f == name {
+            return i
+        }
+    }
+    return fruits.length()
+}
+
+component main ui.node {
+    var pick = "fig"
+
+    ui.text(value="{rank(pick)}")
+}
+
+func testRanks(t test.Test, c main) {
+    t.assert(rank(c.pick) == 1)
+    t.assert(rank("kiwi") == 3)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:1f61343fbb9a49292d52f8081ac6c1da
+{
+  "results": [
+    {
+      "Desc": "Ranks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:4646bf39848fbc396e44ce9eb68949fe
+{
+  "results": [
+    {
+      "Desc": "Ranks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:2309bd3b2aeec3a66237dcc7dce6a6cb
+{
+  "results": [
+    {
+      "Desc": "Ranks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:26455546514482b250cd8c77f7272e4a
+{
+  "results": [
+    {
+      "Desc": "Ranks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:ef4086326bd49e176001e1cddfc42a0a
+{
+  "results": [
+    {
+      "Desc": "Ranks",
+      "Passed": true
+    }
+  ]
+}

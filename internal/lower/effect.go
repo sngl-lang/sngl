@@ -114,7 +114,14 @@ type effectGroup struct {
 	settling *ir.Var
 	pending  *ir.Var
 	steps    *ir.Var
-	settle   *ir.Func
+	// torn is set by the teardown, and a settle after it does nothing. An
+	// answer reaching a torn-down instance is stale, since the teardown
+	// ended its attempt, but a stale answer still settles, and a settle
+	// there found every bracket the teardown had let go of still wanted and
+	// mounted it again: it asked a second time, and rendered into a box the
+	// destroy had freed (cmd/sngl/testdata/async_query_destroyed_instance_runs.txt).
+	torn   *ir.Var
+	settle *ir.Func
 }
 
 // maxEffectSettleSteps bounds the settle loop: an effect that rekeys itself
@@ -198,6 +205,9 @@ type loweredEffect struct {
 	atVar, itemVar  *ir.Var
 	length          *ir.Var
 	notes           map[string]*ir.Func
+	// on is the key the bracket holds a lifetime per, nil for one it holds
+	// without.
+	on ir.Expr
 	// down and up are nil for a bracket with neither @mount nor @unmount,
 	// which reports writes and holds no lifetime.
 	down *ir.Func
@@ -232,11 +242,13 @@ type effectFrame struct {
 }
 
 func (st *effectState) owner(o ir.Owner) error {
+	from := len(st.effects)
 	body, err := st.stmts(o.Stmts(), &o, nil)
 	if err != nil {
 		return err
 	}
 	*o.Body = body
+	st.remountOnBuild(&o, st.effects[from:])
 	return nil
 }
 
@@ -401,7 +413,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	if fx.mount == nil && fx.unmount == nil {
 		// Reports only: no lifetime to hold, so nothing to keep the keys of.
 		st.effects = append(st.effects, fx)
-		for _, v := range st.positionVars(key, frames) {
+		for _, v := range st.positionVars(key, frames, fx.comp) {
 			st.byVar[v] = append(st.byVar[v], fx)
 		}
 		return nil
@@ -421,6 +433,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	}
 	st.addVar(o, fx.desired)
 
+	fx.on = key
 	fx.down = st.downFunc(prefix, fx, key, frames)
 	st.addFunc(o, fx.down)
 	fx.up = st.upFunc(prefix, fx)
@@ -435,7 +448,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	// describes -- the `on` expression's own dependencies, and those of every
 	// condition and iteration between it and the body. A position that reads
 	// nothing reactive describes one list forever.
-	for _, v := range st.positionVars(key, frames) {
+	for _, v := range st.positionVars(key, frames, fx.comp) {
 		st.byVar[v] = append(st.byVar[v], fx)
 	}
 	return nil
@@ -513,7 +526,7 @@ func (st *effectState) lowerEnter(n *ir.NodeInst, o *ir.Owner, frames []effectFr
 	}
 	st.addFunc(o, fx.enter)
 	st.effects = append(st.effects, fx)
-	for _, v := range st.positionVars(key, frames) {
+	for _, v := range st.positionVars(key, frames, fx.comp) {
 		st.byVar[v] = append(st.byVar[v], fx)
 	}
 }
@@ -938,6 +951,13 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 			continue
 		}
 		block := h.Func.Block
+		// An empty handler is still declared -- `@update {}` decides which
+		// handler a write reaches -- but a function with no statements is a
+		// signature to the Go emitter, which wrote no method for the call
+		// the effect makes, and the Go targets did not build.
+		if len(block) == 0 {
+			block = []ir.Stmt{&ir.Return{}}
+		}
 		if len(h.Func.Params) > 0 {
 			p := h.Func.Params[0]
 			// Without an `on` the parameter can only ever hold the default the
@@ -1056,15 +1076,18 @@ func (st *effectState) varIdent(v *ir.Var) *ir.Ident {
 // positionVars is the state the position reads: the `on` expression's
 // dependencies plus those of every condition and iteration enclosing it.
 // Writing any of them may change the list of keys the position describes.
-func (st *effectState) positionVars(key ir.Expr, frames []effectFrame) []*ir.Var {
+func (st *effectState) positionVars(key ir.Expr, frames []effectFrame, comp *ir.Component) []*ir.Var {
 	var out []*ir.Var
 	seen := map[*ir.Var]bool{}
+	take := func(v *ir.Var) {
+		if !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
 	add := func(e ir.Expr) {
 		for _, v := range st.reactiveVarsIn(e) {
-			if !seen[v] {
-				seen[v] = true
-				out = append(out, v)
-			}
+			take(v)
 		}
 	}
 	add(key)
@@ -1075,7 +1098,113 @@ func (st *effectState) positionVars(key ir.Expr, frames []effectFrame) []*ir.Var
 		}
 		add(f.cond)
 	}
+	// A key reading a node names what a render built, and any write the
+	// owner's view reads may build it afresh, which lets go of the keys the
+	// bracket held (remountOnBuild). So every reactive var of the owner
+	// settles it, or a click that rendered gtk4's select again left the new
+	// drop-down offered nothing until some write `on` reads; a settle whose
+	// keys did not move does nothing.
+	if readsElementRef(key) {
+		vars := st.pkg.Vars
+		if comp != nil {
+			vars = comp.Vars
+		}
+		for _, v := range vars {
+			if st.reactive[v] {
+				take(v)
+			}
+		}
+	}
 	return out
+}
+
+// elementRefsIn is the nodes e reads by their #id -- a node handle a program
+// wrote, or one a lowering synthesized -- each by its handle where it has one
+// and by its id where it has not.
+func elementRefsIn(e ir.Expr) (handles map[*ir.Var]bool, ids map[string]bool) {
+	handles, ids = map[*ir.Var]bool{}, map[string]bool{}
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		id, ok := x.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if v, isVar := id.Sym.(*ir.Var); isVar && v.NodeHandle {
+			handles[v] = true
+		} else if id.IsElementRef {
+			ids[id.Name] = true
+		}
+		return nil
+	})
+	return handles, ids
+}
+
+// readsElementRef reports whether e reads a node by its #id.
+func readsElementRef(e ir.Expr) bool {
+	handles, ids := elementRefsIn(e)
+	return len(handles) > 0 || len(ids) > 0
+}
+
+// remountOnBuild has each bracket whose key reads a node mount again wherever
+// that node is built: a call after the node, in the view, of a function that
+// lets go of every key the bracket holds -- unmounting them, where it has an
+// @unmount. A key holding the node cannot say so itself. A render that builds
+// the node afresh frees the old one, and the new one may be handed the old
+// one's address, which then compares equal: gtk4's select offered a
+// drop-down a re-rendered panel built nothing, since its key, the labels and
+// the drop-down, had not moved.
+func (st *effectState) remountOnBuild(o *ir.Owner, fxs []*loweredEffect) {
+	type rebuilt struct {
+		handles map[*ir.Var]bool
+		ids     map[string]bool
+		call    *ir.Func
+	}
+	var all []rebuilt
+	for _, fx := range fxs {
+		if fx.live == nil || fx.on == nil {
+			continue
+		}
+		handles, ids := elementRefsIn(fx.on)
+		if len(handles) == 0 && len(ids) == 0 {
+			continue
+		}
+		body := []ir.Stmt{&ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(fx.elem)}}}
+		if fx.tear != nil {
+			body = []ir.Stmt{callOf(fx.tear)}
+		}
+		fn := &ir.Func{
+			Name:        fx.prefix + "_rebuilt",
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block:       body,
+		}
+		st.addFunc(o, fn)
+		all = append(all, rebuilt{handles: handles, ids: ids, call: fn})
+	}
+	if len(all) == 0 {
+		return
+	}
+	var walk func(block *[]ir.Stmt)
+	walk = func(block *[]ir.Stmt) {
+		out := make([]ir.Stmt, 0, len(*block))
+		for _, s := range *block {
+			for _, b := range ir.ViewBlocks(s) {
+				walk(b)
+			}
+			out = append(out, s)
+			n, ok := s.(*ir.NodeInst)
+			if !ok {
+				continue
+			}
+			for _, r := range all {
+				if n.Handle != nil && r.handles[n.Handle] || n.ID != "" && r.ids[n.ID] {
+					out = append(out, callOf(r.call))
+				}
+			}
+		}
+		*block = out
+	}
+	walk(o.Body)
 }
 
 // reactiveVarsIn is the state an expression reads, directly or through what it
@@ -1148,7 +1277,8 @@ func (st *effectState) finishTeardown() error {
 		// Reverse the order the program wrote them in: an effect set up later
 		// may hold something an earlier one handed it, so releasing in
 		// acquisition order can release a thing still in use.
-		body := make([]ir.Stmt, 0, len(tears[o]))
+		body := make([]ir.Stmt, 0, len(tears[o])+1)
+		body = append(body, st.setFlag(tears[o][0].group.torn, true))
 		for _, fx := range slices.Backward(tears[o]) {
 			body = append(body, callOf(fx.tear))
 		}
@@ -1199,6 +1329,7 @@ func (st *effectState) buildGroups() {
 		o := &ir.Owner{Comp: g.comp}
 		g.settling = st.flagVar(o, prefix+"_settling")
 		g.pending = st.flagVar(o, prefix+"_pending")
+		g.torn = st.flagVar(o, prefix+"_torn")
 		g.steps = &ir.Var{
 			Name:        prefix + "_steps",
 			Type:        ir.TypInt,
@@ -1246,48 +1377,51 @@ func (st *effectState) buildGroups() {
 			Purity:      ir.PurityMutates,
 			Synthesized: true,
 			Block: []ir.Stmt{&ir.If{
-				Cond: st.varIdent(g.settling),
-				Body: []ir.Stmt{st.setFlag(g.pending, true)},
-				Else: []ir.Stmt{
-					st.setFlag(g.settling, true),
-					st.setFlag(g.pending, true),
-					&ir.Assign{Target: st.varIdent(g.steps), Op: ast.AssignSet, Value: intLiteralLit(0)},
-					&ir.For{
-						Iter: &ir.Binary{
-							Type: ir.TypBool, Op: ast.BinAnd,
-							Left: st.varIdent(g.pending),
-							Right: &ir.Binary{
-								Type: ir.TypBool, Op: ast.BinLt,
-								Left:  st.varIdent(g.steps),
-								Right: intLiteralLit(maxEffectSettleSteps),
+				Cond: &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: st.varIdent(g.torn)},
+				Body: []ir.Stmt{&ir.If{
+					Cond: st.varIdent(g.settling),
+					Body: []ir.Stmt{st.setFlag(g.pending, true)},
+					Else: []ir.Stmt{
+						st.setFlag(g.settling, true),
+						st.setFlag(g.pending, true),
+						&ir.Assign{Target: st.varIdent(g.steps), Op: ast.AssignSet, Value: intLiteralLit(0)},
+						&ir.For{
+							Iter: &ir.Binary{
+								Type: ir.TypBool, Op: ast.BinAnd,
+								Left: st.varIdent(g.pending),
+								Right: &ir.Binary{
+									Type: ir.TypBool, Op: ast.BinLt,
+									Left:  st.varIdent(g.steps),
+									Right: intLiteralLit(maxEffectSettleSteps),
+								},
 							},
+							Body: pass,
 						},
-						Body: pass,
+						st.setFlag(g.settling, false),
+						// The loop's condition is `pending && steps < bound`, so
+						// leaving it with `pending` still set is the bound
+						// stopping it rather than the settle finishing. Reported,
+						// because the alternative -- what this used to do -- is a
+						// program that quietly runs on with brackets that do not
+						// describe its tree, while the interpreter refuses the
+						// same program outright.
+						//
+						// No handler scope: a settle is called from the body, from
+						// every event handler that writes a key it reads, and from
+						// the platform's mount, so there is no one errorBoundary it
+						// sits inside the way a recursive instantiation sits inside
+						// the body that wrote it. Native is the honest answer, and
+						// reporting nowhere is louder than settling nowhere.
+						&ir.If{
+							Cond: st.varIdent(g.pending),
+							Body: []ir.Stmt{raiseStmt(
+								fmt.Sprintf("effects did not settle in %d passes; an effect is rekeying itself", maxEffectSettleSteps),
+								"effect",
+								nil,
+							)},
+						},
 					},
-					st.setFlag(g.settling, false),
-					// The loop's condition is `pending && steps < bound`, so
-					// leaving it with `pending` still set is the bound
-					// stopping it rather than the settle finishing. Reported,
-					// because the alternative -- what this used to do -- is a
-					// program that quietly runs on with brackets that do not
-					// describe its tree, while the interpreter refuses the
-					// same program outright.
-					//
-					// No handler scope: a settle is called from the body, from
-					// every event handler that writes a key it reads, and from
-					// the platform's mount, so there is no one errorBoundary it
-					// sits inside the way a recursive instantiation sits inside
-					// the body that wrote it. Native is the honest answer, and
-					// reporting nowhere is louder than settling nowhere.
-					&ir.If{
-						Cond: st.varIdent(g.pending),
-						Body: []ir.Stmt{raiseStmt(
-							fmt.Sprintf("effects did not settle in %d passes; an effect is rekeying itself", maxEffectSettleSteps),
-							"effect",
-							nil,
-						)},
-					},
-				},
+				}},
 			}},
 		}
 		st.addFunc(o, g.settle)

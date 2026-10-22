@@ -1,0 +1,165 @@
+# A page named above where it is written: a button ahead of the stack, a
+# component func, and a handler in an earlier page's content each go to a
+# page written below them, with that page's params. A node's own check is
+# what completes its handle's type arguments, so each read saw the bare
+# declaration and was refused -- `cannot pass page as page[T, M]` -- until the
+# checker gave a generic node's handle what its props bind before the body
+# around it is checked (preSpecializeHandles).
+#
+# html serves a page with params only in route mode, where a test does not
+# run -- `sngl test` has no route-mode launcher, and a `go` would load another
+# document and end the run -- so on html the program is generated: without
+# the fix it did not check, on any target.
+
+sngl test --platform=none app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl generate --platform=html --lang=go --out=html app.sngl
+exists html/server.go
+
+-- app.sngl --
+import test "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Book {
+    title string
+}
+
+struct Shelf {
+    name string
+}
+
+component library ui.node {
+    var seen = ""
+
+    // Goes to a page written below the func.
+    func toShelf(name string) {
+        pages.go(shelf, Shelf{name=name})
+    }
+
+    ui.button #early(text="Early", @click { pages.go(shelf, Shelf{name="early"}) })
+    ui.button #byFunc(text="By func", @click { toShelf("func") })
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="home")
+        }
+        nav.page #book(href=`/b/{title}`, title="Book", params=Book{title="first"}) {
+            component content(p) {
+                ui.button(text=p.title, @click { pages.go(shelf, Shelf{name=p.title}) })
+            }
+        }
+        nav.page #shelf(href=`/s/{name}`, title="Shelf", params=Shelf{name="first"}) {
+            component content(p) {
+                ui.text(value=p.name)
+                effect(on=p.name, @mount { seen = p.name })
+            }
+        }
+    }
+}
+
+func testAButtonAboveGoesToAPageBelow(t test.Test, c library) {
+    t.assert(c.pages.current == c.home)
+    c.early.click()
+    t.assert(c.pages.current == c.shelf)
+    t.assert(c.seen == "early")
+}
+
+func testAFuncGoesToAPageBelow(t test.Test, c library) {
+    c.byFunc.click()
+    t.assert(c.pages.current == c.shelf)
+    t.assert(c.seen == "func")
+}
+
+func testAPageBelowStartsAtItsParams(t test.Test, c library) {
+    t.assert(c.seen == "")
+    t.assert(c.pages.current.title == "Home")
+}
+
+ui.window(title="Library") {
+    library()
+}
+-- testrun/android/kotlin/app.sngl/library/1 --
+sha256:ef6460506e16264586a1705172fdf5d0
+{
+  "results": [
+    {
+      "Desc": "AButtonAboveGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "AFuncGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "APageBelowStartsAtItsParams",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/library/1 --
+sha256:a375c88a4efa3cf42e341a6348d8522e
+{
+  "results": [
+    {
+      "Desc": "AButtonAboveGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "AFuncGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "APageBelowStartsAtItsParams",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/library/1 --
+sha256:365d4156ea5262c027a0a5b994d0d10c
+{
+  "results": [
+    {
+      "Desc": "AButtonAboveGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "AFuncGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "APageBelowStartsAtItsParams",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/library/1 --
+sha256:b1b0d8fa9cbc074064e59e872df4d685
+{
+  "results": [
+    {
+      "Desc": "AButtonAboveGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "AFuncGoesToAPageBelow",
+      "Passed": true
+    },
+    {
+      "Desc": "APageBelowStartsAtItsParams",
+      "Passed": true
+    }
+  ]
+}

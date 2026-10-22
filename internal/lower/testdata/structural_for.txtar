@@ -15,16 +15,28 @@ component main node {
     var items list[int] = [1, 2, 3]
     var __root node
     var __slot0 list[text] = []
+    var __rendering0 bool = false
+    var __renderAgain0 bool = false
     func __renderSlot0(parent node) void {
-        for var __entry = __slot0 {
-            lower.RemoveChild(parent, __entry)
-        }
-        __slot0 = []
-        for var item = items {
-            var __n0 text = lower.CreateNode("text")
-            __n0.value = string(item)
-            lower.AppendChild(parent, __n0)
-            list.push(__slot0, __n0)
+        if __rendering0 {
+            __renderAgain0 = true
+        } else {
+            __rendering0 = true
+            __renderAgain0 = true
+            for __renderAgain0 {
+                __renderAgain0 = false
+                for var __entry = __slot0 {
+                    lower.RemoveChild(parent, __entry)
+                }
+                __slot0 = []
+                for var item = items {
+                    var __n0 text = lower.CreateNode("text")
+                    __n0.value = string(item)
+                    lower.AppendChild(parent, __n0)
+                    list.push(__slot0, __n0)
+                }
+            }
+            __rendering0 = false
         }
     }
     button(text="add", @click {

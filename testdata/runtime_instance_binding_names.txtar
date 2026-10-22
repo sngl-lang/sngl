@@ -376,6 +376,8 @@ type Frame__slot6Instance struct {
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*Frame__slot6Instance
+	__rendering0   bool
+	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__slot2        []fyne.CanvasObject
@@ -401,6 +403,8 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot6Instance{}
+	c.__rendering0 = false
+	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
@@ -446,45 +450,55 @@ func (c *Frame__slot6Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot6Instance) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range c.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot0 = nil
-	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
-	__inst0_next := []*Frame__slot6Instance{}
-	var __inst0_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n15 *Frame__slot6Instance
-			if len(c.__inst0_live) > __inst0_i {
-				__n15 = c.__inst0_live[__inst0_i]
-				__n15.SetResult((c.__prop_result - 1))
-				__n15.SetM(c.__prop_m)
-				__n15.Set__depth((c.__prop___depth + 1))
-				__n15.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst0_live) > __inst0_i {
-					c.__inst0_live[__inst0_i].Destroy()
-				}
-				__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n15 = __n15__new
+	if c.__rendering0 {
+		c.__renderAgain0 = true
+	} else {
+		c.__rendering0 = true
+		c.__renderAgain0 = true
+		for c.__renderAgain0 {
+			c.__renderAgain0 = false
+			for _, __entry := range c.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__inst0_next = append(__inst0_next, __n15)
-			__inst0_i = (__inst0_i + 1)
-			__n15__el := __n15.Root
-			fynelayout.InsertBefore(__parent, c.__slot0_at, __n15__el)
-			c.__slot0 = append(c.__slot0, __n15__el)
+			c.__slot0 = nil
+			c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
+			__inst0_next := []*Frame__slot6Instance{}
+			var __inst0_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n15 *Frame__slot6Instance
+					if len(c.__inst0_live) > __inst0_i {
+						__n15 = c.__inst0_live[__inst0_i]
+						__n15.SetResult((c.__prop_result - 1))
+						__n15.SetM(c.__prop_m)
+						__n15.Set__depth((c.__prop___depth + 1))
+						__n15.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst0_live) > __inst0_i {
+							c.__inst0_live[__inst0_i].Destroy()
+						}
+						__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n15 = __n15__new
+					}
+					__inst0_next = append(__inst0_next, __n15)
+					__inst0_i = (__inst0_i + 1)
+					__n15__el := __n15.Root
+					fynelayout.InsertBefore(__parent, c.__slot0_at, __n15__el)
+					c.__slot0 = append(c.__slot0, __n15__el)
+				}
+			}
+			for __inst0_i_d, _ := range c.__inst0_live {
+				var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					c.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			c.__inst0_live = __inst0_next
 		}
+		c.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range c.__inst0_live {
-		var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			c.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	c.__inst0_live = __inst0_next
 }
 
 func (c *Frame__slot6Instance) Destroy() {
@@ -509,6 +523,8 @@ type Frame__slot5Instance struct {
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot5Instance
+	__rendering1   bool
+	__renderAgain1 bool
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__slot3        []fyne.CanvasObject
@@ -533,6 +549,8 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot5Instance{}
+	c.__rendering1 = false
+	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
@@ -577,45 +595,55 @@ func (c *Frame__slot5Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot5Instance) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range c.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot1 = nil
-	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
-	__inst1_next := []*Frame__slot5Instance{}
-	var __inst1_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n17 *Frame__slot5Instance
-			if len(c.__inst1_live) > __inst1_i {
-				__n17 = c.__inst1_live[__inst1_i]
-				__n17.SetResult((c.__prop_result - 1))
-				__n17.SetM(c.__prop_m)
-				__n17.Set__depth((c.__prop___depth + 1))
-				__n17.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst1_live) > __inst1_i {
-					c.__inst1_live[__inst1_i].Destroy()
-				}
-				__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n17 = __n17__new
+	if c.__rendering1 {
+		c.__renderAgain1 = true
+	} else {
+		c.__rendering1 = true
+		c.__renderAgain1 = true
+		for c.__renderAgain1 {
+			c.__renderAgain1 = false
+			for _, __entry := range c.__slot1 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__inst1_next = append(__inst1_next, __n17)
-			__inst1_i = (__inst1_i + 1)
-			__n17__el := __n17.Root
-			fynelayout.InsertBefore(__parent, c.__slot1_at, __n17__el)
-			c.__slot1 = append(c.__slot1, __n17__el)
+			c.__slot1 = nil
+			c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
+			__inst1_next := []*Frame__slot5Instance{}
+			var __inst1_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n17 *Frame__slot5Instance
+					if len(c.__inst1_live) > __inst1_i {
+						__n17 = c.__inst1_live[__inst1_i]
+						__n17.SetResult((c.__prop_result - 1))
+						__n17.SetM(c.__prop_m)
+						__n17.Set__depth((c.__prop___depth + 1))
+						__n17.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst1_live) > __inst1_i {
+							c.__inst1_live[__inst1_i].Destroy()
+						}
+						__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n17 = __n17__new
+					}
+					__inst1_next = append(__inst1_next, __n17)
+					__inst1_i = (__inst1_i + 1)
+					__n17__el := __n17.Root
+					fynelayout.InsertBefore(__parent, c.__slot1_at, __n17__el)
+					c.__slot1 = append(c.__slot1, __n17__el)
+				}
+			}
+			for __inst1_i_d, _ := range c.__inst1_live {
+				var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					c.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			c.__inst1_live = __inst1_next
 		}
+		c.__rendering1 = false
 	}
-	for __inst1_i_d, _ := range c.__inst1_live {
-		var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			c.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	c.__inst1_live = __inst1_next
 }
 
 func (c *Frame__slot5Instance) Destroy() {
@@ -642,6 +670,8 @@ type Frame__slot4Instance struct {
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__inst2_live   []*Frame__slot4Instance
+	__rendering2   bool
+	__renderAgain2 bool
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
 	__slot4        []fyne.CanvasObject
@@ -665,6 +695,8 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__inst2_live = []*Frame__slot4Instance{}
+	c.__rendering2 = false
+	c.__renderAgain2 = false
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
@@ -708,45 +740,55 @@ func (c *Frame__slot4Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot4Instance) __renderSlot2(__parent *fyne.Container) {
-	for _, __entry := range c.__slot2 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot2 = nil
-	c.__slot2_at = fynelayout.SlotAnchor(__parent, c.__slot2_at)
-	__inst2_next := []*Frame__slot4Instance{}
-	var __inst2_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n19 *Frame__slot4Instance
-			if len(c.__inst2_live) > __inst2_i {
-				__n19 = c.__inst2_live[__inst2_i]
-				__n19.SetResult((c.__prop_result - 1))
-				__n19.SetM(c.__prop_m)
-				__n19.Set__depth((c.__prop___depth + 1))
-				__n19.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst2_live) > __inst2_i {
-					c.__inst2_live[__inst2_i].Destroy()
-				}
-				__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n19 = __n19__new
+	if c.__rendering2 {
+		c.__renderAgain2 = true
+	} else {
+		c.__rendering2 = true
+		c.__renderAgain2 = true
+		for c.__renderAgain2 {
+			c.__renderAgain2 = false
+			for _, __entry := range c.__slot2 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__inst2_next = append(__inst2_next, __n19)
-			__inst2_i = (__inst2_i + 1)
-			__n19__el := __n19.Root
-			fynelayout.InsertBefore(__parent, c.__slot2_at, __n19__el)
-			c.__slot2 = append(c.__slot2, __n19__el)
+			c.__slot2 = nil
+			c.__slot2_at = fynelayout.SlotAnchor(__parent, c.__slot2_at)
+			__inst2_next := []*Frame__slot4Instance{}
+			var __inst2_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n19 *Frame__slot4Instance
+					if len(c.__inst2_live) > __inst2_i {
+						__n19 = c.__inst2_live[__inst2_i]
+						__n19.SetResult((c.__prop_result - 1))
+						__n19.SetM(c.__prop_m)
+						__n19.Set__depth((c.__prop___depth + 1))
+						__n19.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst2_live) > __inst2_i {
+							c.__inst2_live[__inst2_i].Destroy()
+						}
+						__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n19 = __n19__new
+					}
+					__inst2_next = append(__inst2_next, __n19)
+					__inst2_i = (__inst2_i + 1)
+					__n19__el := __n19.Root
+					fynelayout.InsertBefore(__parent, c.__slot2_at, __n19__el)
+					c.__slot2 = append(c.__slot2, __n19__el)
+				}
+			}
+			for __inst2_i_d, _ := range c.__inst2_live {
+				var __inst2_i_j int = ((len(c.__inst2_live) - 1) - __inst2_i_d)
+				if __inst2_i_j >= __inst2_i {
+					c.__inst2_live[__inst2_i_j].Destroy()
+				}
+			}
+			c.__inst2_live = __inst2_next
 		}
+		c.__rendering2 = false
 	}
-	for __inst2_i_d, _ := range c.__inst2_live {
-		var __inst2_i_j int = ((len(c.__inst2_live) - 1) - __inst2_i_d)
-		if __inst2_i_j >= __inst2_i {
-			c.__inst2_live[__inst2_i_j].Destroy()
-		}
-	}
-	c.__inst2_live = __inst2_next
 }
 
 func (c *Frame__slot4Instance) Destroy() {
@@ -775,6 +817,8 @@ type Frame__slot2Instance struct {
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
 	__inst3_live   []*Frame__slot6Instance
+	__rendering3   bool
+	__renderAgain3 bool
 	__slot4        []fyne.CanvasObject
 	__slot4_at     fyne.CanvasObject
 	__slot5        []fyne.CanvasObject
@@ -797,6 +841,8 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__inst3_live = []*Frame__slot6Instance{}
+	c.__rendering3 = false
+	c.__renderAgain3 = false
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__n22 = container.NewVBox()
@@ -839,45 +885,55 @@ func (c *Frame__slot2Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot2Instance) __renderSlot3(__parent *fyne.Container) {
-	for _, __entry := range c.__slot3 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot3 = nil
-	c.__slot3_at = fynelayout.SlotAnchor(__parent, c.__slot3_at)
-	__inst3_next := []*Frame__slot6Instance{}
-	var __inst3_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n21 *Frame__slot6Instance
-			if len(c.__inst3_live) > __inst3_i {
-				__n21 = c.__inst3_live[__inst3_i]
-				__n21.SetResult((c.__prop_result - 1))
-				__n21.SetM(c.__prop_m)
-				__n21.Set__depth((c.__prop___depth + 1))
-				__n21.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst3_live) > __inst3_i {
-					c.__inst3_live[__inst3_i].Destroy()
-				}
-				__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n21 = __n21__new
+	if c.__rendering3 {
+		c.__renderAgain3 = true
+	} else {
+		c.__rendering3 = true
+		c.__renderAgain3 = true
+		for c.__renderAgain3 {
+			c.__renderAgain3 = false
+			for _, __entry := range c.__slot3 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__inst3_next = append(__inst3_next, __n21)
-			__inst3_i = (__inst3_i + 1)
-			__n21__el := __n21.Root
-			fynelayout.InsertBefore(__parent, c.__slot3_at, __n21__el)
-			c.__slot3 = append(c.__slot3, __n21__el)
+			c.__slot3 = nil
+			c.__slot3_at = fynelayout.SlotAnchor(__parent, c.__slot3_at)
+			__inst3_next := []*Frame__slot6Instance{}
+			var __inst3_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n21 *Frame__slot6Instance
+					if len(c.__inst3_live) > __inst3_i {
+						__n21 = c.__inst3_live[__inst3_i]
+						__n21.SetResult((c.__prop_result - 1))
+						__n21.SetM(c.__prop_m)
+						__n21.Set__depth((c.__prop___depth + 1))
+						__n21.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst3_live) > __inst3_i {
+							c.__inst3_live[__inst3_i].Destroy()
+						}
+						__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n21 = __n21__new
+					}
+					__inst3_next = append(__inst3_next, __n21)
+					__inst3_i = (__inst3_i + 1)
+					__n21__el := __n21.Root
+					fynelayout.InsertBefore(__parent, c.__slot3_at, __n21__el)
+					c.__slot3 = append(c.__slot3, __n21__el)
+				}
+			}
+			for __inst3_i_d, _ := range c.__inst3_live {
+				var __inst3_i_j int = ((len(c.__inst3_live) - 1) - __inst3_i_d)
+				if __inst3_i_j >= __inst3_i {
+					c.__inst3_live[__inst3_i_j].Destroy()
+				}
+			}
+			c.__inst3_live = __inst3_next
 		}
+		c.__rendering3 = false
 	}
-	for __inst3_i_d, _ := range c.__inst3_live {
-		var __inst3_i_j int = ((len(c.__inst3_live) - 1) - __inst3_i_d)
-		if __inst3_i_j >= __inst3_i {
-			c.__inst3_live[__inst3_i_j].Destroy()
-		}
-	}
-	c.__inst3_live = __inst3_next
 }
 
 func (c *Frame__slot2Instance) Destroy() {
@@ -908,6 +964,8 @@ type Frame__slot1Instance struct {
 	__slot4        []fyne.CanvasObject
 	__slot4_at     fyne.CanvasObject
 	__inst4_live   []*Frame__slot5Instance
+	__rendering4   bool
+	__renderAgain4 bool
 	__slot5        []fyne.CanvasObject
 	__slot5_at     fyne.CanvasObject
 	__n24          *fyne.Container
@@ -929,6 +987,8 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__inst4_live = []*Frame__slot5Instance{}
+	c.__rendering4 = false
+	c.__renderAgain4 = false
 	c.__slot5 = nil
 	c.__n24 = container.NewVBox()
 	c.__n8 = widget.NewLabel("")
@@ -970,45 +1030,55 @@ func (c *Frame__slot1Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot1Instance) __renderSlot4(__parent *fyne.Container) {
-	for _, __entry := range c.__slot4 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot4 = nil
-	c.__slot4_at = fynelayout.SlotAnchor(__parent, c.__slot4_at)
-	__inst4_next := []*Frame__slot5Instance{}
-	var __inst4_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n23 *Frame__slot5Instance
-			if len(c.__inst4_live) > __inst4_i {
-				__n23 = c.__inst4_live[__inst4_i]
-				__n23.SetResult((c.__prop_result - 1))
-				__n23.SetM(c.__prop_m)
-				__n23.Set__depth((c.__prop___depth + 1))
-				__n23.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst4_live) > __inst4_i {
-					c.__inst4_live[__inst4_i].Destroy()
-				}
-				__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n23 = __n23__new
+	if c.__rendering4 {
+		c.__renderAgain4 = true
+	} else {
+		c.__rendering4 = true
+		c.__renderAgain4 = true
+		for c.__renderAgain4 {
+			c.__renderAgain4 = false
+			for _, __entry := range c.__slot4 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__inst4_next = append(__inst4_next, __n23)
-			__inst4_i = (__inst4_i + 1)
-			__n23__el := __n23.Root
-			fynelayout.InsertBefore(__parent, c.__slot4_at, __n23__el)
-			c.__slot4 = append(c.__slot4, __n23__el)
+			c.__slot4 = nil
+			c.__slot4_at = fynelayout.SlotAnchor(__parent, c.__slot4_at)
+			__inst4_next := []*Frame__slot5Instance{}
+			var __inst4_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n23 *Frame__slot5Instance
+					if len(c.__inst4_live) > __inst4_i {
+						__n23 = c.__inst4_live[__inst4_i]
+						__n23.SetResult((c.__prop_result - 1))
+						__n23.SetM(c.__prop_m)
+						__n23.Set__depth((c.__prop___depth + 1))
+						__n23.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst4_live) > __inst4_i {
+							c.__inst4_live[__inst4_i].Destroy()
+						}
+						__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n23 = __n23__new
+					}
+					__inst4_next = append(__inst4_next, __n23)
+					__inst4_i = (__inst4_i + 1)
+					__n23__el := __n23.Root
+					fynelayout.InsertBefore(__parent, c.__slot4_at, __n23__el)
+					c.__slot4 = append(c.__slot4, __n23__el)
+				}
+			}
+			for __inst4_i_d, _ := range c.__inst4_live {
+				var __inst4_i_j int = ((len(c.__inst4_live) - 1) - __inst4_i_d)
+				if __inst4_i_j >= __inst4_i {
+					c.__inst4_live[__inst4_i_j].Destroy()
+				}
+			}
+			c.__inst4_live = __inst4_next
 		}
+		c.__rendering4 = false
 	}
-	for __inst4_i_d, _ := range c.__inst4_live {
-		var __inst4_i_j int = ((len(c.__inst4_live) - 1) - __inst4_i_d)
-		if __inst4_i_j >= __inst4_i {
-			c.__inst4_live[__inst4_i_j].Destroy()
-		}
-	}
-	c.__inst4_live = __inst4_next
 }
 
 func (c *Frame__slot1Instance) Destroy() {
@@ -1041,6 +1111,8 @@ type Frame__slot0Instance struct {
 	__slot5        []fyne.CanvasObject
 	__slot5_at     fyne.CanvasObject
 	__inst5_live   []*Frame__slot4Instance
+	__rendering5   bool
+	__renderAgain5 bool
 	__n26          *fyne.Container
 	__n10          *widget.Label
 	__n11          *widget.Label
@@ -1061,6 +1133,8 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__inst5_live = []*Frame__slot4Instance{}
+	c.__rendering5 = false
+	c.__renderAgain5 = false
 	c.__n26 = container.NewVBox()
 	c.__n10 = widget.NewLabel("")
 	c.__n10.SetText(c.__prop_m)
@@ -1101,45 +1175,55 @@ func (c *Frame__slot0Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot0Instance) __renderSlot5(__parent *fyne.Container) {
-	for _, __entry := range c.__slot5 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot5 = nil
-	c.__slot5_at = fynelayout.SlotAnchor(__parent, c.__slot5_at)
-	__inst5_next := []*Frame__slot4Instance{}
-	var __inst5_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n25 *Frame__slot4Instance
-			if len(c.__inst5_live) > __inst5_i {
-				__n25 = c.__inst5_live[__inst5_i]
-				__n25.SetResult((c.__prop_result - 1))
-				__n25.SetM(c.__prop_m)
-				__n25.Set__depth((c.__prop___depth + 1))
-				__n25.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst5_live) > __inst5_i {
-					c.__inst5_live[__inst5_i].Destroy()
-				}
-				__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n25 = __n25__new
+	if c.__rendering5 {
+		c.__renderAgain5 = true
+	} else {
+		c.__rendering5 = true
+		c.__renderAgain5 = true
+		for c.__renderAgain5 {
+			c.__renderAgain5 = false
+			for _, __entry := range c.__slot5 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__inst5_next = append(__inst5_next, __n25)
-			__inst5_i = (__inst5_i + 1)
-			__n25__el := __n25.Root
-			fynelayout.InsertBefore(__parent, c.__slot5_at, __n25__el)
-			c.__slot5 = append(c.__slot5, __n25__el)
+			c.__slot5 = nil
+			c.__slot5_at = fynelayout.SlotAnchor(__parent, c.__slot5_at)
+			__inst5_next := []*Frame__slot4Instance{}
+			var __inst5_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n25 *Frame__slot4Instance
+					if len(c.__inst5_live) > __inst5_i {
+						__n25 = c.__inst5_live[__inst5_i]
+						__n25.SetResult((c.__prop_result - 1))
+						__n25.SetM(c.__prop_m)
+						__n25.Set__depth((c.__prop___depth + 1))
+						__n25.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst5_live) > __inst5_i {
+							c.__inst5_live[__inst5_i].Destroy()
+						}
+						__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n25 = __n25__new
+					}
+					__inst5_next = append(__inst5_next, __n25)
+					__inst5_i = (__inst5_i + 1)
+					__n25__el := __n25.Root
+					fynelayout.InsertBefore(__parent, c.__slot5_at, __n25__el)
+					c.__slot5 = append(c.__slot5, __n25__el)
+				}
+			}
+			for __inst5_i_d, _ := range c.__inst5_live {
+				var __inst5_i_j int = ((len(c.__inst5_live) - 1) - __inst5_i_d)
+				if __inst5_i_j >= __inst5_i {
+					c.__inst5_live[__inst5_i_j].Destroy()
+				}
+			}
+			c.__inst5_live = __inst5_next
 		}
+		c.__rendering5 = false
 	}
-	for __inst5_i_d, _ := range c.__inst5_live {
-		var __inst5_i_j int = ((len(c.__inst5_live) - 1) - __inst5_i_d)
-		if __inst5_i_j >= __inst5_i {
-			c.__inst5_live[__inst5_i_j].Destroy()
-		}
-	}
-	c.__inst5_live = __inst5_next
 }
 
 func (c *Frame__slot0Instance) Destroy() {
@@ -1261,6 +1345,8 @@ type Frame__slot6Instance struct {
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*Frame__slot6Instance
+	__rendering0   bool
+	__renderAgain0 bool
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__slot2        []gtk4rt.Handle
@@ -1286,6 +1372,8 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot6Instance{}
+	c.__rendering0 = false
+	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
@@ -1334,45 +1422,55 @@ func (c *Frame__slot6Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot6Instance) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot0 = nil
-	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
-	__inst0_next := []*Frame__slot6Instance{}
-	var __inst0_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n15 *Frame__slot6Instance
-			if len(c.__inst0_live) > __inst0_i {
-				__n15 = c.__inst0_live[__inst0_i]
-				__n15.SetResult((c.__prop_result - 1))
-				__n15.SetM(c.__prop_m)
-				__n15.Set__depth((c.__prop___depth + 1))
-				__n15.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst0_live) > __inst0_i {
-					c.__inst0_live[__inst0_i].Destroy()
-				}
-				__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n15 = __n15__new
+	if c.__rendering0 {
+		c.__renderAgain0 = true
+	} else {
+		c.__rendering0 = true
+		c.__renderAgain0 = true
+		for c.__renderAgain0 {
+			c.__renderAgain0 = false
+			for _, __entry := range c.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__inst0_next = append(__inst0_next, __n15)
-			__inst0_i = (__inst0_i + 1)
-			__n15__el := __n15.Root
-			gtk4rt.InsertBefore(parent, c.__slot0_at, __n15__el)
-			c.__slot0 = append(c.__slot0, __n15__el)
+			c.__slot0 = nil
+			c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
+			__inst0_next := []*Frame__slot6Instance{}
+			var __inst0_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n15 *Frame__slot6Instance
+					if len(c.__inst0_live) > __inst0_i {
+						__n15 = c.__inst0_live[__inst0_i]
+						__n15.SetResult((c.__prop_result - 1))
+						__n15.SetM(c.__prop_m)
+						__n15.Set__depth((c.__prop___depth + 1))
+						__n15.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst0_live) > __inst0_i {
+							c.__inst0_live[__inst0_i].Destroy()
+						}
+						__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n15 = __n15__new
+					}
+					__inst0_next = append(__inst0_next, __n15)
+					__inst0_i = (__inst0_i + 1)
+					__n15__el := __n15.Root
+					gtk4rt.InsertBefore(parent, c.__slot0_at, __n15__el)
+					c.__slot0 = append(c.__slot0, __n15__el)
+				}
+			}
+			for __inst0_i_d, _ := range c.__inst0_live {
+				var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					c.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			c.__inst0_live = __inst0_next
 		}
+		c.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range c.__inst0_live {
-		var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			c.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	c.__inst0_live = __inst0_next
 }
 
 func (c *Frame__slot6Instance) teardown() {
@@ -1423,6 +1521,8 @@ type Frame__slot5Instance struct {
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot5Instance
+	__rendering1   bool
+	__renderAgain1 bool
 	__slot2        []gtk4rt.Handle
 	__slot2_at     gtk4rt.Handle
 	__slot3        []gtk4rt.Handle
@@ -1447,6 +1547,8 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot5Instance{}
+	c.__rendering1 = false
+	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
@@ -1494,45 +1596,55 @@ func (c *Frame__slot5Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot5Instance) __renderSlot1(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot1 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot1 = nil
-	c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
-	__inst1_next := []*Frame__slot5Instance{}
-	var __inst1_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n17 *Frame__slot5Instance
-			if len(c.__inst1_live) > __inst1_i {
-				__n17 = c.__inst1_live[__inst1_i]
-				__n17.SetResult((c.__prop_result - 1))
-				__n17.SetM(c.__prop_m)
-				__n17.Set__depth((c.__prop___depth + 1))
-				__n17.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst1_live) > __inst1_i {
-					c.__inst1_live[__inst1_i].Destroy()
-				}
-				__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n17 = __n17__new
+	if c.__rendering1 {
+		c.__renderAgain1 = true
+	} else {
+		c.__rendering1 = true
+		c.__renderAgain1 = true
+		for c.__renderAgain1 {
+			c.__renderAgain1 = false
+			for _, __entry := range c.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__inst1_next = append(__inst1_next, __n17)
-			__inst1_i = (__inst1_i + 1)
-			__n17__el := __n17.Root
-			gtk4rt.InsertBefore(parent, c.__slot1_at, __n17__el)
-			c.__slot1 = append(c.__slot1, __n17__el)
+			c.__slot1 = nil
+			c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
+			__inst1_next := []*Frame__slot5Instance{}
+			var __inst1_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n17 *Frame__slot5Instance
+					if len(c.__inst1_live) > __inst1_i {
+						__n17 = c.__inst1_live[__inst1_i]
+						__n17.SetResult((c.__prop_result - 1))
+						__n17.SetM(c.__prop_m)
+						__n17.Set__depth((c.__prop___depth + 1))
+						__n17.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst1_live) > __inst1_i {
+							c.__inst1_live[__inst1_i].Destroy()
+						}
+						__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n17 = __n17__new
+					}
+					__inst1_next = append(__inst1_next, __n17)
+					__inst1_i = (__inst1_i + 1)
+					__n17__el := __n17.Root
+					gtk4rt.InsertBefore(parent, c.__slot1_at, __n17__el)
+					c.__slot1 = append(c.__slot1, __n17__el)
+				}
+			}
+			for __inst1_i_d, _ := range c.__inst1_live {
+				var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					c.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			c.__inst1_live = __inst1_next
 		}
+		c.__rendering1 = false
 	}
-	for __inst1_i_d, _ := range c.__inst1_live {
-		var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			c.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	c.__inst1_live = __inst1_next
 }
 
 func (c *Frame__slot5Instance) teardown() {
@@ -1585,6 +1697,8 @@ type Frame__slot4Instance struct {
 	__slot2        []gtk4rt.Handle
 	__slot2_at     gtk4rt.Handle
 	__inst2_live   []*Frame__slot4Instance
+	__rendering2   bool
+	__renderAgain2 bool
 	__slot3        []gtk4rt.Handle
 	__slot3_at     gtk4rt.Handle
 	__slot4        []gtk4rt.Handle
@@ -1608,6 +1722,8 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__inst2_live = []*Frame__slot4Instance{}
+	c.__rendering2 = false
+	c.__renderAgain2 = false
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
@@ -1654,45 +1770,55 @@ func (c *Frame__slot4Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot4Instance) __renderSlot2(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot2 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot2 = nil
-	c.__slot2_at = gtk4rt.SlotAnchor(parent, c.__slot2_at)
-	__inst2_next := []*Frame__slot4Instance{}
-	var __inst2_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n19 *Frame__slot4Instance
-			if len(c.__inst2_live) > __inst2_i {
-				__n19 = c.__inst2_live[__inst2_i]
-				__n19.SetResult((c.__prop_result - 1))
-				__n19.SetM(c.__prop_m)
-				__n19.Set__depth((c.__prop___depth + 1))
-				__n19.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst2_live) > __inst2_i {
-					c.__inst2_live[__inst2_i].Destroy()
-				}
-				__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n19 = __n19__new
+	if c.__rendering2 {
+		c.__renderAgain2 = true
+	} else {
+		c.__rendering2 = true
+		c.__renderAgain2 = true
+		for c.__renderAgain2 {
+			c.__renderAgain2 = false
+			for _, __entry := range c.__slot2 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__inst2_next = append(__inst2_next, __n19)
-			__inst2_i = (__inst2_i + 1)
-			__n19__el := __n19.Root
-			gtk4rt.InsertBefore(parent, c.__slot2_at, __n19__el)
-			c.__slot2 = append(c.__slot2, __n19__el)
+			c.__slot2 = nil
+			c.__slot2_at = gtk4rt.SlotAnchor(parent, c.__slot2_at)
+			__inst2_next := []*Frame__slot4Instance{}
+			var __inst2_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n19 *Frame__slot4Instance
+					if len(c.__inst2_live) > __inst2_i {
+						__n19 = c.__inst2_live[__inst2_i]
+						__n19.SetResult((c.__prop_result - 1))
+						__n19.SetM(c.__prop_m)
+						__n19.Set__depth((c.__prop___depth + 1))
+						__n19.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst2_live) > __inst2_i {
+							c.__inst2_live[__inst2_i].Destroy()
+						}
+						__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n19 = __n19__new
+					}
+					__inst2_next = append(__inst2_next, __n19)
+					__inst2_i = (__inst2_i + 1)
+					__n19__el := __n19.Root
+					gtk4rt.InsertBefore(parent, c.__slot2_at, __n19__el)
+					c.__slot2 = append(c.__slot2, __n19__el)
+				}
+			}
+			for __inst2_i_d, _ := range c.__inst2_live {
+				var __inst2_i_j int = ((len(c.__inst2_live) - 1) - __inst2_i_d)
+				if __inst2_i_j >= __inst2_i {
+					c.__inst2_live[__inst2_i_j].Destroy()
+				}
+			}
+			c.__inst2_live = __inst2_next
 		}
+		c.__rendering2 = false
 	}
-	for __inst2_i_d, _ := range c.__inst2_live {
-		var __inst2_i_j int = ((len(c.__inst2_live) - 1) - __inst2_i_d)
-		if __inst2_i_j >= __inst2_i {
-			c.__inst2_live[__inst2_i_j].Destroy()
-		}
-	}
-	c.__inst2_live = __inst2_next
 }
 
 func (c *Frame__slot4Instance) teardown() {
@@ -1747,6 +1873,8 @@ type Frame__slot2Instance struct {
 	__slot3        []gtk4rt.Handle
 	__slot3_at     gtk4rt.Handle
 	__inst3_live   []*Frame__slot6Instance
+	__rendering3   bool
+	__renderAgain3 bool
 	__slot4        []gtk4rt.Handle
 	__slot4_at     gtk4rt.Handle
 	__slot5        []gtk4rt.Handle
@@ -1769,6 +1897,8 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__inst3_live = []*Frame__slot6Instance{}
+	c.__rendering3 = false
+	c.__renderAgain3 = false
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__n22 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -1814,45 +1944,55 @@ func (c *Frame__slot2Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot2Instance) __renderSlot3(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot3 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot3 = nil
-	c.__slot3_at = gtk4rt.SlotAnchor(parent, c.__slot3_at)
-	__inst3_next := []*Frame__slot6Instance{}
-	var __inst3_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n21 *Frame__slot6Instance
-			if len(c.__inst3_live) > __inst3_i {
-				__n21 = c.__inst3_live[__inst3_i]
-				__n21.SetResult((c.__prop_result - 1))
-				__n21.SetM(c.__prop_m)
-				__n21.Set__depth((c.__prop___depth + 1))
-				__n21.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst3_live) > __inst3_i {
-					c.__inst3_live[__inst3_i].Destroy()
-				}
-				__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n21 = __n21__new
+	if c.__rendering3 {
+		c.__renderAgain3 = true
+	} else {
+		c.__rendering3 = true
+		c.__renderAgain3 = true
+		for c.__renderAgain3 {
+			c.__renderAgain3 = false
+			for _, __entry := range c.__slot3 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__inst3_next = append(__inst3_next, __n21)
-			__inst3_i = (__inst3_i + 1)
-			__n21__el := __n21.Root
-			gtk4rt.InsertBefore(parent, c.__slot3_at, __n21__el)
-			c.__slot3 = append(c.__slot3, __n21__el)
+			c.__slot3 = nil
+			c.__slot3_at = gtk4rt.SlotAnchor(parent, c.__slot3_at)
+			__inst3_next := []*Frame__slot6Instance{}
+			var __inst3_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n21 *Frame__slot6Instance
+					if len(c.__inst3_live) > __inst3_i {
+						__n21 = c.__inst3_live[__inst3_i]
+						__n21.SetResult((c.__prop_result - 1))
+						__n21.SetM(c.__prop_m)
+						__n21.Set__depth((c.__prop___depth + 1))
+						__n21.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst3_live) > __inst3_i {
+							c.__inst3_live[__inst3_i].Destroy()
+						}
+						__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n21 = __n21__new
+					}
+					__inst3_next = append(__inst3_next, __n21)
+					__inst3_i = (__inst3_i + 1)
+					__n21__el := __n21.Root
+					gtk4rt.InsertBefore(parent, c.__slot3_at, __n21__el)
+					c.__slot3 = append(c.__slot3, __n21__el)
+				}
+			}
+			for __inst3_i_d, _ := range c.__inst3_live {
+				var __inst3_i_j int = ((len(c.__inst3_live) - 1) - __inst3_i_d)
+				if __inst3_i_j >= __inst3_i {
+					c.__inst3_live[__inst3_i_j].Destroy()
+				}
+			}
+			c.__inst3_live = __inst3_next
 		}
+		c.__rendering3 = false
 	}
-	for __inst3_i_d, _ := range c.__inst3_live {
-		var __inst3_i_j int = ((len(c.__inst3_live) - 1) - __inst3_i_d)
-		if __inst3_i_j >= __inst3_i {
-			c.__inst3_live[__inst3_i_j].Destroy()
-		}
-	}
-	c.__inst3_live = __inst3_next
 }
 
 func (c *Frame__slot2Instance) teardown() {
@@ -1909,6 +2049,8 @@ type Frame__slot1Instance struct {
 	__slot4        []gtk4rt.Handle
 	__slot4_at     gtk4rt.Handle
 	__inst4_live   []*Frame__slot5Instance
+	__rendering4   bool
+	__renderAgain4 bool
 	__slot5        []gtk4rt.Handle
 	__slot5_at     gtk4rt.Handle
 	__n24          gtk4rt.Handle
@@ -1930,6 +2072,8 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__inst4_live = []*Frame__slot5Instance{}
+	c.__rendering4 = false
+	c.__renderAgain4 = false
 	c.__slot5 = nil
 	c.__n24 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(c.__n24, gtk4rt.OrientationVertical)
@@ -1974,45 +2118,55 @@ func (c *Frame__slot1Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot1Instance) __renderSlot4(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot4 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot4 = nil
-	c.__slot4_at = gtk4rt.SlotAnchor(parent, c.__slot4_at)
-	__inst4_next := []*Frame__slot5Instance{}
-	var __inst4_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n23 *Frame__slot5Instance
-			if len(c.__inst4_live) > __inst4_i {
-				__n23 = c.__inst4_live[__inst4_i]
-				__n23.SetResult((c.__prop_result - 1))
-				__n23.SetM(c.__prop_m)
-				__n23.Set__depth((c.__prop___depth + 1))
-				__n23.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst4_live) > __inst4_i {
-					c.__inst4_live[__inst4_i].Destroy()
-				}
-				__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n23 = __n23__new
+	if c.__rendering4 {
+		c.__renderAgain4 = true
+	} else {
+		c.__rendering4 = true
+		c.__renderAgain4 = true
+		for c.__renderAgain4 {
+			c.__renderAgain4 = false
+			for _, __entry := range c.__slot4 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__inst4_next = append(__inst4_next, __n23)
-			__inst4_i = (__inst4_i + 1)
-			__n23__el := __n23.Root
-			gtk4rt.InsertBefore(parent, c.__slot4_at, __n23__el)
-			c.__slot4 = append(c.__slot4, __n23__el)
+			c.__slot4 = nil
+			c.__slot4_at = gtk4rt.SlotAnchor(parent, c.__slot4_at)
+			__inst4_next := []*Frame__slot5Instance{}
+			var __inst4_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n23 *Frame__slot5Instance
+					if len(c.__inst4_live) > __inst4_i {
+						__n23 = c.__inst4_live[__inst4_i]
+						__n23.SetResult((c.__prop_result - 1))
+						__n23.SetM(c.__prop_m)
+						__n23.Set__depth((c.__prop___depth + 1))
+						__n23.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst4_live) > __inst4_i {
+							c.__inst4_live[__inst4_i].Destroy()
+						}
+						__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n23 = __n23__new
+					}
+					__inst4_next = append(__inst4_next, __n23)
+					__inst4_i = (__inst4_i + 1)
+					__n23__el := __n23.Root
+					gtk4rt.InsertBefore(parent, c.__slot4_at, __n23__el)
+					c.__slot4 = append(c.__slot4, __n23__el)
+				}
+			}
+			for __inst4_i_d, _ := range c.__inst4_live {
+				var __inst4_i_j int = ((len(c.__inst4_live) - 1) - __inst4_i_d)
+				if __inst4_i_j >= __inst4_i {
+					c.__inst4_live[__inst4_i_j].Destroy()
+				}
+			}
+			c.__inst4_live = __inst4_next
 		}
+		c.__rendering4 = false
 	}
-	for __inst4_i_d, _ := range c.__inst4_live {
-		var __inst4_i_j int = ((len(c.__inst4_live) - 1) - __inst4_i_d)
-		if __inst4_i_j >= __inst4_i {
-			c.__inst4_live[__inst4_i_j].Destroy()
-		}
-	}
-	c.__inst4_live = __inst4_next
 }
 
 func (c *Frame__slot1Instance) teardown() {
@@ -2071,6 +2225,8 @@ type Frame__slot0Instance struct {
 	__slot5        []gtk4rt.Handle
 	__slot5_at     gtk4rt.Handle
 	__inst5_live   []*Frame__slot4Instance
+	__rendering5   bool
+	__renderAgain5 bool
 	__n26          gtk4rt.Handle
 	__n10          gtk4rt.Handle
 	__n11          gtk4rt.Handle
@@ -2091,6 +2247,8 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__inst5_live = []*Frame__slot4Instance{}
+	c.__rendering5 = false
+	c.__renderAgain5 = false
 	c.__n26 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(c.__n26, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n26, 6)
@@ -2134,45 +2292,55 @@ func (c *Frame__slot0Instance) Set__p0(__v string) {
 }
 
 func (c *Frame__slot0Instance) __renderSlot5(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot5 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot5 = nil
-	c.__slot5_at = gtk4rt.SlotAnchor(parent, c.__slot5_at)
-	__inst5_next := []*Frame__slot4Instance{}
-	var __inst5_i int = 0
-	if c.__prop_result > 0 {
-		if c.__prop___depth >= 512 {
-			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-		} else {
-			var __n25 *Frame__slot4Instance
-			if len(c.__inst5_live) > __inst5_i {
-				__n25 = c.__inst5_live[__inst5_i]
-				__n25.SetResult((c.__prop_result - 1))
-				__n25.SetM(c.__prop_m)
-				__n25.Set__depth((c.__prop___depth + 1))
-				__n25.Set__p0(c.__prop___p0)
-			} else {
-				if len(c.__inst5_live) > __inst5_i {
-					c.__inst5_live[__inst5_i].Destroy()
-				}
-				__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-				__n25 = __n25__new
+	if c.__rendering5 {
+		c.__renderAgain5 = true
+	} else {
+		c.__rendering5 = true
+		c.__renderAgain5 = true
+		for c.__renderAgain5 {
+			c.__renderAgain5 = false
+			for _, __entry := range c.__slot5 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__inst5_next = append(__inst5_next, __n25)
-			__inst5_i = (__inst5_i + 1)
-			__n25__el := __n25.Root
-			gtk4rt.InsertBefore(parent, c.__slot5_at, __n25__el)
-			c.__slot5 = append(c.__slot5, __n25__el)
+			c.__slot5 = nil
+			c.__slot5_at = gtk4rt.SlotAnchor(parent, c.__slot5_at)
+			__inst5_next := []*Frame__slot4Instance{}
+			var __inst5_i int = 0
+			if c.__prop_result > 0 {
+				if c.__prop___depth >= 512 {
+					panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+				} else {
+					var __n25 *Frame__slot4Instance
+					if len(c.__inst5_live) > __inst5_i {
+						__n25 = c.__inst5_live[__inst5_i]
+						__n25.SetResult((c.__prop_result - 1))
+						__n25.SetM(c.__prop_m)
+						__n25.Set__depth((c.__prop___depth + 1))
+						__n25.Set__p0(c.__prop___p0)
+					} else {
+						if len(c.__inst5_live) > __inst5_i {
+							c.__inst5_live[__inst5_i].Destroy()
+						}
+						__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+						__n25 = __n25__new
+					}
+					__inst5_next = append(__inst5_next, __n25)
+					__inst5_i = (__inst5_i + 1)
+					__n25__el := __n25.Root
+					gtk4rt.InsertBefore(parent, c.__slot5_at, __n25__el)
+					c.__slot5 = append(c.__slot5, __n25__el)
+				}
+			}
+			for __inst5_i_d, _ := range c.__inst5_live {
+				var __inst5_i_j int = ((len(c.__inst5_live) - 1) - __inst5_i_d)
+				if __inst5_i_j >= __inst5_i {
+					c.__inst5_live[__inst5_i_j].Destroy()
+				}
+			}
+			c.__inst5_live = __inst5_next
 		}
+		c.__rendering5 = false
 	}
-	for __inst5_i_d, _ := range c.__inst5_live {
-		var __inst5_i_j int = ((len(c.__inst5_live) - 1) - __inst5_i_d)
-		if __inst5_i_j >= __inst5_i {
-			c.__inst5_live[__inst5_i_j].Destroy()
-		}
-	}
-	c.__inst5_live = __inst5_next
 }
 
 func (c *Frame__slot0Instance) teardown() {
@@ -2267,6 +2435,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -2398,6 +2567,8 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __slot02 = [];
     let __inst1_live = [];
+    let __rendering0 = false;
+    let __renderAgain0 = false;
     let __slot12 = [];
     let __slot22 = [];
     let __slot32 = [];
@@ -2427,55 +2598,65 @@ window.__sngl_boot = () => {
       }
     }
     function __renderSlot0(parent) {
-      let __place0_prev = __slot02;
-      let __place0_i = 0;
-      __slot02 = [];
-      let __inst1_next = [];
-      let __inst1_i = 0;
-      if (__prop_result > 0) {
-        if (__prop___depth >= 512) {
-          throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
-        } else {
-          let __n15 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n15 = __inst1_live[__inst1_i];
-            __n15.__set_result(__prop_result - 1);
-            __n15.__set_m(__prop_m);
-            __n15.__set___depth(__prop___depth + 1);
-            __n15.__set___p0(__prop___p0);
-          } else {
-            if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+      if (__rendering0) {
+        __renderAgain0 = true;
+      } else {
+        __rendering0 = true;
+        __renderAgain0 = true;
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot02;
+          let __place0_i = 0;
+          __slot02 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          if (__prop_result > 0) {
+            if (__prop___depth >= 512) {
+              throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
+            } else {
+              let __n15 = null;
+              if (__inst1_live.length > __inst1_i) {
+                __n15 = __inst1_live[__inst1_i];
+                __n15.__set_result(__prop_result - 1);
+                __n15.__set_m(__prop_m);
+                __n15.__set___depth(__prop___depth + 1);
+                __n15.__set___p0(__prop___p0);
+              } else {
+                if (__inst1_live.length > __inst1_i) {
+                  __inst1_live[__inst1_i].__destroy();
+                }
+                let __n15__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                __n15 = __n15__new;
+              }
+              __inst1_next.push(__n15);
+              __inst1_i = __inst1_i + 1;
+              let __n15__el = __n15.__root;
+              let __place0_i_ref0 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref0 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref0 === __n15__el) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n15__el, __place0_i_ref0);
+              }
+              __slot02.push(__n15__el);
             }
-            let __n15__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-            __n15 = __n15__new;
           }
-          __inst1_next.push(__n15);
-          __inst1_i = __inst1_i + 1;
-          let __n15__el = __n15.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n15__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n15__el, __place0_i_ref0);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot02.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot02.push(__n15__el);
         }
-      }
-      for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-        let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-        if (__inst1_i_j >= __inst1_i) {
-          __inst1_live[__inst1_i_j].__destroy();
-        }
-      }
-      __inst1_live = __inst1_next;
-      for (const __place0_prev_e of __place0_prev) {
-        if (__slot02.indexOf(__place0_prev_e) < 0) {
-          parent.removeChild(__place0_prev_e);
-        }
+        __rendering0 = false;
       }
     }
     function __snglTeardown() {
@@ -2523,6 +2704,8 @@ window.__sngl_boot = () => {
     let __slot02 = [];
     let __slot12 = [];
     let __inst3_live = [];
+    let __rendering1 = false;
+    let __renderAgain1 = false;
     let __slot22 = [];
     let __slot32 = [];
     let __slot42 = [];
@@ -2551,55 +2734,65 @@ window.__sngl_boot = () => {
       }
     }
     function __renderSlot1(parent) {
-      let __place2_prev = __slot12;
-      let __place2_i = 0;
-      __slot12 = [];
-      let __inst3_next = [];
-      let __inst3_i = 0;
-      if (__prop_result > 0) {
-        if (__prop___depth >= 512) {
-          throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
-        } else {
-          let __n17 = null;
-          if (__inst3_live.length > __inst3_i) {
-            __n17 = __inst3_live[__inst3_i];
-            __n17.__set_result(__prop_result - 1);
-            __n17.__set_m(__prop_m);
-            __n17.__set___depth(__prop___depth + 1);
-            __n17.__set___p0(__prop___p0);
-          } else {
-            if (__inst3_live.length > __inst3_i) {
-              __inst3_live[__inst3_i].__destroy();
+      if (__rendering1) {
+        __renderAgain1 = true;
+      } else {
+        __rendering1 = true;
+        __renderAgain1 = true;
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place2_prev = __slot12;
+          let __place2_i = 0;
+          __slot12 = [];
+          let __inst3_next = [];
+          let __inst3_i = 0;
+          if (__prop_result > 0) {
+            if (__prop___depth >= 512) {
+              throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
+            } else {
+              let __n17 = null;
+              if (__inst3_live.length > __inst3_i) {
+                __n17 = __inst3_live[__inst3_i];
+                __n17.__set_result(__prop_result - 1);
+                __n17.__set_m(__prop_m);
+                __n17.__set___depth(__prop___depth + 1);
+                __n17.__set___p0(__prop___p0);
+              } else {
+                if (__inst3_live.length > __inst3_i) {
+                  __inst3_live[__inst3_i].__destroy();
+                }
+                let __n17__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                __n17 = __n17__new;
+              }
+              __inst3_next.push(__n17);
+              __inst3_i = __inst3_i + 1;
+              let __n17__el = __n17.__root;
+              let __place2_i_ref0 = null;
+              if (__place2_i < __place2_prev.length) {
+                __place2_i_ref0 = __place2_prev[__place2_i];
+              }
+              if (__place2_i_ref0 === __n17__el) {
+                __place2_i = __place2_i + 1;
+              } else {
+                parent.insertBefore(__n17__el, __place2_i_ref0);
+              }
+              __slot12.push(__n17__el);
             }
-            let __n17__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-            __n17 = __n17__new;
           }
-          __inst3_next.push(__n17);
-          __inst3_i = __inst3_i + 1;
-          let __n17__el = __n17.__root;
-          let __place2_i_ref0 = null;
-          if (__place2_i < __place2_prev.length) {
-            __place2_i_ref0 = __place2_prev[__place2_i];
+          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+            if (__inst3_i_j >= __inst3_i) {
+              __inst3_live[__inst3_i_j].__destroy();
+            }
           }
-          if (__place2_i_ref0 === __n17__el) {
-            __place2_i = __place2_i + 1;
-          } else {
-            parent.insertBefore(__n17__el, __place2_i_ref0);
+          __inst3_live = __inst3_next;
+          for (const __place2_prev_e of __place2_prev) {
+            if (__slot12.indexOf(__place2_prev_e) < 0) {
+              parent.removeChild(__place2_prev_e);
+            }
           }
-          __slot12.push(__n17__el);
         }
-      }
-      for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-        let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-        if (__inst3_i_j >= __inst3_i) {
-          __inst3_live[__inst3_i_j].__destroy();
-        }
-      }
-      __inst3_live = __inst3_next;
-      for (const __place2_prev_e of __place2_prev) {
-        if (__slot12.indexOf(__place2_prev_e) < 0) {
-          parent.removeChild(__place2_prev_e);
-        }
+        __rendering1 = false;
       }
     }
     function __snglTeardown() {
@@ -2648,6 +2841,8 @@ window.__sngl_boot = () => {
     let __slot12 = [];
     let __slot22 = [];
     let __inst5_live = [];
+    let __rendering2 = false;
+    let __renderAgain2 = false;
     let __slot32 = [];
     let __slot42 = [];
     let __slot52 = [];
@@ -2675,55 +2870,65 @@ window.__sngl_boot = () => {
       }
     }
     function __renderSlot2(parent) {
-      let __place4_prev = __slot22;
-      let __place4_i = 0;
-      __slot22 = [];
-      let __inst5_next = [];
-      let __inst5_i = 0;
-      if (__prop_result > 0) {
-        if (__prop___depth >= 512) {
-          throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
-        } else {
-          let __n19 = null;
-          if (__inst5_live.length > __inst5_i) {
-            __n19 = __inst5_live[__inst5_i];
-            __n19.__set_result(__prop_result - 1);
-            __n19.__set_m(__prop_m);
-            __n19.__set___depth(__prop___depth + 1);
-            __n19.__set___p0(__prop___p0);
-          } else {
-            if (__inst5_live.length > __inst5_i) {
-              __inst5_live[__inst5_i].__destroy();
+      if (__rendering2) {
+        __renderAgain2 = true;
+      } else {
+        __rendering2 = true;
+        __renderAgain2 = true;
+        while (__renderAgain2) {
+          __renderAgain2 = false;
+          let __place4_prev = __slot22;
+          let __place4_i = 0;
+          __slot22 = [];
+          let __inst5_next = [];
+          let __inst5_i = 0;
+          if (__prop_result > 0) {
+            if (__prop___depth >= 512) {
+              throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
+            } else {
+              let __n19 = null;
+              if (__inst5_live.length > __inst5_i) {
+                __n19 = __inst5_live[__inst5_i];
+                __n19.__set_result(__prop_result - 1);
+                __n19.__set_m(__prop_m);
+                __n19.__set___depth(__prop___depth + 1);
+                __n19.__set___p0(__prop___p0);
+              } else {
+                if (__inst5_live.length > __inst5_i) {
+                  __inst5_live[__inst5_i].__destroy();
+                }
+                let __n19__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                __n19 = __n19__new;
+              }
+              __inst5_next.push(__n19);
+              __inst5_i = __inst5_i + 1;
+              let __n19__el = __n19.__root;
+              let __place4_i_ref0 = null;
+              if (__place4_i < __place4_prev.length) {
+                __place4_i_ref0 = __place4_prev[__place4_i];
+              }
+              if (__place4_i_ref0 === __n19__el) {
+                __place4_i = __place4_i + 1;
+              } else {
+                parent.insertBefore(__n19__el, __place4_i_ref0);
+              }
+              __slot22.push(__n19__el);
             }
-            let __n19__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-            __n19 = __n19__new;
           }
-          __inst5_next.push(__n19);
-          __inst5_i = __inst5_i + 1;
-          let __n19__el = __n19.__root;
-          let __place4_i_ref0 = null;
-          if (__place4_i < __place4_prev.length) {
-            __place4_i_ref0 = __place4_prev[__place4_i];
+          for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+            let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+            if (__inst5_i_j >= __inst5_i) {
+              __inst5_live[__inst5_i_j].__destroy();
+            }
           }
-          if (__place4_i_ref0 === __n19__el) {
-            __place4_i = __place4_i + 1;
-          } else {
-            parent.insertBefore(__n19__el, __place4_i_ref0);
+          __inst5_live = __inst5_next;
+          for (const __place4_prev_e of __place4_prev) {
+            if (__slot22.indexOf(__place4_prev_e) < 0) {
+              parent.removeChild(__place4_prev_e);
+            }
           }
-          __slot22.push(__n19__el);
         }
-      }
-      for (const [__inst5_i_d, _] of __inst5_live.entries()) {
-        let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
-        if (__inst5_i_j >= __inst5_i) {
-          __inst5_live[__inst5_i_j].__destroy();
-        }
-      }
-      __inst5_live = __inst5_next;
-      for (const __place4_prev_e of __place4_prev) {
-        if (__slot22.indexOf(__place4_prev_e) < 0) {
-          parent.removeChild(__place4_prev_e);
-        }
+        __rendering2 = false;
       }
     }
     function __snglTeardown() {
@@ -2773,6 +2978,8 @@ window.__sngl_boot = () => {
     let __slot22 = [];
     let __slot32 = [];
     let __inst7_live = [];
+    let __rendering3 = false;
+    let __renderAgain3 = false;
     let __slot42 = [];
     let __slot52 = [];
     function __set_result(__v) {
@@ -2799,55 +3006,65 @@ window.__sngl_boot = () => {
       }
     }
     function __renderSlot3(parent) {
-      let __place6_prev = __slot32;
-      let __place6_i = 0;
-      __slot32 = [];
-      let __inst7_next = [];
-      let __inst7_i = 0;
-      if (__prop_result > 0) {
-        if (__prop___depth >= 512) {
-          throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
-        } else {
-          let __n21 = null;
-          if (__inst7_live.length > __inst7_i) {
-            __n21 = __inst7_live[__inst7_i];
-            __n21.__set_result(__prop_result - 1);
-            __n21.__set_m(__prop_m);
-            __n21.__set___depth(__prop___depth + 1);
-            __n21.__set___p0(__prop___p0);
-          } else {
-            if (__inst7_live.length > __inst7_i) {
-              __inst7_live[__inst7_i].__destroy();
+      if (__rendering3) {
+        __renderAgain3 = true;
+      } else {
+        __rendering3 = true;
+        __renderAgain3 = true;
+        while (__renderAgain3) {
+          __renderAgain3 = false;
+          let __place6_prev = __slot32;
+          let __place6_i = 0;
+          __slot32 = [];
+          let __inst7_next = [];
+          let __inst7_i = 0;
+          if (__prop_result > 0) {
+            if (__prop___depth >= 512) {
+              throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
+            } else {
+              let __n21 = null;
+              if (__inst7_live.length > __inst7_i) {
+                __n21 = __inst7_live[__inst7_i];
+                __n21.__set_result(__prop_result - 1);
+                __n21.__set_m(__prop_m);
+                __n21.__set___depth(__prop___depth + 1);
+                __n21.__set___p0(__prop___p0);
+              } else {
+                if (__inst7_live.length > __inst7_i) {
+                  __inst7_live[__inst7_i].__destroy();
+                }
+                let __n21__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                __n21 = __n21__new;
+              }
+              __inst7_next.push(__n21);
+              __inst7_i = __inst7_i + 1;
+              let __n21__el = __n21.__root;
+              let __place6_i_ref0 = null;
+              if (__place6_i < __place6_prev.length) {
+                __place6_i_ref0 = __place6_prev[__place6_i];
+              }
+              if (__place6_i_ref0 === __n21__el) {
+                __place6_i = __place6_i + 1;
+              } else {
+                parent.insertBefore(__n21__el, __place6_i_ref0);
+              }
+              __slot32.push(__n21__el);
             }
-            let __n21__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-            __n21 = __n21__new;
           }
-          __inst7_next.push(__n21);
-          __inst7_i = __inst7_i + 1;
-          let __n21__el = __n21.__root;
-          let __place6_i_ref0 = null;
-          if (__place6_i < __place6_prev.length) {
-            __place6_i_ref0 = __place6_prev[__place6_i];
+          for (const [__inst7_i_d, _] of __inst7_live.entries()) {
+            let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
+            if (__inst7_i_j >= __inst7_i) {
+              __inst7_live[__inst7_i_j].__destroy();
+            }
           }
-          if (__place6_i_ref0 === __n21__el) {
-            __place6_i = __place6_i + 1;
-          } else {
-            parent.insertBefore(__n21__el, __place6_i_ref0);
+          __inst7_live = __inst7_next;
+          for (const __place6_prev_e of __place6_prev) {
+            if (__slot32.indexOf(__place6_prev_e) < 0) {
+              parent.removeChild(__place6_prev_e);
+            }
           }
-          __slot32.push(__n21__el);
         }
-      }
-      for (const [__inst7_i_d, _] of __inst7_live.entries()) {
-        let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
-        if (__inst7_i_j >= __inst7_i) {
-          __inst7_live[__inst7_i_j].__destroy();
-        }
-      }
-      __inst7_live = __inst7_next;
-      for (const __place6_prev_e of __place6_prev) {
-        if (__slot32.indexOf(__place6_prev_e) < 0) {
-          parent.removeChild(__place6_prev_e);
-        }
+        __rendering3 = false;
       }
     }
     function __snglTeardown() {
@@ -2898,6 +3115,8 @@ window.__sngl_boot = () => {
     let __slot32 = [];
     let __slot42 = [];
     let __inst9_live = [];
+    let __rendering4 = false;
+    let __renderAgain4 = false;
     let __slot52 = [];
     function __set_result(__v) {
       __prop_result = __v;
@@ -2923,55 +3142,65 @@ window.__sngl_boot = () => {
       }
     }
     function __renderSlot4(parent) {
-      let __place8_prev = __slot42;
-      let __place8_i = 0;
-      __slot42 = [];
-      let __inst9_next = [];
-      let __inst9_i = 0;
-      if (__prop_result > 0) {
-        if (__prop___depth >= 512) {
-          throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
-        } else {
-          let __n23 = null;
-          if (__inst9_live.length > __inst9_i) {
-            __n23 = __inst9_live[__inst9_i];
-            __n23.__set_result(__prop_result - 1);
-            __n23.__set_m(__prop_m);
-            __n23.__set___depth(__prop___depth + 1);
-            __n23.__set___p0(__prop___p0);
-          } else {
-            if (__inst9_live.length > __inst9_i) {
-              __inst9_live[__inst9_i].__destroy();
+      if (__rendering4) {
+        __renderAgain4 = true;
+      } else {
+        __rendering4 = true;
+        __renderAgain4 = true;
+        while (__renderAgain4) {
+          __renderAgain4 = false;
+          let __place8_prev = __slot42;
+          let __place8_i = 0;
+          __slot42 = [];
+          let __inst9_next = [];
+          let __inst9_i = 0;
+          if (__prop_result > 0) {
+            if (__prop___depth >= 512) {
+              throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
+            } else {
+              let __n23 = null;
+              if (__inst9_live.length > __inst9_i) {
+                __n23 = __inst9_live[__inst9_i];
+                __n23.__set_result(__prop_result - 1);
+                __n23.__set_m(__prop_m);
+                __n23.__set___depth(__prop___depth + 1);
+                __n23.__set___p0(__prop___p0);
+              } else {
+                if (__inst9_live.length > __inst9_i) {
+                  __inst9_live[__inst9_i].__destroy();
+                }
+                let __n23__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                __n23 = __n23__new;
+              }
+              __inst9_next.push(__n23);
+              __inst9_i = __inst9_i + 1;
+              let __n23__el = __n23.__root;
+              let __place8_i_ref0 = null;
+              if (__place8_i < __place8_prev.length) {
+                __place8_i_ref0 = __place8_prev[__place8_i];
+              }
+              if (__place8_i_ref0 === __n23__el) {
+                __place8_i = __place8_i + 1;
+              } else {
+                parent.insertBefore(__n23__el, __place8_i_ref0);
+              }
+              __slot42.push(__n23__el);
             }
-            let __n23__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-            __n23 = __n23__new;
           }
-          __inst9_next.push(__n23);
-          __inst9_i = __inst9_i + 1;
-          let __n23__el = __n23.__root;
-          let __place8_i_ref0 = null;
-          if (__place8_i < __place8_prev.length) {
-            __place8_i_ref0 = __place8_prev[__place8_i];
+          for (const [__inst9_i_d, _] of __inst9_live.entries()) {
+            let __inst9_i_j = __inst9_live.length - 1 - __inst9_i_d;
+            if (__inst9_i_j >= __inst9_i) {
+              __inst9_live[__inst9_i_j].__destroy();
+            }
           }
-          if (__place8_i_ref0 === __n23__el) {
-            __place8_i = __place8_i + 1;
-          } else {
-            parent.insertBefore(__n23__el, __place8_i_ref0);
+          __inst9_live = __inst9_next;
+          for (const __place8_prev_e of __place8_prev) {
+            if (__slot42.indexOf(__place8_prev_e) < 0) {
+              parent.removeChild(__place8_prev_e);
+            }
           }
-          __slot42.push(__n23__el);
         }
-      }
-      for (const [__inst9_i_d, _] of __inst9_live.entries()) {
-        let __inst9_i_j = __inst9_live.length - 1 - __inst9_i_d;
-        if (__inst9_i_j >= __inst9_i) {
-          __inst9_live[__inst9_i_j].__destroy();
-        }
-      }
-      __inst9_live = __inst9_next;
-      for (const __place8_prev_e of __place8_prev) {
-        if (__slot42.indexOf(__place8_prev_e) < 0) {
-          parent.removeChild(__place8_prev_e);
-        }
+        __rendering4 = false;
       }
     }
     function __snglTeardown() {
@@ -3023,6 +3252,8 @@ window.__sngl_boot = () => {
     let __slot42 = [];
     let __slot52 = [];
     let __inst11_live = [];
+    let __rendering5 = false;
+    let __renderAgain5 = false;
     function __set_result(__v) {
       __prop_result = __v;
       __n11.textContent = "level " + String(__prop_result) + " " + __prop___p0;
@@ -3047,55 +3278,65 @@ window.__sngl_boot = () => {
       }
     }
     function __renderSlot5(parent) {
-      let __place10_prev = __slot52;
-      let __place10_i = 0;
-      __slot52 = [];
-      let __inst11_next = [];
-      let __inst11_i = 0;
-      if (__prop_result > 0) {
-        if (__prop___depth >= 512) {
-          throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
-        } else {
-          let __n25 = null;
-          if (__inst11_live.length > __inst11_i) {
-            __n25 = __inst11_live[__inst11_i];
-            __n25.__set_result(__prop_result - 1);
-            __n25.__set_m(__prop_m);
-            __n25.__set___depth(__prop___depth + 1);
-            __n25.__set___p0(__prop___p0);
-          } else {
-            if (__inst11_live.length > __inst11_i) {
-              __inst11_live[__inst11_i].__destroy();
+      if (__rendering5) {
+        __renderAgain5 = true;
+      } else {
+        __rendering5 = true;
+        __renderAgain5 = true;
+        while (__renderAgain5) {
+          __renderAgain5 = false;
+          let __place10_prev = __slot52;
+          let __place10_i = 0;
+          __slot52 = [];
+          let __inst11_next = [];
+          let __inst11_i = 0;
+          if (__prop_result > 0) {
+            if (__prop___depth >= 512) {
+              throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
+            } else {
+              let __n25 = null;
+              if (__inst11_live.length > __inst11_i) {
+                __n25 = __inst11_live[__inst11_i];
+                __n25.__set_result(__prop_result - 1);
+                __n25.__set_m(__prop_m);
+                __n25.__set___depth(__prop___depth + 1);
+                __n25.__set___p0(__prop___p0);
+              } else {
+                if (__inst11_live.length > __inst11_i) {
+                  __inst11_live[__inst11_i].__destroy();
+                }
+                let __n25__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                __n25 = __n25__new;
+              }
+              __inst11_next.push(__n25);
+              __inst11_i = __inst11_i + 1;
+              let __n25__el = __n25.__root;
+              let __place10_i_ref0 = null;
+              if (__place10_i < __place10_prev.length) {
+                __place10_i_ref0 = __place10_prev[__place10_i];
+              }
+              if (__place10_i_ref0 === __n25__el) {
+                __place10_i = __place10_i + 1;
+              } else {
+                parent.insertBefore(__n25__el, __place10_i_ref0);
+              }
+              __slot52.push(__n25__el);
             }
-            let __n25__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-            __n25 = __n25__new;
           }
-          __inst11_next.push(__n25);
-          __inst11_i = __inst11_i + 1;
-          let __n25__el = __n25.__root;
-          let __place10_i_ref0 = null;
-          if (__place10_i < __place10_prev.length) {
-            __place10_i_ref0 = __place10_prev[__place10_i];
+          for (const [__inst11_i_d, _] of __inst11_live.entries()) {
+            let __inst11_i_j = __inst11_live.length - 1 - __inst11_i_d;
+            if (__inst11_i_j >= __inst11_i) {
+              __inst11_live[__inst11_i_j].__destroy();
+            }
           }
-          if (__place10_i_ref0 === __n25__el) {
-            __place10_i = __place10_i + 1;
-          } else {
-            parent.insertBefore(__n25__el, __place10_i_ref0);
+          __inst11_live = __inst11_next;
+          for (const __place10_prev_e of __place10_prev) {
+            if (__slot52.indexOf(__place10_prev_e) < 0) {
+              parent.removeChild(__place10_prev_e);
+            }
           }
-          __slot52.push(__n25__el);
         }
-      }
-      for (const [__inst11_i_d, _] of __inst11_live.entries()) {
-        let __inst11_i_j = __inst11_live.length - 1 - __inst11_i_d;
-        if (__inst11_i_j >= __inst11_i) {
-          __inst11_live[__inst11_i_j].__destroy();
-        }
-      }
-      __inst11_live = __inst11_next;
-      for (const __place10_prev_e of __place10_prev) {
-        if (__slot52.indexOf(__place10_prev_e) < 0) {
-          parent.removeChild(__place10_prev_e);
-        }
+        __rendering5 = false;
       }
     }
     function __snglTeardown() {
@@ -3155,10 +3396,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:547c0374403b4b2e5b3d56c5be882832
 -- run/go/fyne --
-pass sha256:0527d5d1368d047cb32c086f0753cd73
+pass sha256:262052c843fafaec80f9be09be76d8d7
 -- run/go/gtk4 --
-pass sha256:34e4971051a81206c3140b1e0316de52
+pass sha256:5a82e3eb5e2fef512d2fe8b8ee218bb1
 -- run/kotlin/android --
-pass sha256:c005defb7c3e2207e03b76a638955650
+pass sha256:7c0d746c9e5037b8688e1bec65bc823a
 -- run/none/html --
-pass sha256:daa28130029ec37aefce376f0042a1ba
+pass sha256:6304aa80d96707b8f80fee3e0fa0bc86

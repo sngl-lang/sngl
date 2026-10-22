@@ -185,6 +185,7 @@ type modelState struct {
 	__effect2_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -214,6 +215,7 @@ func New() Model {
 	m.__effect2_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__effects0_settle()
@@ -312,25 +314,27 @@ func (m *Model) __effect2_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect2_down()
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-			m.__effect2_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect2_down()
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+				m.__effect2_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -715,6 +719,7 @@ type Model struct {
 	__effect2_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n2 *widget.Label
@@ -748,6 +753,7 @@ func New() *Model {
 	m.__effect2_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -838,25 +844,27 @@ func (m *Model) __effect2_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect2_down()
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-			m.__effect2_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect2_down()
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+				m.__effect2_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1108,6 +1116,7 @@ type Model struct {
 	__effect2_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	tap                 gtk4rt.Handle
 	wrap                gtk4rt.Handle
@@ -1139,6 +1148,7 @@ func New() *Model {
 	m.__effect2_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -1229,25 +1239,27 @@ func (m *Model) __effect2_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect2_down()
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-			m.__effect2_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect2_down()
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+				m.__effect2_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1412,7 +1424,7 @@ func Handler() http.Handler {
 
 func handleIndex(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from funcs.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<span>d9</span>\n<span>d5</span>\n<button id=\"$0\" data-sngl-id=\"tap\">\n  <span>tap</span>\n</button>\n<button id=\"$1\" data-sngl-id=\"wrap\">\n  <span>wrap</span>\n</button>\n<span id=\"__n0\" data-sngl-id=\"__n0\">\n</span>\n<span id=\"__n1\" data-sngl-id=\"__n1\">\n</span>\n\n<script>\nwindow.__snglErrors = [];\naddEventListener(\"error\", (e) => window.__snglErrors.push(String(e.message)));\naddEventListener(\"unhandledrejection\", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));\nwindow.__sngl_markup = Array.from(document.body.childNodes)\n  .filter((n) => n.nodeName !== \"SCRIPT\").map((n) => n.cloneNode(true));\nwindow.__sngl_reset = () => {\n  for (const n of Array.from(document.body.childNodes)) {\n    if (n.nodeName !== \"SCRIPT\") n.remove();\n  }\n  const first = document.body.firstChild;\n  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);\n  window.__sngl_boot();\n};\nwindow.__sngl_boot = () => {\n(() => {\n  // sngl-entry.js\n  var state = { plain: \"\", under: \"\", inner: \"\", chained: \"\", recursed: \"\", method: \"\", lambda: \"\", mapped: \"\", taken: \"\", clicked: \"\", provided: \"\" };\n  state.tapClick = () => $0.click();\n  state.wrapClick = () => $1.click();\n  if (typeof window !== \"undefined\") {\n    window.__sngl_state = state;\n  }\n  function main_twice(state2, __ctx_depth2) {\n    return String(__ctx_depth2 * 2);\n  }\n  function __effect0_mount() {\n    state.plain = \"d\" + String(__ctx_depth);\n    let f = (__ctxArg0) => String(__ctxArg0) + \":\" + String(__ctx_depth);\n    state.taken = f(2);\n  }\n  function __effect1_mount() {\n    state.under = \"d5\";\n    state.chained = \"rd5\";\n    state.recursed = \"5\";\n    state.method = \"10\";\n    state.lambda = [0].map((x) => \"d5\")[0];\n    state.mapped = [4].map((__ctxArg0) => String(__ctxArg0) + \":5\")[0];\n  }\n  function __effect2_mount() {\n    state.inner = \"d9\";\n  }\n  if (typeof window !== \"undefined\") {\n    Object.assign(window, { main_twice, __effect0_mount, __effect1_mount, __effect2_mount });\n  }\n  var __ctx_depth = 1;\n  var __effect0_live = [];\n  var __effect0_desired = [];\n  var __effect1_live = [];\n  var __effect1_desired = [];\n  var __effect2_live = [];\n  var __effect2_desired = [];\n  var __effects0_settling = false;\n  var __effects0_pending = false;\n  var __effects0_steps = 0;\n  function __effect0_down() {\n    __effect0_desired = [];\n    __effect0_desired.push(true);\n  }\n  function __effect0_up() {\n    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {\n      if (__effect0_i >= __effect0_live.length) {\n        __effect0_mount();\n      } else {\n        if (__effect0_live[__effect0_i] !== __effect0_k) {\n          __effect0_mount();\n        }\n      }\n    }\n    __effect0_live = __effect0_desired;\n  }\n  function __effect1_down() {\n    __effect1_desired = [];\n    __effect1_desired.push(true);\n  }\n  function __effect1_up() {\n    for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {\n      if (__effect1_i >= __effect1_live.length) {\n        __effect1_mount();\n      } else {\n        if (__effect1_live[__effect1_i] !== __effect1_k) {\n          __effect1_mount();\n        }\n      }\n    }\n    __effect1_live = __effect1_desired;\n  }\n  function __effect2_down() {\n    __effect2_desired = [];\n    __effect2_desired.push(true);\n  }\n  function __effect2_up() {\n    for (const [__effect2_i, __effect2_k] of __effect2_desired.entries()) {\n      if (__effect2_i >= __effect2_live.length) {\n        __effect2_mount();\n      } else {\n        if (__effect2_live[__effect2_i] !== __effect2_k) {\n          __effect2_mount();\n        }\n      }\n    }\n    __effect2_live = __effect2_desired;\n  }\n  function __effects0_settle() {\n    if (__effects0_settling) {\n      __effects0_pending = true;\n    } else {\n      __effects0_settling = true;\n      __effects0_pending = true;\n      __effects0_steps = 0;\n      while (__effects0_pending && __effects0_steps < 512) {\n        __effects0_pending = false;\n        __effects0_steps = __effects0_steps + 1;\n        __effect2_down();\n        __effect1_down();\n        __effect0_down();\n        __effect0_up();\n        __effect1_up();\n        __effect2_up();\n      }\n      __effects0_settling = false;\n      if (__effects0_pending) {\n        throw Object.assign(new Error(\"effects did not settle in 512 passes; an effect is rekeying itself\"), { kind: \"effect\" });\n      }\n    }\n  }\n  function String(v) {\n    return \"\" + v;\n  }\n  var $0 = document.getElementById(\"$0\");\n  var $1 = document.getElementById(\"$1\");\n  var __n0 = document.querySelector('[data-sngl-id=\"__n0\"]');\n  var __n1 = document.querySelector('[data-sngl-id=\"__n1\"]');\n  $0.addEventListener(\"click\", function() {\n    state.clicked = \"d5\";\n    __n1.textContent = state.clicked + \" \" + state.provided;\n  });\n  $1.addEventListener(\"click\", function() {\n    state.provided = \"d7\";\n    __n1.textContent = state.clicked + \" \" + state.provided;\n  });\n  function __sngl_init() {\n    __n0.textContent = \"d\" + String(__ctx_depth);\n    __n1.textContent = state.clicked + \" \" + state.provided;\n  }\n  __sngl_init();\n  __effects0_settle();\n})();\n};\nwindow.__sngl_boot();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from funcs.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<span>d9</span>\n<span>d5</span>\n<button id=\"$0\" data-sngl-id=\"tap\">\n  <span>tap</span>\n</button>\n<button id=\"$1\" data-sngl-id=\"wrap\">\n  <span>wrap</span>\n</button>\n<span id=\"__n0\" data-sngl-id=\"__n0\">\n</span>\n<span id=\"__n1\" data-sngl-id=\"__n1\">\n</span>\n\n<script>\nwindow.__snglErrors = [];\naddEventListener(\"error\", (e) => window.__snglErrors.push(String(e.message)));\naddEventListener(\"unhandledrejection\", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));\nwindow.__sngl_markup = Array.from(document.body.childNodes)\n  .filter((n) => n.nodeName !== \"SCRIPT\").map((n) => n.cloneNode(true));\nwindow.__sngl_reset = () => {\n  for (const n of Array.from(document.body.childNodes)) {\n    if (n.nodeName !== \"SCRIPT\") n.remove();\n  }\n  const first = document.body.firstChild;\n  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);\n  window.__sngl_boot();\n};\nwindow.__sngl_boot = () => {\n(() => {\n  // sngl-entry.js\n  var state = { plain: \"\", under: \"\", inner: \"\", chained: \"\", recursed: \"\", method: \"\", lambda: \"\", mapped: \"\", taken: \"\", clicked: \"\", provided: \"\" };\n  state.tapClick = () => $0.click();\n  state.wrapClick = () => $1.click();\n  if (typeof window !== \"undefined\") {\n    window.__sngl_state = state;\n  }\n  function main_twice(state2, __ctx_depth2) {\n    return String(__ctx_depth2 * 2);\n  }\n  function __effect0_mount() {\n    state.plain = \"d\" + String(__ctx_depth);\n    let f = (__ctxArg0) => String(__ctxArg0) + \":\" + String(__ctx_depth);\n    state.taken = f(2);\n  }\n  function __effect1_mount() {\n    state.under = \"d5\";\n    state.chained = \"rd5\";\n    state.recursed = \"5\";\n    state.method = \"10\";\n    state.lambda = [0].map((x) => \"d5\")[0];\n    state.mapped = [4].map((__ctxArg0) => String(__ctxArg0) + \":5\")[0];\n  }\n  function __effect2_mount() {\n    state.inner = \"d9\";\n  }\n  if (typeof window !== \"undefined\") {\n    Object.assign(window, { main_twice, __effect0_mount, __effect1_mount, __effect2_mount });\n  }\n  var __ctx_depth = 1;\n  var __effect0_live = [];\n  var __effect0_desired = [];\n  var __effect1_live = [];\n  var __effect1_desired = [];\n  var __effect2_live = [];\n  var __effect2_desired = [];\n  var __effects0_settling = false;\n  var __effects0_pending = false;\n  var __effects0_torn = false;\n  var __effects0_steps = 0;\n  function __effect0_down() {\n    __effect0_desired = [];\n    __effect0_desired.push(true);\n  }\n  function __effect0_up() {\n    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {\n      if (__effect0_i >= __effect0_live.length) {\n        __effect0_mount();\n      } else {\n        if (__effect0_live[__effect0_i] !== __effect0_k) {\n          __effect0_mount();\n        }\n      }\n    }\n    __effect0_live = __effect0_desired;\n  }\n  function __effect1_down() {\n    __effect1_desired = [];\n    __effect1_desired.push(true);\n  }\n  function __effect1_up() {\n    for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {\n      if (__effect1_i >= __effect1_live.length) {\n        __effect1_mount();\n      } else {\n        if (__effect1_live[__effect1_i] !== __effect1_k) {\n          __effect1_mount();\n        }\n      }\n    }\n    __effect1_live = __effect1_desired;\n  }\n  function __effect2_down() {\n    __effect2_desired = [];\n    __effect2_desired.push(true);\n  }\n  function __effect2_up() {\n    for (const [__effect2_i, __effect2_k] of __effect2_desired.entries()) {\n      if (__effect2_i >= __effect2_live.length) {\n        __effect2_mount();\n      } else {\n        if (__effect2_live[__effect2_i] !== __effect2_k) {\n          __effect2_mount();\n        }\n      }\n    }\n    __effect2_live = __effect2_desired;\n  }\n  function __effects0_settle() {\n    if (!__effects0_torn) {\n      if (__effects0_settling) {\n        __effects0_pending = true;\n      } else {\n        __effects0_settling = true;\n        __effects0_pending = true;\n        __effects0_steps = 0;\n        while (__effects0_pending && __effects0_steps < 512) {\n          __effects0_pending = false;\n          __effects0_steps = __effects0_steps + 1;\n          __effect2_down();\n          __effect1_down();\n          __effect0_down();\n          __effect0_up();\n          __effect1_up();\n          __effect2_up();\n        }\n        __effects0_settling = false;\n        if (__effects0_pending) {\n          throw Object.assign(new Error(\"effects did not settle in 512 passes; an effect is rekeying itself\"), { kind: \"effect\" });\n        }\n      }\n    }\n  }\n  function String(v) {\n    return \"\" + v;\n  }\n  var $0 = document.getElementById(\"$0\");\n  var $1 = document.getElementById(\"$1\");\n  var __n0 = document.querySelector('[data-sngl-id=\"__n0\"]');\n  var __n1 = document.querySelector('[data-sngl-id=\"__n1\"]');\n  $0.addEventListener(\"click\", function() {\n    state.clicked = \"d5\";\n    __n1.textContent = state.clicked + \" \" + state.provided;\n  });\n  $1.addEventListener(\"click\", function() {\n    state.provided = \"d7\";\n    __n1.textContent = state.clicked + \" \" + state.provided;\n  });\n  function __sngl_init() {\n    __n0.textContent = \"d\" + String(__ctx_depth);\n    __n1.textContent = state.clicked + \" \" + state.provided;\n  }\n  __sngl_init();\n  __effects0_settle();\n})();\n};\nwindow.__sngl_boot();\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -1511,7 +1523,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1645,6 +1656,7 @@ window.__sngl_boot = () => {
   var __effect2_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
@@ -1695,25 +1707,27 @@ window.__sngl_boot = () => {
     __effect2_live = __effect2_desired;
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect2_down();
-        __effect1_down();
-        __effect0_down();
-        __effect0_up();
-        __effect1_up();
-        __effect2_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect2_down();
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+          __effect2_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -1744,14 +1758,14 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c5c9a0d250d4a95f031526d59fcc8f8a
+pass sha256:413bde21d57b03c1999af9dffdc79cbd
 -- run/go/fyne --
-pass sha256:4235b5a44ee10c395a11e10c67181b77
+pass sha256:4bcaafcd2d313b680c1540b7dcfce0bb
 -- run/go/gtk4 --
-pass sha256:80d204ef8894f2f6b322df48e102a7f3
+pass sha256:b8ced89e1377456ace8de92287348847
 -- run/go/html --
-pass sha256:ef7a729686e51c5d1a4f06e0a6f980d3
+pass sha256:99d0dc01160a33f5c154ed3c18e60900
 -- run/kotlin/android --
-pass sha256:df2b52547a671a39646767af1f829cc8
+pass sha256:ea975bf4706991dfa4aceca594f09706
 -- run/none/html --
-pass sha256:e7766bf0a16d3932e03fa0e2ed663cb4
+pass sha256:1ca5aa8003bec3f238424d049801dc12

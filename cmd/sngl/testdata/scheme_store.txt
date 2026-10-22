@@ -59,7 +59,7 @@ gen.scheme(name="data", @generate(out, importPath) {
     for var line = gen.lines(importPath) {
         first = line
     }
-    out.write("data.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"tool.conf\")\n\}\n\nconst text = \"v1 " + first + "\"\n")
+    out.file("data.sngl").add("import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"tool.conf\")\n\}\n\nconst text = \"v1 " + first + "\"\n")
 })
 -- pc2.sngl --
 import gen "sngl:x/gen"
@@ -69,5 +69,5 @@ gen.scheme(name="data", @generate(out, importPath) {
     for var line = gen.lines(importPath) {
         first = line
     }
-    out.write("data.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"tool.conf\")\n\}\n\nconst text = \"v2 " + first + "\"\n")
+    out.file("data.sngl").add("import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"tool.conf\")\n\}\n\nconst text = \"v2 " + first + "\"\n")
 })

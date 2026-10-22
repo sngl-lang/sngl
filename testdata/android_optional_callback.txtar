@@ -55,6 +55,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 
@@ -91,4 +92,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:0a1c50cd4fa170b4d751ec6ca6fbfa8c
+pass sha256:128698068d5547acb1aa1b0ab4e8cb4c

@@ -68,6 +68,110 @@ func lowerComponentProps(pkg *ir.Package, _ Features, opts Options) error {
 	return nil
 }
 
+// passAsyncProps types a func-typed prop of a component built at run time as
+// a function that waits wherever a call site hands it one.
+//
+// Such a component calls the prop through itself, and the checker's points-to
+// binds no library component's prop, so nothing coloured that call:
+// `async.query(fetch=…)` written straight into a component built at run time
+// fetched on the drawing thread on fyne and gtk4, and on html read the Promise
+// its fetch returned as the answer. A splice substitutes the function itself,
+// which is coloured, and so did an adapter's query, which splices into the
+// adapter; on android a fetch handed `::fetchBook` was no suspend function.
+// Before passEffect, which colours the mount that makes the call. Every
+// target: android builds such a component as a composable of its own.
+var passAsyncProps = pass{
+	name:    "AsyncProps",
+	enabled: func(Features) bool { return true },
+	apply: func(pkg *ir.Package, _ Features, opts Options) error {
+		if pkg == nil {
+			return nil
+		}
+		root := rootComponent(pkg, opts)
+		for _, c := range pkg.Components {
+			if c != root && c.RuntimeInstance {
+				colorAsyncProps(c, asyncProps(pkg, c))
+			}
+		}
+		return nil
+	},
+}
+
+// asyncProps is the props of c some call site hands a function that waits.
+func asyncProps(pkg *ir.Package, c *ir.Component) map[string]bool {
+	waits := map[string]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		ni, ok := n.(*ir.NodeInst)
+		if !ok || ni.Component != c {
+			return nil
+		}
+		for _, a := range ni.Props {
+			if a.Name != "" && handsAsync(a.Value) {
+				waits[a.Name] = true
+			}
+		}
+		return nil
+	})
+	return waits
+}
+
+// handsAsync reports whether e is a function that waits when it is called.
+func handsAsync(e ir.Expr) bool {
+	switch x := e.(type) {
+	case *ir.Ident:
+		if f, ok := x.Sym.(*ir.Func); ok && f.IsAsync {
+			return true
+		}
+	case *ir.Lambda:
+		if waitsWhenCalled(x.Func) {
+			return true
+		}
+	case *ir.Closure:
+		if waitsWhenCalled(x.Func) {
+			return true
+		}
+	}
+	t := e.ExprType()
+	return t != nil && t.Sig != nil && t.Sig.Color == ir.ColorAsync
+}
+
+// waitsWhenCalled reports whether a function literal's body waits: its flag,
+// where the checker set one, or a call in it that does.
+func waitsWhenCalled(f *ir.Func) bool {
+	return f != nil && (f.IsAsync || ir.BlockHasAsyncCall(f.Block))
+}
+
+// colorAsyncProps types each prop in waits and every read of it as a function
+// that waits, which is what passAsyncOffload and JavaScript's await read off a
+// call through a value (ir.CallsAsyncValue). The cell passComponentProps
+// promotes it to takes the prop's type.
+func colorAsyncProps(c *ir.Component, waits map[string]bool) {
+	if len(waits) == 0 {
+		return
+	}
+	colored := map[ir.Symbol]*ir.Type{}
+	for _, p := range c.Props {
+		if p == nil || p.Sym == nil || !waits[p.Name] || p.Type == nil || p.Type.Sig == nil {
+			continue
+		}
+		t := *p.Type
+		sig := *p.Type.Sig
+		sig.Color = ir.ColorAsync
+		t.Sig = &sig
+		p.Type = &t
+		p.Sym.Type = &t
+		colored[ir.Symbol(p.Sym)] = &t
+	}
+	_ = ir.Walk(c, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if t := colored[id.Sym]; t != nil {
+				id.Type = t
+			}
+		}
+		return nil
+	})
+}
+
 // settleOnSet has a prop's setter settle the brackets whose keys read it, and
 // report a write to the effects reporting one: passEffect settles and marks
 // after every write to a var a key reads, and ran while the prop was still a

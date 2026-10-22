@@ -99,9 +99,9 @@ func colorOf(v any) color.Color {
 // relayout rebuilds a container's layout from its children's styles.
 //
 // Fyne's own boxes pack children at their minimum size, so `flex` has nowhere
-// to be said; fynelayout.Weighted is what answers it. The weights are
-// positional and the children change, so the layout is rebuilt rather than
-// configured once.
+// to be said; fynelayout.Weighted is what answers it. A child's share is
+// recorded on the object its parent holds, and a style write reaches here, so
+// each is said again rather than tracked.
 func (h *Host) relayout(key snglhost.Key) {
 	m, ok := h.nodes[key]
 	if !ok {
@@ -111,12 +111,10 @@ func (h *Host) relayout(key snglhost.Key) {
 	if !ok || m.spec.axis == "" {
 		return
 	}
-	weights := make([]float32, len(m.children))
-	margins := make([]float32, len(m.children))
-	for i, kid := range m.children {
-		weights[i], margins[i] = kid.style.flex, kid.style.margin
+	for _, kid := range m.children {
+		fynelayout.Share(kid.view, kid.style.flex, kid.style.margin)
 	}
-	c.Layout = fynelayout.New(m.spec.axis == "horizontal", weights, margins, m.style.gap, m.style.padding)
+	c.Layout = fynelayout.New(m.spec.axis == "horizontal", m.style.gap, m.style.padding)
 	c.Refresh()
 }
 

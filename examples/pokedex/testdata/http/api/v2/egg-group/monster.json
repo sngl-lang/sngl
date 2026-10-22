@@ -1,0 +1,51 @@
+{
+ "id": 1,
+ "name": "monster",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "かいじゅう"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Monstrueux"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Monster"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Monstruo"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Monster"
+  }
+ ],
+ "pokemon_species": [
+  {
+   "name": "bulbasaur",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/1/"
+  },
+  {
+   "name": "ivysaur",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/2/"
+  }
+ ]
+}

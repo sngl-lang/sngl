@@ -1,7 +1,7 @@
 // Making a request while the program runs, and the vocabulary of the URL it is
 // made to.
 //
-//	match var r = http.get(url="{server}/api/v2/pokemon/", query={limit=20, offset=offset}) {
+//	match var r = http.get(url="{server}/api/v1/books/", query={limit=20, offset=offset}) {
 //	    ok { … r.status, r.body … }
 //	    failed { … }   // r.kind is transport or timeout
 //	}

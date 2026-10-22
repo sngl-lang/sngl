@@ -75,6 +75,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
@@ -83,6 +84,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.background
@@ -132,7 +134,7 @@ fun MainScreen() {
             SnglImage(modifier = Modifier, onLoad = {}, onError = {}) {
                 SnglRemoteImage(url = "/logo.png")
             }
-            Row(modifier = Modifier.alpha(1.0f)) {
+            Row(modifier = Modifier.alpha(1.0f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Tag", modifier = Modifier)
             }
             Column(modifier = Modifier.padding(9.dp)) {
@@ -266,11 +268,15 @@ fun SnglAssetImage(url: String) {
 }
 
 // SnglRemoteImage is the picture a URL names, fetched while the program runs:
-// nothing until it arrives, and nothing if it does not.
+// nothing until it arrives, and nothing if it does not. produceState takes its
+// initial value once, so a new URL starts again from what the cache holds for
+// it: the last URL's picture is not this one's, and stood in its place for
+// good, since a value already there skipped the fetch.
 @Composable
 fun SnglRemoteImage(url: String) {
     val events by rememberUpdatedState(LocalSnglImageEvents.current)
     val bmp by produceState(SnglAssets.cached(url), url) {
+        value = SnglAssets.cached(url)
         if (value != null) {
             events?.load?.invoke()
             return@produceState
@@ -291,4 +297,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:b48f31620355b15f082d44d00748a387
+pass sha256:0383d2dfc66e6d96980d1925bb47eeb7

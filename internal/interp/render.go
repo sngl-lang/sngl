@@ -456,41 +456,23 @@ func refLoopsOf(set RefSet, id string) []any {
 }
 
 func refLoops(stmts []ir.Stmt, id string, outer []any) ([]any, bool) {
-	try := func(body []ir.Stmt, loops []any) ([]any, bool) { return refLoops(body, id, loops) }
 	for _, st := range stmts {
-		var found []any
-		ok := false
-		switch n := st.(type) {
-		case *ir.NodeInst:
-			if n.ID == id {
-				return outer, true
-			}
-			found, ok = try(n.Children, outer)
-		case *ir.If:
-			if found, ok = try(n.Body, outer); !ok {
-				found, ok = try(n.Else, outer)
-			}
-		case *ir.Match:
-			for _, arm := range n.Arms {
-				if found, ok = try(arm.Body, outer); ok {
-					break
-				}
-			}
-		case *ir.For:
-			if found, ok = try(n.Body, append(slices.Clip(outer), n)); !ok {
-				found, ok = try(n.Else, outer)
-			}
-		case *ir.ErrorBoundary:
-			if found, ok = try(n.Children, outer); !ok {
-				found, ok = try(n.Failed, outer)
-			}
-		case *ir.ContextProvider:
-			found, ok = try(n.Children, outer)
-		case *ir.SlotInst:
-			found, ok = try(n.Children, outer)
+		if n, ok := st.(*ir.NodeInst); ok && n.ID == id {
+			return outer, true
 		}
-		if ok {
-			return found, true
+		// Every view block, a node's slot populations among them: a data
+		// record's content is moved into its container's hidden content slot
+		// (SlotDecl.Shows), and is still the writer's -- a loop in a tab's
+		// panel is the panel's writer's loop.
+		f, isFor := st.(*ir.For)
+		for _, b := range ir.ViewBlocks(st) {
+			loops := outer
+			if isFor && b == &f.Body {
+				loops = append(slices.Clip(outer), f)
+			}
+			if found, ok := refLoops(*b, id, loops); ok {
+				return found, true
+			}
 		}
 	}
 	return nil, false

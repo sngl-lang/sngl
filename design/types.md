@@ -295,3 +295,13 @@ phase after the check finds the overrides where a target package's are because
 `Specialize` entries, `optimize.Optimize`, `lower.Lower`, `build.Emit` and
 `interp.BuildProgramEnv` each call it, on the build's copy (see *Every phase
 after the check works on a copy*).
+
+**A prop its default types is typed before any body is checked**
+(`ensurePropDefaults`). Pass 2 checked a component's prop defaults with its
+body, in declaration order, so a call site above the component saw the prop
+untyped: `card(style={fontWeight=bold})` above `component card(style = ui.Style{})` gave the literal no type and read `bold` as a name of its own,
+and an override restating the type was held to nothing. The defaults are
+checked ahead, each in the scope its body check gives it, and an override's
+restatement waits for them (`afterPropDefaults`)
+(`testdata/prop_default_typed_call_site.sngl`,
+`error_override_restates_default_type.sngl`).

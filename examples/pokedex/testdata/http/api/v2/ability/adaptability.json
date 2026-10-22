@@ -1,0 +1,95 @@
+{
+ "effect_changes": [],
+ "effect_entries": [
+  {
+   "effect": "This Pokémon inflicts twice as much damage with moves whose types match its own, rather than the usual same-type attack bonus of 1.5×.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Increases the same-type attack bonus from 1.5× to 2×."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Powers up moves of the\nsame type.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version_group": {
+    "name": "diamond-pearl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/8/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-iv",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/4/"
+ },
+ "id": 91,
+ "is_main_series": true,
+ "name": "adaptability",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "てきおうりょく"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Adaptabilité"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Anpassung"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Adaptable"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Adaptability"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "てきおうりょく"
+  }
+ ],
+ "pokemon": [
+  {
+   "is_hidden": false,
+   "pokemon": {
+    "name": "eevee",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/133/"
+   },
+   "slot": 2
+  },
+  {
+   "is_hidden": true,
+   "pokemon": {
+    "name": "corphish",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/341/"
+   },
+   "slot": 3
+  }
+ ]
+}
