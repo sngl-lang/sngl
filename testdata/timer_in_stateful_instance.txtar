@@ -506,6 +506,9 @@ func (c *TickerInstance) Destroy() {
 }
 
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
+	if c.__prop_period != __v {
+		c.__effect1_dirty = true
+	}
 	c.__prop_period = __v
 	c.__n0.SetText(((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
@@ -955,7 +958,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c3560649d8a0cfdafdeb591f6a0d957d
 -- run/go/fyne --
-pass sha256:0d73897c84a549b8a29a6e5a5d8cefd9
+pass sha256:e154d1e36031fe0a81c351f2e8d725a9
 -- run/go/gtk4 --
 pass sha256:c2cc90448ece5940f37cc04e062f2436
 -- run/none/html --

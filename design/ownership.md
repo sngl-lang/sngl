@@ -49,13 +49,57 @@ a lambda's or handler's still refuses every mark.
 | **Application** | built from constants                                                                            | once, at application teardown        |
 | **Moved**       | handed to a `#[moves]` parameter (transfer-full)                                                | never; the host owns it              |
 
-**Node lifetime lowers onto `effect`.** A branch leaving, a list row removed,
-a window closing are already `@unmount`, and `on=` already ends the old
-lifetime before the new one starts (`testdata/effect_on_recreates.sngl`), so
-`OwnedState` emits ordinary `effect`s and every target's `Effect` lowering
-releases them. An owned derived value -- a component's parameterless
-`func label => …` -- becomes an instance cell filled in `@mount`, keyed `on=`
-what it reads, released in `@unmount`.
+**Node lifetime lowers onto `effect`** (`internal/lower/owned_state.go`). A
+branch leaving, a list row removed, a window closing are already `@unmount`,
+so `OwnedState` writes ordinary `effect`s and every target's `Effect` lowering
+brackets them. Three things become node lifetime:
+
+- **An owned `var` of a component** is released when it is overwritten and
+  when the node unmounts. Each assignment to it, in the component or through
+  an instance (a test's `c.f = …`), binds the old value to an `__oldN`,
+  assigns, then releases the old one, since the new value may be computed
+  from it. One effect written ahead of everything else in the body releases
+  every owned var at `@unmount`, newest first: the first lifetime to begin is
+  the last to end, so every other `@unmount` may still read them. The
+  compiler owns the release, so a program releasing one by hand as well
+  releases it twice (`testdata/error_owned_tracker.sngl`). A view block's
+  owned `var` is the block's state on the interpreter, released by an effect
+  written after it; a target has already hoisted it into a component
+  (passHoistState).
+- **An owned derived value** -- a component's parameterless
+  `func label => …` -- becomes a var of the same name, initialized as the
+  value is computed, and an effect keyed on what it reads whose `@update`
+  computes it again. The var is then an owned var, so the overwrite releases
+  the old value and the unmount the last. Every call of the function becomes
+  a read of the var; one with a block body stays as an `__own_` helper the
+  var calls. What it reads is its props and vars, the package's vars, and
+  what the component's own functions it calls read, keyed as the one read or
+  an anonymous struct of them. A bracket's `@mount` was the design and is
+  wrong twice: a mount runs after the render that first reads the value, and
+  a rekey's `@unmount` before the render that precedes the new `@mount`, so a
+  bracket shows a render a value not yet made or already released. `@update`
+  runs after the render that made the write, which reads the old value, still
+  live. It reports a write where a bracket compares, so writing a var the
+  value it holds remakes the value; a prop reports only a new value. Cells
+  follow the component's vars, ordered so one derived value reading another
+  follows it (`testdata/owned_state.sngl`, `testdata/owned_state.txtar`).
+- **An allocation an effect's handler hands a `#[retains]` parameter** is
+  stored in an `option` cell of the component (`__retN`) and passed from it;
+  the next call replaces it, releasing the old one after the native has the
+  new, and the effect's `@unmount` releases the last. An effect that only
+  reports writes brackets nothing, and an `@unmount` would make it a bracket
+  ended by every change of its key, releasing what the native still holds, so
+  its cells are released by the component's unmount effect instead
+  (`cmd/sngl/testdata/simulate_cnative_owned.txt`). A `#[moves]` argument is
+  left where it is.
+
+The pass runs before `NoComputed`, which would inline a derived value at
+every read and so allocate it per read; before the inliners, which give each
+instance its own copy of the var; and before `AnonStructs`, which declares
+the key's struct. Its `effect` is a copy of sngl:builtin's, since a program
+that writes none does not reach the declaration and the build shares the
+library's own, which `InlineComponents` would otherwise flag a runtime
+instance.
 
 **What can be a key is `ir.Keyable`**, which is `ir.RebuildIncomparable`'s
 answer: the rule an effect's `on` is already held to, since the pass makes
@@ -73,8 +117,8 @@ how, so the pass must never grow its own idea of keyable.
 **Two passes.**
 
 ```
-… → OwnedState   (node half; before Effect so its effects lower like any other)
-  → Effect
+… → OwnedState   (node half; before NoComputed, while a derived value is a function)
+  → NoComputed → … → Effect
   → … → ErrorCatch
   → ReleaseTemps (statement half; after ErrorCatch so a raise path is a catch block)
   → MutatedVars → CSE → … → ReservedNames
@@ -140,7 +184,17 @@ ternaries) -- or in a `for` head, which may be evaluated per iteration; a temp
 bound before a later temp of the same statement raises while being bound; and
 a temp passed to a function returning the same owned type, which may return
 the argument itself: the pass releases the argument and the result alike,
-which the tracker reports as a double release.
+which the tracker reports as a double release. Of what a component holds: an
+owned value in a list, a map or a struct field rather than a var of the owned
+type; a package `var`, which `OwnedState` cannot release at teardown because
+the effect lowering writes `Teardown` afresh after it; a var assigned
+another's value, which both then release; a var initializer reading an owned
+derived value, which is initialized after the vars; an allocation handed to a
+`#[retains]` parameter outside an effect's handler (an event handler, a
+function); a derived value in a library component's override on a target,
+which the pass reaches only on the interpreter; and on bubbletea an instance
+under an `if` the branch leaves and takes again, which keeps the state it had,
+so its owned vars are released a second time on the next leave.
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`
@@ -207,8 +261,10 @@ anything else the zero value; every argument is checked for use after release;
 a `#[moves]` argument is the native's from there (a later use or release says
 "moved"); a `#[retains]` one may not be released until the lifetime that made
 the call ends -- the effect whose handler ran it (`handles.within`, ended by
-`letGo` before its `@unmount`), or the application outside one. A native's
-return steering control flow takes one path.
+`letGo` before its `@unmount`), or the application outside one -- or until the
+same call in the same lifetime hands the native another, which it holds in
+its place: an `@update` keyed on a list is one lifetime however often it runs.
+A native's return steering control flow takes one path.
 
 Simulating is what adds the target's half (`BuildSimulatedEnv`, set before the
 initializers run), and `PrepareFor` runs `CMarshal`, so a stubbed native is

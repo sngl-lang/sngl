@@ -121,6 +121,8 @@ var alwaysOn = []string{
 	// primitive keeps, so every target runs the pass and the declaration
 	// decides what it does.
 	"NodePropReads",
+	// An owned value a component holds is released on every target.
+	"OwnedState",
 	"PlatformExtensionBody",
 	"PropBindings",
 	// No target reaches a receiver no parameter names.

@@ -1156,6 +1156,7 @@ func (st *effectState) buildGroups() {
 			}},
 		}
 		st.addFunc(o, g.settle)
+		st.reportProps(g)
 
 		// A scope whose brackets only report has nothing for a first settle
 		// to do: nothing has been written, and no lifetime begins.
@@ -1173,6 +1174,38 @@ func (st *effectState) buildGroups() {
 			st.pkg.Body = append(st.pkg.Body, callOf(g.settle))
 		}
 		st.pkg.Mounts = append(st.pkg.Mounts, g.settle)
+	}
+}
+
+// reportProps records each of g's reports whose key reads a prop, which no
+// write this pass sees ever reaches: the setter a component built at run time
+// gives the prop is the write (settleOnSet).
+func (st *effectState) reportProps(g *effectGroup) {
+	if g.comp == nil {
+		return
+	}
+	for _, fx := range g.fxs {
+		if fx.dirty == nil || fx.key == nil {
+			continue
+		}
+		_ = ir.Walk(fx.key, func(n ir.Node) error {
+			id, ok := n.(*ir.Ident)
+			if !ok {
+				return nil
+			}
+			p, ok := id.Sym.(*ir.Param)
+			if !ok || !slices.ContainsFunc(g.comp.Props, func(pr *ir.Prop) bool { return pr.Sym == p }) {
+				return nil
+			}
+			if st.pkg.PropReports == nil {
+				st.pkg.PropReports = map[*ir.Param][]ir.PropReport{}
+			}
+			r := ir.PropReport{Dirty: fx.dirty, Settle: g.settle}
+			if !slices.Contains(st.pkg.PropReports[p], r) {
+				st.pkg.PropReports[p] = append(st.pkg.PropReports[p], r)
+			}
+			return nil
+		})
 	}
 }
 

@@ -2233,9 +2233,12 @@ four lifetimes that holds it:
   is released once the statement that made it completes, including when it
   returns or raises.
 - **Node** -- a value held in a component's state, computed by an owned
-  derived value, or handed to a `#[macro.retains]` parameter lives as long as
-  the node: it is released when the state is overwritten, when what the
-  derived value reads changes, and when the node unmounts.
+  derived value, or handed to a `#[macro.retains]` parameter by an effect's
+  handler lives as long as the node: it is released when the state is
+  overwritten, when what the derived value reads is written, when the native
+  is handed the next value, and when the node unmounts. The compiler releases
+  these itself, so a program that releases one by hand as well releases it
+  twice.
 - **Application** -- a value built only from constants, which is a literal of
   the type, or a call of a `const func`, whose arguments are literals or
   package constants, is made once and released when the application tears
@@ -2248,8 +2251,10 @@ body: a native that keeps a pointer to its argument while the caller still
 owns it, and one that takes the argument. A function with a body says what it
 does with its arguments itself, so the marks are an error there.
 
-A derived value of an owned type is recomputed and released when what it reads
-changes, so what it reads is the key of its lifetime and must be comparable as
+A derived value of an owned type is computed when the node is created, and
+computed again once a write to what it reads has settled, the old value
+released after the new one is made; a prop counts as written when its value
+changes. What it reads is the key of its lifetime and must be comparable as
 an effect's `on` is: a derived value that reads a function value, a list or a
 map is an error. A `var`'s initializer runs once and is not keyed.
 

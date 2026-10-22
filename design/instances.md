@@ -282,6 +282,18 @@ something reads. bubbletea and android re-render the view anyway and are
 untouched (`testdata/slot_body_updates_in_place.txtar`,
 `cmd/sngl/testdata/slot_body_updates_in_place_runs.txt`).
 
+**A prop's setter reports a write to an effect keyed on the prop.** passEffect
+marks an effect's `@update` written after each write to a var its key reads,
+and a prop of a component built at run time is a parameter then, which
+nothing writes; `passComponentProps` promotes it to a cell whose setter is its
+one write. The effect lowering records each report whose key reads a prop
+(`ir.Package.PropReports`), and `settleOnSet` has the setter mark it and
+settle. Where the prop's type compares, only a new value marks it, which is
+what the interpreter does with a key reading something no write is logged
+against. Before this, fyne's setter settled with nothing marked and html's did
+not settle, so such an `@update` never ran on a target. An owned derived value
+reading a prop is one (`testdata/effect_update_on_prop.txtar`).
+
 **A two-way prop the caller leaves unbound is state of the instance**
 (`ir.UnboundProps`): a cell that starts from what the call site gave the prop,
 or its default, or its type's zero, and that the host's reports write, as if

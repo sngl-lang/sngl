@@ -63,15 +63,18 @@ func lowerComponentProps(pkg *ir.Package, _ Features, opts Options) error {
 			continue
 		}
 		setters := promoteProps(c)
-		settleOnSet(c, setters, pkg.Mounts)
+		settleOnSet(c, setters, pkg.Mounts, pkg.PropReports)
 	}
 	return nil
 }
 
-// settleOnSet has a prop's setter settle the brackets whose keys read it.
-// passEffect settles after every write to a var a key reads, and ran while
-// the prop was still a parameter nothing could write.
-func settleOnSet(c *ir.Component, setters, mounts []*ir.Func) {
+// settleOnSet has a prop's setter settle the brackets whose keys read it, and
+// report a write to the effects reporting one: passEffect settles and marks
+// after every write to a var a key reads, and ran while the prop was still a
+// parameter nothing could write. A prop's value is the only sign it was
+// written, as on the interpreter, so a setter handed what the prop already
+// holds reports nothing where the two compare.
+func settleOnSet(c *ir.Component, setters, mounts []*ir.Func, reports map[*ir.Param][]ir.PropReport) {
 	var settles []*ir.Func
 	for _, f := range c.Funcs {
 		if slices.Contains(mounts, f) {
@@ -91,11 +94,33 @@ func settleOnSet(c *ir.Component, setters, mounts []*ir.Func) {
 		if !ok {
 			continue
 		}
+		var called []*ir.Func
 		for _, settle := range settles {
 			if readsThroughCalls(settle.Block, cell) {
 				setter.Block = append(setter.Block, callOf(settle))
+				called = append(called, settle)
 			}
 		}
+		init, _ := cell.Init.(*ir.Ident)
+		param, _ := init.Sym.(*ir.Param)
+		if len(reports[param]) == 0 {
+			continue
+		}
+		var marks []ir.Stmt
+		for _, r := range reports[param] {
+			marks = append(marks, &ir.Assign{Target: &ir.Ident{Name: r.Dirty.Name, Type: r.Dirty.Type, Sym: r.Dirty}, Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: "true"}})
+			if !slices.Contains(called, r.Settle) {
+				setter.Block = append(setter.Block, callOf(r.Settle))
+				called = append(called, r.Settle)
+			}
+		}
+		if ir.RebuildIncomparable(cell.Type) == "" {
+			marks = []ir.Stmt{&ir.If{
+				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: ir.CloneExprSharingDecls(assign.Target), Right: ir.CloneExprSharingDecls(assign.Value)},
+				Body: marks,
+			}}
+		}
+		setter.Block = append(marks, setter.Block...)
 	}
 }
 

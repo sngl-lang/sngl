@@ -79,6 +79,7 @@ var passes = []pass{
 	// reads, and before anything rewrites a body out from under a position.
 	passAsyncCapable,
 	passAsyncReactive,
+	passOwnedState,
 	passComputed,
 	passLambda,
 	passNoListLambdas,

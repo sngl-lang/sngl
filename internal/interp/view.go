@@ -534,6 +534,12 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 		return prefix + "/" + s
 	}
 
+	// Visited whether or not it renders a child: one whose only child sat
+	// under an `if` that went false still holds that child's state.
+	if m.visited != nil {
+		m.visited[env] = true
+	}
+
 	// A `var` written in the list is state of the block: the list mounts in a
 	// scope of its own, kept across mounts by its path as a component's is,
 	// and dropped with it when a mount no longer reaches it.

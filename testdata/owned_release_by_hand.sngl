@@ -1,8 +1,7 @@
 // An owned value released by hand, once, and nothing read after: the tracker
 // has nothing to say. A copy is the same value, so releasing it releases the
-// original, as it would a pointer on a target. A test is an application, and
-// tearing it down unmounts the tree, so a value a component's `@unmount`
-// releases is released before the leak check runs.
+// original, as it would a pointer on a target. A local `var` is the program's
+// to release; one a component holds is the compiler's (owned_state.sngl).
 import ui "sngl:ui"
 import macro "sngl:macro"
 import "sngl:test"
@@ -44,21 +43,6 @@ func testEachReleasedInTurn(t test.Test) {
     t.assert(closed == [3, 4, 5])
 }
 
-component holds ui.node {
-    var f = open(7)
-
-    effect(@unmount {
-        close(f)
-    })
-
-    ui.text(value="{f.fd}")
-}
-
-func testUnmountReleasesAtTeardown(t test.Test, c holds) {
-    t.assert(c.f.fd == 7)
-    t.assert(closed.length == 0)
-}
-
 ui.window(title="t") {
-    holds
+    ui.text(value="t")
 }

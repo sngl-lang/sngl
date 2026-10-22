@@ -125,16 +125,16 @@ func (env *Env) releaseCall(fn *ir.Func, args []any, run func() (any, error)) (a
 		hd = handleOf(args[0])
 	}
 	if hd != nil && hd.moved {
-		return nil, fmt.Errorf("%s released after it was moved: allocated at %s, moved at %s, released at %s",
-			hd.Def.Name, hd.At, hd.ReleasedAt, h.site())
+		return nil, fmt.Errorf("%s released after it was moved: allocated at %s, moved at %s, released %s",
+			hd.Def.Name, hd.At, hd.ReleasedAt, where(h.site()))
 	}
 	if r, ok := h.retained[hd]; hd != nil && ok {
-		return nil, fmt.Errorf("%s released while a native retains it: allocated at %s, retained at %s, released at %s",
-			hd.Def.Name, hd.At, r.at, h.site())
+		return nil, fmt.Errorf("%s released while a native retains it: allocated at %s, retained at %s, released %s",
+			hd.Def.Name, hd.At, r.at, where(h.site()))
 	}
 	if hd != nil && hd.released {
-		return nil, fmt.Errorf("%s released twice: allocated at %s, released at %s and again at %s",
-			hd.Def.Name, hd.At, hd.ReleasedAt, h.site())
+		return nil, fmt.Errorf("%s released twice: allocated at %s, released %s and again %s",
+			hd.Def.Name, hd.At, where(hd.ReleasedAt), where(h.site()))
 	}
 	v, err := run()
 	if err != nil || hd == nil {
@@ -151,8 +151,17 @@ func (env *Env) useAfterRelease(s *Struct, how string, at ast.Pos) error {
 		return fmt.Errorf("%s %s after it was moved: allocated at %s, moved at %s, %s at %s",
 			hd.Def.Name, how, hd.At, hd.ReleasedAt, how, at)
 	}
-	return fmt.Errorf("%s %s after its release: allocated at %s, released at %s, %s at %s",
-		hd.Def.Name, how, hd.At, hd.ReleasedAt, how, at)
+	return fmt.Errorf("%s %s after its release: allocated at %s, released %s, %s at %s",
+		hd.Def.Name, how, hd.At, where(hd.ReleasedAt), how, at)
+}
+
+// where names a release site: a position, or the release a pass wrote, which
+// was written nowhere.
+func where(at ast.Pos) string {
+	if at.IsValid() {
+		return "at " + at.String()
+	}
+	return "where the compiler releases it"
 }
 
 // move gives hd to the native being called, which releases it itself.
@@ -162,12 +171,19 @@ func (h *handles) move(hd *Handle) {
 }
 
 // retain records that the native being called keeps hd until the lifetime
-// running now ends.
+// running now ends, or until the same call in the same lifetime hands it
+// another, which is the native's to hold in its place.
 func (h *handles) retain(hd *Handle) {
 	if h.retained == nil {
 		h.retained = map[*Handle]retention{}
 	}
-	h.retained[hd] = retention{at: h.site(), lifetime: h.lifetime}
+	r := retention{at: h.site(), lifetime: h.lifetime}
+	for prev, q := range h.retained {
+		if q == r {
+			delete(h.retained, prev)
+		}
+	}
+	h.retained[hd] = r
 }
 
 // letGo ends every retention made while the lifetime at k ran: its node is

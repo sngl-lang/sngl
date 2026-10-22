@@ -192,11 +192,23 @@ type Package struct {
 	// called, are the lowering's answers and not a name to look up.
 	Mounts []*Func `json:"-"`
 
+	// PropReports are the effects reporting writes to what reads a
+	// component's prop, by the prop's parameter: written by the effect
+	// lowering while the prop is a parameter nothing writes, and read by
+	// passComponentProps, whose setter is the one write it gets.
+	PropReports map[*Param][]PropReport `json:"-"`
+
 	// Run is the build's function for the target's `@run` handler: it takes
 	// the command line and the host's `run`, and the host's own entry point
 	// calls it before anything the program renders exists. Nil where the
 	// program wrote none, and the host starts as it always has.
 	Run *Func `json:"-"`
+}
+
+// PropReport is one effect a prop's setter marks written and settles.
+type PropReport struct {
+	Dirty  *Var
+	Settle *Func
 }
 
 // RootMounts are the first settles of the brackets written at the root of a

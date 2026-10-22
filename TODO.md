@@ -116,15 +116,30 @@ The statement half; closes the unbounded part of #110.
 
 The node half.
 
-- [ ] The pass: an owned derived value becomes an instance cell plus an
-  `effect(on=inputs, @mount, @unmount)`; an owned `var` gets release on
-  overwrite (assign, then release the old value) and an `@unmount`; a
-  `#[retains]` argument in an updater takes its node's lifetime. It joins
-  `interp.Prepare`.
-- [ ] Fixtures under the tracker: a `var` overwritten, an owned derived value re-keyed
-  and unmounted (branch, list row, window under `if`), a retained argument
-  replaced and unmounted, a moved argument never released.
-- [ ] Goldens on Go, JS and Kotlin.
+- [X] The pass: an owned derived value becomes an instance var plus an
+  `effect(on=inputs, @update)` (not `@mount`/`@unmount`: the design note says
+  why); an owned `var` gets release on overwrite (assign, then release the old
+  value) and an `@unmount`; a `#[retains]` argument in an effect's handler
+  takes its node's lifetime. It joins `interp.Prepare`. A component var
+  released by hand is now a double release.
+- [X] Fixtures under the tracker: a `var` overwritten, an owned derived value
+  re-keyed and unmounted (branch, list row, window under `if`), a view-block
+  var, a retained argument replaced and unmounted, a moved argument never
+  released (`testdata/owned_state.sngl`,
+  `cmd/sngl/testdata/simulate_cnative_owned.txt`).
+- [X] Goldens on Go and JS (`testdata/owned_state.txtar`).
+- [ ] The Kotlin golden: this host has no Android SDK, so its run cannot be
+  recorded. Before it can be, android has to compile an owned value in a
+  component under `if`: such a Composable cannot call a package function that
+  writes package state (the release, in the fixture), which predates Part 5.
+- [ ] bubbletea keeps an instance's state when the `if` it sits under leaves
+  and comes back, where every other target and the interpreter start it
+  again; with this part that is a second release on the next leave.
+- [X] Found on the way: the interpreter kept a component's state across a
+  branch leaving when its parent rendered nothing else
+  (`testdata/component_state_leaves_with_branch.sngl`), and an effect's
+  `@update` keyed on a prop of a component built at run time never ran on a
+  target (`testdata/effect_update_on_prop.txtar`).
 
 ## Part 6: application teardown on targets
 
@@ -159,7 +174,8 @@ every frame.
 
 - [ ] Declare gtk4's pixbuf as `#[owned(unrefPixbuf)]` and its loading in
   `gtk4.sngl`, so the image override is an owned derived value that Part 5 keys on
-  `(src, w, h)`.
+  `(src, w, h)`. `OwnedState` reaches a library component's body only on the
+  interpreter; on a target the override has to be reached as well.
 - [ ] Leak checked under `--simulate gtk4`; golden showing one load per key;
   recorded run.
 

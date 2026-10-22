@@ -52,14 +52,32 @@ func testPassedToALambdaAfterRelease(t test.Test) { // ERROR(test) "file passed 
 component holds ui.node {
     var f = open(6)
 
+    effect(@unmount {
+        close(f)
+    })
+
     ui.text(value="{f.fd}")
 }
 
-// Teardown unmounts the tree, and nothing in it releases f.
-func testHeldPastUnmount(t test.Test, c holds) { // ERROR(test) "leak: the file allocated at"
+// A var a component holds is released when the node unmounts, so releasing it
+// by hand as well releases it twice.
+func testReleasedByHandAtUnmount(t test.Test, c holds) { // ERROR(test) "file released twice: allocated at error_owned_tracker.sngl:17:22, released at error_owned_tracker.sngl:56:9 and again where the compiler releases it"
     t.assert(c.f.fd == 6)
+}
+
+component keeps ui.node {
+    var fs = [open(7)]
+
+    ui.text(value="{fs.length}")
+}
+
+// A list of owned values is not one the compiler releases: teardown unmounts
+// the tree, and nothing in it releases what the list holds.
+func testHeldInAList(t test.Test, c keeps) { // ERROR(test) "leak: the file allocated at"
+    t.assert(c.fs.length == 1)
 }
 
 ui.window(title="t") {
     holds
+    keeps
 }
