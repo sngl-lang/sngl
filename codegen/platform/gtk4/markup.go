@@ -347,12 +347,10 @@ func escapePango(s string) string {
 
 // flowTags is the span element a flow's own typography becomes.
 //
-// A flow's `style` is a `ui.Style` and this platform answers none of it
-// otherwise -- gtk4 has no per-widget styling and `OnPropAssign` drops the
-// prop outright -- so the five typography fields are answered here, where
-// Pango has them, and the rest is still dropped. That is also what seeds the
-// cascade: everything inside inherits from this element, which is the host
-// doing the work every other target had to do itself.
+// A flow's `style` is a `ui.Style`, and its five typography fields are
+// answered here, where Pango has them. That is what seeds the cascade:
+// everything inside inherits from this element, which is the host doing the
+// work every other target had to do itself.
 func flowTags(style map[string]ir.Expr) (open, close string) {
 	sl, ok := style[stylePropName].(*ir.StructLit)
 	if !ok {

@@ -356,7 +356,7 @@ page's title off its route's declaration, so it is a constant.
 | `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages                                                                      |
 | `bubbletea` | all of it, a sprite as half-block cells; a row's columns and badges are written with no space between them, and the artwork leaves blank rows |
 | `fyne`      | all of it; a badge is its text alone, since Fyne paints no label's background, and a card's lines are not centred                             |
-| `gtk4`      | all of it, laid out by GTK alone: gtk4 reads no style but `flex`, so sizes, gaps, faces and colours are GTK's own                             |
+| `gtk4`      | all of it; a line's text is centred in its box, where html starts it at the left                                                              |
 | `android`   | all of it; the manifest asks for `INTERNET` because the program fetches                                                                       |
 
 `--lang none` on html is refused where the detail page is written: a static

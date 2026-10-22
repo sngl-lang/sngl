@@ -132,9 +132,10 @@ const component ui.checkbox[platform](label, checked, style, @change) {
     }) {}
 }
 
-const component ui.image[platform](fit, @click, @load, @error, src) {
+const component ui.image[platform](fit, style, @click, @load, @error, src) {
     Image(
         fit = string(fit),
+        style = {...style},
         @click {
             click()
         },
@@ -338,9 +339,7 @@ const component ui.popover[platform](style, open, @close, content) {
     }
 }
 
-// A widget's `style` sets nothing on this platform but an expand for its
-// `flex`, so nothing below can mark a selection with a font weight; a check
-// button's `active` marks it instead.
+// A selected row is marked by its check button's `active`.
 // Clicking the selected one unchecks it on screen and changes nothing, since
 // GTK has no way here to refuse the toggle.
 
@@ -889,10 +888,12 @@ const component shapes.canvasText[platform](x, y, content, style) {
 // source is a GtkPicture showing the texture its bytes or its drawing make --
 // a file the program carries, one fetched, or a picture a drawing paints --
 // and reports to the image whether it arrived. Appended to a window, it is the
-// window's icon.
+// window's icon. A width and a height in its style are its size, whatever its
+// picture's.
 #[marks.intrinsic("gtk4:Image")]
 component Image(
     fit     string,
+    style   ui.Style,
     @click(),
     @load(),
     @failed(message string),
