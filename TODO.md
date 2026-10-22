@@ -128,10 +128,13 @@ The node half.
   released (`testdata/owned_state.sngl`,
   `cmd/sngl/testdata/simulate_cnative_owned.txt`).
 - [X] Goldens on Go and JS (`testdata/owned_state.txtar`).
-- [ ] The Kotlin golden: this host has no Android SDK, so its run cannot be
-  recorded. Before it can be, android has to compile an owned value in a
-  component under `if`: such a Composable cannot call a package function that
-  writes package state (the release, in the fixture), which predates Part 5.
+- [ ] The Kotlin golden. android has to compile an owned value in a
+  component under `if` first: a package function that writes package state
+  (the release, in the fixture) is a method of the screen's state class, and
+  the component's own Composable has no `state` to call it on
+  (`Unresolved reference 'state'`), which predates Part 5. Its `@update` keyed
+  on a prop also looked never marked in the generated code; unconfirmed until
+  it compiles.
 - [X] bubbletea keeps an instance's state when the `if` it sits under leaves
   and comes back, where every other target and the interpreter start it
   again; with this part that is a second release on the next leave. A `match`
@@ -150,10 +153,12 @@ The node half.
   generate when its initializer read the loop's variable; and `ReleaseTemps`
   took a cell's `map.get` for an allocation, releasing the value a write to an
   owned cell had just stored.
-- [ ] android, which brackets lifetimes itself, gets no restart for a
-  component that renders nothing spliced under a reactive `if`. Whether it
-  keeps that component's state across the branch is unverified: the run
-  cannot be recorded on this host.
+- [X] android, which brackets lifetimes itself, got no restart for a
+  component that renders nothing spliced under a reactive `if`, and kept its
+  state across the branch. The enter effect stays a native bracket there,
+  ahead of the instance's own
+  (`testdata/renders_nothing_state_leaves_with_branch.txtar`, now with
+  kotlin/android).
 - [X] The interpreter lost a package write a var initializer made while a
   `for` copy or a scoped population mounted: `var f = open()` with `open`
   counting in a package var left the count at 0, and each copy's `f` was the
@@ -172,9 +177,9 @@ The node half.
   position of `if`s remembers what it described. It needs the copies keyed, as
   a cell under a loop has them (`dirtyAt`). android keeps nothing either:
   whether it reports to a bracket its `if` took back in the same pass as the
-  write is unverified, since this host has no Android SDK to record the run
-  (`testdata/owned_derived_built_once_on_entry.txtar` with kotlin/android in
-  its `output` block).
+  write is unverified, since
+  `testdata/owned_derived_built_once_on_entry.txtar` with kotlin/android in
+  its `output` block does not compile, for the Kotlin golden's reason above.
 
 ## Part 6: application teardown on targets
 

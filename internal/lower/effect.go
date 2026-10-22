@@ -351,7 +351,9 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	prefix := "__effect" + strconv.Itoa(st.counter)
 	st.counter++
 	if n.Enter {
-		st.lowerEnter(n, o, frames, prefix)
+		if !st.native {
+			st.lowerEnter(n, o, frames, prefix)
+		}
 		return nil
 	}
 

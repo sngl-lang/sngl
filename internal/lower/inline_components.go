@@ -1607,11 +1607,10 @@ func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.S
 // where a target building the instance there starts it afresh. Each is
 // declared from its type's zero instead, since the first entry initializes
 // it, and an initializer run twice makes an owned value twice. Under loops
-// the effect is keyed by the copy, which the cells already are.
+// the effect is keyed by the copy, which the cells already are. A platform
+// bracketing lifetimes itself keeps it as a bracket of its own, ahead of the
+// instance's, since it never runs the settle passEffect would lower it into.
 func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.NodeInst {
-	if st.nativeEffects {
-		return nil
-	}
 	var block []ir.Stmt
 	for _, v := range vars {
 		if v.IsConst || v.NodeHandle {

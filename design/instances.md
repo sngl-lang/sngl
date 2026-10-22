@@ -498,9 +498,13 @@ and a mark would report a write to a lifetime just beginning. A `for` copy
 needed this as much as a branch: its cells are a map nothing removes from, so
 a row that left and came back kept its state. A component that renders
 nothing is spliced under a reactive `if` on every target, not only bubbletea,
-and kept its state on all of them; it gets the same effect, except on a
-target that brackets lifetimes itself (android), whose lifetimes do not run
-through the settle this lowers to (`testdata/bubbletea_state_leaves_with_branch.txtar`,
+and kept its state on all of them; it gets the same effect. A target that
+brackets lifetimes itself (android) never runs the settle `lowerEnter` builds,
+so there the effect stays a native bracket, a `DisposableEffect` whose
+`@mount` assigns the initializers; spliced ahead of the instance's own
+brackets, it runs before them, as Compose runs a composition's effects in
+order. Without it android counted the mounts, as bubbletea had
+(`testdata/bubbletea_state_leaves_with_branch.txtar`,
 `testdata/renders_nothing_state_leaves_with_branch.txtar`).
 
 **The interpreter mounts a `for` copy or a scoped population in a snapshot
