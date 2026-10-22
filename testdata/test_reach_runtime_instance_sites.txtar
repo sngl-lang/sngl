@@ -104,9 +104,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -531,7 +531,7 @@ func (m Model) View() tea.View {
 		if content_0Part_2 != "" {
 			content_0Parts = append(content_0Parts, content_0Part_2)
 		}
-		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Parts...)
+		content_0 = tui.Column(0, content_0Parts...)
 	}
 	if content_0 != "" {
 		contentChildren = append(contentChildren, content_0)
@@ -573,7 +573,7 @@ func (m Model) View() tea.View {
 			content_1Items = append(content_1Items, content_1Item_2)
 		}
 	}
-	content_1 = strings.Join(content_1Items, "\n")
+	content_1 = tui.Column(0, content_1Items...)
 	if content_1 != "" {
 		contentChildren = append(contentChildren, content_1)
 	}
@@ -600,7 +600,7 @@ func (m Model) View() tea.View {
 		if content_2_0Part_2 != "" {
 			content_2_0Parts = append(content_2_0Parts, content_2_0Part_2)
 		}
-		content_2_0 = lipgloss.JoinVertical(lipgloss.Left, content_2_0Parts...)
+		content_2_0 = tui.Column(0, content_2_0Parts...)
 	}
 	if content_2_0 != "" {
 		content_2Children = append(content_2Children, content_2_0)
@@ -623,9 +623,9 @@ func (m Model) View() tea.View {
 	if content_2_3 != "" {
 		content_2Children = append(content_2Children, content_2_3)
 	}
-	content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+	content_2 = tui.Column(0, content_2Children...)
 	contentChildren = append(contentChildren, content_2)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -3452,7 +3452,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1fef6c713a70864dbc0c861b90475b52
+pass sha256:b31a58074095740cda3082440461881d
 -- run/go/fyne --
 pass sha256:901d8088428dfac9ea5c1def8a46c790
 -- run/go/gtk4 --

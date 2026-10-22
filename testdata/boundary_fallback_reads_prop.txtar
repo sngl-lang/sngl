@@ -45,9 +45,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -171,7 +171,7 @@ func (m Model) View() tea.View {
 			content_0Item = lipgloss.NewStyle().Render(fmt.Sprint(x))
 			content_0Items = append(content_0Items, content_0Item)
 		}
-		content_0 = strings.Join(content_0Items, "\n")
+		content_0 = tui.Column(0, content_0Items...)
 		if content_0 != "" {
 			contentChildren = append(contentChildren, content_0)
 		}
@@ -189,7 +189,7 @@ func (m Model) View() tea.View {
 		if content_1 != "" {
 			contentChildren = append(contentChildren, content_1)
 		}
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -446,7 +446,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1652cd54d2cc7c27d4bf21bfb5fd30c2
+pass sha256:f6000089554d33ec497ccfee887bdade
 -- run/go/gtk4 --
 pass sha256:c2b60b1ce1a505f474ec7958e6002f3f
 -- run/none/html --

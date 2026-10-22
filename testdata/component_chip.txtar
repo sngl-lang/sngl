@@ -38,6 +38,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -173,7 +174,7 @@ func (m Model) View() tea.View {
 		}
 		content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint("Success"))
 		contentChildren = append(contentChildren, content_2)
-		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+		content = tui.Row(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -274,12 +275,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = container.NewHBox()
-	m.__n2 = container.NewHBox()
+	m.__n2 = container.New(fynelayout.NewAligned(true, 4, 0, fynelayout.Center))
 	m.__n3 = widget.NewLabel("")
 	m.__n3.SetText("Tag")
 	m.__n2.Add(m.__n3)
 	m.__n1.Add(container.NewThemeOverride(m.__n2, _snglTheme0))
-	m.__n4 = container.NewHBox()
+	m.__n4 = container.New(fynelayout.NewAligned(true, 4, 0, fynelayout.Center))
 	m.__n5 = widget.NewLabel("")
 	m.__n5.SetText("Removable")
 	m.__n4.Add(m.__n5)
@@ -288,7 +289,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6.OnTapped = m.__n6_click_handler
 	m.__n4.Add(m.__n6)
 	m.__n1.Add(container.NewThemeOverride(m.__n4, _snglTheme0))
-	m.__n7 = container.NewHBox()
+	m.__n7 = container.New(fynelayout.NewAligned(true, 4, 0, fynelayout.Center))
 	m.__n8 = widget.NewLabel("")
 	m.__n8.SetText("Success")
 	m.__n7.Add(m.__n8)
@@ -404,9 +405,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:571e6a43618ba10d81f6764bc735f689
+pass sha256:88b5eb1468e958f1df1120a01b93b754
 -- run/go/fyne --
-pass sha256:6054910742b05cd065a388153a0d6d30
+pass sha256:706e58cbd344cb841b2cf9b57b28ba8b
 -- run/kotlin/android --
 pass sha256:cb9f7d76eea7598a2e0cefa737ce4e7f
 -- run/none/html --

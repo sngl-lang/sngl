@@ -111,9 +111,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -420,10 +420,10 @@ func (m Model) View() tea.View {
 			}()))))
 			__focusPos0++
 			content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
-			content_0Item = lipgloss.JoinHorizontal(lipgloss.Top, content_0ItemChildren...)
+			content_0Item = tui.Row(0, content_0ItemChildren...)
 			content_0Items = append(content_0Items, content_0Item)
 		}
-		content_0 = strings.Join(content_0Items, "\n")
+		content_0 = tui.Column(0, content_0Items...)
 		if content_0 != "" {
 			contentChildren = append(contentChildren, content_0)
 		}
@@ -437,7 +437,7 @@ func (m Model) View() tea.View {
 		}
 		content_1_0 = lipgloss.NewStyle().Render(content_1_0Prefix + " " + fmt.Sprint("done"))
 		content_1Children = append(content_1Children, content_1_0)
-		content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
+		content_1 = tui.Row(0, content_1Children...)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string
@@ -452,12 +452,12 @@ func (m Model) View() tea.View {
 		}
 		content_2_1 = lipgloss.NewStyle().Render(content_2_1Prefix + " " + fmt.Sprint(("named " + fmt.Sprint(m.hits__inst0))))
 		content_2Children = append(content_2Children, content_2_1)
-		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		content_2 = tui.Column(0, content_2Children...)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		content_3 = lipgloss.NewStyle().Render(fmt.Sprint(("got=" + fmt.Sprint(m.got))))
 		contentChildren = append(contentChildren, content_3)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1261,7 +1261,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0cc96d64cb9d268c348c42a21e16ef10
+pass sha256:370433a4368e35d5c0a8d6561a396c99
 -- run/go/fyne --
 pass sha256:b1e564965be1d4a91d4a21238492dcdd
 -- run/go/gtk4 --

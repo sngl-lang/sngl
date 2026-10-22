@@ -369,14 +369,14 @@ func (m Model) View() tea.View {
 		var content_0_0 string
 		content_0_0 = tui.Picture("logo.svg", 24, 12)
 		content_0Children = append(content_0Children, content_0_0)
-		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		content_0 = tui.Column(0, content_0Children...)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
 		content_1_0 = tui.Picture(m.url__inst0, 24, 12)
 		content_1Children = append(content_1Children, content_1_0)
-		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		content_1 = tui.Column(0, content_1Children...)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string
@@ -387,27 +387,27 @@ func (m Model) View() tea.View {
 			return __c.Result()
 		})
 		content_2Children = append(content_2Children, content_2_0)
-		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		content_2 = tui.Column(0, content_2Children...)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		if m.failed__inst0 || !m.hasPhoto__inst0 {
 			content_3 = lipgloss.NewStyle().
 				Background(lipgloss.Color("#cccccc")).
-				Height(5).
+				Height(2).
 				AlignHorizontal(lipgloss.Center).
 				Width(5).Render(fmt.Sprint("JD"))
 		} else {
 			var content_3Children []string
 			var content_3_0 string
 			if m.hasPhoto__inst0 {
-				content_3_0 = tui.Picture(m.url__inst0, 24, 12)
+				content_3_0 = tui.Picture(m.url__inst0, 5, 2)
 			}
 			if content_3_0 != "" {
 				content_3Children = append(content_3Children, content_3_0)
 			}
-			content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+			content_3 = tui.Column(0, content_3Children...)
 			content_3 = lipgloss.NewStyle().
-				Height(5).
+				Height(2).
 				Width(5).Render(content_3)
 		}
 		if content_3 != "" {
@@ -433,7 +433,7 @@ func (m Model) View() tea.View {
 		}
 		content_6 = lipgloss.NewStyle().Render(content_6Prefix + " " + fmt.Sprint("grow"))
 		contentChildren = append(contentChildren, content_6)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -564,7 +564,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			if m.failed__inst0 || !m.hasPhoto__inst0 {
 				__n4 := widget.NewLabel("")
 				__n4.SetText("JD")
-				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(__n4, _snglTheme1), 0, 0, 40, 40))
+				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n4), _snglTheme1), 0, 0, 40, 40))
 				m.__slot1 = append(m.__slot1, __n4)
 			} else {
 				var __n5 *__child0Instance
@@ -2243,9 +2243,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4e1e85f17b4a2065817399c5fe88588a
+pass sha256:af71ea7991e3a8a1d3afe419d6d2b2c3
 -- run/go/fyne --
-pass sha256:08060448a4ef95dda9c3550abb8b9828
+pass sha256:bbc4c6821a5edb4c47af0e3d3b7fafc0
 -- run/go/gtk4 --
 pass sha256:8cd27948d0ad9339439a3b85b0c2c197
 -- run/kotlin/android --

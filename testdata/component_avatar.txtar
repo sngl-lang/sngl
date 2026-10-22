@@ -149,7 +149,7 @@ func (m Model) View() tea.View {
 		var content_0 string
 		content_0 = lipgloss.NewStyle().
 			Background(lipgloss.Color("#cccccc")).
-			Height(5).
+			Height(2).
 			AlignHorizontal(lipgloss.Center).
 			Width(5).Render(fmt.Sprint("JD"))
 		contentChildren = append(contentChildren, content_0)
@@ -157,17 +157,17 @@ func (m Model) View() tea.View {
 		if m.failed__inst1 {
 			content_1 = lipgloss.NewStyle().
 				Background(lipgloss.Color("#cccccc")).
-				Height(5).
+				Height(2).
 				AlignHorizontal(lipgloss.Center).
 				Width(5).Render(fmt.Sprint("AB"))
 		} else {
 			var content_1Children []string
 			var content_1_0 string
-			content_1_0 = tui.Picture("https://example.com/a.png", 24, 12)
+			content_1_0 = tui.Picture("https://example.com/a.png", 5, 2)
 			content_1Children = append(content_1Children, content_1_0)
-			content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+			content_1 = tui.Column(0, content_1Children...)
 			content_1 = lipgloss.NewStyle().
-				Height(5).
+				Height(2).
 				Width(5).Render(content_1)
 		}
 		if content_1 != "" {
@@ -176,11 +176,11 @@ func (m Model) View() tea.View {
 		var content_2 string
 		content_2 = lipgloss.NewStyle().
 			Background(lipgloss.Color("#cccccc")).
-			Height(8).
+			Height(4).
 			AlignHorizontal(lipgloss.Center).
 			Width(8).Render(fmt.Sprint("XY"))
 		contentChildren = append(contentChildren, content_2)
-		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+		content = tui.Row(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -281,7 +281,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 			__n1 := widget.NewLabel("")
 			__n1.SetText("JD")
-			fynelayout.InsertBefore(__parent, m.__slot0_at, fynelayout.ShareSized(container.NewThemeOverride(__n1, _snglTheme0), 0, 0, 40, 40))
+			fynelayout.InsertBefore(__parent, m.__slot0_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n1), _snglTheme0), 0, 0, 40, 40))
 			m.__slot0 = append(m.__slot0, __n1)
 		}
 		m.__rendering0 = false
@@ -304,7 +304,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			if m.failed__inst1 {
 				__n3 := widget.NewLabel("")
 				__n3.SetText("AB")
-				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(__n3, _snglTheme1), 0, 0, 40, 40))
+				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n3), _snglTheme1), 0, 0, 40, 40))
 				m.__slot1 = append(m.__slot1, __n3)
 			} else {
 				__n4 := fynelayout.NewImage()
@@ -343,7 +343,7 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 			m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
 			__n6 := widget.NewLabel("")
 			__n6.SetText("XY")
-			fynelayout.InsertBefore(__parent, m.__slot2_at, fynelayout.ShareSized(container.NewThemeOverride(__n6, _snglTheme3), 0, 0, 64, 64))
+			fynelayout.InsertBefore(__parent, m.__slot2_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n6), _snglTheme3), 0, 0, 64, 64))
 			m.__slot2 = append(m.__slot2, __n6)
 		}
 		m.__rendering2 = false
@@ -799,9 +799,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:37ba9ce836d75bca57d3bba7fe03d30b
+pass sha256:c2555e08a07c4383a8ceb3e3fc91bab6
 -- run/go/fyne --
-pass sha256:9dbb14ac7313df6d1c558c47bc69c583
+pass sha256:1626629ffb969225fc8f929356504ab3
 -- run/kotlin/android --
 pass sha256:d33cda0102625e0b6641b28da590dbb0
 -- run/none/html --

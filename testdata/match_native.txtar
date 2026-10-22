@@ -224,9 +224,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 func snglOptEq[T comparable](p *T, v T) bool {
@@ -914,7 +914,7 @@ func (m Model) View() tea.View {
 			}
 			contentPart_9Items = append(contentPart_9Items, contentPart_9Item)
 		}
-		contentPart_9 = strings.Join(contentPart_9Items, "")
+		contentPart_9 = tui.Column(0, contentPart_9Items...)
 		if contentPart_9 != "" {
 			contentParts = append(contentParts, contentPart_9)
 		}
@@ -936,7 +936,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_13 = lipgloss.NewStyle().Render(contentPart_13Prefix + " " + fmt.Sprint("Spin"))
 		contentParts = append(contentParts, contentPart_13)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -2588,7 +2588,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:27c1a298415f9acc74a3b69e796cf60b
+pass sha256:0d926064c73cb0c981c25e41f1037440
 -- run/go/fyne --
 pass sha256:8f96036b3e77888d535509ebda693fd8
 -- run/go/gtk4 --

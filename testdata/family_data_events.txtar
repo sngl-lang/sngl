@@ -108,6 +108,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"slices"
@@ -437,12 +438,12 @@ func (m Model) View() tea.View {
 		var contentPart_0_0_1 string
 		contentPart_0_0_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.inner__inst0))
 		contentPart_0_0Children = append(contentPart_0_0Children, contentPart_0_0_1)
-		contentPart_0_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0_0Children...)
+		contentPart_0_0 = tui.Column(0, contentPart_0_0Children...)
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_0)
 		var contentPart_0_1 string
 		contentPart_0_1 = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0))))
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_1)
-		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
+		contentPart_0 = tui.Column(0, contentPart_0Children...)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		var contentPart_1Children []string
@@ -459,11 +460,11 @@ func (m Model) View() tea.View {
 		var contentPart_1_0_1 string
 		contentPart_1_0_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.inner__inst1))
 		contentPart_1_0Children = append(contentPart_1_0Children, contentPart_1_0_1)
-		contentPart_1_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_0Children...)
+		contentPart_1_0 = tui.Column(0, contentPart_1_0Children...)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_0)
-		contentPart_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1Children...)
+		contentPart_1 = tui.Column(0, contentPart_1Children...)
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1197,7 +1198,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a9e72176877325da428da1616ed9bb31
+pass sha256:aa40bf03e5ed5999bc3709d301b2af28
 -- run/go/fyne --
 pass sha256:7cd567305a5ac00a669f0470a3864ad3
 -- run/go/gtk4 --

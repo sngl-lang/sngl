@@ -70,6 +70,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -214,7 +215,7 @@ func (m Model) renderTreeView(node *Node, __depth int) string {
 		if result_2 != "" {
 			resultChildren = append(resultChildren, result_2)
 		}
-		result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
+		result = tui.Column(0, resultChildren...)
 	}
 	return result
 }
@@ -301,6 +302,6 @@ fun TreeView(node: Node? = null, __depth: Int = 0) {
     }
 }
 -- run/go/bubbletea --
-pass sha256:99dc68ab1551ca4df169800538a8052c
+pass sha256:9da252f3d3dc49a209691087c4338b1a
 -- run/kotlin/android --
 pass sha256:7cccdede170125f95ef2af31f23fc660

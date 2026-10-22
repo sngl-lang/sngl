@@ -256,7 +256,7 @@ func (m Model) View() tea.View {
 			return __c.Result()
 		})
 		contentChildren = append(contentChildren, content_5)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -673,7 +673,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3567f3b9ab66f55d22072597945e925f
+pass sha256:ba039065561b9f8fca8e455d56c149fc
 -- run/kotlin/android --
 pass sha256:cfcb5a863d21d816e646c5a77d7f7a5f
 -- run/none/html --

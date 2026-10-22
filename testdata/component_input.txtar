@@ -179,7 +179,7 @@ func (m Model) View() tea.View {
 	var content_1 string
 	content_1 = lipgloss.NewStyle().Render(fmt.Sprint((("Hello, " + m.name) + "!")))
 	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -618,7 +618,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fa09e4ce7301b04d9fb1a2528972ef87
+pass sha256:2dbed39b92ce4f0c4d62fcf24bfa676e
 -- run/go/fyne --
 pass sha256:1a2e884e35749454365be1cd422ff10f
 -- run/go/gtk4 --

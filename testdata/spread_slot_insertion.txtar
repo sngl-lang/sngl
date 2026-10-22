@@ -82,6 +82,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -209,7 +210,7 @@ func (m Model) View() tea.View {
 	}
 	part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("row"))
 	part0Children = append(part0Children, part0_0)
-	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = tui.Column(0, part0Children...)
 	parts = append(parts, part0)
 	var part1 string
 	var part1Children []string
@@ -221,9 +222,9 @@ func (m Model) View() tea.View {
 	}
 	part1_0 = lipgloss.NewStyle().Render(part1_0Prefix + " " + fmt.Sprint("part"))
 	part1Children = append(part1Children, part1_0)
-	part1 = lipgloss.JoinVertical(lipgloss.Left, part1Children...)
+	part1 = tui.Column(0, part1Children...)
 	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -601,7 +602,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6c038bc88de73ecd8fbfe3251eb2f6c7
+pass sha256:82d72f53558bed6d560d3e214a4b206e
 -- run/go/fyne --
 pass sha256:5af3a45fb14ec5a62ea2ef5e3c72d7f6
 -- run/go/gtk4 --

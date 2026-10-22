@@ -79,9 +79,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -316,18 +316,18 @@ func (m Model) View() tea.View {
 			return 0
 		}()))))
 		part0_0Item_1Children = append(part0_0Item_1Children, part0_0Item_1_0)
-		part0_0Item_1 = lipgloss.JoinVertical(lipgloss.Left, part0_0Item_1Children...)
+		part0_0Item_1 = tui.Column(0, part0_0Item_1Children...)
 		part0_0ItemChildren = append(part0_0ItemChildren, part0_0Item_1)
-		part0_0Item = lipgloss.JoinVertical(lipgloss.Left, part0_0ItemChildren...)
+		part0_0Item = tui.Column(0, part0_0ItemChildren...)
 		part0_0Items = append(part0_0Items, part0_0Item)
 	}
-	part0_0 = strings.Join(part0_0Items, "\n")
+	part0_0 = tui.Column(0, part0_0Items...)
 	if part0_0 != "" {
 		part0Children = append(part0Children, part0_0)
 	}
-	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = tui.Column(0, part0Children...)
 	parts = append(parts, part0)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1326,7 +1326,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dca1c8a2a05996343d95ab307abbf163
+pass sha256:35d15906861f7a9dd9a6e2e4878024fd
 -- run/go/fyne --
 pass sha256:182f356526c61d259817d1be80566e8b
 -- run/go/gtk4 --

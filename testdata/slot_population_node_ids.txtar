@@ -183,7 +183,7 @@ func (m Model) View() tea.View {
 		var content_0_0 string
 		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("inside"))
 		content_0Children = append(content_0Children, content_0_0)
-		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		content_0 = tui.Column(0, content_0Children...)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = tui.RenderTerminal(10, 5, 1, func() image.Image {
@@ -195,7 +195,7 @@ func (m Model) View() tea.View {
 		var content_2 string
 		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("radius 5"))
 		contentChildren = append(contentChildren, content_2)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1076,7 +1076,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4290edc85447b8cadbfb2da946422a90
+pass sha256:4fe50b5d33008f6b8fa0d786946ef400
 -- run/go/fyne --
 pass sha256:c269fa43fcc8ff0f3fc0f3f8423487cd
 -- run/go/gtk4 --

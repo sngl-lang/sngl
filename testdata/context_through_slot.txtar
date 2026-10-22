@@ -65,6 +65,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -158,17 +159,17 @@ func (m Model) View() tea.View {
 		content_0_1_0_0Children = append(content_0_1_0_0Children, content_0_1_0_0_0)
 		var content_0_1_0_0_1 string
 		var content_0_1_0_0_1Children []string
-		content_0_1_0_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1_0_0_1Children...)
+		content_0_1_0_0_1 = tui.Column(0, content_0_1_0_0_1Children...)
 		content_0_1_0_0Children = append(content_0_1_0_0Children, content_0_1_0_0_1)
-		content_0_1_0_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0_1_0_0Children...)
+		content_0_1_0_0 = tui.Row(0, content_0_1_0_0Children...)
 		content_0_1_0Children = append(content_0_1_0Children, content_0_1_0_0)
-		content_0_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_0_1_0Children...)
+		content_0_1_0 = tui.Column(0, content_0_1_0Children...)
 		content_0_1Children = append(content_0_1Children, content_0_1_0)
-		content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
+		content_0_1 = tui.Column(0, content_0_1Children...)
 		content_0Children = append(content_0Children, content_0_1)
-		content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
+		content_0 = tui.Row(0, content_0Children...)
 		contentChildren = append(contentChildren, content_0)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -220,6 +221,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c66e2f2cee94afb7d1a551fdcf07fc1b
+pass sha256:349a68436ebf8f292744545ba3d67832
 -- run/none/html --
 pass sha256:f0ec107732c0f5dbce0e6a683c63f6ac

@@ -83,9 +83,9 @@ import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 func __merge_Style(base, ov Style) Style {
@@ -316,6 +316,12 @@ func __styleLipgloss(s Style) lipgloss.Style {
 		}
 		return max(1, int(v)/8)
 	}
+	rows := func(v float64) int {
+		if v == 0 {
+			return 0
+		}
+		return max(1, int(v)/(2*8))
+	}
 	st := lipgloss.NewStyle()
 	if s.Color != (snglcolor.Color{}) {
 		st = st.Foreground(lipgloss.Color(s.Color.String()))
@@ -377,13 +383,13 @@ func __styleLipgloss(s Style) lipgloss.Style {
 	if v := cells(s.Width.Px); v != 0 {
 		st = st.Width(v)
 	}
-	if v := cells(s.Height.Px); v != 0 {
+	if v := rows(s.Height.Px); v != 0 {
 		st = st.Height(v)
 	}
 	if v := cells(s.MaxWidth.Px); v != 0 {
 		st = st.MaxWidth(v)
 	}
-	if v := cells(s.MaxHeight.Px); v != 0 {
+	if v := rows(s.MaxHeight.Px); v != 0 {
 		st = st.MaxHeight(v)
 	}
 	return st
@@ -609,11 +615,11 @@ func (m Model) View() tea.View {
 			contentPart_7Item = __styleLipgloss(__merge_Style(Style{}, m.s)).Render(fmt.Sprint(r))
 			contentPart_7Items = append(contentPart_7Items, contentPart_7Item)
 		}
-		contentPart_7 = strings.Join(contentPart_7Items, "")
+		contentPart_7 = tui.Column(0, contentPart_7Items...)
 		if contentPart_7 != "" {
 			contentParts = append(contentParts, contentPart_7)
 		}
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1060,7 +1066,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n7.OnTapped = m.__n7_click_handler
 	m.__n1.Add(m.__n7)
 	m.__n2 = widget.NewLabel("")
-	m.__n2__theme = container.NewThemeOverride(m.__n2, fynetheme.New(theme.DefaultTheme()))
+	m.__n2__theme = container.NewThemeOverride(fynetheme.NewBackdrop(m.__n2), fynetheme.New(theme.DefaultTheme()))
 	m.__n2.SetText("styled")
 	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
 	m.__n2__theme.Refresh()
@@ -1072,13 +1078,13 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		__lt1 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
 	m.__n3 = widget.NewLabel("")
-	m.__n3__theme = container.NewThemeOverride(m.__n3, fynetheme.New(theme.DefaultTheme()))
+	m.__n3__theme = container.NewThemeOverride(fynetheme.NewBackdrop(m.__n3), fynetheme.New(theme.DefaultTheme()))
 	m.__n3.SetText("picked")
 	m.__n3__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __lt1)))
 	m.__n3__theme.Refresh()
 	m.__n1.Add(m.__n3__theme)
 	m.__n4 = widget.NewLabel("")
-	m.__n4__theme = container.NewThemeOverride(m.__n4, fynetheme.New(theme.DefaultTheme()))
+	m.__n4__theme = container.NewThemeOverride(fynetheme.NewBackdrop(m.__n4), fynetheme.New(theme.DefaultTheme()))
 	m.__n4.SetText("kept")
 	m.__n4__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.kept[0])))
 	m.__n4__theme.Refresh()
@@ -1109,7 +1115,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__chi
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
-	c.__n0__theme = container.NewThemeOverride(c.__n0, fynetheme.New(theme.DefaultTheme()))
+	c.__n0__theme = container.NewThemeOverride(fynetheme.NewBackdrop(c.__n0), fynetheme.New(theme.DefaultTheme()))
 	c.__n0.SetText(c.__prop___p0)
 	c.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, c.__prop___p1)))
 	c.__n0__theme.Refresh()
@@ -2273,9 +2279,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3635422e5937abb609148151db2b44ad
+pass sha256:46a09db62f252f2ca91b92224d43d3ed
 -- run/go/fyne --
-pass sha256:2eca930d7e0e3fe47e2febef02a8811c
+pass sha256:97563e8ea6e7c9a57eb11a87f2bcb43c
 -- run/go/gtk4 --
 pass sha256:15554fde6500b37e9306b20e3bcbfe3a
 -- run/kotlin/android --

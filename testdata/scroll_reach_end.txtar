@@ -75,9 +75,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Measurement struct {
@@ -167,16 +167,16 @@ func (m Model) View() tea.View {
 		_ = i
 		var content_0_0Item string
 		content_0_0Item = lipgloss.NewStyle().
-			Height(6).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
+			Height(3).Render(fmt.Sprint(("row " + fmt.Sprint(i))))
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
-	content_0_0 = strings.Join(content_0_0Items, "\n")
+	content_0_0 = tui.Column(0, content_0_0Items...)
 	if content_0_0 != "" {
 		content_0Children = append(content_0Children, content_0_0)
 	}
-	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+	content_0 = tui.Column(0, content_0Children...)
 	contentChildren = append(contentChildren, content_0)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -778,7 +778,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e2ec05254ed97cc1ed11e044d5893363
+pass sha256:cf071cdf93cbae0be708fe04040acf1c
 -- run/go/fyne --
 pass sha256:adb8af89db4de5349d16571fba42f380
 -- run/go/gtk4 --

@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"strings"
 )
 
 type Measurement struct {
@@ -300,7 +299,7 @@ func (m Model) View() tea.View {
 		}
 		content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("Add"))
 		content_1Children = append(content_1Children, content_1_1)
-		content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
+		content_1 = tui.Row(1, content_1Children...)
 		content_1 = lipgloss.NewStyle().
 			AlignHorizontal(lipgloss.Center).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
@@ -323,11 +322,11 @@ func (m Model) View() tea.View {
 			__focusPos2++
 			content_2_0Items = append(content_2_0Items, content_2_0Item)
 		}
-		content_2_0 = strings.Join(content_2_0Items, "\n")
+		content_2_0 = tui.Column(0, content_2_0Items...)
 		if content_2_0 != "" {
 			content_2Children = append(content_2Children, content_2_0)
 		}
-		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		content_2 = tui.Column(0, content_2Children...)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		content_3Focused := (m.__focusID == 3)
@@ -337,7 +336,7 @@ func (m Model) View() tea.View {
 		}
 		content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + fmt.Sprint("Remove"))
 		contentChildren = append(contentChildren, content_3)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 		content = lipgloss.NewStyle().
 			Padding(2).Render(content)
 	}

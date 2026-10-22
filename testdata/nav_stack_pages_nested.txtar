@@ -73,9 +73,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Row struct {
@@ -445,14 +445,14 @@ func (m Model) View() tea.View {
 					contentPart_0ItemItemPart_4 = lipgloss.NewStyle().Render(contentPart_0ItemItemPart_4Prefix + " " + fmt.Sprint("pick"))
 					__focusPos0++
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_4)
-					contentPart_0ItemItem = lipgloss.JoinVertical(lipgloss.Left, contentPart_0ItemItemParts...)
+					contentPart_0ItemItem = tui.Column(0, contentPart_0ItemItemParts...)
 				}
 				contentPart_0ItemItems = append(contentPart_0ItemItems, contentPart_0ItemItem)
 			}
-			contentPart_0Item = strings.Join(contentPart_0ItemItems, "")
+			contentPart_0Item = tui.Column(0, contentPart_0ItemItems...)
 			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
 		}
-		contentPart_0 = strings.Join(contentPart_0Items, "")
+		contentPart_0 = tui.Column(0, contentPart_0Items...)
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
@@ -482,7 +482,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_4 = lipgloss.NewStyle().Render(contentPart_4Prefix + " " + fmt.Sprint("Back"))
 		contentParts = append(contentParts, contentPart_4)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1582,7 +1582,7 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:24821bdab5f17c2f9de9f8598925ab16
+pass sha256:13949adbdad1066194588829d7341c10
 -- run/go/fyne --
 pass sha256:4df5003c29d2e511c80ef38e2db397f8
 -- run/go/gtk4 --

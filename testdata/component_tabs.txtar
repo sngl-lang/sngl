@@ -60,9 +60,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Measurement struct {
@@ -249,11 +249,11 @@ func (m Model) View() tea.View {
 		__focusPos0++
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
-	content_0_0 = strings.Join(content_0_0Items, "")
+	content_0_0 = tui.Row(1, content_0_0Items...)
 	if content_0_0 != "" {
 		content_0Children = append(content_0Children, content_0_0)
 	}
-	content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
+	content_0 = tui.Row(1, content_0Children...)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Items []string
@@ -276,11 +276,11 @@ func (m Model) View() tea.View {
 		}
 		content_1Items = append(content_1Items, content_1Item)
 	}
-	content_1 = strings.Join(content_1Items, "\n")
+	content_1 = tui.Column(0, content_1Items...)
 	if content_1 != "" {
 		contentChildren = append(contentChildren, content_1)
 	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -499,7 +499,7 @@ func (m *Model) SetChanged(v int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n5 = container.NewVBox()
-	m.__n6 = container.NewHBox()
+	m.__n6 = container.New(fynelayout.New(true, 4, 0))
 	m.__renderSlot0(m.__n6)
 	m.__n5.Add(m.__n6)
 	m.__renderSlot1(m.__n5)
@@ -1291,9 +1291,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:440f71bab44e313d99019b4493bee3d2
+pass sha256:7d9d7ac66f4298d05ac367e9125a377f
 -- run/go/fyne --
-pass sha256:9c5ea564b100bd8d125a92f16f5c37a3
+pass sha256:d77ed932ccbf2d5dd2b3d5ce4cf067b7
 -- run/go/gtk4 --
 pass sha256:7d1d9db3e7e13fc48c8877e796e57d3c
 -- run/kotlin/android --

@@ -58,9 +58,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -289,7 +289,7 @@ func (m Model) View() tea.View {
 			var contentPart_0Item string
 			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
 		}
-		contentPart_0 = strings.Join(contentPart_0Items, "")
+		contentPart_0 = tui.Column(0, contentPart_0Items...)
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
@@ -302,7 +302,7 @@ func (m Model) View() tea.View {
 			}
 			contentPart_1Items = append(contentPart_1Items, contentPart_1Item)
 		}
-		contentPart_1 = strings.Join(contentPart_1Items, "")
+		contentPart_1 = tui.Column(0, contentPart_1Items...)
 		if contentPart_1 != "" {
 			contentParts = append(contentParts, contentPart_1)
 		}
@@ -317,7 +317,7 @@ func (m Model) View() tea.View {
 		var contentPart_3 string
 		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.n)))
 		contentParts = append(contentParts, contentPart_3)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1446,7 +1446,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d982b83fdd5da414c81176c09a928243
+pass sha256:b3c2f755c404c4af5c28eab005b1aaec
 -- run/go/fyne --
 pass sha256:be9d7aa09570aa21705bfff32ed3e532
 -- run/go/gtk4 --

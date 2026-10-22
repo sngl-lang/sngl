@@ -59,7 +59,7 @@ sha256:55fb076cbe6d9a80035948d61d7370e5
   ]
 }
 -- testrun/fyne/go/app.sngl/receipt/1 --
-sha256:2bb97c18d3e609b7707ec9cfa50050d3
+sha256:f61021b48556912902f5f8b60f046f5a
 {
   "results": [
     {

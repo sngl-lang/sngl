@@ -57,9 +57,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -295,14 +295,14 @@ func (m Model) View() tea.View {
 			__focusPos0++
 			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
 		}
-		contentPart_0 = strings.Join(contentPart_0Items, "")
+		contentPart_0 = tui.Column(0, contentPart_0Items...)
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
 		var contentPart_1 string
 		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -893,7 +893,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:31cb00006613f48fe7f69c4b1b35e41a
+pass sha256:985327ba791c7b7be7d0a38bfbbb531e
 -- run/go/fyne --
 pass sha256:8db9948de273d3273798c7bbb2d3ca83
 -- run/go/gtk4 --

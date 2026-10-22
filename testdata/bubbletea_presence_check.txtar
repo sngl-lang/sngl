@@ -122,9 +122,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -443,7 +443,7 @@ func (m Model) View() tea.View {
 			content_1Part_2Item = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(x)))
 			content_1Part_2Items = append(content_1Part_2Items, content_1Part_2Item)
 		}
-		content_1Part_2 = strings.Join(content_1Part_2Items, "\n")
+		content_1Part_2 = tui.Column(0, content_1Part_2Items...)
 		if content_1Part_2 != "" {
 			content_1Parts = append(content_1Parts, content_1Part_2)
 		}
@@ -459,7 +459,7 @@ func (m Model) View() tea.View {
 		if content_1Part_5 != "" {
 			content_1Parts = append(content_1Parts, content_1Part_5)
 		}
-		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Parts...)
+		content_1 = tui.Column(0, content_1Parts...)
 	}
 	if content_1 != "" {
 		contentChildren = append(contentChildren, content_1)
@@ -477,7 +477,7 @@ func (m Model) View() tea.View {
 	if content_4 != "" {
 		contentChildren = append(contentChildren, content_4)
 	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -525,4 +525,4 @@ func TestPresence(t *testing.T) {
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:b73d96b6745ec9129ef8a4fd566f4889
+pass sha256:f60d1ef938de74588ac42cdf1b480ebc

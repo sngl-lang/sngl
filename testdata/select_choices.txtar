@@ -262,7 +262,7 @@ func (m Model) View() tea.View {
 		}
 		content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("more"))
 		contentChildren = append(contentChildren, content_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1200,7 +1200,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:395780b47f14b31de2b3918ffbc98a17
+pass sha256:b4c17c31f750e3ee40dd80247264e471
 -- run/go/fyne --
 pass sha256:059da5c9fbaa06844cc769fb80d8a019
 -- run/go/gtk4 --

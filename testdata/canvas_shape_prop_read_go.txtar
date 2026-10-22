@@ -175,7 +175,7 @@ func (m Model) View() tea.View {
 		var contentPart_1 string
 		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint("r is 5"))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -319,6 +319,6 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:caaf27d7a8a327671a1032b5bd2199d0
+pass sha256:134dcb2c37c04b0132898d3334fc09ab
 -- run/go/fyne --
 pass sha256:aaca8f314123d24072986c67ba914e66

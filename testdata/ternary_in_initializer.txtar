@@ -50,6 +50,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -236,7 +237,7 @@ func (m Model) View() tea.View {
 		var content_4 string
 		content_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
 		contentChildren = append(contentChildren, content_4)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -557,7 +558,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:7a4e112e96aa75a26f09195c2451d1d0
+pass sha256:f4f8190148f3de12168a8ff37cad3ef1
 -- run/go/fyne --
 pass sha256:3abeb1b560847f1578f5cfe7996bed85
 -- run/go/gtk4 --

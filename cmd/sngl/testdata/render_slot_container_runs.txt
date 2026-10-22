@@ -71,7 +71,7 @@ window {
     main
 }
 -- testrun/fyne/go/scroll.sngl/main/1 --
-sha256:3c93fabf775bc1fbce9ba5063ca23d3e
+sha256:ec277a28b9dbd5a07571a608ce7f61e4
 {
   "results": [
     {

@@ -75,6 +75,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -320,7 +321,7 @@ func (m Model) View() tea.View {
 		var contentPart_11_0 string
 		contentPart_11_0 = lipgloss.NewStyle().Render(fmt.Sprint("a"))
 		contentPart_11Children = append(contentPart_11Children, contentPart_11_0)
-		contentPart_11 = lipgloss.JoinVertical(lipgloss.Left, contentPart_11Children...)
+		contentPart_11 = tui.Column(0, contentPart_11Children...)
 		contentParts = append(contentParts, contentPart_11)
 		var __lt4 string
 		if !m.shown__inst0 {
@@ -352,7 +353,7 @@ func (m Model) View() tea.View {
 			if contentPart_18_0 != "" {
 				contentPart_18Children = append(contentPart_18Children, contentPart_18_0)
 			}
-			contentPart_18 = lipgloss.JoinVertical(lipgloss.Left, contentPart_18Children...)
+			contentPart_18 = tui.Column(0, contentPart_18Children...)
 		}
 		if contentPart_18 != "" {
 			contentParts = append(contentParts, contentPart_18)
@@ -387,7 +388,7 @@ func (m Model) View() tea.View {
 			if contentPart_25_0 != "" {
 				contentPart_25Children = append(contentPart_25Children, contentPart_25_0)
 			}
-			contentPart_25 = lipgloss.JoinVertical(lipgloss.Left, contentPart_25Children...)
+			contentPart_25 = tui.Column(0, contentPart_25Children...)
 		}
 		if contentPart_25 != "" {
 			contentParts = append(contentParts, contentPart_25)
@@ -400,7 +401,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_26 = lipgloss.NewStyle().Render(contentPart_26Prefix + " " + fmt.Sprint("show"))
 		contentParts = append(contentParts, contentPart_26)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1323,7 +1324,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:92908dfae67ea67d3df93c8a4a558edc
+pass sha256:74351684fa34f6c53f0b4274db4529fb
 -- run/go/fyne --
 pass sha256:f5867707c4df4d639ac648383c1152ff
 -- run/kotlin/android --

@@ -51,6 +51,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -144,9 +145,9 @@ func (m Model) View() tea.View {
 		var contentPart_0_1_0 string
 		contentPart_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("one"))
 		contentPart_0_1Children = append(contentPart_0_1Children, contentPart_0_1_0)
-		contentPart_0_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0_1Children...)
+		contentPart_0_1 = tui.Column(0, contentPart_0_1Children...)
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_1)
-		contentPart_0 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_0Children...)
+		contentPart_0 = tui.Row(1, contentPart_0Children...)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		var contentPart_1Children []string
@@ -158,11 +159,11 @@ func (m Model) View() tea.View {
 		var contentPart_1_1_0 string
 		contentPart_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("two"))
 		contentPart_1_1Children = append(contentPart_1_1Children, contentPart_1_1_0)
-		contentPart_1_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_1Children...)
+		contentPart_1_1 = tui.Column(0, contentPart_1_1Children...)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_1)
-		contentPart_1 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_1Children...)
+		contentPart_1 = tui.Row(1, contentPart_1Children...)
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -206,6 +207,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:092b809125af906f965d6c3c3c66a8a3
+pass sha256:fe1148f5b912de798ca2de8c00239fa2
 -- run/none/html --
 pass sha256:01e654195fd41434281bfddf24dc3e04

@@ -110,6 +110,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"slices"
@@ -404,7 +405,7 @@ func (m Model) View() tea.View {
 	}
 	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("scribble"))
 	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1070,7 +1071,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8e4eeb5e43e82d759e1c03f68733f745
+pass sha256:071f367529462b9807f2b85182e2cd3f
 -- run/go/fyne --
 pass sha256:f84e6360c19966e95786cc9e1659e432
 -- run/go/gtk4 --

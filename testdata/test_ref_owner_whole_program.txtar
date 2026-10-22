@@ -84,6 +84,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -442,12 +443,12 @@ func (m Model) View() tea.View {
 			}
 			contentPart_0_1Part_1 = lipgloss.NewStyle().Render(contentPart_0_1Part_1Prefix + " " + fmt.Sprint(("mk" + fmt.Sprint(m.mh__inst0))))
 			contentPart_0_1Parts = append(contentPart_0_1Parts, contentPart_0_1Part_1)
-			contentPart_0_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0_1Parts...)
+			contentPart_0_1 = tui.Column(0, contentPart_0_1Parts...)
 		}
 		if contentPart_0_1 != "" {
 			contentPart_0Children = append(contentPart_0Children, contentPart_0_1)
 		}
-		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
+		contentPart_0 = tui.Column(0, contentPart_0Children...)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		var contentPart_1Children []string
@@ -478,14 +479,14 @@ func (m Model) View() tea.View {
 			}
 			contentPart_1_1Part_1 = lipgloss.NewStyle().Render(contentPart_1_1Part_1Prefix + " " + fmt.Sprint(("pk" + fmt.Sprint(m.ph__inst0))))
 			contentPart_1_1Parts = append(contentPart_1_1Parts, contentPart_1_1Part_1)
-			contentPart_1_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_1Parts...)
+			contentPart_1_1 = tui.Column(0, contentPart_1_1Parts...)
 		}
 		if contentPart_1_1 != "" {
 			contentPart_1Children = append(contentPart_1Children, contentPart_1_1)
 		}
-		contentPart_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1Children...)
+		contentPart_1 = tui.Column(0, contentPart_1Children...)
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -2191,7 +2192,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7e32b2d164a3b6e0adae016333cba5d7
+pass sha256:8a29916bbe80d4fa83509a1a00bb74fb
 -- run/go/fyne --
 pass sha256:ae64423700c43602e29133f4312bf235
 -- run/go/gtk4 --

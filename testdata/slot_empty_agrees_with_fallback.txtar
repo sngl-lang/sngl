@@ -70,9 +70,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -349,7 +349,7 @@ func (m Model) View() tea.View {
 		if part0Part_3_2 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_2)
 		}
-		part0Part_3 = lipgloss.JoinVertical(lipgloss.Left, part0Part_3Children...)
+		part0Part_3 = tui.Column(0, part0Part_3Children...)
 		part0Parts = append(part0Parts, part0Part_3)
 		var __lt1 string
 		if len(m.xs__inst0) == 0 {
@@ -370,7 +370,7 @@ func (m Model) View() tea.View {
 			part0Part_7_0Item = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(x)))
 			part0Part_7_0Items = append(part0Part_7_0Items, part0Part_7_0Item)
 		}
-		part0Part_7_0 = strings.Join(part0Part_7_0Items, "\n")
+		part0Part_7_0 = tui.Column(0, part0Part_7_0Items...)
 		if part0Part_7_0 != "" {
 			part0Part_7Children = append(part0Part_7Children, part0Part_7_0)
 		}
@@ -381,7 +381,7 @@ func (m Model) View() tea.View {
 		if part0Part_7_1 != "" {
 			part0Part_7Children = append(part0Part_7Children, part0Part_7_1)
 		}
-		part0Part_7 = lipgloss.JoinVertical(lipgloss.Left, part0Part_7Children...)
+		part0Part_7 = tui.Column(0, part0Part_7Children...)
 		part0Parts = append(part0Parts, part0Part_7)
 		__lt2 := "asks: empty"
 		var part0Part_9 string
@@ -392,7 +392,7 @@ func (m Model) View() tea.View {
 		var part0Part_10_0 string
 		part0Part_10_0 = lipgloss.NewStyle().Render(fmt.Sprint("fallback"))
 		part0Part_10Children = append(part0Part_10Children, part0Part_10_0)
-		part0Part_10 = lipgloss.JoinVertical(lipgloss.Left, part0Part_10Children...)
+		part0Part_10 = tui.Column(0, part0Part_10Children...)
 		part0Parts = append(part0Parts, part0Part_10)
 		var part0Part_11 string
 		part0Part_11 = lipgloss.NewStyle().Render(fmt.Sprint(("mounted " + fmt.Sprint(m.mounted__inst0))))
@@ -405,10 +405,10 @@ func (m Model) View() tea.View {
 		}
 		part0Part_12 = lipgloss.NewStyle().Render(part0Part_12Prefix + " " + fmt.Sprint("show"))
 		part0Parts = append(part0Parts, part0Part_12)
-		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
+		part0 = tui.Column(0, part0Parts...)
 	}
 	parts = append(parts, part0)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1701,7 +1701,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5363e0241a756630d94414ee43623860
+pass sha256:a16155bf387411a7b32234a5e666b48f
 -- run/go/fyne --
 pass sha256:4020ddb527a34ca6a85972f87decd48b
 -- run/go/gtk4 --

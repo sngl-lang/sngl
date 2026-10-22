@@ -48,9 +48,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -269,7 +269,7 @@ func (m Model) View() tea.View {
 			}
 			contentPart_0Part_1 = lipgloss.NewStyle().Render(contentPart_0Part_1Prefix + " " + fmt.Sprint("B"))
 			contentPart_0Parts = append(contentPart_0Parts, contentPart_0Part_1)
-			contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Parts...)
+			contentPart_0 = tui.Column(0, contentPart_0Parts...)
 		}
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
@@ -298,13 +298,13 @@ func (m Model) View() tea.View {
 			contentPart_3_0Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("|"))
 			contentPart_3_0Items = append(contentPart_3_0Items, contentPart_3_0Item_1)
 		}
-		contentPart_3_0 = strings.Join(contentPart_3_0Items, "")
+		contentPart_3_0 = tui.Row(0, contentPart_3_0Items...)
 		if contentPart_3_0 != "" {
 			contentPart_3Children = append(contentPart_3Children, contentPart_3_0)
 		}
-		contentPart_3 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_3Children...)
+		contentPart_3 = tui.Row(0, contentPart_3Children...)
 		contentParts = append(contentParts, contentPart_3)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -320,4 +320,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:e671181b8f99d6a9102dae94501c94a6
+pass sha256:f1ad807ac179d42f3cc6d06b824fc6b7

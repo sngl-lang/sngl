@@ -119,10 +119,10 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"slices"
-	"strings"
 )
 
 var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
@@ -1100,14 +1100,14 @@ func (m Model) View() tea.View {
 			__focusPos1++
 			content_1Item_0Items = append(content_1Item_0Items, content_1Item_0Item_1)
 		}
-		content_1Item_0 = strings.Join(content_1Item_0Items, "")
+		content_1Item_0 = tui.Row(0, content_1Item_0Items...)
 		if content_1Item_0 != "" {
 			content_1ItemChildren = append(content_1ItemChildren, content_1Item_0)
 		}
-		content_1Item = lipgloss.JoinHorizontal(lipgloss.Top, content_1ItemChildren...)
+		content_1Item = tui.Row(0, content_1ItemChildren...)
 		content_1Items = append(content_1Items, content_1Item)
 	}
-	content_1 = strings.Join(content_1Items, "\n")
+	content_1 = tui.Column(0, content_1Items...)
 	if content_1 != "" {
 		contentChildren = append(contentChildren, content_1)
 	}
@@ -1135,14 +1135,14 @@ func (m Model) View() tea.View {
 			__focusPos2++
 			content_2Item_0Items = append(content_2Item_0Items, content_2Item_0Item)
 		}
-		content_2Item_0 = strings.Join(content_2Item_0Items, "")
+		content_2Item_0 = tui.Row(0, content_2Item_0Items...)
 		if content_2Item_0 != "" {
 			content_2ItemChildren = append(content_2ItemChildren, content_2Item_0)
 		}
-		content_2Item = lipgloss.JoinHorizontal(lipgloss.Top, content_2ItemChildren...)
+		content_2Item = tui.Row(0, content_2ItemChildren...)
 		content_2Items = append(content_2Items, content_2Item)
 	}
-	content_2 = strings.Join(content_2Items, "\n")
+	content_2 = tui.Column(0, content_2Items...)
 	if content_2 != "" {
 		contentChildren = append(contentChildren, content_2)
 	}
@@ -1170,14 +1170,14 @@ func (m Model) View() tea.View {
 			__focusPos3++
 			content_3Item_0Items = append(content_3Item_0Items, content_3Item_0Item)
 		}
-		content_3Item_0 = strings.Join(content_3Item_0Items, "")
+		content_3Item_0 = tui.Row(0, content_3Item_0Items...)
 		if content_3Item_0 != "" {
 			content_3ItemChildren = append(content_3ItemChildren, content_3Item_0)
 		}
-		content_3Item = lipgloss.JoinHorizontal(lipgloss.Top, content_3ItemChildren...)
+		content_3Item = tui.Row(0, content_3ItemChildren...)
 		content_3Items = append(content_3Items, content_3Item)
 	}
-	content_3 = strings.Join(content_3Items, "\n")
+	content_3 = tui.Column(0, content_3Items...)
 	if content_3 != "" {
 		contentChildren = append(contentChildren, content_3)
 	}
@@ -1201,7 +1201,7 @@ func (m Model) View() tea.View {
 		__focusPos4++
 		content_4_1Items = append(content_4_1Items, content_4_1Item)
 	}
-	content_4_1 = strings.Join(content_4_1Items, "")
+	content_4_1 = tui.Row(0, content_4_1Items...)
 	if content_4_1 != "" {
 		content_4Children = append(content_4Children, content_4_1)
 	}
@@ -1222,16 +1222,16 @@ func (m Model) View() tea.View {
 		__focusPos5++
 		content_4_2Items = append(content_4_2Items, content_4_2Item)
 	}
-	content_4_2 = strings.Join(content_4_2Items, "")
+	content_4_2 = tui.Row(0, content_4_2Items...)
 	if content_4_2 != "" {
 		content_4Children = append(content_4Children, content_4_2)
 	}
-	content_4 = lipgloss.JoinHorizontal(lipgloss.Top, content_4Children...)
+	content_4 = tui.Row(0, content_4Children...)
 	contentChildren = append(contentChildren, content_4)
 	var content_5 string
 	content_5 = lipgloss.NewStyle().Render(fmt.Sprint(m.log))
 	contentChildren = append(contentChildren, content_5)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -3200,7 +3200,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0d38313e476a3a4aee2ea101acb8d965
+pass sha256:f4f67684921801427084a60b378c949a
 -- run/go/fyne --
 pass sha256:4089635aa8ccd1c2f5c33718d5ced61c
 -- run/go/gtk4 --

@@ -45,6 +45,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -131,7 +132,7 @@ func (m Model) View() tea.View {
 		var content_2 string
 		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("footer"))
 		contentChildren = append(contentChildren, content_2)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = tui.Column(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -386,7 +387,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:979dad5c8527d5bd4356aa5f30094b31
+pass sha256:d82e40bed198ee86f2275dc92d7c26ea
 -- run/go/fyne --
 pass sha256:e926725b74d46f596f3f0c4fbfa7e0dd
 -- run/go/gtk4 --

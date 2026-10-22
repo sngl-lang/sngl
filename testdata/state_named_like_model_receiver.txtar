@@ -59,9 +59,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -352,14 +352,14 @@ func (m Model) View() tea.View {
 		content_2Item_1 = lipgloss.NewStyle().Render(content_2Item_1Prefix + " " + fmt.Sprint("inc"))
 		__focusPos1++
 		content_2ItemChildren = append(content_2ItemChildren, content_2Item_1)
-		content_2Item = lipgloss.JoinHorizontal(lipgloss.Top, content_2ItemChildren...)
+		content_2Item = tui.Row(0, content_2ItemChildren...)
 		content_2Items = append(content_2Items, content_2Item)
 	}
-	content_2 = strings.Join(content_2Items, "\n")
+	content_2 = tui.Column(0, content_2Items...)
 	if content_2 != "" {
 		contentChildren = append(contentChildren, content_2)
 	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -819,7 +819,7 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:b7f705f23da3b6f663af5f75abed7937
+pass sha256:81548a63fdb1519bb7ecf00eb62f446d
 -- run/go/fyne --
 pass sha256:1b39a11a9652f93a5693ca9e22dd4437
 -- run/go/gtk4 --

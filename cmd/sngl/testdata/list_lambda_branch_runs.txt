@@ -65,7 +65,7 @@ sha256:a89e7b5a0279e76d382d1bd00c1f2718
   ]
 }
 -- testrun/bubbletea/go/app.sngl/compass/1 --
-sha256:71f5f59f4ece51072e0171001d42b2b0
+sha256:12184cffe6710a16001bee77e1267949
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:71f5f59f4ece51072e0171001d42b2b0
   ]
 }
 -- testrun/fyne/go/app.sngl/compass/1 --
-sha256:d6715c3805c40c7711f020be25bcf16c
+sha256:377ef893b057b903bfca6264d3216535
 {
   "results": [
     {

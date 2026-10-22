@@ -220,7 +220,7 @@ func (m Model) View() tea.View {
 		var contentPart_1 string
 		contentPart_1 = m.widget0.View()
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -620,7 +620,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5c0d287bf4b918c49e5bbc610ebc211d
+pass sha256:12bb10ce040a5ae0ea1c53ec45d14287
 -- run/go/fyne --
 pass sha256:967d42aa92a874c4539336652f51cd2b
 -- run/go/gtk4 --

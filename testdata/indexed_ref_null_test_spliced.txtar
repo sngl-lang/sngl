@@ -157,9 +157,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -512,7 +512,7 @@ func (m Model) View() tea.View {
 		}
 		content_5Items = append(content_5Items, content_5Item)
 	}
-	content_5 = strings.Join(content_5Items, "\n")
+	content_5 = tui.Column(0, content_5Items...)
 	if content_5 != "" {
 		contentChildren = append(contentChildren, content_5)
 	}
@@ -528,7 +528,7 @@ func (m Model) View() tea.View {
 		}
 		content_6Items = append(content_6Items, content_6Item)
 	}
-	content_6 = strings.Join(content_6Items, "\n")
+	content_6 = tui.Column(0, content_6Items...)
 	if content_6 != "" {
 		contentChildren = append(contentChildren, content_6)
 	}
@@ -573,23 +573,23 @@ func (m Model) View() tea.View {
 				content_7Item_1_1Part_2Item = lipgloss.NewStyle().Render(fmt.Sprint((n + fmt.Sprint(i))))
 				content_7Item_1_1Part_2Items = append(content_7Item_1_1Part_2Items, content_7Item_1_1Part_2Item)
 			}
-			content_7Item_1_1Part_2 = strings.Join(content_7Item_1_1Part_2Items, "\n")
+			content_7Item_1_1Part_2 = tui.Column(0, content_7Item_1_1Part_2Items...)
 			if content_7Item_1_1Part_2 != "" {
 				content_7Item_1_1Parts = append(content_7Item_1_1Parts, content_7Item_1_1Part_2)
 			}
-			content_7Item_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_7Item_1_1Parts...)
+			content_7Item_1_1 = tui.Column(0, content_7Item_1_1Parts...)
 		}
 		if content_7Item_1_1 != "" {
 			content_7Item_1Children = append(content_7Item_1Children, content_7Item_1_1)
 		}
-		content_7Item_1 = lipgloss.JoinVertical(lipgloss.Left, content_7Item_1Children...)
+		content_7Item_1 = tui.Column(0, content_7Item_1Children...)
 		content_7Items = append(content_7Items, content_7Item_1)
 	}
-	content_7 = strings.Join(content_7Items, "\n")
+	content_7 = tui.Column(0, content_7Items...)
 	if content_7 != "" {
 		contentChildren = append(contentChildren, content_7)
 	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = tui.Column(0, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -611,7 +611,7 @@ func (m Model) renderStep(n int, __depth int) string {
 	if result_1 != "" {
 		resultChildren = append(resultChildren, result_1)
 	}
-	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
+	result = tui.Column(0, resultChildren...)
 	return result
 }
 
@@ -3846,7 +3846,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:41b95f2cf9fab5f5ea05e4871f5ec2aa
+pass sha256:751ed887a3bb7349b582d20eeb476d1f
 -- run/go/fyne --
 pass sha256:6209d079ec60309a504408c0deeda870
 -- run/go/gtk4 --

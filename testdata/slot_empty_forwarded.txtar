@@ -79,9 +79,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -464,7 +464,7 @@ func (m Model) View() tea.View {
 				__focusPos0++
 				contentPart_2Item_1Items = append(contentPart_2Item_1Items, contentPart_2Item_1Item_2)
 			}
-			contentPart_2Item_1 = strings.Join(contentPart_2Item_1Items, "")
+			contentPart_2Item_1 = tui.Column(0, contentPart_2Item_1Items...)
 			if contentPart_2Item_1 != "" {
 				contentPart_2Items = append(contentPart_2Items, contentPart_2Item_1)
 			}
@@ -508,16 +508,16 @@ func (m Model) View() tea.View {
 				contentPart_2Item_3Item_3 = lipgloss.NewStyle().Render(fmt.Sprint(("a" + fmt.Sprint(x))))
 				contentPart_2Item_3Items = append(contentPart_2Item_3Items, contentPart_2Item_3Item_3)
 			}
-			contentPart_2Item_3 = strings.Join(contentPart_2Item_3Items, "")
+			contentPart_2Item_3 = tui.Column(0, contentPart_2Item_3Items...)
 			if contentPart_2Item_3 != "" {
 				contentPart_2Items = append(contentPart_2Items, contentPart_2Item_3)
 			}
 		}
-		contentPart_2 = strings.Join(contentPart_2Items, "")
+		contentPart_2 = tui.Column(0, contentPart_2Items...)
 		if contentPart_2 != "" {
 			contentParts = append(contentParts, contentPart_2)
 		}
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -552,7 +552,7 @@ func (m Model) renderTree(d int, __depth int, __empty_content bool, content func
 	if part3 != "" {
 		parts = append(parts, part3)
 	}
-	result := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	result := tui.Column(0, parts...)
 	return result
 }
 
@@ -2836,7 +2836,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ef7476d941c76900c7a24ac4bad695c1
+pass sha256:d180e78f6b854b2e77dc32e84f98af0e
 -- run/go/fyne --
 pass sha256:41e348265e3cc6d95179dfe24a179033
 -- run/kotlin/android --

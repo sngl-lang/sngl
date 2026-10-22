@@ -148,7 +148,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			__inst0_next := []*__checkbox_state0Instance{}
 			var __inst0_i int = 0
 			for _, it := range m.items {
-				__n3 := container.NewHBox()
+				__n3 := container.New(fynelayout.NewAligned(true, 8, 0, fynelayout.Start))
 				var __n4 *__checkbox_state0Instance
 				if len(m.__inst0_live) > __inst0_i {
 					__n4 = m.__inst0_live[__inst0_i]
@@ -210,7 +210,7 @@ func (m *Model) SetItems(v []string) {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n7 = container.NewVBox()
 	m.__renderSlot0(m.__n7)
-	m.__n8 = container.NewVBox()
+	m.__n8 = container.New(fynelayout.New(false, 4, 0))
 	m.__renderSlot1(m.__n8)
 	m.__n7.Add(m.__n8)
 	m.more = widget.NewButton("", nil)
@@ -558,6 +558,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:9e5db64d0dbb367a4ec1fb4429f5e66c
+pass sha256:6186d3821eac5e7ba8ad241516a07250
 -- run/go/gtk4 --
 pass sha256:6e05ef77fa48da7737182db523530e4c
