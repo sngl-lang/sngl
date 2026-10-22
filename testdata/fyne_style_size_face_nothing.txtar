@@ -595,6 +595,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.__n4 = gtk4rt.ImageFrameNew()
 	gtk4rt.ImageFrameSetFit(m.__n4, "contain")
+	gtk4rt.SetStyle(m.__n4, gtk4rt.Style{Width: 96.0, Height: 48.0})
 	gtk4rt.ImageFrameOnClick(m.__n4, m.__n4_click_handler)
 	gtk4rt.ImageFrameOnLoad(m.__n4, m.__n4_load_handler)
 	gtk4rt.ImageFrameOnError(m.__n4, m.__n4_failed_handler)
@@ -604,6 +605,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n3, m.__n4)
 	m.__n6 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n6, "Heading")
+	gtk4rt.SetStyle(m.__n6, gtk4rt.Style{Width: 120.0, FontWeight: "bold"})
 	gtk4rt.BoxAppend(m.__n3, m.__n6)
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__renderSlot0(m.__n2)
@@ -624,4 +626,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:fb5068101573fb282f137c1bfa178a66
 -- run/go/gtk4 --
-pass sha256:7bf59e2cd8d507da5d6fc6610ba6ee7c
+pass sha256:43cee300d2c9312230f8f2adad4851de

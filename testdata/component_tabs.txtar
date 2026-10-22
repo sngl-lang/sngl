@@ -827,7 +827,7 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	}
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
-	_ = __lt2
+	gtk4rt.SetStyle(c.__n0, gtk4rt.Style{FontWeight: __lt2})
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -849,7 +849,7 @@ func (c *__child0Instance) Set__p1(__v int) {
 	} else {
 		__lt0 = "normal"
 	}
-	_ = __lt0
+	gtk4rt.SetStyle(c.__n0, gtk4rt.Style{FontWeight: __lt0})
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
@@ -860,7 +860,7 @@ func (c *__child0Instance) Set__p2(__v int) {
 	} else {
 		__lt1 = "normal"
 	}
-	_ = __lt1
+	gtk4rt.SetStyle(c.__n0, gtk4rt.Style{FontWeight: __lt1})
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -907,6 +907,7 @@ func (m *Model) buildWidgetTree() {
 	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(__n6, 6)
+	gtk4rt.SetStyle(__n6, gtk4rt.Style{Gap: 4.0})
 	m.__renderSlot0(__n6)
 	gtk4rt.BoxAppend(m.__n5, __n6)
 	m.__renderSlot1(m.__n5)
@@ -1294,7 +1295,7 @@ pass sha256:440f71bab44e313d99019b4493bee3d2
 -- run/go/fyne --
 pass sha256:9c5ea564b100bd8d125a92f16f5c37a3
 -- run/go/gtk4 --
-pass sha256:74a9e8535578a447c3af163dda654d8c
+pass sha256:7d1d9db3e7e13fc48c8877e796e57d3c
 -- run/kotlin/android --
 pass sha256:88eb90c6f9d073f667a5b619f80a95ed
 -- run/none/html --

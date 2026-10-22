@@ -623,7 +623,10 @@ func main() {
 
 package main
 
-import "duckfam.us/sngl/pkg/go/gtk4rt"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+)
 
 type Measurement struct {
 	Px  float64
@@ -689,6 +692,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetWrap(m.__n1, true)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.LabelSetMarkup(m.__n1, "<span size=\"32768\" weight=\"bold\">Title</span>")
+	gtk4rt.SetStyle(m.__n1, gtk4rt.Style{FontSize: 32.0, FontWeight: "bold"})
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n3, true)
@@ -704,6 +708,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetWrap(m.__n12, true)
 	gtk4rt.LabelSetXAlign(m.__n12, 0.0)
 	gtk4rt.LabelSetMarkup(m.__n12, "<tt><span foreground=\"#CF222E\">func</span> <span foreground=\"#8250DF\">main</span></tt>")
+	gtk4rt.SetStyle(m.__n12, gtk4rt.Style{Padding: 12.0, Background: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, BorderRadius: 4.0})
 	gtk4rt.BoxAppend(m.__n0, m.__n12)
 	m.__n19 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n19, true)
@@ -724,11 +729,13 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetWrap(m.__n31, true)
 	gtk4rt.LabelSetXAlign(m.__n31, 0.0)
 	gtk4rt.LabelSetMarkup(m.__n31, "<span style=\"italic\">quoted</span>")
+	gtk4rt.SetStyle(m.__n31, gtk4rt.Style{PaddingLeft: 12.0, FontStyle: "italic"})
 	gtk4rt.BoxAppend(m.__n0, m.__n31)
 	m.__n33 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n33, true)
 	gtk4rt.LabelSetXAlign(m.__n33, 0.0)
 	gtk4rt.LabelSetMarkup(m.__n33, "<span size=\"13312\" foreground=\"#666666\">a caption</span>")
+	gtk4rt.SetStyle(m.__n33, gtk4rt.Style{FontSize: 13.0, Color: snglcolor.Color{R: 102, G: 102, B: 102, A: 255}})
 	gtk4rt.BoxAppend(m.__n0, m.__n33)
 	gtk4rt.BoxAppend(m.home, m.__n0)
 	gtk4rt.AppAttach(m.home)
@@ -949,7 +956,7 @@ pass sha256:9165ea39f2f5d015a7bc19aa5d26a8e7
 -- run/go/fyne --
 pass sha256:da666f806c26644d4cc61e533ab18468
 -- run/go/gtk4 --
-pass sha256:4b1a333638d1868d18d12f7e5964f980
+pass sha256:4b91a740fcacdcac7244e362b03225b7
 -- run/go/html --
 pass sha256:713452ea2287e2cf30d78b645200518e
 -- run/kotlin/android --

@@ -1,9 +1,10 @@
-A ternary in a style prop on a target that renders no `style`: passTernary
-hoists the `c ? a : b` into a temp declared ahead of the node, and fyne and gtk4
-write nothing for `style`, the platform's own prop rather than a widget's. With
-the one statement reading it dropped, Go refused the temp as declared and not
-used; the translator reads it into the blank identifier instead
-(codegen.KeepLocalsRead).
+A ternary in a style prop on a target that renders no `style` field it reads:
+passTernary hoists the `c ? a : b` into a temp declared ahead of the node, and
+fyne writes nothing for a weight on a button, `style` being the platform's own
+prop rather than a widget's. With the one statement reading it dropped, Go
+refused the temp as declared and not used; the translator reads it into the
+blank identifier instead (codegen.KeepLocalsRead). gtk4 reads the weight, so
+its temp is read by the `gtk4rt.SetStyle` the click writes again.
 
 deny out/go/fyne/model.go `__n\d+\.Style|SetStyle` -- fyne still renders nothing for style
 -- app.sngl --
@@ -181,7 +182,7 @@ func (m *Model) __n1_clicked_handler() {
 	} else {
 		__lt1 = "normal"
 	}
-	_ = __lt1
+	gtk4rt.SetStyle(m.__n1, gtk4rt.Style{FontWeight: __lt1})
 }
 
 func (m *Model) On() bool {
@@ -217,7 +218,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n1, "x")
-	_ = __lt0
+	gtk4rt.SetStyle(m.__n1, gtk4rt.Style{FontWeight: __lt0})
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -232,4 +233,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:fe51515a95d9fda96c2e6230dc9807de
 -- run/go/gtk4 --
-pass sha256:e4467fcbea03fc131d38516a07fb01c3
+pass sha256:4915f7677a9769ae108249f07f8c3672

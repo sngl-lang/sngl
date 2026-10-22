@@ -2206,6 +2206,7 @@ func (m *Model) __renderSlot3(parent *C.GtkBox) {
 				for _, t := range (*(m.pet__inst0)).Tags {
 					__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 					C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n8)), C.CString(t.Type.Name))
+					gtk4rt.SetStyle(gtk4rt.Handle(unsafe.Pointer(__n8)), gtk4rt.Style{PaddingX: 8.0, PaddingY: 2.0, BorderRadius: 12.0})
 					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n8)))
 					m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n8)))
 				}
@@ -4288,7 +4289,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:30406c6417f095f0b12f8dd53f05bf33
 -- run/go/gtk4 --
-pass sha256:69241ca56249272d533b385ee8aba108
+pass sha256:66be98f9982464d8646cf968b51e7403
 -- run/kotlin/android --
 pass sha256:af35a1e4ecd6204d323aa003ed0dddaf
 -- run/none/html --
