@@ -1,13 +1,17 @@
 // Command verify runs project checks and tests, reporting per-package coverage.
 //
 // Steps:
-//  1. go generate ./...
+//  1. go generate <packages>
 //  2. go mod tidy
-//  3. go fmt ./...
+//  3. go fmt <packages>
 //  4. go tool mdox fmt --soft-wraps <markdown files>
-//  5. go fix ./...
-//  6. go vet ./...
-//  7. go test -coverpkg=./... -coverprofile=... ./...
+//  5. go fix <packages>
+//  6. go vet <packages>
+//  7. go test -coverpkg=<packages> -coverprofile=... <packages>
+//
+// <packages> is ./... less what git ignores (goPackages): the go command
+// reads no .gitignore, so ./... built, vetted and counted the scratch packages
+// under the ignored tmp/.
 //
 // Step 5 collects cross-package coverage so packages exercised by integration
 // tests (e.g. codegen/lang/* through codegen/platform/*) are credited for the
@@ -36,6 +40,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -124,15 +129,19 @@ func main() {
 	default:
 		log.Fatalf("-only %q: want lint or test", *only)
 	}
+	pkgs, err := goPackages(".")
+	if err != nil {
+		log.Fatalf("listing packages: %v", err)
+	}
 	if *only != "test" {
-		lint(*dry)
+		lint(*dry, pkgs)
 	}
 	if *only == "lint" {
 		exit(0)
 	}
 
 	// Step 7: go test with coverage
-	runTests(*verbose, !*dry, *full)
+	runTests(*verbose, !*dry, *full, pkgs)
 
 	// Step 8: SNGL test matrix across every TestRunner-capable platform
 	// whose probe says it can run on this host. Unavailable platforms are
@@ -212,7 +221,7 @@ func runCheckStep(name string, command string, args ...string) bool {
 	return true
 }
 
-func runTests(verbose, fmtDocs, full bool) {
+func runTests(verbose, fmtDocs, full bool, pkgs []string) {
 	profile, err := os.CreateTemp("", "sngl-verify-cover-*.out")
 	if err != nil {
 		log.Fatalf("create coverprofile: %v", err)
@@ -220,7 +229,7 @@ func runTests(verbose, fmtDocs, full bool) {
 	profile.Close()
 	cleanups = append(cleanups, func() { os.Remove(profile.Name()) })
 
-	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
+	args := []string{"test", "-coverpkg=" + strings.Join(pkgs, ","), "-coverprofile=" + profile.Name()}
 	// Default to -short so the routine run (and background sessions) skips the
 	// slow/heavy tests (android fixtures, Robolectric). `-full` opts into the
 	// complete suite. testing.Short() / the `[short]` scripttest cond do the
@@ -254,7 +263,7 @@ func runTests(verbose, fmtDocs, full bool) {
 	if verbose {
 		args = append(args, "-v")
 	}
-	args = append(args, "./...")
+	args = append(args, pkgs...)
 
 	// Run under a headless compositor when available so gtk4's window-present
 	// snapshot tests don't pop up on the user's desktop.
@@ -440,6 +449,66 @@ func pkgPathDir(p string) string {
 	return path.Dir(p)
 }
 
+// goPackages is ./... under root less what git ignores, as relative package
+// paths ("./a/b"): the go command's own rules for what ./... holds, and git's
+// for what is the repository's. A package written but not yet added is the
+// repository's; one under tmp/ is not.
+func goPackages(root string) ([]string, error) {
+	list := exec.Command("go", "list", "-e", "-f", "{{.Dir}}", "./...")
+	list.Dir = root
+	out, err := list.Output()
+	if err != nil {
+		return nil, fmt.Errorf("go list: %w", err)
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	var dirs []string
+	for d := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		rel, err := filepath.Rel(abs, d)
+		if err != nil {
+			return nil, err
+		}
+		dirs = append(dirs, filepath.ToSlash(rel))
+	}
+	check := exec.Command("git", "-C", root, "check-ignore", "-z", "--stdin")
+	check.Stdin = strings.NewReader(strings.Join(dirs, "\x00") + "\x00")
+	ignoredOut, err := check.Output()
+	// check-ignore exits 1 when it ignores nothing.
+	if exit, ok := errors.AsType[*exec.ExitError](err); err != nil && !(ok && exit.ExitCode() == 1) {
+		return nil, fmt.Errorf("git check-ignore: %w", err)
+	}
+	ignored := map[string]bool{}
+	for d := range strings.SplitSeq(string(ignoredOut), "\x00") {
+		ignored[d] = true
+	}
+	var pkgs []string
+	for _, d := range dirs {
+		if ignored[d] {
+			continue
+		}
+		if d == "." {
+			pkgs = append(pkgs, ".")
+		} else {
+			pkgs = append(pkgs, "./"+d)
+		}
+	}
+	sort.Strings(pkgs)
+	return pkgs, nil
+}
+
+// goFiles is the Go files directly in each of pkgs, for gofmt, which recurses
+// into a directory it is handed.
+func goFiles(pkgs []string) []string {
+	var files []string
+	for _, p := range pkgs {
+		m, _ := filepath.Glob(filepath.Join(p, "*.go"))
+		files = append(files, m...)
+	}
+	return files
+}
+
 // findMarkdownFiles walks root and returns all *.md files, skipping
 // build/output dirs and anything hidden.
 func findMarkdownFiles(root string) ([]string, error) {
@@ -480,10 +549,10 @@ func shortPkg(full string) string {
 }
 
 // lint is steps 1-6: what checks the source rather than running it.
-func lint(dry bool) {
+func lint(dry bool, pkgs []string) {
 	// Step 1: go generate (skip in dry mode)
 	if !dry {
-		if !runStep("generate", "go", "generate", "./...") {
+		if !runStep("generate", "go", append([]string{"generate"}, pkgs...)...) {
 			exit(1)
 		}
 	}
@@ -501,11 +570,11 @@ func lint(dry bool) {
 
 	// Step 3: go fmt
 	if dry {
-		if !runCheckStep("fmt", "gofmt", "-l", ".") {
+		if !runCheckStep("fmt", "gofmt", append([]string{"-l"}, goFiles(pkgs)...)...) {
 			exit(1)
 		}
 	} else {
-		if !runStep("fmt", "go", "fmt", "./...") {
+		if !runStep("fmt", "go", append([]string{"fmt"}, pkgs...)...) {
 			exit(1)
 		}
 	}
@@ -528,17 +597,17 @@ func lint(dry bool) {
 
 	// Step 5: go fix
 	if dry {
-		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
+		if !runCheckStep("fix", "go", append([]string{"fix", "-diff"}, pkgs...)...) {
 			exit(1)
 		}
 	} else {
-		if !runStep("fix", "go", "fix", "./...") {
+		if !runStep("fix", "go", append([]string{"fix"}, pkgs...)...) {
 			exit(1)
 		}
 	}
 
 	// Step 6: go vet
-	if !runStep("vet", "go", "vet", "./...") {
+	if !runStep("vet", "go", append([]string{"vet"}, pkgs...)...) {
 		exit(1)
 	}
 }
