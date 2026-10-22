@@ -16,13 +16,10 @@ under it. Delete this file before the MR leaves draft.
   git grep -niE 'pok[eé](mon|api|dex)|base_experience|base_stat|front_default|\b(pikachu|bulbasaur|ivysaur|venusaur|charmander|charmeleon|squirtle|ditto|mew|missingno|pichu|raichu|eevee)\b' -- ':!examples/pokedex' ':!TODO.md'
   ```
 
-- `go tool verify` passes at the end of each part; recorded runs are
-  `-update`d after any codegen change (goldens
-  `go test . -run TestGolden -update`, scripts
-  `ANDROID_HOME=$HOME/Android/Sdk go test ./cmd/sngl -run TestScript -update`,
-  and the platform packages' own records: `./codegen/platform/gtk4`,
-  `./codegen/platform/html`, `./internal/build`). Read each golden diff for
-  behaviour, not only hashes.
+- `go tool verify` passes at the end of each part; after any codegen change
+  `ANDROID_HOME=$HOME/Android/Sdk go tool verify -update` rerecords every
+  package's goldens and recorded runs. Read each golden diff for behaviour,
+  not only hashes.
 - Edit nothing -- source, `lib/`, `examples/` -- while a suite runs, and stop
   any browser, server or harness of your own first: port 47819 must be free,
   and a leftover headless Chromium failed html scripts.
@@ -35,25 +32,22 @@ under it. Delete this file before the MR leaves draft.
   screenshots of the example.
 - Commit and push as you go.
 
-## Part 1: `go tool verify` and `sngl run`
+## Part 1: `go tool verify` and `sngl run` (done)
 
-- [ ] `sngl run --platform html --lang go` serves the generated directory --
-  `server.go` as a file listing -- rather than running the Go server the
-  generated `Handler()` is for. Reportedly `--lang none` html is broken the
-  same way. Run each html mode by hand and fix both; a script test runs each
-  and fetches a page.
-- [ ] `go tool verify` counts the ignored `tmp/` directories' Go packages
-  (`tmp/serve`, `tmp/srv`) in its coverage, and builds them. It should walk
-  what git tracks.
-- [ ] A recorded run outside `TestGolden` and `TestScript` --
-  `internal/build`'s `TestTestReachLibrarySitesRun`, gtk4's `go_runs` -- went
-  stale after a codegen change, and only a full `verify` said so. Make the
-  `-update` path that rerecords everything one command, or have the
-  goldens' and scripts' `-update` say which other packages hold records.
-- [ ] An edit during `verify` flakes the suites that rebuild from the
-  checkout (`internal/optimize`'s evalstore, `cmd/sngl`'s trust_eval,
-  `sngl` proxying to `./cmd/sngl`). Either build those once from a snapshot
-  of the tree, or say on failure that the tree changed under the run.
+- [X] `sngl run --platform html --lang go` ran html's static server over
+  `server.go`: html's node held its `gen.run`, which wins over the language's.
+  It is now html's override of its node for `none`
+  (`const component platform[static.language]`), which the checker dropped
+  silently before (`addNodeOverride`); Go's route `main()` listens at `listen`
+  and prints its URL. `--lang none` worked for a static program by hand -- the
+  Pokédex cannot build static, its pattern pages need a server.
+  `run_html_go_serves.txt` and `run_html_static_serves.txt` start each with
+  the new `serve` script command and `fetch` a page.
+- [X] verify checks `./...` less what git ignores (`goPackages`).
+- [X] `go tool verify -update` rerecords every package whose tests declare an
+  `update` flag, and a stale record's failure names it.
+- [X] A failing verify names the files that changed under the run
+  (`reportTreeChange`); a snapshot would cost a cold build cache.
 
 ## Part 2: gtk4 reads a node's style
 
