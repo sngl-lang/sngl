@@ -65,7 +65,7 @@ func runGo(t *testing.T, prefix string, files map[string]string, display bool, a
 	case !*update && !*verify && have == nil:
 		t.Fatalf("%s: no record of this go %s; rerun with -update on a host with GTK 4", record, args[0])
 	case !*update && !*verify:
-		t.Fatalf("%s: the files changed since go %s ran over them; rerun with -update", record, args[0])
+		t.Fatalf("%s: the files changed since go %s ran over them; rerun with -update -- `go tool verify -update` rerecords every package's", record, args[0])
 	}
 	if display && os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
 		t.Fatalf("%s: cannot record: go %s needs an X11/Wayland display", record, args[0])

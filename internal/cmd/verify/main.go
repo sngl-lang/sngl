@@ -34,7 +34,14 @@
 //
 // -only lint runs steps 1-6 and -only test steps 7-8.
 //
-// Usage: go tool verify [-v] [-dry] [-full] [-only lint|test]
+// -update runs none of them. It reruns, under the same headless compositor,
+// the tests of every package that holds recorded runs or goldens -- each
+// declares an `update` flag (recordPackages) -- with -update, which rewrites
+// whichever records moved: the root goldens, cmd/sngl's scripts, and the
+// records gtk4, html, internal/build and internal/lower keep, which a codegen
+// change makes stale as surely as the first two.
+//
+// Usage: go tool verify [-v] [-dry] [-full] [-only lint|test] [-update]
 package main
 
 import (
@@ -113,6 +120,7 @@ func main() {
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
 	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric, the android sngl-test matrix); default skips them")
 	only := flag.String("only", "", "run only the `lint` steps (1-6) or the `test` steps (7-8); both when empty")
+	update := flag.Bool("update", false, "rerecord every package's recorded runs and goldens instead of verifying")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -132,6 +140,12 @@ func main() {
 	pkgs, err := goPackages(".")
 	if err != nil {
 		log.Fatalf("listing packages: %v", err)
+	}
+	if *update {
+		if !rerecord(recordPackages(pkgs), *verbose) {
+			exit(1)
+		}
+		exit(0)
 	}
 	if *only != "test" {
 		lint(*dry, pkgs)
@@ -496,6 +510,36 @@ func goPackages(root string) ([]string, error) {
 	}
 	sort.Strings(pkgs)
 	return pkgs, nil
+}
+
+// recordPackages is those of pkgs whose tests declare an `update` flag: the
+// ones holding records a rerun rewrites.
+func recordPackages(pkgs []string) []string {
+	var out []string
+	for _, p := range pkgs {
+		tests, _ := filepath.Glob(filepath.Join(p, "*_test.go"))
+		for _, f := range tests {
+			b, err := os.ReadFile(f)
+			if err == nil && bytes.Contains(b, []byte(`flag.Bool("update"`)) {
+				out = append(out, p)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// rerecord runs pkgs' tests with -update under the headless compositor, so
+// gtk4's runs are recorded where verify reads them.
+func rerecord(pkgs []string, verbose bool) bool {
+	args := []string{"test", "-timeout=60m", "-p=" + strconv.Itoa(codegen.BuildTokenSlots())}
+	if verbose {
+		args = append(args, "-v")
+	}
+	args = append(args, pkgs...)
+	args = append(args, "-args", "-update")
+	command, wrapped, env := wrapHeadless("go", args)
+	return runStepEnv("update", env, command, wrapped...)
 }
 
 // goFiles is the Go files directly in each of pkgs, for gofmt, which recurses

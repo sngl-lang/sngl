@@ -54,6 +54,15 @@ The digest does not cover `pkg/<lang>/` runtimes, which the generated program
 imports from the checkout -- a change there wants a `-verify` the digest will
 not ask for, the same gap a golden's record has.
 
+**One command rerecords every package's.** Records live in the goldens, the
+scripts and four packages beside them -- gtk4's `go_runs`, html's component
+and browser runs, `internal/build`'s library-sites run, `internal/lower`'s
+goldens -- and a codegen change moves them all, while the first two were the
+only ones anyone remembered to `-update`: the rest went stale until a full
+verify. `go tool verify -update` runs, under the headless compositor, the
+tests of every package whose tests declare an `update` flag with `-update`
+(`recordPackages`), and a stale record's failure names it.
+
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
 `func test…` through the same launcher (`internal/testlaunch`, in process),

@@ -164,7 +164,7 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			case !recorded:
 				t.Errorf("%s: no record; regenerate with -update on a host that has the toolchain", name)
 			case have.digest != want:
-				t.Errorf("%s: generated output, or what exec runs, changed since it was verified; run -update", name)
+				t.Errorf("%s: generated output, or what exec runs, changed since it was verified; run -update -- `go tool verify -update` rerecords every package's", name)
 			default:
 				// Same bytes, different verdict asked for: a `broken`
 				// directive added over a passing target or removed from a

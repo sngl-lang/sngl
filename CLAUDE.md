@@ -77,6 +77,7 @@ paragraph here per change: this file is loaded into every session.
 go install ./cmd/sngl          # build CLI (preferred over go build)
 go build ./...                 # verify all packages compile
 go tool verify                 # full test suite with coverage
+go tool verify -update         # rerecord every package's goldens and recorded runs
 go test ./path/to/pkg/...      # test a single package tree
 go test -run TestName ./pkg/   # run a single test
 go fmt .                       # format Go (run from package dir)
@@ -131,8 +132,11 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
   grep.
 - `cmd/sngl/testdata/*.txt` — CLI script tests, including anything that runs
   generated code.
-- Toolchain, browser and gtk4 runs are recorded; `-update` after a codegen
-  change, `-verify` to rerun them all.
+- Toolchain, browser and gtk4 runs are recorded, in the goldens, the scripts
+  and the packages' own records (gtk4, html, `internal/build`). After a codegen
+  change, `go tool verify -update` rerecords all of them (scripts' android runs
+  want `ANDROID_HOME` set); `-verify` on one package reruns it whatever its
+  records say.
 - **Confirm a new fixture fails when the behaviour is reverted.** The `sngl`
   on `PATH` resolves `./cmd/sngl` against the current directory, so run an
   out-of-tree binary out of tree.

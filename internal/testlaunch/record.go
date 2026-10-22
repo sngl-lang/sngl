@@ -108,7 +108,7 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 	if !rr.update && !matched {
 		if recorded {
 			rr.keep(name, have)
-			return nil, fmt.Errorf("%s: the generated test program changed since it was run; rerun its test with -update", name)
+			return nil, fmt.Errorf("%s: the generated test program changed since it was run; rerun its test with -update -- `go tool verify -update` rerecords every package's", name)
 		}
 		return nil, fmt.Errorf("%s: no record of this test run; rerun its test with -update on a host with the toolchain", name)
 	}
@@ -143,7 +143,7 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 	if !rr.update {
 		rr.keep(name, have)
 		if !bytes.Equal(rec.format(), have.format()) {
-			return nil, fmt.Errorf("%s: a rerun disagrees with the record:\n%s\nrerun its test with -update", name, rec.format())
+			return nil, fmt.Errorf("%s: a rerun disagrees with the record:\n%s\nrerun its test with -update -- `go tool verify -update` rerecords every package's", name, rec.format())
 		}
 		return results, err
 	}

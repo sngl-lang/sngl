@@ -50,3 +50,28 @@ func TestGoPackagesWalksWhatGitTracks(t *testing.T) {
 		t.Errorf("goPackages = %q, want %q", got, want)
 	}
 }
+
+// The packages -update reruns are those whose tests declare the flag, which
+// is what holding records means here.
+func TestRecordPackagesDeclareUpdate(t *testing.T) {
+	root := t.TempDir()
+	for name, body := range map[string]string{
+		"rec/rec_test.go":   "package rec\n\nimport \"flag\"\n\nvar update = flag.Bool(\"update\", false, \"\")\n",
+		"plain/p_test.go":   "package plain\n",
+		"none/none.go":      "package none\n",
+		"rec/other_test.go": "package rec\n",
+	} {
+		p := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkgs := []string{filepath.Join(root, "none"), filepath.Join(root, "plain"), filepath.Join(root, "rec")}
+	got := recordPackages(pkgs)
+	if want := pkgs[2:]; !slices.Equal(got, want) {
+		t.Errorf("recordPackages = %q, want %q", got, want)
+	}
+}
