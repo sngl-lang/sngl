@@ -79,13 +79,11 @@ async function runOne(sink, name) {
     try {
         await fn(t);
     } catch (e) {
+        // Reported as an assertion's failure is, a log line and then the
+        // fail, so the run prints what was thrown: a bare log was the
+        // verbose output's alone, under a `--- FAIL:` that said nothing.
         if (!(e instanceof AbortSentinel)) {
-            t.failed = true;
-            sink.send(JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'log',
-                params: { test: name, msg: `exception: ${e.message}` },
-            }));
+            t.error(`exception: ${e.message}`);
         }
     }
     const status = t.skipped ? 'skip' : (t.failed ? 'fail' : 'pass');

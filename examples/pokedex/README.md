@@ -25,6 +25,7 @@ launcher red.
 | `home.sngl`          | a `ui.select` of Pokédex and a grid of its Pokémon, 30 at a time                                    |
 | `detail.sngl`        | a species' page: a header over About, Stats, Evolution, Sprites and Moves                           |
 | `names.sngl`         | ids, names, rows, the artwork, an evolution's rows, a gallery, the moves, and lines' text           |
+| `icon.svg`           | the app's icon, which `output` names                                                                |
 | `pokeapi.yml`        | PokéAPI's OpenAPI document, vendored                                                                |
 | `i18n.manifest.json` | the app's own words in French, German, Spanish and Japanese                                         |
 | `pokedex_test.sngl`  | the tests, against the answers in `testdata/http`                                                   |
@@ -122,7 +123,9 @@ a hidden one marked, the species' habitat (which may be `null`), egg groups,
 gender ratio (from `gender_rate`, eighths female or -1 for none) and capture
 rate. **Stats** is a bar per base stat against 255, their total, and the effort
 values defeating the Pokémon gives. Each line's text is a function in
-`names.sngl`, which `testNames` checks beside the page's own tests.
+`names.sngl`, which `testNames` checks beside the page's own tests; one that
+puts its pieces together -- `display`, `oneLine`, home's `dexLine` -- builds
+it with a `builder`.
 
 Every name and text PokéAPI gives per language -- a species' name and genus,
 its newest description, a dex's name -- is picked by one function,
@@ -331,12 +334,13 @@ writes them, by `i18n.numberFloat` and `i18n.numberInt`: Bulbasaur is "0.7
 m" in English and "0,7 m" in French, and "87.5% male, 12.5% female" is
 "87,5 % mâles, 12,5 % femelles".
 
-The Moves select's labels are the app's own words, and choosing one maps the
-label back to its way of learning by comparing it with the same `$"..."`
-labels (`methodNamed`), so it holds in any language. Learn methods are
-therefore never asked for. A language chosen while the Moves tab shows a way
-leaves its label in the old language, which matches no choice, and the tab
-shows the moves by level.
+The Moves select's labels are the app's own words, and the way chosen is
+PokéAPI's name for it: choosing a label maps it back by comparing it with the
+same `$"..."` labels (`methodNamed`), and an `effect` keyed on `i18n.locale`
+writes the label of the way shown again as the language changes
+(`methodLabelled`), so a language chosen while the tab shows the machine's
+moves still shows them, under "CT". Learn methods are therefore never asked
+for.
 
 Left in English, or as PokéAPI's slug made readable: a card's name on home
 and in Evolution -- a species' name lives on the species, and a card asks for
@@ -356,7 +360,9 @@ nothing -- and a dex's region.
 `--lang none` on html is refused where the detail page is written: a static
 site writes one document per page, and `/pokemon/{name}` is a pattern no file
 can be. A test takes a component rather than the window, so html runs each as
-a static page of its own all the same.
+a static page of its own all the same; a test of the whole app, `shell`, runs
+in home's document, and a test build writes none for a page at a pattern,
+which no test reaches, since a `go` would end the run.
 
 ## Testing it
 
@@ -445,7 +451,16 @@ order where there is one, then `.json`: `/api/v2/pokemon/ivysaur/` is
 These tests are why a fyne test build queues `async.do`'s closure for
 `t.wait` to run (`design/nodes.md`): fyne's test driver runs `fyne.Do` on the
 goroutine that calls it, so a request's answer rebuilt a page's widgets
-while a test clicked others, and fyne crashed laying them out.
+while a test clicked others, and fyne crashed laying them out. And why it
+drops what the last test's page posted as the next test starts: the Moves tab
+redraws its list for each move's answer, and the next test's waits ran the
+last test's redraws and timed out.
+
+**The language switch** is tested through `shell`, the app's own `Pokedex`
+under the test's server: choosing "Español" in the shell's select turns
+home's dex line into "Nacional · todas las regiones · 40 Pokémon". A test's
+read of a node's prop is read under the providers around the node, so it
+reads home in the language the shell chose, not the test's.
 
 ## The document
 

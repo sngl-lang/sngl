@@ -297,7 +297,7 @@ Notes:
 
 ## Part 11: every target, and the MR
 
-- [ ] Every line the example builds with `join` (`dexLine`, `oneLine`,
+- [X] Every line the example builds with `join` (`dexLine`, `oneLine`,
   `display`) is built with `builder` once !265 is on main, as the user asked.
 
 - [ ] The example's tests cover each tab, the dex switch and the language
@@ -338,3 +338,9 @@ Notes, from looking at it on an android device:
   ("the Pokédex's detail page"). Reword them or list them under part 3.
 - On the user's device: a launcher red, the status bar's icons dark over
   white, the stat rows centred.
+- Decided with the user: a param typed by its default is typed as if written,
+  wherever the component is declared, and an override may restate a matching
+  type (done, with fixtures). `ui.table` may take component cells if every
+  platform can, but the user wants to see the definition first, and wants a
+  table that handles huge lazily loaded data: the rows in one channel and a
+  scoped slot rendering each with components.

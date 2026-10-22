@@ -118,8 +118,13 @@ component card(entry poke.PokemonDexNumber, @open()) ui.node {
 // What a dex is: its name, its region and how many Pokémon it holds,
 // "Kanto · Kanto · 40 Pokémon".
 func dexLine(dex poke.PokedexDetail) string {
-    var region = dex.region != null ? display(dex.region.name) : $"every region"
-    return [dexTitle(dex.names, dex.name), region, dexCount(dex.pokemonEntries.length())].join(" · ")
+    var line builder
+    line.add(dexTitle(dex.names, dex.name))
+    line.add(" · ")
+    line.add(dex.region != null ? display(dex.region.name) : $"every region")
+    line.add(" · ")
+    line.add(dexCount(dex.pokemonEntries.length()))
+    return line.string()
 }
 
 // What home says where the dex failed to load, and why.

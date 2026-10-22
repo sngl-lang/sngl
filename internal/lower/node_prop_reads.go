@@ -403,17 +403,38 @@ func providersAround(inst ir.Expr, tests map[*ir.Param]bool) []provided {
 	return append(providersAround(outer, tests), rebasedProviders(provs, comp, outer, loopBindings(loops, idxs))...)
 }
 
-// rebasedProviders is provs, written in comp's body, with each value read
-// through inst. A value reading what a test cannot name is left out, and the
+// rebasedProviders is provs, around a node in comp's body, with each value
+// read through inst, or through the instance of the call a slot's provider is
+// written in. A value reading what a test cannot name is left out, and the
 // read stands under the values around it.
-func rebasedProviders(provs []*ir.ContextProvider, comp *ir.Component, inst ir.Expr, env map[ir.Symbol]ir.Expr) []provided {
+func rebasedProviders(provs []scopedProvider, comp *ir.Component, inst ir.Expr, env map[ir.Symbol]ir.Expr) []provided {
 	var out []provided
-	for _, p := range provs {
-		if v := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(p.Value), comp, inst, env); v != nil {
-			out = append(out, provided{ctx: p.Ref, value: v})
+	for _, sp := range provs {
+		owner, at := comp, inst
+		if sp.via != nil {
+			if at = viaInstance(comp, inst, sp.via); at == nil {
+				continue
+			}
+			owner = sp.via.Component
+		}
+		if v := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(sp.p.Value), owner, at, env); v != nil {
+			out = append(out, provided{ctx: sp.p.Ref, value: v})
 		}
 	}
 	return out
+}
+
+// viaInstance is the instance of call, a node of comp's body that inst
+// names, read through inst: nil where the body may not render it once and
+// always, or it carries no id to read it by.
+func viaInstance(comp *ir.Component, inst ir.Expr, call *ir.NodeInst) ir.Expr {
+	if call.ID == "" {
+		return nil
+	}
+	if n, always := ownNode(comp, call.ID); n != call || !always {
+		return nil
+	}
+	return &ir.Select{Type: handleType(call), Operand: inst, Field: call.ID, Ref: ir.RefOne}
 }
 
 // underProviders is e read under provs, outermost first: a function literal
@@ -456,28 +477,83 @@ func nodeUnderLoops(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For) {
 	return n, loops
 }
 
-// nodeInScope is nodeUnderLoops with the context providers around the node
-// in the body, outermost first.
-func nodeInScope(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For, []*ir.ContextProvider) {
-	var walk func(stmts []ir.Stmt, loops []*ir.For, provs []*ir.ContextProvider) (*ir.NodeInst, []*ir.For, []*ir.ContextProvider)
-	walk = func(stmts []ir.Stmt, loops []*ir.For, provs []*ir.ContextProvider) (*ir.NodeInst, []*ir.For, []*ir.ContextProvider) {
+// scopedProvider is a provider around a node: one in the body the node is
+// written in, via nil, or one in the body of the component call via, around
+// the slot the node is content of.
+type scopedProvider struct {
+	p   *ir.ContextProvider
+	via *ir.NodeInst
+}
+
+// nodeInScope is nodeUnderLoops with the context providers around the node,
+// outermost first: those in the body, and those a component the node is slot
+// content of wraps that slot in.
+func nodeInScope(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For, []scopedProvider) {
+	var walk func(stmts []ir.Stmt, loops []*ir.For, provs []scopedProvider) (*ir.NodeInst, []*ir.For, []scopedProvider)
+	walk = func(stmts []ir.Stmt, loops []*ir.For, provs []scopedProvider) (*ir.NodeInst, []*ir.For, []scopedProvider) {
 		for _, s := range stmts {
 			if n, ok := s.(*ir.NodeInst); ok && n.ID == id {
 				return n, loops, provs
 			}
 			inner := provs
 			if p, ok := s.(*ir.ContextProvider); ok {
-				inner = append(slices.Clip(provs), p)
+				inner = append(slices.Clip(provs), scopedProvider{p: p})
 			}
 			for _, b := range ir.ViewBlocks(s) {
-				if n, at, around := walk(*b, BlockLoops(s, b, loops), inner); n != nil {
-					return n, at, around
+				around := inner
+				if n, ok := s.(*ir.NodeInst); ok {
+					around = append(slices.Clip(inner), slotProviders(n, b)...)
+				}
+				if n, at, found := walk(*b, BlockLoops(s, b, loops), around); n != nil {
+					return n, at, found
 				}
 			}
 		}
 		return nil, nil, nil
 	}
 	return walk(stmts, nil, nil)
+}
+
+// slotProviders is the providers n's component wraps the slot b fills in,
+// outermost first, each via n: b is n's children or one of its slots' content.
+func slotProviders(n *ir.NodeInst, b *[]ir.Stmt) []scopedProvider {
+	if n.Component == nil {
+		return nil
+	}
+	name, rest := "", b == &n.Children
+	if !rest {
+		found := false
+		for k, sc := range n.Slots {
+			if sc != nil && b == &sc.Body {
+				name, found = k, true
+			}
+		}
+		if !found {
+			return nil
+		}
+	}
+	var out []scopedProvider
+	var walk func(stmts []ir.Stmt, provs []scopedProvider) bool
+	walk = func(stmts []ir.Stmt, provs []scopedProvider) bool {
+		for _, s := range stmts {
+			if si, ok := s.(*ir.SlotInst); ok && (rest && si.Rest || !rest && si.Name == name) {
+				out = provs
+				return true
+			}
+			inner := provs
+			if p, ok := s.(*ir.ContextProvider); ok {
+				inner = append(slices.Clip(provs), scopedProvider{p: p, via: n})
+			}
+			for _, cb := range ir.ViewBlocks(s) {
+				if walk(*cb, inner) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	walk(n.Component.Stmts, nil)
+	return out
 }
 
 // loopBindings is what each loop's variables were bound to in the copy idxs

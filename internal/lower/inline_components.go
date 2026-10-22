@@ -1377,6 +1377,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		(*hoist.funcs)[i].Block = substituteEvents((*hoist.funcs)[i].Block, n.Handlers)
 	}
 	body = substituteSlots(body, n)
+	body = calleeReadsInContent(body, calleeProps(comp, bindings), renames, symRenames)
 	// A library body -- a builtin node this target composes, and the
 	// override it renders -- was written in the library, and a diagnostic
 	// about what it became belongs where the program wrote the node.
@@ -1399,6 +1400,41 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 
 	return body, nil
+}
+
+// calleeReadsInContent is body, the callee's spliced around the call site's
+// slot content, with the content's reads of the callee bound as the body's
+// were. The content is the caller's, but the context lowering handed it the
+// value of a provider the callee wraps the slot in as the callee wrote it
+// (collectSlotEnv): `picked`, a var the splice renamed `picked__inst0`, or
+// `level`, a prop it bound to the call site's argument. Both by symbol, so the
+// caller's own names stand, a prop of the caller's named like the callee's
+// included.
+func calleeReadsInContent(body []ir.Stmt, props map[ir.Symbol]ir.Expr, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) []ir.Stmt {
+	body = renameIdents(body, renames, symRenames)
+	if len(props) == 0 {
+		return body
+	}
+	return newExprWalker(func(e ir.Expr) ir.Expr {
+		if id, ok := e.(*ir.Ident); ok && id.Sym != nil {
+			if v, ok := props[id.Sym]; ok {
+				return deepCloneExpr(v)
+			}
+		}
+		return e
+	}).stmts(body)
+}
+
+// calleeProps is what bindings binds each of comp's props to, keyed by the
+// param the prop is read by.
+func calleeProps(comp *ir.Component, bindings map[string]ir.Expr) map[ir.Symbol]ir.Expr {
+	props := map[ir.Symbol]ir.Expr{}
+	for _, p := range comp.Props {
+		if v, ok := bindings[p.Name]; ok && p.Sym != nil {
+			props[p.Sym] = v
+		}
+	}
+	return props
 }
 
 // carryPointsTo copies one slot's candidates and colour onto a second key, for

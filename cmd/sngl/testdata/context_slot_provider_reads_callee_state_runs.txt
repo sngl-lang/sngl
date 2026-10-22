@@ -1,0 +1,81 @@
+# A provider in a component's body around its slot, whose value reads the
+# component's own state, gives the slot's content that value -- and a test's
+# read of a node in the content reads it too.
+#
+# The content is the caller's, and the context lowering hands it the
+# provider's value as the callee wrote it (collectSlotEnv): `picked`, the
+# callee's var. The inliner renamed that var `picked__inst0` in the body it
+# spliced and not in the content it put in the slot, so bubbletea, fyne and
+# gtk4 did not build ("undefined: picked") and html read nothing. A test's
+# read of `c.said.value` now stands under the provider around the slot as
+# well as those around the node (design/testing.md).
+
+sngl test --platform=none app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+context #tone("plain")
+
+func shout(s string) => tone == "loud" ? "{s}!" : s
+
+// A choice of tone, which the content it wraps reads.
+component chooser(content ...component ui.node) ui.node {
+    var picked = "plain"
+
+    ui.select #pick(:value=picked) {
+        ui.choice(label="plain")
+        ui.choice(label="loud")
+    }
+    tone(picked) {
+        content
+    }
+}
+
+// The same, the tone a prop.
+component wrap(level string, content ...component ui.node) ui.node {
+    tone(level) {
+        content
+    }
+}
+
+component page ui.node {
+    var mood = "loud"
+
+    chooser #choice {
+        ui.text #said(value=shout("hi"))
+    }
+    wrap #w(level=mood) {
+        ui.text #told(value=shout("yo"))
+    }
+    ui.button #calm(text="calm", @click { mood = "plain" })
+}
+
+func testTheChoiceIsTheTone(t test.Test, c page) {
+    t.assert(c.said.value == "hi")
+    c.choice.pick.change("loud")
+    t.assert(c.choice.picked == "loud")
+    t.assert(c.said.value == "hi!")
+}
+
+func testTheWrapsPropIsTheTone(t test.Test, c page) {
+    t.assert(c.told.value == "yo!")
+    c.calm.click()
+    t.assert(c.told.value == "yo")
+}
+
+ui.window {
+    page()
+}

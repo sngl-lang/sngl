@@ -2216,14 +2216,22 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// Ahead of the state, whose initializers may read one.
 	consts := g.pkgConsts()
+	var ownConsts []string
 	for _, c := range consts {
 		if g.sharesConst(c) {
 			continue
 		}
 		fmt.Fprintf(b, "const %s = %s;\n", c.Name, g.literalToJS(c.Init))
+		ownConsts = append(ownConsts, c.Name)
 	}
 	if len(consts) > 0 {
 		b.WriteString("\n")
+	}
+	// The test module finds the page's names on window, its consts as its
+	// funcs: a test reading a const map -- or a func the optimizer inlined
+	// into one -- read a name nothing declared there.
+	if g.testMode && len(ownConsts) > 0 {
+		fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(ownConsts, ", "))
 	}
 
 	// A var whose initializer reads other state is emitted as a separate

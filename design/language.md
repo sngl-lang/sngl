@@ -751,6 +751,16 @@ or a component that takes one (an adapter's `fetch=lookup`) under a provider
 its caller wrote was no reader of the context, was handed no value, and bound
 the default (`testdata/context_func_value_under_provider.txtar`).
 
+**Slot content stands under the providers its component wraps the slot in.**
+The content is the caller's, so the lowering hands it the provider's value as
+the callee wrote it (`collectSlotEnv`) -- a read of the callee's var or prop
+in the caller's content. The splice binds those reads as it binds the callee's
+own body, by symbol, after putting the content in the slot
+(`calleeReadsInContent`): it had renamed the var and bound the prop in the
+body only, so `tone(picked) { content }` left the content reading a `picked`
+the caller never declared, and the Go targets did not build
+(`cmd/sngl/testdata/context_slot_provider_reads_callee_state_runs.txt`).
+
 **A context a directory or scheme package declares is part of what it
 exports** (`mergePkgInto`), as a library's is: `p.server(v) { … }` provides
 it and `t.setContext(p.server, v)` sets it

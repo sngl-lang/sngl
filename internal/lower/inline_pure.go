@@ -781,6 +781,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// site supplied for it -- its ordinary children for the anonymous slot,
 	// the matching `slot name { ... }` block for a named one.
 	body = spliceSlots(body, callsite)
+	body = calleeReadsInContent(body, calleeProps(comp, bindings), nil, symRenames)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.

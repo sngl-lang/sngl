@@ -12,14 +12,19 @@ func idOf(url string) string {
 
 // A name as the games print it: "mr-mime" is "Mr Mime".
 func display(name string) string {
-    var words = string.split(name, "-")
-    var out list[string] = []
-    for var w = words {
+    var out builder
+    var first = true
+    for var w = string.split(name, "-") {
         if string.length(w) > 0 {
-            out.push(string.upper(string.substring(w, 0, 1)) + string.substring(w, 1, string.length(w)))
+            if !first {
+                out.add(" ")
+            }
+            first = false
+            out.add(string.upper(string.substring(w, 0, 1)))
+            out.add(string.substring(w, 1, string.length(w)))
         }
     }
-    return out.join(" ")
+    return out.string()
 }
 
 // One stage of an evolution chain as its card shows it: the species, its
@@ -444,7 +449,18 @@ func oneLine(s string) string {
     for var ws = ["\n", "\x0c", "\r", "\t"] {
         spaced = string.replace(spaced, ws, " ")
     }
-    return string.split(spaced, " ").filter(func(w string) => w != "").join(" ")
+    var out builder
+    var first = true
+    for var w = string.split(spaced, " ") {
+        if w != "" {
+            if !first {
+                out.add(" ")
+            }
+            first = false
+            out.add(w)
+        }
+    }
+    return out.string()
 }
 
 // A length in metres.
