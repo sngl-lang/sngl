@@ -450,6 +450,15 @@ func LabelNew(text string) Handle {
 	return Handle(unsafe.Pointer(C.gtk_label_new(c)))
 }
 
+// Nothing is what an instance whose body renders no node -- a request, an
+// effect -- is in the box holding it: a hidden widget, which a box gives no
+// room and no spacing. An empty label stood there before, a row per request.
+func Nothing() Handle {
+	w := C.gtk_label_new(nil)
+	C.gtk_widget_set_visible(w, 0)
+	return Handle(unsafe.Pointer(w))
+}
+
 func LabelSetText(label Handle, text string) {
 	c, free := cstr(text)
 	defer free()

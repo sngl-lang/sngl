@@ -821,6 +821,13 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 			continue
 		}
 		block := h.Func.Block
+		// An empty handler is still declared -- `@update {}` decides which
+		// handler a write reaches -- but a function with no statements is a
+		// signature to the Go emitter, which wrote no method for the call
+		// the effect makes, and the Go targets did not build.
+		if len(block) == 0 {
+			block = []ir.Stmt{&ir.Return{}}
+		}
 		if len(h.Func.Params) > 0 {
 			p := h.Func.Params[0]
 			// Without an `on` the parameter can only ever hold the default the

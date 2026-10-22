@@ -751,6 +751,12 @@ or a component that takes one (an adapter's `fetch=lookup`) under a provider
 its caller wrote was no reader of the context, was handed no value, and bound
 the default (`testdata/context_func_value_under_provider.txtar`).
 
+**An effect handler with no statements is a function that returns**
+(`handlerFunc`): still declared, since `@update {}` decides which handler a
+write reaches, but an empty body is a signature to the Go emitter, which wrote
+no method for the call the effect makes, and the Go targets did not build
+(`cmd/sngl/testdata/effect_empty_handler_runs.txt`).
+
 **Slot content stands under the providers its component wraps the slot in.**
 The content is the caller's, so the lowering hands it the provider's value as
 the callee wrote it (`collectSlotEnv`) -- a read of the callee's var or prop

@@ -306,7 +306,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__effects0_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -661,7 +661,7 @@ func new__query_state1Instance(__model *Model, __a___start_value *int, __a___sta
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__effects0_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -868,6 +868,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:7d68e69e4a04b596582bce2cf71d5884
+pass sha256:72ae1f8da6fbb168e34a1d08b711aa15
 -- run/go/gtk4 --
-pass sha256:69f4b503fd9c896ef8531ae80ab3c621
+pass sha256:e9b1b3591df95cb716c849f8e71b83cc

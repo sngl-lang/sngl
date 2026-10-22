@@ -2171,6 +2171,8 @@ body { font-family: system-ui, sans-serif; }
     if (s.maxWidth != null) d.push("max-width:" + _snglStyleLength(s.maxWidth));
     if (s.maxHeight != null) d.push("max-height:" + _snglStyleLength(s.maxHeight));
     if (s.flex != null) d.push("flex:" + s.flex);
+    if (s.flex != null && s.minWidth == null) d.push("min-width:0");
+    if (s.flex != null) d.push("min-height:0");
     if (s.flexDirection != null) d.push("flex-direction:" + _snglStyleKeyword(s.flexDirection));
     if (s.alignItems != null) d.push("align-items:" + _snglStyleKeyword(s.alignItems));
     if (s.justifyContent != null) d.push("justify-content:" + _snglStyleKeyword(s.justifyContent));
@@ -2269,4 +2271,4 @@ pass sha256:0007bd6b20cbd5cffef5cd82fe273a78
 -- run/kotlin/android --
 pass sha256:88234080768550dc196b7b44baf85d84
 -- run/none/html --
-pass sha256:e59c708c90e43820c2aa3cc4fdaa9ff3
+pass sha256:ddc889d3a12686d61048de739d167c9f

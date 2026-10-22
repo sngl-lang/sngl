@@ -305,6 +305,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__n3 = widget.NewLabel("")
 	m.__n3__theme = container.NewThemeOverride(m.__n3, fynetheme.New(theme.DefaultTheme()))
+	m.__n3.TextStyle = fyne.TextStyle{Bold: false, Italic: true}
 	m.__n3.SetText("hint")
 	m.__n3__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithForeground(__lt7).WithTextSize(float64(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}.Px)).WithSlant("italic")
 	m.__n3__theme.Refresh()
@@ -456,4 +457,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:18940a5b32bdd9b9ee089c1c37e23304
+pass sha256:5fc601758ec3e418d17fb709a822f8b5

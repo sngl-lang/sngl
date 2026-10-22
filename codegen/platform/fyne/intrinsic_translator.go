@@ -474,13 +474,13 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
 		// widget temp rather than clobbering a shared Model field.
-		return t.withShare(id, sp, t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor}))
+		return t.withShare(id, sp, t.withTextStyle(id, sp, t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor})))
 	}
-	create := t.withShare(id, sp, t.withThemeOverride(id, sp, &ir.Assign{
+	create := t.withShare(id, sp, t.withTextStyle(id, sp, t.withThemeOverride(id, sp, &ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
-	}))
+	})))
 	if t.indexed[id] {
 		t.sinkField(copiesField(id), copyMapType(goType))
 	}
@@ -505,6 +505,23 @@ func (t *fyneTranslator) withShare(id string, sp *fyneSpec, create []ir.Stmt) []
 		obj = t.themeOverrideRef(id)
 	}
 	return append(create, &ir.CallStmt{Call: shareCall(obj, sp)})
+}
+
+// withTextStyle gives a label the face its style asked for as its own
+// TextStyle, beside the theme that draws it so: a label measures itself in its
+// TextStyle's face, and one drawn bold by its theme alone measured regular and
+// was cut short.
+func (t *fyneTranslator) withTextStyle(id string, sp *fyneSpec, create []ir.Stmt) []ir.Stmt {
+	if sp.GoType.Name != "*Label" || (!sp.Style.Bold && !sp.Style.Italic) {
+		return create
+	}
+	style := fyneNative{Path: "fyne.io/fyne/v2", Name: "TextStyle"}.qualify(t.gc)
+	value := fmt.Sprintf("%s{Bold: %t, Italic: %t}", style, sp.Style.Bold, sp.Style.Italic)
+	return append(create, &ir.Assign{
+		Target: &ir.Select{Operand: t.nodeRefFor(id), Field: "TextStyle", Type: ir.NativeGoNamed(style)},
+		Op:     ast.AssignSet,
+		Value:  rawGoExpr(value, ir.NativeGoNamed(style)),
+	})
 }
 
 func (t *fyneTranslator) withThemeOverride(id string, sp *fyneSpec, create ir.Stmt) []ir.Stmt {

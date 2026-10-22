@@ -275,7 +275,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__effects0_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -560,7 +560,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__effects0_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -916,8 +916,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:a06ae029cc75e8afc1f2ed13022990b2
+pass sha256:2efb266564a09b8805983aaa6de29c20
 -- run/go/gtk4 --
-pass sha256:51af33ad8879252b2906d000babe1eec
+pass sha256:be52df75dffa67d6f6123cc4dc529c60
 -- run/none/html --
 pass sha256:0b2ad448f411b7749519849127da8442

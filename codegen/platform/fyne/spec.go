@@ -138,6 +138,10 @@ type fyneStyle struct {
 	Margin  float64
 	Gap     float64
 	Padding float64
+	// Width and Height are the size the parent's layout gives the node in
+	// place of its own minimum, zero where the style gave none.
+	Width  float64
+	Height float64
 
 	Background   *fyneColor
 	Color        *fyneColor
@@ -227,6 +231,11 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return toplevelSpec(props), nil
 	}
 	if sp := imageSpecFor(tag, props); sp != nil {
+		// An image's box is sized by its style as any node's is; read nowhere
+		// else, it drew at the size of its file.
+		if tag == imageTag {
+			sp.Style = styleFromProps(props)
+		}
 		return sp, nil
 	}
 	raw := props[specPropName]
@@ -350,6 +359,10 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 			into = &st.Gap
 		case "padding":
 			into = &st.Padding
+		case "width":
+			into = &st.Width
+		case "height":
+			into = &st.Height
 		case "fontSize":
 			into = &st.FontSize
 		case "borderRadius":

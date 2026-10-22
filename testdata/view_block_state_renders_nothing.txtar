@@ -964,7 +964,7 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects1_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -1051,7 +1051,7 @@ func new__block_state1Instance(__model *Model) *__block_state1Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects2_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -1138,7 +1138,7 @@ func new__block_state2Instance(__model *Model) *__block_state2Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects3_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -1540,7 +1540,7 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects1_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -1642,7 +1642,7 @@ func new__block_state1Instance(__model *Model) *__block_state1Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects2_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -1744,7 +1744,7 @@ func new__block_state2Instance(__model *Model) *__block_state2Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects3_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -2363,8 +2363,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e3ffb915353af1c5476937b9727032ae
 -- run/go/fyne --
-pass sha256:60372b1179ae69d92e3bdf8352d31b44
+pass sha256:701c1a6f37c29512735269055855540c
 -- run/go/gtk4 --
-pass sha256:ea15ef20f563a0d143b16a98db88982a
+pass sha256:603072614646b4efb589117f90432059
 -- run/none/html --
 pass sha256:76689d8c1928dc3a7bbc72bc02b7b0cf

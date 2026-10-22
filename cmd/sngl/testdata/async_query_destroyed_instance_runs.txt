@@ -92,7 +92,7 @@ sha256:70705a5030f3a38ebf896cd5a0232dd3
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:80bad51759f84ba0e1636b70c4ff876e
+sha256:24a688c99c24c77a0abd62d9b71fa5a2
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:80bad51759f84ba0e1636b70c4ff876e
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:a202d8a5e904568d8bc1cc2c111fa47e
+sha256:df721548317dc6b26665a262b7224fdd
 {
   "results": [
     {

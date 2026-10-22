@@ -46,9 +46,11 @@ func New(horizontal bool, gap, padding float32) fyne.Layout {
 	return Weighted{Horizontal: horizontal, Gap: gap, Padding: padding}
 }
 
-// share is what one child asked of the box holding it.
+// share is what one child asked of the box holding it: a weight and a margin,
+// and a width and a height where its style gave one, zero where it did not.
 type share struct {
 	weight, margin float32
+	width, height  float32
 	// self is the child, held weakly: the address is the key, and a key
 	// outliving its object must not hand its share to whatever is allocated
 	// there next.
@@ -75,6 +77,13 @@ func address(o fyne.CanvasObject) unsafe.Pointer {
 // size is made a Weighted one when a child with a weight arrives in it. It
 // returns o, so a wrapper built where it is appended can say it in place.
 func Share(o fyne.CanvasObject, weight, margin float32) fyne.CanvasObject {
+	return ShareSized(o, weight, margin, 0, 0)
+}
+
+// ShareSized is Share for a child whose style gave it a width or a height,
+// which the box lays it out at in place of its own minimum: Fyne has no size
+// a widget is asked to be, so a picture was as large as its file.
+func ShareSized(o fyne.CanvasObject, weight, margin, width, height float32) fyne.CanvasObject {
 	p := address(o)
 	if p == nil {
 		return o
@@ -83,11 +92,11 @@ func Share(o fyne.CanvasObject, weight, margin float32) fyne.CanvasObject {
 	sharesMu.Lock()
 	defer sharesMu.Unlock()
 	old, had := shares[key]
-	if weight == 0 && margin == 0 {
+	if weight == 0 && margin == 0 && width == 0 && height == 0 {
 		delete(shares, key)
 		return o
 	}
-	shares[key] = share{weight: weight, margin: margin, self: weak.Make((*byte)(p))}
+	shares[key] = share{weight: weight, margin: margin, width: width, height: height, self: weak.Make((*byte)(p))}
 	if !had || old.self.Value() != (*byte)(p) {
 		runtime.AddCleanup((*byte)(p), forget, key)
 	}
@@ -106,17 +115,37 @@ func forget(key uintptr) {
 
 // shareOf is what o asked for, or nothing.
 func shareOf(o fyne.CanvasObject) (weight, margin float32) {
+	s := askOf(o)
+	return s.weight, s.margin
+}
+
+// askOf is o's whole share, the zero one where it asked for nothing.
+func askOf(o fyne.CanvasObject) share {
 	p := address(o)
 	if p == nil {
-		return 0, 0
+		return share{}
 	}
 	sharesMu.Lock()
 	s, ok := shares[uintptr(p)]
 	sharesMu.Unlock()
 	if !ok || s.self.Value() != (*byte)(p) {
-		return 0, 0
+		return share{}
 	}
-	return s.weight, s.margin
+	return s
+}
+
+// minSizeOf is o's minimum, with the width and height its style gave in place
+// of its own.
+func minSizeOf(o fyne.CanvasObject) fyne.Size {
+	min := o.MinSize()
+	s := askOf(o)
+	if s.width > 0 {
+		min.Width = s.width
+	}
+	if s.height > 0 {
+		min.Height = s.height
+	}
+	return min
 }
 
 // Adopt makes c lay o out by its share when o has one and c is one of Fyne's
@@ -128,7 +157,7 @@ func Adopt(c *fyne.Container, o fyne.CanvasObject) {
 	if c == nil {
 		return
 	}
-	if w, _ := shareOf(o); w == 0 {
+	if s := askOf(o); s.weight == 0 && s.width == 0 && s.height == 0 {
 		return
 	}
 	switch reflect.TypeOf(c.Layout) {
@@ -177,7 +206,7 @@ func (l Weighted) MinSize(objects []fyne.CanvasObject) fyne.Size {
 		}
 		_, margin := shareOf(o)
 		m := margin * 2
-		omain, ocross := l.axes(o.MinSize())
+		omain, ocross := l.axes(minSizeOf(o))
 		main += omain + m
 		if ocross+m > cross {
 			cross = ocross + m
@@ -207,7 +236,7 @@ func (l Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 			fixed += m
 			continue
 		}
-		omain, _ := l.axes(o.MinSize())
+		omain, _ := l.axes(minSizeOf(o))
 		fixed += omain + m
 	}
 
@@ -230,11 +259,17 @@ func (l Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 		if w > 0 && totalWeight > 0 {
 			slot = free * w / totalWeight
 		} else {
-			slot, _ = l.axes(o.MinSize())
+			slot, _ = l.axes(minSizeOf(o))
 		}
 		ocross := cross - l.Padding*2 - margin*2
 		if ocross < 0 {
 			ocross = 0
+		}
+		// A child whose style gave its cross size keeps it, at the start.
+		if a := askOf(o); l.Horizontal && a.height > 0 && a.height < ocross {
+			ocross = a.height
+		} else if !l.Horizontal && a.width > 0 && a.width < ocross {
+			ocross = a.width
 		}
 		o.Move(l.pos(offset+margin, l.Padding+margin))
 		o.Resize(l.size(slot, ocross))

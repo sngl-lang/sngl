@@ -370,9 +370,10 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 	tops := tr.topLevel
 	switch {
 	case len(tops) == 0 && wrapped:
-		return fmt.Sprintf("\t%s = gtk4rt.LabelNew(\"\")\n", root)
+		return fmt.Sprintf("\t%s = gtk4rt.Nothing()\n", root)
 	case len(tops) == 0:
-		return fmt.Sprintf("\t%s = C.gtk_label_new(nil)\n", root)
+		// Hidden, so the box holding it gives it no room (gtk4rt.Nothing).
+		return fmt.Sprintf("\t%s = C.gtk_label_new(nil)\n\tC.gtk_widget_set_visible(%s, 0)\n", root, root)
 	case len(tops) == 1 && wrapped:
 		return fmt.Sprintf("\t%s = %s\n", root, igc.EvalExpr(nodeRef(tops[0])))
 	case len(tops) == 1:

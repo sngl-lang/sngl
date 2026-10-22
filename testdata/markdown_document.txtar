@@ -5314,6 +5314,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																__n864 := container.NewHBox()
 																for _, cell := range b.Columns {
 																	__n865 := widget.NewLabel("")
+																	__n865.TextStyle = fyne.TextStyle{Bold: true, Italic: false}
 																	__n865.SetText(cell)
 																	__n864.Add(container.NewThemeOverride(__n865, _snglTheme5))
 																}
@@ -6901,6 +6902,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 															__n217 := container.NewHBox()
 															for _, cell := range inner.Columns {
 																__n218 := widget.NewLabel("")
+																__n218.TextStyle = fyne.TextStyle{Bold: true, Italic: false}
 																__n218.SetText(cell)
 																__n217.Add(container.NewThemeOverride(__n218, _snglTheme5))
 															}
@@ -8363,6 +8365,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																__n432 := container.NewHBox()
 																for _, cell := range inner.Columns {
 																	__n433 := widget.NewLabel("")
+																	__n433.TextStyle = fyne.TextStyle{Bold: true, Italic: false}
 																	__n433.SetText(cell)
 																	__n432.Add(container.NewThemeOverride(__n433, _snglTheme5))
 																}
@@ -9838,6 +9841,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																__n647 := container.NewHBox()
 																for _, cell := range inner.Columns {
 																	__n648 := widget.NewLabel("")
+																	__n648.TextStyle = fyne.TextStyle{Bold: true, Italic: false}
 																	__n648.SetText(cell)
 																	__n647.Add(container.NewThemeOverride(__n648, _snglTheme5))
 																}
@@ -10669,6 +10673,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3069a47cbe54206bd6157b1b21fe7e40
 -- run/go/fyne --
-pass sha256:f1244834d1cddea9f4861fd3eafa7e8f
+pass sha256:58b6559fa83737b24b16abbf7b2eabcb
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

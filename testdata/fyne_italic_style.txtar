@@ -113,6 +113,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.OnVisible = m.home_visible_handler
 	m.__n0 = container.NewVBox()
 	m.__n1 = widget.NewLabel("")
+	m.__n1.TextStyle = fyne.TextStyle{Bold: false, Italic: true}
 	m.__n1.SetText("slanted")
 	m.__n0.Add(container.NewThemeOverride(m.__n1, _snglTheme0))
 	m.home.Add(m.__n0)
@@ -128,4 +129,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:3d9c8e79452e60deec42a79f9369033d
+pass sha256:369278ac80d6f9f03408a61d9fcab7f4

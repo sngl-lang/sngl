@@ -266,6 +266,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 			for i := range m.shown {
 				__n0 := widget.NewLabel("")
+				fynelayout.ShareSized(__n0, 0, 0, 0, 48)
 				__n0.SetText(("row " + fmt.Sprint(i)))
 				fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
 				m.__slot0 = append(m.__slot0, __n0)
@@ -603,7 +604,7 @@ body { display: flex; flex-direction: column; }
   </style>
 </head><body>
 
-<div style="flex:1;overflow:auto" data-sngl-id="list">
+<div style="flex:1;min-width:0;min-height:0;overflow:auto" data-sngl-id="list">
   <div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
@@ -776,10 +777,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:e2ec05254ed97cc1ed11e044d5893363
 -- run/go/fyne --
-pass sha256:2c028122674e5c7813caa7e99fea3d57
+pass sha256:adb8af89db4de5349d16571fba42f380
 -- run/go/gtk4 --
 pass sha256:1e0e968fd78ce2a2c2d85f65cd79bcfd
 -- run/kotlin/android --
 pass sha256:06327f885c94aa79d792967ae480cbb9
 -- run/none/html --
-pass sha256:46851efcc78c30e63bc5b5c46e041605
+pass sha256:9b884cfa9bd1909e998ee725b80055fe

@@ -415,8 +415,8 @@ func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) (lines []stri
 	tops := tr.topLevel
 	switch len(tops) {
 	case 0:
-		igc.RequireImport("fyne.io/fyne/v2/widget")
-		return nil, `widget.NewLabel("")`
+		igc.RequireImport(fyneLayoutImportPath)
+		return nil, igc.AliasFor(fyneLayoutImportPath) + ".Nothing()"
 	case 1:
 		return nil, igc.EvalExpr(topRef(tr, tops[0]))
 	}

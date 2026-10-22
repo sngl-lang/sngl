@@ -470,7 +470,8 @@ import (
 	"os"
 )
 
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
+var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Radius: 20}
+var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
 
 type Measurement struct {
 	Px  float64
@@ -563,7 +564,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			if m.failed__inst0 || !m.hasPhoto__inst0 {
 				__n4 := widget.NewLabel("")
 				__n4.SetText("JD")
-				fynelayout.InsertBefore(__parent, m.__slot1_at, container.NewThemeOverride(__n4, _snglTheme0))
+				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(__n4, _snglTheme1), 0, 0, 40, 40))
 				m.__slot1 = append(m.__slot1, __n4)
 			} else {
 				var __n5 *__child0Instance
@@ -2242,7 +2243,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4e1e85f17b4a2065817399c5fe88588a
 -- run/go/fyne --
-pass sha256:fc0b46b1fbd1b24a4c0099a0b408ca6d
+pass sha256:08060448a4ef95dda9c3550abb8b9828
 -- run/go/gtk4 --
 pass sha256:aea44ab7f2dd4e632d3026a8b6121cba
 -- run/kotlin/android --

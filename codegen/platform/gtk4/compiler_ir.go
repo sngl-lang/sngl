@@ -1452,9 +1452,10 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	var trailer string
 	switch tops := tr.topLevel; {
 	case len(tops) == 0 && wrapped:
-		trailer = "\treturn gtk4rt.LabelNew(\"\")\n"
+		trailer = "\treturn gtk4rt.Nothing()\n"
 	case len(tops) == 0:
-		trailer = "\treturn C.gtk_label_new(nil)\n"
+		// Hidden, so the box holding it gives it no room (gtk4rt.Nothing).
+		trailer = "\tnothing := C.gtk_label_new(nil)\n\tC.gtk_widget_set_visible(nothing, 0)\n\treturn nothing\n"
 	case len(tops) == 1 && wrapped:
 		ref := tr.qualifyNodeExpr(&ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true})
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(ref))

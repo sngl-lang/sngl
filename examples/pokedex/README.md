@@ -348,14 +348,14 @@ nothing -- and a dex's region.
 
 ## Where each target stands
 
-| target      | what runs                                                                   |
-|-------------|-----------------------------------------------------------------------------|
-| `none`      | the interpreter, all of it                                                  |
-| `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages    |
-| `bubbletea` | all of it, a sprite as half-block cells; answers come back through `Update` |
-| `fyne`      | all of it                                                                   |
-| `gtk4`      | all of it                                                                   |
-| `android`   | all of it; the manifest asks for `INTERNET` because the program fetches     |
+| target      | what runs                                                                                                                                     |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `none`      | the interpreter, all of it                                                                                                                    |
+| `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages                                                                      |
+| `bubbletea` | all of it, a sprite as half-block cells; a row's columns and badges are written with no space between them, and the artwork leaves blank rows |
+| `fyne`      | all of it; a badge is its text alone, since Fyne paints no label's background, and a card's lines are not centred                             |
+| `gtk4`      | all of it, laid out by GTK alone: gtk4 reads no style but `flex`, so sizes, gaps, faces and colours are GTK's own                             |
+| `android`   | all of it; the manifest asks for `INTERNET` because the program fetches                                                                       |
 
 `--lang none` on html is refused where the detail page is written: a static
 site writes one document per page, and `/pokemon/{name}` is a pattern no file

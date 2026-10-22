@@ -300,11 +300,11 @@ Notes:
 - [X] Every line the example builds with `join` (`dexLine`, `oneLine`,
   `display`) is built with `builder` once !265 is on main, as the user asked.
 
-- [ ] The example's tests cover each tab, the dex switch and the language
+- [X] The example's tests cover each tab, the dex switch and the language
   switch, and pass on all six targets through `examples_runs.txt`.
 - [ ] Look at it running on html, bubbletea, fyne, gtk4 and android;
   screenshots in the MR description.
-- [ ] README describes the redesign: files, the request per screen, where
+- [X] README describes the redesign: files, the request per screen, where
   each target stands, the document corrections.
 - [ ] A review agent passes over the whole branch; fix what it finds.
 - [ ] Delete this file; take the MR out of draft.
@@ -344,3 +344,15 @@ Notes, from looking at it on an android device:
   platform can, but the user wants to see the definition first, and wants a
   table that handles huge lazily loaded data: the rows in one channel and a
   scoped slot rendering each with components.
+- Part 11, from looking at it run: html home loaded every page of the grid
+  (a flexing box kept its content's minimum), fyne drew pictures at their
+  file's size and cut bold labels short, and fyne and gtk4 gave every request
+  a blank row; each is fixed with a fixture. Left for a new session, as the
+  user asked: `sngl run --platform html` serves the generated source as a
+  directory listing, and `--lang none` html is reportedly broken the same
+  way. Left too: gtk4 reads no style but `flex`; fyne paints no badge
+  background and centres no card; bubbletea spaces no row's columns. The
+  android device checks (launcher name and icon, red theme, dark bar icons,
+  centred stat rows, scrolling detail, read-only selects, card artwork
+  following a dex change) are the user's, with no emulator here.
+- `ui.table`'s redesign is #290.

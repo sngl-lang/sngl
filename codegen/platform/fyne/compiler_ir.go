@@ -766,7 +766,9 @@ func renderIRComponentMethod(
 	var trailer string
 	switch len(tops) {
 	case 0:
-		trailer = "\treturn widget.NewLabel(\"\")\n"
+		// Hidden, so the box holding it gives it no room (fynelayout.Nothing).
+		importSink(fyneLayoutImportPath)
+		trailer = "\treturn " + compGC.AliasFor(fyneLayoutImportPath) + ".Nothing()\n"
 	case 1:
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(topRef(tr, tops[0])))
 	default:
