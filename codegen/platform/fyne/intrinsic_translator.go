@@ -662,9 +662,16 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
 			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))}, ir.TypVoid)}}
 	}
+	unqualified := parent
 	parent = t.qualifyParentExpr(parent)
 	child = t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
 	if sp != nil && sp.isSingleChild() {
+		// A select's operand is written as it stands, so a parent the
+		// program named -- `ui.scroll #list` -- came out a bare `list` no
+		// scope declares. It is named as a handler names its node.
+		if parent == unqualified {
+			parent = t.qualifyHandlerNode(parent, codegen.IdentBareName(parent))
+		}
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: fyneObject()},
 			Op:     ast.AssignSet,

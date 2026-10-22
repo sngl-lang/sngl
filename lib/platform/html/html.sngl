@@ -210,6 +210,11 @@ component element(
     @error(e error),
     @close(),
     @select(),
+    // Dispatched by `sngl-reach-end`, an element the page defines rather than
+    // the DOM (codegen/platform/html/reachend.go). Declared because it is
+    // camelCase, which the wildcard below refuses, and it is camelCase so a
+    // test's `c.list.reachEnd()` names the event the element dispatches.
+    @reachEnd(),
 
     // Every other DOM event. The event set is as open as the element set and
     // the attribute set, for the same reason: a standard adds to it. The
@@ -257,10 +262,15 @@ const component ui.spacer[platform](style) {
 
 // `@scrollEnd` is the standard library's name for the event the DOM calls
 // `scrollend`. The names differ, so the override maps them: that is the half of
-// wrapping an element that a wildcard cannot do for itself.
-const component ui.scroll[platform](style, @scroll, @scrollEnd, content) {
+// wrapping an element that a wildcard cannot do for itself. `@reachEnd` has no
+// DOM event at all: `sngl-reach-end` is an element the page defines
+// (codegen/platform/html/reachend.go), written after the content, that
+// dispatches `reachEnd` as it comes within half the box's height of showing
+// and as the content resizes while it is there.
+const component ui.scroll[platform](style, @scroll, @scrollEnd, @reachEnd, content) {
     html.div(style={...style, overflow=auto}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
         content
+        html.element(tag="sngl-reach-end", @reachEnd { reachEnd() }) {}
     }
 }
 
@@ -683,8 +693,19 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
     ) {}
 }
 
-const component ui.card[platform](style, content) {
-    html.div(style={borderRadius=8px, padding=16px, ...style}) {
+// A clickable card is a button to assistive technology and the keyboard's
+// focus order, and shows the pointer a link does: one element either way, with
+// the difference in its attributes.
+const component ui.card[platform](style, clickable, @click, content) {
+    html.div(
+        attrs = clickable ? {"role"="button", "tabindex"="0"} : {},
+        style = {borderRadius=8px, padding=16px, cursor=clickable ? "pointer" : "auto", ...style},
+        @click {
+            if clickable {
+                click()
+            }
+        },
+    ) {
         content
     }
 }

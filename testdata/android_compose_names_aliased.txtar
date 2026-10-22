@@ -90,11 +90,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier as Modifier_2
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment as Alignment_2
@@ -145,7 +143,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier_2.then(Modifier_2.verticalScroll(rememberScrollState())).safeDrawingPadding()) {
+        SnglScroll(modifier = Modifier_2.safeDrawingPadding(), onReachEnd = {}) {
             Column(modifier = Modifier_2.then(Modifier_2.fillMaxSize())) {
                 Row(modifier = Modifier_2, verticalAlignment = Alignment_2.CenterVertically) {
                     Checkbox(checked = checked, onCheckedChange = { on ->
@@ -196,5 +194,44 @@ fun Dialog(content: (@Composable () -> Unit)? = null) {
         }
     }
 }
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+
+// SnglScroll is sngl:ui's scroll: a column scrolled vertically, which calls
+// onReachEnd when the end of its content comes within half a viewport of
+// being shown -- once as it arrives, and again whenever the content changes
+// size while it is there, so a handler that adds a page is asked for another
+// while the end still shows. The content's height is measured past the
+// scroll, where it is the whole of it rather than the viewport.
+@Composable
+fun SnglScroll(
+    modifier: Modifier,
+    onReachEnd: () -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val state = rememberScrollState()
+    var height by remember { mutableIntStateOf(0) }
+    val reach by rememberUpdatedState(onReachEnd)
+    LaunchedEffect(state) {
+        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to height }
+            .collect { (atEnd, _) -> if (atEnd) reach() }
+    }
+    Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
+}
 -- run/kotlin/android --
-pass sha256:7888eaf0ff173a57190847291ae9b4a0
+pass sha256:6486535b973182229858a4363250e33c

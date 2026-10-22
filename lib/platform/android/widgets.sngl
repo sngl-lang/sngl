@@ -48,11 +48,8 @@ const component ui.spacer[platform](style) {
     Spacer(modifier={...style}) {}
 }
 
-const component ui.scroll[platform](style, content) {
-    Column(
-        modifier = {...style},
-        then = [modifier.verticalScroll(rememberScrollState())],
-    ) {
+const component ui.scroll[platform](style, @reachEnd, content) {
+    SnglScroll(modifier={...style}, onReachEnd=func() { reachEnd() }) {
         content
     }
 }
@@ -283,9 +280,18 @@ const component ui.divider[platform](style) {
     HorizontalDivider(modifier={...style}) {}
 }
 
-const component ui.card[platform](style, content) {
-    Card(modifier={...style}) {
-        content
+// A clickable card is Material's clickable Card, the overload taking
+// `onClick`, which gives it the ripple and the focus stop a pressable surface
+// has; any other card is the plain one, which a press passes through.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        Card(onClick=func() { click() }, modifier={...style}) {
+            content
+        }
+    } else {
+        Card(modifier={...style}) {
+            content
+        }
     }
 }
 

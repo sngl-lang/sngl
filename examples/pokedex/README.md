@@ -72,12 +72,15 @@ shown again starts at the dex chosen, and a Pokémon's page lists the moves of
 the latest game that dex covers.
 
 **Every entry arrives with the dex**, so the search covers the whole dex and
-"Show more" asks for nothing: it shows the next 30 of what matches. The grid
-is rows of three that `rows` in `names.sngl` cuts, since a `Style` neither
-wraps a row nor lays out columns.
+a page more asks for nothing: the grid's scroll fires `@reachEnd` as its end
+comes into view, and home shows the next 30 of what matches. A first page too
+short to scroll has its end in view already, so the next one follows it at
+once. The grid is rows of three that `rows` in `names.sngl` cuts, since a
+`Style` neither wraps a row nor lays out columns.
 
-**A card asks for nothing.** It shows the entry's number in this dex, its name
-and its official artwork, whose URL is the species id out of the entry's URL
+**A card asks for nothing.** A clickable `ui.card`, opened by a click
+anywhere on it, it shows the entry's number in this dex, its name and its
+official artwork, whose URL is the species id out of the entry's URL
 put into `artwork`, a context holding where the artwork is:
 
 ```sngl
@@ -306,7 +309,7 @@ starts with no names.
 **The app's own words are `$"..."`**, and `i18n.manifest.json` translates
 each into the four other languages: the tab labels, About's and Stats'
 labels, the sprite labels, the Moves tab's headings, choices and note, the
-words of an evolution's step, "Show more", the search's placeholder, the
+words of an evolution's step, the search's placeholder, the
 errors and "Genderless". A word is a key, and a key has one meaning: the
 page's back button is "‹ Back", since a sprite's "Back" is the Pokémon's back
 (French "Retour" and "Dos"). A line joining several names joins them with

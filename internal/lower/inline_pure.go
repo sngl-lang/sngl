@@ -366,6 +366,14 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 	case *ir.NodeInst:
 		return st.inlineNodeInst(n)
 	case *ir.If:
+		// A substitution can leave a branch on a literal: a const override's
+		// `if clickable` where the call site wrote nothing. Only the branch
+		// taken is kept, since passReactivity would otherwise give the other
+		// one render slots, and codegen, dropping the branch, kept the calls
+		// re-rendering them into nodes it never built.
+		if taken, ok := decidedBranch(n); ok {
+			return st.inlineStmts(taken)
+		}
 		body, err := st.inlineStmts(n.Body)
 		if err != nil {
 			return nil, err
@@ -1775,4 +1783,25 @@ func freshNodeHandles(body []ir.Stmt, renames map[ir.Symbol]ir.Symbol) {
 		n.Handle = fresh
 		return nil
 	})
+}
+
+// decidedBranch is the branch an `if` on a bool literal takes, where that
+// branch can stand in the `if`'s place: one declaring no local of its own,
+// which would then share the enclosing block's scope, and an `if` that is
+// neither a catch block nor the root of a spliced instance.
+func decidedBranch(n *ir.If) ([]ir.Stmt, bool) {
+	lit, ok := n.Cond.(*ir.Literal)
+	if !ok || lit.Type != ir.TypBool || n.Catch != nil || n.FromTernary || len(n.Instances) > 0 {
+		return nil, false
+	}
+	taken := n.Else
+	if lit.Value == "true" {
+		taken = n.Body
+	}
+	for _, s := range taken {
+		if _, ok := s.(*ir.LocalVar); ok {
+			return nil, false
+		}
+	}
+	return taken, true
 }

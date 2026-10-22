@@ -131,6 +131,10 @@ component Styled(
     // Fired by the key an `events` record maps "change" to. A key press
     // carries nothing, so the override says here what the press reports.
     @change,
+    // Fired by the key an `events` record maps "click" to, for a Styled an
+    // override writes beneath its root, which a call site's `@click` does
+    // not land on.
+    @click(),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -434,9 +438,22 @@ const component ui.divider[platform](style) {
     Styled(content="─", style={...style}) {}
 }
 
-const component ui.card[platform](style, content) {
-    Layout(join=JoinDir.vertical, style={...style}) {
-        content
+// A terminal focuses controls rather than regions, so a clickable card is its
+// content beside a `›` that takes the focus and fires `@click` on enter, as a
+// button's label does.
+const component ui.card[platform](style, clickable, @click, content) {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        if clickable {
+            Styled(
+                content = "› ",
+                focus = Focus{enabled=true},
+                events = [Event{on="click", key="enter"}],
+                @click { click() },
+            ) {}
+        }
+        Layout(join=JoinDir.vertical) {
+            content
+        }
     }
 }
 

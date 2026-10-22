@@ -54,6 +54,8 @@ type emitShared struct {
 	toplevelTitles map[string]ir.Expr
 	// images are every image primitive id the file creates, by tag.
 	images map[string]string
+	// scrolls are every Scroll primitive id the file creates.
+	scrolls map[string]bool
 	// toplevelIcons is each window's icon source in an inline-cgo build, by
 	// the window's id.
 	toplevelIcons map[string]string
@@ -99,8 +101,10 @@ func (s *emitShared) fail(err error) {
 // renders as cgo source; a cgo cast is an ir.Conversion to a
 // NativePointerOf type (see cgoCast).
 type gtk4Translator struct {
-	gc        *golang.GoIRContext
-	pkg       *ir.Package // optional; used to consult GIR-resolved native metadata
+	gc  *golang.GoIRContext
+	pkg *ir.Package // optional; used to consult GIR-resolved native metadata
+	// pkgCTypes is collectNodeCTypes(pkg), made when slotCType first asks.
+	pkgCTypes map[string]string
 	fieldSink func(name, cType string)
 	// fieldCTypes is what sinkField declared each field this translator
 	// writes as, which is the type a reference to it carries.
@@ -592,6 +596,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		return t.emitToplevelCreate(id)
 	case imageTag, imageURLTag, imageDrawingTag:
 		return t.emitImageCreate(id, tag)
+	case scrollTag:
+		return t.emitScrollCreate(id)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -1393,7 +1399,7 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, self ir.Expr) ir.Expr {
 	}
 	fn := *lam.Func
 	fn.Params = nil
-	fn.Block = t.spellLocalNodes(readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader()))
+	fn.Block = t.boxSlotRenders(t.spellLocalNodes(readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader())))
 	out := *lam
 	out.Func = &fn
 	return &out
@@ -1447,6 +1453,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}
 	if tag := t.imageTagOf(bare); tag != "" {
 		return t.imageAttachHandler(node, tag, event, handler)
+	}
+	if t.isScroll(bare) {
+		return t.scrollAttachHandler(node, event, handler)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
@@ -1623,7 +1632,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		return nil, false
 	}
 	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
-	cType := t.idCTypes[bare]
+	cType := t.slotCType(bare)
 	if cType == "" || cType == "GtkBox" {
 		return nil, false
 	}
@@ -1661,6 +1670,60 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		},
 		&ir.CallStmt{Call: &call},
 	}, true
+}
+
+// boxSlotRenders gives each render slot call in a handler's body the box its
+// container holds where that container holds one child, as translateDefault
+// does for one the build makes: a handler re-rendering a slot inside a card's
+// frame handed the frame itself to a function taking a GtkBox. The statements
+// are copied first, being the lowered IR's.
+func (t *gtk4Translator) boxSlotRenders(stmts []ir.Stmt) []ir.Stmt {
+	boxed := func(s ir.Stmt) bool {
+		cs, ok := s.(*ir.CallStmt)
+		if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
+			return false
+		}
+		cType := t.slotCType(codegen.IdentBareName(cs.Call.Args[0].Value))
+		return cType != "" && cType != "GtkBox"
+	}
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if s, ok := n.(ir.Stmt); ok && boxed(s) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	if !found {
+		return stmts
+	}
+	return ir.RewriteBlocks(ir.CloneStmtsSharingDecls(stmts), func(list []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range list {
+			if cs, ok := s.(*ir.CallStmt); ok && boxed(s) {
+				if b, ok := t.boxedSlotRenderCall(cs); ok {
+					out = append(out, b...)
+					continue
+				}
+			}
+			out = append(out, s)
+		}
+		return out
+	})
+}
+
+// slotCType is the C type of the container a slot renders into. A handler can
+// be attached before the node it re-renders into is built -- a card below the
+// loop whose click handler writes what the card shows -- so a container this
+// walk has not reached yet is looked up in the whole package.
+func (t *gtk4Translator) slotCType(bare string) string {
+	if c := t.idCTypes[bare]; c != "" {
+		return c
+	}
+	if t.pkgCTypes == nil {
+		t.pkgCTypes = collectNodeCTypes(t.pkg)
+	}
+	return t.pkgCTypes[bare]
 }
 
 // localSlotRenderCall rewrites a render slot call whose container is a local

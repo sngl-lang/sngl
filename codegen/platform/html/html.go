@@ -2414,6 +2414,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
 	}
+	if g.pkg != nil && rendersReachEnd(g.pkg) {
+		b.WriteString(reachEndHelper + "\n")
+	}
 	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
 		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
 	}

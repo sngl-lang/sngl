@@ -212,8 +212,8 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
-const component ui.scroll[platform](style, content) {
-    gtk.GtkScrolledWindow(style={...style}) {
+const component ui.scroll[platform](style, @reachEnd, content) {
+    Scroll(style={...style}, @reachEnd { reachEnd() }) {
         content
     }
 }
@@ -305,9 +305,19 @@ const component ui.tooltip[platform](style, text, trigger) {
     }
 }
 
-const component ui.card[platform](style, content) {
-    gtk.GtkFrame(style={...style}) {
-        content
+// A clickable card is its frame inside a frameless GtkButton, which gives it
+// the hover, the press and the focus stop a button has.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        gtk.GtkButton(hasFrame=false, style={...style}, @clicked { click() }) {
+            gtk.GtkFrame {
+                content
+            }
+        }
+    } else {
+        gtk.GtkFrame(style={...style}) {
+            content
+        }
     }
 }
 
@@ -887,6 +897,17 @@ component Image(
     @load(),
     @failed(message string),
     content ...component option[ui.imageSource],
+) ui.node
+
+// A scroll is gtk4rt's GtkScrolledWindow, which reports the end of its
+// content coming within half a viewport of showing -- as it arrives, and when
+// the content changes size while it is there. GTK has no signal saying so;
+// the vertical adjustment's changes are what answer it.
+#[marks.intrinsic("gtk4:Scroll")]
+component Scroll(
+    style   ui.Style,
+    @reachEnd(),
+    content ...component option[ui.node],
 ) ui.node
 
 #[marks.intrinsic("gtk4:ImageUrl")]

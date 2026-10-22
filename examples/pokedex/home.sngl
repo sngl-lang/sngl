@@ -17,9 +17,10 @@ var dexName = "national"
 var chosenDex option[poke.PokedexDetail] = null
 
 // Home: a choice of Pokédex, what it is, and a grid of its Pokémon,
-// `pageSize` cards at a time. The dex is one request keyed on its name, so
-// choosing another moves the key; every entry arrives with it, so the search
-// covers the whole dex and "Show more" asks for nothing.
+// `pageSize` cards at a time, the next page shown as the grid is scrolled to
+// its end. The dex is one request keyed on its name, so choosing another moves
+// the key; every entry arrives with it, so the search covers the whole dex and
+// a page more asks for nothing.
 component homePage(pageSize = 30, @open(name string)) ui.node {
     var dexes list[poke.PokedexSummary] = []
     var chosen = display(dexName)
@@ -57,6 +58,13 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
     // The grid, a row of `columns` cards at a time.
     func grid() => rows(visible(), columns)
 
+    // Shows a page more of the matches, where there are more to show.
+    func more() {
+        if matching().length() > shown {
+            shown += pageSize
+        }
+    }
+
     poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
     poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
 
@@ -78,7 +86,7 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
         if chosenDex == null && loading {
             ui.spinner(label=$"Loading")
         }
-        ui.scroll(style={flex=1}) {
+        ui.scroll #cards(style={flex=1}, @reachEnd { more() }) {
             ui.vbox(style={gap=8px}) {
                 for var row = grid() {
                     ui.hbox(style={gap=8px}) {
@@ -89,22 +97,21 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
                 }
             }
         }
-        if matching().length() > shown {
-            ui.button #more(text=$"Show more", @click { shown += pageSize })
-        }
     }
 }
 
-// One Pokémon of a dex: its artwork, its number in this dex and its name.
-// The picture's URL comes from the species id in the entry, so a card asks
-// for nothing.
+// One Pokémon of a dex: its artwork, its number in this dex and its name,
+// opened by a click anywhere on it. The picture's URL comes from the species
+// id in the entry, so a card asks for nothing.
 component card(entry poke.PokemonDexNumber, @open()) ui.node {
-    ui.vbox(style={gap=4px, alignItems=center, width=128px}) {
-        ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
-            ui.remote(url=artworkOf(artwork, idOf(entry.pokemonSpecies.url)))
+    ui.card(clickable=true, style={width=128px}, @click { open() }) {
+        ui.vbox(style={gap=4px, alignItems=center}) {
+            ui.image(alt=entry.pokemonSpecies.name, style={width=96px, height=96px}) {
+                ui.remote(url=artworkOf(artwork, idOf(entry.pokemonSpecies.url)))
+            }
+            ui.text(value=number(entry.entryNumber))
+            ui.text(value=display(entry.pokemonSpecies.name))
         }
-        ui.text(value=number(entry.entryNumber))
-        ui.button(text=display(entry.pokemonSpecies.name), @click { open() })
     }
 }
 

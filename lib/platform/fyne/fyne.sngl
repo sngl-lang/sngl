@@ -229,6 +229,7 @@ component Wrapper(
     @click(),
     @change(text string),
     @input(text string),
+    @reachEnd(),
     content     ...component option[ui.node],
 ) ui.node
 
@@ -450,6 +451,25 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
     }
 }
 
+// A vertical scroll reporting the end of its content coming within half a
+// viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports a scroll
+// and nothing about the content growing, which is what a handler adding a page
+// does.
+const component ReachScroll(style ui.Style = ui.Style{}, @reachEnd(), content ...component option[ui.node]) ui.node {
+    Wrapper(
+        spec = Spec{
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewReachScroll"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*ReachScroll"},
+            content = "Content",
+            handlers = [Handler{on="reachEnd", field="OnReachEnd", signature="func()"}],
+        },
+        style = {...style},
+        @reachEnd { reachEnd() },
+    ) {
+        content
+    }
+}
+
 // --- Layout containers ---
 
 const component ui.vbox[platform](style, children) {
@@ -473,8 +493,8 @@ const component ui.stack[platform](style, layers) {
     }
 }
 
-const component ui.scroll[platform](style, content) {
-    VScroll(style={...style}) {
+const component ui.scroll[platform](style, @reachEnd, content) {
+    ReachScroll(style={...style}, @reachEnd { reachEnd() }) {
         content
     }
 }
@@ -483,9 +503,29 @@ const component ui.spacer[platform](style) {
     Spacer(style={...style}) {}
 }
 
-const component ui.card[platform](style, content) {
-    VBox(style={...style}) {
-        content
+// A clickable card is its box shown in a fynelayout.Tap, the widget Fyne hands
+// a tap to: a box is drawn and never tapped.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        Wrapper(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewTap"},
+                args = [Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Tap"},
+                content = "Content",
+                handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
+            },
+            style = {...style},
+            @click { click() },
+        ) {
+            VBox {
+                content
+            }
+        }
+    } else {
+        VBox(style={...style}) {
+            content
+        }
     }
 }
 

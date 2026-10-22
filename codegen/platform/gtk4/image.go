@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"fmt"
+	"strings"
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
@@ -19,6 +20,12 @@ const (
 	imageDrawingTag = "ImageDrawing"
 )
 
+// scrollTag is gtk4.sngl's `Scroll`, gtk4rt's GtkScrolledWindow that reports
+// its content's end coming into view: GTK has no signal for that, and the
+// adjustment's that answer it hand their handler nothing an event could
+// carry.
+const scrollTag = "Scroll"
+
 func imagePrimitive(tag string) bool {
 	return tag == imageTag || tag == imageURLTag || tag == imageDrawingTag
 }
@@ -31,6 +38,8 @@ func primitiveCType(tag string) string {
 		return "GtkBox"
 	case imageURLTag, imageDrawingTag:
 		return "GtkPicture"
+	case scrollTag:
+		return "GtkScrolledWindow"
 	}
 	return ""
 }
@@ -124,4 +133,23 @@ func (t *gtk4Translator) windowIcon(parent, child ir.Expr) bool {
 		return true
 	}
 	return false
+}
+
+// isScroll reports whether bare names a Scroll primitive.
+func (t *gtk4Translator) isScroll(bare string) bool {
+	return t.shared != nil && t.shared.scrolls[bare]
+}
+
+func (t *gtk4Translator) emitScrollCreate(id string) []ir.Stmt {
+	return t.emitConstructorAssign(id, primitiveCType(scrollTag), rtCall("ScrollNew", gtk4rtHandleIRType()))
+}
+
+func (t *gtk4Translator) scrollAttachHandler(node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	if event != "reachEnd" {
+		return nil
+	}
+	if id := codegen.IdentBareName(node); t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
+		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: "GtkScrolledWindow", RtFire: "ScrollReachEnd"})
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("ScrollOnReachEnd", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), handler)}}
 }

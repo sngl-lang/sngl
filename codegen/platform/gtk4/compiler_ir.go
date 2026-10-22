@@ -298,7 +298,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)
@@ -984,6 +984,19 @@ func collectImages(pkg *ir.Package) map[string]string {
 	return out
 }
 
+// collectScrolls is every Scroll primitive id, for the reason
+// collectToplevels is.
+func collectScrolls(pkg *ir.Package) map[string]bool {
+	_, prims := collectNodeTags(pkg)
+	out := map[string]bool{}
+	for id, tag := range prims {
+		if tag == scrollTag {
+			out[id] = true
+		}
+	}
+	return out
+}
+
 func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]string) {
 	out := map[string]string{}
 	prims := map[string]string{}
@@ -1519,6 +1532,9 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		if inv.WidgetType == "GtkDropDown" {
 			fmt.Fprintf(b, "// %s selects the choice labelled v on the #%s widget; for tests.\n",
 				methodName, inv.IDLabel)
+		} else if inv.RtFire != "" {
+			fmt.Fprintf(b, "// %s fires %q on the #%s widget; for tests.\n",
+				methodName, inv.SnglEvent, inv.IDLabel)
 		} else {
 			fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
 				methodName, inv.GTKSignal, inv.IDLabel)
@@ -1599,6 +1615,10 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 		return
 	}
 	switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
+	case inv.RtFire != "" && wrapped:
+		fmt.Fprintf(b, "\tgtk4rt.%s(%s)\n", inv.RtFire, w)
+	case inv.RtFire != "":
+		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s)))\n", inv.RtFire, w)
 	case inv.GTKSignal == "pressed":
 		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
 	case notify:

@@ -284,35 +284,33 @@ func testHomeStartsAtTheNationalDex(t test.Test, c home) {
 
 func testTheSelectSwitchesTheDex(t test.Test, c home) {
     t.wait(func() => chosenDex != null && c.page.dexes.length() == 3, 5000)
-    if c.page.more != null {
-        c.page.more.click()
-    }
-    t.assert(c.page.visible().length() == 40)
     c.page.dexPick.change("Kanto")
+    // The pick starts the grid again from its first page, whose end is out of
+    // view: the grid has not been scrolled.
+    t.assert(c.page.visible().length() == 30)
     t.wait(func() => chosenDex != null && chosenDex.name == "kanto", 5000)
     t.assert(dexName == "kanto")
-    t.assert(c.page.visible().length() == 30)
     t.assert(c.page.about != null && c.page.about.value == "Kanto · Kanto · 40 Pokémon")
 }
 
 func testTheGridIsRowsOfThree(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
-    t.assert(c.page.grid().length() == 10)
+    // A page more may have followed the first already, where the grid's end
+    // showed on a target that lays it out: 30 cards are 10 rows, 40 are 14.
+    t.assert(c.page.grid().length() == (c.page.visible().length() + 2) / 3)
     t.assert(c.page.grid()[0].map(func(e poke.PokemonDexNumber) => number(e.entryNumber)).join(",") == "#001,#002,#003")
     t.assert(c.page.grid()[9].map(func(e poke.PokemonDexNumber) => e.pokemonSpecies.name).join(",") == "sandslash,nidoran-f,nidorina")
 }
 
-func testShowMoreAddsTheRest(t test.Test, c home) {
+func testTheEndOfTheGridAddsTheRest(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
-    t.assert(c.page.visible().length() == 30)
-    t.assert(c.page.more != null)
-    if c.page.more != null {
-        c.page.more.click()
-    }
+    c.page.cards.reachEnd()
     t.assert(c.page.visible().length() == 40)
     t.assert(c.page.grid().length() == 14)
     t.assert(c.page.grid()[13].length() == 1)
-    t.assert(c.page.more == null)
+    // The dex has no more to show, so its end shows nothing more.
+    c.page.cards.reachEnd()
+    t.assert(c.page.visible().length() == 40)
 }
 
 func testTheSearchCoversTheWholeDex(t test.Test, c home) {

@@ -221,6 +221,8 @@ type irAnalysis struct {
 	gc        *golang.GoIRContext
 	// loopTimers are the schedules written under a loop (loop_timers.go).
 	timers []codegen.LoopTimer
+	// owners is triggerOwners' answer for the view, in a test build.
+	owners map[*ir.NodeInst]*ir.NodeInst
 	// screen is the window, the one Screen the view draws, and nil for a
 	// harness that isolated a component.
 	screen *codegen.Screen
@@ -735,6 +737,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		eventInvokers = append(eventInvokers, inv)
 	})
 	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg))
+	emitBtDirectInvokers(&b, viewStmts(ctx), eventInvokers, info, gc, codegen.TriggeredEvents(ctx.Pkg))
 	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
 	emitPresenceChecks(&b, ctx.Pkg, viewStmts(ctx), presentIDs, gc)
 	emitKeyedPresenceChecks(&b, viewStmts(ctx), keyedPresent, gc)
@@ -1062,6 +1065,9 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// each background case so its activation keys don't fire while frozen;
 	// handlers inside an Overlay primitive stay unguarded (see
 	// emitIRButtonHandlers) so overlay-content buttons keep working.
+	if invokerSink != nil {
+		info.owners = triggerOwners(viewStmts(ctx), codegen.TriggeredEvents(ctx.Pkg))
+	}
 	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
 
 	b.WriteString("\t\t}\n") // end switch
@@ -1205,9 +1211,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 					continue
 				}
 				emitNodeCase(n, guard, h.Func.Block)
-				if invokerSink != nil && n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
+				if id := info.triggerID(n); invokerSink != nil && id != nil {
 					if idx := nodeFocusSlotIdx(n); idx >= 0 {
-						invokerSink(btEventInvoker{IDLabel: n.ID, SnglEvent: ev.On, SlotIdx: idx, KeyExpr: teaKeyMsg(ev.Key)})
+						invokerSink(btEventInvoker{IDLabel: id.ID, SnglEvent: ev.On, SlotIdx: idx, KeyExpr: teaKeyMsg(ev.Key)})
 					}
 				}
 			}
@@ -1351,6 +1357,48 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 		fmt.Fprintf(b, "\tm.__focusID = prev\n")
 		b.WriteString("}\n\n")
 	}
+}
+
+// emitBtDirectInvokers writes an invoker for each event a test fires on a
+// layout, which no key reaches: one this platform has no input for, as a
+// scroll's `@reachEnd` on a terminal that draws a scroll as its content. The invoker runs the
+// node's handler as Update would on the key, which is what the interpreter
+// does with a trigger. A node a loop renders is left alone: which copy's
+// handler to run is the cursor's to say, and only a key moves it.
+func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventInvoker, info *irAnalysis, gc *golang.GoIRContext, triggered map[string]bool) {
+	done := map[string]bool{}
+	for _, inv := range keyed {
+		done[inv.IDLabel+"."+inv.SnglEvent] = true
+	}
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		if _, ok := s.(*ir.For); ok {
+			return false
+		}
+		// A layout takes no input, so nothing else answers its events; a
+		// control's are its keys' and its widget's.
+		n, ok := s.(*ir.NodeInst)
+		if !ok || !programID(n) || extractBlueprint(n).Kind != bpLayout {
+			return true
+		}
+		for _, h := range n.Handlers {
+			key := n.ID + "." + h.Name
+			if h.Func == nil || len(h.Func.Params) > 0 || !triggered[key] || done[key] {
+				continue
+			}
+			done[key] = true
+			name := n.ID + golang.ExportName(h.Name)
+			fmt.Fprintf(b, "// %s runs the #%s node's @%s handler, which no key reaches; for tests.\n", name, n.ID, h.Name)
+			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+			for _, stmt := range h.Func.Block {
+				for _, line := range gc.EvalStmt(stmt) {
+					fmt.Fprintf(b, "\t%s\n", line)
+				}
+			}
+			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			b.WriteString("}\n\n")
+		}
+		return true
+	})
 }
 
 // emitBtLoopInvokers writes the invokers of a node a loop renders: a copy is

@@ -641,6 +641,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:a07549189332af8c0ec009cff85e1dcf
+pass sha256:5b28bb659d1dcc78a5e94b48157730c0
 -- run/go/gtk4 --
-pass sha256:27e5c24765cc07e91822e6c7529bf972
+pass sha256:c8721e26c24f970dbb3713b9e5b3d45c

@@ -334,6 +334,12 @@ func composeAction(event string, args []ir.CallArg) string {
 	case "input", "change", "changed":
 		text := extractEventValue(args)
 		return fmt.Sprintf("performTextReplacement(%s)", text)
+	case "reachEnd":
+		// A scroll's end is reached by scrolling to it, which SnglScroll's
+		// effect reports as it would a finger's: the scroll's own semantics
+		// action, as far as it goes. Content too short to scroll reported its
+		// end as it arrived.
+		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, Float.MAX_VALUE) }"
 	}
 	return ""
 }

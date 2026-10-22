@@ -380,6 +380,23 @@ bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
 `cmd/sngl/testdata/toggle_change_payload_runs.txt` and
 `ui_event_params_runs.txt` the answer.
 
+**An event no host widget reports is a primitive of the platform's own.**
+`ui.scroll`'s `@reachEnd` has no signal on any target, so each answers it with
+something it ships: android's `SnglScroll` (`scroll.kt`), html's
+`sngl-reach-end` element (`reachend.go`), gtk4rt's `Scroll` and fynelayout's
+`ReachScroll`. Each fires as the end arrives and again when the content
+grows while it is there, so a short first page loads the next without a
+scroll. html's sentinel dispatches `reachEnd`, which `html.element` declares,
+because html names a test's invoker after the DOM event a handler listens
+for: an override mapping `@reachend` to `reachEnd()` would have left
+`c.list.reachEnd()` naming an invoker nothing attached. Where an override
+writes the control beneath the node the call site named -- bubbletea's
+clickable card is a box holding a focusable `›` -- the invoker is the named
+node's (`triggerOwners`), and a looped copy is keyed by that node's copy key.
+bubbletea fires no `@reachEnd`, and a test firing one on a layout -- which no
+key reaches -- runs the handler directly (`emitBtDirectInvokers`)
+(`testdata/card_click.txtar`, `testdata/scroll_reach_end.txtar`).
+
 **A select is one control on every target**, so its `#id` names the widget a
 test's `c.pick.change("Banana")` chooses through, as a user does: html's
 `<select>`, fyne's Select, gtk4's GtkDropDown, bubbletea's `tui.Select`,
