@@ -400,7 +400,9 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 		}
 		switch s := stmt.(type) {
 		case *ast.ComponentDecl:
-			if !(&ir.Component{Name: s.Name}).IsExported() {
+			// An override is a body of a declaration documented where it is
+			// declared, not a declaration of its own.
+			if s.Target != nil || !(&ir.Component{Name: s.Name}).IsExported() {
 				continue
 			}
 			pd.Components = append(pd.Components, DeclInfo{
