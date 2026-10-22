@@ -13,6 +13,10 @@ sngl generate --platform bubbletea --lang go     -o /tmp/dex-tui examples/pokede
 sngl generate --platform android   --lang kotlin -o /tmp/dex-apk examples/pokedex
 ```
 
+The app is the Pokédex wherever it is installed: `output` names it and gives
+it `icon.svg`, and android's package is `us.duckfam.sngl.pokedex`, its
+launcher red.
+
 ## How it is put together
 
 | file                 | what is in it                                                                                       |
@@ -104,8 +108,10 @@ if about != null {
 
 The header needs only the species -- its artwork through `artwork`, its name
 and genus, its national number as `#001` -- but for its types, which wait for
-the Pokémon and are asked for by name (see [Languages](#languages)). Under it is a `ui.tabs`: About, Stats, Evolution,
-Sprites and Moves.
+the Pokémon and are asked for by name (see [Languages](#languages)). A type
+is a `typeBadge`, a `ui.badge` in the type's own colour (`typeColors` in
+`names.sngl`), its name dark over the light types and white over the rest.
+Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves.
 
 **About** is the species' newest description in the reader's language on one
 line (the games
@@ -192,8 +198,8 @@ Pikachu's caps, Alolan Vulpix, and on a form's page the species' own, which
 opens the species' page. A card asks for the form by its Pokémon's name, which
 is how PokéAPI names a variety's form.
 
-**Moves** is a `ui.table` of the moves the Pokémon shown learns, a level and
-a name per row, under a `ui.select` of the way it learns them: by level, by
+**Moves** is a list of the moves the Pokémon shown learns, a level, a name,
+a type, a power and an accuracy per line, under a `ui.select` of the way it learns them: by level, by
 machine, from an egg or from a tutor (`learnMethods`). By level the rows are
 ordered by level, and moves learned at one level by PokéAPI's `order` --
 Tackle before Growl; the other ways have no level, and are ordered by name
@@ -205,8 +211,11 @@ scarlet-violet's 25), so `versionGroups` in `names.sngl` lists the groups in
 the order their games came out, PokéAPI's `order`, and a group added after
 it counts as the newest. Bulbasaur's moves are Scarlet and Violet's under
 the National dex and FireRed and LeafGreen's under Kanto. A form's page lists
-the form's moves, since the Pokémon asked for is the form. Under the table
-the tab says how many moves the way teaches, none included, and the headings
+the form's moves, since the Pokémon asked for is the form. Each line is a
+`moveLine`, columns of fixed widths, rather than a `ui.table`, whose cells
+are strings: a move's type is its `typeBadge`. Its type, power and accuracy
+come with the move's own answer, a power or accuracy it has none of is "—",
+and its type's name is asked for by name. Under the list the tab says how many moves the way teaches, none included, and the headings
 and the select's labels are the app's own words; a move's name is PokéAPI's
 in the reader's language, asked for by name, and the ways with no level order
 by it.
@@ -287,13 +296,13 @@ another language asks for nothing again.
 
 What that costs per page, beside the page's own three or four requests:
 
-| where      | asked for                                     | Bulbasaur |
-|------------|-----------------------------------------------|-----------|
-| the header | each type                                     | 2         |
-| About      | each ability, the habitat, each egg group     | 5         |
-| Stats      | each stat                                     | 6         |
-| Evolution  | each item, type, move or trigger a step names | 0         |
-| Moves      | each move the way chosen teaches              | 15        |
+| where      | asked for                                      | Bulbasaur |
+|------------|------------------------------------------------|-----------|
+| the header | each type                                      | 2         |
+| About      | each ability, the habitat, each egg group      | 5         |
+| Stats      | each stat                                      | 6         |
+| Evolution  | each item, type, move or trigger a step names  | 0         |
+| Moves      | each move the way chosen teaches, and its type | 18        |
 
 Eevee's Evolution asks for six: five stones and the Fairy type. The requests
 of a tab are made when it is shown, since a tab's panel mounts then.

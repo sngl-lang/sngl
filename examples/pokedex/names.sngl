@@ -228,6 +228,40 @@ context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprit
 // it is. A dex entry names its species by URL, whose last segment is the id.
 func artworkOf(template string, id string) => string.replace(template, `{id}`, id)
 
+// The colour each type is drawn in, as the games' own type labels have it.
+const typeColors map[string, color] = {
+    "normal" = #a8a77a,
+    "fire" = #ee8130,
+    "water" = #6390f0,
+    "electric" = #f7d02c,
+    "grass" = #7ac74c,
+    "ice" = #96d9d6,
+    "fighting" = #c22e28,
+    "poison" = #a33ea1,
+    "ground" = #e2bf65,
+    "flying" = #a98ff3,
+    "psychic" = #f95587,
+    "bug" = #a6b91a,
+    "rock" = #b6a136,
+    "ghost" = #735797,
+    "dragon" = #6f35fc,
+    "dark" = #705746,
+    "steel" = #b7b7ce,
+    "fairy" = #d685ad,
+}
+
+// The colour of the type PokéAPI names `kind`, grey for one it adds later.
+func typeColor(kind string) => typeColors.get(kind, #68a090)
+
+// The colour a type's name is written in over its own: dark over the light
+// ones, white over the rest.
+func typeInk(kind string) color {
+    if kind == "electric" || kind == "ice" || kind == "ground" || kind == "steel" {
+        return #222222
+    }
+    return #ffffff
+}
+
 // A number in a dex as the games print it: 7 is "#007".
 func number(n int) string {
     var digits = "{n}"
@@ -584,14 +618,15 @@ func methodNamed(label string) string {
 }
 
 // One row of the Moves tab: the level a move is learned at, "" for a way
-// that has none, the move's name in the reader's language, its type's, its
-// power and accuracy, and PokéAPI's name for it. The type, power and
-// accuracy are "" until the move's answer arrives, and a power or an accuracy
-// the move has none of is "—".
+// that has none, the move's name in the reader's language, its type's and
+// PokéAPI's name for the type, its power and accuracy, and PokéAPI's name for
+// the move. The type, power and accuracy are "" until the move's answer
+// arrives, and a power or an accuracy the move has none of is "—".
 struct MoveRow {
     level    string
     name     string
     kind     string
+    kindSlug string
     power    string
     accuracy string
     move     string
@@ -658,7 +693,7 @@ func moveRow(l learned, level string, facts map[string, MoveFact], store map[str
         return MoveRow{level=level, name=l.name, move=l.move}
     }
     var f = facts[l.move]
-    return MoveRow{level=level, name=l.name, kind=called(store, `type`, f.kind), power=amount(f.power), accuracy=amount(f.accuracy), move=l.move}
+    return MoveRow{level=level, name=l.name, kind=called(store, `type`, f.kind), kindSlug=f.kind, power=amount(f.power), accuracy=amount(f.accuracy), move=l.move}
 }
 
 // What the Moves tab says under its table: how many moves the way chosen

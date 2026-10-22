@@ -883,6 +883,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -1184,6 +1185,6 @@ pass sha256:dbd3347a044c134006e29521a182680d
 -- run/go/gtk4 --
 pass sha256:d77b0ec5eeea71d842d9a04d1af72f05
 -- run/kotlin/android --
-pass sha256:fc7f7a10fe40a2750260503938746eb1
+pass sha256:85da26e677dfd92c5bd3d72146271826
 -- run/none/html --
 pass sha256:7205f72508a029a554144a9d801d26d6

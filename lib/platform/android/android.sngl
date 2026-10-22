@@ -286,10 +286,14 @@ component Button(
 ) ui.node
 
 #[gen.renders(identity)]
+// `containerColor` and `contentColor` are the Style's background and color,
+// which Compose takes as the pill's and the text's.
 #[kt.native("Badge", "androidx.compose.material3.Badge")]
 component Badge(
-    modifier ui.Style,
-    children ...component,
+    modifier       ui.Style,
+    containerColor ui.Style,
+    contentColor   ui.Style,
+    children       ...component,
 ) ui.node
 
 #[gen.renders(identity)]

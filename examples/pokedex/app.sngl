@@ -4,14 +4,16 @@ import ui "sngl:ui"
 
 // html is served by a Go program (--lang go): a detail page is
 // /pokemon/{name}, a pattern a static site cannot serve.
-output {
+output(name="Pokédex", icon="icon.svg", description="A Pokédex of PokéAPI's Pokémon, in five languages.") {
     go {
         html
         bubbletea(package="pokedex")
         fyne(package="pokedex")
         gtk4(package="pokedex")
     }
-    kotlin { android }
+    kotlin {
+        android(package="us.duckfam.sngl.pokedex", color="#dc0a2d")
+    }
 }
 
 // Which species a detail page shows.

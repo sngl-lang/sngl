@@ -118,7 +118,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                 ui.hbox(style={gap=4px}) {
                                     for var t = mon.types {
                                         poke.typeRetrieve(id=t.type.name, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
-                                        ui.badge #types(value=called(names, `type`, t.type.name))
+                                        typeBadge #types(kind=t.type.name, value=called(names, `type`, t.type.name))
                                     }
                                 }
                             }
@@ -264,9 +264,17 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                         ui.choice(label=m.label)
                                     }
                                 }
-                                ui.table #moveTable(columns=[$"Level", $"Move", $"Type", $"Power", $"Accuracy"]) {
+                                ui.vbox #moveTable(style={gap=4px}) {
+                                    moveLine(level=$"Level", name=$"Move", power=$"Power", accuracy=$"Accuracy", style={fontWeight=bold}) {
+                                        ui.text(value=$"Type", style={fontWeight=bold})
+                                    }
+                                    ui.divider()
                                     for var r = moveRows() {
-                                        ui.tableRow(cells=[r.level, r.name, r.kind, r.power, r.accuracy])
+                                        moveLine(level=r.level, name=r.name, power=r.power, accuracy=r.accuracy) {
+                                            if r.kind != "" {
+                                                typeBadge(kind=r.kindSlug, value=r.kind)
+                                            }
+                                        }
                                     }
                                 }
                                 if mon != null {
@@ -278,6 +286,27 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                 }
             }
         }
+    }
+}
+
+// A type as a badge in the type's own colour: `value`, its name in the
+// reader's language, and `kind`, PokéAPI's, which picks the colour.
+component typeBadge(kind string, value string) ui.node {
+    ui.badge(value=value, style={background=typeColor(kind), color=typeInk(kind)})
+}
+
+// One line of the Moves tab, the headings' or a move's: its level, name,
+// type, power and accuracy, each in a column of its own width so the lines
+// line up. The type is a slot, so a move's can be its badge.
+component moveLine(level string, name string, power string, accuracy string, style ui.Style = ui.Style{}, kind ...component ui.node) ui.node {
+    ui.hbox(style={gap=8px, alignItems=center}) {
+        ui.text(value=level, style={width=48px, ...style})
+        ui.text(value=name, style={flex=1, ...style})
+        ui.hbox(style={width=88px}) {
+            kind
+        }
+        ui.text(value=power, style={width=56px, ...style})
+        ui.text(value=accuracy, style={width=80px, ...style})
     }
 }
 

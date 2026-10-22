@@ -780,6 +780,16 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			if c := cc.buttonColorsExpr(n, p.Name); c != "" {
 				args = append(args, p.Name+" = "+c)
 			}
+		case (p.Name == "containerColor" || p.Name == "contentColor") && isStyleType(p.Type):
+			// A Badge paints its own pill, as a Button does, so its colours
+			// are arguments: the Style's background the pill's, its color the
+			// text's. A Modifier's background drew a rectangle behind the pill.
+			field := map[string]string{"containerColor": "background", "contentColor": "color"}[p.Name]
+			for _, sf := range codegen.NodeStyleFieldsOf(n, p.Name) {
+				if sf.Name == field {
+					args = append(args, p.Name+" = "+cc.colorExpr(sf.Value))
+				}
+			}
 		default:
 			if isStyleType(p.Type) {
 				if ts := cc.textStyleExpr(n, p.Name); ts != "" {
@@ -880,7 +890,7 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component
 	// A widget that takes its own colours takes the background with them, so
 	// the Modifier must not draw one too.
 	skip := map[string]bool{}
-	if declaresProp(comp, "colors") {
+	if declaresProp(comp, "colors") || declaresProp(comp, "containerColor") {
 		skip["background"] = true
 	}
 	mod.WriteString(cc.modifierRawExcept(n, "modifier", skip))

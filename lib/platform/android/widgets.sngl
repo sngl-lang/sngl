@@ -271,7 +271,7 @@ const component ui.spinner[platform](style) {
 }
 
 const component ui.badge[platform](value, style) {
-    Badge(modifier={...style}) {
+    Badge(modifier={...style}, containerColor={...style}, contentColor={...style}) {
         Text(text=value) {}
     }
 }

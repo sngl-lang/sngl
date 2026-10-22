@@ -2600,6 +2600,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Button
@@ -2729,7 +2730,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -3458,6 +3458,6 @@ pass sha256:901d8088428dfac9ea5c1def8a46c790
 -- run/go/gtk4 --
 pass sha256:896ffe348e3df0ef53dde58cf3e5ef87
 -- run/kotlin/android --
-pass sha256:00fc1dd70079a28150d1abcdfe6e8a7a
+pass sha256:9909ea4ee10c8fe32cb625a500cfca88
 -- run/none/html --
 pass sha256:0d7c3871b71b72381188098e24d13ea1
