@@ -13,11 +13,25 @@ static void sngl_scroll_adj(GtkAdjustment *a, gpointer data) {
     (void)a;
     snglRtDispatch(GPOINTER_TO_INT(data));
 }
+// The content is laid out at its natural height, as a scroll's is in CSS.
+// GTK's default is its minimum, and a picture's minimum is nothing: content
+// taller than the viewport squeezed every picture in it to no height at all.
+// Its width stays the viewport's, which is CSS's too. The viewport the
+// scrolled window wraps its child in is the scrollable whose policy says so,
+// and it is made as the child is set.
+static void sngl_scroll_child(GObject *o, GParamSpec *ps, gpointer data) {
+    (void)ps; (void)data;
+    GtkWidget *c = gtk_scrolled_window_get_child(GTK_SCROLLED_WINDOW(o));
+    if (c != NULL && !GTK_IS_SCROLLABLE(c)) c = gtk_widget_get_parent(c);
+    if (c == NULL || !GTK_IS_SCROLLABLE(c)) return;
+    gtk_scrollable_set_vscroll_policy(GTK_SCROLLABLE(c), GTK_SCROLL_NATURAL);
+}
 // "changed" is the content or the viewport changing size, "value-changed" a
 // scroll. The scrolled window keeps its vertical adjustment when it wraps its
 // child in a viewport, so connecting to it once is enough.
 static GtkWidget *sngl_scroll_new(int idx) {
     GtkWidget *sw = gtk_scrolled_window_new();
+    g_signal_connect(sw, "notify::child", G_CALLBACK(sngl_scroll_child), NULL);
     GtkAdjustment *a = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(sw));
     g_signal_connect(a, "changed", G_CALLBACK(sngl_scroll_adj), GINT_TO_POINTER(idx));
     g_signal_connect(a, "value-changed", G_CALLBACK(sngl_scroll_adj), GINT_TO_POINTER(idx));
