@@ -15,6 +15,9 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 	uri := fs.URI
 	filename := uriToPath(uri)
 	dir := filepath.Dir(filename)
+	if isLibraryCopy(filename) {
+		return nil
+	}
 
 	// Imports resolve as a build's do, so a plugin's handler runs here too --
 	// under the server's grants, never prompting.
@@ -41,6 +44,11 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 	}
 	if a.Doc != nil {
 		fs.Doc, fs.Pkg = a.Doc, a.Pkg
+		files := []string{filename}
+		for _, sib := range siblings {
+			files = append(files, lspcore.FileOf(sib))
+		}
+		fs.Index = lspcore.BuildIndex(a.Pkg, files, s.source)
 	}
 
 	diags := make([]Diagnostic, 0, len(coreDiags))

@@ -1,0 +1,29 @@
+import ui "sngl:ui"
+
+component Counter(label string, :count int = 0, @bumped(n int)) ui.node {
+    func bump() {
+        count += 1
+        bumped(count)
+    }
+
+    ui.button #inc(text=label, @click { bump() })
+}
+
+ui.window #main(title="t") {
+    var total = 0
+    Counter(label="a", :count=total, @bumped(n) {})
+}
+
+// DEFINITION(^Counter(label) "component ^Counter"
+// DEFINITION(Counter(^label=) "component Counter(^label"
+// DEFINITION(:^count=total) "component Counter(label string, :^count"
+// DEFINITION(@^bumped(n) {}) "@^bumped"
+// DEFINITION(^bump() }) "func ^bump"
+// DEFINITION(text=^label) "component Counter(^label"
+// DEFINITION(ui.^button) "ui/form.sngl: component ^button"
+// DEFINITION(#inc(^text) "ui/form.sngl: ^text"
+// DEFINITION(@^click {) "ui/form.sngl: @^click"
+// DEFINITION(ui.^node {) "ui/tree.sngl: component ^node"
+// DEFINITION(^ui.window) "import ^ui"
+// REFERENCES(:^count int) "3:34 5:9 6:16 14:25"
+// REFERENCES(^bumped(n int) "3:50 6:9 14:39"

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lspcore"
 	"duckfam.us/sngl/ir"
 )
 
@@ -16,6 +17,9 @@ type fileState struct {
 	// Pkg is the package Doc was checked into, errors and all: completion
 	// asks it how a node's call site typed its events.
 	Pkg *ir.Package
+	// Index is every name the package writes and what each names, which
+	// definition, references and semantic tokens read.
+	Index *lspcore.Index
 }
 
 // workspace tracks all open files.

@@ -54,8 +54,8 @@ func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 			},
 			SemanticTokensProvider: &SemanticTokensOptions{
 				Legend: SemanticTokensLegend{
-					TokenTypes:     SemanticTokenTypes(),
-					TokenModifiers: []string{},
+					TokenTypes:     semanticLegend,
+					TokenModifiers: semanticModifiers,
 				},
 				Full: true,
 			},
@@ -65,6 +65,8 @@ func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
 				Commands: []string{"sngl.openPreview"},
 			},
 			CodeActionProvider: true,
+			DefinitionProvider: true,
+			ReferencesProvider: true,
 		},
 		ServerInfo: &ServerInfo{
 			Name:    "sngl-lsp",

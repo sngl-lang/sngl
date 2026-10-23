@@ -54,11 +54,49 @@ func newSiblingSession(t *testing.T, onDisk map[string]string) *siblingSession {
 	return s
 }
 
-func (s *siblingSession) uri(name string) string { return "file://" + filepath.Join(s.dir, name) }
+func (s *siblingSession) uri(name string) string { return pathToURI(filepath.Join(s.dir, name)) }
 
-func (s *siblingSession) request(method string, params any) {
-	sendLSP(s.in, map[string]any{"jsonrpc": "2.0", "id": s.next, "method": method, "params": params})
+func (s *siblingSession) request(method string, params any) int {
+	id := s.next
+	sendLSP(s.in, map[string]any{"jsonrpc": "2.0", "id": id, "method": method, "params": params})
 	s.next++
+	return id
+}
+
+// call sends a request and reads its result into out, skipping whatever the
+// server sends first.
+func (s *siblingSession) call(method string, params, out any) {
+	s.t.Helper()
+	id := s.request(method, params)
+	for {
+		var raw json.RawMessage
+		select {
+		case msg, ok := <-s.out:
+			if !ok {
+				s.t.Fatalf("server closed before answering %s", method)
+			}
+			raw = msg
+		case <-time.After(time.Minute):
+			s.t.Fatalf("no answer to %s", method)
+		}
+		var resp struct {
+			ID     *int            `json:"id"`
+			Result json.RawMessage `json:"result"`
+		}
+		if json.Unmarshal(raw, &resp) == nil && resp.ID != nil && *resp.ID == id {
+			if err := json.Unmarshal(resp.Result, out); err != nil {
+				s.t.Fatalf("%s result: %v", method, err)
+			}
+			return
+		}
+	}
+}
+
+func (s *siblingSession) at(name string, line, char int) map[string]any {
+	return map[string]any{
+		"textDocument": map[string]any{"uri": s.uri(name)},
+		"position":     map[string]any{"line": line, "character": char},
+	}
 }
 
 func (s *siblingSession) open(name, text string) {
@@ -185,11 +223,7 @@ func TestSemanticTokensStayInTheirFile(t *testing.T) {
 	srv := New()
 	fs := srv.ws.open("file://"+filepath.Join(dir, "main.sngl"), main, 1)
 	srv.analyze(fs)
-	pkg, err := srv.checkForPreview(fs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	data := computeSemanticTokens(main, fs.Doc, pkg)
+	data := semanticTokens(main, fs.Index, filepath.Join(dir, "main.sngl"))
 	if len(data) == 0 {
 		t.Fatal("no tokens")
 	}

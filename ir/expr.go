@@ -32,7 +32,8 @@ type Ident struct {
 	// Qualifier is the import a member of another package was named through:
 	// `math.pi` is the Ident of pi qualified by math. A namespace is not a
 	// value, so it is never an operand; SelAST is the select it was written
-	// as, which is where its position is.
+	// as, which is where its position is. An enum member read through its
+	// type, `Status.active`, has a SelAST and no Qualifier.
 	Qualifier *Namespace      `json:",omitempty"`
 	SelAST    *ast.SelectExpr `json:"-"`
 	// Synthesized marks Idents emitted by a lowering pass for refs to

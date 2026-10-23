@@ -71,6 +71,15 @@ type TextDocumentPositionParams struct {
 	Position     Position               `json:"position"`
 }
 
+type ReferenceParams struct {
+	TextDocumentPositionParams
+	Context ReferenceContext `json:"context"`
+}
+
+type ReferenceContext struct {
+	IncludeDeclaration bool `json:"includeDeclaration"`
+}
+
 type TextDocumentContentChangeEvent struct {
 	Text string `json:"text"`
 }
@@ -105,6 +114,8 @@ type ServerCapabilities struct {
 	InlayHintProvider      bool                   `json:"inlayHintProvider,omitempty"`
 	ExecuteCommandProvider *ExecuteCommandOptions `json:"executeCommandProvider,omitempty"`
 	CodeActionProvider     bool                   `json:"codeActionProvider,omitempty"`
+	DefinitionProvider     bool                   `json:"definitionProvider,omitempty"`
+	ReferencesProvider     bool                   `json:"referencesProvider,omitempty"`
 }
 
 // --- Execute Command ---

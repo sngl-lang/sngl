@@ -184,6 +184,10 @@ func (s *Server) serve() error {
 			s.handleExecuteCommand(req.ID, req.Params)
 		case "textDocument/codeAction":
 			s.handleCodeAction(req.ID, req.Params)
+		case "textDocument/definition":
+			s.handleDefinition(req.ID, req.Params)
+		case "textDocument/references":
+			s.handleReferences(req.ID, req.Params)
 		default:
 			if !isNotification {
 				s.sendError(req.ID, -32601, "method not found: "+req.Method)
