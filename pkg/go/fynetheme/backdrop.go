@@ -14,10 +14,15 @@ import (
 // its own rather than the theme's background, which every theme answers.
 const ColorNameBox fyne.ThemeColorName = "snglBox"
 
+// SizeNameBoxRadius is the radius a node's own style rounds its box by: its
+// `borderRadius`, and none where the style gave none. A box rounded by the
+// theme's input radius was rounded where html and gtk4 draw it square.
+const SizeNameBoxRadius fyne.ThemeSizeName = "snglBoxRadius"
+
 // Backdrop is a node drawn on its style's background. Fyne's theme colors no
 // label's box, so a `ui.badge` was plain text: a rectangle behind the node is
 // its box, painted in the color the theme around it answers for
-// ColorNameBox and rounded by its radius. The theme is read where the
+// ColorNameBox and rounded by SizeNameBoxRadius. The theme is read where the
 // backdrop draws, so a theme override given a new theme and refreshed -- a
 // background that is a run-time value -- repaints it.
 type Backdrop struct {
@@ -45,7 +50,7 @@ type backdropRenderer struct {
 
 func (r *backdropRenderer) paint() {
 	r.box.FillColor = theme.ColorForWidget(ColorNameBox, r.b)
-	r.box.CornerRadius = theme.SizeForWidget(theme.SizeNameInputRadius, r.b)
+	r.box.CornerRadius = theme.SizeForWidget(SizeNameBoxRadius, r.b)
 }
 
 func (r *backdropRenderer) Layout(size fyne.Size) {

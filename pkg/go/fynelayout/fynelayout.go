@@ -168,9 +168,9 @@ func minSizeOf(o fyne.CanvasObject) fyne.Size {
 	return min
 }
 
-// Adopt makes c lay o out by its share when o has one and c is one of Fyne's
-// own boxes, which would pack it at its minimum: a box the source wrote with
-// no flexing child of its own may still be handed one -- a page a navigation
+// Adopt makes c lay o out by its share -- a weight, a margin, a size -- when o
+// has one and c is one of Fyne's own boxes, which would pack it at its minimum
+// and know no margin: a box the source wrote with no flexing child of its own may still be handed one -- a page a navigation
 // stack shows, a slot's content -- and the generated code built it as Fyne's
 // box. The gap Fyne's box puts between children is kept: the generated code
 // builds a box as Fyne's only where its style named no gap, padding or
@@ -179,7 +179,7 @@ func Adopt(c *fyne.Container, o fyne.CanvasObject) {
 	if c == nil {
 		return
 	}
-	if s := askOf(o); s.weight == 0 && s.width == 0 && s.height == 0 {
+	if s := askOf(o); s.weight == 0 && s.margin == 0 && s.width == 0 && s.height == 0 {
 		return
 	}
 	switch reflect.TypeOf(c.Layout) {
@@ -241,6 +241,20 @@ func (l Weighted) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	return l.size(main+l.Padding*2, cross+l.Padding*2)
 }
 
+// shareOf is what o asked of this box. A spacer that asked for nothing takes
+// a share of one, as it does in Fyne's own boxes and as html's takes a flex of
+// one: a box whose style named a gap is a Weighted one, and a spacer in it
+// was laid out at its minimum, which is nothing.
+func (l Weighted) shareOf(o fyne.CanvasObject) (weight, margin float32) {
+	weight, margin = shareOf(o)
+	if sp, ok := o.(layout.SpacerObject); ok && weight == 0 {
+		if l.Horizontal && sp.ExpandHorizontal() || !l.Horizontal && sp.ExpandVertical() {
+			weight = 1
+		}
+	}
+	return weight, margin
+}
+
 func (l Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 	main, cross := l.axes(size)
 
@@ -251,7 +265,7 @@ func (l Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 			continue
 		}
 		visible++
-		w, margin := shareOf(o)
+		w, margin := l.shareOf(o)
 		m := margin * 2
 		if w > 0 {
 			totalWeight += w
@@ -276,7 +290,7 @@ func (l Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 		if !o.Visible() {
 			continue
 		}
-		w, margin := shareOf(o)
+		w, margin := l.shareOf(o)
 		slot := float32(0)
 		if w > 0 && totalWeight > 0 {
 			slot = free * w / totalWeight

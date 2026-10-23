@@ -77,11 +77,12 @@ func shareCall(obj ir.Expr, sp *fyneSpec) *ir.Call {
 	return nativeCallAt("fynelayout.Share", fyneLayoutImportPath, args, fyneObject())
 }
 
-// anyChildFlexes reports whether some child claimed a share of this box, or a
-// size of its own, which only this layout reads.
+// anyChildFlexes reports whether some child claimed a share of this box, a
+// margin or a size of its own, which only this layout reads: a child's margin
+// in a box that was Fyne's was dropped.
 func (t *fyneTranslator) anyChildFlexes(sp *fyneSpec) bool {
 	for _, id := range sp.Children {
-		if child := t.specs[id]; child != nil && (child.Style.Flex > 0 || child.sized()) {
+		if child := t.specs[id]; child.shares() {
 			return true
 		}
 	}

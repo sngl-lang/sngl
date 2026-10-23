@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -146,6 +147,18 @@ func TestInsertingAWeightedChildAdoptsTheBox(t *testing.T) {
 	pad := theme.Padding()
 	if got, want := page.Size().Height, 200-30-pad; got != want {
 		t.Errorf("inserted page got height %v, want %v", got, want)
+	}
+}
+
+// A child with a margin and no weight is inset by it in a box that was Fyne's,
+// which knows no margin.
+func TestInsertingAMarginedChildAdoptsTheBox(t *testing.T) {
+	c := container.NewVBox()
+	child := shared(box(10, 10), 0, 8)
+	fynelayout.InsertBefore(c, nil, child)
+	c.Resize(fyne.NewSize(100, 200))
+	if got := child.Position(); got != fyne.NewPos(8, 8) {
+		t.Errorf("a child with a margin of 8 is at %v, want 8,8", got)
 	}
 }
 
@@ -299,5 +312,31 @@ func TestSetGridColumnsLaysOutThatManyToARow(t *testing.T) {
 	fynelayout.SetGridColumns(g, 3)
 	if c.Position().Y != a.Position().Y {
 		t.Errorf("with three columns the third child should share the first's row: %v %v", a.Position(), c.Position())
+	}
+}
+
+// A spacer pushes what follows it to the box's end, as it does in Fyne's own
+// boxes: a box whose style names a gap is a Weighted one, and the spacer in
+// `hbox(style={padding=16px}) { text; spacer; text }` was laid out at its
+// minimum, nothing, so the second text sat beside the first. One that asked
+// for its own share keeps it.
+func TestASpacerTakesTheSurplus(t *testing.T) {
+	a, b := box(10, 10), box(30, 10)
+	l := fynelayout.New(true, 8, 0)
+	l.Layout([]fyne.CanvasObject{a, layout.NewSpacer(), b}, fyne.NewSize(400, 50))
+	if got := b.Position().X; got != 400-30 {
+		t.Errorf("the child after a spacer is at %v, want %v", got, 400-30)
+	}
+	col := fynelayout.New(false, 0, 0)
+	c, d := box(10, 10), box(10, 20)
+	col.Layout([]fyne.CanvasObject{c, layout.NewSpacer(), d}, fyne.NewSize(50, 300))
+	if got := d.Position().Y; got != 300-20 {
+		t.Errorf("the child below a spacer is at %v, want %v", got, 300-20)
+	}
+	// Across a row, a spacer that expands only down is nothing.
+	e, f := box(10, 10), box(10, 10)
+	l.Layout([]fyne.CanvasObject{e, &layout.Spacer{FixVertical: false, FixHorizontal: true}, f}, fyne.NewSize(400, 50))
+	if got := f.Position().X; got != 10+8+8 {
+		t.Errorf("the child after a row's fixed spacer is at %v, want %v", got, 10+8+8)
 	}
 }

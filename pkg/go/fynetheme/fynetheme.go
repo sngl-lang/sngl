@@ -61,6 +61,8 @@ func (t Theme) Size(n fyne.ThemeSizeName) float32 {
 		if t.Radius > 0 {
 			return t.Radius
 		}
+	case SizeNameBoxRadius:
+		return t.Radius
 	}
 	return t.Theme.Size(n)
 }

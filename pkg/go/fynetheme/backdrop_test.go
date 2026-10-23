@@ -83,3 +83,16 @@ func TestBackdropWithoutBackgroundIsClear(t *testing.T) {
 		t.Errorf("box painted %v with no background", box(t, b).FillColor)
 	}
 }
+
+// A background whose style gave no radius is a square box, as html and gtk4
+// draw it: the theme's input radius rounded it.
+func TestBackdropIsSquareWithNoRadius(t *testing.T) {
+	fynetest.NewTempApp(t)
+	b := fynetheme.NewBackdrop(widget.NewLabel("plain"))
+	th := fynetheme.New(theme.DefaultTheme()).WithBackground(snglcolor.Color{R: 120, G: 200, B: 80, A: 255})
+	w := fynetest.NewWindow(container.NewThemeOverride(b, th))
+	defer w.Close()
+	if r := box(t, b); r.CornerRadius != 0 {
+		t.Errorf("box radius %v, want none", r.CornerRadius)
+	}
+}
