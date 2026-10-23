@@ -356,6 +356,7 @@ func (m *Model) __effect0_mount() {
 	var mine int = m.attempt__inst0
 	m.loading__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() func() {
 		__live := m
 		m := m.snapshotRef()
@@ -744,4 +745,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:a8eddb64c2923e7a604cfd0e1e968ab3
+pass sha256:19072188c8b81fa1821cdbb63004b029

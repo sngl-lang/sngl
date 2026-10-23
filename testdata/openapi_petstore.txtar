@@ -713,6 +713,7 @@ func (m *Model) __effect0_mount() {
 	var mine int = m.attempt__inst1
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
 		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
 		__snglDo(func() {
@@ -790,6 +791,7 @@ func (m *Model) __effect1_mount() {
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2.Container)
 	__async_arg1 := m.__effect1_key.Key
+	_ = __async_arg1
 	go func() {
 		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
 		__snglDo(func() {
@@ -1886,6 +1888,7 @@ func (m *Model) __effect0_mount() {
 	var mine int = m.attempt__inst1
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
 		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
 		gtk4rt.Post(func() {
@@ -1963,6 +1966,7 @@ func (m *Model) __effect1_mount() {
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2)
 	__async_arg1 := m.__effect1_key.Key
+	_ = __async_arg1
 	go func() {
 		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
 		gtk4rt.Post(func() {
@@ -4295,9 +4299,9 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:6c1c9c40f9f94cbba2ca55156766c609
+pass sha256:9ea206d67b7cc3b2e8801d237123996e
 -- run/go/gtk4 --
-pass sha256:37445e1e121fc65271f240e24bee0f45
+pass sha256:9667099824ae64d8ba905c0beb484629
 -- run/kotlin/android --
 pass sha256:a3d9ca76ff015475f5ce1ea3fef7c8e0
 -- run/none/html --

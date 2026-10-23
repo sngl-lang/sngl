@@ -3916,6 +3916,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.padding
@@ -4233,13 +4234,13 @@ fun MainScreen() {
 }
 
 @Composable
-fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, variant: SnglAvatarVariant = SnglAvatarVariant.CIRCLE, alt: String = "", style: Style = Style(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null) {
+fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, variant: SnglAvatarVariant = SnglAvatarVariant.CIRCLE, alt: String = "", style: Style = Style(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null, __testTag: String = "") {
     var failed by remember { mutableStateOf(false) }
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = surfaceModifierOf(__merge_Style(Style(), style), __ctx_flexShare), colors = ButtonDefaults.buttonColors(containerColor = colorOf(__merge_Style(Style(), style).background), contentColor = colorOf(__merge_Style(Style(), style).color)), shape = buttonShapeOf(__merge_Style(Style(), style))) {
+    }, modifier = Modifier.then(if (__testTag.isEmpty()) Modifier else Modifier.testTag(__testTag)).then(surfaceModifierOf(__merge_Style(Style(), style), __ctx_flexShare)), colors = ButtonDefaults.buttonColors(containerColor = colorOf(__merge_Style(Style(), style).background), contentColor = colorOf(__merge_Style(Style(), style).color)), shape = buttonShapeOf(__merge_Style(Style(), style))) {
         Text(text = ((initials + " ") + hits.toString()), modifier = Modifier)
     }
 }
@@ -4700,6 +4701,6 @@ pass sha256:f95aa8d922b9b1680620ee977b0b72c6
 -- run/go/gtk4 --
 pass sha256:0ca024542b7cffaabf009197f5d88d3b
 -- run/kotlin/android --
-pass sha256:ed8c0d3c18d0d4a7e9e7dd16f12f72a8
+pass sha256:c2b7de5489eb685a0c40c32d0e87e0b2
 -- run/none/html --
 pass sha256:25263d6fd7e0273f632400ac2c5efd3c

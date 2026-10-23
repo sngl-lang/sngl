@@ -23,6 +23,9 @@ type irComposeContext struct {
 	// atRoot marks the window's own content, which is the node the display
 	// cutout has to be kept out of.
 	atRoot bool
+	// rootTagged marks the top of a library composable, whose nodes there
+	// take the test tag their call site hands it (testTagParam).
+	rootTagged bool
 	// combo is the selected Android toolchain (versions/SDK). Available so
 	// emitters can branch where a real version difference changes output;
 	// there is no such divergence between the current combos, so nothing
@@ -233,6 +236,9 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 	if n.Component != nil {
 		args = append(args, cc.populationArgs(n)...)
 		args = append(args, cc.handlerArgs(n)...)
+		if id := userTestTag(n); id != "" && takesTestTag(n.Component) {
+			args = append(args, fmt.Sprintf("%s = %q", testTagParam, id))
+		}
 	}
 	for _, r := range cc.reads {
 		if r.ID != n.ID {
@@ -319,6 +325,9 @@ func chainable(s string) bool {
 // assigns) and the presence of the instance a node is a root of.
 func (cc *irComposeContext) testModifiers(n *ir.NodeInst) []string {
 	var parts []string
+	if cc.rootTagged {
+		parts = append(parts, fmt.Sprintf("then(if (%s.isEmpty()) %s else %s.%s(%s))", testTagParam, cc.kc.Name(ktModifier), cc.kc.Name(ktModifier), cc.kc.Name(ktTestTag), testTagParam))
+	}
 	if id := userTestTag(n); id != "" {
 		parts = append(parts, fmt.Sprintf("%s(%q)", cc.kc.Name(ktTestTag), id))
 		// The key is read where the modifier is built: the semantics block runs
@@ -365,6 +374,18 @@ func (cc *irComposeContext) styleValue(e ir.Expr) string {
 
 // emDp is an em on this platform: Material's body text is 16sp.
 const emDp = 16
+
+// testTagParam is the test tag a library composable's call site hands it. A
+// spliced override's root takes the call site's #id (expandCall); one built as
+// a composable of its own -- a stateful one under a `for` or a reactive `if`
+// -- has its roots take this instead, or a test's trigger found no node.
+const testTagParam = "__testTag"
+
+// takesTestTag reports whether comp's composable takes testTagParam: a
+// library declaration's, whose body a program cannot tag.
+func takesTestTag(comp *ir.Component) bool {
+	return comp != nil && comp.PkgPath() != ""
+}
 
 // userTestTag returns n.ID when it's a user-authored #id and worth
 // surfacing as a Compose testTag. Synthetic __nN ids assigned by
@@ -521,9 +542,9 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	cc.line("%s {", call)
 	cc.indent++
 	// Nothing below here is the window's content.
-	outerRoot := cc.atRoot
-	cc.atRoot = false
-	defer func() { cc.atRoot = outerRoot }()
+	outerRoot, outerTagged := cc.atRoot, cc.rootTagged
+	cc.atRoot, cc.rootTagged = false, false
+	defer func() { cc.atRoot, cc.rootTagged = outerRoot, outerTagged }()
 	for _, child := range n.Children {
 		cc.renderStmt(child)
 	}
@@ -565,15 +586,15 @@ func (cc *irComposeContext) slotArgs(n *ir.NodeInst, comp *ir.Component) []strin
 // lambda is never the window's own content, so nothing inside it asks for the
 // display cutout's inset.
 func (cc *irComposeContext) renderNested(stmts []ir.Stmt) string {
-	savedBuf, savedRoot := cc.buf, cc.atRoot
-	cc.buf, cc.atRoot = &strings.Builder{}, false
+	savedBuf, savedRoot, savedTagged := cc.buf, cc.atRoot, cc.rootTagged
+	cc.buf, cc.atRoot, cc.rootTagged = &strings.Builder{}, false, false
 	cc.indent++
 	for _, stmt := range stmts {
 		cc.renderStmt(stmt)
 	}
 	cc.indent--
 	body := cc.buf.String()
-	cc.buf, cc.atRoot = savedBuf, savedRoot
+	cc.buf, cc.atRoot, cc.rootTagged = savedBuf, savedRoot, savedTagged
 	return body
 }
 

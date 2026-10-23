@@ -107,15 +107,15 @@ func (cc *irComposeContext) renderFlow(n *ir.NodeInst, comp *ir.Component) {
 // renderAnnotated renders the spans of a flow into a buffer of their own, one
 // level in. Mirrors renderNested, which does the same for a Compose slot.
 func (cc *irComposeContext) renderAnnotated(stmts []ir.Stmt) string {
-	savedBuf, savedRoot := cc.buf, cc.atRoot
-	cc.buf, cc.atRoot = &strings.Builder{}, false
+	savedBuf, savedRoot, savedTagged := cc.buf, cc.atRoot, cc.rootTagged
+	cc.buf, cc.atRoot, cc.rootTagged = &strings.Builder{}, false, false
 	cc.indent++
 	for _, stmt := range stmts {
 		cc.renderSpan(stmt, decoration{})
 	}
 	cc.indent--
 	body := cc.buf.String()
-	cc.buf, cc.atRoot = savedBuf, savedRoot
+	cc.buf, cc.atRoot, cc.rootTagged = savedBuf, savedRoot, savedTagged
 	return body
 }
 

@@ -638,7 +638,13 @@ func (st *offloadState) bindArgs(s ir.Stmt) []ir.Stmt {
 			name := st.freshArg()
 			t := a.Value.ExprType()
 			sym := &ir.Var{Name: name, Type: t, Synthesized: true}
-			pre = append(pre, &ir.LocalVar{Name: name, Type: t, Init: a.Value, Sym: sym})
+			// Read into `_` too: the optimizer reduces a call of a function
+			// literal ignoring its parameter to the literal's body, and the
+			// temp it was handed is then read by nothing.
+			pre = append(pre,
+				&ir.LocalVar{Name: name, Type: t, Init: a.Value, Sym: sym},
+				&ir.Assign{Target: &ir.Ident{Name: "_", Type: t, Synthesized: true}, Value: &ir.Ident{Name: name, Type: t, Sym: sym, Synthesized: true}},
+			)
 			c.Args[i].Value = &ir.Ident{Name: name, Type: t, Sym: sym, Synthesized: true}
 		}
 	}

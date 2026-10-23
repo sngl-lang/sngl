@@ -271,6 +271,7 @@ func (m *Model) __effect0_mount() {
 	var mine int = m.attempt__inst0
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
 		r := Lookup(__async_arg0)
 		__snglDo(func() {
@@ -390,14 +391,18 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n2_click_handler() {
 	__async_arg1 := "post"
+	_ = __async_arg1
 	__async_arg2 := __anon_e3b0c4{}
+	_ = __async_arg2
 	__async_arg3 := map[string]string{"X-Sngl": "on"}
+	_ = __async_arg3
 	__async_arg4 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Query: nil, Kind: "hardcover"}, func() *sngljson.Codec {
 		c0 := &sngljson.Codec{Kind: sngljson.Struct}
 		c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 		c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 		return c0
 	}()))
+	_ = __async_arg4
 	go func() {
 		__match2 := func() Result__Response {
 			_ = __async_arg2
@@ -1475,7 +1480,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:6dd86ee43c5b06f8a92647e9d0171a6e
+pass sha256:20c07e439f3eddc1928481e22626771e
 -- run/kotlin/android --
 pass sha256:e084177ca8fbdedf1e22856218f2bd6f
 -- run/none/html --

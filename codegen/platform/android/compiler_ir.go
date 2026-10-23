@@ -1054,6 +1054,9 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	if len(own) > 0 {
 		params = append(params, kotlin.InstanceKeyParam+`: String = ""`)
 	}
+	if takesTestTag(cc.Component) {
+		params = append(params, testTagParam+`: String = ""`)
+	}
 	fmt.Fprintf(b, "fun %s(%s) {\n", exportName(cc.Component.Name), strings.Join(params, ", "))
 
 	compKC := kc.ForComponent(cc.Component)
@@ -1125,7 +1128,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		combo:   combo,
 		// The window, where it is under a reactive `if` and so in a
 		// composable of its own.
-		screen: screen,
+		screen:     screen,
+		rootTagged: takesTestTag(cc.Component),
 	}
 
 	for _, s := range cc.Body {

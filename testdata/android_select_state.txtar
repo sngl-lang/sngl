@@ -69,6 +69,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
@@ -350,7 +351,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Select(placeholder: String = "", value: String, disabled: Boolean = false, multiple: Boolean = false, focusable: Boolean = true, style: Style = Style(), options: List<Choice__record> = listOf<Choice__record>(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, slotContent: (@Composable () -> Unit)? = null, onChange: ((String) -> Unit)? = null, onFocus: (() -> Unit)? = null, onBlur: (() -> Unit)? = null, onValue: ((String) -> Unit)? = null) {
+fun Select(placeholder: String = "", value: String, disabled: Boolean = false, multiple: Boolean = false, focusable: Boolean = true, style: Style = Style(), options: List<Choice__record> = listOf<Choice__record>(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, slotContent: (@Composable () -> Unit)? = null, onChange: ((String) -> Unit)? = null, onFocus: (() -> Unit)? = null, onBlur: (() -> Unit)? = null, onValue: ((String) -> Unit)? = null, __testTag: String = "") {
     var open by remember { mutableStateOf(false) }
 
     fun choose(v: String) {
@@ -361,9 +362,9 @@ fun Select(placeholder: String = "", value: String, disabled: Boolean = false, m
         }
     }
 
-    Box(modifier = (if ((style.flex == 0.0)) (if ((style == Style())) Modifier else styleModifier(style, true)) else (if ((style == Style())) Modifier else styleModifier(style, true)).then(__ctx_flexShare(style.flex.toFloat()))).snglChooses({ v: String ->
+    Box(modifier = Modifier.then(if (__testTag.isEmpty()) Modifier else Modifier.testTag(__testTag)).then((if ((style.flex == 0.0)) (if ((style == Style())) Modifier else styleModifier(style, true)) else (if ((style == Style())) Modifier else styleModifier(style, true)).then(__ctx_flexShare(style.flex.toFloat()))).snglChooses({ v: String ->
     choose(v)
-})) {
+}))) {
         OutlinedTextField(value = value, readOnly = true, enabled = (disabled == false), singleLine = true, modifier = Modifier, onValueChange = {}, label = {
             if ((placeholder != "")) {
                 Text(text = placeholder, modifier = Modifier)
@@ -498,4 +499,4 @@ fun Modifier.snglChooses(onText: (String) -> Unit): Modifier = semantics {
     }
 }
 -- run/kotlin/android --
-pass sha256:d95e5c23c1a18e2ed1477afaea057341
+pass sha256:339242298d5bb852fd4e22d130f40360

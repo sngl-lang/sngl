@@ -198,6 +198,7 @@ func (m *Model) __effect0_mount() {
 	m.loading__inst0 = true
 	m.__n3.SetText(fmt.Sprint(m.loading__inst0))
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
 		r := Lookup(__async_arg0)
 		__snglDo(func() {
@@ -561,6 +562,7 @@ func (c *CardInstance) __effect1_mount() {
 	var mine int = c.attempt__inst1
 	c.pending__inst0 = true
 	__async_arg1 := c.__effect1_key.Key
+	_ = __async_arg1
 	go func() {
 		r := Lookup(__async_arg1)
 		__snglDo(func() {
@@ -815,6 +817,7 @@ func (m *Model) __effect0_mount() {
 	m.loading__inst0 = true
 	gtk4rt.LabelSetLabel(m.__n3, fmt.Sprint(m.loading__inst0))
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
 		r := Lookup(__async_arg0)
 		gtk4rt.Post(func() {
@@ -1066,6 +1069,7 @@ func (c *CardInstance) __effect1_mount() {
 	var mine int = c.attempt__inst1
 	c.pending__inst0 = true
 	__async_arg1 := c.__effect1_key.Key
+	_ = __async_arg1
 	go func() {
 		r := Lookup(__async_arg1)
 		gtk4rt.Post(func() {
@@ -1311,6 +1315,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:cc8d427b01160ffbc08caf6b3dd1c1e3
+pass sha256:1197c83813f667e6153b462b57f1d8da
 -- run/go/gtk4 --
-pass sha256:efa682b4cf025a0041b5288c48787b99
+pass sha256:cd959a6e0dc777008c91925c9aa3a45d

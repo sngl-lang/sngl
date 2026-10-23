@@ -321,6 +321,7 @@ func (c *__query_state1Instance) __effect0_mount() {
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := c.__effect0_key.Key
+	_ = __async_arg1
 	go func() {
 		r := __async_arg0(__async_arg1)
 		__snglDo(func() {
@@ -677,6 +678,7 @@ func (c *__query_state1Instance) __effect0_mount() {
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := c.__effect0_key.Key
+	_ = __async_arg1
 	go func() {
 		r := __async_arg0(__async_arg1)
 		gtk4rt.Post(func() {
@@ -868,6 +870,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:0a26fb407a10672e9fa1d9cb7a31dc38
+pass sha256:43422c300ff5626ca32a3760b3f8a7c6
 -- run/go/gtk4 --
-pass sha256:fe9c560f65abe91193fb2b013c4aeab5
+pass sha256:cac1847fb7f88774a00357e0d5bbdca4
