@@ -1334,7 +1334,7 @@ pass sha256:88eb90c6f9d073f667a5b619f80a95ed
 -- run/none/html --
 pass sha256:50c3ca6e7b10ec18b75a9d52097c4100
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:edf36f033f884be3873ad4ecc5a427d8
+sha256:5b89db5e09a4c98f1c1c19256a948a99
 {
   "results": [
     {

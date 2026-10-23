@@ -518,7 +518,7 @@ pass sha256:4118528347c12a5886b3506b0cb4757a
 -- run/none/html --
 pass sha256:bda9f2add5a7acf6d0fff18feab69346
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:b37c30074e424574fab4c17eac713e23
+sha256:50cc4dad240a5d62009a38db01a2cc47
 {
   "results": [
     {

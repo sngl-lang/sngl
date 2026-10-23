@@ -1038,7 +1038,7 @@ pass sha256:0505e09aa95e08a9ccbbcc81d5b27675
 -- run/none/html --
 pass sha256:774ffeb361b0149810ee2fbf87c01077
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --
-sha256:8e489232c261b78054dfebfcbb4a8274
+sha256:a998c40255de83e9abfb27ca03793abd
 {
   "results": [
     {

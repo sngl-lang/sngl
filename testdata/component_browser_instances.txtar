@@ -631,7 +631,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:115f52abb36cfee9c615c826068e0a4c
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:61d30d6d3f0ffb199ab152e4fa9d74e9
+sha256:5017aa1566bba766698d2523ead14feb
 {
   "results": [
     {
@@ -641,7 +641,7 @@ sha256:61d30d6d3f0ffb199ab152e4fa9d74e9
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:73c6dacb8766cc77bd9b8de4e38b6b8b
+sha256:8afedb253365f240ae8f36e2f5040a37
 {
   "results": [
     {
@@ -651,7 +651,7 @@ sha256:73c6dacb8766cc77bd9b8de4e38b6b8b
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:fc7b7e9fb89b9123fbe1e0108bf4b320
+sha256:a23df26d5c8cb5efce8a6f6354668d14
 {
   "results": [
     {
