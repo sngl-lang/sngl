@@ -17,8 +17,14 @@ static GtkCssProvider *sngl_style_provider(void) {
     }
     return provider;
 }
+// load_from_string is 4.12's; Debian bookworm, which CI builds on, has 4.8,
+// where load_from_data is the call 4.12 deprecates for it.
 static void sngl_style_load(const char *css) {
+#if GTK_CHECK_VERSION(4, 12, 0)
     gtk_css_provider_load_from_string(sngl_style_provider(), css);
+#else
+    gtk_css_provider_load_from_data(sngl_style_provider(), css, -1);
+#endif
 }
 static void sngl_style_watch(GObject *o, int idx) {
     g_object_weak_ref(o, snglToplevelGone, GINT_TO_POINTER(idx));
