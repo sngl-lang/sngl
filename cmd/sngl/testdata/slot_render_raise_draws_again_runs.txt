@@ -12,7 +12,7 @@
 #
 # Not run on android: Compose has no render slot to guard, and a raise while
 # it composes reaches no catch block at all -- the test ends there, with or
-# without this fix. TODO.md carries it.
+# without this fix, which is a gap of its own.
 
 sngl test --platform=none app.sngl
 stdout '^ok +1 tests, 0 failures$'
