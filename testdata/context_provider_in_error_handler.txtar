@@ -247,6 +247,7 @@ func (m *Model) failClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -257,6 +258,7 @@ func (m *Model) go__r0Click() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -478,7 +480,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d29ad86fbc4625aae38fc2c6dd8975fe
+pass sha256:d6d332d000f27085195d3a5333e10f14
 -- run/go/html --
 pass sha256:e8a3ccae03b6c4b494f6c073e5efa6ca
 -- run/kotlin/android --

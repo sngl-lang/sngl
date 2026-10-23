@@ -310,6 +310,7 @@ func (m *Model) showClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -1767,7 +1768,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:04574d121726453f12a3e191487337c3
+pass sha256:a8bd9fffb8f25ca79a352300e483beee
 -- run/go/fyne --
 pass sha256:06bd2e209b00a20418531621b9ee339d
 -- run/go/gtk4 --

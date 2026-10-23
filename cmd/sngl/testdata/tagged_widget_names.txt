@@ -56,7 +56,7 @@ window {
     counter
 }
 -- testrun/bubbletea/go/tagged.sngl/counter/1 --
-sha256:d982f406901c4f6a3168a9ec6c07deac
+sha256:3c5d99565627bb0b14b86630b1fe01c8
 {
   "results": [
     {

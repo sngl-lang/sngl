@@ -256,7 +256,7 @@ sha256:14a6949c3d4f8485ab4870c52e4f5224
   ]
 }
 -- testrun/bubbletea/go/recursion.sngl/main/1 --
-sha256:e49b052c21ec8cca34f27f757d8661a1
+sha256:54612f69e79578b1026000157ed8e6db
 {
   "results": [
     {

@@ -210,6 +210,7 @@ func (m *Model) boundChange() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -220,6 +221,7 @@ func (m *Model) freeChange() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -230,6 +232,7 @@ func (m *Model) flipClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -775,7 +778,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:14a5eadb901dbad63a0e2e028efc7350
+pass sha256:8e93d24a51c0afd05de61cb27fae2133
 -- run/go/fyne --
 pass sha256:829b106bd02ca46d204b7962c5f1a8d4
 -- run/go/gtk4 --

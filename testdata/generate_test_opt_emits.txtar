@@ -162,6 +162,6 @@ func TestInitialCountIsZero(t *testing.T) {
 }
 
 
-func newTestComponent() Model { return New() }
+func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:f53b5ec89beca46eb23030f944697bc7
+pass sha256:0067627130af80205ab4cc536c740fce

@@ -349,6 +349,7 @@ func (m *Model) growClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -359,6 +360,7 @@ func (m *Model) oddClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -1452,7 +1454,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5f2e4c42cb7b898a7debaf69b0ae8eec
+pass sha256:4ac41d7fd8bd0a43752e623594cdf718
 -- run/go/fyne --
 pass sha256:7c029f34ea95cccb8ac5d4f7e5ad0ca7
 -- run/go/gtk4 --

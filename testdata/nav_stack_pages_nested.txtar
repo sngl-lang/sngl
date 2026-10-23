@@ -385,6 +385,7 @@ func (m *Model) pickClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
+	_ = m.View()
 	_ = cmd
 }
 
@@ -395,6 +396,7 @@ func (m *Model) toAboutClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -405,6 +407,7 @@ func (m *Model) backClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -1605,7 +1608,7 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:234ffb5e71baa06862011ad7104ce068
+pass sha256:97beb3b2e87a028c70a1645810b8eca3
 -- run/go/fyne --
 pass sha256:ed5c371965f791560a6fea6ba76357e9
 -- run/go/gtk4 --

@@ -234,6 +234,7 @@ func (m *Model) tickClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -244,6 +245,7 @@ func (m *Model) flipClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -1322,7 +1324,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7cc10ab427f6474231e809e3849342c5
+pass sha256:521dc0e3b9f9dcbb5a8627c76f2ac3db
 -- run/go/fyne --
 pass sha256:9770b4575de62fe13582a90982839420
 -- run/go/gtk4 --

@@ -219,6 +219,7 @@ func (m *Model) callClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -229,6 +230,7 @@ func (m *Model) directClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -763,7 +765,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3c507bae8f2610642514c86694c9a576
+pass sha256:4c59b8eaa6f294444c3f645e023eca61
 -- run/go/fyne --
 pass sha256:2d576af890c99d303720ddb781871c62
 -- run/go/gtk4 --

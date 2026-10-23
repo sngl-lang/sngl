@@ -208,6 +208,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) __widget0_change(__v *time.Time) {
 	m.changes__inst0 += 1
+	_ = m.View()
 }
 
 // dChange types v into the #d widget and runs its @change; for tests.
@@ -955,7 +956,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c27df191a230db850a6e498d56c57fb6
+pass sha256:4989d4bb67ced2e29c571ed3d9a4a20b
 -- run/go/fyne --
 pass sha256:fd8d2962b874c24d2bc113f300a786b5
 -- run/go/gtk4 --

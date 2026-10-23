@@ -431,9 +431,12 @@ func (m *Model) __snglSettleModel() {
 // runs that test's handlers during this one nor arms its tick again.
 var __snglLive *Model
 
+// __snglDeliver is Update and the draw after it, as the program's loop runs
+// them: a picture a waiting test's view asks for is fetched while it waits.
 func (m *Model) __snglDeliver(msg tea.Msg) {
 	nm, cmd := m.Update(msg)
 	*m = nm.(Model)
+	_ = m.View()
 	__snglRunCmd(m, cmd)
 }
 
@@ -595,4 +598,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:9b8a952ec607f5911655fe5b9340424b
+pass sha256:5c8cc0783231bd8011e85c9fdc39689d

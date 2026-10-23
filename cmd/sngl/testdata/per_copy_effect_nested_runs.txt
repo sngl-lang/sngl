@@ -65,7 +65,7 @@ func testEachOuterCopyCountsItsOwn(t test.Test, c nest) {
     t.assert(c.peak == 2)
 }
 -- testrun/bubbletea/go/app.sngl/nest/1 --
-sha256:8e147c3031f1ae9b6dd4fc9f02ac101a
+sha256:c4b816be8e6722e6926c9aba67712e92
 {
   "results": [
     {

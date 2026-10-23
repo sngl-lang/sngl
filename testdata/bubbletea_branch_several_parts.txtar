@@ -226,6 +226,7 @@ func (m *Model) aClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -236,6 +237,7 @@ func (m *Model) bClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -246,6 +248,7 @@ func (m *Model) cClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -323,4 +326,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:4f8d91c2624513be6b11e272327a51fb
+pass sha256:b8ebb8a131028625aec4fd83e7d27e1e

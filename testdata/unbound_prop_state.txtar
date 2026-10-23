@@ -297,6 +297,7 @@ func (m *Model) boxChange() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -1129,7 +1130,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f56781538ddf7691e5641d9c84159765
+pass sha256:7458baacecb775850882f41266b3bcf0
 -- run/go/fyne --
 pass sha256:a62df06c1daa35b4faf7af6a44c5a003
 -- run/go/gtk4 --

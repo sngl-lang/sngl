@@ -408,6 +408,7 @@ func (m *Model) allClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -418,6 +419,7 @@ func (m *Model) all__1Click() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -1058,7 +1060,7 @@ fun MainScreen() {
             Column(modifier = Modifier.safeDrawingPadding()) {
                 Column(modifier = Modifier) {
                     Button(onClick = {
-                        {  ->
+                        ({  ->
     for (a in listOf(Action__record(label = "inc", run = {  ->
     count__inst0 = (count__inst0 + 1)
 }, pick = { __unbound0: Int ->
@@ -1071,7 +1073,7 @@ fun MainScreen() {
     	a.run()
     	a.pick(a.label.length)
     }
-}()
+})()
                     }, modifier = Modifier.testTag("all")) {
                         Text(text = "all", modifier = Modifier)
                     }
@@ -1082,7 +1084,7 @@ fun MainScreen() {
             Column(modifier = Modifier.safeDrawingPadding()) {
                 Column(modifier = Modifier) {
                     Button(onClick = {
-                        {  ->
+                        ({  ->
     for (a in listOf(Action__record(label = "boom", run = {  ->
     try {
     	throw SnglRaise(ErrorEvent("boom", "test"))
@@ -1096,7 +1098,7 @@ fun MainScreen() {
     	a.run()
     	a.pick(a.label.length)
     }
-}()
+})()
                     }, modifier = Modifier.testTag("all__1")) {
                         Text(text = "all", modifier = Modifier)
                     }
@@ -1203,12 +1205,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ddf62842d5a090b241e406a2647e9e76
+pass sha256:6c26dcdac22a226cee7b037c24d45d81
 -- run/go/fyne --
 pass sha256:7cd567305a5ac00a669f0470a3864ad3
 -- run/go/gtk4 --
 pass sha256:9b34f09ff7516fe10af78a65dee6bd4e
 -- run/kotlin/android --
-pass sha256:0b8af0ac72d3bb4a7e1648ff1e299ca8
+pass sha256:bc4623509c4ea89c7e3fc592c3cf8719
 -- run/none/html --
 pass sha256:37be6b2f07366eb29feb3b22acd130fc

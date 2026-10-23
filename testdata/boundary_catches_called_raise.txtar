@@ -331,6 +331,7 @@ func (m *Model) stmtClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -341,6 +342,7 @@ func (m *Model) lamClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
 	_ = cmd
 }
 
@@ -407,7 +409,7 @@ func TestLambdaCallCatchesItsOwn(t *testing.T) {
 }
 
 
-func newTestComponent() Model { return New() }
+func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- out/go/html/server.go --
 package main
 
@@ -739,7 +741,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9879a1c37f685f3f24f359a13ef67ea7
+pass sha256:f949fe8026c830d2ab54c3ac55f48f82
 -- run/go/html --
 pass sha256:69212422b8859c3286af4bd6d064a4db
 -- run/kotlin/android --

@@ -215,6 +215,7 @@ func (m *Model) hitClick() {
 	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
+	_ = m.View()
 	_ = cmd
 }
 
@@ -270,6 +271,6 @@ func TestNothingPicked(t *testing.T) {
 }
 
 
-func newTestComponent() Model { return New() }
+func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:0b1f64d71a76358719da56de6ef614fa
+pass sha256:7387a5044c4810e4374ae4765e74f977
