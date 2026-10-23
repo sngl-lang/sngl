@@ -934,9 +934,10 @@ type reactiveCtx struct {
 // perCopy reports whether an instantiation of c here is built at run time, one
 // per copy: every one in a reactive position, and under any `for` one whose
 // state is its own -- its vars, or a lifetime it holds, whose handle and key
-// one splice would share between the copies.
+// one splice would share between the copies -- or a library component's it
+// would splice, which nothing builds at run time in its place.
 func (rc reactiveCtx) perCopy(c *ir.Component) bool {
-	return rc.in || rc.repeated && (len(c.Vars) > 0 || holdsLifetime(c.Stmts))
+	return rc.in || rc.repeated && (len(c.Vars) > 0 || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts))
 }
 
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {

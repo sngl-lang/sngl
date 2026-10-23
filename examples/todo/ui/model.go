@@ -42,6 +42,7 @@ type modelState struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 	__focusLoop2_cursor int
@@ -62,6 +63,7 @@ func New() Model {
 	m.__effect0_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
@@ -113,20 +115,22 @@ func (m *Model) __effect0_enter() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_enter()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }

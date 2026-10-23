@@ -4,10 +4,12 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// isCNative reports whether fn is a C function. Its Block is the checker's
-// `return <zero>`, nothing the author wrote.
+// isCNative reports whether fn is a host's function the interpreter has
+// nothing to run for: a C function, whose Block is the checker's `return
+// <zero>` and nothing the author wrote, or a `#[go.native]` with no body,
+// which a simulated target's override calls (gtk4's `loadPicture`).
 func isCNative(fn *ir.Func) bool {
-	return fn != nil && fn.Foreign.Path == "C"
+	return fn != nil && (fn.Foreign.Path == "C" || fn.Foreign.Scheme == "go" && fn.Foreign.Name != "")
 }
 
 // callCNative stubs a call of a C function. The result is the zero value of
@@ -74,13 +76,19 @@ func (env *Env) Paint(v *View) error {
 		for _, n := range nodes {
 			if c := n.Component; c.Primitive() && ir.IsShapeFamily(c.Family) {
 				m := n.Map()
+				var src *Node
+				var events map[string]bool
+				if ir.IsImageSourceHost(c) {
+					src = sourceOf(n)
+					events = hostEvents(src)
+				}
 				for _, h := range n.Handlers {
 					fn, _ := h.Body.(*ir.Func)
-					if fn == nil {
+					if fn == nil || events != nil && !events[h.Name] {
 						continue
 					}
-					zeros := func() ([]any, error) { return env.zeros(fn.Params) }
-					if _, _, err := env.runElementHandler(m, h.Name, zeros); err != nil {
+					payload := func() ([]any, error) { return env.hostPayload(fn.Params, src) }
+					if _, _, err := env.runElementHandler(m, h.Name, payload); err != nil {
 						return err
 					}
 				}
@@ -94,18 +102,72 @@ func (env *Env) Paint(v *View) error {
 	return walk(v.Roots)
 }
 
-func (env *Env) zeros(params []*ir.Param) ([]any, error) {
+// sourceOf is the primitive an image source host holds: the target's own
+// node under the member's override, or nil where the source is empty.
+func sourceOf(n *Node) *Node {
+	for len(n.Children) > 0 {
+		n = n.Children[0]
+		if n.Component != nil && n.Component.Primitive() {
+			return n
+		}
+	}
+	return nil
+}
+
+// hostEvents is the handlers a host calls on a primitive painting an image
+// source: `@url` for a URL, `@enter` and `@leave` around a drawing, none for
+// an empty source.
+func hostEvents(src *Node) map[string]bool {
+	if src == nil {
+		return map[string]bool{}
+	}
+	if _, ok := src.Props[ir.ImageSourceURL]; ok {
+		return map[string]bool{ir.DrawSourceURL: true}
+	}
+	return map[string]bool{ir.DrawSourceEnter: true, ir.DrawSourceLeave: true}
+}
+
+// hostPayload is what a host hands a paint handler: each parameter its type's
+// zero, except that a payload's field named as a prop of the source node
+// holds that prop's value, as the target binds it (lower.drawPayloadWith) --
+// the URL, and the picture a source holds, which is the source's own value
+// and no allocation of the host's.
+func (env *Env) hostPayload(params []*ir.Param, src *Node) ([]any, error) {
 	out := make([]any, len(params))
 	for i, p := range params {
-		if p.Type == nil || p.Type.Kind != ir.TypeStruct {
-			out[i] = zeroValueFor(p.Type)
-			continue
-		}
-		v, err := env.Eval(ir.DeclaredDefault(p.Type))
+		v, err := env.hostValue(p.Type, src)
 		if err != nil {
 			return nil, err
 		}
 		out[i] = v
 	}
 	return out, nil
+}
+
+func (env *Env) hostValue(t *ir.Type, src *Node) (any, error) {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return zeroValueFor(t), nil
+	}
+	def, _ := t.Decl.(*ir.StructDef)
+	if def == nil || def.Foreign.Name != "" || ir.ReleaseOf(t) != nil {
+		if ir.ReleaseOf(t) != nil {
+			return nil, nil
+		}
+		return env.Eval(ir.DeclaredDefault(t))
+	}
+	s := NewStruct(def, t)
+	for _, f := range def.Fields {
+		if src != nil {
+			if v, ok := src.Props[f.Name]; ok {
+				s.Set(f.Name, copyOf(v, f.Type))
+				continue
+			}
+		}
+		v, err := env.hostValue(f.Type, src)
+		if err != nil {
+			return nil, err
+		}
+		s.Set(f.Name, v)
+	}
+	return s, nil
 }

@@ -40,7 +40,11 @@ import (
 // pushing its value from an `effect` -- is wrapped too, with nothing unbound:
 // the inliner builds the wrapper per copy (reactiveCtx.perCopy), where
 // splicing the node gave every copy one effect and one handle. A host with a
-// var is built per copy already.
+// var is built per copy already. So is one deriving an owned value, which
+// OwnedState makes a var and an effect of, under any branch as well as a
+// loop: spliced there, the value was made where the owner was built, for a
+// branch not yet shown and from what the branch guards (gtk4's `ui.remote`
+// in the pokedex's form card).
 //
 // After PlatformExtensionBody, so an override body the program wrote is
 // reached; before PropBindings, which lowers the binding this writes, and
@@ -63,7 +67,7 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 		if o.Comp != nil {
 			hosted = o.Comp.Family
 		}
-		if err := st.stmts(*o.Body, hosted, false); err != nil {
+		if err := st.stmts(*o.Body, hosted, false, false); err != nil {
 			return err
 		}
 	}
@@ -157,24 +161,27 @@ type implicitState struct {
 	reads map[*ir.Var]map[string]*ir.Var
 }
 
-// stmts wraps each node in stmts that leaves a two-way prop unbound, or holds a
-// lifetime under a `for` (inLoop). hosted is the family the position accepts,
+// stmts wraps each node in stmts that leaves a two-way prop unbound, holds a
+// lifetime under a `for` (inLoop), or derives an owned value under any
+// branch or loop (inBranch). hosted is the family the position accepts,
 // which a component taking the family it is placed in is a member of
 // (rendersAsType).
-func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component, inLoop bool) error {
+func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component, inLoop, inBranch bool) error {
 	for i, s := range stmts {
 		inner := hosted
 		if n, ok := s.(*ir.NodeInst); ok {
 			inner = hostedBy(handleType(n))
 		}
 		_, isFor := s.(*ir.For)
+		_, isIf := s.(*ir.If)
+		_, isMatch := s.(*ir.Match)
 		for _, b := range ir.ViewBlocks(s) {
-			if err := st.stmts(*b, inner, inLoop || isFor); err != nil {
+			if err := st.stmts(*b, inner, inLoop || isFor, inBranch || isFor || isIf || isMatch); err != nil {
 				return err
 			}
 		}
 		if n, ok := s.(*ir.NodeInst); ok {
-			w, err := st.wrap(n, hosted, inLoop)
+			w, err := st.wrap(n, hosted, inLoop, inBranch)
 			if err != nil {
 				return err
 			}
@@ -187,8 +194,9 @@ func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component, inLoop boo
 }
 
 // wrap is the instantiation that takes n's place, or nil when n leaves no
-// two-way prop unbound and holds no lifetime under a `for`.
-func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop bool) (*ir.NodeInst, error) {
+// two-way prop unbound, holds no lifetime under a `for` and derives no owned
+// value under a branch.
+func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBranch bool) (*ir.NodeInst, error) {
 	comp := n.Component
 	if comp == nil {
 		return nil, nil
@@ -197,7 +205,7 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop bool)
 	if n.Handle == nil && n.ID == "" {
 		unbound = slices.DeleteFunc(unbound, func(p *ir.Prop) bool { return !hostReports(comp, p) })
 	}
-	if len(unbound) == 0 && !(inLoop && len(comp.Vars) == 0 && holdsLifetime(comp.Stmts)) {
+	if len(unbound) == 0 && !(inLoop && len(comp.Vars) == 0 && holdsLifetime(comp.Stmts)) && !(inBranch && len(comp.Vars) == 0 && derivesOwned(comp)) {
 		return nil, nil
 	}
 	rest := comp.RestSlot()
@@ -649,4 +657,10 @@ func slotDeclOf(comp *ir.Component, name string) *ir.SlotDecl {
 		}
 	}
 	return nil
+}
+
+// derivesOwned reports whether comp holds an owned derived value, state of
+// the node as a `var` is (ir.IsOwnedDerived).
+func derivesOwned(comp *ir.Component) bool {
+	return slices.ContainsFunc(comp.Funcs, ir.IsOwnedDerived)
 }

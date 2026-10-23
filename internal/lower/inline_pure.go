@@ -290,6 +290,13 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if st.loopDepth > 0 && holdsLifetime(c.Stmts) {
 		return false
 	}
+	// A library component's state the body would splice is the body's
+	// (splicesLibraryState), and an owned var is a lifetime wherever it
+	// stands: initialized where the owner is built, gtk4's picture was loaded
+	// for a branch not yet shown, reading what the branch guards.
+	if splicesLibraryState(c.Stmts) || slices.ContainsFunc(c.Vars, func(v *ir.Var) bool { return ir.ReleaseOf(v.Type) != nil }) {
+		return false
+	}
 	if len(c.Vars) == 0 {
 		return true
 	}

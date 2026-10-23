@@ -26,6 +26,10 @@ const (
 // carry.
 const scrollTag = "Scroll"
 
+// imagePictureProp is `ImageUrl`'s picture, the owned value its source derives
+// from the URL (gtk4.sngl's `Picture`).
+const imagePictureProp = "picture"
+
 func imagePrimitive(tag string) bool {
 	return tag == imageTag || tag == imageURLTag || tag == imageDrawingTag
 }
@@ -88,7 +92,11 @@ func (t *gtk4Translator) imagePropAssign(node ir.Expr, tag, prop string, value i
 	case tag == imageTag && prop == "fit":
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageFrameSetFit", ir.TypVoid, ref, value)}}
 	case tag == imageURLTag && prop == ir.ImageSourceURL:
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageSourceSetURL", ir.TypVoid, ref, value)}}
+		// The URL is what the source says it shows; the picture is what it
+		// shows.
+		return nil
+	case tag == imageURLTag && prop == imagePictureProp:
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageSourceSetPicture", ir.TypVoid, ref, value)}}
 	}
 	return nil
 }

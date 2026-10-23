@@ -117,7 +117,17 @@ brackets them. Three things become node lifetime:
 The pass runs before `NoComputed`, which would inline a derived value at
 every read and so allocate it per read; before the inliners, which give each
 instance its own copy of the var; and before `AnonStructs`, which declares
-the key's struct. Its `effect` is a copy of sngl:builtin's, since a program
+the key's struct. The optimizer, which runs first, inlines a pure function
+wherever it is called, and a library override's derived value over a native
+-- gtk4's `picture`, `loadPicture` having no body to say it allocates -- is
+pure by inference, so `optimize.inline` leaves an owned derived value
+standing (`ir.IsOwnedDerived`). The pass then reaches it: on a target it
+rewrote only the program's own components, where the interpreter's
+`OwnedState` walked the imports for every unfrozen component, and a build's
+copy of a reached library component is as much its own, so both walk now
+(`testdata/gtk4_image_pictures.txtar`). The checker lets a const render read
+an owned derived value, as it reads a prop: declaring it `const func` instead
+had the optimizer inline it. Its `effect` is a copy of sngl:builtin's, since a program
 that writes none does not reach the declaration and the build shares the
 library's own, which `InlineComponents` would otherwise flag a runtime
 instance.
@@ -217,8 +227,7 @@ the effect lowering writes `Teardown` afresh after it; a var assigned
 another's value, which both then release; a var initializer reading an owned
 derived value, which is initialized after the vars; an allocation handed to a
 `#[retains]` parameter outside an effect's handler (an event handler, a
-function); and a derived value in a library component's override on a
-target, which the pass reaches only on the interpreter.
+function).
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`
@@ -346,7 +355,9 @@ runs a program on the interpreter specialized for a target rather than `none`
 that target's overrides run. A `#[cnative]` call is stubbed always
 (`callCNative`), since the interpreter has nothing else to run: its `Block` is
 the checker's `return <zero>`, so the stub keys on `Foreign.Path == "C"`, not
-on an empty body. An owned result is a fresh handle allocated at the call,
+on an empty body. A `#[go.native]` is stubbed the same way, which is how
+gtk4's `loadPicture` allocates a handle the tracker follows
+(`cmd/sngl/testdata/simulate_gtk4_image_pictures.txt`). An owned result is a fresh handle allocated at the call,
 anything else the zero value; every argument is checked for use after release;
 a `#[moves]` argument is the native's from there (a later use or release says
 "moved"); a `#[retains]` one may not be released until the lifetime that made
@@ -367,7 +378,13 @@ The interpreter's own run converts nothing: it has no C. And the host
 paints: after every settle, each handler of a mounted primitive in the shape
 family -- the target calling in, which is why such a primitive may carry
 events in an `#[family.eventless]` family -- runs with a zero payload, all of
-them, since a host may call any (`Env.Paint`). Leaks from one site are one
+them, since a host may call any (`Env.Paint`). A primitive painting an image
+source is the exception: the host calls `@url` for a URL and `@enter` and
+`@leave` around a drawing, never both, and a payload field named as a prop of
+the source's node holds that prop's value as the target binds it
+(`lower.drawPayloadWith`) -- the URL, and gtk4's picture, which is the
+source's own value and no allocation of the host's (`hostPayload`). With a
+zero payload, `canvasImage`'s `@enter` divided by the drawing's size. Leaks from one site are one
 line with a count, because a frame repeats them. `sngl run` takes no
 `--simulate`: a run ends with no leak check until application teardown exists
 on targets. What the tracker cannot see is a call the gtk4 translator builds

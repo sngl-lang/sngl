@@ -130,7 +130,7 @@ func (r *renderCheck) visit(e ir.Expr, at ast.Pos) error {
 			r.report(identPos(x), at, "renders var %q: a const render reads only props, consts and const funcs", v.Name)
 		}
 	case *ir.Call:
-		if x.Func == nil || x.Func.Const || x.Event != "" {
+		if x.Func == nil || x.Func.Const || x.Event != "" || ir.IsOwnedDerived(x.Func) {
 			return nil
 		}
 		name := funcDeclName(x.Func)

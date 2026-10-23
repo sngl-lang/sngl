@@ -799,6 +799,27 @@ func holdsLifetime(stmts []ir.Stmt) bool {
 	return places(stmts, func(n *ir.NodeInst) bool { return ir.IsTimerPrimitive(n.Component) || isEffectNode(n) })
 }
 
+// splicesLibraryState reports whether stmts instantiate a library component
+// with state of its own -- a var, a lifetime, an owned derived value -- which
+// a splice of stmts splices with them: gtk4's `remote` in the wrapper
+// passImplicitState writes for it under a `for`, whose picture every copy
+// would otherwise share.
+func splicesLibraryState(stmts []ir.Stmt) bool {
+	seen := map[*ir.Component]bool{}
+	var holds func(stmts []ir.Stmt) bool
+	holds = func(stmts []ir.Stmt) bool {
+		return places(stmts, func(n *ir.NodeInst) bool {
+			c := n.Component
+			if c == nil || c.PkgPath() == "" || seen[c] {
+				return false
+			}
+			seen[c] = true
+			return len(c.Vars) > 0 || derivesOwned(c) || holdsLifetime(c.Stmts) || holds(c.Stmts)
+		})
+	}
+	return holds(stmts)
+}
+
 // placesTimer reports whether stmts place a timer primitive.
 func placesTimer(stmts []ir.Stmt) bool {
 	return places(stmts, func(n *ir.NodeInst) bool { return ir.IsTimerPrimitive(n.Component) })

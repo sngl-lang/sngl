@@ -64,19 +64,29 @@ static GdkTexture *sngl_img_surface_texture(cairo_surface_t *s, int w, int h) {
     return t;
 }
 // The texture's pixels are cairo's ARGB32 once downloaded as GDK_MEMORY_DEFAULT.
-static void sngl_img_paint(cairo_t *cr, GdkTexture *tex, double x, double y, double w, double h) {
+static cairo_surface_t *sngl_img_surface(GdkTexture *tex) {
     int tw = gdk_texture_get_width(tex), th = gdk_texture_get_height(tex);
-    if (tw <= 0 || th <= 0) return;
+    if (tw <= 0 || th <= 0) return NULL;
     cairo_surface_t *s = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, tw, th);
     gdk_texture_download(tex, cairo_image_surface_get_data(s), cairo_image_surface_get_stride(s));
     cairo_surface_mark_dirty(s);
+    return s;
+}
+static cairo_surface_t *sngl_img_scaled(cairo_surface_t *src, int w, int h) {
+    int tw = cairo_image_surface_get_width(src), th = cairo_image_surface_get_height(src);
+    cairo_surface_t *s = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+    cairo_t *cr = cairo_create(s);
+    cairo_scale(cr, (double)w / tw, (double)h / th);
+    cairo_set_source_surface(cr, src, 0, 0);
+    cairo_paint(cr);
+    cairo_destroy(cr);
+    return s;
+}
+static void sngl_img_paint(cairo_t *cr, cairo_surface_t *s, double x, double y) {
     cairo_save(cr);
-    cairo_translate(cr, x, y);
-    cairo_scale(cr, w / tw, h / th);
-    cairo_set_source_surface(cr, s, 0, 0);
+    cairo_set_source_surface(cr, s, x, y);
     cairo_paint(cr);
     cairo_restore(cr);
-    cairo_surface_destroy(s);
 }
 static void sngl_img_add_search_path(const char *dir) {
     gtk_icon_theme_add_search_path(gtk_icon_theme_get_for_display(gdk_display_get_default()), dir);
@@ -89,10 +99,10 @@ import (
 	"fmt"
 	goimage "image"
 	"image/draw"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
-	"sync/atomic"
 	"unsafe"
 
 	"duckfam.us/sngl/pkg/go/cbind"
@@ -111,18 +121,40 @@ type image struct {
 	onError func(message string)
 }
 
-// A source is a GtkPicture showing the texture its bytes or its drawing make,
-// and reporting to the image holding it whether the picture arrived.
+// A source is a GtkPicture showing the texture its picture or its drawing
+// make, and reporting to the image holding it whether the picture arrived.
 type source struct {
-	pic   Handle
-	url   string
-	ready bool
-	err   error
-	tex   *C.GdkTexture
-	frame *image
-	told  bool
+	pic     Handle
+	picture *Picture
+	ready   bool
+	err     error
+	tex     *C.GdkTexture
+	frame   *image
+	told    bool
 	// onChange is a window's, when the source is its icon.
 	onChange func()
+}
+
+// A Picture is what a URL names, decoded once: the program's `ui.file` and
+// `ui.remote` on gtk4 derive one from the URL and hold it as long as the URL
+// stands (gtk4.sngl's `Picture`, an owned value), so a source shows it and a
+// drawing paints it without fetching or decoding again. A carried file is
+// there at once; a fetched one arrives later, and the sources showing it are
+// told. Painting into a box keeps the surface scaled to that box, made again
+// only when the box changes size.
+type Picture struct {
+	url     string
+	arrived bool
+	err     error
+	tex     *C.GdkTexture
+	// surface is the texture's pixels for cairo, and scaled those at the
+	// last size a drawing painted them.
+	surface *C.cairo_surface_t
+	scaled  *C.cairo_surface_t
+	sw, sh  C.int
+	// watching is each source showing the picture, told when it arrives.
+	watching map[*source]bool
+	released bool
 }
 
 var (
@@ -204,47 +236,105 @@ func ImageSourceNew() Handle {
 	gone := cbind.Register(func() {
 		delete(sources, pic)
 		cbind.Release(moved)
+		s.watch(nil)
 		s.setTexture(nil)
 	})
 	C.sngl_img_watch((*C.GObject)(p(pic)), C.int(gone))
 	return pic
 }
 
-// ImageSourceSetURL shows the picture url names: at once for a file the
-// program carries, and once it has arrived for one fetched.
-func ImageSourceSetURL(h Handle, url string) {
+// LoadPicture is the picture url names, decoded once it is read: at once for
+// a file the program carries, and from the main loop for one fetched, since
+// the fetch may answer from its own goroutine before this returns.
+func LoadPicture(url string) *Picture {
+	pic := &Picture{url: url, watching: map[*source]bool{}}
+	remote := snglimage.IsRemote(url)
+	snglimage.Fetch(url, func(data []byte, err error) {
+		if !remote {
+			pic.arrive(data, err)
+			return
+		}
+		Post(func() { pic.arrive(data, err) })
+	})
+	return pic
+}
+
+func (pic *Picture) arrive(data []byte, err error) {
+	if pic.released {
+		return
+	}
+	if err == nil {
+		if len(data) == 0 {
+			err = errors.New(pic.url + ": empty")
+		} else {
+			pic.tex = texture(data)
+			if pic.tex == nil {
+				err = errors.New(pic.url + ": not an image GTK can read")
+			}
+		}
+	}
+	pic.err, pic.arrived = err, true
+	for s := range pic.watching {
+		s.take(pic)
+	}
+}
+
+// UnrefPicture gives a picture back; the sources showing it keep what they
+// show. One not yet arrived is dropped when it does.
+func UnrefPicture(pic *Picture) {
+	if pic == nil || pic.released {
+		return
+	}
+	pic.released = true
+	pic.watching = nil
+	if pic.scaled != nil {
+		C.cairo_surface_destroy(pic.scaled)
+	}
+	if pic.surface != nil {
+		C.cairo_surface_destroy(pic.surface)
+	}
+	if pic.tex != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(pic.tex)))
+	}
+	pic.scaled, pic.surface, pic.tex = nil, nil, nil
+}
+
+// ImageSourceSetPicture shows pic, now or when it arrives; nil shows nothing.
+func ImageSourceSetPicture(h Handle, pic *Picture) {
 	s := sources[h]
 	if s == nil {
 		return
 	}
-	s.url = url
-	var later atomic.Bool
-	snglimage.Fetch(url, func(data []byte, err error) {
-		if !later.Load() {
-			s.show(url, data, err)
-			return
-		}
-		Post(func() { s.show(url, data, err) })
-	})
-	later.Store(true)
-}
-
-func (s *source) show(url string, data []byte, err error) {
-	if url != s.url {
+	s.watch(pic)
+	if pic == nil {
+		s.err = nil
+		s.setTexture(nil)
 		return
 	}
-	var tex *C.GdkTexture
-	if err == nil {
-		if len(data) == 0 {
-			err = errors.New(url + ": empty")
-		} else {
-			tex = texture(data)
-			if tex == nil {
-				err = errors.New(url + ": not an image GTK can read")
-			}
-		}
+	if pic.arrived {
+		s.take(pic)
 	}
-	s.err = err
+}
+
+// watch makes pic the picture the source is told about, or none.
+func (s *source) watch(pic *Picture) {
+	if s.picture != nil && s.picture.watching != nil {
+		delete(s.picture.watching, s)
+	}
+	s.picture = pic
+	if pic != nil && pic.watching != nil {
+		pic.watching[s] = true
+	}
+}
+
+// take shows the picture as it arrived, holding a reference of the source's
+// own so the picture may be given back while the source still shows it.
+func (s *source) take(pic *Picture) {
+	tex := pic.tex
+	if tex != nil {
+		C.g_object_ref(C.gpointer(unsafe.Pointer(tex)))
+	}
+	s.err = pic.err
 	s.setTexture(tex)
 }
 
@@ -262,7 +352,8 @@ func ImagePaint(h Handle, w, ht int, draw func(cr unsafe.Pointer)) {
 	C.cairo_surface_flush(surface)
 	tex := C.sngl_img_surface_texture(surface, C.int(w), C.int(ht))
 	C.cairo_surface_destroy(surface)
-	s.url, s.err = "", nil
+	s.watch(nil)
+	s.err = nil
 	s.setTexture(tex)
 }
 
@@ -380,36 +471,28 @@ func iconize(win *C.GtkWindow, tex *C.GdkTexture) {
 	C.gtk_window_set_icon_name(win, cname)
 }
 
-// The pictures a drawing has painted from URLs, decoded once each.
-var painted = map[string]*C.GdkTexture{}
-
-// CairoPaintURL paints the picture url names into the box at x, y sized w by
-// h. cr is a *C.cairo_t of whichever package hands it over, which is a type
-// of that package's own. A fetched picture still on its way paints nothing,
-// and is there the next time the drawing paints.
-func CairoPaintURL(cr any, url string, x, y, w, h float64) {
-	tex, seen := painted[url]
-	if !seen {
-		painted[url] = nil
-		snglimage.Fetch(url, func(data []byte, err error) {
-			if err != nil || len(data) == 0 {
-				return
-			}
-			decode := func() {
-				painted[url] = texture(data)
-			}
-			if !snglimage.IsRemote(url) {
-				decode()
-				return
-			}
-			Post(decode)
-		})
-		tex = painted[url]
-	}
-	if tex == nil {
+// CairoPaintPicture paints pic into the box at x, y sized w by h. cr is a
+// *C.cairo_t of whichever package hands it over, which is a type of that
+// package's own. The picture is scaled to the box once and painted from that
+// until the box changes size; one still on its way paints nothing.
+func CairoPaintPicture(cr any, pic *Picture, x, y, w, h float64) {
+	if pic == nil || pic.tex == nil || w <= 0 || h <= 0 {
 		return
 	}
-	C.sngl_img_paint((*C.cairo_t)(reflect.ValueOf(cr).UnsafePointer()), tex, C.double(x), C.double(y), C.double(w), C.double(h))
+	sw, sh := C.int(math.Ceil(w)), C.int(math.Ceil(h))
+	if pic.scaled == nil || pic.sw != sw || pic.sh != sh {
+		if pic.surface == nil {
+			pic.surface = C.sngl_img_surface(pic.tex)
+			if pic.surface == nil {
+				return
+			}
+		}
+		if pic.scaled != nil {
+			C.cairo_surface_destroy(pic.scaled)
+		}
+		pic.scaled, pic.sw, pic.sh = C.sngl_img_scaled(pic.surface, sw, sh), sw, sh
+	}
+	C.sngl_img_paint((*C.cairo_t)(reflect.ValueOf(cr).UnsafePointer()), pic.scaled, C.double(x), C.double(y))
 }
 
 // texture is the picture in data, read by GdkPixbuf, whose loaders know SVG,

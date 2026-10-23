@@ -222,12 +222,28 @@ The node half.
 The adjacent defect in #110: a drawn image is decoded and scaled from disk on
 every frame.
 
-- [ ] Declare gtk4's pixbuf as `#[owned(unrefPixbuf)]` and its loading in
-  `gtk4.sngl`, so the image override is an owned derived value that Part 5 keys on
-  `(src, w, h)`. `OwnedState` reaches a library component's body only on the
-  interpreter; on a target the override has to be reached as well.
-- [ ] Leak checked under `--simulate gtk4`; golden showing one load per key;
-  recorded run.
+- [X] gtk4's picture is `#[owned(unrefPicture)]`, derived by `ui.file` and
+  `ui.remote` from the URL (the source, not the drawing: a shape sees its
+  source only as a slot), shown by the GtkPicture and painted by
+  `canvasImage`, which keeps the scale per box in the picture. `OwnedState`
+  walks the reached library components on a target as on the interpreter;
+  the optimizer had inlined the pure-by-inference derived value before it
+  (`ir.IsOwnedDerived`), and the checker refused a const render calling it.
+- [X] Leak checked under `--simulate gtk4`
+  (`cmd/sngl/testdata/simulate_gtk4_image_pictures.txt`, which stubs
+  `#[go.native]` and has the host paint `@url` or `@enter`/`@leave` as the
+  source says, with the source's props in the payload); golden
+  (`testdata/gtk4_image_pictures.txtar`); recorded runs re-recorded.
+- [X] Found on the way: a stateful shape under a canvas `for` did not compile
+  on fyne and gtk4, and a per-copy `@update` never ran on a write replacing
+  the list (`testdata/canvas_for_shape_state.txtar`, with Part 5's open
+  item); the release of an owned type a user package declares was emitted
+  nowhere (`testdata/owned_derived_in_imported_component.txtar`); a library
+  component deriving an owned value under a `for` was wrapped by
+  `ImplicitState` and the wrapper substituted by `InlinePure`
+  (`splicesLibraryState`); the simulated host painted every handler of a
+  `canvasImage` with a zero payload, dividing by a drawing's size; and
+  `examples/todo`'s committed artifact was stale since Part 6.
 
 ## Part 9: gtk4 translator sites
 

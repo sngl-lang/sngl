@@ -189,6 +189,22 @@ func StmtPos(s Stmt) ast.Pos {
 // a change here and nowhere else.
 func Keyable(t *Type) bool { return RebuildIncomparable(t) == "" }
 
+// IsOwnedDerived reports whether fn is an owned derived value: a function of
+// a component taking nothing but its receiver and answering an owned type,
+// which lowering makes a var of the component made once per value of what it
+// reads (lower.OwnedState). A const render may read one as it reads a prop.
+func IsOwnedDerived(fn *Func) bool {
+	if fn == nil || fn.IsTest || len(fn.Block) == 0 || ReleaseOf(fn.Return) == nil {
+		return false
+	}
+	for _, p := range fn.Params {
+		if !p.Receiver {
+			return false
+		}
+	}
+	return true
+}
+
 // ReleaseOf is the function that gives a value of t back, or nil when t is
 // not owned.
 func ReleaseOf(t *Type) *Func {

@@ -1810,10 +1810,11 @@ makes to one of them is a write to the enclosing component's own state.
 every expression the view body evaluates — a node's props and bindings, an `if`
 or `for` head, a slot insertion's arguments, a context override's value — and
 not a handler's or an effect's body. It may read props, constants, const
-function results, loop variables, a slot's invocation arguments and contexts; a
-variable read there, or a call to a function that is not const, is an error. A
-variable only handlers touch is allowed, and so is a child with state of its
-own, which is its own instance.
+function results, loop variables, a slot's invocation arguments, contexts and
+an [owned derived value](#owned-values) of its own; a variable read there, or
+a call to any other function that is not const, is an error. A variable only
+handlers touch is allowed, and so is a child with state of its own, which is
+its own instance.
 
 `const` on a declaration an override implements is part of its contract, so
 every override of it is held to the rule. An override of a non-const
@@ -2260,12 +2261,15 @@ body: a native that keeps a pointer to its argument while the caller still
 owns it, and one that takes the argument. A function with a body says what it
 does with its arguments itself, so the marks are an error there.
 
-A derived value of an owned type is computed when the node is created, and
-computed again once a write to what it reads has settled, the old value
-released after the new one is made; a prop counts as written when its value
-changes. What it reads is the key of its lifetime and must be comparable as
-an effect's `on` is: a derived value that reads a function value, a list or a
-map is an error. A `var`'s initializer runs once and is not keyed.
+A derived value of an owned type -- an **owned derived value**, a function of
+a component taking nothing and answering an owned type -- is computed when
+the node is created, and computed again once a write to what it reads has
+settled, the old value released after the new one is made; a prop counts as
+written when its value changes. What it reads is the key of its lifetime and
+must be comparable as an effect's `on` is: a derived value that reads a
+function value, a list or a map is an error. A `var`'s initializer runs once
+and is not keyed. The value is state the component holds, so a const
+component's render may read one as it reads a prop.
 
 **An application tears down before its process ends.** When the event loop
 exits, the root tree unmounts, so every `@unmount` runs and every node-lifetime

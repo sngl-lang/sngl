@@ -21,26 +21,30 @@ import (
 var passOwnedState = pass{
 	name:    "OwnedState",
 	enabled: func(Features) bool { return true },
-	apply: func(pkg *ir.Package, _ Features, _ Options) error {
-		if pkg == nil {
-			return nil
-		}
-		return ownedState(pkg, pkg.Components, []any{pkg})
-	},
+	apply:   func(pkg *ir.Package, _ Features, _ Options) error { return OwnedState(pkg) },
 }
 
-// OwnedState is passOwnedState for the interpreter, which runs a library
-// component where it is declared, so every component the program reaches is
-// rewritten rather than the package's own.
+// OwnedState rewrites every component the program reaches, the package's own
+// and each reached library one: a build's copy of a library component is its
+// own, and the interpreter runs one where it is declared. A library
+// component the program does not reach is the shared, frozen one, and is
+// left alone.
 func OwnedState(pkg *ir.Package) error {
 	if pkg == nil {
 		return nil
 	}
 	comps := slices.Clone(pkg.Components)
 	roots := []any{pkg}
+	// A user package's component is already listed on pkg (lower.Lower), and
+	// rewritten twice it would release its vars twice.
+	seen := map[*ir.Component]bool{}
+	for _, c := range comps {
+		seen[c] = true
+	}
 	for _, p := range importedPackages(pkg) {
 		for _, c := range p.Components {
-			if !c.Frozen {
+			if !c.Frozen && !seen[c] {
+				seen[c] = true
 				comps = append(comps, c)
 				roots = append(roots, c)
 			}
@@ -171,7 +175,7 @@ func (st *ownedStateRun) name(prefix string) string {
 func (st *ownedStateRun) derive(c *ir.Component) map[*ir.Func]*ir.Var {
 	var fns []*ir.Func
 	for _, fn := range c.Funcs {
-		if !fn.IsTest && ir.ReleaseOf(fn.Return) != nil && onlyReceiver(fn) && len(fn.Block) > 0 {
+		if ir.IsOwnedDerived(fn) {
 			fns = append(fns, fn)
 		}
 	}
@@ -221,17 +225,6 @@ func (st *ownedStateRun) derive(c *ir.Component) map[*ir.Func]*ir.Var {
 	}
 	c.Stmts = append(effects, c.Stmts...)
 	return cells
-}
-
-// onlyReceiver reports whether fn takes nothing but its component's
-// receiver: a derived value.
-func onlyReceiver(fn *ir.Func) bool {
-	for _, p := range fn.Params {
-		if !p.Receiver {
-			return false
-		}
-	}
-	return true
 }
 
 // derivedExpr is what fn computes, where its body is one expression that

@@ -242,7 +242,20 @@ in the same sense: a component holding an `effect` or a timer is built per copy
 under a `for` (`reactiveCtx.perCopy`) and not substituted there (`isPure`),
 since spliced, the copies shared one key and one handle; an override with no
 var of its own that holds one -- gtk4's entry, pushing its value from an effect
--- is wrapped per call site by `passImplicitState` so that it is. A shape
+-- is wrapped per call site by `passImplicitState` so that it is, and so is
+one deriving an owned value, which `OwnedState` makes a var and an effect of
+(gtk4's `ui.remote`), under any branch as well as a loop: under a `for` every
+copy would share one picture, and under an `if` the picture was made where
+the owner was built, for a branch not yet shown and from what the branch
+guards -- the pokedex's form card read `got.pokemon.url` with `got` still
+null. The wrapper holds that state only through the library body it
+instantiates, so `perCopy` asks `splicesLibraryState` as well as
+`holdsLifetime`, and `isPure` refuses a body that splices such state or
+holds an owned var at all: before that, `InlinePure` substituted the wrapper
+and the override, and the inliner elected the library component itself a
+runtime instance, which nothing builds ("prop url of component remote can
+neither be written after construction nor rebuild the instance",
+`testdata/gtk4_image_pictures.txtar` and the pokedex example). A shape
 with state of its own under a `for` or a reactive `if` in a canvas is
 spliced per copy on every target, its cells keyed by the copy as bubbletea
 keys every component's (`reactiveCtx.drawn`, `expandPerCopy`): a drawing is
