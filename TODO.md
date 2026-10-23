@@ -144,8 +144,10 @@ under it. Delete this file before the MR leaves draft.
   `@keydown(e KeyEvent)` (`key`, `preventDefault`), and the card clicks on
   either; `codegen/platform/html`'s `TestACardTakesEnterAndSpaceAsAClick`
   presses them in Chromium.
-- [ ] gtk4's drop-down C helpers are written twice, in `pkg/go/gtk4rt` and
-  `codegen/platform/gtk4/scaffold_files.go`.
+- [X] gtk4's drop-down C helpers were written twice. A cgo program calls
+  `gtk4rt`'s `DropDownLabel`, `DropDownOffer` and `DropDownSelect` through
+  `gtk4rt.Handle(unsafe.Pointer(…))`, as it does its style and images, and the
+  scaffold's copy is gone; `testdata/select_choices.txtar` denies it.
 - [ ] Lower confidence: a reactive write to a fyne constructor-only prop
   (`intrinsic_translator.go`'s `reflect.DeepEqual`) may go silently stale;
   a package const named like an import (`theme`, `layout`, `time`) collides

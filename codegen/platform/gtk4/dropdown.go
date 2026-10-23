@@ -9,9 +9,9 @@ import (
 
 // offerChoicesIntrinsic is gtk4.sngl's offerChoices, which a select's
 // override offers its GtkDropDown its choices through. It is a call of the
-// template's snglDropDownOffer, which reaches the preamble's
-// sngl_drop_down_offer through gtk4rt in wrapped mode and through cgo
-// otherwise, so a program with a select stays wrapped where it can.
+// template's snglDropDownOffer, which reaches gtk4rt's DropDownOffer with the
+// drop-down as each mode holds it, so a program with a select stays wrapped
+// where it can.
 const offerChoicesIntrinsic = "gtk4.offerChoices"
 
 func init() {

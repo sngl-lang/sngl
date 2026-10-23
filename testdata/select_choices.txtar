@@ -7,6 +7,7 @@ The population is read by lower.DataFamilies before the first optimize, into
 the select's `options` prop; the overrides map the records to their labels.
 
 deny * `__list\d+` -- a prop's map is an expression, not a hoisted accumulator
+deny out/go/gtk4/model.go `sngl_drop_down_\w+` -- gtk4's drop-down C is gtk4rt's alone, in cgo mode too
 -- app.sngl --
 import ui "sngl:ui"
 
@@ -577,69 +578,6 @@ static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     g_date_time_unref(dt);
 }
 
-// A select's drop-down. Its choices are a GtkStringList, since no SNGL
-// expression produces a GListModel, offered as the labels joined with
-// newlines -- so a label holding a newline is offered as two choices. Offering
-// them, or the value bound, is no choice anyone made, so notify::selected is
-// blocked meanwhile; and a model is replaced only for labels that differ,
-// which would otherwise drop the popup a user has open.
-// A drop-down a render has not built yet is offered nothing: a settle the
-// render's own instances ask for runs before it, and the drop-down's build
-// mounts the offer again (remountOnBuild).
-static void sngl_drop_down_offer(GtkDropDown *d, const char *labels, const char *chosen) {
-    if (d == NULL) return;
-    guint notify = g_signal_lookup("notify", G_TYPE_OBJECT);
-    GQuark selected = g_quark_from_static_string("selected");
-    g_signal_handlers_block_matched(d, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL, notify, selected, NULL, NULL, NULL);
-    gchar **split = g_strsplit(labels, "\n", -1);
-    guint n = g_strv_length(split);
-    GListModel *cur = gtk_drop_down_get_model(d);
-    gboolean same = cur != NULL && GTK_IS_STRING_LIST(cur) && g_list_model_get_n_items(cur) == n;
-    for (guint i = 0; same && i < n; i++) {
-        same = strcmp(gtk_string_list_get_string(GTK_STRING_LIST(cur), i), split[i]) == 0;
-    }
-    if (!same) {
-        GtkStringList *list = gtk_string_list_new((const char *const *)split);
-        gtk_drop_down_set_model(d, G_LIST_MODEL(list));
-        g_object_unref(list);
-    }
-    guint at = GTK_INVALID_LIST_POSITION;
-    for (guint i = 0; i < n; i++) {
-        if (strcmp(split[i], chosen) == 0) {
-            at = i;
-            break;
-        }
-    }
-    gtk_drop_down_set_selected(d, at);
-    g_strfreev(split);
-    g_signal_handlers_unblock_matched(d, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL, notify, selected, NULL, NULL, NULL);
-}
-
-// The label a drop-down has selected, or "" where it has none.
-static const char *sngl_drop_down_label(GtkDropDown *d) {
-    gpointer item = gtk_drop_down_get_selected_item(d);
-    if (item == NULL || !GTK_IS_STRING_OBJECT(item)) return "";
-    return gtk_string_object_get_string(GTK_STRING_OBJECT(item));
-}
-
-// Selects the choice labeled label, as a click on it does; one no choice
-// carries selects nothing. The selection's handler may render the page the
-// drop-down is on afresh, which drops the drop-down while GTK is still
-// setting it, so it is held until the selection is done.
-static void sngl_drop_down_select(GtkDropDown *d, const char *label) {
-    GListModel *m = gtk_drop_down_get_model(d);
-    if (m == NULL || !GTK_IS_STRING_LIST(m)) return;
-    guint n = g_list_model_get_n_items(m);
-    for (guint i = 0; i < n; i++) {
-        if (strcmp(gtk_string_list_get_string(GTK_STRING_LIST(m), i), label) == 0) {
-            g_object_ref(d);
-            gtk_drop_down_set_selected(d, i);
-            g_object_unref(d);
-            return;
-        }
-    }
-}
-
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -659,6 +597,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"slices"
 	"strings"
 	"unsafe"
@@ -671,10 +610,7 @@ type ErrorEvent struct {
 
 // snglDropDownOffer is gtk4's select offering its choices (offerChoices).
 func snglDropDownOffer(d *C.GtkDropDown, labels, chosen string) {
-	l, c := C.CString(labels), C.CString(chosen)
-	defer C.free(unsafe.Pointer(l))
-	defer C.free(unsafe.Pointer(c))
-	C.sngl_drop_down_offer(d, l, c)
+	gtk4rt.DropDownOffer(gtk4rt.Handle(unsafe.Pointer(d)), labels, chosen)
 }
 
 func boolToInt(b bool) int {
@@ -856,7 +792,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) drop_notifySelected_handler() {
-	v := C.GoString(C.sngl_drop_down_label((*C.GtkDropDown)(unsafe.Pointer(m.drop))))
+	v := gtk4rt.DropDownLabel(gtk4rt.Handle(unsafe.Pointer(m.drop)))
 	if (v != "") && (v != m.pick) {
 		m.pick = v
 	}
@@ -928,9 +864,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 
 // dropChange selects the choice labeled v on the #drop widget; for tests.
 func (m *Model) dropChange(v string) {
-	__v := C.CString(v)
-	defer C.free(unsafe.Pointer(__v))
-	C.sngl_drop_down_select((*C.GtkDropDown)(unsafe.Pointer(m.drop)), __v)
+	gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(m.drop)), v)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -1130,54 +1064,57 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const opt of [{ label: "None" }, ...state.fruits.map((f) => ({ label: f }))]) {
-          let __n2 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n2 = __inst1_live[__inst1_i];
-            __n2.__set___p0(opt);
-            __n2.__set___p1(state.pick);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const opt of [{ label: "None" }, ...state.fruits.map((f) => ({ label: f }))]) {
+            let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n2 = __inst1_live[__inst1_i];
+              __n2.__set___p0(opt);
+              __n2.__set___p1(state.pick);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n2__new = __cf___child0({ __p0: opt, __p1: state.pick });
+              __n2 = __n2__new;
             }
-            let __n2__new = __cf___child0({ __p0: opt, __p1: state.pick });
-            __n2 = __n2__new;
+            __inst1_next.push(__n2);
+            __inst1_i = __inst1_i + 1;
+            let __n2__el = __n2.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n2__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n2__el, __place0_i_ref0);
+            }
+            __slot0.push(__n2__el);
           }
-          __inst1_next.push(__n2);
-          __inst1_i = __inst1_i + 1;
-          let __n2__el = __n2.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n2__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n2__el, __place0_i_ref0);
-          }
-          __slot0.push(__n2__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var $1 = document.getElementById("$1");
@@ -1204,8 +1141,8 @@ pass sha256:b4c17c31f750e3ee40dd80247264e471
 -- run/go/fyne --
 pass sha256:059da5c9fbaa06844cc769fb80d8a019
 -- run/go/gtk4 --
-pass sha256:4838fc4241b87144e19c0cd37cf1bc86
+pass sha256:a211d3a186e225873adf1a244fe300e5
 -- run/kotlin/android --
 pass sha256:d56e74c87477f825fa5f730d79b37c1d
 -- run/none/html --
-pass sha256:52bf0ceeb7c8a1ad6759aa5e22d9f1cd
+pass sha256:9f0346236ad9a5310ab6079b525f7645

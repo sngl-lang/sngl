@@ -27,8 +27,8 @@ type emitShared struct {
 	// calendarDate: a handler reads a GtkCalendar's day through
 	// calendarDateHelper.
 	calendarDate bool
-	// dropDown: the program builds a GtkDropDown, which the preamble's
-	// drop-down helpers serve.
+	// dropDown: the program builds a GtkDropDown, which snglDropDownOffer and
+	// gtk4rt's drop-down functions serve.
 	dropDown bool
 	errs     []error
 	seen     map[string]bool
