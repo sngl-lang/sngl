@@ -1101,6 +1101,6 @@ pass sha256:a6d41312be48e7532e8a3cfa7094096e
 -- run/go/fyne --
 pass sha256:d04071768f8045d594c966b88e0fda53
 -- run/kotlin/android --
-pass sha256:022fe3e38ab52b7b53c0f6d5c1692a85
+pass sha256:618f3c0b6fbc1ed2a1e7eb09f61e918c
 -- run/none/html --
 pass sha256:59f292d128828d21e1c77d941bccf84f

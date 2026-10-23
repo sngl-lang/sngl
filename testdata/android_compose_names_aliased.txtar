@@ -481,4 +481,4 @@ fun SnglScroll(
     Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:946e2590c82312024f41c27675933638
+pass sha256:ad0c9e2d01fef8743504ce9fc3b16e69

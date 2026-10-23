@@ -1867,7 +1867,7 @@ pass sha256:51dfba329ea1da8e1bfb61b851599fe5
 -- run/go/gtk4 --
 pass sha256:7ea3ae09c67a6056b1752d92462b5f0d
 -- run/kotlin/android --
-pass sha256:31c992b8112aeeb324f26766f664b751
+pass sha256:e7388229b29a282a5a2fc80a4c216b07
 -- run/none/html --
 pass sha256:0d2c31b006a7cebe8e4319637f577d5e
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --

@@ -569,7 +569,7 @@ pass sha256:d00a2852dcb70bad420fab7ac99bcc77
 -- run/go/fyne --
 pass sha256:1eb4ffe5b9d31b610296fc44561b7232
 -- run/kotlin/android --
-pass sha256:8194f67e0b7965afd4a43cfe83b736fb
+pass sha256:f63d40b81be7abe8120dd203b1f506d7
 -- run/none/html --
 pass sha256:addd51c2099c23745c0dd80dea7b51a9
 -- testrun/html/none/component_drawer.sngl/main/1 --

@@ -756,7 +756,7 @@ pass sha256:c6cc9b9db77905000ba43c973ddfed42
 -- run/go/gtk4 --
 pass sha256:19ef0c18cf4e8f270849f68697b94ea4
 -- run/kotlin/android --
-pass sha256:de5f20a0b52a13c29c90f717ada109b4
+pass sha256:01f40a9384f8f859889bee433e6aa4ba
 -- run/none/html --
 pass sha256:c60a1ac759017faeea8d07292a75046f
 -- testrun/html/none/component_emit_in_lambda.sngl/main/1 --

@@ -1254,7 +1254,7 @@ pass sha256:0c30efec09cc5dec26e0f4591718071d
 -- run/go/gtk4 --
 pass sha256:72ad53cf5e7a3a42b759d82a57e58ae8
 -- run/kotlin/android --
-pass sha256:25eb719bd0c559c1db38ebfb448f2381
+pass sha256:80d84c56bfd055cc695163df81575a9c
 -- run/none/html --
 pass sha256:74760cc2ad7d64376c1f48aeb89f6801
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --

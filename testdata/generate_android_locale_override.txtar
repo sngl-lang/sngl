@@ -562,4 +562,4 @@ private fun loadManifest(ctx: Context): Manifest {
     }
 }
 -- run/kotlin/android --
-pass sha256:86da9a846d0a188a35d51078b2853951
+pass sha256:6e24d8dfad3c229c78fc83af2b9b014f

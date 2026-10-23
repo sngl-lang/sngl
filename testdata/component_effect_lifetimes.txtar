@@ -4537,7 +4537,7 @@ pass sha256:4e68a94558d233139ddd2223da6203b1
 -- run/go/gtk4 --
 pass sha256:304b2592592db650e9cd725ebf65e701
 -- run/kotlin/android --
-pass sha256:fc3c2fdb5da97d39e5db6f40b6beeed2
+pass sha256:09116df07e9fbaee584c250b6df2932b
 -- run/none/html --
 pass sha256:b7fd3b22cf293ab89649c233165cf546
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --

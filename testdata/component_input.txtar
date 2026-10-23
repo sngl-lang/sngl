@@ -823,7 +823,7 @@ pass sha256:eb6e6eee4bcaeb41072d802b3bbf4b3d
 -- run/go/gtk4 --
 pass sha256:414e2b4171cb4dec26ced7a21e7d20c7
 -- run/kotlin/android --
-pass sha256:3974bc9ed14f07689e23c6ef8caaf491
+pass sha256:2284fb329e2e86846289accc7b17d1b0
 -- run/none/html --
 pass sha256:e1ba13d732f6bf00dac271a5b3667705
 -- testrun/html/none/component_input.sngl/main/1 --

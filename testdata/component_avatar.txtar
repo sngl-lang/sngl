@@ -1213,6 +1213,6 @@ pass sha256:dc9f8d673a5806918c0ed75f66183a88
 -- run/go/fyne --
 pass sha256:dfe0a99d1a57c068926a03537a70b0f4
 -- run/kotlin/android --
-pass sha256:3c3fdaf7761f5f06567020d5e2491d42
+pass sha256:25be0da1ade66507a4daeac54d7ce7aa
 -- run/none/html --
 pass sha256:6626f8dc0c1e50b37c6496bb201f9e3c

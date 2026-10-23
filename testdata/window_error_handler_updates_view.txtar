@@ -955,6 +955,6 @@ pass sha256:400bd54b4126bc5f2d1d872b3e81f992
 -- run/go/html --
 pass sha256:731ec4f5ee8344a995beb5f57b66abac
 -- run/kotlin/android --
-pass sha256:f3ee69385eed079e63ff9569361b4943
+pass sha256:4d36ebc5b06a6360fdef40f30afc3465
 -- run/none/html --
 pass sha256:f875f6c669a8bf464ecb11916209b395

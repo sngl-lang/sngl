@@ -662,7 +662,7 @@ pass sha256:950e5072df6b199d99e1c43db61ebaa4
 -- run/go/gtk4 --
 pass sha256:02fe8b3d1870c6ee5a68279c498d1679
 -- run/kotlin/android --
-pass sha256:5275f01acedcada7ce6e9e98fbcb0f82
+pass sha256:b4a2edfd47001933c845a49ce0e16650
 -- run/none/html --
 pass sha256:27c9e2fe7bbadf5619a97dcc833aac6c
 -- testrun/html/none/component_checkbox.sngl/main/1 --

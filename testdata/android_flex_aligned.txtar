@@ -342,4 +342,4 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     return m
 }
 -- run/kotlin/android --
-pass sha256:4f2a58237f3bfaabf71f0d02033c44f8
+pass sha256:18f9e6c9e15867cce1f521aa9a46dd2a

@@ -353,6 +353,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/gtk4 --
 pass sha256:36506bfdf284cfd76b32b2aa0c446350
 -- run/kotlin/android --
-pass sha256:bed4534fa8abe075172dd065ba8fd9c7
+pass sha256:0568cce17dcc2dc033a6b6dff2ae357e
 -- run/none/html --
 pass sha256:0879ff7e5cdd75bbcc289d54c8a7c1aa

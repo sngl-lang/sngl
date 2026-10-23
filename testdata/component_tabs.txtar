@@ -1890,7 +1890,7 @@ pass sha256:07e8b12bda7d06cc63d32e62d1e98285
 -- run/go/gtk4 --
 pass sha256:387af60c290384a9f244fc8febc69b7a
 -- run/kotlin/android --
-pass sha256:8b0280e42177b2d3787ff44e180de9c7
+pass sha256:90f2d70e3e40cbc0a0c29d96716f3364
 -- run/none/html --
 pass sha256:2fb804a19f85c5d3ef0cdd77a54108c7
 -- testrun/html/none/component_tabs.sngl/main/1 --

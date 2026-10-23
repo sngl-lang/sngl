@@ -932,6 +932,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9a34c0751cd039b29451a32839edca96
 -- run/kotlin/android --
-pass sha256:1383875deee7f0485bcbafbb32d86069
+pass sha256:5920caef1c39a13140d04c243c6c7361
 -- run/none/html --
 pass sha256:78a585ff4638d1fae42cf2aadca67366

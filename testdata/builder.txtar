@@ -425,6 +425,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:c7d9b2a1f6cf9897d90fa9a25b8a99a4
 -- run/kotlin/android --
-pass sha256:953826ffddffe00c506087f57fc68a2a
+pass sha256:c60d76ef5ac9be4da7298a6f548f1d99
 -- run/none/html --
 pass sha256:e5ea679481abb1a2705f65af3bbdc0a1
