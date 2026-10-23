@@ -122,8 +122,6 @@ type Model struct {
 // modelState is what every copy of a Model shares.
 type modelState struct {
 	log                 string
-	__rel0              File
-	__rel1              File
 	on                  bool
 	at                  int
 	xs                  []int
@@ -168,8 +166,6 @@ type modelState struct {
 func New() Model {
 	m := Model{&modelState{}}
 	m.log = ""
-	m.__rel0 = File{}
-	m.__rel1 = File{}
 	m.on = true
 	m.at = 0
 	m.xs = []int{1}
@@ -400,7 +396,7 @@ func (m *Model) __effect6_enter() {
 				if __v, __ok := m.f__inst2[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
-				return m.__rel0
+				return File{}
 			}()
 			__cell2_f__inst2 = File{Fd: x}
 			m.f__inst2[fmt.Sprint(__copy0)] = __cell2_f__inst2
@@ -416,7 +412,7 @@ func (m *Model) __effect7_unmount() {
 		if __v, __ok := m.f__inst2[__copyKey]; __ok {
 			return __v
 		}
-		return m.__rel1
+		return File{}
 	}())
 }
 
@@ -535,8 +531,6 @@ func (m *Model) __snglTeardown() {
 	m.__effect4_teardown()
 	m.__effect2_teardown()
 	m.__effect1_teardown()
-	m.close__r0(m.__rel0)
-	m.close__r0(m.__rel1)
 }
 
 func (m *Model) __focusLoop2_len() int {
@@ -1044,4 +1038,4 @@ func TestFor(t *testing.T) {
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:159233b33278de02b1c4067dc55a92dc
+pass sha256:f75ef34718dbbc2837368fe530d92beb

@@ -173,7 +173,9 @@ the write it was read for had just stored. Nor does an intrinsic's parameter
 borrow: `push` stores what it is handed, and released after the statement the
 list held a freed value (`pushes` in `testdata/error_owned_tracker.sngl`), so
 an allocation handed to one is held with the list, as the spec says of a
-value in a collection. Each is bound to a `__relN` before the statement,
+value in a collection. The zero literal the effect lowering hands a copy's
+`getOr` as its default was an application-lifetime `__relN` by the same
+misreading, and stands inline now (`testdata/canvas_for_shape_state.txtar`). Each is bound to a `__relN` before the statement,
 an allocation's own arguments first, and released after it with an explicit
 statement, never Go's `defer` -- that is function-scoped, wrong in a loop in a
 draw callback, and C has none (`testdata/owned_canvas_text.txtar` denies one).
