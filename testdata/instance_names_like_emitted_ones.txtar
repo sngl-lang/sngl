@@ -799,6 +799,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot2 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -850,6 +851,7 @@ func new__child1Instance(__model *Model, __a___p0 int) *__child1Instance {
 	c.__slot2 = nil
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ("p " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -925,4 +927,4 @@ func (m *Model) bumpClick() {
 -- run/go/fyne --
 pass sha256:792981b56b64c860e8994c152069fbcd
 -- run/go/gtk4 --
-pass sha256:8e0c85104821d099408dabb314cb23ad
+pass sha256:cd7644004d0b4fcb4a8190491e4d2831

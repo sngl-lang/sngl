@@ -1014,6 +1014,7 @@ func new__child0Instance(__model *Model, __a___p0 Shape) *__child0Instance {
 	c.__slot0 = nil
 	c.round = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.round, ("radius " + fmt.Sprint(c.__prop___p0.Circle)))
+	gtk4rt.LabelSetXAlign(c.round, 0.0)
 	c.Root = c.round
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1077,6 +1078,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.shownArea = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
+	gtk4rt.LabelSetXAlign(m.shownArea, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.shownArea)
 	var __lt0 string
 	if m.result__inst0.tag == 0 {
@@ -1086,6 +1088,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.outcome = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.outcome, __lt0)
+	gtk4rt.LabelSetXAlign(m.outcome, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.outcome)
 	var __lt1 string
 	if m.shape__inst0.tag == 1 {
@@ -1095,6 +1098,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.facts = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt1) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	gtk4rt.LabelSetXAlign(m.facts, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.facts)
 	var __lt2 string
 	if m.shape__inst0.tag == 1 {
@@ -1104,6 +1108,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.radius = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.radius, __lt2)
+	gtk4rt.LabelSetXAlign(m.radius, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.radius)
 	m.__renderSlot0(m.__n0)
 	m.grow = gtk4rt.ButtonNew()
@@ -1451,7 +1456,7 @@ pass sha256:5f2e4c42cb7b898a7debaf69b0ae8eec
 -- run/go/fyne --
 pass sha256:7c029f34ea95cccb8ac5d4f7e5ad0ca7
 -- run/go/gtk4 --
-pass sha256:4f1d30be2249000e677ef1f8d7f55ab7
+pass sha256:0ba3d4dff8f2d8662ef15f0ad150f639
 -- run/kotlin/android --
 pass sha256:0f2df182fd6b08c848cb581fadfdcba8
 -- run/none/html --

@@ -1034,6 +1034,7 @@ func new__block_state0Instance(__model *Model, __a_r []string, __a_skip string, 
 	c.__renderAgain1 = false
 	__n0 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n0, fmt.Sprint(c.local))
+	gtk4rt.LabelSetXAlign(__n0, 0.0)
 	gtk4rt.BoxAppend(c.__root, __n0)
 	c.__renderSlot1(c.__root)
 	c.Root = c.__root
@@ -1698,7 +1699,7 @@ pass sha256:bc108632399be32519752759cb455069
 -- run/go/fyne --
 pass sha256:678168ec91ad4bf96fa59ab5cd9284c5
 -- run/go/gtk4 --
-pass sha256:010bdc809f44ac5142b5ac3f94411c25
+pass sha256:3f2f68484f8111b2edec8f6f126425c5
 -- run/kotlin/android --
 pass sha256:0d4478129fb3471237788462500cf92e
 -- run/none/html --

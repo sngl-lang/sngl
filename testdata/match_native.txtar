@@ -1736,6 +1736,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				if m.d__inst1 == "up" {
 					m.north = gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(m.north, "north")
+					gtk4rt.LabelSetXAlign(m.north, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, m.north)
 					m.__slot0 = append(m.__slot0, m.north)
 				} else {
@@ -1750,6 +1751,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					} else {
 						__n6 := gtk4rt.LabelNew("")
 						gtk4rt.LabelSetText(__n6, "east")
+						gtk4rt.LabelSetXAlign(__n6, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
 						m.__slot0 = append(m.__slot0, __n6)
 					}
@@ -1790,6 +1792,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					} else {
 						__n7 := gtk4rt.LabelNew("")
 						gtk4rt.LabelSetText(__n7, "other")
+						gtk4rt.LabelSetXAlign(__n7, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
 						m.__slot1 = append(m.__slot1, __n7)
 					}
@@ -1928,9 +1931,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n8 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n8, "left-handed")
+	gtk4rt.LabelSetXAlign(m.__n8, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, m.axis__inst0)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	var __lt2 string
 	if m.maybe__inst0 == nil {
@@ -1946,12 +1951,15 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n2, __lt2)
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n3, Count(m.tally__inst0))
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n4, Grade((FirstDown(m.flips__inst0) * 60)))
+	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
 	m.turn = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.turn, "Turn")
@@ -1967,6 +1975,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n5, __lt4)
+	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n5)
 	m.spin = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.spin, "Spin")
@@ -2619,7 +2628,7 @@ pass sha256:79b56cd12b490dc2f23624ac95732d07
 -- run/go/fyne --
 pass sha256:261f1133eec5719bf79c1ef74a6aa461
 -- run/go/gtk4 --
-pass sha256:3e88efced80f638b1ee1efed1eaf703c
+pass sha256:d67ccd622466c8f0855a5ce4363f0ec0
 -- run/kotlin/android --
 pass sha256:9d43b385de74ed30f48509be4e17a903
 -- run/none/html --

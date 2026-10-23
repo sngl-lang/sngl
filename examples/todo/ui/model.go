@@ -299,9 +299,9 @@ func (m Model) View() tea.View {
 		}
 		content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("Add"))
 		content_1Children = append(content_1Children, content_1_1)
-		content_1 = tui.Row(1, content_1Children...)
+		content_1 = tui.RowAt(lipgloss.Center, 1, content_1Children...)
 		content_1 = lipgloss.NewStyle().
-			AlignHorizontal(lipgloss.Center).Render(content_1)
+			AlignHorizontal(lipgloss.Center).AlignVertical(lipgloss.Center).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string

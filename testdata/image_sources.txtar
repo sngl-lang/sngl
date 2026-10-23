@@ -1278,7 +1278,8 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 				if m.failed__inst0 || !m.hasPhoto__inst0 {
 					__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 					C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
-					gtk4rt.SetStyle(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Style{Width: 40.0, Height: 40.0, Background: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, BorderRadius: 20.0})
+					C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n4)), C.float(0.0))
+					gtk4rt.SetStyle(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Style{Width: 40.0, Height: 40.0, AlignItems: "center", TextAlign: "center", Background: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, BorderRadius: 20.0})
 					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 					m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 				} else {
@@ -2269,7 +2270,7 @@ pass sha256:af71ea7991e3a8a1d3afe419d6d2b2c3
 -- run/go/fyne --
 pass sha256:39cb0722c74a86edbcf386a8f777e0a7
 -- run/go/gtk4 --
-pass sha256:69bceb7d90349e2692b3c541c4326dc7
+pass sha256:c221a76096c37e3f4c62fd6860d2e3c0
 -- run/kotlin/android --
 pass sha256:b42b419cf3fd88c15d167bd6b7c70df3
 -- run/none/html --

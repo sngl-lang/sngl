@@ -306,6 +306,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				if m.on {
 					__n0 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n0, "carded")
+					gtk4rt.LabelSetXAlign(__n0, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
 					m.__slot0 = append(m.__slot0, __n0)
 				}
@@ -334,6 +335,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				if m.on {
 					__n1 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n1, "scrolled")
+					gtk4rt.LabelSetXAlign(__n1, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n1)
 					m.__slot1 = append(m.__slot1, __n1)
 				}
@@ -413,4 +415,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:a20d31a4cff15190e0291d62a87db3d5
 -- run/go/gtk4 --
-pass sha256:70346cff99f160d59a82bc6f81dcf934
+pass sha256:a8c90991636c42b2e9735dda3e1813e7

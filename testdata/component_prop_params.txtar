@@ -321,6 +321,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, ("Clicks: " + fmt.Sprint(m.count__inst0)))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	gtk4rt.AppAttach(m.__n0)
@@ -415,7 +416,7 @@ pass sha256:10629e11228d123a5d392aad9013efdf
 -- run/go/fyne --
 pass sha256:7bc92f306640cd9ea7e3630f605dc816
 -- run/go/gtk4 --
-pass sha256:f50e400541ba75d08f3c354962fa792b
+pass sha256:d5c5f53b1295e706ea0384573644055d
 -- run/kotlin/android --
 pass sha256:bcf6ef3247914c8fc7aa39cf35322472
 -- run/none/html --

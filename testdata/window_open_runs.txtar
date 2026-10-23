@@ -593,6 +593,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.details, m.details_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.details, m.__n0)
 	m.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n1, "Close")
@@ -609,6 +610,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:05849aea2b3f1c08e1f794ca069d1f98
+pass sha256:152aaea6aed6fb737481edfc5196b949
 -- run/go/gtk4 --
-pass sha256:0189a8dedaf11bd8b45d5e3cc8ddb022
+pass sha256:58aa462c76f1ae6c9d31c77fc2b61f8e

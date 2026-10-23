@@ -405,6 +405,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n0, ("outer: " + __lt2))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n0)
 	var __lt3 string
 	if m.dark {
@@ -414,6 +415,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, ("sibling: " + __lt3))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
 }
@@ -569,7 +571,7 @@ pass sha256:a3aa99e2f7203426d8da6da30ecf33c4
 -- run/go/fyne --
 pass sha256:2adf00c3b18808fb913a5ef8a0b4296b
 -- run/go/gtk4 --
-pass sha256:37a9c53c72c0ae9f8a01e6ee5166dda3
+pass sha256:f915542a63f216a71d40af6224dedbd7
 -- run/kotlin/android --
 pass sha256:a2df5db7a4b32a67b6b83543a1cd59d1
 -- run/none/html --

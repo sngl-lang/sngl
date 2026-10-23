@@ -575,6 +575,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot1 = nil
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ("body of " + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -636,4 +637,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:a53815656eb426324b33a7f002422717
 -- run/go/gtk4 --
-pass sha256:74c9259ebaa3aa8b60d2cf8559b85b76
+pass sha256:64ba95abf18eba6272d9452ea90d9ef4

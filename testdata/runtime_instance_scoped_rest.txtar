@@ -804,9 +804,11 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	__n0 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n0, ("card " + fmt.Sprint(c.k)))
+	gtk4rt.LabelSetXAlign(__n0, 0.0)
 	gtk4rt.BoxAppend(__n4, __n0)
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ((("scoped " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
+	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(__n4, c.__n1)
 	c.__effects0_settle()
 	c.Root = __n4
@@ -1253,7 +1255,7 @@ pass sha256:e3cace5d19ee28faa1b59e39e76f8b5f
 -- run/go/fyne --
 pass sha256:22ee281acc1fa284aba277fb885f38ba
 -- run/go/gtk4 --
-pass sha256:f8a034aea044c031cd6d298ad099b8bd
+pass sha256:daf1ffecbd23f21fe2f17774cd07cbb9
 -- run/kotlin/android --
 pass sha256:64898ece2e8d8fb2c1d8ae7651d658f7
 -- run/none/html --

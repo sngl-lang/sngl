@@ -737,14 +737,17 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__slot3 = nil
 	__n6 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n6, "[")
+	gtk4rt.LabelSetXAlign(__n6, 0.0)
 	gtk4rt.BoxAppend(c.__root, __n6)
 	c.__renderSlot0(c.__root)
 	__n7 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n7, "|")
+	gtk4rt.LabelSetXAlign(__n7, 0.0)
 	gtk4rt.BoxAppend(c.__root, __n7)
 	c.__renderSlot1(c.__root)
 	__n8 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n8, "]")
+	gtk4rt.LabelSetXAlign(__n8, 0.0)
 	__n9 := gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(__n9, "flip")
 	gtk4rt.Connect(__n9, "clicked", func() {
@@ -783,6 +786,7 @@ func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
 				for _, x := range c.__prop_xs {
 					__n2 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n2, x)
+					gtk4rt.LabelSetXAlign(__n2, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot0_at, __n2)
 					c.__slot0 = append(c.__slot0, __n2)
 				}
@@ -811,6 +815,7 @@ func (c *CardInstance) __renderSlot1(parent gtk4rt.Handle) {
 				if c.open {
 					__n3 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n3, "open")
+					gtk4rt.LabelSetXAlign(__n3, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot1_at, __n3)
 					c.__slot1 = append(c.__slot1, __n3)
 				}
@@ -865,14 +870,17 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n10 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n10, "header")
+	gtk4rt.LabelSetXAlign(m.__n10, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n10)
 	m.__renderSlot2(m.__n1)
 	m.__n11 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n11, "mid")
+	gtk4rt.LabelSetXAlign(m.__n11, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n11)
 	m.__renderSlot3(m.__n1)
 	m.__n12 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n12, "footer")
+	gtk4rt.LabelSetXAlign(m.__n12, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n12)
 	m.more = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.more, "more")
@@ -895,4 +903,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:50b118daa7df7ddaca688f80108200c8
 -- run/go/gtk4 --
-pass sha256:b90675ca1c8737d6c776b00e1cfeff3e
+pass sha256:5e20f2edcccd24a78d07a2710da5a577

@@ -1409,9 +1409,11 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.BoxSetSpacing(c.__n16, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, c.__prop_m)
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(c.__n16, c.__n0)
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(c.__n16, c.__n1)
 	c.__renderSlot0(c.__n16)
 	c.Root = c.__n16
@@ -1587,9 +1589,11 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.BoxSetSpacing(c.__n18, 6)
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, c.__prop_m)
+	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	gtk4rt.BoxAppend(c.__n18, c.__n2)
 	c.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n3, 0.0)
 	gtk4rt.BoxAppend(c.__n18, c.__n3)
 	c.__renderSlot1(c.__n18)
 	c.Root = c.__n18
@@ -1765,9 +1769,11 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.BoxSetSpacing(c.__n20, 6)
 	c.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n4, c.__prop_m)
+	gtk4rt.LabelSetXAlign(c.__n4, 0.0)
 	gtk4rt.BoxAppend(c.__n20, c.__n4)
 	c.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n5, 0.0)
 	gtk4rt.BoxAppend(c.__n20, c.__n5)
 	c.__renderSlot2(c.__n20)
 	c.Root = c.__n20
@@ -1943,9 +1949,11 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.BoxSetSpacing(c.__n22, 6)
 	c.__n6 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n6, c.__prop_m)
+	gtk4rt.LabelSetXAlign(c.__n6, 0.0)
 	gtk4rt.BoxAppend(c.__n22, c.__n6)
 	c.__n7 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n7, 0.0)
 	gtk4rt.BoxAppend(c.__n22, c.__n7)
 	c.__renderSlot3(c.__n22)
 	c.Root = c.__n22
@@ -2121,9 +2129,11 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.BoxSetSpacing(c.__n24, 6)
 	c.__n8 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n8, c.__prop_m)
+	gtk4rt.LabelSetXAlign(c.__n8, 0.0)
 	gtk4rt.BoxAppend(c.__n24, c.__n8)
 	c.__n9 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n9, 0.0)
 	gtk4rt.BoxAppend(c.__n24, c.__n9)
 	c.__renderSlot4(c.__n24)
 	c.Root = c.__n24
@@ -2299,9 +2309,11 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.BoxSetSpacing(c.__n26, 6)
 	c.__n10 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n10, c.__prop_m)
+	gtk4rt.LabelSetXAlign(c.__n10, 0.0)
 	gtk4rt.BoxAppend(c.__n26, c.__n10)
 	c.__n11 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n11, 0.0)
 	gtk4rt.BoxAppend(c.__n26, c.__n11)
 	c.__renderSlot5(c.__n26)
 	c.Root = c.__n26
@@ -3465,7 +3477,7 @@ pass sha256:0e2667d9a1360ee65d5f2d29ca1d3ede
 -- run/go/fyne --
 pass sha256:8aa847996eaf1cab5b9a933e51ebb972
 -- run/go/gtk4 --
-pass sha256:1af955819ccf3895bc0db74924c8cbad
+pass sha256:a0ae6bc84fe8c49fb20aa219245aa732
 -- run/kotlin/android --
 pass sha256:7c0d746c9e5037b8688e1bec65bc823a
 -- run/none/html --

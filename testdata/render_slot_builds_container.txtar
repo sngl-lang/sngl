@@ -394,6 +394,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					gtk4rt.BoxSetSpacing(__n1, 6)
 					__n2 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n2, it)
+					gtk4rt.LabelSetXAlign(__n2, 0.0)
 					gtk4rt.BoxAppend(__n1, __n2)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 					m.__slot0 = append(m.__slot0, __n1)
@@ -426,7 +427,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 					gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
 					gtk4rt.BoxSetSpacing(__n3, 6)
-					gtk4rt.SetStyle(__n3, gtk4rt.Style{Gap: 8.0})
+					gtk4rt.SetStyle(__n3, gtk4rt.Style{Gap: 8.0, AlignItems: "start"})
 					var __n4 *__checkbox_state0Instance
 					if len(m.__inst0_live) > __inst0_i {
 						__n4 = m.__inst0_live[__inst0_i]
@@ -448,6 +449,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					gtk4rt.BoxSetSpacing(__n5, 6)
 					__n6 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n6, it)
+					gtk4rt.LabelSetXAlign(__n6, 0.0)
 					gtk4rt.BoxAppend(__n5, __n6)
 					gtk4rt.BoxAppend(__n3, __n5)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
@@ -576,4 +578,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:f01b17c269ab21d5253e1f03b5453d5c
 -- run/go/gtk4 --
-pass sha256:ff8d2c117b5c9310e224533410ba2912
+pass sha256:23120a4d97da24493ec74c5879a19ff1

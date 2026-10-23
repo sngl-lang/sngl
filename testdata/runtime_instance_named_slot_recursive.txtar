@@ -750,6 +750,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
 	c.__renderSlot0(c.__n5)
 	c.Root = c.__n5
@@ -889,6 +890,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	gtk4rt.BoxSetSpacing(c.__n7, 6)
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(c.__n7, c.__n1)
 	c.__renderSlot1(c.__n7)
 	c.Root = c.__n7
@@ -1410,7 +1412,7 @@ pass sha256:9f8866a210e7248201cf78d383b73d2e
 -- run/go/fyne --
 pass sha256:e6a31471c3fc7139e5049dd84900014f
 -- run/go/gtk4 --
-pass sha256:bf506b3444e34111fd1b713266aea5bc
+pass sha256:1815f448c37e3420c5f433c9714733d4
 -- run/kotlin/android --
 pass sha256:2fc65d304bebfaeb50dd285170539f82
 -- run/none/html --

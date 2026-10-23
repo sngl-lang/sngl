@@ -110,6 +110,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.count))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	m.__n3 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n3, "+")
@@ -126,4 +127,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:9530f1ba6d7ea4246d6082c0b16b13de
+pass sha256:72474ddb33643558e531e0b8601da01c

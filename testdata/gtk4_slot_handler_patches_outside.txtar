@@ -332,6 +332,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__root)
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.on))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	var __lt1 string
 	if m.on {
 		__lt1 = "yes"
@@ -340,6 +341,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, __lt1)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 }
@@ -380,4 +382,4 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 -- run/go/fyne --
 pass sha256:2449375ffd21003af2a21e430e9a4aca
 -- run/go/gtk4 --
-pass sha256:2771a81d8fa26370580de06844f90fcd
+pass sha256:9afda1b4491b2be62c0c19545c978336

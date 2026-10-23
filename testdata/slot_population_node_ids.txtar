@@ -693,6 +693,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
 	m.label = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.label)), C.CString("inside"))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.label)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.label)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
@@ -706,6 +707,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString("radius 5"))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -1080,7 +1082,7 @@ pass sha256:4fe50b5d33008f6b8fa0d786946ef400
 -- run/go/fyne --
 pass sha256:c269fa43fcc8ff0f3fc0f3f8423487cd
 -- run/go/gtk4 --
-pass sha256:3ad161404ea119091e6731ba770da9e0
+pass sha256:ff3d8e5f4c9d1b448dabcd41902c16cb
 -- run/kotlin/android --
 pass sha256:06067c5416f333ab560bd88f089cbfc8
 -- run/none/html --

@@ -276,6 +276,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				if m.__failed0 {
 					__n1 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n1, "sorry it broke")
+					gtk4rt.LabelSetXAlign(__n1, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 					m.__slot0 = append(m.__slot0, __n1)
 				} else {
@@ -338,6 +339,7 @@ func (m *Model) buildWidgetTree() {
 	for _, x := range []string{"a", "b"} {
 		m.__n4 = gtk4rt.LabelNew("")
 		gtk4rt.LabelSetText(m.__n4, x)
+		gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 		gtk4rt.BoxAppend(m.__n3, m.__n4)
 	}
 	m.__renderSlot0(m.__n3)
@@ -455,6 +457,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f6000089554d33ec497ccfee887bdade
 -- run/go/gtk4 --
-pass sha256:ca4f54db30c27a162f0f170e1f9e2f37
+pass sha256:f05db34aed87d52d0cbbfccfd2b00a3a
 -- run/none/html --
 pass sha256:acc91ef1047a11ffc9ea506a1cf7ba04

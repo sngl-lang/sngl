@@ -791,17 +791,20 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				if m.status__inst0 == "active" {
 					__n4 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n4, "on")
+					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
 					m.__slot0 = append(m.__slot0, __n4)
 				} else {
 					if m.status__inst0 == "inactive" {
 						__n5 := gtk4rt.LabelNew("")
 						gtk4rt.LabelSetText(__n5, "off")
+						gtk4rt.LabelSetXAlign(__n5, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
 						m.__slot0 = append(m.__slot0, __n5)
 					} else {
 						__n6 := gtk4rt.LabelNew("")
 						gtk4rt.LabelSetText(__n6, "waiting")
+						gtk4rt.LabelSetXAlign(__n6, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
 						m.__slot0 = append(m.__slot0, __n6)
 					}
@@ -921,6 +924,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, __lt3)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	var __lt5 string
 	if m.rolls__inst0 > 10 {
@@ -936,6 +940,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n2, __lt5)
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n7 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n7, "Roll")
@@ -943,6 +948,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n3, m.last__inst0)
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -1258,7 +1264,7 @@ pass sha256:77571e3b79583570d39a0e2da73c2982
 -- run/go/fyne --
 pass sha256:620ef3a9f415a02614963326ec85224a
 -- run/go/gtk4 --
-pass sha256:0ec21a101612b953cfad6fe2d94194ca
+pass sha256:6056e173eec34fa3b65e9f3e4fcf3fb0
 -- run/kotlin/android --
 pass sha256:be1b0e75d071643981b9c61ddd539b52
 -- run/none/html --

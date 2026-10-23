@@ -1408,6 +1408,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.press)))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
@@ -1861,7 +1862,7 @@ pass sha256:2c10909663d89d1edbd818791d9f834d
 -- run/go/fyne --
 pass sha256:7afd12707a166b11f90f0b791c169384
 -- run/go/gtk4 --
-pass sha256:2f9d215b9c70676e1d30d0cd0571a957
+pass sha256:03aaab0e304d040de099e00e21acbca3
 -- run/kotlin/android --
 pass sha256:99f4fbe926de8290d623f5ffa0d69d7f
 -- run/none/html --

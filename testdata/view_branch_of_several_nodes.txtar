@@ -912,10 +912,12 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				for _, x := range m.xs {
 					__n3 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n3, ("first " + fmt.Sprint(x)))
+					gtk4rt.LabelSetXAlign(__n3, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 					m.__slot1 = append(m.__slot1, __n3)
 					__n4 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n4, ("second " + fmt.Sprint(x)))
+					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 					m.__slot1 = append(m.__slot1, __n4)
 				}
@@ -1603,7 +1605,7 @@ pass sha256:a3ce2cb721dabe35226036d8b3ad262e
 -- run/go/fyne --
 pass sha256:1afb2d3a5b0ed072990f40197fa86de9
 -- run/go/gtk4 --
-pass sha256:c4ed752a9b02deacc468fcf617dfe872
+pass sha256:c02929a8f04a876302bd5266db6fe189
 -- run/kotlin/android --
 pass sha256:303b75d829859c336773434c62e438fb
 -- run/none/html --

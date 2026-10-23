@@ -2112,6 +2112,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					for _, p := range (*(m.page__inst0)).Results {
 						__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 						C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString(p.Name))
+						C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n4)), C.float(0.0))
 						C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 						m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 					}
@@ -2238,6 +2239,7 @@ func (m *Model) __renderSlot3(parent *C.GtkBox) {
 					for _, t := range (*(m.pet__inst0)).Tags {
 						__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 						C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n8)), C.CString(t.Type.Name))
+						C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n8)), C.float(0.0))
 						gtk4rt.SetStyle(gtk4rt.Handle(unsafe.Pointer(__n8)), gtk4rt.Style{PaddingX: 8.0, PaddingY: 2.0, BorderRadius: 12.0})
 						C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n8)))
 						m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n8)))
@@ -2319,6 +2321,7 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c.__slot3 = nil
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message)))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.float(0.0))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -2376,6 +2379,7 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c.__slot3 = nil
 	c.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name)))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.float(0.0))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n1))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -2531,6 +2535,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
 	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString(m.from__inst0))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -4333,7 +4338,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:47b3f98b353501cb4c6a6a63b3753707
 -- run/go/gtk4 --
-pass sha256:0fde813ba1775b4a3e548e2baba565b0
+pass sha256:e04fe5d2ee740fe6a68c159c77e65887
 -- run/kotlin/android --
 pass sha256:af35a1e4ecd6204d323aa003ed0dddaf
 -- run/none/html --

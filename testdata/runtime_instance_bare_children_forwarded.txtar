@@ -836,6 +836,7 @@ func newCard__slot2Instance(__model *Model, __a___p0 string) *Card__slot2Instanc
 	gtk4rt.BoxAppend(__n13, c.__n1)
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, ("ALPHA " + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	gtk4rt.BoxAppend(__n13, c.__n2)
 	c.Root = __n13
 	gtk4rt.Retain(c.Root)
@@ -1572,6 +1573,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:0877c5379b829fe73b02654c5688c0e1
 -- run/go/gtk4 --
-pass sha256:6b6fa227e8e3f58cc88ff5792ac67267
+pass sha256:baea6df596ee49308cd70f4db95e45c6
 -- run/none/html --
 pass sha256:260f73bce5ce0e3ba70422139fdbc39f

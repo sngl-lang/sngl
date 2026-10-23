@@ -732,6 +732,7 @@ func newFrame__slot0Instance(__model *Model, __a___p0 float64) *Frame__slot0Inst
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n3)), C.int(6))
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("hits " + fmt.Sprint(c.hits))))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
 	c.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n4, C.int(40))
@@ -1031,6 +1032,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:d74e706dbbe9096dc7a9ff2e01637a70
 -- run/go/gtk4 --
-pass sha256:291ae9817226b4493255de3793858254
+pass sha256:77ca949982c0d9f06fbf9ff203824012
 -- run/none/html --
 pass sha256:40d120338e895483863e2c98c00e9b5d

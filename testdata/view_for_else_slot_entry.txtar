@@ -246,12 +246,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				if len(m.xs__inst0) == 0 {
 					__n1 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n1, "nothing here")
+					gtk4rt.LabelSetXAlign(__n1, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 					m.__slot0 = append(m.__slot0, __n1)
 				} else {
 					for _, i := range m.xs__inst0 {
 						__n2 := gtk4rt.LabelNew("")
 						gtk4rt.LabelSetText(__n2, fmt.Sprint(i))
+						gtk4rt.LabelSetXAlign(__n2, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 						m.__slot0 = append(m.__slot0, __n2)
 					}
@@ -437,6 +439,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:15cd1a9898d9d697cbb8638221d11b2b
 -- run/go/gtk4 --
-pass sha256:e0077426f4751d129c5f48343fea4f8a
+pass sha256:9810663a52d5572c58ee38d270767814
 -- run/none/html --
 pass sha256:f1b7425e0a1e3906687c1c35f78717da

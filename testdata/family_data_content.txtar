@@ -671,6 +671,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if c__r0.__id == 0 {
 							__n2 := gtk4rt.LabelNew("")
 							gtk4rt.LabelSetText(__n2, "first")
+							gtk4rt.LabelSetXAlign(__n2, 0.0)
 							gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 							m.__slot0 = append(m.__slot0, __n2)
 						} else {
@@ -744,6 +745,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1073,7 +1075,7 @@ pass sha256:bf3b0354d2863341604fccd406d592d1
 -- run/go/fyne --
 pass sha256:b1ef46d1e1045ea53981739c87ec9934
 -- run/go/gtk4 --
-pass sha256:5021f92499e2bfc47eb07dfa90e187f4
+pass sha256:2a859440524754e536d141d6235adc14
 -- run/kotlin/android --
 pass sha256:6142d0a2a1dd02fcfd0433a6dd3d4bf0
 -- run/none/html --

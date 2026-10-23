@@ -490,6 +490,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(c.__n4, c.__n0)
 	c.__renderSlot0(c.__n4)
 	c.Root = c.__n4
@@ -624,6 +625,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
 	__n7 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n7, "top")
+	gtk4rt.LabelSetXAlign(__n7, 0.0)
 	gtk4rt.BoxAppend(c.__n6, __n7)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
@@ -1033,6 +1035,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:f57c2ab8a3c8acf2bd297377c7bf8487
 -- run/go/gtk4 --
-pass sha256:320ac94530b1e1b06fa90f8215475f46
+pass sha256:a44baafb339851fac13ec5371ebd7637
 -- run/none/html --
 pass sha256:3e9f3b84c058deb7247c7ed31b22f3a8

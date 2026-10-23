@@ -1142,6 +1142,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					if m.pages__current.Id == 1 {
 						__n9 := gtk4rt.LabelNew("")
 						gtk4rt.LabelSetText(__n9, "about")
+						gtk4rt.LabelSetXAlign(__n9, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot1_at, __n9)
 						m.__slot1 = append(m.__slot1, __n9)
 					}
@@ -1208,6 +1209,7 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	})
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ("hits " + fmt.Sprint(c.hits)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, __n11)
 	gtk4rt.BoxAppend(__box, c.__n0)
@@ -1265,6 +1267,7 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 	})
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, c.__n1)
 	gtk4rt.BoxAppend(__box, c.__n2)
@@ -1436,10 +1439,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n10, m.__n13)
 	m.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
 	gtk4rt.BoxAppend(m.__n10, m.__n5)
 	m.__renderSlot0(m.__n10)
 	m.__n6 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+	gtk4rt.LabelSetXAlign(m.__n6, 0.0)
 	gtk4rt.BoxAppend(m.__n10, m.__n6)
 	m.__renderSlot1(m.__n10)
 	m.__n14 = gtk4rt.ButtonNew()
@@ -2074,7 +2079,7 @@ pass sha256:6a6bbb5c74f880616f3b52fc394735ef
 -- run/go/fyne --
 pass sha256:3d811c1a7981123f581fa9612dc6709f
 -- run/go/gtk4 --
-pass sha256:ccb9d6b08719f31c2d6c150118784d68
+pass sha256:ed5ef793b8b9e3d08c09bf212ecd6912
 -- run/kotlin/android --
 pass sha256:859713184b186410eaae7db4af2aeb79
 -- run/none/html --

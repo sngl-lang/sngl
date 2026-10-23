@@ -1331,7 +1331,7 @@ func __merge_Style(base, ov Style) Style {
 }
 
 func snglStyle(s Style) gtk4rt.Style {
-	return gtk4rt.Style{Width: (s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), MinWidth: (s.MinWidth.Px + (11.0 * (s.MinWidth.Em + s.MinWidth.Rem))), Height: (s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), Gap: (s.Gap.Px + (11.0 * (s.Gap.Em + s.Gap.Rem))), Padding: (s.Padding.Px + (11.0 * (s.Padding.Em + s.Padding.Rem))), PaddingX: (s.PaddingX.Px + (11.0 * (s.PaddingX.Em + s.PaddingX.Rem))), PaddingY: (s.PaddingY.Px + (11.0 * (s.PaddingY.Em + s.PaddingY.Rem))), PaddingTop: (s.PaddingTop.Px + (11.0 * (s.PaddingTop.Em + s.PaddingTop.Rem))), PaddingRight: (s.PaddingRight.Px + (11.0 * (s.PaddingRight.Em + s.PaddingRight.Rem))), PaddingBottom: (s.PaddingBottom.Px + (11.0 * (s.PaddingBottom.Em + s.PaddingBottom.Rem))), PaddingLeft: (s.PaddingLeft.Px + (11.0 * (s.PaddingLeft.Em + s.PaddingLeft.Rem))), Margin: (s.Margin.Px + (11.0 * (s.Margin.Em + s.Margin.Rem))), MarginX: (s.MarginX.Px + (11.0 * (s.MarginX.Em + s.MarginX.Rem))), MarginY: (s.MarginY.Px + (11.0 * (s.MarginY.Em + s.MarginY.Rem))), MarginTop: (s.MarginTop.Px + (11.0 * (s.MarginTop.Em + s.MarginTop.Rem))), MarginRight: (s.MarginRight.Px + (11.0 * (s.MarginRight.Em + s.MarginRight.Rem))), MarginBottom: (s.MarginBottom.Px + (11.0 * (s.MarginBottom.Em + s.MarginBottom.Rem))), MarginLeft: (s.MarginLeft.Px + (11.0 * (s.MarginLeft.Em + s.MarginLeft.Rem))), FontSize: (s.FontSize.Px + (11.0 * (s.FontSize.Em + s.FontSize.Rem))), FontWeight: s.FontWeight, FontStyle: s.FontStyle, Color: s.Color, Background: s.Background, BorderRadius: (s.BorderRadius.Px + (11.0 * (s.BorderRadius.Em + s.BorderRadius.Rem)))}
+	return gtk4rt.Style{Width: (s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), MinWidth: (s.MinWidth.Px + (11.0 * (s.MinWidth.Em + s.MinWidth.Rem))), Height: (s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), Gap: (s.Gap.Px + (11.0 * (s.Gap.Em + s.Gap.Rem))), Padding: (s.Padding.Px + (11.0 * (s.Padding.Em + s.Padding.Rem))), PaddingX: (s.PaddingX.Px + (11.0 * (s.PaddingX.Em + s.PaddingX.Rem))), PaddingY: (s.PaddingY.Px + (11.0 * (s.PaddingY.Em + s.PaddingY.Rem))), PaddingTop: (s.PaddingTop.Px + (11.0 * (s.PaddingTop.Em + s.PaddingTop.Rem))), PaddingRight: (s.PaddingRight.Px + (11.0 * (s.PaddingRight.Em + s.PaddingRight.Rem))), PaddingBottom: (s.PaddingBottom.Px + (11.0 * (s.PaddingBottom.Em + s.PaddingBottom.Rem))), PaddingLeft: (s.PaddingLeft.Px + (11.0 * (s.PaddingLeft.Em + s.PaddingLeft.Rem))), Margin: (s.Margin.Px + (11.0 * (s.Margin.Em + s.Margin.Rem))), MarginX: (s.MarginX.Px + (11.0 * (s.MarginX.Em + s.MarginX.Rem))), MarginY: (s.MarginY.Px + (11.0 * (s.MarginY.Em + s.MarginY.Rem))), MarginTop: (s.MarginTop.Px + (11.0 * (s.MarginTop.Em + s.MarginTop.Rem))), MarginRight: (s.MarginRight.Px + (11.0 * (s.MarginRight.Em + s.MarginRight.Rem))), MarginBottom: (s.MarginBottom.Px + (11.0 * (s.MarginBottom.Em + s.MarginBottom.Rem))), MarginLeft: (s.MarginLeft.Px + (11.0 * (s.MarginLeft.Em + s.MarginLeft.Rem))), AlignItems: s.AlignItems, TextAlign: s.TextAlign, FontSize: (s.FontSize.Px + (11.0 * (s.FontSize.Em + s.FontSize.Rem))), FontWeight: s.FontWeight, FontStyle: s.FontStyle, Color: s.Color, Background: s.Background, BorderRadius: (s.BorderRadius.Px + (11.0 * (s.BorderRadius.Em + s.BorderRadius.Rem)))}
 }
 
 type Measurement struct {
@@ -1538,6 +1538,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__chi
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.SetStyle(c.__n0, snglStyle(__merge_Style(Style{}, c.__prop___p1)))
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1623,6 +1624,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n1, m.__n7)
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n2, "styled")
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.SetStyle(m.__n2, snglStyle(__merge_Style(Style{}, m.s)))
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	var __lt1 Style
@@ -1633,10 +1635,12 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n3, "picked")
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.SetStyle(m.__n3, snglStyle(__merge_Style(Style{}, __lt1)))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n4, "kept")
+	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.SetStyle(m.__n4, snglStyle(__merge_Style(Style{}, m.kept[0])))
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	m.__renderSlot0(m.__n1)
@@ -2294,7 +2298,7 @@ pass sha256:46a09db62f252f2ca91b92224d43d3ed
 -- run/go/fyne --
 pass sha256:49aadda5fa4d7a57319ad980ff77138f
 -- run/go/gtk4 --
-pass sha256:b53bf53c67b92c1b38c869b393fab16e
+pass sha256:fb288d0811aac63147887521526fb750
 -- run/kotlin/android --
 pass sha256:88234080768550dc196b7b44baf85d84
 -- run/none/html --

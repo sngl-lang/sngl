@@ -1007,6 +1007,7 @@ func newCardInstance(__model *Model) *CardInstance {
 	gtk4rt.BoxAppend(__n8, c.__n0)
 	__n9 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n9, "empty")
+	gtk4rt.LabelSetXAlign(__n9, 0.0)
 	gtk4rt.BoxAppend(__n8, __n9)
 	c.Root = __n8
 	gtk4rt.Retain(c.Root)
@@ -1063,6 +1064,7 @@ func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *
 	gtk4rt.BoxAppend(__n10, c.__n1)
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, ("item " + c.__prop___p0))
+	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	gtk4rt.BoxAppend(__n10, c.__n2)
 	__n11 := gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(__n11, "pick")
@@ -1139,6 +1141,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n7, m.__n12)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
+	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n7, m.__n4)
 	m.__renderSlot0(m.__n7)
 	m.__renderSlot1(m.__n7)
@@ -1504,7 +1507,7 @@ pass sha256:a3820834ed4443e0634e522fa2f35802
 -- run/go/fyne --
 pass sha256:8856b527fa3b24a0621b14e6f23c659e
 -- run/go/gtk4 --
-pass sha256:165b32ab758a2c6792303ae08acbbae7
+pass sha256:b7cf8b713fd78c7455efb4afdbdf6fd2
 -- run/kotlin/android --
 pass sha256:9e2984d6d77e020ec49c4a92bfeed3a2
 -- run/none/html --

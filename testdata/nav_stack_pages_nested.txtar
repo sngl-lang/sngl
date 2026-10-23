@@ -1174,6 +1174,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				if m.pages__current__inst0.Id == 1 {
 					__n4 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n4, "about")
+					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 					m.__slot1 = append(m.__slot1, __n4)
 				}
@@ -1240,6 +1241,7 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 string, __a___p2
 	c.__slot1 = nil
 	c.line = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetXAlign(c.line, 0.0)
 	c.Root = c.line
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1305,6 +1307,7 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	}
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, __lt7)
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1402,6 +1405,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n1)
 	m.heading = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+	gtk4rt.LabelSetXAlign(m.heading, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.heading)
 	m.toAbout = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.toAbout, "About")
@@ -1605,6 +1609,6 @@ pass sha256:234ffb5e71baa06862011ad7104ce068
 -- run/go/fyne --
 pass sha256:ed5c371965f791560a6fea6ba76357e9
 -- run/go/gtk4 --
-pass sha256:c2595d9ab8324d3b310169955ba45dff
+pass sha256:9f1a95a102bcfed150e9980fb2030355
 -- run/kotlin/android --
 pass sha256:dc2426df5905b54745512fd282bcbda9

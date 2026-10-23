@@ -431,6 +431,7 @@ func (m *Model) buildWidgetTree() {
 		}
 		return 0
 	}())))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	m.put = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.put, "put")
 	gtk4rt.Connect(m.put, "clicked", m.put_clicked_handler)
@@ -615,7 +616,7 @@ pass sha256:2dcb83c7b3ac4e7c59e3a4346fdf73bf
 -- run/go/fyne --
 pass sha256:cf36bd9aa53b32d770ef87feaf4386fc
 -- run/go/gtk4 --
-pass sha256:7b8259bced939e301dc2a2ec7231fb61
+pass sha256:f8abc9cef8fe36ad65afb21a60ba636b
 -- run/kotlin/android --
 pass sha256:46206c69ab409c6748613df98dae303d
 -- run/none/html --

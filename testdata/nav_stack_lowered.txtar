@@ -1089,6 +1089,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				if m.pages__current.Id == 1 {
 					__n7 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n7, "on about")
+					gtk4rt.LabelSetXAlign(__n7, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
 					m.__slot1 = append(m.__slot1, __n7)
 				}
@@ -1223,6 +1224,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value) *__child0Instanc
 	c.__slot1 = nil
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ("at " + c.__prop___p0.Title))
+	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1268,6 +1270,7 @@ func new__child1Instance(__model *Model, __a___p0 Pkg) *__child1Instance {
 	c.__slot1 = nil
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, c.__prop___p0.Name)
+	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	c.Root = c.__n2
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1339,6 +1342,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n8)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n8, m.__n3)
 	m.__n9 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n9, "About")
@@ -1372,4 +1376,4 @@ pass sha256:c0e92fb6711394f0f752b5b11a3fea0e
 -- run/go/fyne --
 pass sha256:a220e3f46de7488ba39315d2469d94be
 -- run/go/gtk4 --
-pass sha256:a4b33f5bbbb5e35a8cfdcde469e74d9b
+pass sha256:49385467264563d33aaabc667060b318

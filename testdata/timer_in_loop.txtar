@@ -705,6 +705,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n0)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n__inst0))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -929,6 +930,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:abaeb746c680dbbcb464ab89c78daaf0
 -- run/go/gtk4 --
-pass sha256:c566d9c54c546c4723070ae22d408bfa
+pass sha256:3b9c80ea3621d52b326e35260504ee30
 -- run/none/html --
 pass sha256:f8d6b016a084aceba3da4fad8b328e38

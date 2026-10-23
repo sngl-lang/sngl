@@ -565,6 +565,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.BoxAppend(__n4, c.entry__1)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, c.committed)
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(__n4, c.__n0)
 	c.__effects0_settle()
 	c.Root = __n4
@@ -702,6 +703,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(__n3, m.entry)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, m.last)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(__n3, m.__n1)
 	m.__renderSlot0(__n3)
 	m.__effects1_settle()
@@ -743,4 +745,4 @@ func (m *Model) entry__1Change(v string) {
 -- run/go/fyne --
 pass sha256:8fa9e001d553894ba8ed5f6e8e6a7c88
 -- run/go/gtk4 --
-pass sha256:f42aadc89656ee805df9211da737a1b2
+pass sha256:aff708950ad4486980b674b2c83b25ee

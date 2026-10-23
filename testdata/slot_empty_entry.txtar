@@ -473,6 +473,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				if m.shown__inst0 {
 					__n2 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n2, "shown")
+					gtk4rt.LabelSetXAlign(__n2, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 					m.__slot0 = append(m.__slot0, __n2)
 				}
@@ -529,9 +530,11 @@ func (m *Model) buildWidgetTree() {
 	__lt0 := "boxed full"
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n3, __lt0)
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n4, "inner")
+	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
 	var __lt1 string
 	if !m.shown__inst0 {
@@ -541,6 +544,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, __lt1)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__renderSlot0(m.__n0)
 	m.show = gtk4rt.ButtonNew()
@@ -704,7 +708,7 @@ pass sha256:149f24cf842cb487103dfe48f3a3553c
 -- run/go/fyne --
 pass sha256:473694c5d35d0db12c072656977af2bc
 -- run/go/gtk4 --
-pass sha256:2fd635e392e9fe84dee8e2aea9386aec
+pass sha256:b1fda100e0bb79be9df60e638a8b193a
 -- run/kotlin/android --
 pass sha256:52ac82b8991aada2a8174664a103b252
 -- run/none/html --

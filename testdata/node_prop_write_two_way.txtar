@@ -602,6 +602,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.seen = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.seen, __lt1)
+	gtk4rt.LabelSetXAlign(m.seen, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.seen)
 	m.flip = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
@@ -778,7 +779,7 @@ pass sha256:14a5eadb901dbad63a0e2e028efc7350
 -- run/go/fyne --
 pass sha256:829b106bd02ca46d204b7962c5f1a8d4
 -- run/go/gtk4 --
-pass sha256:1b6f5adebdb3e5e5b646f50801087d9c
+pass sha256:0fc7d2a7778b74770d279443e031ad7e
 -- run/kotlin/android --
 pass sha256:9dc73efda2fe32badeea97fd50bd139f
 -- run/none/html --

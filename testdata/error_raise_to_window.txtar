@@ -447,6 +447,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n0, ("problem=" + m.problem))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n0)
 	gtk4rt.BoxAppend(m.home, m.__n1)
 	gtk4rt.AppAttach(m.home)
@@ -461,4 +462,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:c899bcaf7ee259ad70a279dc7e0cc6ce
 -- run/go/gtk4 --
-pass sha256:d88b2953c96962adfbdcea4e5dd8849a
+pass sha256:3eaa7dd1a825fc920ec39175f005468a

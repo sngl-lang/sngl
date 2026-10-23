@@ -76,7 +76,7 @@ sha256:ad3d5aa59831683de54e65b8df47cb36
   ]
 }
 -- testrun/gtk4/go/tagged.sngl/counter/1 --
-sha256:7ec63960f3547ea15ce1c5c1d7aaed04
+sha256:f74f6d3be8733caa59a335ac2f032d2f
 {
   "results": [
     {

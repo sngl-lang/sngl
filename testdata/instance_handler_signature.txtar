@@ -464,6 +464,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.BoxAppend(__n5, c.entry)
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	gtk4rt.BoxAppend(__n5, c.__n2)
 	c.__effects0_settle()
 	c.Root = __n5
@@ -578,4 +579,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:8e5a7ada0f477c06138d55e3e86516e4
 -- run/go/gtk4 --
-pass sha256:b3047007a0ffeccf92c661822ab26194
+pass sha256:39f6e5392dd93e42f53a70316a54d07d

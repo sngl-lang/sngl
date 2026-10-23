@@ -475,6 +475,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(m.__n4)), m.__n4_reachEnd_handler)
 	m.__n5 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n5)), C.CString("rows"))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n5)), C.float(0.0))
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -492,4 +493,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 -- run/go/fyne --
 pass sha256:1246d9f1bfe61255c587ab94cfcf2bbd
 -- run/go/gtk4 --
-pass sha256:a4d24a9fad31f346aaed96d14124a370
+pass sha256:e8f1a00141e059658316baa46ae005e5

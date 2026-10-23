@@ -863,6 +863,7 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.mounts))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.__effects1_settle()
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -988,6 +989,7 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	})
 	__n4 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n4, "load")
+	gtk4rt.LabelSetXAlign(__n4, 0.0)
 	gtk4rt.BoxAppend(c.__n1, __n4)
 	c.__n5 = newCounterInstance(c.__model)
 	__n5__el := c.__n5.Root
@@ -1069,6 +1071,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.ticks))
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.main, m.__n2)
 	gtk4rt.AppAttach(m.main)
 	m.__renderSlot0(gtk4rt.App)
@@ -1082,6 +1085,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:a2b82e5b85be07b14992dda2f96816b0
+pass sha256:69356709804420d4be53ab960b63f3ca
 -- run/go/gtk4 --
-pass sha256:4b778d9b400fe519d320625c4ca64574
+pass sha256:8cd1e9f0b9598104db4f8d2fa7be0013

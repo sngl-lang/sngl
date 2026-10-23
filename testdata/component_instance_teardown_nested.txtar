@@ -626,6 +626,7 @@ func newNestInstance(__model *Model, __a_tag string, __a_depth int, __a_note fun
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, (("[" + c.__prop_tag) + "]"))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(c.__root, c.__n0)
 	c.__renderSlot0(c.__root)
 	c.__effects0_settle()
@@ -821,6 +822,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.drop, "clicked", m.drop_clicked_handler)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, ("log=" + m.log))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	m.__renderSlot1(m.__root)
 	gtk4rt.BoxAppend(m.__root, m.drop)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
@@ -1268,7 +1270,7 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:a970a0d6db98d4faebd5f1caa95d4a5b
 -- run/go/gtk4 --
-pass sha256:35ac0a379fa3777b9e6777785a3ae821
+pass sha256:01f8ab052ce61a7ef5f6af14ad1f9a92
 -- run/kotlin/android --
 pass sha256:09c34b2582a92eb67944bf4cf0ad6a2b
 -- run/none/html --

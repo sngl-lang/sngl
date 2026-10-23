@@ -897,6 +897,7 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	gtk4rt.BoxSetSpacing(__n8, 6)
 	__n0 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n0, ("w" + fmt.Sprint(c.width__inst0)))
+	gtk4rt.LabelSetXAlign(__n0, 0.0)
 	gtk4rt.BoxAppend(__n8, __n0)
 	c.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n1, ("tap " + fmt.Sprint(c.taps)))
@@ -991,6 +992,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n11, 6)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n3, ("opened " + fmt.Sprint(m.opened__inst0)))
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n11, m.__n3)
 	m.__n4 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n4, ("named " + fmt.Sprint(m.hits__inst0)))
@@ -999,6 +1001,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n7, m.__n11)
 	m.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n5, ("got=" + fmt.Sprint(m.got)))
+	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
 	gtk4rt.BoxAppend(m.__n7, m.__n5)
 	gtk4rt.BoxAppend(m.__n2, m.__n7)
 	gtk4rt.AppAttach(m.__n2)
@@ -1276,7 +1279,7 @@ pass sha256:370433a4368e35d5c0a8d6561a396c99
 -- run/go/fyne --
 pass sha256:11600782f031a0eea5cb54527986803b
 -- run/go/gtk4 --
-pass sha256:14bf100c0624bb3916a98b8d8fd032dd
+pass sha256:78b2693016ec4ec1f9a6630b83c9218c
 -- run/kotlin/android --
 pass sha256:4c55e0a6c9c6baaf3f80e91bd55d53c3
 -- run/none/html --

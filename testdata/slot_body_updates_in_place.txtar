@@ -860,9 +860,11 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	gtk4rt.BoxSetSpacing(__n6, 6)
 	__n7 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n7, "static")
+	gtk4rt.LabelSetXAlign(__n7, 0.0)
 	gtk4rt.BoxAppend(__n6, __n7)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ("up " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(__n6, c.__n0)
 	c.Root = __n6
 	gtk4rt.Retain(c.Root)
@@ -911,6 +913,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__slot1 = nil
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1323,7 +1326,7 @@ pass sha256:7cc10ab427f6474231e809e3849342c5
 -- run/go/fyne --
 pass sha256:9770b4575de62fe13582a90982839420
 -- run/go/gtk4 --
-pass sha256:3488ce8d70abd6eed933dccb6f3b7988
+pass sha256:79f7f076ec015cd4ef3327ed34f866fc
 -- run/kotlin/android --
 pass sha256:4174aa246de5b6d554345af5565dccd1
 -- run/none/html --

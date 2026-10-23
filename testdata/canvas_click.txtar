@@ -859,6 +859,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(6))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	m.board = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.board, C.int(40))
@@ -1122,6 +1123,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:266e0590897241bfe232e0269bc96be5
 -- run/go/gtk4 --
-pass sha256:7f97efa00e7833f019256a6167c44c9d
+pass sha256:56db05656caad74c4361cdbc9d011a27
 -- run/none/html --
 pass sha256:e69231ca8368ed1ffa7b7f9d78866897

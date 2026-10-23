@@ -584,6 +584,7 @@ func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowIns
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -858,7 +859,7 @@ pass sha256:2477c4030f7e3629c2beb0639a83edfc
 -- run/go/fyne --
 pass sha256:ca767d3b9717e885bf34f40454cde21e
 -- run/go/gtk4 --
-pass sha256:83a9decb4c04a977df1facd857af23c0
+pass sha256:741fdf4a2914dd80368f2bb0b9d2302e
 -- run/kotlin/android --
 pass sha256:c6571ac1d83031653b39ad141da362bb
 -- run/none/html --

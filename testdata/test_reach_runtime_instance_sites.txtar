@@ -1919,6 +1919,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 				if m.hits__inst0 >= 2 {
 					m.done = gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(m.done, "done")
+					gtk4rt.LabelSetXAlign(m.done, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot3_at, m.done)
 					m.__slot3 = append(m.__slot3, m.done)
 				}
@@ -1978,6 +1979,7 @@ func newBadge__site0Instance(__model *Model, __a_label string) *Badge__site0Inst
 	c.__slot6 = nil
 	c.shown = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetXAlign(c.shown, 0.0)
 	c.hit__reach0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.hit__reach0, "hit")
 	gtk4rt.Connect(c.hit__reach0, "clicked", func() {
@@ -2023,6 +2025,7 @@ func (c *Badge__site0Instance) __renderSlot4(parent gtk4rt.Handle) {
 					c.done__reach1 = gtk4rt.LabelNew("")
 					c.__model.__named_done__reach1 = c.done__reach1
 					gtk4rt.LabelSetText(c.done__reach1, "done")
+					gtk4rt.LabelSetXAlign(c.done__reach1, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot4_at, c.done__reach1)
 					c.__slot4 = append(c.__slot4, c.done__reach1)
 				}
@@ -2113,6 +2116,7 @@ func newBadge__site1Instance(__model *Model, __a_label string, __a___copy string
 	c.__slot6 = nil
 	c.shown = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetXAlign(c.shown, 0.0)
 	c.hit__reach1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.hit__reach1, "hit")
 	c.__model.__list_hit__reach1(c.__prop___copy, c.hit__reach1)
@@ -2285,6 +2289,7 @@ func newBadge__site2Instance(__model *Model, __a_label string) *Badge__site2Inst
 	c.__renderAgain6 = false
 	c.shown = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetXAlign(c.shown, 0.0)
 	c.hit__reach2 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.hit__reach2, "hit")
 	gtk4rt.Connect(c.hit__reach2, "clicked", func() {
@@ -2326,6 +2331,7 @@ func (c *Badge__site2Instance) __renderSlot6(parent gtk4rt.Handle) {
 				if c.hits >= 2 {
 					c.done = gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(c.done, "done")
+					gtk4rt.LabelSetXAlign(c.done, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot6_at, c.done)
 					c.__slot6 = append(c.__slot6, c.done)
 				}
@@ -2402,6 +2408,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot6 = nil
 	c.done__reach0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.done__reach0, "done")
+	gtk4rt.LabelSetXAlign(c.done__reach0, 0.0)
 	c.__model.__list_done__reach0(c.__prop___p0, c.done__reach0)
 	c.Root = c.done__reach0
 	gtk4rt.Retain(c.Root)
@@ -2494,6 +2501,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot2(m.__n1)
 	m.shown = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.shown, (("[fixed:" + fmt.Sprint(m.hits__inst0)) + "]"))
+	gtk4rt.LabelSetXAlign(m.shown, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.shown)
 	m.hit__reach3 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.hit__reach3, "hit")
@@ -3538,7 +3546,7 @@ pass sha256:344300bbdefdb63ea854f54d30924749
 -- run/go/fyne --
 pass sha256:ccf03ddc2ea6a52589895ae7e263c9c1
 -- run/go/gtk4 --
-pass sha256:0db09867a4e652098f6d50ac306dc87a
+pass sha256:075b4727094fcde21314168b74d2d68e
 -- run/kotlin/android --
 pass sha256:da0ad6835811f53fde0e26035bb6b952
 -- run/none/html --

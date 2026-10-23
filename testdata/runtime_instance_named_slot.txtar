@@ -1372,6 +1372,7 @@ func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
 				for range c.rows {
 					__n1 := gtk4rt.LabelNew("")
 					gtk4rt.LabelSetText(__n1, "empty")
+					gtk4rt.LabelSetXAlign(__n1, 0.0)
 					gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
 					c.__slot0 = append(c.__slot0, __n1)
 				}
@@ -1642,6 +1643,7 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int) *__child0In
 	c.__slot3 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ((("item " + fmt.Sprint(c.__prop___p0)) + " row ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2367,7 +2369,7 @@ pass sha256:8891f9fcf3719bc203d924e69949e9f2
 -- run/go/fyne --
 pass sha256:c54066d827b7055dc18c24728023fb54
 -- run/go/gtk4 --
-pass sha256:25c39040b31a21a096ad6b1d85cd1d2d
+pass sha256:a736c9902963027e9ef571b0ea6cc791
 -- run/kotlin/android --
 pass sha256:e14370b923b648030e2e0075d1e7c2cb
 -- run/none/html --

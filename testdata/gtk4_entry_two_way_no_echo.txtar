@@ -516,6 +516,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(c.box)))
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(c.search))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
 	c.__effects0_settle()
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n4))
@@ -642,4 +643,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:e0d4d83d1ef01b64e867a501d98af55b
+pass sha256:452f49c05116c3a0692183afe0890559

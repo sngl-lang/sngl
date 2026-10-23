@@ -438,6 +438,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
 	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.CString("left"))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
@@ -445,6 +446,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString("right"))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.float(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -537,7 +539,7 @@ pass sha256:27a328d0d185f7d52e3e573f67214ca5
 -- run/go/fyne --
 pass sha256:7d934b8493e0d0bec13b43c9c2d5007b
 -- run/go/gtk4 --
-pass sha256:e9ad44213624b454ce852115a1e03634
+pass sha256:5806c9c1ebab542c99aa1d74a8814ad2
 -- run/kotlin/android --
 pass sha256:de5315701920fb6c7d1d59653a052231
 -- run/none/html --

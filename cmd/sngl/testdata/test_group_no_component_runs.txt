@@ -196,7 +196,7 @@ sha256:aae7e8b5f93bd0593c734368234d77a0
   ]
 }
 -- testrun/gtk4/go/focus.sngl/panel/1 --
-sha256:51f63b9b2ddf02912615ad0182d5fc93
+sha256:13fd5a2867ae686096a5ee66337351db
 {
   "results": [
     {

@@ -808,6 +808,7 @@ func newWatchInstance(__model *Model, __a_tag string, __a_seen func(string)) *Wa
 	gtk4rt.BoxSetSpacing(__n3, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ((("watch " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(__n3, c.__n0)
 	c.__effects0_settle()
 	c.Root = __n3
@@ -1248,7 +1249,7 @@ pass sha256:6a99500574b8c80c0187e44a0528884d
 -- run/go/fyne --
 pass sha256:2e021d4e551ca6e5eef96f714fc25835
 -- run/go/gtk4 --
-pass sha256:91c80e28d02c67bbf66ca1d39f03e080
+pass sha256:b1b3fa7ef7e2ea8c395a71928c8c6ac7
 -- run/kotlin/android --
 pass sha256:4329eb04b2cbddb52ea8ca4fb07475f8
 -- run/none/html --
