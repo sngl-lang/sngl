@@ -74,7 +74,7 @@ only the redraw, and leaves android out, for these reasons.
   raise (*Error boundaries*). Decided with the user: a render's raise reaches
   the boundary around what rendered, on every target, not the handler that
   asked for the render.
-- [ ] Make the interpreter and bubbletea agree with it, and android catch
+- [X] Make the interpreter and bubbletea agree with it, and android catch
   one at all. A script test on all six asserting where the raise went, which
   `slot_render_raise_draws_again_runs.txt` can grow into.
 
@@ -92,18 +92,18 @@ only the redraw, and leaves android out, for these reasons.
 
 ## Part 4: runtime leftovers
 
-- [ ] fyne: a reactive write to a constructor-only prop other than the
+- [X] fyne: a reactive write to a constructor-only prop other than the
   grid's column count is still answered as the constructor's
   (`intrinsic_translator.go`'s `reflect.DeepEqual`): markup's `kind` and
   `spanStyle`. Give each a setter (a Spec `Setter` may name a function, as
   `fynelayout.SetGridColumns` does), or report the write as reaching nothing,
   as a prop with no setter is.
-- [ ] gtk4: `gtk4rt.SetStyle` keeps one CSS class per distinct style and never
+- [X] gtk4: `gtk4rt.SetStyle` keeps one CSS class per distinct style and never
   removes one, reloading the whole stylesheet each time, so a style computed
   from a value that keeps changing -- an animated width or color -- grows the
   provider by a rule per value. Drop a class no widget holds, or set the
   changing fields some other way. A `pkg/go/gtk4rt` test counting rules.
-- [ ] bubbletea: a test draws the Model's view only when it snapshots, so a
+- [X] bubbletea: a test draws the Model's view only when it snapshots, so a
   picture (`tui.Picture`) starts fetching there and the first snapshot shows
   blank cells where the program, which draws every frame, shows the picture.
   !275's screenshots took a snapshot first to start the fetches. Draw the view
@@ -112,7 +112,7 @@ only the redraw, and leaves android out, for these reasons.
 
 ## Part 5: the card's click, and the example again
 
-- [ ] html: a click on a button inside a clickable card also clicks the card,
+- [X] html: a click on a button inside a clickable card also clicks the card,
   by the DOM's bubbling, as a mouse click does; Enter on the button does too.
   Ask the user whether a card's `@click` should hear a click its content
   handled, and what the other targets do, before changing anything.
