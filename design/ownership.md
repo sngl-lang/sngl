@@ -194,8 +194,11 @@ stop and before the leak check.
 
 **A release must be emitted.** A program's release is otherwise called by
 nothing until lowering, so the shake keeps an owned struct's release with the
-struct, and a library one -- `c.free` -- is promoted by running `LibFuncs` again
-once the pass has called it. `c.free` calls cgo's `C.free`, which `<stdlib.h>`
+struct; a user package's is taken with the function that made the value
+(`reachableForeignFuncs`, `testdata/owned_derived_in_imported_component.txtar`,
+whose `close` was otherwise emitted against Go's builtin); and a library one
+-- `c.free` -- is promoted by running `LibFuncs` again once the pass has
+called it. `c.free` calls cgo's `C.free`, which `<stdlib.h>`
 declares: gtk4's preamble includes it, and fyne's and bubbletea's
 (`EmitCHeader`) include it beside the program's links, since every `c.str`
 those targets make is freed.

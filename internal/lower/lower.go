@@ -438,6 +438,8 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 			switch x := e.(type) {
 			case *ir.Call:
 				visit(x.Func)
+			case *ir.StructLit:
+				visit(ir.ReleaseOf(x.Type))
 			case *ir.Ident:
 				// Held as a value -- handed to a func-typed prop, stored in a
 				// record -- a function is as much the program's as one it
@@ -456,6 +458,9 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		have[fn] = true
 		out = append(out, fn)
 		walk(fn.Block)
+		// Lowering releases what the program allocates, so an owned type's
+		// release is called as surely as the function that made the value.
+		visit(ir.ReleaseOf(fn.Return))
 	}
 	for _, c := range pkg.Components {
 		walk(c.Stmts)
