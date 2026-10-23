@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lspcore"
 	"duckfam.us/sngl/ir"
 )
 
@@ -25,7 +26,7 @@ func computeSemanticTokens(content string, doc *ast.Document, pkg *ir.Package) [
 
 	// IR-driven identifier classification.
 	if pkg != nil {
-		tokens = append(tokens, irIdentifierTokens(pkg)...)
+		tokens = append(tokens, irIdentifierTokens(pkg, lspcore.FileOf(doc))...)
 	}
 
 	sort.SliceStable(tokens, func(i, j int) bool {
@@ -132,9 +133,9 @@ func scanKeywordTokens(content string) []rawToken {
 
 // irIdentifierTokens walks pkg producing one rawToken per classifiable
 // IR node anchored to a source position.
-func irIdentifierTokens(pkg *ir.Package) []rawToken {
+func irIdentifierTokens(pkg *ir.Package, file string) []rawToken {
 	var out []rawToken
-	w := &irTokenWalker{out: &out}
+	w := &irTokenWalker{out: &out, file: file}
 	for _, v := range pkg.Consts {
 		w.expr(v.Init)
 	}
@@ -155,10 +156,12 @@ func irIdentifierTokens(pkg *ir.Package) []rawToken {
 
 type irTokenWalker struct {
 	out *[]rawToken
+	// file is the document's: the package holds its siblings' code too.
+	file string
 }
 
 func (w *irTokenWalker) emit(pos ast.Pos, length int, kind uint32) {
-	if !pos.IsValid() {
+	if !pos.IsValid() || pos.File != w.file {
 		return
 	}
 	*w.out = append(*w.out, rawToken{

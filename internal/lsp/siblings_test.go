@@ -174,3 +174,26 @@ func TestDiagnosticsLeaveSiblingProblemsToTheSibling(t *testing.T) {
 		t.Errorf("main.sngl reported lib.sngl's problems:%s", messages(diags))
 	}
 }
+
+func TestSemanticTokensStayInTheirFile(t *testing.T) {
+	dir := t.TempDir()
+	lib := "func greet(n int) => n + 1\nfunc twice(n int) => greet(greet(n))\n"
+	if err := os.WriteFile(filepath.Join(dir, "lib.sngl"), []byte(lib), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	main := "// a comment as long as the lines of lib.sngl are\nfunc welcome() => twice(1)\n"
+	srv := New()
+	fs := srv.ws.open("file://"+filepath.Join(dir, "main.sngl"), main, 1)
+	srv.analyze(fs)
+	pkg, err := srv.checkForPreview(fs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := computeSemanticTokens(main, fs.Doc, pkg)
+	if len(data) == 0 {
+		t.Fatal("no tokens")
+	}
+	if data[0] == 0 {
+		t.Errorf("a token on the comment line, from lib.sngl's code: %v", data[:5])
+	}
+}
