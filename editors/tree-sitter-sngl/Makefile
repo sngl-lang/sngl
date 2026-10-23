@@ -99,7 +99,6 @@ test:
 # ─── Development targets ───────────────────────────────────
 
 NVIM_PARSER_DIR := $(HOME)/.local/share/nvim/lazy/nvim-treesitter/parser
-NEOVIM_QUERIES := ../neovim/queries/sngl
 
 generate: ## Regenerate parser from grammar.js
 	$(TS) generate
@@ -109,13 +108,11 @@ nvim: sngl.so ## Build and install parser for neovim
 	cp sngl.so $(NVIM_PARSER_DIR)/sngl.so
 	@echo "Installed to $(NVIM_PARSER_DIR)/sngl.so"
 
+# sngl.so.sum is the digest of the sources the parser was built from, which
+# the Neovim plugin compares: a checkout gives them a new mtime, not new text.
 sngl.so: $(SRC_DIR)/parser.c $(EXTRAS)
 	$(CC) -o $@ -shared -fPIC -I$(SRC_DIR) $^ -Os
-
-sync-queries: ## Copy queries to neovim plugin
-	@mkdir -p $(NEOVIM_QUERIES)
-	cp queries/*.scm $(NEOVIM_QUERIES)/
-	@echo "Synced queries to $(NEOVIM_QUERIES)"
+	cat $^ | { sha256sum 2>/dev/null || shasum -a 256; } | cut -d' ' -f1 > $@.sum
 
 parse: ## Parse testdata/full_example.sngl
 	$(TS) parse ../../testdata/full_example.sngl
@@ -123,12 +120,9 @@ parse: ## Parse testdata/full_example.sngl
 highlight: ## Syntax-highlight testdata/full_example.sngl
 	$(TS) highlight ../../testdata/full_example.sngl
 
-gotest: ## Run Go comparison tests
-	cd ../.. && go test ./internal/tsparser/ -v -count=1
+gotest: ## Hold the grammar to the repository's SNGL
+	cd ../.. && go test ./editors/tree-sitter-sngl/ -count=1
 
-fuzz: ## Run Go fuzz tests (30s)
-	cd ../.. && go test ./internal/tsparser/ -fuzz=FuzzParse -fuzztime=30s
+dev: generate sngl.so nvim ## Full dev rebuild: generate, compile, install, sync
 
-dev: generate sngl.so nvim sync-queries ## Full dev rebuild: generate, compile, install, sync
-
-.PHONY: all install uninstall clean test generate nvim sync-queries parse highlight gotest fuzz dev
+.PHONY: all install uninstall clean test generate nvim parse highlight gotest dev

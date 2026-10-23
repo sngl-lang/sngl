@@ -269,7 +269,7 @@ func EventCompletions(content string, doc *ast.Document, line int) []CompletionI
 }
 
 func eventCompletions(content string, doc *ast.Document, pkg *ir.Package, line, col int) []CompletionItem {
-	if n := nodeAt(pkg, content, line, col); n != nil {
+	if n := nodeAt(pkg, doc, content, line, col); n != nil {
 		return nodeEventItems(n, nil)
 	}
 	name := enclosingNodeName(content, line)
@@ -594,7 +594,7 @@ func propListCompletions(content string, doc *ast.Document, pkg *ir.Package, lin
 	}
 
 	// Events, as the checked node's call site typed them where there is one.
-	node := nodeAt(pkg, content, line, col)
+	node := nodeAt(pkg, doc, content, line, col)
 	if node != nil {
 		items = append(items, nodeEventItems(node, used)...)
 		events = nil

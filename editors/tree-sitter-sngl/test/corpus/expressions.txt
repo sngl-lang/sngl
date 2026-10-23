@@ -79,11 +79,11 @@ component App {
         (var_spec
           (identifier_list
             (identifier))
-          (true))
+          (identifier))
         (var_spec
           (identifier_list
             (identifier))
-          (false))))))
+          (identifier))))))
 
 ================
 Null literal
@@ -103,7 +103,7 @@ component App {
         (var_spec
           (identifier_list
             (identifier))
-          (null))))))
+          (identifier))))))
 
 ================
 Color literal
@@ -582,3 +582,161 @@ var c = first[map[string, int]](xs)
             (identifier)
             (identifier)))
         (identifier)))))
+
+================
+A translatable string
+================
+
+var a = $"Hello"
+var b = $"You have {n, plural, =0{none} one{# item} other{# items}}"
+var c = $"Created on {d, date, short}"
+var d = $"Use '{'braces'}' and {n}"
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (i18n_string_literal)))
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (i18n_string_literal
+        (i18n_placeholder
+          (identifier)
+          (identifier)
+          (i18n_case
+            (integer_literal)
+            (i18n_case_body))
+          (i18n_case
+            (identifier)
+            (i18n_case_body))
+          (i18n_case
+            (identifier)
+            (i18n_case_body))))))
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (i18n_string_literal
+        (i18n_placeholder
+          (identifier)
+          (identifier)
+          (identifier)))))
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (i18n_string_literal
+        (i18n_placeholder
+          (identifier))))))
+
+================
+A placeholder over several lines
+================
+
+var a = $"{n, plural,
+    one{1 item}
+    other{# items}
+}"
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (i18n_string_literal
+        (i18n_placeholder
+          (identifier)
+          (identifier)
+          (i18n_case
+            (identifier)
+            (i18n_case_body))
+          (i18n_case
+            (identifier)
+            (i18n_case_body)))))))
+
+================
+A string inside an interpolation
+================
+
+var a = "{shout("hi")} and {Box{w=1}.size()}"
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (string_literal
+        (string_interpolation
+          (call_expression
+            (identifier)
+            (string_literal)))
+        (string_interpolation
+          (method_expression
+            (struct_literal
+              (identifier)
+              (anon_struct_field
+                (identifier)
+                (integer_literal)))
+            (identifier)))))))
+
+================
+A map literal
+================
+
+var m map[string, int] = {"a"=1, "b"=2}
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (type_identifier
+        (identifier)
+        (type_arguments
+          (type_identifier
+            (identifier))
+          (type_identifier
+            (identifier))))
+      (anon_struct_literal
+        (anon_struct_field
+          (string_literal)
+          (integer_literal))
+        (anon_struct_field
+          (string_literal)
+          (integer_literal))))))
+
+================
+A prefix and an import expression
+================
+
+var r = &x
+var v = import("c:stdio.h").FILE{}
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (unary_expression
+        (identifier))))
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (import_expression
+        (string_literal)
+        (identifier))))
+  (anon_struct_literal))

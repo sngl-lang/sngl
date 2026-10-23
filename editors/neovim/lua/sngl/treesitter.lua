@@ -18,10 +18,44 @@ function M.setup(opts)
     -- Parser not built; surface a hint rather than failing silently.
     vim.notify(
       "sngl: tree-sitter parser not found at " .. so_path ..
-      "\nBuild it with: cd " .. ts_dir .. " && tree-sitter build",
+      "\nBuild it with: make -C " .. ts_dir .. " sngl.so",
       vim.log.levels.WARN
     )
     return
+  end
+
+  -- A parser built from other sources than the grammar's rejects the
+  -- queries, which name the grammar's current nodes, and Neovim then
+  -- highlights nothing at all. `make sngl.so` records the digest of what it
+  -- built from; a parser built before it did is judged by mtime, which a
+  -- checkout also moves.
+  local sources = { ts_dir .. "src/parser.c", ts_dir .. "src/scanner.c" }
+  local stale
+  local sum = io.open(so_path .. ".sum")
+  if sum then
+    local built = vim.trim(sum:read("a"))
+    sum:close()
+    local text = {}
+    for _, src in ipairs(sources) do
+      local f = io.open(src, "rb")
+      if f then
+        table.insert(text, f:read("a"))
+        f:close()
+      end
+    end
+    stale = vim.fn.sha256(table.concat(text)) ~= built
+  else
+    local built = vim.fn.getftime(so_path)
+    for _, src in ipairs(sources) do
+      stale = stale or vim.fn.getftime(src) > built
+    end
+  end
+  if stale then
+    vim.notify(
+      "sngl: " .. so_path .. " was built from other sources than the grammar's" ..
+      "\nRebuild it with: make -C " .. ts_dir .. " sngl.so",
+      vim.log.levels.WARN
+    )
   end
 
   -- Nvim 0.10+: language.add(name, {path = ...}) registers an external

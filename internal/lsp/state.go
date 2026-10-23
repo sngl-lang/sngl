@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lspcore"
 	"duckfam.us/sngl/ir"
 )
 
@@ -16,6 +17,9 @@ type fileState struct {
 	// Pkg is the package Doc was checked into, errors and all: completion
 	// asks it how a node's call site typed its events.
 	Pkg *ir.Package
+	// Index is every name the package writes and what each names, which
+	// definition, references and semantic tokens read.
+	Index *lspcore.Index
 }
 
 // workspace tracks all open files.
@@ -61,4 +65,14 @@ func (w *workspace) close(uri string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	delete(w.files, uri)
+}
+
+func (w *workspace) all() []*fileState {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	files := make([]*fileState, 0, len(w.files))
+	for _, fs := range w.files {
+		files = append(files, fs)
+	}
+	return files
 }

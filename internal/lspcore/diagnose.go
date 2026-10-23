@@ -61,9 +61,11 @@ func AnalyzePackageChecked(content, filename string, siblings []*ast.Document, c
 		for _, d := range checkDiags {
 			msg := d.Msg
 			rng := Range{Start: Position{}, End: Position{}}
+			var file string
 			if d.Pos.File != "" && d.Pos.File != filename {
 				// Another file's line numbers mean nothing in this one.
 				msg = d.Pos.String() + ": " + msg
+				file = d.Pos.File
 			} else if d.Pos.IsValid() {
 				rng = AstPosToRange(d.Pos)
 			}
@@ -76,6 +78,7 @@ func AnalyzePackageChecked(content, filename string, siblings []*ast.Document, c
 				Severity: sev,
 				Source:   "sngl",
 				Message:  msg,
+				File:     file,
 			})
 		}
 	}
