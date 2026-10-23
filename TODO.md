@@ -1,9 +1,13 @@
 # What the target gaps left
 
-One MR, `target-gaps-left`, for what !275 (`target-gaps`) found and did not
-fix. The branch starts from !275's last commit; once !275 is on `main`, merge
-`origin/main` (never rebase) so the MR targets `main` with nothing under it.
-Delete this file before the MR leaves draft. `ui.table`'s redesign (#290) and
+What !275 (`target-gaps`) found and did not fix. It was worked on
+`target-gaps-left` (!277), which started from !275's last commit; since !275
+was not yet on `main`, the two are combined into !275: `target-gaps` is
+fast-forwarded to `target-gaps-left`, !277 is closed pointing at !275, and its
+description folds into !275's. Work from here goes on `target-gaps`, and
+!275's description carries this plan's progress. Should `main` move, merge
+`origin/main` into `target-gaps` (never rebase). Delete this file before !275
+leaves draft. `ui.table`'s redesign (#290) and
 a constant `$"..."` message (#292) are issues of their own and not here.
 
 ## Rules for every part
@@ -38,7 +42,7 @@ a constant `$"..."` message (#292) are issues of their own and not here.
   `SNGL_HOST_GO_MOD=<checkout>/go.mod <scratch>/sngl test ...` from a scratch
   directory. `go test ./cmd/sngl -run 'TestScript/...'` wants `-timeout 60m`
   for `examples_runs`.
-- Commit and push as you go, and keep the MR's description up to date with
+- Commit and push as you go, and keep !275's description up to date with
   this plan's progress.
 
 ## Part 1: what the review did not reach
@@ -121,4 +125,5 @@ only the redraw, and leaves android out, for these reasons.
   stands" brought up to date, and the user checks android on the device.
 - [X] A review agent over the branch (`git diff origin/main...target-gaps-left`);
   fix what it finds, each with a fixture.
-- [ ] Delete this file; take the MR out of draft -- ask the user first.
+- [ ] Combine !277 into !275, as above.
+- [ ] Delete this file; take !275 out of draft -- ask the user first.
