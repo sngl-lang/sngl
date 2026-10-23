@@ -39,8 +39,9 @@ type handles struct {
 	simulated string
 	// retained is each value a native keeps a pointer to, by where it was
 	// handed over and the lifetime that call ran in, and lifetime is the one
-	// running now: the zero Key outside every effect, which is the
-	// application's.
+	// running now: the zero Key outside every effect, where the lifetime is
+	// the component instance the call ran in, or the application's outside
+	// every component.
 	retained map[*Handle]retention
 	lifetime Key
 }
@@ -48,6 +49,7 @@ type handles struct {
 type retention struct {
 	at       ast.Pos
 	lifetime Key
+	inst     *Env
 }
 
 func (env *Env) owned() *handles {
@@ -171,13 +173,17 @@ func (h *handles) move(hd *Handle) {
 }
 
 // retain records that the native being called keeps hd until the lifetime
-// running now ends, or until the same call in the same lifetime hands it
-// another, which is the native's to hold in its place.
-func (h *handles) retain(hd *Handle) {
+// running now ends -- the effect whose handler is running, else the node of
+// inst, the instance the call ran in -- or until the same call in the same
+// lifetime hands it another, which is the native's to hold in its place.
+func (h *handles) retain(hd *Handle, inst *Env) {
 	if h.retained == nil {
 		h.retained = map[*Handle]retention{}
 	}
 	r := retention{at: h.site(), lifetime: h.lifetime}
+	if r.lifetime == (Key{}) {
+		r.inst = inst
+	}
 	for prev, q := range h.retained {
 		if q == r {
 			delete(h.retained, prev)
@@ -194,6 +200,43 @@ func (h *handles) letGo(k Key) {
 			delete(h.retained, hd)
 		}
 	}
+}
+
+// letGoInstance ends every retention made in inst's node and the nodes
+// under it: the instance is unmounted, so the natives holding the pointers
+// are gone with it. Called as the instance is evicted, which is before its
+// `@unmount` releases what the cells hold.
+func (h *handles) letGoInstance(inst *Env) {
+	if inst == nil {
+		return
+	}
+	for hd, r := range h.retained {
+		if r.inst == inst {
+			delete(h.retained, hd)
+		}
+	}
+	for _, child := range inst.childEnvs {
+		h.letGoInstance(child)
+	}
+	for _, child := range inst.callChildEnvs {
+		h.letGoInstance(child)
+	}
+}
+
+// instance is the component instance env runs in: the scope its snapshots
+// were taken from, when that is a component's. A handler, a timer's tick
+// and a component function run in the instance's scope or a snapshot of it,
+// and a function they call in a snapshot of that. Nil outside every
+// component, which is the application's lifetime.
+func (env *Env) instance() *Env {
+	e := env
+	for e.origin != nil {
+		e = e.origin
+	}
+	if e.Comp == nil {
+		return nil
+	}
+	return e
 }
 
 // within runs fn as part of the lifetime at k.

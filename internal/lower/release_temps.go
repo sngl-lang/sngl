@@ -619,27 +619,7 @@ func raisingCalls(body []ir.Stmt) []*ir.Call {
 	return out
 }
 
-// isAllocation reports whether e makes an owned value, rather than reading
-// one something else holds. An intrinsic only reads one out of a collection:
-// a cell's `map.get` is the copy's value, not a new one. A literal of a type
-// owned by what it holds makes a value only where something in it does:
-// `[f]` holds what the var holds, and `[open(1)]` what nothing else does.
-func isAllocation(e ir.Expr) bool {
-	if e == nil || !ir.Owned(e.ExprType()) {
-		return false
-	}
-	switch x := e.(type) {
-	case *ir.Call:
-		return x.Func != nil && x.Func.Intrinsic == ""
-	case *ir.StructLit:
-		return ir.ReleaseOf(x.Type) != nil || slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return isAllocation(f.Value) })
-	case *ir.ListLit:
-		return slices.ContainsFunc(x.Elems, isAllocation)
-	case *ir.MapLitIR:
-		return slices.ContainsFunc(x.Entries, func(en ir.MapEntry) bool { return isAllocation(en.Value) })
-	}
-	return false
-}
+func isAllocation(e ir.Expr) bool { return ir.Allocates(e) }
 
 type foundTemp struct {
 	slot *ir.Expr

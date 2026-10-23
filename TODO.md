@@ -95,17 +95,17 @@ statement before `ReleaseTemps` and so releases it; do that for every target.
 A program should not have to know where a `#[retains]` native may be called
 from, so the lifetime is the node's wherever a node encloses the call.
 
-- [ ] A `#[retains]` argument handed from an event handler, a timer's
+- [X] A `#[retains]` argument handed from an event handler, a timer's
   `@tick` or a component function gets the enclosing component's node
   lifetime: the same `__retN` cell `retain` makes for an effect's handler,
   released when the native is handed the next value and at unmount. Only a
   call with no node around it -- a free function, a package-level statement
   -- is refused at check time, naming the parameter and what it keeps.
-- [ ] Audit `lib/`: no stdlib function exposes a `#[retains]` parameter a
+- [X] Audit `lib/`: no stdlib function exposes a `#[retains]` parameter a
   program could reach outside a node. Today gtk4 has none to write
   (`design/ownership.md`); pin that with a test over the library's
   declarations so a future one is noticed.
-- [ ] Spec: strike the held entry, and say where a retained value lives.
+- [X] Spec: strike the held entry, and say where a retained value lives.
 
 ## Part 4: the host's counting
 

@@ -13,6 +13,28 @@ import (
 // owned field, a list, a map or an option of an owned type.
 func Owned(t *Type) bool { return owned(t, nil) }
 
+// Allocates reports whether e makes an owned value, rather than reading one
+// something else holds. An intrinsic only reads one out of a collection: a
+// cell's `map.get` is the copy's value, not a new one. A literal of a type
+// owned by what it holds makes a value only where something in it does:
+// `[f]` holds what the var holds, and `[open(1)]` what nothing else does.
+func Allocates(e Expr) bool {
+	if e == nil || !Owned(e.ExprType()) {
+		return false
+	}
+	switch x := e.(type) {
+	case *Call:
+		return x.Func != nil && x.Func.Intrinsic == ""
+	case *StructLit:
+		return ReleaseOf(x.Type) != nil || slices.ContainsFunc(x.Fields, func(f FieldInit) bool { return Allocates(f.Value) })
+	case *ListLit:
+		return slices.ContainsFunc(x.Elems, Allocates)
+	case *MapLitIR:
+		return slices.ContainsFunc(x.Entries, func(en MapEntry) bool { return Allocates(en.Value) })
+	}
+	return false
+}
+
 func owned(t *Type, seen map[*StructDef]bool) bool {
 	if t == nil {
 		return false

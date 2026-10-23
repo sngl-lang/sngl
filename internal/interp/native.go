@@ -40,7 +40,7 @@ func (env *Env) callCNative(call *ir.Call) (any, error) {
 			case ir.TransferMoves:
 				h.move(hd)
 			case ir.TransferRetains:
-				h.retain(hd)
+				h.retain(hd, env.instance())
 			}
 		}
 	}

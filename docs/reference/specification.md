@@ -2262,9 +2262,11 @@ four lifetimes that holds it:
   makes is released before the test.
 - **Node** -- a value held in a `var` of a component or of a view block,
   computed by an owned derived value, or handed to a `#[macro.retains]`
-  parameter by an effect's handler lives as long as the node: it is released
-  when the var is overwritten, when what the derived value reads is written,
-  when the native is handed the next value, and when the node unmounts. The
+  parameter from inside a component -- by an effect's handler, an event
+  handler, a timer's `@tick` or a function of the component -- lives as long
+  as the node: it is released when the var is overwritten, when what the
+  derived value reads is written, when the native is handed the next value
+  from the same call, and when the node unmounts. The
   compiler releases these itself, so a program that releases one by hand as
   well releases it twice. The value such a var holds is one its initializer
   or the assignment made: a var initialized or assigned from another var's
@@ -2289,7 +2291,13 @@ assigned another var's value is.
 `#[macro.retains]` and `#[macro.moves]` mark a parameter of a function with no
 body: a native that keeps a pointer to its argument while the caller still
 owns it, and one that takes the argument. A function with a body says what it
-does with its arguments itself, so the marks are an error there.
+does with its arguments itself, so the marks are an error there. A value
+handed to a `#[macro.retains]` parameter is released by the node that made
+the call, so a call that makes the value where no component encloses it -- in
+a free function, a test, a package `var`'s initializer or the package's own
+body -- is an error naming the parameter. A value some other holder owns may
+be handed over anywhere: it lives as long as that holder, and the holder may
+not release it while the native keeps it.
 
 A derived value of an owned type -- an **owned derived value**, a function of
 a component taking nothing and answering an owned type -- is computed when
@@ -2302,13 +2310,11 @@ A `var`'s initializer runs once and is not keyed. The value is state the
 component holds, so a const component's render may read one as it reads a
 prop.
 
-**What the compiler does not release is held**, never released wrongly, and
-the interpreter reports it as a leak:
-
-- A value handed to a `#[macro.retains]` parameter outside an effect's
-  handler, from an event handler or a function.
-
-A program that must release one of these releases it by hand.
+**Nothing the compiler reaches is held.** Every owned value a program makes
+has one of the four lifetimes, and the compiler releases it at that
+lifetime's end; a program releases nothing by hand, and one that releases a
+value the compiler releases as well releases it twice. What the compiler
+cannot reach it refuses: a `#[macro.retains]` call no component encloses.
 
 **An application tears down before its process ends.** When the event loop
 exits, the root tree unmounts, so every `@unmount` runs and every node-lifetime

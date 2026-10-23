@@ -133,6 +133,43 @@ func (c *checker) applyFuncParamMarks(f *ast.FuncDef, fn *ir.Func) {
 	}
 }
 
+// checkRetainsOutsideNode refuses an allocation handed to a `#[retains]`
+// parameter where no component encloses the call. The native keeps the value
+// as long as the node that made the call, and the node is what releases it;
+// a free function, a test, a package var's initializer and the package's own
+// body have none. A value some other holder owns may be handed over
+// anywhere: it lives as long as that holder.
+func (c *checker) checkRetainsOutsideNode() {
+	var roots []any
+	for _, fn := range c.pkg.Funcs {
+		if !fn.OnComponent() {
+			roots = append(roots, fn)
+		}
+	}
+	for _, v := range c.pkg.Vars {
+		if v.Init != nil {
+			roots = append(roots, v.Init)
+		}
+	}
+	roots = append(roots, c.pkg.Body)
+	for _, root := range roots {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			call, ok := n.(*ir.Call)
+			if !ok || call.Func == nil || call.AST == nil {
+				return nil
+			}
+			for i, a := range call.Args {
+				p := call.ParamFor(i)
+				if p == nil || p.Transfer != ir.TransferRetains || !ir.Allocates(a.Value) {
+					continue
+				}
+				c.error(call.AST.Pos, "parameter %s of %s retains the %s it is handed, which lives as long as the node that made the call, and no component encloses this one; call %s from a component's handler or function", p.Name, call.Func.Name, a.Value.ExprType(), call.Func.Name)
+			}
+			return nil
+		})
+	}
+}
+
 // checkOwnedDerived refuses a component's owned derived value that reads
 // something no lifetime can be keyed on. Such a value is released and
 // recomputed when what it reads changes, so each read is part of its key.

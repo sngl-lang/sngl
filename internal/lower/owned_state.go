@@ -651,12 +651,16 @@ func releaseWith(release *ir.Func, v ir.Expr) ir.Stmt {
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: release, Args: []ir.CallArg{{Value: v}}}}
 }
 
-// retain gives each allocation an effect's handler hands a `#[retains]`
-// parameter a cell of c's: the next one the call makes replaces it, and the
-// effect's `@unmount` releases it, which is when the native stops holding
-// it. An effect that only reports writes brackets nothing, and an `@unmount`
-// would make it a bracket ended by every change of its key, releasing what
-// the native still holds; its cells are released when the node unmounts.
+// retain gives each allocation a component hands a `#[retains]` parameter a
+// cell of c's: the next one the call makes replaces it, released once the
+// native has the new one, and the lifetime that made the call releases the
+// last, which is when the native stops holding it. For a bracketing effect's
+// handler that is the effect's own `@unmount`. An effect that only reports
+// writes brackets nothing, and an `@unmount` would make it a bracket ended by
+// every change of its key, releasing what the native still holds; its cells,
+// and those of every other call a node encloses -- an event handler, a
+// timer's `@tick`, a component function -- are released when the node
+// unmounts. A call no component encloses is the checker's to refuse.
 func (st *ownedStateRun) retain(c *ir.Component) {
 	for _, n := range effectNodes(c.Stmts) {
 		var cells []*ir.Var
@@ -664,15 +668,7 @@ func (st *ownedStateRun) retain(c *ir.Component) {
 			if h.Name == ir.EffectUnmount || h.Func == nil {
 				continue
 			}
-			h.Func.Block = ir.RewriteBlocks(h.Func.Block, func(stmts []ir.Stmt) []ir.Stmt {
-				var out []ir.Stmt
-				for _, s := range stmts {
-					pre, post, made := st.retainedIn(c, s)
-					cells = append(cells, made...)
-					out = append(append(append(out, pre...), s), post...)
-				}
-				return out
-			})
+			h.Func.Block = ir.RewriteBlocks(h.Func.Block, st.retaining(c, &cells))
 		}
 		if len(cells) == 0 {
 			continue
@@ -691,6 +687,28 @@ func (st *ownedStateRun) retain(c *ir.Component) {
 			i = len(n.Handlers) - 1
 		}
 		n.Handlers[i].Func.Block = append(n.Handlers[i].Func.Block, release...)
+	}
+	// An effect's handler is reached again here and rewritten already: its
+	// argument reads a cell now and allocates nothing.
+	var cells []*ir.Var
+	for _, fn := range c.Funcs {
+		fn.Block = ir.RewriteBlocks(fn.Block, st.retaining(c, &cells))
+	}
+	c.Stmts = ir.RewriteBlocks(c.Stmts, st.retaining(c, &cells))
+	st.retained[c] = append(st.retained[c], cells...)
+}
+
+// retaining is the block rewrite that gives each statement's retained
+// allocations their cells, appending the cells it makes to cells.
+func (st *ownedStateRun) retaining(c *ir.Component, cells *[]*ir.Var) func([]ir.Stmt) []ir.Stmt {
+	return func(stmts []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range stmts {
+			pre, post, made := st.retainedIn(c, s)
+			*cells = append(*cells, made...)
+			out = append(append(append(out, pre...), s), post...)
+		}
+		return out
 	}
 }
 
@@ -721,21 +739,25 @@ func effectNodes(body []ir.Stmt) []*ir.NodeInst {
 }
 
 // retainedIn rewrites each allocation s hands a `#[retains]` parameter to
-// pass the cell it is stored in, returning what runs before and after s.
+// pass the cell it is stored in, returning what runs before and after s. A
+// statement s encloses -- a handler's, a lambda's, a child's -- is its own
+// block's, and is rewritten where it stands.
 func (st *ownedStateRun) retainedIn(c *ir.Component, s ir.Stmt) (pre, post []ir.Stmt, cells []*ir.Var) {
 	_ = ir.Walk(s, func(n ir.Node) error {
 		if _, lambda := n.(*ir.Lambda); lambda {
+			return ir.SkipDir
+		}
+		if nested, ok := n.(ir.Stmt); ok && nested != s {
 			return ir.SkipDir
 		}
 		call, ok := n.(*ir.Call)
 		if !ok || call.Func == nil {
 			return nil
 		}
-		off := len(call.Args) - len(call.Func.Params)
 		for i := range call.Args {
-			j := paramIndex(call, i, off)
+			p := call.ParamFor(i)
 			arg := call.Args[i].Value
-			if j < 0 || j >= len(call.Func.Params) || call.Func.Params[j].Transfer != ir.TransferRetains || !isAllocation(arg) {
+			if p == nil || p.Transfer != ir.TransferRetains || !isAllocation(arg) {
 				continue
 			}
 			typ := arg.ExprType()

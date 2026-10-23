@@ -101,18 +101,20 @@ that `strdup`s the family; `cairo_show_text` keeps nothing). The calls that
 keep a pointer -- a signal's, an idle's, a timeout's, a draw func's or a weak
 ref's user data, `g_object_set_data` -- are in gtk4rt and the inline-cgo
 scaffold, outside the IR, and are handed `GINT_TO_POINTER(idx)` or `NULL`,
-nothing allocated. The scaffold's `gtkPost` hands `g_idle_add` a Go pointer,
-`&f`, which GLib keeps past the call as cgo forbids; nothing calls it, and
-gtk4rt's `Post` passes an index instead.
+nothing allocated. `lib/retains_test.go` pins it: no function a library
+package or what it imports declares has a `#[retains]` parameter, so the
+first one written is noticed as the decision it is. The scaffold's `gtkPost`
+hands `g_idle_add` a Go pointer, `&f`, which GLib keeps past the call as cgo
+forbids; nothing calls it, and gtk4rt's `Post` passes an index instead.
 
 **An owned value has one of four lifetimes**, the narrowest that fits:
 
-| Lifetime        | When                                                                                            | Released                             |
-|-----------------|-------------------------------------------------------------------------------------------------|--------------------------------------|
-| **Statement**   | passed to a parameter that copies or borrows (GLib's transfer-none)                             | after the statement                  |
-| **Node**        | held in component state, bound by an owned derived value, or handed to a `#[retains]` parameter | on overwrite, on key change, unmount |
-| **Application** | built from constants                                                                            | once, at application teardown        |
-| **Moved**       | handed to a `#[moves]` parameter (transfer-full)                                                | never; the host owns it              |
+| Lifetime        | When                                                                                                               | Released                             |
+|-----------------|--------------------------------------------------------------------------------------------------------------------|--------------------------------------|
+| **Statement**   | passed to a parameter that copies or borrows (GLib's transfer-none)                                                | after the statement                  |
+| **Node**        | held in component state, bound by an owned derived value, or handed to a `#[retains]` parameter inside a component | on overwrite, on key change, unmount |
+| **Application** | built from constants                                                                                               | once, at application teardown        |
+| **Moved**       | handed to a `#[moves]` parameter (transfer-full)                                                                   | never; the host owns it              |
 
 **Node lifetime lowers onto `effect`** (`internal/lower/owned_state.go`). A
 branch leaving, a list row removed, a window closing are already `@unmount`,
@@ -160,15 +162,28 @@ brackets them. Three things become node lifetime:
   a handle for and nothing released (`reads` in `owned_state.sngl`). A
   reader declared before one of the cell's own reads is a cycle, and the cell
   goes last.
-- **An allocation an effect's handler hands a `#[retains]` parameter** is
-  stored in an `option` cell of the component (`__retN`) and passed from it;
-  the next call replaces it, releasing the old one after the native has the
-  new, and the effect's `@unmount` releases the last. An effect that only
-  reports writes brackets nothing, and an `@unmount` would make it a bracket
-  ended by every change of its key, releasing what the native still holds, so
-  its cells are released by the component's unmount effect instead
-  (`cmd/sngl/testdata/simulate_cnative_owned.txt`). A `#[moves]` argument is
-  left where it is.
+- **An allocation a component hands a `#[retains]` parameter** is stored in
+  an `option` cell of the component (`__retN`) and passed from it; the next
+  call at the same site replaces it, releasing the old one after the native
+  has the new, and the lifetime that made the call releases the last. For a
+  bracketing effect's handler that is the effect's `@unmount`. An effect that
+  only reports writes brackets nothing, and an `@unmount` would make it a
+  bracket ended by every change of its key, releasing what the native still
+  holds, so its cells are released by the component's unmount effect instead
+  (`cmd/sngl/testdata/simulate_cnative_owned.txt`); so are the cells of every
+  other call the component encloses -- an event handler's, a timer's
+  `@tick`'s, a component function's, which `retain` reaches by rewriting
+  every block of the component after the effects
+  (`testdata/owned_retains_node.sngl`). `retainedIn` rewrites one statement
+  and skips the statements it encloses, which are their own block's: found
+  from the enclosing `if`, a handler's call had its cell written around the
+  `if`. A program should not have to know where a native may be called from,
+  so a call no component encloses -- a free function, a test, a package
+  var's initializer, the package body -- is refused by the checker
+  (`checkRetainsOutsideNode`, `testdata/error_owned_retains_outside_node.sngl`)
+  where the argument allocates; one handing over a value another holder owns
+  is left to that holder's lifetime. A `#[moves]` argument is left where it
+  is.
 
 The pass runs before `NoComputed`, which would inline a derived value at
 every read and so allocate it per read; before the inliners, which give each
@@ -385,13 +400,16 @@ protocol declared as native-calling bodies rather than answered by the
 translator -- and is #293, split out of the ownership work with the count of
 what it touches.
 
-**What it does not release is held**, never released wrongly, and the spec's
-*Owned values* lists it so a program knows to release by hand: an allocation
-handed to a `#[retains]` parameter outside an effect's handler (an event
-handler, a function), which `retain` does not see. A conditional arm and a
-temp bound before a later one raises were on the list until
-`ConditionalTemps` and `releaseTemps.bind`, above. Two shapes release twice rather than
-hold, and the spec rules them out: a temp passed to a function returning the
+**Nothing it reaches is held.** The review of the ownership work left a list
+of values the compiler held, and the spec's *Owned values* carried it so a
+program knew to release by hand. A value in a collection or a struct was on
+it until `ReleaseOf` composed; a conditional arm and a temp bound before a
+later one raises until `ConditionalTemps` and `releaseTemps.bind`; an
+allocation handed to a `#[retains]` parameter outside an effect's handler
+until `retain` reached every block a component encloses, all above. What is
+left is what no lifetime can hold, and the checker refuses it: a `#[retains]`
+call no component encloses. Two shapes release twice rather than hold, and
+the spec rules them out: a temp passed to a function returning the
 same owned type that returns its argument, since the pass releases the
 argument and the result alike; and a component's or package's var assigned
 another var's value, which both then release.
@@ -529,9 +547,13 @@ anything else the zero value; every argument is checked for use after release;
 a `#[moves]` argument is the native's from there (a later use or release says
 "moved"); a `#[retains]` one may not be released until the lifetime that made
 the call ends -- the effect whose handler ran it (`handles.within`, ended by
-`letGo` before its `@unmount`), or the application outside one -- or until the
-same call in the same lifetime hands the native another, which it holds in
-its place: an `@update` keyed on a list is one lifetime however often it runs.
+`letGo` before its `@unmount`); outside one the component instance the call
+ran in (`Env.instance`, the scope a handler's or a function's snapshot was
+taken from, ended by `letGoInstance` as `evictUnreached` drops the instance,
+which is before the unmount effect releasing its cells runs); or the
+application outside every component -- or until the same call in the same
+lifetime hands the native another, which it holds in its place: an `@update`
+keyed on a list is one lifetime however often it runs.
 A native's return steering control flow takes one path.
 
 Simulating is what adds the target's half (`BuildSimulatedEnv`, set before the
