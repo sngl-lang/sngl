@@ -549,6 +549,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"strconv"
 	"time"
 	"unsafe"
@@ -742,7 +743,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.d)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.d_daySelected_handler)
 	C.sngl_connect(unsafe.Pointer(m.d), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.d)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.d)))
 	var __lt1 string
 	if m.picked__inst0 != nil {
 		__lt1 = (*(m.picked__inst0)).Format("2006-01-02")
@@ -752,8 +753,8 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt1))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.float(0.0))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -960,7 +961,7 @@ pass sha256:4989d4bb67ced2e29c571ed3d9a4a20b
 -- run/go/fyne --
 pass sha256:fd8d2962b874c24d2bc113f300a786b5
 -- run/go/gtk4 --
-pass sha256:7ae112b2a1911ed632e4baa6ae56fad7
+pass sha256:38d72cdd71a6192a7e6632e5f2057ad7
 -- run/kotlin/android --
 pass sha256:4693d7f3522d182067bb2e27cbd270e8
 -- run/none/html --

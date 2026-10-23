@@ -725,14 +725,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     return w;
 }
 
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
 static GtkBox *sngl_slot_box(GtkBox *b) {
     if (b != NULL) return b;
     GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
@@ -759,6 +751,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -833,7 +826,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					__inst0_next = append(__inst0_next, __n1)
 					__inst0_i = (__inst0_i + 1)
 					__n1__el := __n1.Root
-					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n1__el)))
 					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
 				}
 				for __inst0_i_d, _ := range m.__inst0_live {
@@ -923,7 +916,7 @@ func (m *Model) buildWidgetTree() {
 		C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n5)), C.float(0.0))
 		C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(__n5)))
 		C.gtk_button_set_child((*C.GtkButton)(unsafe.Pointer(m.row)), (*C.GtkWidget)(unsafe.Pointer(__n4)))
-		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(m.row)))
+		gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Handle(unsafe.Pointer(m.row)))
 	}
 	m.__n2 = (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
 	m.__n2_box = C.sngl_slot_box(m.__n2_box)
@@ -931,7 +924,7 @@ func (m *Model) buildWidgetTree() {
 		C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n2_box)))
 	}
 	m.__renderSlot0(m.__n2_box)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n3)))
 }
 
@@ -1245,7 +1238,7 @@ pass sha256:4f0630029fe661a622fbe2fa82d862c1
 -- run/go/fyne --
 pass sha256:3f36c274b8a9fd8df261bf80e099a301
 -- run/go/gtk4 --
-pass sha256:4ada324d57ff127864382250c5f9a470
+pass sha256:8a0995cc440f0c01309aae38f2a34305
 -- run/kotlin/android --
 pass sha256:233a133f02e271f09d9db56fd5b49627
 -- run/none/html --

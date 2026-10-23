@@ -389,6 +389,7 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
@@ -536,7 +537,7 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw0(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n0), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.w)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.w)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.w)))
 }
 
@@ -888,7 +889,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:146ee72c6c33901f542a92fb6493d077
+pass sha256:f8a302762a5ffa54eb727646233cacb0
 -- run/kotlin/android --
 pass sha256:b7b01539244ce74b590e5551fc4ab778
 -- run/none/html --

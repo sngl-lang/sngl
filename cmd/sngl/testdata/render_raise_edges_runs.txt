@@ -219,3 +219,253 @@ func testRaisedAgain(t Test, c again) {
 ui.window {
     rows
 }
+-- testrun/android/kotlin/app.sngl/across/1 --
+sha256:9db95921bc073941d413b05e7081e211
+{
+  "results": [
+    {
+      "Desc": "AcrossAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/again/1 --
+sha256:146977d22086a02a2d071aadcd864191
+{
+  "results": [
+    {
+      "Desc": "RaisedAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/kinds/1 --
+sha256:44933ffb7d7948841bf83371901e6126
+{
+  "results": [
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/rows/1 --
+sha256:b136b50486a36fed96ed17a124441fd6
+{
+  "results": [
+    {
+      "Desc": "ARowsRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/slotted/1 --
+sha256:e2c1bc1362c2165cae8a0bf1510ca497
+{
+  "results": [
+    {
+      "Desc": "SlotContent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/across/1 --
+sha256:438d18e4fb1c053734e870ecef7b4ae6
+{
+  "results": [
+    {
+      "Desc": "AcrossAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/again/1 --
+sha256:fdaae5bd1e75f9ab8eb25e058a076416
+{
+  "results": [
+    {
+      "Desc": "RaisedAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/kinds/1 --
+sha256:ed84a4eec203fdf65a3b9129371d0476
+{
+  "results": [
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/rows/1 --
+sha256:3a054e0b3f3cec1a66e56af21af5b27b
+{
+  "results": [
+    {
+      "Desc": "ARowsRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/slotted/1 --
+sha256:6e7b1f585ed32d40629185bebc9c071c
+{
+  "results": [
+    {
+      "Desc": "SlotContent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/across/1 --
+sha256:e5cc07a13739afbb11c2eb559a5c813f
+{
+  "results": [
+    {
+      "Desc": "AcrossAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/again/1 --
+sha256:35d1c9072737c4e8fa85bbbe26440a11
+{
+  "results": [
+    {
+      "Desc": "RaisedAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/kinds/1 --
+sha256:434db6164afefa3a3581d2475cfdd6f8
+{
+  "results": [
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/rows/1 --
+sha256:646c02d21b71d2b9c1784f3e6cfb0e7f
+{
+  "results": [
+    {
+      "Desc": "ARowsRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/slotted/1 --
+sha256:f4bedd67bd8f91874f17133f66fb87fe
+{
+  "results": [
+    {
+      "Desc": "SlotContent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/across/1 --
+sha256:68348e102f70020a11bf1326aebae161
+{
+  "results": [
+    {
+      "Desc": "AcrossAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/again/1 --
+sha256:66fa9299efe04eb59e581730e3c702e0
+{
+  "results": [
+    {
+      "Desc": "RaisedAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/kinds/1 --
+sha256:0a4bcc3bdf58fb1d2093adbd87d42e51
+{
+  "results": [
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/rows/1 --
+sha256:2e5e4ea2eaa2d866bba809dde34c8c35
+{
+  "results": [
+    {
+      "Desc": "ARowsRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/slotted/1 --
+sha256:1aca7707dfdcd6203f87f8dfece16241
+{
+  "results": [
+    {
+      "Desc": "SlotContent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/across/1 --
+sha256:c475061a236a7b478ddbf8427145a28a
+{
+  "results": [
+    {
+      "Desc": "AcrossAComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/again/1 --
+sha256:1b8650935f2b7001475c28546623c021
+{
+  "results": [
+    {
+      "Desc": "RaisedAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/kinds/1 --
+sha256:1ffadded7a0e9f80b1162593e331041b
+{
+  "results": [
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/rows/1 --
+sha256:b0fe20e5daa06637ceb64f3c92d02ec2
+{
+  "results": [
+    {
+      "Desc": "ARowsRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/slotted/1 --
+sha256:c9be69b4a3e1122bb5b9f2b21dc4125b
+{
+  "results": [
+    {
+      "Desc": "SlotContent",
+      "Passed": true
+    }
+  ]
+}

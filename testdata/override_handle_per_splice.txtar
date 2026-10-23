@@ -203,6 +203,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"strconv"
 	"time"
 	"unsafe"
@@ -531,23 +532,23 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_connect(unsafe.Pointer(m.first), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.first_activate_handler)
 	C.sngl_connect(unsafe.Pointer(m.first), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.first)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n0)), gtk4rt.Handle(unsafe.Pointer(m.first)))
 	m.second = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
 	snglCallbacks = append(snglCallbacks, m.second_changed_handler)
 	C.sngl_connect(unsafe.Pointer(m.second), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.second_activate_handler)
 	C.sngl_connect(unsafe.Pointer(m.second), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.second)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n0)), gtk4rt.Handle(unsafe.Pointer(m.second)))
 	m.cal = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.cal)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.cal_daySelected_handler)
 	C.sngl_connect(unsafe.Pointer(m.cal), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.cal)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n0)), gtk4rt.Handle(unsafe.Pointer(m.cal)))
 	m.cal__1 = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.cal__1)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.cal__1_daySelected_handler)
 	C.sngl_connect(unsafe.Pointer(m.cal__1), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.cal__1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n0)), gtk4rt.Handle(unsafe.Pointer(m.cal__1)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
@@ -617,4 +618,4 @@ func (m *Model) cal__1Change(v *time.Time) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.cal__1)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:83ca72fac448c5e74f0a25d90f2112d2
+pass sha256:412e97b09e9ce2e2b951f210a7357119

@@ -772,6 +772,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -967,19 +968,19 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.checked__inst0)))
 	snglCallbacks = append(snglCallbacks, m.box_toggled_handler)
 	C.sngl_connect(unsafe.Pointer(m.box), C.CString("toggled"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n0)), gtk4rt.Handle(unsafe.Pointer(m.box)))
 	m.field = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
 	snglCallbacks = append(snglCallbacks, m.field_changed_handler)
 	C.sngl_connect(unsafe.Pointer(m.field), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.field_activate_handler)
 	C.sngl_connect(unsafe.Pointer(m.field), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.field)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n0)), gtk4rt.Handle(unsafe.Pointer(m.field)))
 	m.sw = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst1)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.sw_notifyActive_handler)
 	C.sngl_connect(unsafe.Pointer(m.sw), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n0)), gtk4rt.Handle(unsafe.Pointer(m.sw)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
@@ -1245,7 +1246,7 @@ pass sha256:020b25903190f7e204857096aae0e316
 -- run/go/fyne --
 pass sha256:add6a6ae64172d01f90330d3869f638a
 -- run/go/gtk4 --
-pass sha256:0eac5d10a40532642398f7bec9eaa128
+pass sha256:54ccc775d0aaa420261045a600035326
 -- run/kotlin/android --
 pass sha256:b5b9a4b4ba6618b790e2c60c5d53fc3c
 -- run/none/html --

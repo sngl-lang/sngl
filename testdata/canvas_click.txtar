@@ -506,14 +506,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     return w;
 }
 
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
 static GtkBox *sngl_slot_box(GtkBox *b) {
     if (b != NULL) return b;
     GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
@@ -574,6 +566,7 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 	"unsafe"
@@ -739,7 +732,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					__inst0_next = append(__inst0_next, __n1)
 					__inst0_i = (__inst0_i + 1)
 					__n1__el := __n1.Root
-					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n1__el)))
 					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
 				}
 				for __inst0_i_d, _ := range m.__inst0_live {
@@ -860,7 +853,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.float(0.0))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	m.board = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.board, C.int(40))
 	C.gtk_drawing_area_set_content_height(m.board, C.int(40))
@@ -873,7 +866,7 @@ func (m *Model) buildWidgetTree() {
 		m.board_click_handler()
 	})
 	m.boardGesture = C.sngl_connect_click(unsafe.Pointer(m.board), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.board)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n2)), gtk4rt.Handle(unsafe.Pointer(m.board)))
 	m.__renderSlot0(__n2)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n2)))
 }
@@ -1123,6 +1116,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:266e0590897241bfe232e0269bc96be5
 -- run/go/gtk4 --
-pass sha256:56db05656caad74c4361cdbc9d011a27
+pass sha256:d272b12226fdeaf828e5db2375da3ca6
 -- run/none/html --
 pass sha256:e69231ca8368ed1ffa7b7f9d78866897

@@ -543,6 +543,7 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
@@ -694,8 +695,8 @@ func (m *Model) buildWidgetTree() {
 	m.label = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.label)), C.CString("inside"))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.label)), C.float(0.0))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.label)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.label)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n3, C.int(10))
 	C.gtk_drawing_area_set_content_height(m.__n3, C.int(10))
@@ -704,12 +705,12 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw0(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n3), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString("radius 5"))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.float(0.0))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -1082,7 +1083,7 @@ pass sha256:4fe50b5d33008f6b8fa0d786946ef400
 -- run/go/fyne --
 pass sha256:c269fa43fcc8ff0f3fc0f3f8423487cd
 -- run/go/gtk4 --
-pass sha256:ff3d8e5f4c9d1b448dabcd41902c16cb
+pass sha256:511b965889b83a07fbf75567798b7d40
 -- run/kotlin/android --
 pass sha256:06067c5416f333ab560bd88f089cbfc8
 -- run/none/html --

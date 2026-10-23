@@ -200,7 +200,10 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-import "unsafe"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"unsafe"
+)
 
 func boolToInt(b bool) int {
 	if b {
@@ -251,12 +254,12 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.double(0.2))
 	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.CString(""))
 	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.gboolean(boolToInt(false)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.__n3 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
 	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.double(0.5))
 	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.CString(""))
 	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(false)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -344,7 +347,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:91328f3f627633ae40ff723244685522
+pass sha256:fe3bd0c288e5a33014b0af97f4485431
 -- run/kotlin/android --
 pass sha256:3d7a5cf9039371de231dd147dcc08dd4
 -- run/none/html --

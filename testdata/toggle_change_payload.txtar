@@ -673,6 +673,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -771,17 +772,17 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.on)))
 	snglCallbacks = append(snglCallbacks, m.box_toggled_handler)
 	C.sngl_connect(unsafe.Pointer(m.box), C.CString("toggled"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(m.box)))
 	m.sw = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst0)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.sw_notifyActive_handler)
 	C.sngl_connect(unsafe.Pointer(m.sw), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(m.sw)))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.float(0.0))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
 }
 
@@ -1054,7 +1055,7 @@ pass sha256:81f98053b0790f562cf90bbaaa594758
 -- run/go/fyne --
 pass sha256:da52e86f62fbbead6c0affdd99149c90
 -- run/go/gtk4 --
-pass sha256:355327901dde68dde6404848660902e0
+pass sha256:876b084f552ec98a73da6da8e4768c0a
 -- run/go/html --
 pass sha256:d4e53d9333d9f96978a663e76d3e20e1
 -- run/kotlin/android --

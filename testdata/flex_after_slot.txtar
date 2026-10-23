@@ -320,14 +320,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     return w;
 }
 
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
 static GtkBox *sngl_slot_box(GtkBox *b) {
     if (b != NULL) return b;
     GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
@@ -415,7 +407,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					__n1 := (*C.GtkSpinner)(unsafe.Pointer(C.gtk_spinner_new()))
 					C.gtk_spinner_set_spinning((*C.GtkSpinner)(unsafe.Pointer(__n1)), C.gboolean(boolToInt(true)))
 					C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n1)), C.CString("busy"))
-					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n1)))
 					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 				}
 			}
@@ -468,7 +460,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), C.CString("toggle"))
 	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n3), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__renderSlot0(m.__n2)
 	m.__n4 = (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
 	gtk4rt.Flex(gtk4rt.Handle(unsafe.Pointer(m.__n4)))
@@ -477,8 +469,8 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n5)), C.CString("rows"))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n5)), C.float(0.0))
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -493,4 +485,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 -- run/go/fyne --
 pass sha256:1246d9f1bfe61255c587ab94cfcf2bbd
 -- run/go/gtk4 --
-pass sha256:e8f1a00141e059658316baa46ae005e5
+pass sha256:f8a81fd0ce0b7ea138d91849db4d2190

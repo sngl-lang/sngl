@@ -716,6 +716,7 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"math"
 	"slices"
@@ -989,12 +990,12 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw0(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), C.CString("close"))
 	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n2), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -1516,7 +1517,7 @@ pass sha256:39d152ecff504e6e4765b739fc55cff3
 -- run/go/fyne --
 pass sha256:1b8523d3c5af0bcc5d0664b7dbef5e58
 -- run/go/gtk4 --
-pass sha256:352ca5419aa98a99fa44622e689ca9ea
+pass sha256:111f85f0dad5787599e644b6ad82b307
 -- run/kotlin/android --
 pass sha256:10979f61f83880ff0a61a70faeec8947
 -- run/none/html --

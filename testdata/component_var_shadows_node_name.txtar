@@ -498,14 +498,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     return w;
 }
 
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
 static GtkBox *sngl_slot_box(GtkBox *b) {
     if (b != NULL) return b;
     GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
@@ -532,6 +524,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -605,7 +598,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				__inst0_next = append(__inst0_next, __n3)
 				__inst0_i = (__inst0_i + 1)
 				__n3__el := __n3.Root
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
+				gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n3__el)))
 				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
 				for __inst0_i_d, _ := range m.__inst0_live {
 					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -696,8 +689,8 @@ func (m *Model) buildWidgetTree() {
 	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.CString(fmt.Sprint(m.progress__inst0)))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.float(0.0))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n5)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n5)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
 
@@ -880,7 +873,7 @@ pass sha256:75e6b3e4c443b4f47e05de594cd87018
 -- run/go/fyne --
 pass sha256:435745008b1776636da253289895f05f
 -- run/go/gtk4 --
-pass sha256:5c63aa198b209444ed8bdc44022cc9ff
+pass sha256:5fe8d4c7f57a30d6520f732f18d1a359
 -- run/kotlin/android --
 pass sha256:cc3303bd94332842b0fec78152d6ced8
 -- run/none/html --
