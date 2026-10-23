@@ -206,13 +206,15 @@ The node half.
 
 ## Part 7: GIR ownership
 
-- [ ] girresolve reads `transfer-ownership` on `gir:` parameters: `full`
-  is `#[moves]`. A string parameter with `full` is a test asserting no free
-  is emitted. GIR has no annotation for a borrowed pointer the callee keeps,
-  so `#[retains]` stays hand-written; list any gtk4 reaches.
-- [ ] Audit the hand-written `#[cnative]` declarations in
-  `lib/platform/gtk4/gtk4.sngl` against cairo's docs; none should retain, and
-  the "cairo copies" comment on `selectFontFace` becomes redundant.
+- [X] girresolve reads `transfer-ownership` on `gir:` parameters: `full`
+  is `#[moves]` (`testdata/gir_transfer_full.txtar`). An action now takes
+  scalar and string values, which it had to for any parameter to exist. The
+  golden needed the `output` block's `gir` to steer the check, which it now
+  does (`build.Check` configures platforms). gtk4 reaches no `#[retains]`
+  (design/ownership.md); the scaffold's uncalled `gtkPost` is noted.
+- [X] Audit the hand-written `#[cnative]` declarations in
+  `lib/platform/gtk4/gtk4.sngl` against cairo's docs: none retains, and the
+  "cairo copies" comment on `selectFontFace` is gone.
 
 ## Part 8: gtk4 images
 

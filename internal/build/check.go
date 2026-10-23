@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,6 +39,9 @@ type CheckConfig struct {
 	// though the document had imported it, so its overrides are checked here
 	// and its failures belong to this build.
 	Targets []ir.StaticTarget
+	// Opts are the command line's `--opt` values, which win over what an
+	// `output` block declares.
+	Opts map[string]string
 	// Warn receives each warning the check reports. Nil drops them.
 	Warn func(ir.Diagnostic)
 }
@@ -58,6 +62,9 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 	resolver := cfg.Resolver
 	if resolver == nil {
 		resolver = &Resolver{FS: fsys}
+	}
+	if err := configurePlatforms(doc, cfg.Opts); err != nil {
+		return nil, err
 	}
 	// A selected platform that cannot be used here -- gtk4 with no
 	// introspection data -- is refused before anything is checked against it:
@@ -108,6 +115,62 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 		}
 	}
 	return pkg, nil
+}
+
+// configurePlatforms hands each platform the options it will be built with
+// before the check, since some decide what the check reads: gtk4's `gir`
+// picks the introspection data a `gir:` import declares its widgets from. A
+// platform configured only from the command line checked a program against
+// one GIR and built it against the one its `output` block named.
+func configurePlatforms(doc *ast.Document, cliOpts map[string]string) error {
+	for _, name := range codegen.Platforms() {
+		cfg, ok := codegen.LookupPlatform(name).(codegen.OptionConfigurable)
+		if !ok {
+			continue
+		}
+		opts := declaredPlatformOptions(doc, name)
+		maps.Copy(opts, cliOpts)
+		if err := cfg.Configure(opts); err != nil {
+			return fmt.Errorf("configure platform %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// declaredPlatformOptions is the literal options the first `output` block
+// naming platform gives it, read from the AST because the check has not run.
+func declaredPlatformOptions(doc *ast.Document, platform string) map[string]string {
+	opts := map[string]string{}
+	for _, stmt := range doc.Stmts {
+		out, ok := stmt.(*ast.VisualNode)
+		if !ok || out.TargetName() != "output" {
+			continue
+		}
+		for _, lang := range out.Block.Stmts {
+			langNode, ok := lang.(*ast.VisualNode)
+			if !ok {
+				continue
+			}
+			for _, plat := range langNode.Block.Stmts {
+				call, ok := plat.(*ast.CallStmt)
+				if !ok {
+					continue
+				}
+				if id, ok := call.Call.Func.(*ast.IdentExpr); !ok || id.Name != platform {
+					continue
+				}
+				for _, a := range call.Call.Args.Args {
+					if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
+						if v, ok := literalOption(arg.Value); ok {
+							opts[arg.Name] = v
+						}
+					}
+				}
+				return opts
+			}
+		}
+	}
+	return opts
 }
 
 // RegisteredTargets is every language and platform the binary registered.
@@ -386,4 +449,17 @@ func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs
 		docs = append(docs, doc)
 	}
 	return docs, fsys, nil
+}
+
+// literalOption is an option value as the command line would spell it, and
+// false for anything but a literal.
+func literalOption(e ast.Expr) (string, bool) {
+	lit, ok := e.(*ast.LiteralExpr)
+	if !ok {
+		return "", false
+	}
+	if s, ok := lit.StringValue(); ok {
+		return s, true
+	}
+	return lit.Raw, true
 }

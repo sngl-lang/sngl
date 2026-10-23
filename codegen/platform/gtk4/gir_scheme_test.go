@@ -14,8 +14,8 @@ import (
 )
 
 // The widget declarations are the `gir:` scheme's package, which
-// sngl:platform/gtk4 imports, and `--opt gir=` is what decides which GIR that
-// import reads. Its output is stored, so the option has to be part of what
+// sngl:platform/gtk4 imports, and gtk4's `gir` option is what decides which
+// GIR that import reads. Its output is stored, so the option has to be part of what
 // the stored package depends on: a class only one of two GIRs declares checks
 // under the option naming that GIR and not under the other, in either order
 // and against one store.
@@ -45,22 +45,17 @@ ui.window {
 }
 `
 	t.Cleanup(func() { _ = codegen.LookupPlatform("gtk4").(*Generator).Configure(map[string]string{}) })
-	check := func(opt string) error {
+	check := func(src string, opts map[string]string) error {
 		t.Helper()
-		g, ok := codegen.LookupPlatform("gtk4").(*Generator)
-		if !ok {
-			t.Fatalf("gtk4 resolved to %T", codegen.LookupPlatform("gtk4"))
-		}
-		if err := g.Configure(map[string]string{"gir": opt}); err != nil {
-			t.Fatal(err)
-		}
 		doc, err := parser.Parse("app.sngl", []byte(src))
 		if err != nil {
 			t.Fatal(err)
 		}
 		_, err = build.Check(doc, build.CheckConfig{
 			Dir:     t.TempDir(),
+			IsMain:  true,
 			Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}},
+			Opts:    opts,
 		})
 		return err
 	}
@@ -68,12 +63,22 @@ ui.window {
 		opt  string
 		want bool
 	}{{custom, true}, {girBuiltin, false}, {custom, true}} {
-		err := check(step.opt)
+		err := check(src, map[string]string{"gir": step.opt})
 		if step.want && err != nil {
 			t.Errorf("gir=%s: %v", step.opt, err)
 		}
 		if !step.want && (err == nil || !strings.Contains(err.Error(), "GtkFoo")) {
 			t.Errorf("gir=%s: err = %v, want GtkFoo unknown", step.opt, err)
 		}
+	}
+
+	// The output block's option decides the check as it decides the build,
+	// and the command line's overrides it.
+	declared := strings.Replace(src, "ui.window", "output {\n    go {\n        gtk4(gir=\""+custom+"\")\n    }\n}\n\nui.window", 1)
+	if err := check(declared, nil); err != nil {
+		t.Errorf("output block gir=%s: %v", custom, err)
+	}
+	if err := check(declared, map[string]string{"gir": girBuiltin}); err == nil || !strings.Contains(err.Error(), "GtkFoo") {
+		t.Errorf("--opt gir=builtin over the output block: err = %v, want GtkFoo unknown", err)
 	}
 }

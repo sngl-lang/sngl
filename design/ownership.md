@@ -40,6 +40,25 @@ marks the way a component's does (`funcParamMarks` beside `paramMarks`), so
 an unknown name there reports as an unknown macro (`testdata/param_mark.sngl`);
 a lambda's or handler's still refuses every mark.
 
+**GIR says `#[moves]`; nothing says `#[retains]`.** A `gir:` action's
+parameter GIR marks `transfer-ownership="full"` is declared `#[macro.moves]`
+(`gir.ActionParam.Moves`), so the C string CMarshal makes for it is handed
+over rather than freed (`testdata/gir_transfer_full.txtar`, whose GIR says
+so of a method that in GTK copies: GTK 4's one transfer-full string,
+`gtk_string_list_take`, is on a model no view renders). GIR has no
+annotation for a borrowed pointer the callee keeps, so `#[retains]` is
+written by hand, and gtk4 has none to write: what it declares --
+`sngl_calendar_select`, the cairo functions in gtk4.sngl, the `gir:` actions
+-- takes scalars, cairo's enums, the `cairo_t*` GTK lends a draw callback,
+and strings cairo and GTK copy (`cairo_select_font_face` builds a toy face
+that `strdup`s the family; `cairo_show_text` keeps nothing). The calls that
+keep a pointer -- a signal's, an idle's, a timeout's, a draw func's or a weak
+ref's user data, `g_object_set_data` -- are in gtk4rt and the inline-cgo
+scaffold, outside the IR, and are handed `GINT_TO_POINTER(idx)` or `NULL`,
+nothing allocated. The scaffold's `gtkPost` hands `g_idle_add` a Go pointer,
+`&f`, which GLib keeps past the call as cgo forbids; nothing calls it, and
+gtk4rt's `Post` passes an index instead.
+
 **An owned value has one of four lifetimes**, the narrowest that fits:
 
 | Lifetime        | When                                                                                            | Released                             |

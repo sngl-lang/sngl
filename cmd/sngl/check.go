@@ -57,7 +57,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 			slog.Info("parse", "unit", u.name, "duration", time.Since(start))
 
 			start = time.Now()
-			if _, err := checkDoc(doc, u.dir, true); err != nil {
+			if _, err := checkDoc(doc, u.dir, true, nil); err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 				failed = true
 				continue

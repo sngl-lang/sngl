@@ -291,7 +291,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		// would otherwise never have its platform package merged, and every
 		// stdlib component it renders through an override would report itself
 		// unimplemented.
-		pkg, err := checkDoc(doc, u.dir, true, build.SelectedTargets(testlaunch.LangIdent(lang), plat.PlatformIdentifier())...)
+		pkg, err := checkDoc(doc, u.dir, true, nil, build.SelectedTargets(testlaunch.LangIdent(lang), plat.PlatformIdentifier())...)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			totalFail++

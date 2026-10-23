@@ -106,7 +106,7 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 
 	platforms := flagPlatforms
 	if len(platforms) == 0 {
-		pkg, err := checkDoc(doc, u.dir, true)
+		pkg, err := checkDoc(doc, u.dir, true, nil)
 		if err == nil && pkg != nil {
 			for _, o := range pkg.Outputs {
 				platforms = append(platforms, o.Platform)

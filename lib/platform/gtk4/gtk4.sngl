@@ -690,7 +690,6 @@ const func toFontSlant(v int) FontSlant
 #[cnative("C.cairo_font_weight_t")]
 const func toFontWeight(v int) FontWeight
 
-// The family is a string cairo copies.
 #[cnative("cairo_select_font_face")]
 func CairoContext.selectFontFace(family string, slant FontSlant, weight FontWeight)
 
