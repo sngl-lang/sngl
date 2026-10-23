@@ -2253,7 +2253,13 @@ four lifetimes that holds it:
 - **Statement** -- a value a statement makes and only reads -- passed to a
   parameter that only reads or copies it, used as a receiver, read a field or
   an element of, or discarded -- is released once the statement completes,
-  including when it returns or raises.
+  including when it returns or raises. An arm of a ternary or of a `match`
+  expression and the right operand of `&&` or `||` are the statement's: a
+  value the taken arm makes is released with the statement, and an arm not
+  taken makes nothing. The head of a `for` over an iterable is evaluated once
+  and what it makes is released when the loop ends, by a `return` out of it
+  included; a condition head is evaluated before each iteration and what it
+  makes is released before the test.
 - **Node** -- a value held in a `var` of a component or of a view block,
   computed by an owned derived value, or handed to a `#[macro.retains]`
   parameter by an effect's handler lives as long as the node: it is released
@@ -2299,12 +2305,6 @@ prop.
 **What the compiler does not release is held**, never released wrongly, and
 the interpreter reports it as a leak:
 
-- A value the statement may not make: the right operand of `&&` or `||`, an
-  arm of a ternary or of a `match` expression, or the head of a `for`. Make
-  such a value in a statement of its own, and bind it to a `var` to release by
-  hand where it must be conditional.
-- A value made earlier in a statement whose later value raises while being
-  made.
 - A value handed to a `#[macro.retains]` parameter outside an effect's
   handler, from an event handler or a function.
 

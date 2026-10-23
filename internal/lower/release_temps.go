@@ -273,6 +273,14 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 		}
 	case *ir.Match:
 		c.visit(&n.Subject, false)
+	case *ir.For:
+		// An iterable head is evaluated once and read by every iteration, so
+		// what it makes lives across the loop. A condition head is evaluated
+		// per iteration, and ConditionalTemps has made it a call whose body
+		// is reached as a block of its own.
+		if k := ir.DeriveIterKind(n); k != ir.IterCondition && k != ir.IterForever {
+			c.visit(&n.Iter, true)
+		}
 	default:
 		return []ir.Stmt{s}
 	}
@@ -290,7 +298,7 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 		st.counter++
 		typ := f.expr.ExprType()
 		sym := &ir.Var{Name: name, Type: typ, Synthesized: true}
-		pre = append(pre, &ir.LocalVar{Name: name, Type: typ, Init: f.expr, Sym: sym})
+		pre = append(pre, st.bind(&ir.LocalVar{Name: name, Type: typ, Init: f.expr, Sym: sym}, temps)...)
 		*f.slot = &ir.Ident{Name: name, Sym: sym, Type: typ}
 		temps = append(temps, temp{sym: sym, release: st.pkg.ReleaseFor(typ)})
 	}
@@ -300,6 +308,10 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 	if len(temps) == 0 {
 		return append(pre, s)
 	}
+	if loop, ok := s.(*ir.For); ok {
+		st.releaseBeforeReturns(&loop.Body, temps)
+		st.releaseBeforeReturns(&loop.Else, temps)
+	}
 	body, after := st.split(s)
 	if raising := raisingCalls(body); len(raising) > 0 {
 		body = []ir.Stmt{st.catchReleasing(body, temps, raising)}
@@ -307,6 +319,46 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 	out := append(pre, body...)
 	out = append(out, st.releases(temps)...)
 	return append(out, after...)
+}
+
+// bind is decl, run so that a raise while its value is made releases the
+// temps bound before it: declared ahead and assigned in a catch block of its
+// own. A binding that cannot raise, or has nothing bound before it, is the
+// declaration alone.
+func (st *releaseTemps) bind(decl *ir.LocalVar, before []temp) []ir.Stmt {
+	assign := &ir.Assign{Target: identOf(decl.Sym), Op: ast.AssignSet, Value: decl.Init}
+	raising := raisingCalls([]ir.Stmt{assign})
+	if len(before) == 0 || len(raising) == 0 {
+		return []ir.Stmt{decl}
+	}
+	decl.Init = nil
+	return []ir.Stmt{decl, st.catchReleasing([]ir.Stmt{assign}, before, raising)}
+}
+
+// releaseBeforeReturns releases temps ahead of each `return` in a loop's
+// body, which leaves the loop the releases after it would have ended. The
+// result is bound first, as split binds a statement's own.
+func (st *releaseTemps) releaseBeforeReturns(block *[]ir.Stmt, temps []temp) {
+	var out []ir.Stmt
+	for _, s := range *block {
+		ret, ok := s.(*ir.Return)
+		if !ok {
+			for _, b := range ir.TransparentBlocks(s) {
+				st.releaseBeforeReturns(b, temps)
+			}
+			out = append(out, s)
+			continue
+		}
+		if ret.Value != nil {
+			if _, plain := ret.Value.(*ir.Ident); !plain {
+				body, _ := st.split(ret)
+				out = append(out, body...)
+			}
+		}
+		out = append(out, st.releases(temps)...)
+		out = append(out, ret)
+	}
+	*block = out
 }
 
 // split is s as what reads the temps and what runs once they are released. A
@@ -537,14 +589,33 @@ func (st *releaseTemps) eventType() *ir.Type {
 }
 
 // raisingCalls is every call in body a raise can leave other than through a
-// per-call handler, which ends the call and not the statement.
+// per-call handler, which ends the call and not the statement. A catch block
+// nested in body -- a loop's statement released its own temps -- raises again
+// from its handler, which the walk does not enter on its own, and the raise
+// again is one the catch around it has to see.
 func raisingCalls(body []ir.Stmt) []*ir.Call {
 	var out []*ir.Call
-	visitCoveredCalls(body, func(c *ir.Call) {
-		if c.ErrorMode != ir.ErrorNone && c.ErrorMode != ir.ErrorPerCall {
-			out = append(out, c)
+	var visit func(block []ir.Stmt)
+	visit = func(block []ir.Stmt) {
+		for _, s := range block {
+			_ = ir.Walk(s, func(n ir.Node) error {
+				switch x := n.(type) {
+				case *ir.Lambda:
+					return ir.SkipDir
+				case *ir.If:
+					if x.Catch != nil && x.Catch.Func != nil {
+						visit(x.Catch.Func.Block)
+					}
+				case *ir.Call:
+					if x.ErrorMode != ir.ErrorNone && x.ErrorMode != ir.ErrorPerCall {
+						out = append(out, x)
+					}
+				}
+				return nil
+			})
 		}
-	})
+	}
+	visit(body)
 	return out
 }
 

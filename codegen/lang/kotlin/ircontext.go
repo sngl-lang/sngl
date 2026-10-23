@@ -1050,6 +1050,11 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	if lam, ok := n.Callee.(*ir.Lambda); ok && lam.Func != nil && ir.BlockHasAsyncCall(lam.Func.Block) {
 		return kc.waitingLiteralCall(lam, args)
 	}
+	if _, ok := n.Callee.(*ir.Lambda); ok {
+		// A labeled literal called where it stands: `fn@{ … }()` labels the
+		// call, and Kotlin refuses `return@fn` inside it.
+		return "(" + kc.EvalExpr(n.Callee) + ")(" + strings.Join(args, ", ") + ")"
+	}
 	if n.Callee != nil {
 		return kc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
 	}

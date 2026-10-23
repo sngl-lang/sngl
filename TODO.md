@@ -79,16 +79,16 @@ Every entry here is an expression the pass refuses because the statement may
 not evaluate it. A target without ternaries already lowers an arm to a
 statement before `ReleaseTemps` and so releases it; do that for every target.
 
-- [ ] A ternary's or `match` expression's arm that allocates an owned value,
+- [X] A ternary's or `match` expression's arm that allocates an owned value,
   on every target: the arm becomes a statement under an `if`, bound to a
   local, before the pass. `NoTernary` is the shape; the new lowering is
   owned-typed arms only, so a target with ternaries keeps them elsewhere.
-- [ ] The right of `&&` or `||` the same way, and a `for` head bound to a
+- [X] The right of `&&` or `||` the same way, and a `for` head bound to a
   local once, outside the loop, released after it.
-- [ ] A temp bound before a later temp of the same statement raises while
+- [X] A temp bound before a later temp of the same statement raises while
   being bound: the catch `catchReleasing` writes wraps the bindings too, so
   the temps bound so far are released on the way out.
-- [ ] Spec: strike the first two held entries.
+- [X] Spec: strike the first two held entries.
 
 ## Part 3: `#[retains]` outside an effect
 

@@ -206,6 +206,8 @@ how, so the pass must never grow its own idea of keyable.
 ```
 … → OwnedState   (node half; before NoComputed, while a derived value is a function)
   → NoComputed → … → Effect
+  → … → MatchLate
+  → ConditionalTemps (an arm that allocates becomes a statement) → NoTernary
   → … → ErrorCatch
   → ReleaseTemps (statement half; after ErrorCatch so a raise path is a catch block)
   → MutatedVars → CSE → … → ReservedNames
@@ -279,6 +281,40 @@ compiled target inlines into its emitter, and a catch block of its own there
 ended the emitted handler instead of both. `__argN` temps ErrorCatch bound for
 a per-call `@error` are released after the call they were bound for.
 
+A temp bound before a later temp of the same statement raises while being
+bound is released the same way: the later binding is declared ahead and
+assigned inside a `catchReleasing` of its own over the temps bound so far
+(`releaseTemps.bind`), so each binding that may raise has its own catch and
+the body's catch releases them all. A single catch over the bindings and the
+body would have released a temp not yet bound
+(`testReleasedWhenALaterTempRaises` in `testdata/owned_conditional_temps.sngl`).
+
+**A value the statement may not make is made by a statement of its own**
+(`passConditionalTemps`, `internal/lower/conditional_temps.go`), before
+`ReleaseTemps` and on every target, so the pass sees it: a ternary's or a
+`match` expression's arm that allocates becomes an assignment to a local
+(`__armN`) under an `if` or a `match` statement ahead of the statement, the
+right of `&&` or `||` likewise under a test of the left, and a condition
+`for`'s head, evaluated per iteration, a function literal called in place
+whose body returns it, so that what it makes is a `return`'s temp. The shape
+is `NoTernary`'s (`FromTernary`, `FromValue`), written here only for the arms
+that allocate (`allocates`, any `isAllocation` under the arm outside a
+lambda), so a target with ternaries keeps the rest: the lifted arm is a
+statement in the branch's block, which `ReleaseTemps` reaches as any nested
+list. The kinds of statement it rewrites are `ReleaseTemps`'s, and its reach
+is the same -- `imperativeBlocks` and `drawBlocks` on a target,
+`reachedBlocks` on the interpreter, which runs it from `PrepareFor`. An
+iterable `for` head is evaluated once and read by every iteration, so it is
+`ReleaseTemps`'s own case: its temps are bound before the loop and released
+after it, and ahead of each `return` in the body (`releaseBeforeReturns`,
+through `ir.TransparentBlocks`, so a lambda's `return` is not one). A raise
+out of the loop body wraps the loop in a `catchReleasing`, which nests one
+the body's own statements wrote: `raisingCalls` enters a nested catch's
+handler, which the walk does not, so the inner raise again is turned to
+bubble and the outer catch sees it. Kotlin calls a lambda literal where it
+stands in parentheses, `(fn@{ … })()`, since `fn@{ … }()` labels the call and
+refuses the `return@fn` inside (`testdata/owned_conditional_temps.txtar`).
+
 **An application-lifetime value is a package-level declaration.** An
 allocation built from constants -- a literal of an owned type whose fields are
 literals or package consts, or a call of a `const func` or of `c.cstring` with
@@ -351,15 +387,10 @@ what it touches.
 
 **What it does not release is held**, never released wrongly, and the spec's
 *Owned values* lists it so a program knows to release by hand: an allocation
-the statement may not evaluate -- the right of `&&` or `||`, a ternary's or a
-`match` expression's arm, a `for` head, which may be evaluated per iteration
--- where a target without
-ternaries lowers the arm to a statement before the pass and so does release
-it, which is why the spec says to write such a value in a statement of its
-own; a temp bound before a later temp of the same statement raises while
-being bound; and an allocation handed to a
-`#[retains]` parameter outside an effect's handler (an event handler, a
-function), which `retain` does not see. Two shapes release twice rather than
+handed to a `#[retains]` parameter outside an effect's handler (an event
+handler, a function), which `retain` does not see. A conditional arm and a
+temp bound before a later one raises were on the list until
+`ConditionalTemps` and `releaseTemps.bind`, above. Two shapes release twice rather than
 hold, and the spec rules them out: a temp passed to a function returning the
 same owned type that returns its argument, since the pass releases the
 argument and the result alike; and a component's or package's var assigned
