@@ -67,6 +67,13 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	if drawing == nil {
 		return
 	}
+	// A timer written in the drawing is no shape, and a LaunchedEffect cannot
+	// stand in a DrawScope: each goes beside the Canvas, gated by the
+	// branches in the drawing it was written under
+	// (testdata/component_treeless_in_canvas.txtar).
+	for _, t := range codegen.CollectTimers(n.Children) {
+		cc.renderSchedule(t)
+	}
 	w, h := canvasIntProp(n, "width"), canvasIntProp(n, "height")
 	if w <= 0 {
 		w = 300

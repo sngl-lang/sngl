@@ -1215,6 +1215,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -1303,6 +1305,12 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
+            LaunchedEffect(true) {
+                while (true) {
+                    delay(100L)
+                    frame = (frame + 1)
+                }
+            }
             Canvas(modifier = Modifier.size(40.dp, 40.dp)) {
                 drawCircle(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 255, alpha = 255), radius = frame.toDouble().toFloat(), center = Offset(20.0.toFloat(), 20.0.toFloat()))
             }
@@ -1649,6 +1657,6 @@ pass sha256:3ef58c1c7642f5dd519d7f072265ec04
 -- run/go/gtk4 --
 pass sha256:7f89c845dcf9eb9c90fff9b71406f854
 -- run/kotlin/android --
-pass sha256:e007a9c9d4e0a41bdd257fba230487d9
+pass sha256:d886e6c67aae4b0063f3ca7cf831cc8f
 -- run/none/html --
 pass sha256:c0734e24e4c62eb54ec0d72b6bc15710

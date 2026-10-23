@@ -108,28 +108,19 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 // the screen, naming the instance's state from outside it
 // (cmd/sngl/testdata/timer_tab_loop_wait_runs.txt).
 func (cc *irComposeContext) renderTimer(n *ir.NodeInst) {
-	var interval, enabled ir.Expr
-	for _, p := range n.Props {
-		switch p.Name {
-		case ir.TimerIntervalProp:
-			interval = p.Value
-		case ir.TimerEnabledProp:
-			enabled = p.Value
-		}
+	// The schedule the primitive describes, its branches left to the
+	// composition; one with no @tick describes none.
+	for _, t := range codegen.CollectTimers([]ir.Stmt{n}) {
+		cc.renderSchedule(t)
 	}
-	var tick *ir.Func
-	for i := range n.Handlers {
-		if n.Handlers[i].Name == ir.TimerTickEvent {
-			tick = n.Handlers[i].Func
-		}
-	}
-	// A primitive with no @tick describes no schedule (codegen.CollectTimers).
-	if tick == nil {
-		return
-	}
+}
+
+// renderSchedule is one schedule's LaunchedEffect, gated by t.Enabled.
+func (cc *irComposeContext) renderSchedule(t codegen.ScheduledTimer) {
+	tick := t.Handler
 	gate := "true"
-	if enabled != nil {
-		gate = cc.kc.EvalExpr(enabled)
+	if t.Enabled != nil {
+		gate = cc.kc.EvalExpr(t.Enabled)
 	}
 	cc.kc.RequireImport("kotlinx.coroutines.delay")
 	kc := cc.kc
@@ -138,7 +129,7 @@ func (cc *irComposeContext) renderTimer(n *ir.NodeInst) {
 	}
 	cc.line("%s(%s) {", cc.kc.Name(ktLaunchedEffect), gate)
 	cc.line("    while (%s) {", gate)
-	cc.line("        delay(%dL)", codegen.IntervalToMs(interval))
+	cc.line("        delay(%dL)", codegen.IntervalToMs(t.Interval))
 	for _, l := range irwalk.EvalBlock(kc, tick.Block) {
 		cc.line("        %s", l)
 	}
