@@ -487,7 +487,16 @@ The teardown is `__snglTeardown` (`lower.TeardownFunc`, `ir.Package.Teardown`):
 the effect lowering writes it to end every lifetime newest first -- which is
 every `@unmount` and every timer -- and `ReleaseTemps` appends the
 application-lifetime releases, so one call is the test teardown's order. The
-entry points, and where each calls it:
+reactivity lowering then puts the page's own registries ahead of all of it
+(`destroyPageHeld`, `slot_instances.go`): every instance the page holds --
+under a window's `if` or `for`, or a spliced component's -- is destroyed
+newest first, which runs its own teardown, as `destroyHeld` already did for
+the registries an instance holds. Before that the handler existed only where
+a page effect had a teardown, and emptied no registry: a page whose every
+lifetime sat inside an instance it holds had no handler at all, so the
+pokedex's pages, and the pictures they held, were held until the process
+ended (`testdata/teardown_page_registries.txtar`, found by the ASan check
+below). The entry points, and where each calls it:
 
 - **gtk4**, `main` of a program whose root is the application
   (`emitGTK4AppMain`): after `gtk4rt.RunWindows` returns, inside `run` where
@@ -648,6 +657,125 @@ and has no teardown to leak check at. What the tracker cannot see is a call
 the gtk4 translator builds after lowering, which releases its own strings
 (`ownCStrings`); resolving those calls in lowering (#293) is what brings them
 under it (`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
+
+## What ASan saw on gtk4
+
+A one-off check of the generated code after the gaps closed, run by hand on
+2026-10-23 and written up here; not a test, since GTK keeps caches alive on
+purpose, so no report is empty and a threshold would be a number nobody can
+defend. The tracker above is the check that runs on every commit; this one
+asked a different question of a real toolkit: what C memory a gtk4 program
+has allocated and dropped when its process ends.
+
+**What ran.** Three programs, generated with `--opt main=true` for gtk4 and
+built with `go build -asan` and `CGO_CFLAGS=-fsanitize=address`, so the Go
+runtime and the cgo half are both instrumented: `examples/pokedex`, with its
+window wrapped in `poke.server` and `artwork` pointed at the recorded answers
+`internal/testhttp` serves (the same server `sngl test` runs against), and
+the programs of `owned_canvas_text.txtar` and `gtk4_image_pictures.txtar`,
+the latter with a 16x16 PNG at each file name it shows. Each ran inside
+`cage` with the headless wlroots backend, as the test suite runs gtk4, under
+`ASAN_OPTIONS=detect_leaks=1` and `LSAN_OPTIONS=suppressions=tmp/asan/lsan.supp`.
+A driver file added to each generated package clicked every GtkButton under
+each window's content in turn, four a second, cycled every GtkDropDown every
+fifth tick, and after 40 ticks (120 for the pokedex, which navigates between
+its pages) raised SIGTERM against the process. Its SIGTERM handler closed
+every window the way a user does, collected the Go heap and gave it back to
+the OS, and quit the application, so `main` ran `__snglTeardown` before the
+leak check: with the windows gone, a widget still allocated is one the
+program holds, and with the heap collected, a C pointer only a dead Go object
+still held is a leak rather than reachable. The same was run at
+`ownership`'s last commit (6ca05a1ef) for the baseline, from a worktree with
+that commit's compiler and runtime.
+
+**What LSan can and cannot see here.** Go's `-asan` registers the Go heap
+with LeakSanitizer as a root region, and the binary's data is a root as any
+program's is, so a C allocation a live Go value points at is reachable and
+never reported: a pixbuf in a Model field, a `__cstrN` package var, a
+`__relN` the Model holds until teardown. The check therefore sees only what
+the program dropped -- a C string never freed, a widget nothing points at --
+and cannot see a value held too long by a Go reference, which is exactly what
+the held list named and the tracker checks. That is why the baseline and the
+branch gave the same report for the two fixtures: what Parts 1 to 4 closed
+was Go-held, and the tracker, not ASan, is where their fixtures assert it.
+
+**What each report showed.** Numbers are from the final runs on this branch
+with the suppression file off, then on; the baseline column is the same
+program at `ownership`'s last commit.
+
+| Program               | Baseline                                        | Branch, before the fixes       | Branch, after                  | Suppressed |
+|-----------------------|-------------------------------------------------|--------------------------------|--------------------------------|------------|
+| `owned_canvas_text`   | 192 blocks, 39 KB, none the program's           | the same                       | the same                       | 0 blocks   |
+| `gtk4_image_pictures` | 189 blocks, 39 KB, none the program's           | the same                       | the same                       | 0 blocks   |
+| `examples/pokedex`    | 368 blocks, 585 KB; 790 GtkBox the program made | 368 blocks, 610 KB; 827 GtkBox | 364 blocks, 80 KB; 952 B GTK's | 0 blocks   |
+
+Every block the two fixtures report is fontconfig's: the font sets, patterns
+and charsets pango builds the first time a label or a `canvasText` is laid
+out, with cairo's toy font face cache behind `cairo_select_font_face` in some
+runs. Nothing in either reaches a `C.CString`, a pixbuf or a cairo surface the
+generated code made: the `__ctmpN` the translator frees after the statement,
+the `__relN` `ReleaseTemps` frees per frame and the picture `UnrefPicture`
+gives back are all gone at exit. The pokedex was different, and the same at
+both commits: a GtkBox leaked per instance built, several hundred over a run
+that navigates, plus the layouts GTK keeps for the dropdown popovers it
+mapped.
+
+**Found, and fixed on this branch.** Two defects, neither a Part 1 to 4 hold
+and neither the translator's strings:
+
+- *A GtkBox per instance.* Every instance record's constructor made its
+  `__root`, the box a slot at the top of the body renders into, whether or
+  not the body had such a slot; a body whose top is one node binds that node
+  as the Root, so the box was never parented, never sunk and never
+  unreferenced -- a leak LSan sees once nothing in Go points at the record.
+  The constructor makes it only where a render names it
+  (`instance.go`, `testdata/gtk4_instance_root_box.txtar`). Bisected with
+  small programs under the same harness: a toggled instance, a `for` of
+  cards, a dropdown, a `nav.stack`, tabs and remote pictures were each clean
+  until the Go heap was collected before the check: a dead record still held
+  the pointer. Collected, a toggled page holding two remote pictures leaked
+  three boxes per toggle, one per instance built, and the pokedex its 827.
+- *No teardown for a page whose lifetimes are all in its instances.*
+  `__snglTeardown` was the effect lowering's, written only where a page
+  effect had a teardown, so the pokedex -- every effect of which is inside a
+  page instance under its `nav.stack` -- had none, and nothing destroyed its
+  instances at exit; `destroyPageHeld` above gives the page one and puts the
+  registries first. LSan could not see this one (the pictures those instances
+  held are Go-held); the generated `main` showed it, calling no teardown.
+
+**The suppression file** is `tmp/asan/lsan.supp` in the checkout, which git
+ignores; its content, so a rerun needs no archaeology:
+
+```
+leak:libfontconfig
+leak:gdk_popup_layout_new
+leak:cairo_toy_font_face_create
+```
+
+Each is the toolkit's for the life of the process: fontconfig's caches, the
+layout GTK keeps for a popover it has mapped (a GtkDropDown's list), cairo's
+toy font faces. `leak:` matches any frame of a block's stack, so a
+suppression names a library or a function the generated code never calls
+itself. With the file on, all three programs report nothing, and a positive
+control -- the driver dropping one `g_strdup` and one `gtk_box_new` on its
+first tick -- still reports both (5 blocks, 656 bytes), so the file hides
+nothing the check is for.
+
+**What is left to #293** is unchanged: the strings `ownCStrings` writes after
+lowering are freed by the translator's own statements and never appeared
+here, so the check neither found them nor could it tell whether a future
+site forgets one. Resolving those calls in lowering so `CMarshal` and
+`ReleaseTemps` see them remains the re-platforming of gtk4's inline-cgo mode,
+and nothing in this check changes its size.
+
+**To rerun it**, which a toolkit upgrade or a change to the instance emitter
+or to teardown is reason to: generate a program for gtk4 with
+`--opt main=true`, add a driver that drives it and ends it through the
+application's quit so `main` tears down, build with the two flags above, and
+run it under `cage` with the environment `internal/headless.Env` gives. Read
+the report for blocks whose stack reaches the program's binary; the rest is
+the toolkit's. The driver and the summarizer are not kept, since neither is
+a test and both are a page of code the note above describes.
 
 ## A C language target
 

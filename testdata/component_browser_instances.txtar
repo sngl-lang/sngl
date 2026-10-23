@@ -205,8 +205,31 @@ window.__sngl_boot = () => {
   function decorate__inst0() {
     return state.suffix__inst0;
   }
+  function __snglTeardown() {
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+      ;
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
+    }
+    ;
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { decorate__inst0 });
+    Object.assign(window, { decorate__inst0, __snglTeardown });
   }
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -290,7 +313,7 @@ window.__sngl_boot = () => {
         }
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       __effects0_torn = true;
       __effect0_teardown();
     }
@@ -307,7 +330,7 @@ window.__sngl_boot = () => {
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_label
     };
@@ -599,13 +622,14 @@ window.__sngl_boot = () => {
     __n4.textContent = "picked=" + state.picked__inst0;
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b58509befbd07da2e28df44054a0f091
+pass sha256:115f52abb36cfee9c615c826068e0a4c
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
 sha256:61d30d6d3f0ffb199ab152e4fa9d74e9
 {

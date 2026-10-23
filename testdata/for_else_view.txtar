@@ -731,6 +731,22 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { rows__inst0: [], n__inst0: 0, visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -924,6 +940,7 @@ body { font-family: system-ui, sans-serif; }
     state.n__inst0 = 2;
     __renderSlot1(__slotAnchor_1);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
@@ -936,4 +953,4 @@ pass sha256:7123eb188ee23bde16374c756a4929ad
 -- run/kotlin/android --
 pass sha256:9201aadbb471d1a1e1690bc187566984
 -- run/none/html --
-pass sha256:0f5964ba8fdf543de6e50933fdb1632b
+pass sha256:044bf7e82aa9e36d738f87e5519ee986

@@ -160,6 +160,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*AskerInstance{}
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -330,6 +338,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -481,6 +490,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*AskerInstance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -582,7 +596,6 @@ func newAskerInstance(__model *Model, __a_n int) *AskerInstance {
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__effects1_settle()
 	c.Root = gtk4rt.Nothing()
@@ -720,6 +733,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:fb5068101573fb282f137c1bfa178a66
+pass sha256:21accdfd2b56d5902793c6c0846128da
 -- run/go/gtk4 --
-pass sha256:df7c1a5fcd66354a95a56ef3242435a3
+pass sha256:77249b4093b6c26bd2800dbec7b6bbd1

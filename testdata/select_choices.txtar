@@ -1097,6 +1097,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { fruits: ["Apple", "Banana"], pick: "Apple", visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1204,6 +1213,7 @@ body { font-family: system-ui, sans-serif; }
     state.fruits = ["Apple", "Banana", "Cherry"];
     __renderSlot0(__slotAnchor_0);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
@@ -1216,4 +1226,4 @@ pass sha256:004f7750b703d08abff060c6b3220d05
 -- run/kotlin/android --
 pass sha256:d56e74c87477f825fa5f730d79b37c1d
 -- run/none/html --
-pass sha256:52bf0ceeb7c8a1ad6759aa5e22d9f1cd
+pass sha256:8fbc588d0e0f03a0f5ab478f79f50e00

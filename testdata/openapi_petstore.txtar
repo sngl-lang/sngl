@@ -901,6 +901,16 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
 	m.__effects0_torn = true
 	m.__effect1_teardown()
 	m.__effect0_teardown()
@@ -2080,6 +2090,16 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
 	m.__effects0_torn = true
 	m.__effect1_teardown()
 	m.__effect0_teardown()
@@ -2297,7 +2317,6 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -2358,7 +2377,6 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -3437,6 +3455,34 @@ body { font-family: system-ui, sans-serif; }
     state.attempt__inst0 += 1;
   }
   function __snglTeardown() {
+    for (const [__inst7_live_di, _] of __inst7_live.entries()) {
+      ;
+      let __inst7_live_dj = __inst7_live.length - 1 - __inst7_live_di;
+      __inst7_live[__inst7_live_dj].__destroy();
+    }
+    ;
+    __inst7_live = [];
+    for (const [__inst6_live_di, _] of __inst6_live.entries()) {
+      ;
+      let __inst6_live_dj = __inst6_live.length - 1 - __inst6_live_di;
+      __inst6_live[__inst6_live_dj].__destroy();
+    }
+    ;
+    __inst6_live = [];
+    for (const [__inst4_live_di, _] of __inst4_live.entries()) {
+      ;
+      let __inst4_live_dj = __inst4_live.length - 1 - __inst4_live_di;
+      __inst4_live[__inst4_live_dj].__destroy();
+    }
+    ;
+    __inst4_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
     __effects0_torn = true;
     __effect1_teardown();
     __effect0_teardown();
@@ -4314,10 +4360,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:30406c6417f095f0b12f8dd53f05bf33
+pass sha256:165e0b5938ad9ea1dedbc7c437d1064e
 -- run/go/gtk4 --
-pass sha256:f550689ede3b952e4fb50232bace5281
+pass sha256:ef9bf69686a97b9d75d97aa9575bfd52
 -- run/kotlin/android --
 pass sha256:af35a1e4ecd6204d323aa003ed0dddaf
 -- run/none/html --
-pass sha256:188128b77feccd4fe5dc7de39b1075d2
+pass sha256:687e1454864177fb1adab348e2100018

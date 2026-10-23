@@ -355,6 +355,18 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { __snglTeardown });
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -491,6 +503,7 @@ window.__sngl_boot = () => {
     __n3.style.setProperty("padding", _snglStyleLength(0));
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
@@ -503,7 +516,7 @@ pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
 pass sha256:4118528347c12a5886b3506b0cb4757a
 -- run/none/html --
-pass sha256:c9662e4445ecd877f2fa9a96098a200c
+pass sha256:bda9f2add5a7acf6d0fff18feab69346
 -- testrun/html/none/component_radio.sngl/main/1 --
 sha256:b37c30074e424574fab4c17eac713e23
 {

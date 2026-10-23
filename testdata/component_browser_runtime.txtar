@@ -471,8 +471,78 @@ window.__sngl_boot = () => {
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
+  function __snglTeardown() {
+    for (const [__inst19_live_di, _] of __inst19_live.entries()) {
+      ;
+      let __inst19_live_dj = __inst19_live.length - 1 - __inst19_live_di;
+      __inst19_live[__inst19_live_dj].__destroy();
+    }
+    ;
+    __inst19_live = [];
+    for (const [__inst17_live_di, _] of __inst17_live.entries()) {
+      ;
+      let __inst17_live_dj = __inst17_live.length - 1 - __inst17_live_di;
+      __inst17_live[__inst17_live_dj].__destroy();
+    }
+    ;
+    __inst17_live = [];
+    for (const [__inst15_live_di, _] of __inst15_live.entries()) {
+      ;
+      let __inst15_live_dj = __inst15_live.length - 1 - __inst15_live_di;
+      __inst15_live[__inst15_live_dj].__destroy();
+    }
+    ;
+    __inst15_live = [];
+    for (const [__inst13_live_di, _] of __inst13_live.entries()) {
+      ;
+      let __inst13_live_dj = __inst13_live.length - 1 - __inst13_live_di;
+      __inst13_live[__inst13_live_dj].__destroy();
+    }
+    ;
+    __inst13_live = [];
+    for (const [__inst11_live_di, _] of __inst11_live.entries()) {
+      ;
+      let __inst11_live_dj = __inst11_live.length - 1 - __inst11_live_di;
+      __inst11_live[__inst11_live_dj].__destroy();
+    }
+    ;
+    __inst11_live = [];
+    for (const [__inst9_live_dk, __inst9_live_dv] of __inst9_live.entries()) {
+      ;
+      __inst9_live_dv.__destroy();
+    }
+    ;
+    __inst9_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst7_live_dk, __inst7_live_dv] of __inst7_live.entries()) {
+      ;
+      __inst7_live_dv.__destroy();
+    }
+    ;
+    __inst7_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+      ;
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
+    }
+    ;
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { red });
+    Object.assign(window, { red, __snglTeardown });
   }
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -1753,13 +1823,14 @@ window.__sngl_boot = () => {
     $6.textContent = "picked=" + state.picked__inst1;
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:eb8efcf0e83ef14abb904f0cc3856cf3
+pass sha256:41347d6d64b242209161281a395b7d7c
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
 sha256:08580abf613025bd6fb371485d179e6f
 {

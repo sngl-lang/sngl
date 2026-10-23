@@ -471,7 +471,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
 	c.open = true
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
@@ -601,7 +600,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.open = true
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
@@ -1011,6 +1009,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:3fd7865a4342297bd7fe0348030c51f7
 -- run/go/gtk4 --
-pass sha256:336dce384572b38a49f4963ed21418fc
+pass sha256:33673c4c720dbe6c62bfc4687eb06611
 -- run/none/html --
 pass sha256:13a0a9cb94ba9c64216fb2abe6bb511d

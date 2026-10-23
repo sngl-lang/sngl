@@ -1878,7 +1878,7 @@ sha256:be7231ece04939a3b36c1b77c4ea95e8
   ]
 }
 -- testrun/gtk4/go/chain.sngl/main/1 --
-sha256:54ab5c0194b15e47d1d4a5215371a269
+sha256:a2575a0a4d340f11e6768e03090d5a3c
 {
   "results": [
     {
@@ -1960,7 +1960,7 @@ sha256:4976641888d177ed1c0c86004d0e4252
   ]
 }
 -- testrun/gtk4/go/ret.sngl/main/1 --
-sha256:57fa735a94c0daed1573ac0a23d9df71
+sha256:1dfa55cac870970c710312b731a3e9ca
 {
   "results": [
     {
@@ -1970,7 +1970,7 @@ sha256:57fa735a94c0daed1573ac0a23d9df71
   ]
 }
 -- testrun/gtk4/go/ret2.sngl/main/1 --
-sha256:7bd2e4c2024c270e20aec35bbafdc695
+sha256:b03409aa7d52d21e32fa1a9e46d5a4f0
 {
   "results": [
     {
@@ -1980,7 +1980,7 @@ sha256:7bd2e4c2024c270e20aec35bbafdc695
   ]
 }
 -- testrun/gtk4/go/same.sngl/main/1 --
-sha256:7dd713231c826ddd8bddaa2e5c555bc6
+sha256:532732f261d82643fe7d6c41f40f2072
 {
   "results": [
     {
@@ -1990,7 +1990,7 @@ sha256:7dd713231c826ddd8bddaa2e5c555bc6
   ]
 }
 -- testrun/gtk4/go/slotrec.sngl/main/1 --
-sha256:4e3054b6ec13c8ea245b339ec02e706b
+sha256:9b0be04dc2aeec6b8a8219754a3ab1fc
 {
   "results": [
     {
@@ -2010,7 +2010,7 @@ sha256:f7c30ec118419a8a3c0c407c275bd65e
   ]
 }
 -- testrun/gtk4/go/twoway.sngl/main/1 --
-sha256:447a864972ea09fdebedeaa56748e370
+sha256:74b8fb2b866dbfac18383a21503aba74
 {
   "results": [
     {
@@ -2020,7 +2020,7 @@ sha256:447a864972ea09fdebedeaa56748e370
   ]
 }
 -- testrun/gtk4/go/unused.sngl/main/1 --
-sha256:5dffd99a6ff686f93fa62aa89ce20c03
+sha256:1013dfb635f1af0a69944f8c49750231
 {
   "results": [
     {
@@ -2030,7 +2030,7 @@ sha256:5dffd99a6ff686f93fa62aa89ce20c03
   ]
 }
 -- testrun/gtk4/go/unused2.sngl/main/1 --
-sha256:f0780f165aa50497aba8789a167290c3
+sha256:41ec4060e70e0964d42c5665b6934041
 {
   "results": [
     {
@@ -2040,7 +2040,7 @@ sha256:f0780f165aa50497aba8789a167290c3
   ]
 }
 -- testrun/gtk4/go/unused3.sngl/main/1 --
-sha256:26900ed337ca75e56625fc0282313db0
+sha256:9b25924b71ddf964ca0acc98a448fe38
 {
   "results": [
     {
@@ -2054,7 +2054,7 @@ sha256:26900ed337ca75e56625fc0282313db0
   ]
 }
 -- testrun/gtk4/go/unused4.sngl/main/1 --
-sha256:b6c30891d6f0d201024418110f2c7221
+sha256:ffa7271d979bdfcb626436e901b6a96d
 {
   "results": [
     {
