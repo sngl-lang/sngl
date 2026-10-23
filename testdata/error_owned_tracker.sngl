@@ -77,7 +77,25 @@ func testHeldInAList(t test.Test, c keeps) { // ERROR(test) "leak: the file allo
     t.assert(c.fs.length == 1)
 }
 
+component pushes ui.node {
+    var fs list[file] = []
+
+    func grow() {
+        fs.push(open(8))
+    }
+
+    ui.text(value="{fs.length}")
+}
+
+// A value pushed into a list is held by the list, not released after the
+// statement that pushed it as a value a function only reads would be.
+func testPushedIntoAList(t test.Test, c pushes) { // ERROR(test) "leak: the file allocated at"
+    c.grow()
+    t.assert(size(c.fs[0]) == 8)
+}
+
 ui.window(title="t") {
     holds
     keeps
+    pushes
 }

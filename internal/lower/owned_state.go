@@ -82,10 +82,7 @@ type ownedStateRun struct {
 	pkg     *ir.Package
 	effect  *ir.Component
 	counter int
-	// cells is each owned var by the component holding it, which a write
-	// from outside the component (a test's `c.f = …`) names by field.
-	cells map[*ir.Component]map[string]*ir.Var
-	owned map[*ir.Var]bool
+	owned   map[*ir.Var]bool
 	// written is each assignment the pass made, which is already the
 	// overwrite it would otherwise become.
 	written map[*ir.Assign]bool
@@ -97,7 +94,6 @@ type ownedStateRun struct {
 func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 	st := &ownedStateRun{
 		pkg:      pkg,
-		cells:    map[*ir.Component]map[string]*ir.Var{},
 		owned:    map[*ir.Var]bool{},
 		written:  map[*ir.Assign]bool{},
 		retained: map[*ir.Component][]*ir.Var{},
@@ -115,9 +111,10 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 		}
 	}
 	for _, c := range comps {
-		st.collect(c)
+		st.collect(c.Vars)
 		st.blockVars(&c.Stmts)
 	}
+	st.collect(pkg.Vars)
 	st.blockVars(&pkg.Body)
 	if len(st.owned) > 0 {
 		for _, root := range roots {
@@ -212,8 +209,9 @@ func (st *ownedStateRun) derive(c *ir.Component) map[*ir.Func]*ir.Var {
 	for _, fn := range orderByReads(fns, cells) {
 		cell := cells[fn]
 		cell.Init = compute[fn]()
-		c.Vars = append(c.Vars, cell)
-		key := st.key(c, inputs(c, fn, cells))
+		reads := inputs(c, fn, cells)
+		c.Vars = slices.Insert(c.Vars, cellIndex(c, fn, reads), cell)
+		key := st.key(c, reads)
 		if key == nil {
 			continue
 		}
@@ -225,6 +223,37 @@ func (st *ownedStateRun) derive(c *ir.Component) map[*ir.Func]*ir.Var {
 	}
 	c.Stmts = append(effects, c.Stmts...)
 	return cells
+}
+
+// cellIndex is where fn's cell goes among c's vars: before the first var
+// whose initializer reads it, which otherwise read the cell's zero value,
+// and after every var the cell reads itself. A reader declared before one of
+// those is a cycle, and the cell goes last as it did.
+func cellIndex(c *ir.Component, fn *ir.Func, reads []ir.Symbol) int {
+	at := len(c.Vars)
+	for i, v := range c.Vars {
+		if v.Init == nil {
+			continue
+		}
+		calls := false
+		_ = ir.Walk(v.Init, func(n ir.Node) error {
+			if call, ok := n.(*ir.Call); ok && call.Func == fn {
+				calls = true
+				return ir.SkipAll
+			}
+			return nil
+		})
+		if calls {
+			at = i
+			break
+		}
+	}
+	for _, v := range c.Vars[at:] {
+		if slices.Contains(reads, ir.Symbol(v)) {
+			return len(c.Vars)
+		}
+	}
+	return at
 }
 
 // derivedExpr is what fn computes, where its body is one expression that
@@ -382,16 +411,15 @@ func (st *ownedStateRun) effectNode(key ir.Expr, handlers ...ir.EventHandler) *i
 	return n
 }
 
-// collect records each owned var c declares.
-func (st *ownedStateRun) collect(c *ir.Component) {
-	for _, v := range c.Vars {
+// collect records each owned var among vars, a component's or the package's.
+// A package var's overwrite releases as a component's does; its last value is
+// ReleaseTemps's to release at teardown, which the effect lowering writes
+// afresh after this pass.
+func (st *ownedStateRun) collect(vars []*ir.Var) {
+	for _, v := range vars {
 		if v.IsConst || v.NodeHandle || ir.ReleaseOf(v.Type) == nil {
 			continue
 		}
-		if st.cells[c] == nil {
-			st.cells[c] = map[string]*ir.Var{}
-		}
-		st.cells[c][v.Name] = v
 		st.owned[v] = true
 	}
 }
@@ -453,7 +481,9 @@ func (st *ownedStateRun) assigned(a *ir.Assign) *ir.Var {
 		}
 	case *ir.Select:
 		if comp, ok := t.Operand.ExprType().Decl.(*ir.Component); ok && t.Operand.ExprType().Kind == ir.TypeComponent {
-			return st.cells[comp][t.Field]
+			if i := slices.IndexFunc(comp.Vars, func(v *ir.Var) bool { return v.Name == t.Field }); i >= 0 && st.owned[comp.Vars[i]] {
+				return comp.Vars[i]
+			}
 		}
 	}
 	return nil

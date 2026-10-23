@@ -2236,23 +2236,33 @@ Copying an owned value copies a reference to the one value: releasing any copy
 releases it, and every copy is released from then on. Releasing a value twice,
 or reading or passing one after its release, is a runtime error.
 
+A value is **made** by a literal of the type or by a call of a function
+answering it. A function taking an owned value and answering the same type is
+taken to answer a new value: one that answers its argument leaves the compiler
+releasing the one value twice.
+
 The compiler releases every owned value the program makes, at the narrowest of
 four lifetimes that holds it:
 
-- **Statement** -- a value passed to a parameter that only reads or copies it
-  is released once the statement that made it completes, including when it
-  returns or raises.
-- **Node** -- a value held in a component's state, computed by an owned
-  derived value, or handed to a `#[macro.retains]` parameter by an effect's
-  handler lives as long as the node: it is released when the state is
-  overwritten, when what the derived value reads is written, when the native
-  is handed the next value, and when the node unmounts. The compiler releases
-  these itself, so a program that releases one by hand as well releases it
-  twice.
+- **Statement** -- a value a statement makes and only reads -- passed to a
+  parameter that only reads or copies it, used as a receiver, read a field or
+  an element of, or discarded -- is released once the statement completes,
+  including when it returns or raises.
+- **Node** -- a value held in a `var` of a component or of a view block,
+  computed by an owned derived value, or handed to a `#[macro.retains]`
+  parameter by an effect's handler lives as long as the node: it is released
+  when the var is overwritten, when what the derived value reads is written,
+  when the native is handed the next value, and when the node unmounts. The
+  compiler releases these itself, so a program that releases one by hand as
+  well releases it twice. The value such a var holds is one its initializer
+  or the assignment made: a var initialized or assigned from another var's
+  value is released twice, once by each.
 - **Application** -- a value built only from constants, which is a literal of
   the type, or a call of a `const func`, whose arguments are literals or
   package constants, is made once and released when the application tears
-  down. The value is made when the application starts.
+  down. The value is made when the application starts. A package-level `var`
+  of an owned type holds its value the same way: it is released when the var
+  is overwritten and, last of all, at teardown.
 - **Moved** -- a value handed to a `#[macro.moves]` parameter belongs to the
   callee, and the program never releases it.
 
@@ -2263,22 +2273,40 @@ does with its arguments itself, so the marks are an error there.
 
 A derived value of an owned type -- an **owned derived value**, a function of
 a component taking nothing and answering an owned type -- is computed when
-the node is created, and computed again once a write to what it reads has
-settled, the old value released after the new one is made; a prop counts as
-written when its value changes. What it reads is the key of its lifetime and
-must be comparable as an effect's `on` is: a derived value that reads a
-function value, a list or a map is an error. A `var`'s initializer runs once
-and is not keyed. The value is state the component holds, so a const
-component's render may read one as it reads a prop.
+the node is created, before any var whose initializer reads it, and computed
+again once a write to what it reads has settled, the old value released after
+the new one is made; a prop counts as written when its value changes. What it
+reads is the key of its lifetime and must be comparable as an effect's `on`
+is: a derived value that reads a function value, a list or a map is an error.
+A `var`'s initializer runs once and is not keyed. The value is state the
+component holds, so a const component's render may read one as it reads a
+prop.
+
+**What the compiler does not release is held**, never released wrongly, and
+the interpreter reports it as a leak:
+
+- A value the statement may not make: the right operand of `&&` or `||`, an
+  arm of a ternary, or the head of a `for`. Make such a value in a statement
+  of its own, and bind it to a `var` to release by hand where it must be
+  conditional.
+- A value made earlier in a statement whose later value raises while being
+  made.
+- A value held in a list, a map, a struct field or an `option`, rather than in
+  a var of the owned type itself.
+- A value handed to a `#[macro.retains]` parameter outside an effect's
+  handler, from an event handler or a function.
+
+A program that must release one of these releases it by hand.
 
 **An application tears down before its process ends.** When the event loop
 exits, the root tree unmounts, so every `@unmount` runs and every node-lifetime
 value is released; timers stop; and every application-lifetime value is
-released. Only then does a platform's `@run` handler's `run` return, so a
-program that goes on after the windows close holds nothing they allocated.
-A process runs one application: a second call of `run` ends the process with
-an error naming the handler. A test is an application: it tears down when the test function returns, and an
-owned value still held after that is a leak the test fails with.
+released, package vars last. Only then does a platform's `@run` handler's
+`run` return, so a program that goes on after the windows close holds nothing
+they allocated. A process runs one application: a second call of `run` ends
+the process with an error naming the handler. A test is an application: it
+tears down when the test function returns, and an owned value still held
+after that is a leak the test fails with.
 
 ## Trees and families
 
@@ -2540,6 +2568,15 @@ node they belong to — `output(name = …)` for options every target shares,
 every value in the tree must be constant, since the directive is read before
 the program runs. A build that names its targets on the command line ignores
 the directive.
+
+A platform node that declares the event may take `@run(args, run)`, which
+wraps the process start: the handler is called with the command line and a
+`run` that presents the windows and runs the event loop, and the process ends
+when the handler returns. The tree is built before the handler runs, so a
+write it makes is state the windows show. A handler that never calls `run`
+runs the loop with no window presented. The application tears down before
+`run` returns (see *Owned values*), and a second call of `run` is an error.
+gtk4 and fyne declare the event.
 
 ## Modules
 

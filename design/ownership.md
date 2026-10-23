@@ -104,6 +104,12 @@ brackets them. Three things become node lifetime:
   is made once when its branch comes back (design/instances.md). Cells
   follow the component's vars, ordered so one derived value reading another
   follows it (`testdata/owned_state.sngl`, `testdata/owned_state.txtar`).
+  The var goes before the first var whose initializer reads it and after
+  every var it reads itself (`cellIndex`); appended last, as it first was, a
+  var reading it read the cell's zero value, which the interpreter allocates
+  a handle for and nothing released (`reads` in `owned_state.sngl`). A
+  reader declared before one of the cell's own reads is a cycle, and the cell
+  goes last.
 - **An allocation an effect's handler hands a `#[retains]` parameter** is
   stored in an `option` cell of the component (`__retN`) and passed from it;
   the next call replaces it, releasing the old one after the native has the
@@ -163,7 +169,11 @@ field read or an index, a call whose result is discarded. One stored, returned,
 handed to its release or to a `#[moves]` or `#[retains]` parameter has another
 lifetime and is left alone. An intrinsic's call allocates nothing: a cell's
 `map.get` reads what a copy holds, and taken for a temp it released the value
-the write it was read for had just stored. Each is bound to a `__relN` before the statement,
+the write it was read for had just stored. Nor does an intrinsic's parameter
+borrow: `push` stores what it is handed, and released after the statement the
+list held a freed value (`pushes` in `testdata/error_owned_tracker.sngl`), so
+an allocation handed to one is held with the list, as the spec says of a
+value in a collection. Each is bound to a `__relN` before the statement,
 an allocation's own arguments first, and released after it with an explicit
 statement, never Go's `defer` -- that is function-scoped, wrong in a loop in a
 draw callback, and C has none (`testdata/owned_canvas_text.txtar` denies one).
@@ -202,6 +212,18 @@ here, although `ir.IsConst` says so: it is constant at each call site, not at
 package level. The interpreter's test teardown runs `Teardown` after the timers
 stop and before the leak check.
 
+A package `var` of an owned type the program declares is released the same
+way, last of all (`packageVars`, `testdata/owned_package_var.sngl`,
+`testdata/application_teardown.txtar`): its initializer ran before any
+`__relN` was made, so its release follows theirs. `OwnedState` collects it as
+it collects a component's vars, so an assignment to it anywhere releases the
+old value, but it cannot release the last one, since the effect lowering
+writes `Teardown` afresh between the two passes. By the time `ReleaseTemps`
+runs, an inlined instance's var is a package var too, released by its node's
+`@unmount`; a var the package already releases somewhere is left to that
+(`testdata/owned_state.txtar`'s bubbletea output released `f__inst0` twice
+before the check).
+
 **A release must be emitted.** A program's release is otherwise called by
 nothing until lowering, so the shake keeps an owned struct's release with the
 struct; a user package's is taken with the function that made the value
@@ -231,23 +253,24 @@ outlives its statement. The activate signal name in `callbacks.go` is a package
 calls in lowering would retire this, since `CMarshal` and `ReleaseTemps` would
 see them; that is a re-platforming of gtk4's inline-cgo mode -- the widget
 protocol declared as native-calling bodies rather than answered by the
-translator -- and is split out of the ownership work.
+translator -- and is #293, split out of the ownership work with the count of
+what it touches.
 
-**What it does not release yet**, each left held rather than released wrongly:
-an allocation the statement may not evaluate -- the right of `&&` or `||`, a
-ternary's arm (lowered to statements before the pass on a target without
-ternaries) -- or in a `for` head, which may be evaluated per iteration; a temp
-bound before a later temp of the same statement raises while being bound; and
-a temp passed to a function returning the same owned type, which may return
-the argument itself: the pass releases the argument and the result alike,
-which the tracker reports as a double release. Of what a component holds: an
-owned value in a list, a map or a struct field rather than a var of the owned
-type; a package `var`, which `OwnedState` cannot release at teardown because
-the effect lowering writes `Teardown` afresh after it; a var assigned
-another's value, which both then release; a var initializer reading an owned
-derived value, which is initialized after the vars; an allocation handed to a
+**What it does not release is held**, never released wrongly, and the spec's
+*Owned values* lists it so a program knows to release by hand: an allocation
+the statement may not evaluate -- the right of `&&` or `||`, a ternary's arm,
+a `for` head, which may be evaluated per iteration -- where a target without
+ternaries lowers the arm to a statement before the pass and so does release
+it, which is why the spec says to write such a value in a statement of its
+own; a temp bound before a later temp of the same statement raises while
+being bound; an owned value in a list, a map, a struct field or an `option`
+rather than a var of the owned type; and an allocation handed to a
 `#[retains]` parameter outside an effect's handler (an event handler, a
-function).
+function), which `retain` does not see. Two shapes release twice rather than
+hold, and the spec rules them out: a temp passed to a function returning the
+same owned type that returns its argument, since the pass releases the
+argument and the result alike; and a component's or package's var assigned
+another var's value, which both then release.
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`
@@ -406,11 +429,11 @@ the source's node holds that prop's value as the target binds it
 source's own value and no allocation of the host's (`hostPayload`). With a
 zero payload, `canvasImage`'s `@enter` divided by the drawing's size. Leaks from one site are one
 line with a count, because a frame repeats them. `sngl run` takes no
-`--simulate`: a run ends with no leak check until application teardown exists
-on targets. What the tracker cannot see is a call the gtk4 translator builds
-after lowering, which releases its own strings (`ownCStrings`); moving
-inline-cgo resolution into lowering is what brings those under it
-(`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
+`--simulate`: a run on the interpreter (`interprun`) ends with its process
+and has no teardown to leak check at. What the tracker cannot see is a call
+the gtk4 translator builds after lowering, which releases its own strings
+(`ownCStrings`); resolving those calls in lowering (#293) is what brings them
+under it (`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
 
 **Out of scope: a C language target.** It adds `#[owned]` to `string`, and
 decides between per-statement release and a per-frame or per-event arena for

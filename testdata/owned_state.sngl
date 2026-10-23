@@ -161,6 +161,23 @@ func testABlockVarIsReleasedWithItsBlock(t test.Test, c block) {
     t.assert(closed == [5, 6])
 }
 
+component reads ui.node {
+    var base = 1
+
+    func label() => open(base)
+
+    var copy = open(label.fd + 100)
+
+    ui.text #out(value="{label.fd} {copy.fd}")
+}
+
+// A var's initializer reading an owned derived value reads the value made
+// for the node, not a zero one made and never released.
+func testAVarInitializerReadsADerivedValue(t test.Test, c reads) {
+    t.assert(c.out.value == "1 101")
+    t.assert(opened == [1, 101])
+}
+
 component windows root {
     var open = true
 
@@ -179,4 +196,5 @@ func testClosingTheWindowReleases(t test.Test, c windows) {
 ui.window(title="t") {
     holds
     shows(n=1)
+    reads
 }

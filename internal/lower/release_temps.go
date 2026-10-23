@@ -21,6 +21,7 @@ var passReleaseTemps = pass{
 		for _, block := range append(imperativeBlocks(pkg), drawBlocks(pkg)...) {
 			st.block(block)
 		}
+		st.packageVars()
 		if st.promote {
 			return lowerLibFuncs(pkg, feats, opts)
 		}
@@ -40,7 +41,38 @@ func ReleaseTemps(pkg *ir.Package) error {
 	for _, block := range reachedBlocks(pkg) {
 		st.block(block)
 	}
+	st.packageVars()
 	return nil
+}
+
+// packageVars releases what each owned package var holds at teardown, after
+// the application-lifetime values: a package var's initializer ran before any
+// of them was made. OwnedState releases its overwrites, and leaves the last
+// value to this pass because the effect lowering writes Teardown afresh
+// between the two. A var something already releases is not the
+// application's: an inlined instance's var is a package var by now, and its
+// node's `@unmount` releases it.
+func (st *releaseTemps) packageVars() {
+	if st.pkg == nil {
+		return
+	}
+	released := map[*ir.Var]bool{}
+	_ = ir.Walk(st.pkg, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && call.Func != nil && ir.IsRelease(call.Func) && len(call.Args) == 1 {
+			if id, ok := call.Args[0].Value.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok {
+					released[v] = true
+				}
+			}
+		}
+		return nil
+	})
+	for _, v := range st.pkg.Vars {
+		if v.IsConst || v.NodeHandle || v.Synthesized || released[v] || ir.ReleaseOf(v.Type) == nil {
+			continue
+		}
+		st.teardown().Block = append(st.teardown().Block, st.releaseCall(ir.ReleaseOf(v.Type), &ir.Ident{Name: v.Name, Sym: v, Type: v.Type}))
+	}
 }
 
 func reachedBlocks(pkg *ir.Package) []*[]ir.Stmt {
@@ -492,10 +524,12 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 
 // borrows reports whether call's parameter i only reads its argument. Aligned
 // from the end, as CMarshal aligns: a native in the receiver-first shape is
-// called with the receiver as argument zero, which no parameter declares.
+// called with the receiver as argument zero, which no parameter declares. An
+// intrinsic's parameter says nothing: `push` stores what it is handed, and
+// released after the statement the list held a freed value.
 func borrows(call *ir.Call, i int) bool {
 	fn := call.Func
-	if fn == nil || ir.IsRelease(fn) {
+	if fn == nil || fn.Intrinsic != "" || ir.IsRelease(fn) {
 		return false
 	}
 	if i < 0 || i >= len(fn.Params) {

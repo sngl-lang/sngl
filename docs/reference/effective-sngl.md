@@ -1327,6 +1327,182 @@ ui.window {
 }
 ```
 
+### Owned values
+
+Most values are copied and forgotten. A few are something the program got from the host and has to give back -- a file descriptor, a C string handed to cairo, a decoded picture, a handle a native library keeps a pointer to. Mark the struct that stands for one `#[macro.owned(release)]`, naming the function that gives it back, and the compiler releases every value of the type the program makes:
+
+```sngl
+import macro "sngl:macro"
+import ui "sngl:ui"
+
+#[macro.owned(close)]
+struct File {
+    fd int
+}
+
+func open(path string) => File{fd=path.length}
+
+func close(f File) {
+}
+
+func size(f File) => f.fd * 10
+
+ui.window {
+    ui.text(value="{size(open("/etc/hosts"))}")
+}
+```
+
+`open` makes a `File` that `size` only reads, so it is released once the statement is done, whether it completed, returned or raised. Nothing in the program says so, and nothing has to.
+
+**Declare `#[owned]` on the type, once.** An owned value is tracked wherever a copy of it goes, and a copy is the same value: releasing either releases both. The mark is for a value something outside the program holds a reference to and will not reclaim on its own, and not for a value that is merely expensive -- a large list is garbage like any other. A `string` handed to a `#[cnative]` function is already covered: it crosses as a `c.str` from `sngl:x/c`, which is owned, and is freed after the call.
+
+**Which lifetime a value gets is decided by where it is written.** The compiler picks the narrowest of four that holds it:
+
+| Written as                                                                                        | Lifetime    | Released                                                |
+|---------------------------------------------------------------------------------------------------|-------------|---------------------------------------------------------|
+| an argument a function only reads, a receiver, a field read, a discarded result                   | statement   | after the statement, before a `return`, when it raises  |
+| a component's or view block's `var`, an owned derived value, a `#[retains]` argument in an effect | node        | on overwrite, when what it reads changes, at `@unmount` |
+| a literal or `const func` call over constants, a package `var`                                    | application | at teardown                                             |
+| an argument to a `#[moves]` parameter                                                             | moved       | never -- the callee owns it now                         |
+
+Aim for the statement lifetime. A value made and spent inside one statement is the easiest to see is right, and a canvas drawing text per frame is nothing but such statements. A value the next event needs goes in a `var` of the component, where overwriting it releases what it held and leaving the tree releases the last:
+
+```sngl
+import macro "sngl:macro"
+import ui "sngl:ui"
+
+#[macro.owned(close)]
+struct File {
+    fd int
+}
+
+func open(path string) => File{fd=path.length}
+
+func close(f File) {
+}
+
+component Editor ui.node {
+    var path = "notes.txt"
+    var current = open(path)
+
+    ui.input(:value=path)
+    ui.button(text="Open", @click { current = open(path) })
+    ui.text(value="fd {current.fd}")
+}
+
+ui.window {
+    Editor()
+}
+```
+
+Do not release such a var by hand: the compiler already does, and a second release is an error. The var holds the value it made -- initialize or assign it from `open`, not from another var, or both vars release the one value.
+
+A value computed from state is an owned derived value: a zero-arg function answering the owned type, made once per value of what it reads, remade when that is written, and the old one released after the new one exists. It is the shape for a picture decoded from a URL or a font face built from a name, where the program wants one decode per input rather than one per frame:
+
+```sngl
+import macro "sngl:macro"
+import ui "sngl:ui"
+
+#[macro.owned(free)]
+struct Picture {
+    width int
+}
+
+func decode(url string) => Picture{width=url.length}
+
+func free(p Picture) {
+}
+
+component Thumb(url string) ui.node {
+    func picture() => decode(url)
+
+    ui.text(value="{picture.width}px")
+}
+
+ui.window {
+    var url = "a.png"
+    ui.input(:value=url)
+    Thumb(url=url)
+}
+```
+
+Writing `url` remakes `picture` once the write has settled; the render that follows the write still sees the old value, and nothing is ever read after its release.
+
+A value built only from constants -- a literal of the type, or a `const func` over literals and package constants -- is made once when the application starts and released when it tears down, however many times the statement runs. A package `var` of the type lives the same way, released on overwrite and last at teardown. A function with no body that keeps a pointer to its argument says so with `#[macro.retains]`, and one that takes the argument with `#[macro.moves]`; a `gir:` import writes `moves` from the GIR's transfer annotations itself.
+
+**The key limitation, and the shape that avoids it.** A derived value is remade when what it reads changes, so what it reads has to be able to say that it changed: a value compared the way an effect's `on` is. A function value, a list or a map cannot, and a derived value reading one is refused where it is written rather than remade and released on every render. Two shapes avoid it. Read the scalar that actually keys the value -- a selected id, a length, a name -- rather than the collection it comes from. Or make the value a `var` and write it from an effect keyed on the collection: a var's initializer runs once and may read anything, and each assignment releases what the var held:
+
+```sngl
+import macro "sngl:macro"
+import ui "sngl:ui"
+
+#[macro.owned(free)]
+struct Sheet {
+    rows int
+}
+
+func render(rows list[string]) => Sheet{rows=rows.length}
+
+func free(s Sheet) {
+}
+
+component Grid ui.node {
+    var rows list[string] = []
+    var sheet = render(rows)
+
+    effect(on=rows, @update(xs) { sheet = render(xs) })
+    ui.button(text="Add", @click { rows.push("row") })
+    ui.text(value="{sheet.rows} rows")
+}
+
+ui.window {
+    Grid()
+}
+```
+
+**Teardown for a host that outlives the GUI.** By default the application ends with its process. On gtk4 and fyne the platform node may take `@run(args, run)`, which hands the program its own start: the handler gets the command line and a `run` that presents the windows and runs the loop, and the process ends when the handler returns. A CLI that opens a window for part of its work and goes on afterwards is written that way:
+
+```sngl
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+#[go.native("fmt", "fmt.Println")]
+func println(s string)
+
+output {
+    go {
+        gtk4(@run(args, run) {
+            println("starting")
+            run()
+            println("windows closed")
+        })
+    }
+}
+
+ui.window(title="Pick") {
+    ui.text(value="Choose a file")
+}
+```
+
+When `run` returns, the tree has unmounted, so every `@unmount` has run and every node-lifetime value is released; timers have stopped; and every application-lifetime value is released. The code after `run()` holds nothing the windows made. There is one application per process: a second `run()` ends the process with an error naming the handler, so a program that wants the window again keeps it open. A test is an application too, torn down when the test function returns.
+
+**What the compiler holds rather than releases.** A value the statement may not make -- the right of `&&` or `||`, a ternary's arm, a `for` head -- is not released; make it in a statement of its own. A value pushed into a list, stored in a map or a struct field, or kept in an `option` is held by what holds it, and the program releases it by hand when it takes it out. A value handed to a `#[retains]` native from an event handler rather than an effect is held too; make the call from an effect's `@mount` or `@update`, where the lifetime is the node's. The specification's *Owned values* has the full list.
+
+**Finding a leak.** The interpreter tracks every owned value, so `sngl test` is the leak checker: a test whose teardown finds a value still held fails naming where it was made, and a double release or a use after release fails where it happens, naming the allocation, the release and the use. A target's natives have no body the interpreter can run, so a binding leak-checks under the target's overrides with the natives stubbed:
+
+```
+sngl test --simulate gtk4 app.sngl
+```
+
+Every `#[cnative]` and `#[go.native]` call is stubbed: an owned result is a fresh value the tracker follows, a `#[moves]` argument is the native's from then on, and a `#[retains]` one may not be released while the lifetime that made the call lasts. The host paints a frame after every settle, so a draw routine that leaks per frame reports as one line with a count:
+
+```
+--- FAIL: Keeps/testKeeps (0.00s)
+    leak: the Buf allocated at app.sngl:25:19 was never released, 2 times
+```
+
+Run it without a C toolchain; nothing is compiled. What the simulation cannot see is a call a code generator writes after lowering, which releases its own strings.
+
 ## Style
 
 ### Inline styles
