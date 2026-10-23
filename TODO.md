@@ -239,7 +239,7 @@ every frame.
   the list (`testdata/canvas_for_shape_state.txtar`, with Part 5's open
   item); the release of an owned type a user package declares was emitted
   nowhere (`testdata/owned_derived_in_imported_component.txtar`); a library
-  component deriving an owned value under a `for` was wrapped by
+  component deriving an owned value under a `for` or an `if` was wrapped by
   `ImplicitState` and the wrapper substituted by `InlinePure`
   (`splicesLibraryState`); the simulated host painted every handler of a
   `canvasImage` with a zero payload, dividing by a drawing's size; and
