@@ -161,6 +161,12 @@ const (
 	// ErrorPropagateNative means no handler is reachable — codegen emits
 	// the target language's native throw (panic / throw).
 	ErrorPropagateNative
+	// ErrorRender means a call a view's own expression makes -- a prop's
+	// value, a loop's list, a condition -- whose raise the boundary or
+	// window around it resolves: that handler runs, the call is its type's
+	// zero value, and the render goes on. lower's passRenderCatch turns each
+	// into a caught call no language sees this mode on.
+	ErrorRender
 )
 
 // CatchingHandler is the handler a raise leaving this call is caught by at
@@ -169,7 +175,7 @@ func CatchingHandler(call *Call) *EventHandler {
 	switch call.ErrorMode {
 	case ErrorPerCall:
 		return call.ErrorHandler
-	case ErrorInvokeAndTerminate:
+	case ErrorInvokeAndTerminate, ErrorRender:
 		return call.ResolvedHandler
 	}
 	return nil

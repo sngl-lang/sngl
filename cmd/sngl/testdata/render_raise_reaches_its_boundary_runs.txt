@@ -1,0 +1,316 @@
+# A raise in a render reaches the boundary around what rendered, on every
+# target: a loop's list, a prop's value, at the first draw and again when a
+# write elsewhere asks for the render. The boundary around the button whose
+# click made the write hears nothing, since the click did nothing wrong; the
+# call that raised is its type's zero value, and the render goes on.
+#
+# No target caught one: the checker resolved no call in a view's expressions,
+# so a Go build panicked, a page raised it uncaught, android's composition
+# threw, and the interpreter and bubbletea dropped it. Confirmed against the
+# codegen before: every case below failed on every target.
+
+sngl test --platform=none app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+func labels(n int) list[string] {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return ["n{n}"]
+}
+
+func label(n int) string {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return "n{n}"
+}
+
+component split ui.node {
+    var n = 0
+    var saveError = ""
+    var listError = ""
+    boundary(@error(e) {
+        saveError = e.message
+    }) {
+        ui.button #add(text="Add", @click {
+            n += 1
+        })
+    }
+    boundary(@error(e) {
+        listError = e.message
+    }) {
+        for var l = labels(n) {
+            ui.text #shown(value=l)
+        }
+        ui.text #single(value=label(n))
+    }
+}
+
+component first ui.node {
+    var n = 1
+    var listError = ""
+    boundary(@error(e) {
+        listError = e.message
+    }) {
+        for var l = labels(n) {
+            ui.text(value=l)
+        }
+    }
+}
+
+component fallback ui.node {
+    var n = 0
+    boundary {
+        ui.text #content(value=label(n))
+        component failed {
+            ui.text(value="could not draw")
+        }
+    }
+    ui.button #step(text="step", @click {
+        n += 1
+    })
+}
+
+func testTheRenderNotTheClickHearsIt(t Test, c split) {
+    c.add.click()
+    t.assert(c.n == 1)
+    t.assert(c.listError == "one is refused")
+    t.assert(c.saveError == "")
+}
+
+func testTheRenderGoesOn(t Test, c split) {
+    t.assert(c.single.value == "n0")
+    c.add.click()
+    c.add.click()
+    t.assert(c.shown[0] != null && c.shown[0].value == "n2")
+    t.assert(c.single.value == "n2")
+}
+
+func testAPropsValueIsItsZero(t Test, c split) {
+    c.add.click()
+    t.assert(c.single.value == "")
+}
+
+func testTheFirstDrawIsHeard(t Test, c first) {
+    t.assert(c.listError == "one is refused")
+}
+
+func testTheFallbackStands(t Test, c fallback) {
+    t.assert(c.content != null)
+    c.step.click()
+    t.assert(c.content == null)
+}
+
+ui.window {
+    split
+}
+-- testrun/android/kotlin/app.sngl/fallback/1 --
+sha256:ffc7708129171f39789d01c7ee60b297
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/first/1 --
+sha256:7ceb16cb7ca585b62768fcf119b7ff8f
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/split/1 --
+sha256:ad2809f90606d05a9e492777c54efb54
+{
+  "results": [
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/fallback/1 --
+sha256:8bc6ea40d199ea2c21d8a8b0477f532a
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/first/1 --
+sha256:42096e2b34df01ed6a54acf83c9848c7
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/split/1 --
+sha256:f5f6641b90a9ae3df3290b31f77cb93e
+{
+  "results": [
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/fallback/1 --
+sha256:4c21b288e508faa4fb037334cdfb0e99
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/first/1 --
+sha256:6e80cc61cd745f18c6cfbff4c234afd3
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/split/1 --
+sha256:1ab5c95054cc07a85f369fe09225b430
+{
+  "results": [
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/fallback/1 --
+sha256:35b98c93089335ccc15002a2565cc5da
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/first/1 --
+sha256:c94d989914e61a8450b3281b9de57155
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/split/1 --
+sha256:64a2796025f169a6c580f26ff254abe7
+{
+  "results": [
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/fallback/1 --
+sha256:3f86fd0c45198201be438010b824da12
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/first/1 --
+sha256:f16e52aace6b109f0bc3cf2612f84230
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/split/1 --
+sha256:d95f8b68eb0438bfe9c6a31648f98f16
+{
+  "results": [
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}

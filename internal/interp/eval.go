@@ -1888,6 +1888,14 @@ func (r *listRef) set(v any) { r.list[r.idx] = v }
 func (env *Env) evalCall(call *ir.Call) (any, error) {
 	v, err := env.evalCallSite(call)
 	if raised, ok := err.(*RaisedError); ok {
+		// A view's own expression: the boundary around what rendered hears
+		// it, and the render goes on with nothing where the value was.
+		if call.ErrorMode == ir.ErrorRender && call.ResolvedHandler != nil {
+			if err := env.invokeHandler(call.ResolvedHandler, raised.Event); err != nil {
+				return nil, err
+			}
+			return zeroValueFor(call.Type), nil
+		}
 		return nil, env.dispatchRaise(call, raised)
 	}
 	return v, err

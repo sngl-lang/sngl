@@ -156,7 +156,7 @@ func (st *slotChildSynth) convertChildren(stmts []ir.Stmt) {
 // become a reactive slot inside the synthesized component, which changes what
 // re-renders and is a larger question than placement.
 func (st *slotChildSynth) convertible(n *ir.NodeInst) bool {
-	if n == nil || isInstanceNode(n) {
+	if n == nil || isInstanceNode(n) || rendersARaise(n) {
 		return false
 	}
 	simple := true

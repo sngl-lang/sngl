@@ -43,6 +43,7 @@ type errorScopeState struct {
 
 func (st *errorScopeState) stmts(stmts []ir.Stmt, scope []*ir.EventHandler) {
 	for _, s := range stmts {
+		resolveRenderEscapes(s, scope)
 		switch n := s.(type) {
 		case *ir.ErrorBoundary:
 			inner := scope
@@ -101,6 +102,32 @@ func resolveEscapes(root any, scope []*ir.EventHandler) {
 		if x, ok := n.(*ir.Call); ok && x.ErrorMode == ir.ErrorPropagateNative {
 			x.ErrorMode = ir.ErrorInvokeAndTerminate
 			x.ResolvedHandler = scope[0]
+		}
+		return nil
+	})
+}
+
+// resolveRenderEscapes points every raise the checker left native in s's own
+// expressions -- a prop's value, a loop's list, a condition -- at the nearest
+// handler in scope as a render's (ir.ErrorRender), as the checker does with
+// one that has a boundary in its component. A lambda among them is a handler,
+// which resolveEscapes answers.
+func resolveRenderEscapes(s ir.Stmt, scope []*ir.EventHandler) {
+	if len(scope) == 0 {
+		return
+	}
+	_ = ir.Walk(s, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case ir.Stmt:
+			if x != s {
+				return ir.SkipDir
+			}
+		case *ir.Call:
+			if x.ErrorMode == ir.ErrorPropagateNative {
+				x.ErrorMode, x.ResolvedHandler = ir.ErrorRender, scope[0]
+			}
 		}
 		return nil
 	})

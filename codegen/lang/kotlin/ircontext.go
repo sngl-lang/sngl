@@ -1065,6 +1065,11 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		return kc.waitingLiteralCall(lam, args)
 	}
 	if n.Callee != nil {
+		// A literal called in place is parenthesized: `fn@{ ... }()` labels
+		// the call, and the literal's `return@fn` names no function.
+		if _, ok := n.Callee.(*ir.Lambda); ok {
+			return "(" + kc.EvalExpr(n.Callee) + ")(" + strings.Join(args, ", ") + ")"
+		}
 		return kc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
 	}
 	return "(" + strings.Join(args, ", ") + ")"

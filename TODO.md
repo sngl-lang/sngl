@@ -71,11 +71,9 @@ there. `cmd/sngl/testdata/slot_render_raise_draws_again_runs.txt` asserts
 only the redraw, and leaves android out, for these reasons.
 
 - [X] The spec says a boundary catches what the expressions of its content
-  raise (*Error boundaries*). Decided with the user: the boundary around what
-  rendered, on every target. Decide with the user what a render's raise
-  reaches on every target -- the boundary around what rendered, or the
-  handler that asked for it -- before changing any; a language change wants
-  asking.
+  raise (*Error boundaries*). Decided with the user: a render's raise reaches
+  the boundary around what rendered, on every target, not the handler that
+  asked for the render.
 - [ ] Make the interpreter and bubbletea agree with it, and android catch
   one at all. A script test on all six asserting where the raise went, which
   `slot_render_raise_draws_again_runs.txt` can grow into.

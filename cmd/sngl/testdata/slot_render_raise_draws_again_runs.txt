@@ -1,18 +1,14 @@
 # A slot's render that raises draws again on the next write. The render of
-# the `for` reads labels(n), which raises at 1; the click whose write asked
-# for that render holds a call that may raise, so its catch block takes the
-# raise. The render's re-entry guard (__renderingN) was cleared after the
-# loop, which the raise skipped, so every later render was taken for a
-# re-entry and the list stayed as the raise left it. It is cleared in a
-# finally now (ir.If.Finally, lower's renderOnce).
+# the `for` reads labels(n), which raises at 1. The render's re-entry guard
+# (__renderingN) was cleared after the loop, which the raise skipped, so every
+# later render was taken for a re-entry and the list stayed as the raise left
+# it. It is cleared in a finally now (ir.If.Finally, lower's renderOnce).
 #
-# Not asserted: whether the boundary's @error saw the raise. A render runs
-# inside the handler that asked for it on html, fyne, gtk4 and android, and
-# after it on the interpreter and bubbletea, where the boundary is not told.
-#
-# Not run on android: Compose has no render slot to guard, and a raise while
-# it composes reaches no catch block at all -- the test ends there, with or
-# without this fix, which is a gap of its own.
+# The raise is the render's, so the boundary around the loop hears it
+# (lower's passRenderCatch), on every target: it rendered inside the click's
+# handler on html, fyne and gtk4, whose catch block took it, after the
+# handler on the interpreter and bubbletea, where no boundary was told, and
+# while Compose composed on android, where it reached no catch block at all.
 
 sngl test --platform=none app.sngl
 stdout '^ok +1 tests, 0 failures$'
@@ -27,6 +23,9 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
 -- app.sngl --
@@ -66,6 +65,7 @@ func testARenderDrawsAgainAfterARaise(t Test, c main) {
     t.assert(c.shown[0] != null && c.shown[0].value == "n0")
     c.step.click()
     t.assert(c.n == 1)
+    t.assert(c.caught == "one is refused")
     c.step.click()
     t.assert(c.shown[0] != null && c.shown[0].value == "n2")
 }
@@ -73,8 +73,18 @@ func testARenderDrawsAgainAfterARaise(t Test, c main) {
 ui.window {
     main
 }
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:80a954b25af686d45b30f130d620f168
+{
+  "results": [
+    {
+      "Desc": "ARenderDrawsAgainAfterARaise",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:7a9532df7cddf4038b4005640aa117a5
+sha256:6118175ac7e6074f7a40136ae73fb337
 {
   "results": [
     {
@@ -84,7 +94,7 @@ sha256:7a9532df7cddf4038b4005640aa117a5
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:e4eb899cd3d784784ec39fe43d41e25e
+sha256:3f69a2981ef60e8d51b624735f414bbc
 {
   "results": [
     {
@@ -94,7 +104,7 @@ sha256:e4eb899cd3d784784ec39fe43d41e25e
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:7d1cf3fccb4deed52d42dbe9f8127d6e
+sha256:d839490fd6116a5c2cb16a76494f5f98
 {
   "results": [
     {
@@ -104,7 +114,7 @@ sha256:7d1cf3fccb4deed52d42dbe9f8127d6e
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:f739bf1a5c91c95949274c52ffb94378
+sha256:61283778d64f14b34b09e10ad1f9d9da
 {
   "results": [
     {

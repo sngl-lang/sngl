@@ -133,6 +133,9 @@ var alwaysOn = []string{
 	"RefLoop",
 	// A by-reference parameter is copy-in, copy-out on every target.
 	"RefParams",
+	// A render's raise reaches the boundary around it on every target,
+	// whether it renders inside the handler that asked or after it.
+	"RenderCatch",
 	// What a target reserves is read off its marks, and a target reserving
 	// nothing renames nothing; there is no capability to hold.
 	"ReservedNames",

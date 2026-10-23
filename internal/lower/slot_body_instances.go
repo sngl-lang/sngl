@@ -87,7 +87,7 @@ func (st *slotChildSynth) liftArm(stmts []ir.Stmt) {
 //     node's is (liftHandlers).
 //   - A handle something reads would name a node that lives in the instance.
 func (st *slotChildSynth) liftable(n *ir.NodeInst) bool {
-	if n == nil || isInstanceNode(n) || !st.armReadsCells([]ir.Stmt{n}) {
+	if n == nil || isInstanceNode(n) || !st.armReadsCells([]ir.Stmt{n}) || rendersARaise(n) {
 		return false
 	}
 	ok := true
@@ -107,6 +107,28 @@ func (st *slotChildSynth) liftable(n *ir.NodeInst) bool {
 		return nil
 	})
 	return ok
+}
+
+// rendersARaise reports whether n's subtree renders an expression a boundary
+// hears the raise of (ir.ErrorRender). passRenderCatch runs that boundary's
+// handler where the expression is evaluated, which lifted is a component of
+// its own that holds none of the state the handler writes: the fallback's
+// flag was undefined there on Go, and went unrendered on a page.
+func rendersARaise(n *ir.NodeInst) bool {
+	found := false
+	_ = ir.Walk(n, func(node ir.Node) error {
+		switch x := node.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case *ir.Call:
+			if x.ErrorMode == ir.ErrorRender {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
 }
 
 // armReadsCells reports whether a view body renders anything from state: a

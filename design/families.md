@@ -539,6 +539,25 @@ boundaries, so where the caller has one it wins over a nearer boundary the
 callee wraps the slot in; only where the caller has none does the render tree
 answer.
 
+**A raise from a render is the render's.** The checker resolves the calls a
+view statement's own expressions make -- a prop's value, a loop's list, a
+condition -- against the boundaries around them as `ir.ErrorRender`
+(`resolveRenderExprs`; `passErrorScope` does it for one an instance's tree
+answers). It resolved none, so no target caught one: a Go build panicked, a
+page raised it uncaught, Compose threw, and the interpreter and bubbletea
+dropped it. `passRenderCatch` turns each such call into a closure called in
+place, `func() T { var v T; v = zero; if true { v = call } catch H; return v }()`, so the boundary around the expression hears it wherever the render runs
+-- inside the handler whose write asked for it (html, fyne, gtk4), after it
+(bubbletea, the interpreter's `evalCall`), or while Compose composes -- and the
+render goes on with the call's zero value. A raise belongs to no handler there:
+the write may sit under another boundary, or under none, as a timer's does. It
+runs after `passReactivity`, to which a closure is opaque, and a subtree that
+renders one is not lifted into a `__child` component (`rendersARaise`), where
+the handler's state is not in scope
+(`cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt`,
+`testdata/error_raise_in_render.sngl`). The value is assigned rather than
+returned inside the catch: Go's catch body is a function of its own.
+
 A call in **expression position** that carries its own `@error`
 (`v = risky(7, @error(e) { … })`) is refused (`refuseExprErrorHandler`): the
 handler would replace the rest of the statement, so the call has nothing to

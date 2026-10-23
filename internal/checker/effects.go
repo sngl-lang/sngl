@@ -198,6 +198,7 @@ func callIsFallible(call *ir.Call) bool {
 // against the current scope. Nested errorBoundaries push their handler.
 func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 	for _, s := range stmts {
+		resolveRenderExprs(s, scope)
 		// A boundary is the one transparent statement that is not: it pushes
 		// its handler onto the scope, which is the whole of what it does. The
 		// fallback is under that handler too -- passBoundaryFailed lowers it to
@@ -240,6 +241,42 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 			resolveCall(x.Call, scope, false)
 		}
 	}
+}
+
+// resolveRenderExprs resolves the calls a view statement's own expressions
+// make -- a prop's value, a loop's list, a condition -- against the handlers
+// around it. A raise there is the render's: it reaches the boundary around
+// what rendered, whatever write asked for the render, and the render goes on
+// (ErrorRender). With no handler in this component it is left native, for
+// lower's passErrorScope to resolve against the tree the instance lands in.
+// The statements it holds are walkVisualErrors' to visit, and a lambda or a
+// handler runs where it is called, not where it renders.
+//
+// Unresolved, such a raise was caught by no target: it panicked a Go build,
+// went uncaught on a page, and the interpreter dropped it.
+func resolveRenderExprs(s ir.Stmt, scope []*ir.EventHandler) {
+	_ = ir.Walk(s, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case ir.Stmt:
+			if x != s {
+				return ir.SkipDir
+			}
+		case *ir.Call:
+			// A `fails` native's error result is its own story: a view reads
+			// one through the result it declares.
+			if x.ErrorMode != ir.ErrorNone || x.ErrorHandler != nil || x.Func == nil || x.Func.HasErrorReturn || !callIsFallible(x) {
+				return nil
+			}
+			if len(scope) > 0 {
+				x.ErrorMode, x.ResolvedHandler = ir.ErrorRender, scope[0]
+			} else {
+				x.ErrorMode = ir.ErrorPropagateNative
+			}
+		}
+		return nil
+	})
 }
 
 // resolveHandlerBody resolves the calls in one handler body against the
