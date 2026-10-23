@@ -230,7 +230,9 @@ func ImageSourceSetURL(h Handle, url string) {
 }
 
 func (s *source) show(url string, data []byte, err error) {
-	if url != s.url {
+	// A picture gone since has nothing to show it on: decoded, its texture
+	// was held by a source nothing reaches.
+	if url != s.url || sources[s.pic] != s {
 		return
 	}
 	var tex *C.GdkTexture
@@ -277,6 +279,10 @@ func (s *source) setTexture(tex *C.GdkTexture) {
 	// memory, and an old fetch arriving painted the new picture -- the
 	// pictures of a gallery landed under one another's labels.
 	if sources[s.pic] != s {
+		if tex != nil {
+			C.g_object_unref(C.gpointer(unsafe.Pointer(tex)))
+		}
+		s.tex = nil
 		return
 	}
 	C.gtk_picture_set_paintable((*C.GtkPicture)(p(s.pic)), (*C.GdkPaintable)(unsafe.Pointer(tex)))

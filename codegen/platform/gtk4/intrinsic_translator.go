@@ -1664,6 +1664,12 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 	} else {
 		t.shared.needSlotAnchor()
 		set = &ir.CallStmt{Call: nativeCall(adder.Func, ir.TypVoid, cgoCast(adderReceiver(adder, cType), parent), cgoCast("GtkWidget", box))}
+		// A scroll is gtk4rt's, which holds its content in a probe: the box's
+		// parent is never the scroll, and GTK refused setting its child again
+		// on every render.
+		if adder.Func == "gtk_scrolled_window_set_child" {
+			set = &ir.CallStmt{Call: rtCall("ScrolledWindowSetChild", ir.TypVoid, t.rtHandle(parent), t.rtHandle(box))}
+		}
 		slotBox = nativeCall("sngl_slot_box", ir.NativePointerOf("GtkWidget"), box)
 		parentOf = nativeCall("gtk_widget_get_parent", ir.NativePointerOf("GtkWidget"), cgoCast("GtkWidget", box))
 		parentArg = cgoCast("GtkWidget", parent)

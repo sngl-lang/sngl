@@ -40,12 +40,20 @@ const cgoSlotOrderProbe = `package main
 /*
 #cgo pkg-config: gtk4
 #include <gtk/gtk.h>
+
+// A GTK call refused (g_return_if_fail) ends the test rather than leaving a
+// line in its log: a re-render setting a scroll's child again was refused
+// on every render, and the labels it checks were still right.
+static void probe_init(void) {
+    g_log_set_always_fatal(G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_ERROR);
+    gtk_init();
+}
 */
 import "C"
 
 import "unsafe"
 
-func probeInit() { C.gtk_init() }
+func probeInit() { C.probe_init() }
 
 func labelTexts(w unsafe.Pointer, out *[]string) {
 	for c := C.gtk_widget_get_first_child((*C.GtkWidget)(w)); c != nil; c = C.gtk_widget_get_next_sibling(c) {

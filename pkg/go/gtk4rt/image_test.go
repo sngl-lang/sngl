@@ -79,3 +79,46 @@ func TestAFetchPaintsOnlyItsOwnPicture(t *testing.T) {
 		}
 	}
 }
+
+// A fetch that arrives after its picture is gone keeps nothing it decoded:
+// the texture was set on the source and never freed, a whole decoded image
+// for each picture a page drawn again left on its way.
+func TestAFetchForAGonePictureKeepsNoTexture(t *testing.T) {
+	if r := testutil.GUIRenderSkipReason(); r != "" {
+		t.Skip(r)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, goimage.NewNRGBA(goimage.Rect(0, 0, 8, 8))); err != nil {
+		t.Fatal(err)
+	}
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+		w.Write(buf.Bytes())
+	}))
+	defer srv.Close()
+
+	var gone *source
+	build := func(app Handle) Handle {
+		pic := ImageSourceNew()
+		Retain(pic)
+		gone = sources[pic]
+		ImageSourceSetURL(pic, srv.URL+"/dot.png")
+		Release(pic)
+		close(release)
+		PumpFor(500)
+		return ApplicationWindowNew(app)
+	}
+	if _, err := SnapshotModelBytes(build, 64, 64); err != nil {
+		if strings.Contains(err.Error(), "sngl_snapshot rc=") {
+			t.Skipf("headless render backend unavailable: %v", err)
+		}
+		t.Fatalf("SnapshotModelBytes: %v", err)
+	}
+	if gone.url == "" {
+		t.Fatal("the fetch never started")
+	}
+	if gone.tex != nil {
+		t.Error("a gone picture's source holds the texture its fetch decoded")
+	}
+}
