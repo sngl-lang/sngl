@@ -482,6 +482,9 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 func (m *Model) __n1_clicked_handler() {
 	Free(C.CString("scratch"))
 	m.n = (m.n + 1)
+	__ctmp1 := C.CString(fmt.Sprint(m.n))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp1)
+	C.free(unsafe.Pointer(__ctmp1))
 }
 
 func (m *Model) N() int {
@@ -530,4 +533,4 @@ pass sha256:c60e18f881c9a84c90c1a8ea7417ba8f
 -- run/go/fyne --
 pass sha256:afa0315d8d93a898a4d7b06c6711cb0c
 -- run/go/gtk4 --
-pass sha256:c0d3d530160b623bc8bc86dcc4ad4edf
+pass sha256:368669f7c08bd867c898ec2628f8ba86

@@ -224,8 +224,7 @@ run over the statements each of those sites returns and writes the release
 application's lifetime and never freed, and any other is bound to a `__ctmpN`
 before the statement that hands it to C and freed with `C.free` after it.
 Every C function the translator calls copies what it is handed, so no string
-outlives its statement. `dropSelfSetterCalls` drops the temps bound for a
-setter it drops. The activate signal name in `callbacks.go` is a package
+outlives its statement. The activate signal name in `callbacks.go` is a package
 `var` for the same reason, and the event invokers already freed theirs
 (`testdata/gtk4_translator_strings.txtar`, whose `deny` lines refuse a
 `C.CString` inside another call or on a line of its own). Part 10 moves these

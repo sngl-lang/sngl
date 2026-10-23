@@ -485,6 +485,9 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.v = int(C.toupper(C.int((m.v + 97))))
+	__ctmp1 := C.CString(("upper " + fmt.Sprint(m.v)))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp1)
+	C.free(unsafe.Pointer(__ctmp1))
 }
 
 func (m *Model) V() int {
@@ -533,4 +536,4 @@ pass sha256:95603e190116c45d265e54a1856a8e93
 -- run/go/fyne --
 pass sha256:00b0d2f7a17fcaa854c749bb102f1161
 -- run/go/gtk4 --
-pass sha256:6201b0d8d23efb88f49d4f82a84ab936
+pass sha256:08521a83996c06e60a435147b5206b12

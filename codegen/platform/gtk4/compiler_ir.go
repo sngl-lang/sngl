@@ -1135,9 +1135,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 	stmts = readWidgets(stmts, widgetReader(wrapped, shared, modelNode(wrapped)))
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	// Drop self-setter splices: writing the entry's text from inside its own
-	// "changed" handler re-fires the signal and recurses.
-	body = dropSelfSetterCalls(body, nodeID)
 	synthesized := &ir.Func{
 		Name:    fn.Name,
 		Lowered: ir.FuncLowering{HostReceiver: "Model"},
@@ -1150,75 +1147,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
-}
-
-// dropSelfSetterCalls filters out setter calls on selfNode so a two-way bound
-// widget does not recurse into its own changed-signal handler.
-func dropSelfSetterCalls(stmts []ir.Stmt, selfNode string) []ir.Stmt {
-	if selfNode == "" {
-		return stmts
-	}
-	out := stmts[:0:0]
-	for i := 0; i < len(stmts); i++ {
-		cs, ok := stmts[i].(*ir.CallStmt)
-		if !ok || cs == nil || !isSetterOn(cs.Call, selfNode) {
-			out = append(out, stmts[i])
-			continue
-		}
-		// The C strings ownCStrings bound for the call go with it: the
-		// locals declared just before and freed just after.
-		temps := map[string]bool{}
-		for j, o := range slices.Backward(out) {
-			lv, ok := o.(*ir.LocalVar)
-			if !ok || !strings.HasPrefix(lv.Name, cTempPrefix) {
-				break
-			}
-			temps[lv.Name] = true
-			out = out[:j]
-		}
-		for i+1 < len(stmts) && freesOneOf(stmts[i+1], temps) {
-			i++
-		}
-	}
-	return out
-}
-
-func freesOneOf(st ir.Stmt, temps map[string]bool) bool {
-	cs, ok := st.(*ir.CallStmt)
-	if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Foreign.Name != "free" || len(cs.Call.Args) != 1 {
-		return false
-	}
-	conv, ok := cs.Call.Args[0].Value.(*ir.Conversion)
-	if !ok {
-		return false
-	}
-	id, ok := conv.Operand.(*ir.Ident)
-	return ok && temps[id.Name]
-}
-
-// isSetterOn reports whether a Call is a C.gtk_*_set_* invocation whose
-// first argument resolves to m.<selfNode>.
-func isSetterOn(call *ir.Call, selfNode string) bool {
-	if call == nil || call.Func == nil || len(call.Args) == 0 {
-		return false
-	}
-	if call.Func.Foreign.Path != "C" || !strings.Contains(call.Func.Foreign.Name, "_set_") {
-		return false
-	}
-	first := call.Args[0].Value
-	for {
-		conv, ok := first.(*ir.Conversion)
-		if !ok {
-			break
-		}
-		first = conv.Operand
-	}
-	if sel, ok := first.(*ir.Select); ok {
-		if op, ok := sel.Operand.(*ir.Ident); ok && op.Name == "m" && sel.Field == selfNode {
-			return true
-		}
-	}
-	return false
 }
 
 // gtk4ComponentFuncs is every func some component declares; what is left in

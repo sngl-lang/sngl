@@ -782,6 +782,9 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.v = ((Total([]string{"a", "bc"}) + Measured("x")) + int(C.strlen(m.__rel3)))
+	__ctmp2 := C.CString(fmt.Sprint(m.v))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp2)
+	C.free(unsafe.Pointer(__ctmp2))
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -902,4 +905,4 @@ pass sha256:5ab03b78ed63a160a8d55faf558efa5e
 -- run/go/fyne --
 pass sha256:fc3b6cef86f1abfcea39fd4d0e122561
 -- run/go/gtk4 --
-pass sha256:5ac971de4175933f507d31ae24677101
+pass sha256:72ff80831db15a2ce8242ebe3e1099bd
