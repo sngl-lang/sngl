@@ -350,14 +350,14 @@ page's title off its route's declaration, so it is a constant.
 
 ## Where each target stands
 
-| target      | what runs                                                                                                                                                                                                      |
-|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `none`      | the interpreter, all of it                                                                                                                                                                                     |
-| `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages; a card opens on Enter or Space as on a click                                                                                         |
-| `bubbletea` | all of it, a sprite as half-block cells; a row's columns line up and its badges are spaced, but nothing is centered (`alignItems`), so an evolution card's name sits left; a test that waits sees a timer tick |
-| `fyne`      | all of it; a badge is drawn on its color, a card's lines are centered, and a table's columns follow the list they are read from                                                                                |
-| `gtk4`      | all of it, styled: sizes, gaps, padding, fonts, colors and rounded corners; a line's text is still centered in its box (no `alignItems` or `textAlign`), where html starts it at the left                      |
-| `android`   | all of it; the manifest asks for `INTERNET` because the program fetches; a test that waits moves Compose's clock, so a timer ticks                                                                             |
+| target      | what runs                                                                                                                                                                                                                                         |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `none`      | the interpreter, all of it                                                                                                                                                                                                                        |
+| `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages; a card opens on Enter or Space as on a click, and not on a click its button took                                                                                        |
+| `bubbletea` | all of it, a sprite as half-block cells; a row's columns line up, its badges are spaced, and a box's `alignItems` centers its parts, so an evolution card's name sits under its picture; a test that waits sees a timer tick and a picture arrive |
+| `fyne`      | all of it; a badge is drawn on its color, a card's lines are centered, and a table's columns follow the list they are read from                                                                                                                   |
+| `gtk4`      | all of it, styled: sizes, gaps, padding, fonts, colors and rounded corners; a line starts at the left as on html, `alignItems` and `textAlign` place it, and a label given a width wraps inside it                                                |
+| `android`   | all of it; the manifest asks for `INTERNET` because the program fetches; a test that waits moves Compose's clock, so a timer ticks                                                                                                                |
 
 `--lang none` on html is refused where the detail page is written: a static
 site writes one document per page, and `/pokemon/{name}` is a pattern no file
