@@ -649,7 +649,141 @@ the gtk4 translator builds after lowering, which releases its own strings
 (`ownCStrings`); resolving those calls in lowering (#293) is what brings them
 under it (`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
 
-**Out of scope: a C language target.** It adds `#[owned]` to `string`, and
-decides between per-statement release and a per-frame or per-event arena for
-temps. State needs release-on-overwrite either way: an arena held for an
-instance's lifetime keeps every rewrite of a label until unmount.
+## A C language target
+
+Decided ahead of the target, with no code until one exists to need it. On
+every target today a `string` is the host's: Go, Kotlin and JavaScript
+collect it, and the only string the program gives back is the `c.str` a C
+call makes of one. In C a `string` is an allocation, every concatenation,
+interpolation and `fmt` call makes one, and the question is what releases
+it. The holder side -- a var's overwrite, a derived value's key change, a
+node's unmount, a collection's write, teardown -- is what Parts 1 to 4 built
+for every owned type and the C target reuses unchanged. The decision below is
+about the statement side only.
+
+**A `string` is owned on the C target, and the program never sees it.** The
+C language package declares it: `string` is `#[owned]` there, and the mark's
+rule that only a struct may be owned opens to a target's own scalar when the
+target arrives, as a package rule and not a spec one. The spec's *Owned
+values* does not change: a program names no release for a string, stores
+one, passes one and returns one as it does anywhere, and the compiler's four
+lifetimes hold every string the program makes. A C string stored twice is
+two copies, each released once -- stricter than the spec's "stored twice is
+released twice", and what makes `string` a value on C as it is everywhere
+else. The same declaration covers a `list` and a `map`, which are allocations
+on C too: the rule below is for a type with no destructor, and `string` is
+the first of them.
+
+**A type with no destructor names no release, and its bytes are all it is.**
+A cairo surface, a pixbuf, a widget has a destructor: a function the host
+must run, which frees memory the host allocated and undoes what the
+allocation did. A string has none: giving it back is giving its bytes back,
+and `free` is the allocator's, not the type's. The C target's `string` is
+`#[owned]` with no release function, `ReleaseOf` answers nothing for it, and
+a type composed only of such types (`list[string]`, a struct of strings) is
+owned by composition as today and has no destructor either. The distinction
+is what decides the allocator.
+
+**Statement-lifetime values of a type with no destructor live in a per-turn
+arena.** A turn is one pass through the event loop: start-up before the loop
+runs, an event handler, a frame's draw, a timer's `@tick`, a network reply's
+continuation, the teardown. The target's loop resets the arena when the turn
+ends, with one call it writes itself; `ReleaseTemps` writes nothing. A
+string a statement makes and only reads -- an interpolation handed to a
+label's setter, a concatenation compared, a `fmt` result returned up to a
+caller in the same turn -- costs a bump and no free, and a statement of
+string arithmetic reads as one line of C rather than a `__relN` binding, a
+catch block and a release per subexpression. The alternatives, and why not:
+
+- *Per-statement free*, which is what `ReleaseTemps` does for every owned
+  type today, costs a `malloc`/`free` pair per intermediate and makes every
+  statement that may raise a catch block, for a type whose release undoes
+  nothing. It is right for a destructor and wrong for bytes.
+- *Per-frame* alone leaves a turn that is not a frame -- a timer, a reply --
+  accumulating until the next draw, and a program that draws nothing for a
+  while leaks for a while. A turn is the unit of work the UI thread runs,
+  and the arena is empty between turns, so per-turn is the bound.
+- *Per-instance*, an arena held until the node unmounts, keeps every rewrite
+  of a label until then -- the out-of-scope note's own objection -- and is
+  the same mistake as holding state in the arena, below.
+
+A loop inside one turn grows the arena until the turn ends, where today's
+lowering releases a condition head's temps before each test. That is
+accepted: a turn is short by construction, a loop building a million strings
+in a handler is wrong on every target, and an arena mark at a loop body's
+end, which is safe once nothing a loop stores stays in the arena, is an
+optimization a profile asks for and not part of the design.
+
+**A value with a destructor is released as today.** A statement-lifetime
+`c.str` is already gone on C -- there is no conversion to make one -- but a
+surface a draw makes and only hands to cairo, a pixbuf decoded and only
+measured, keeps `ReleaseTemps`'s `__relN` binding, release after the
+statement, catch around a later temp's raise, and release ahead of every
+`return`. An arena cannot hold one: its memory is the host's, allocated by
+cairo and not by the program, and a reset would run no destructor. The two
+rules compose: a struct holding a surface and a string is released by
+releasing the surface, since the string's bytes are the arena's or the
+holder's, never the struct's own.
+
+**State leaves the arena at the store, and is freed on overwrite either
+way.** A value stored into a holder -- a component's or a view block's var,
+a package var, a field, an element, a `#[retains]` native's argument, an
+owned derived value's cell -- outlives the turn that made it, and the arena
+does not. The store copies the value to the heap, deep for a composed type,
+and the heap copy is the holder's. `OwnedState`'s effects then do what they
+do for every owned type: the overwrite frees the old copy once the new one
+is in place, the unmount frees the last, a collection write frees what it
+replaces, teardown frees the package vars. Release-on-overwrite is needed
+whatever the arena is scoped to, and is the reason a longer-lived arena was
+never an answer: a per-turn arena frees a var's string while the var still
+holds it, so state cannot be in it at all, and an arena that lives as long
+as the state keeps every value the state ever held, so a label rewritten per
+keystroke holds every text it showed. The heap copy and the free at
+overwrite are the only way a var holds exactly one string. A value handed to
+a `#[moves]` parameter is a heap copy the same way, since the callee will
+free it: GLib's transfer-full takes a `g_free`-able pointer, and the arena's
+original is left to the reset.
+
+**What `ReleaseTemps` emits on C, per lifetime.** The pass runs, since the
+destructor types need it, and classifies as it does today; the type decides
+the rest.
+
+| Lifetime        | No destructor (`string`, `list`, `map`, composed)                            | Destructor (a native)                    |
+|-----------------|------------------------------------------------------------------------------|------------------------------------------|
+| **Statement**   | nothing; the arena, reset by the loop at the turn's end                      | `__relN`, release after, catch on raise  |
+| **Node**        | heap copy at the store; `OwnedState`'s overwrite and unmount effects free it | as today: overwrite, key change, unmount |
+| **Application** | heap copy once at start-up; freed at teardown                                | as today                                 |
+| **Moved**       | heap copy handed to the callee; the arena's original is the reset's          | as today: handed over, never released    |
+
+The copy at the store is the one new mechanism: a lowering step on the C
+target that wraps a stored value of a no-destructor type in the target's
+`__snglHeap(v)`, placed where `OwnedState` binds the `__newN` and where a
+collection write or a `#[moves]` argument takes its value. It is a
+`#[gen.can]` capability of the C target alone, since no other target has
+two allocators.
+
+**`CMarshal` makes no copy where the string is already a C string.** On
+today's targets the pass wraps a `string` argument of a C call in `cstring`,
+which allocates a NUL-terminated copy the program frees. On the C target the
+program's string already is one: the representation keeps its length beside
+the bytes and a NUL after them, one byte per string, so handing it to a
+`char *` parameter is a pointer to the bytes and no allocation. The target
+writes `CMarshal` in `#[gen.can]`, so the pass does not run: `cstring`,
+`cint`, `cdouble` and `cbool` are all identities or casts there, and the
+reason the conversions live in the IR -- that an allocation must be where a
+pass can see it -- holds for none of them. A string holding a NUL byte is
+truncated at the C boundary, as `C.CString` truncates it today. A `#[moves]`
+`char *` parameter gets the heap copy above; a `#[retains]` one gets the
+node's, released when the node hands the native its next value or unmounts.
+
+**What Parts 1 to 4 leave for the target: nothing held.** The held list is
+empty: a value in a collection or a struct is released by composition, a
+conditional arm's or a later-raising temp's by its own statement, a
+`#[retains]` argument by the node around it, a value stored from another
+holder by each holder or through the host's retain. A C program therefore
+leaks only what no lifetime can hold, which is a `#[retains]` call no
+component encloses, and the checker refuses that before any code is written.
+What the tracker cannot see on gtk4, the strings its translator writes after
+lowering (`ownCStrings`), has no counterpart on a C target, whose widget
+protocol would be declared as native-calling bodies from the start; it is
+#293's on gtk4 either way.

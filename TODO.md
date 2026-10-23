@@ -141,13 +141,13 @@ C target exists to need it. In C `string` is owned, every concatenation and
 interpolation allocates, and the choice is between a free per temp and an
 arena per event or frame reset when it ends.
 
-- [ ] Write the decision into `design/ownership.md`'s *Out of scope* section,
+- [X] Write the decision into `design/ownership.md`'s *Out of scope* section,
   replacing it: an arena for statement-lifetime values of types with no
   destructor (strings), explicit release for natives (a cairo surface cannot
   live in an arena), release-on-overwrite for state either way. Say what a
   C target's `ReleaseTemps` emits for each lifetime and what `CMarshal` does
   when the source string is already a C string.
-- [ ] Note what Parts 1 to 4 leave for that target: nothing in the held
+- [X] Note what Parts 1 to 4 leave for that target: nothing in the held
   list, so a C program leaks only what it holds in a `#[retains]` native
   with no node around it, which the checker refuses.
 
