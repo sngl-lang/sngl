@@ -1,6 +1,10 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	"charm.land/lipgloss/v2"
+)
 
 // A part that draws nothing takes no line, and a gap is that many blank
 // lines between two parts that do, padded to the column's width as every
@@ -46,5 +50,23 @@ func TestFlexRowLinesColumnsUp(t *testing.T) {
 	}
 	if got, want := FlexRow(0, 1, []string{"a", "b"}, []float64{1, 0}), "a b"; got != want {
 		t.Errorf("row with no width %q, want %q", got, want)
+	}
+}
+
+// A box's alignItems puts each part across it: a column's names centered
+// under the widest, a row's short part centered down the tallest. Joined at
+// the start, a card's names sat at its left.
+func TestAlignedPartsSitAcross(t *testing.T) {
+	if got, want := ColumnAt(lipgloss.Center, 0, "Fig", "a long name"), "    Fig    \na long name"; got != want {
+		t.Errorf("ColumnAt(Center) = %q, want %q", got, want)
+	}
+	if got, want := ColumnAt(lipgloss.Right, 0, "ab", "abcd"), "  ab\nabcd"; got != want {
+		t.Errorf("ColumnAt(Right) = %q, want %q", got, want)
+	}
+	if got, want := RowAt(lipgloss.Center, 1, "a\nb\nc", "x"), "a  \nb x\nc  "; got != want {
+		t.Errorf("RowAt(Center) = %q, want %q", got, want)
+	}
+	if got, want := FlexRowAt(lipgloss.Bottom, 0, 1, []string{"a\nb", "x"}, []float64{1, 0}), "a  \nb x"; got != want {
+		t.Errorf("FlexRowAt(Bottom) = %q, want %q", got, want)
 	}
 }

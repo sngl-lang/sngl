@@ -1,6 +1,7 @@
 package bubbletea
 
 import (
+	"fmt"
 	"strconv"
 
 	"duckfam.us/sngl/codegen"
@@ -144,4 +145,38 @@ func (vc *irViewContext) narrow(n *ir.NodeInst, resultVar string) func() {
 // float32Text writes a weight as a Go float literal.
 func float32Text(v float64) string {
 	return strconv.FormatFloat(v, 'f', -1, 64)
+}
+
+// alignAt is where a box's `alignItems` puts its parts across it, as a Go
+// lipgloss.Position: a column's at its left, center or right, a row's at its
+// top, center or bottom. "" is the start, which is also where a stretched
+// part sits: a part drawn is its own width, and the box pads it to its own.
+// A member read at run time -- a field reading state, a Style held as a
+// value -- is looked up then.
+func (vc *irViewContext) alignAt(n *ir.NodeInst) string {
+	end := "lipgloss.Right"
+	if vc.horizontal {
+		end = "lipgloss.Bottom"
+	}
+	var val string
+	if held := styleValue(n); held != nil {
+		val = vc.gc.EvalExpr(held) + ".AlignItems"
+	} else {
+		v := styleField(n, "alignItems")
+		if v == nil {
+			return ""
+		}
+		switch enumMember(v) {
+		case "center":
+			return "lipgloss.Center"
+		case "end":
+			return end
+		case "":
+			val = vc.gc.EvalExpr(v)
+		default:
+			return ""
+		}
+	}
+	// A member with no entry reads the zero Position, which is the start.
+	return fmt.Sprintf(`map[string]lipgloss.Position{"center": lipgloss.Center, "end": %s}[%s]`, end, val)
 }

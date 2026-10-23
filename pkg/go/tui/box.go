@@ -11,21 +11,33 @@ import (
 // out, as a box with nothing in it takes no room in CSS: joined, it was a
 // blank line where nothing was drawn.
 func Column(gap int, parts ...string) string {
+	return ColumnAt(lipgloss.Left, gap, parts...)
+}
+
+// ColumnAt is Column with each part at across the widest one: a box's
+// `alignItems`, lipgloss.Center for center and lipgloss.Right for end.
+func ColumnAt(at lipgloss.Position, gap int, parts ...string) string {
 	parts = drawn(parts)
 	if gap > 0 && len(parts) > 1 {
 		parts = spaced(parts, strings.Repeat("\n", gap-1))
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, parts...)
+	return lipgloss.JoinVertical(at, parts...)
 }
 
 // Row joins parts left to right, gap columns between two of them, leaving
 // out the empty ones.
 func Row(gap int, parts ...string) string {
+	return RowAt(lipgloss.Top, gap, parts...)
+}
+
+// RowAt is Row with each part at down the tallest one: lipgloss.Center for
+// center and lipgloss.Bottom for end.
+func RowAt(at lipgloss.Position, gap int, parts ...string) string {
 	parts = drawn(parts)
 	if gap > 0 && len(parts) > 1 {
 		parts = spaced(parts, strings.Repeat(" ", gap))
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
+	return lipgloss.JoinHorizontal(at, parts...)
 }
 
 // FlexRow is Row for a row some of whose parts ask for a share of it: weights
@@ -34,6 +46,11 @@ func Row(gap int, parts ...string) string {
 // least its own width, so the rows of a table whose columns are fixed but
 // one line their columns up. A row given no width is Row.
 func FlexRow(width, gap int, parts []string, weights []float64) string {
+	return FlexRowAt(lipgloss.Top, width, gap, parts, weights)
+}
+
+// FlexRowAt is FlexRow with each part at down the tallest one, as RowAt.
+func FlexRowAt(at lipgloss.Position, width, gap int, parts []string, weights []float64) string {
 	var kept []string
 	var shares []float64
 	total := 0.0
@@ -50,7 +67,7 @@ func FlexRow(width, gap int, parts []string, weights []float64) string {
 		total += w
 	}
 	if width <= 0 || total <= 0 {
-		return Row(gap, kept...)
+		return RowAt(at, gap, kept...)
 	}
 	free := width - gap*max(len(kept)-1, 0)
 	for i, p := range kept {
@@ -67,7 +84,7 @@ func FlexRow(width, gap int, parts []string, weights []float64) string {
 			kept[i] = lipgloss.NewStyle().Width(w).Render(p)
 		}
 	}
-	return Row(gap, kept...)
+	return RowAt(at, gap, kept...)
 }
 
 func drawn(parts []string) []string {

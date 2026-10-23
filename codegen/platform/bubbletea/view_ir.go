@@ -38,6 +38,9 @@ type irViewContext struct {
 	// what its parts -- a loop's copies and a branch's nodes among them --
 	// are joined with.
 	gap string
+	// at is where the box's alignItems puts its parts across it, a Go
+	// lipgloss.Position; "" at the start.
+	at string
 	// weights names the list a flexing row keeps each part's share in, beside
 	// its parts; "" in any other box.
 	weights string
@@ -436,16 +439,22 @@ func (vc *irViewContext) renderBranch(stmts []ir.Stmt, resultVar string) {
 }
 
 // join writes the parts in list into resultVar along the box's axis, the
-// box's gap apart, leaving out the parts that draw nothing.
+// box's gap apart and where its alignItems puts them across it, leaving out
+// the parts that draw nothing.
 func (vc *irViewContext) join(resultVar, list string) {
 	vc.requireImport(tuiImportPath)
 	gap := vc.gap
 	if gap == "" {
 		gap = "0"
 	}
-	if vc.horizontal {
+	switch {
+	case vc.at != "" && vc.horizontal:
+		vc.line(`%s = tui.RowAt(%s, %s, %s...)`, resultVar, vc.at, gap, list)
+	case vc.at != "":
+		vc.line(`%s = tui.ColumnAt(%s, %s, %s...)`, resultVar, vc.at, gap, list)
+	case vc.horizontal:
 		vc.line(`%s = tui.Row(%s, %s...)`, resultVar, gap, list)
-	} else {
+	default:
 		vc.line(`%s = tui.Column(%s, %s...)`, resultVar, gap, list)
 	}
 }
@@ -649,14 +658,14 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		childrenVar := boxVar + "Children"
 		vc.line("var %s []string", childrenVar)
 		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
-		prevGap, prevWeights := vc.gap, vc.weights
+		prevGap, prevWeights, prevAt := vc.gap, vc.weights, vc.at
 		vc.vertical, vc.horizontal = true, false
-		vc.gap, vc.weights = "0", ""
+		vc.gap, vc.weights, vc.at = "0", "", ""
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", boxVar, i), childrenVar)
 		}
 		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
-		vc.gap, vc.weights = prevGap, prevWeights
+		vc.gap, vc.weights, vc.at = prevGap, prevWeights, prevAt
 		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
 		if style != "lipgloss.NewStyle()" {
 			vc.line(`%s = %s.Render(%s)`, boxVar, style, boxVar)
@@ -683,11 +692,16 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		childrenVar := resultVar + "Children"
 		vc.line("var %s []string", childrenVar)
 		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
-		prevGap, prevWeights := vc.gap, vc.weights
+		prevGap, prevWeights, prevAt := vc.gap, vc.weights, vc.at
 		prevCols, prevRows := vc.pictureCols, vc.pictureRows
 		vc.vertical = bp.Join == joinVertical
 		vc.horizontal = !vc.vertical
 		vc.gap = vc.gapCells(n)
+		vc.at = vc.alignAt(n)
+		if strings.HasPrefix(vc.at, "map[") {
+			vc.line("%sAt := %s", resultVar, vc.at)
+			vc.at = resultVar + "At"
+		}
 		vc.weights = ""
 		if vc.horizontal && childFlexes(n.Children) {
 			vc.weights = resultVar + "Weights"
@@ -698,7 +712,7 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 		}
-		gap, weights := vc.gap, vc.weights
+		gap, weights, at := vc.gap, vc.weights, vc.at
 		// tooltip: reveal the body text (dim) below the trigger while the wrapped
 		// focusable descendant is focused. The `tooltip` prop carries the text;
 		// the focus expression comes from the focusable descendant's injected
@@ -718,13 +732,26 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		}
 		if weights != "" {
 			vc.requireImport(tuiImportPath)
-			vc.line(`%s = tui.FlexRow(m.avail, %s, %s, %s)`, resultVar, gap, childrenVar, weights)
+			if at != "" {
+				vc.line(`%s = tui.FlexRowAt(%s, m.avail, %s, %s, %s)`, resultVar, at, gap, childrenVar, weights)
+			} else {
+				vc.line(`%s = tui.FlexRow(m.avail, %s, %s, %s)`, resultVar, gap, childrenVar, weights)
+			}
 		} else {
 			vc.join(resultVar, childrenVar)
 		}
 		restoreAvail()
+		// A box wider or taller than its parts puts them where they are
+		// joined: a column of names centered in a card 14 cells wide.
+		switch {
+		case at == "":
+		case vc.vertical:
+			style += ".AlignHorizontal(" + at + ")"
+		default:
+			style += ".AlignVertical(" + at + ")"
+		}
 		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
-		vc.gap, vc.weights = prevGap, prevWeights
+		vc.gap, vc.weights, vc.at = prevGap, prevWeights, prevAt
 		vc.pictureCols, vc.pictureRows = prevCols, prevRows
 		if style != "lipgloss.NewStyle()" {
 			vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
