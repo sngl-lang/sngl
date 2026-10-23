@@ -1358,12 +1358,13 @@ ui.window {
 
 **Which lifetime a value gets is decided by where it is written.** The compiler picks the narrowest of four that holds it:
 
-| Written as                                                                                        | Lifetime    | Released                                                |
-|---------------------------------------------------------------------------------------------------|-------------|---------------------------------------------------------|
-| an argument a function only reads, a receiver, a field read, a discarded result                   | statement   | after the statement, before a `return`, when it raises  |
-| a component's or view block's `var`, an owned derived value, a `#[retains]` argument in an effect | node        | on overwrite, when what it reads changes, at `@unmount` |
-| a literal or `const func` call over constants, a package `var`                                    | application | at teardown                                             |
-| an argument to a `#[moves]` parameter                                                             | moved       | never -- the callee owns it now                         |
+| Written as                                                                                        | Lifetime     | Released                                                |
+|---------------------------------------------------------------------------------------------------|--------------|---------------------------------------------------------|
+| an argument a function only reads, a receiver, a field read, a discarded result                   | statement    | after the statement, before a `return`, when it raises  |
+| a component's or view block's `var`, an owned derived value, a `#[retains]` argument in an effect | node         | on overwrite, when what it reads changes, at `@unmount` |
+| an element of a list or a map, a struct's field, an option's value                                | its holder's | when replaced or removed, and with the holder           |
+| a literal or `const func` call over constants, a package `var`                                    | application  | at teardown                                             |
+| an argument to a `#[moves]` parameter                                                             | moved        | never -- the callee owns it now                         |
 
 Aim for the statement lifetime. A value made and spent inside one statement is the easiest to see is right, and a canvas drawing text per frame is nothing but such statements. A value the next event needs goes in a `var` of the component, where overwriting it releases what it held and leaving the tree releases the last:
 
@@ -1486,7 +1487,7 @@ ui.window(title="Pick") {
 
 When `run` returns, the tree has unmounted, so every `@unmount` has run and every node-lifetime value is released; timers have stopped; and every application-lifetime value is released. The code after `run()` holds nothing the windows made. There is one application per process: a second `run()` ends the process with an error naming the handler, so a program that wants the window again keeps it open. A test is an application too, torn down when the test function returns.
 
-**What the compiler holds rather than releases.** A value the statement may not make -- the right of `&&` or `||`, a ternary's or a `match` expression's arm, a `for` head -- is not released; make it in a statement of its own. A value pushed into a list, stored in a map or a struct field, or kept in an `option` is held by what holds it, and the program releases it by hand when it takes it out. A value handed to a `#[retains]` native from an event handler rather than an effect is held too; make the call from an effect's `@mount` or `@update`, where the lifetime is the node's. The specification's *Owned values* has the full list.
+**What the compiler holds rather than releases.** A value the statement may not make -- the right of `&&` or `||`, a ternary's or a `match` expression's arm, a `for` head -- is not released; make it in a statement of its own. A value pushed into a list, stored in a map or a struct field, or kept in an `option` is held by what holds it and released with it: when it is replaced or removed, and when its holder is. A value handed to a `#[retains]` native from an event handler rather than an effect is held too; make the call from an effect's `@mount` or `@update`, where the lifetime is the node's. The specification's *Owned values* has the full list.
 
 **Finding a leak.** The interpreter tracks every owned value, so `sngl test` is the leak checker: a test whose teardown finds a value still held fails naming where it was made, and a double release or a use after release fails where it happens, naming the allocation, the release and the use. A target's natives have no body the interpreter can run, so a binding leak-checks under the target's overrides with the natives stubbed:
 

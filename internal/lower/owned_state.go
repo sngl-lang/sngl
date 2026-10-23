@@ -83,12 +83,17 @@ type ownedStateRun struct {
 	effect  *ir.Component
 	counter int
 	owned   map[*ir.Var]bool
-	// written is each assignment the pass made, which is already the
-	// overwrite it would otherwise become.
+	// written is each assignment the pass made or rewrote, which is already
+	// the overwrite it would otherwise become; taken each `remove` or
+	// `clear` it rewrote, since a walk reaches a lambda's block twice.
 	written map[*ir.Assign]bool
+	taken   map[*ir.CallStmt]bool
 	// retained is each cell a reporting effect's handler fills, by the
 	// component releasing it when the node unmounts.
 	retained map[*ir.Component][]*ir.Var
+	// cells is every `__retN` cell: an option of an owned type, which is
+	// owned by what it holds, but released by retain's own statements.
+	cells map[*ir.Var]bool
 }
 
 func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
@@ -96,7 +101,9 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 		pkg:      pkg,
 		owned:    map[*ir.Var]bool{},
 		written:  map[*ir.Assign]bool{},
+		taken:    map[*ir.CallStmt]bool{},
 		retained: map[*ir.Component][]*ir.Var{},
+		cells:    map[*ir.Var]bool{},
 	}
 	derived := map[*ir.Func]*ir.Var{}
 	for _, c := range comps {
@@ -121,10 +128,8 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 		}
 	}
 	st.blockVars(&pkg.Body)
-	if len(st.owned) > 0 {
-		for _, root := range roots {
-			ir.RewriteBlocks(root, st.overwrites)
-		}
+	for _, root := range roots {
+		ir.RewriteBlocks(root, st.overwrites)
 	}
 	for _, c := range comps {
 		st.unmount(c)
@@ -422,7 +427,7 @@ func (st *ownedStateRun) effectNode(key ir.Expr, handlers ...ir.EventHandler) *i
 // afresh after this pass.
 func (st *ownedStateRun) collect(vars []*ir.Var) {
 	for _, v := range vars {
-		if v.IsConst || v.NodeHandle || ir.ReleaseOf(v.Type) == nil {
+		if v.IsConst || v.NodeHandle || st.cells[v] || !ir.Owned(v.Type) {
 			continue
 		}
 		st.owned[v] = true
@@ -441,44 +446,161 @@ func (st *ownedStateRun) blockVars(body *[]ir.Stmt) {
 		}
 		out = append(out, s)
 		lv, ok := s.(*ir.LocalVar)
-		if !ok || lv.Sym == nil || ir.ReleaseOf(lv.Type) == nil {
+		if !ok || lv.Sym == nil || !ir.Owned(lv.Type) {
 			continue
 		}
 		st.owned[lv.Sym] = true
-		release := ir.EventHandler{Name: ir.EffectUnmount, Func: &ir.Func{Pkg: st.pkg, Block: []ir.Stmt{releaseStmt(identOf(lv.Sym))}}}
+		release := ir.EventHandler{Name: ir.EffectUnmount, Func: &ir.Func{Pkg: st.pkg, Block: []ir.Stmt{st.release(identOf(lv.Sym))}}}
 		out = append(out, st.effectNode(nil, release))
 	}
 	*body = out
 }
 
-// overwrites is stmts with each assignment to an owned var releasing what the
-// var held once the new value is in place: the new value may be computed
-// from the old.
+// overwrites is stmts with each write of an owned value releasing what it
+// replaces or takes out, once the new value is in place: an assignment to an
+// owned var, to an element of a list or a map, or to a field; and a `remove`
+// or `clear` of a list whose elements are owned.
 func (st *ownedStateRun) overwrites(stmts []ir.Stmt) []ir.Stmt {
 	var out []ir.Stmt
 	for _, s := range stmts {
-		a, ok := s.(*ir.Assign)
-		v := st.assigned(a)
-		if !ok || v == nil || st.written[a] {
-			out = append(out, s)
-			continue
+		switch n := s.(type) {
+		case *ir.Assign:
+			if !st.written[n] && n.Op == ast.AssignSet {
+				if rewritten := st.overwrite(n); rewritten != nil {
+					out = append(out, rewritten...)
+					continue
+				}
+			}
+		case *ir.CallStmt:
+			if !st.taken[n] {
+				if rewritten := st.takeOut(n); rewritten != nil {
+					st.taken[n] = true
+					out = append(out, rewritten...)
+					continue
+				}
+			}
 		}
-		// The new value is bound first, then the old: an assignment whose
-		// value waits is split by AsyncOffload at the wait, and the old
-		// value read ahead of it was the one before the wait, not the one
-		// at the write -- two clicks in flight released it twice.
-		val := &ir.Var{Name: st.name("__new"), Type: v.Type, Synthesized: true}
-		old := &ir.Var{Name: st.name("__old"), Type: v.Type, Synthesized: true}
-		st.written[a] = true
-		out = append(out,
-			&ir.LocalVar{Name: val.Name, Type: v.Type, Init: a.Value, Sym: val},
-			&ir.LocalVar{Name: old.Name, Type: v.Type, Init: ir.CloneExprSharingDecls(a.Target), Sym: old},
-			a,
-			releaseStmt(identOf(old)),
-		)
-		a.Value = identOf(val)
+		out = append(out, s)
 	}
 	return out
+}
+
+func (st *ownedStateRun) overwrite(a *ir.Assign) []ir.Stmt {
+	if v := st.assigned(a); v != nil {
+		return st.replacing(a, v.Type, ir.CloneExprSharingDecls(a.Target))
+	}
+	t := a.Target.ExprType()
+	if t == nil || !ir.Owned(t) {
+		return nil
+	}
+	switch target := a.Target.(type) {
+	case *ir.Select:
+		if ot := target.Operand.ExprType(); ot != nil && ot.Kind == ir.TypeStruct {
+			return st.replacing(a, t, ir.CloneExprSharingDecls(a.Target))
+		}
+	case *ir.Index:
+		ct := target.Operand.ExprType()
+		if ct == nil {
+			return nil
+		}
+		switch ct.Kind {
+		case ir.TypeList:
+			idx := st.bindIndex(target)
+			return append([]ir.Stmt{idx}, st.replacing(a, t, ir.CloneExprSharingDecls(a.Target))...)
+		case ir.TypeMap:
+			idx := st.bindIndex(target)
+			old := &ir.Var{Name: st.name("__old"), Type: ir.OptionOf(t), Synthesized: true}
+			take := &ir.Assign{Target: identOf(old), Value: &ir.Conversion{Type: old.Type, Operand: ir.CloneExprSharingDecls(a.Target)}}
+			st.written[take] = true
+			had := &ir.If{
+				Cond: &ir.Call{Type: ir.TypBool, Func: ir.IntrinsicMethod("contains", "map.contains", ct, ir.TypBool), Args: []ir.CallArg{{Value: ir.CloneExprSharingDecls(target.Operand)}, {Value: ir.CloneExprSharingDecls(target.Idx)}}},
+				Body: []ir.Stmt{take},
+			}
+			val := st.bindNew(a)
+			return []ir.Stmt{idx, val, &ir.LocalVar{Name: old.Name, Type: old.Type, Init: nullLit(), Sym: old}, had, a, st.releaseIfHeld(identOf(old), t)}
+		}
+	}
+	return nil
+}
+
+// replacing is a with what the target held released once the new value is
+// in place. The new value is bound first, then the old: an assignment whose
+// value waits is split by AsyncOffload at the wait, and the old value read
+// ahead of it was the one before the wait, not the one at the write -- two
+// clicks in flight released it twice.
+func (st *ownedStateRun) replacing(a *ir.Assign, t *ir.Type, read ir.Expr) []ir.Stmt {
+	val := st.bindNew(a)
+	old := &ir.Var{Name: st.name("__old"), Type: t, Synthesized: true}
+	return []ir.Stmt{
+		val,
+		&ir.LocalVar{Name: old.Name, Type: t, Init: read, Sym: old},
+		a,
+		st.release(identOf(old)),
+	}
+}
+
+// bindNew binds a's value to a local a reads instead, and marks a as the
+// overwrite it has become.
+func (st *ownedStateRun) bindNew(a *ir.Assign) ir.Stmt {
+	t := a.Target.ExprType()
+	val := &ir.Var{Name: st.name("__new"), Type: t, Synthesized: true}
+	decl := &ir.LocalVar{Name: val.Name, Type: t, Init: a.Value, Sym: val}
+	a.Value = identOf(val)
+	st.written[a] = true
+	return decl
+}
+
+// bindIndex binds the index an element write names to a local the write and
+// the read of the old element share, so it is evaluated once.
+func (st *ownedStateRun) bindIndex(target *ir.Index) ir.Stmt {
+	t := target.Idx.ExprType()
+	idx := &ir.Var{Name: st.name("__idx"), Type: t, Synthesized: true}
+	decl := &ir.LocalVar{Name: idx.Name, Type: t, Init: target.Idx, Sym: idx}
+	target.Idx = identOf(idx)
+	return decl
+}
+
+// takeOut is s with what a list's `remove` takes out released once it is
+// out, and what `clear` empties released before it is: `remove` of an index
+// outside the list takes nothing out.
+func (st *ownedStateRun) takeOut(s *ir.CallStmt) []ir.Stmt {
+	call := s.Call
+	if call == nil || call.Func == nil || len(call.Args) == 0 {
+		return nil
+	}
+	list := call.Args[0].Value
+	lt := list.ExprType()
+	if lt == nil || lt.Kind != ir.TypeList || !ir.Owned(lt) {
+		return nil
+	}
+	elem := lt.Elems[0]
+	switch call.Func.Intrinsic {
+	case "list.clear":
+		return []ir.Stmt{st.release(ir.CloneExprSharingDecls(list)), s}
+	case "list.remove":
+		if len(call.Args) != 2 {
+			return nil
+		}
+		idx := &ir.Var{Name: st.name("__idx"), Type: ir.TypInt, Synthesized: true}
+		bound := &ir.LocalVar{Name: idx.Name, Type: ir.TypInt, Init: call.Args[1].Value, Sym: idx}
+		call.Args[1].Value = identOf(idx)
+		old := &ir.Var{Name: st.name("__old"), Type: ir.OptionOf(elem), Synthesized: true}
+		length := &ir.Call{Type: ir.TypInt, Func: ir.IntrinsicMethod("length", "list.length", lt, ir.TypInt), Args: []ir.CallArg{{Value: ir.CloneExprSharingDecls(list)}}}
+		inRange := &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd,
+			Left:  &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: identOf(idx), Right: &ir.Literal{Type: ir.TypInt, Value: "0"}},
+			Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinLt, Left: identOf(idx), Right: length},
+		}
+		take := &ir.Assign{Target: identOf(old), Value: &ir.Conversion{Type: old.Type, Operand: &ir.Index{Type: elem, Operand: ir.CloneExprSharingDecls(list), Idx: identOf(idx)}}}
+		st.written[take] = true
+		return []ir.Stmt{
+			bound,
+			&ir.LocalVar{Name: old.Name, Type: old.Type, Init: nullLit(), Sym: old},
+			&ir.If{Cond: inRange, Body: []ir.Stmt{take}},
+			s,
+			st.releaseIfHeld(identOf(old), elem),
+		}
+	}
+	return nil
 }
 
 // assigned is the owned var a plainly assigns, nil when it assigns none.
@@ -511,7 +633,7 @@ func (st *ownedStateRun) unmount(c *ir.Component) {
 	}
 	for _, v := range slices.Backward(c.Vars) {
 		if st.owned[v] {
-			block = append(block, releaseStmt(identOf(v)))
+			block = append(block, st.release(identOf(v)))
 		}
 	}
 	if len(block) == 0 {
@@ -521,8 +643,8 @@ func (st *ownedStateRun) unmount(c *ir.Component) {
 	c.Stmts = append([]ir.Stmt{st.effectNode(nil, h)}, c.Stmts...)
 }
 
-func releaseStmt(v ir.Expr) ir.Stmt {
-	return releaseWith(ir.ReleaseOf(v.ExprType()), v)
+func (st *ownedStateRun) release(v ir.Expr) ir.Stmt {
+	return releaseWith(st.pkg.ReleaseFor(v.ExprType()), v)
 }
 
 func releaseWith(release *ir.Func, v ir.Expr) ir.Stmt {
@@ -620,13 +742,14 @@ func (st *ownedStateRun) retainedIn(c *ir.Component, s ir.Stmt) (pre, post []ir.
 			cell := &ir.Var{Name: st.name("__ret"), Pkg: c.Pkg, Type: ir.OptionOf(typ), Init: nullLit(), Synthesized: true}
 			c.Vars = append(c.Vars, cell)
 			cells = append(cells, cell)
+			st.cells[cell] = true
 			old := &ir.Var{Name: st.name("__old"), Type: cell.Type, Synthesized: true}
 			pre = append(pre,
 				&ir.LocalVar{Name: old.Name, Type: old.Type, Init: identOf(cell), Sym: old},
 				&ir.Assign{Target: identOf(cell), Value: arg},
 			)
 			call.Args[i].Value = &ir.Conversion{Type: typ, Operand: identOf(cell)}
-			post = append(post, releaseIfHeld(identOf(old), typ))
+			post = append(post, st.releaseIfHeld(identOf(old), typ))
 		}
 		return nil
 	})
@@ -639,14 +762,14 @@ func (st *ownedStateRun) releaseCell(cell *ir.Var) []ir.Stmt {
 	return []ir.Stmt{
 		&ir.LocalVar{Name: held.Name, Type: held.Type, Init: identOf(cell), Sym: held},
 		&ir.Assign{Target: identOf(cell), Value: nullLit()},
-		releaseIfHeld(identOf(held), cell.Type.Elems[0]),
+		st.releaseIfHeld(identOf(held), cell.Type.Elems[0]),
 	}
 }
 
-func releaseIfHeld(opt ir.Expr, typ *ir.Type) ir.Stmt {
+func (st *ownedStateRun) releaseIfHeld(opt ir.Expr, typ *ir.Type) ir.Stmt {
 	return &ir.If{
 		Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: opt, Right: nullLit()},
-		Body: []ir.Stmt{releaseStmt(&ir.Conversion{Type: typ, Operand: ir.CloneExprSharingDecls(opt)})},
+		Body: []ir.Stmt{st.release(&ir.Conversion{Type: typ, Operand: ir.CloneExprSharingDecls(opt)})},
 	}
 }
 

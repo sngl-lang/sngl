@@ -2220,6 +2220,12 @@ function that does. The release takes exactly one value of the type and
 returns nothing; anything else is an error at the mark. Only a struct may be
 owned, and nothing is owned by its name.
 
+A type that holds an owned value is owned by what it holds: a struct with an
+owned field, and a `list`, a `map` or an `option` of an owned type. Releasing
+a value of one releases what it holds, newest first -- a list's last element
+first, a struct's last owned field first -- and a var, a temporary or a literal
+of one lives as long as a value of the owned type itself would.
+
 ```sngl
 import macro "sngl:macro"
 
@@ -2266,6 +2272,14 @@ four lifetimes that holds it:
 - **Moved** -- a value handed to a `#[macro.moves]` parameter belongs to the
   callee, and the program never releases it.
 
+**A write into a collection moves the value in.** `push` and `insert` hand the
+list what they are given, and it is released with the list. An assignment to
+an element of a list, to a map entry or to a field releases what stood there
+once the new value is in place; `remove` releases what it took out, and
+`clear` what the list held. A value stored in two places -- pushed from a var,
+or assigned to an element from another -- is released by each, as a var
+assigned another var's value is.
+
 `#[macro.retains]` and `#[macro.moves]` mark a parameter of a function with no
 body: a native that keeps a pointer to its argument while the caller still
 owns it, and one that takes the argument. A function with a body says what it
@@ -2291,8 +2305,6 @@ the interpreter reports it as a leak:
   hand where it must be conditional.
 - A value made earlier in a statement whose later value raises while being
   made.
-- A value held in a list, a map, a struct field or an `option`, rather than in
-  a var of the owned type itself.
 - A value handed to a `#[macro.retains]` parameter outside an effect's
   handler, from an event handler or a function.
 

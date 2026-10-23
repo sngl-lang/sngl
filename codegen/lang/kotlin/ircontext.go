@@ -654,8 +654,8 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 			}
 		}
 		// A variant's class is narrower than the sealed class a later write
-		// may hold another variant of.
-		if ir.PayloadEnum(n.Type) != nil {
+		// may hold another variant of, and `null` alone infers `Nothing?`.
+		if ir.PayloadEnum(n.Type) != nil || n.Type != nil && n.Type.Kind == ir.TypeOption && n.Init.ExprType() != nil && n.Init.ExprType().Kind == ir.TypeNull {
 			return "var " + n.Name + ": " + IRTypeToKt(n.Type) + " = " + kc.valueCopyFor(n, initStr)
 		}
 		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)

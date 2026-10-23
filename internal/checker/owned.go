@@ -139,7 +139,7 @@ func (c *checker) applyFuncParamMarks(f *ast.FuncDef, fn *ir.Func) {
 func (c *checker) checkOwnedDerived() {
 	for _, comp := range c.pkg.Components {
 		for _, fn := range comp.Funcs {
-			if ir.ReleaseOf(fn.Return) == nil || !isDerived(fn) {
+			if !ir.Owned(fn.Return) || !isDerived(fn) {
 				continue
 			}
 			c.reportUnkeyableReads(fn)

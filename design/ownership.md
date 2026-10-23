@@ -33,6 +33,52 @@ after every body is checked, since a `=>` release has no return type until
 then (`testdata/error_mark_owned.sngl`). `owned` is the one generic macro, so
 `resolveMacroSig` pushes a macro's type parameters.
 
+**A type that holds an owned value is owned by what it holds** (`ir.Owned`):
+a struct with an owned field, a `list`, a `map` or an `option` of an owned
+type, through any depth. Its release is synthesized by `Package.ReleaseFor`
+on the program's package, once per type by `releaseKey` (the declaration
+of the owned struct, not its name, so two packages' `file` are two), named
+`__release_<type>` and registered in `ir.Package.Releases`; `ir.ReleaseOf`
+stays the declared release, and `Func.Releases` is what marks the synthesized
+one for `ir.IsRelease`. The body is ordinary IR every target already emits:
+a list walks `list.reverse()` of itself, so the last pushed is released
+first; a map walks its values; an option tests `!= null` and converts; a
+struct releases its owned fields last declared first, calling `ReleaseFor`
+of each field's type, so `list[option[file]]` reaches
+`__release_option_file` through `__release_list_option_file`. On the
+interpreter the body runs as any function does, and the element's release
+marks each handle, which every copy of a list shares. A synthesized release
+whose body reaches a library's -- gtk4's `unrefPicture` -- is promoted the
+way a library release is (`callsLibrary`). Every pass that asked
+`ReleaseOf` of a var's or a temp's type asks `Owned` and `ReleaseFor` now
+(`testdata/owned_containers.sngl`, `testdata/owned_containers.txtar`).
+
+**A collection write moves the value in** (`OwnedState.overwrites`). An
+assignment to a list element, a map entry or a field of a struct is
+rewritten the way one to an owned var is: the new value bound to a
+`__newN`, the old to an `__oldN`, the write, then the release. The index or
+key is bound to an `__idxN` first, since the old value's read and the write
+both name it. A map entry that may be absent is read into an
+`option` cell under `map.contains`, and released where it was held, which
+is `releaseIfHeld`'s shape; `remove` reads the element the same way under a
+bounds test, since an index outside the list removes nothing, and releases
+it after the call; `clear` calls the list's own release before it. A `__retN`
+cell is an option of an owned type and so owned by what it holds, but
+`retain` writes its own releases, so `collect` leaves the cells out
+(`cells`). The rewrite walks every root whether or not a var is owned, and
+a `remove` or `clear` once rewritten is remembered (`taken`), since
+`RewriteBlocks` reaches a lambda's block twice.
+
+**A literal of a composed type allocates only where something in it does**
+(`isAllocation`): `[open(1)]` makes a value nothing else holds, and
+`[f]` or the `SourceEvent{picture=…}` the draw lowering builds from a
+source's prop holds what a var holds, and released as a temp would release
+the var's value under it. A literal of constants of a composed type --
+`[fixed(1), fixed(2)]` -- is an application-lifetime value like the struct
+literal it holds (`constantValue`). An owned value converted to an option, or
+read out of one, passes through the conversion rather than being read by it
+(`tempCollector`).
+
 **A native says what it does with an argument.** `#[retains]` and `#[moves]`
 set `ir.Param.Transfer` on a parameter of a bodyless function, the one place
 nothing else could say it. A declared function's parameter list now takes
@@ -255,9 +301,12 @@ declares one the same way, released after the program's own
 (`testdata/owned_imported_var.txtar`). `OwnedState` collects both as it
 collects a component's vars, so an assignment to one anywhere releases the
 old value, but it cannot release the last one, since the effect lowering
-writes `Teardown` afresh between the two passes. The interpreter refuses an
-assignment to an imported package's var altogether ("cannot assign to
-undefined variable"), which is older than ownership and not its concern. By the time `ReleaseTemps`
+writes `Teardown` afresh between the two passes. The interpreter binds an
+imported package's vars in the root scope before the program's own
+(`seedPackageState`): unbound, a read re-evaluated the initializer, allocating
+a value nothing released, and an assignment was refused ("cannot assign to
+undefined variable"), which kept the golden without a run
+(`cmd/sngl/testdata/owned_imported_var_test.txt`). By the time `ReleaseTemps`
 runs, an inlined instance's var is a package var too, released by its node's
 `@unmount`; a var the package already releases somewhere is left to that
 (`testdata/owned_state.txtar`'s bubbletea output released `f__inst0` twice
@@ -308,8 +357,7 @@ the statement may not evaluate -- the right of `&&` or `||`, a ternary's or a
 ternaries lowers the arm to a statement before the pass and so does release
 it, which is why the spec says to write such a value in a statement of its
 own; a temp bound before a later temp of the same statement raises while
-being bound; an owned value in a list, a map, a struct field or an `option`
-rather than a var of the owned type; and an allocation handed to a
+being bound; and an allocation handed to a
 `#[retains]` parameter outside an effect's handler (an event handler, a
 function), which `retain` does not see. Two shapes release twice rather than
 hold, and the spec rules them out: a temp passed to a function returning the

@@ -46,29 +46,29 @@ The biggest hole, and where a C target bleeds first. A value in a list, a
 map, an `option` or a struct field is held today, and the program releases
 it by hand when it takes it out, which the spec says and nobody does.
 
-- [ ] A type that holds an owned type is itself owned, by composition: a
+- [X] A type that holds an owned type is itself owned, by composition: a
   struct with an owned field, `list[T]`, `map[K, T]` and `option[T]` for an
   owned `T`. `ir.ReleaseOf` answers for each, with a release the pass
   synthesizes (`__release_<type>`) that releases what the value holds, newest
   first; a struct's release is written once per struct, a collection's once
   per element type.
-- [ ] A collection write moves the value in: `push`, `set`, an index
+- [X] A collection write moves the value in: `push`, `set`, an index
   assignment and a field assignment release what they replace, and `remove`,
   `pop` and `clear` release what they take out unless the result is stored.
   This is what the spec already says of `push` ("held with the list"), made
   true for the rest.
-- [ ] A var of a composed type is an owned var: `OwnedState` releases it on
+- [X] A var of a composed type is an owned var: `OwnedState` releases it on
   overwrite and at unmount, `ReleaseTemps` releases a temp of one after the
   statement, and the application lifetime applies to a literal of one built
   from constants.
-- [ ] The interpreter's handle follows the value through the container: a
+- [X] The interpreter's handle follows the value through the container: a
   copy of a list holds the same handles, and releasing the list marks them.
   `sngl:ui`'s image sources and gtk4's pictures are the first library use to
   check under `--simulate gtk4`.
-- [ ] Spec: strike "a value held in a list, a map, a struct field or an
+- [X] Spec: strike "a value held in a list, a map, a struct field or an
   option" from the held list, and say what a collection write does with an
   owned value.
-- [ ] Found on the way, fix here: the interpreter refuses an assignment to an
+- [X] Found on the way, fix here: the interpreter refuses an assignment to an
   imported package's var ("cannot assign to undefined variable"), which
   predates ownership and keeps `owned_imported_var` a golden rather than a
   fixture under `sngl test`.

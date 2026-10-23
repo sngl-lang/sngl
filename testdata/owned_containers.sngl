@@ -1,0 +1,217 @@
+// A type that holds an owned value is owned by composition: a list, a map or
+// an option of one, or a struct with such a field. A var of one is released
+// when it is overwritten and when its node unmounts, which releases what it
+// holds, newest first; a write into a collection releases what it replaces or
+// takes out; a temp of one is released after its statement; and a literal of
+// one built from constants is made once. Nothing here releases by hand, and
+// the tracker finds nothing held.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) => file{fd=fd}
+
+const func fixed(fd int) => file{fd=fd}
+
+func count(fs list[file]) => fs.length
+
+func pair(a int, b int) => [open(a), open(b)]
+
+struct entry {
+    name string
+    f    file
+}
+
+component lists ui.node {
+    var fs = [open(1)]
+
+    func grow(fd int) {
+        fs.push(open(fd))
+    }
+
+    func replace(i int, fd int) {
+        fs[i] = open(fd)
+    }
+
+    func drop(i int) {
+        fs.remove(i)
+    }
+
+    func reset() {
+        fs.clear()
+    }
+
+    func renew(fd int) {
+        fs = [open(fd)]
+    }
+
+    ui.text(value="{fs.length}")
+}
+
+func testHeldInAList(t test.Test, c lists) {
+    t.assert(c.fs.length == 1)
+    t.assert(closed.length == 0)
+}
+
+func testPushedIntoAList(t test.Test, c lists) {
+    c.grow(2)
+    t.assert(c.fs.length == 2)
+    t.assert(closed.length == 0)
+}
+
+func testIndexAssignmentReleasesTheReplaced(t test.Test, c lists) {
+    c.replace(0, 3)
+    t.assert(c.fs[0].fd == 3)
+    t.assert(closed == [1])
+}
+
+func testRemoveReleasesTheRemoved(t test.Test, c lists) {
+    c.grow(4)
+    c.drop(0)
+    t.assert(c.fs.length == 1)
+    t.assert(closed == [1])
+}
+
+func testRemoveOutOfRangeReleasesNothing(t test.Test, c lists) {
+    c.drop(5)
+    t.assert(c.fs.length == 1)
+    t.assert(closed.length == 0)
+}
+
+func testClearReleasesNewestFirst(t test.Test, c lists) {
+    c.grow(5)
+    c.reset()
+    t.assert(c.fs.length == 0)
+    t.assert(closed == [5, 1])
+}
+
+func testOverwriteReleasesWhatTheListHeld(t test.Test, c lists) {
+    c.grow(6)
+    c.renew(7)
+    t.assert(c.fs[0].fd == 7)
+    t.assert(closed == [6, 1])
+}
+
+component maps ui.node {
+    var fs map[string, file] = {"a"=open(1)}
+
+    func put(k string, fd int) {
+        fs[k] = open(fd)
+    }
+
+    ui.text(value="{fs.length}")
+}
+
+func testHeldInAMap(t test.Test, c maps) {
+    t.assert(c.fs.length == 1)
+    t.assert(closed.length == 0)
+}
+
+func testMapAssignmentReleasesTheReplaced(t test.Test, c maps) {
+    c.put("a", 2)
+    c.put("b", 3)
+    t.assert(c.fs.length == 2)
+    t.assert(closed == [1])
+}
+
+component options ui.node {
+    var f option[file] = open(1)
+
+    func set(fd int) {
+        f = open(fd)
+    }
+
+    func unset() {
+        f = null
+    }
+
+    ui.text(value="{f != null}")
+}
+
+func testHeldInAnOption(t test.Test, c options) {
+    t.assert(c.f != null)
+    t.assert(closed.length == 0)
+}
+
+func testOptionAssignmentReleasesTheHeld(t test.Test, c options) {
+    c.set(2)
+    c.unset()
+    c.set(3)
+    t.assert(closed == [1, 2])
+}
+
+component structs ui.node {
+    var e = entry{name="first", f=open(1)}
+
+    func refile(fd int) {
+        e.f = open(fd)
+    }
+
+    func renew(fd int) {
+        e = entry{name="next", f=open(fd)}
+    }
+
+    ui.text(value=e.name)
+}
+
+func testHeldInAStructField(t test.Test, c structs) {
+    t.assert(c.e.f.fd == 1)
+    t.assert(closed.length == 0)
+}
+
+func testFieldAssignmentReleasesTheReplaced(t test.Test, c structs) {
+    c.refile(2)
+    c.renew(3)
+    t.assert(c.e.f.fd == 3)
+    t.assert(closed == [1, 2])
+}
+
+component nested ui.node {
+    var slots list[option[file]] = [open(1), null]
+
+    func fill(fd int) {
+        slots[1] = open(fd)
+    }
+
+    ui.text(value="{slots.length}")
+}
+
+func testHeldThroughTwoContainers(t test.Test, c nested) {
+    c.fill(2)
+    c.fill(3)
+    t.assert(closed == [2])
+}
+
+func testATempOfAListIsReleasedNewestFirst(t test.Test) {
+    var a = 1
+    t.assert(count(pair(a, 2)) == 2)
+    t.assert(closed == [2, 1])
+}
+
+func testAConstantListIsMadeOnce(t test.Test) {
+    var total = 0
+    for var i = [1, 2, 3] {
+        total += count([fixed(8), fixed(9)])
+    }
+    t.assert(total == 6)
+    t.assert(closed.length == 0)
+}
+
+ui.window(title="t") {
+    lists
+    maps
+    options
+    structs
+    nested
+}

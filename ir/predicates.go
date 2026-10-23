@@ -194,7 +194,7 @@ func Keyable(t *Type) bool { return RebuildIncomparable(t) == "" }
 // which lowering makes a var of the component made once per value of what it
 // reads (lower.OwnedState). A const render may read one as it reads a prop.
 func IsOwnedDerived(fn *Func) bool {
-	if fn == nil || fn.IsTest || len(fn.Block) == 0 || ReleaseOf(fn.Return) == nil {
+	if fn == nil || fn.IsTest || len(fn.Block) == 0 || !Owned(fn.Return) {
 		return false
 	}
 	for _, p := range fn.Params {
@@ -217,9 +217,10 @@ func ReleaseOf(t *Type) *Func {
 	return nil
 }
 
-// IsRelease reports whether fn is the release some owned type declares.
+// IsRelease reports whether fn is the release some owned type declares, or
+// the one synthesized for a type owned by what it holds.
 func IsRelease(fn *Func) bool {
-	return fn != nil && len(fn.Params) == 1 && ReleaseOf(fn.Params[0].Type) == fn
+	return fn != nil && (fn.Releases != nil || len(fn.Params) == 1 && ReleaseOf(fn.Params[0].Type) == fn)
 }
 
 // RebuildIncomparable is "" when two values of t can be asked "is this the
