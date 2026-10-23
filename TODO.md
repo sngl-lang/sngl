@@ -166,7 +166,7 @@ under it. Delete this file before the MR leaves draft.
   MR description, and the README's "Where each target stands" brought up to
   date. A bubbletea test draws its view only when it snapshots, so a picture
   starts fetching there: the screenshots take a snapshot first to start them.
-- [ ] The user checks android on the device.
+- [X] The user checked android on the device: it looks right.
 - [ ] A review agent over the branch; fix what it finds.
 - [ ] Delete this file; take the MR out of draft -- ask the user first.
 
