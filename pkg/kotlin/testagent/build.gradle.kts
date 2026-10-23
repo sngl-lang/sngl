@@ -33,8 +33,11 @@ java {
 // (the android device-test launcher) run under the Android Studio JBR
 // which is JDK 21; declaring a strict 17 toolchain there causes
 // gradle to try (and fail) to download a matching JDK.
+// In the build's own daemon, as the app's gradle.properties asks: an included
+// build reads no gradle.properties of its root's.
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     kotlinOptions { jvmTarget = "17" }
+    compilerExecutionStrategy.set(org.jetbrains.kotlin.gradle.tasks.KotlinCompilerExecutionStrategy.IN_PROCESS)
 }
 
 repositories {
