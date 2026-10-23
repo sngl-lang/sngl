@@ -116,6 +116,20 @@ type ServerCapabilities struct {
 	CodeActionProvider     bool                   `json:"codeActionProvider,omitempty"`
 	DefinitionProvider     bool                   `json:"definitionProvider,omitempty"`
 	ReferencesProvider     bool                   `json:"referencesProvider,omitempty"`
+	DocumentSymbolProvider bool                   `json:"documentSymbolProvider,omitempty"`
+}
+
+type DocumentSymbolParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+}
+
+type DocumentSymbol struct {
+	Name           string           `json:"name"`
+	Detail         string           `json:"detail,omitempty"`
+	Kind           int              `json:"kind"`
+	Range          Range            `json:"range"`
+	SelectionRange Range            `json:"selectionRange"`
+	Children       []DocumentSymbol `json:"children,omitempty"`
 }
 
 // --- Execute Command ---

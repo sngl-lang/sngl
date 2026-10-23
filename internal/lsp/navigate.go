@@ -166,3 +166,39 @@ func (s *Server) handleReferences(id json.RawMessage, params json.RawMessage) {
 	}
 	s.sendResult(id, locs)
 }
+
+func (s *Server) handleDocumentSymbol(id json.RawMessage, params json.RawMessage) {
+	var p DocumentSymbolParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		s.sendError(id, -32602, "invalid params")
+		return
+	}
+	syms := []DocumentSymbol{}
+	if fs := s.ws.get(p.TextDocument.URI); fs != nil {
+		for _, sym := range lspcore.DocumentSymbols(fs.Pkg, fs.Index, uriToPath(fs.URI), fs.Content) {
+			syms = append(syms, documentSymbol(sym))
+		}
+	}
+	s.sendResult(id, syms)
+}
+
+func documentSymbol(sym lspcore.DocSymbol) DocumentSymbol {
+	out := DocumentSymbol{
+		Name:           sym.Name,
+		Detail:         sym.Detail,
+		Kind:           sym.Kind,
+		Range:          lspRange(sym.Range),
+		SelectionRange: lspRange(sym.Selection),
+	}
+	for _, c := range sym.Children {
+		out.Children = append(out.Children, documentSymbol(c))
+	}
+	return out
+}
+
+func lspRange(r lspcore.Range) Range {
+	return Range{
+		Start: Position{Line: r.Start.Line, Character: r.Start.Character},
+		End:   Position{Line: r.End.Line, Character: r.End.Character},
+	}
+}
