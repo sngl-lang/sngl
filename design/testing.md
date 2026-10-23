@@ -205,6 +205,13 @@ These rules keep them agreeing:
   clock, where it lowered no wait at all
   (`cmd/sngl/testdata/timer_tab_loop_wait_runs.txt`). `t.tick` is the
   interpreter's alone.
+- **A bubbletea test draws its view when the program would**: as the Model is
+  made, after each invoker's Update, and after each settle's (`newTestComponent`,
+  `drawAfterUpdate`, `__snglDeliver`). It drew only to snapshot, so what a view
+  does as it draws had not happened when the test looked: a raise its render
+  makes was heard by no boundary
+  (`cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt`), and a
+  picture started its fetch only at the first snapshot, which showed it blank.
 - **A member named `length` is a list's, a map's or a string's measure only
   on one of those** (`ir.HasLength`): read off an instance it is the
   program's var, which Go wrote as `len(c)`

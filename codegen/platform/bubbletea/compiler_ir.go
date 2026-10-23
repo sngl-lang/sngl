@@ -1364,6 +1364,7 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 		fmt.Fprintf(b, "\tnm, cmd := m.Update(%s)\n", inv.KeyExpr)
 		fmt.Fprintf(b, "\t*m = nm.(Model)\n")
 		fmt.Fprintf(b, "\tm.__focusID = prev\n")
+		drawAfterUpdate(b)
 		keepCmd(b, posts)
 		b.WriteString("}\n\n")
 	}
@@ -1405,6 +1406,7 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 				}
 			}
 			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 		}
 		return true
@@ -1429,6 +1431,7 @@ func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, par
 		fmt.Fprintf(b, "\tnm, cmd := m.Update(%s)\n", inv.KeyExpr)
 		b.WriteString("\t*m = nm.(Model)\n")
 		fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
+		drawAfterUpdate(b)
 		keepCmd(b, posts)
 		b.WriteString("}\n\n")
 	}
@@ -1569,6 +1572,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 				}
 			}
 			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
 				continue

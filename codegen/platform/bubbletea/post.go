@@ -107,9 +107,12 @@ func (m *Model) ` + settleModel + `() {
 // runs that test's handlers during this one nor arms its tick again.
 var __snglLive *Model
 
+// __snglDeliver is Update and the draw after it, as the program's loop runs
+// them: a picture a waiting test's view asks for is fetched while it waits.
 func (m *Model) __snglDeliver(msg tea.Msg) {
 	nm, cmd := m.Update(msg)
 	*m = nm.(Model)
+	_ = m.View()
 	__snglRunCmd(m, cmd)
 }
 
@@ -135,6 +138,14 @@ func __snglRunCmd(m *Model, cmd tea.Cmd) {
 	}()
 }
 `)
+}
+
+// drawAfterUpdate draws the view after an invoker's Update, as the program
+// does after every one: a test drew it only to snapshot, so what the view
+// does as it renders -- a picture starting its fetch, a raise a boundary
+// hears -- had not happened when the test looked.
+func drawAfterUpdate(b *strings.Builder) {
+	b.WriteString("\t_ = m.View()\n")
 }
 
 // keepCmd ends an invoker: the commands its Update returned run as a waiting

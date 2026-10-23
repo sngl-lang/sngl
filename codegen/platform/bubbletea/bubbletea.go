@@ -71,7 +71,11 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 				// A pointer although the Model is a value: the test's local and
 				// the one a snapshot renders are copies of the instance, and a
 				// value would snapshot the state the test began with.
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"duckfam.us/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { m := New(); return &m }\n\nfunc main() { testagent.Main() }\n")
+				//
+				// Drawn as the program draws it on starting, so what the view
+				// does as it renders -- a picture starting its fetch, a raise
+				// a boundary hears -- has happened before the test looks.
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"duckfam.us/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { m := New(); _ = m.View(); return &m }\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
@@ -108,7 +112,7 @@ func init() {
 				// newTestComponent helper: bubbletea's Model is a value
 				// type, so just call New() and let Go's local-addressability
 				// handle `c.field = …`.
-				helper := []byte("\nfunc newTestComponent() Model { return New() }\n")
+				helper := []byte("\nfunc newTestComponent() Model { m := New(); _ = m.View(); return m }\n")
 				if err := writeRawFile(sink, "model_test.go", append([]byte(src), helper...)); err != nil {
 					return err
 				}
