@@ -923,7 +923,11 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	// The constructor answers the write it was built from, and a copy of
 	// that write a pass made: the expression, not the pointer, is the value.
-	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) {
+	// Only a constant one, though: a write reading state is the same
+	// expression when the state has moved, and was dropped -- a document's
+	// run kept the kind it was built with. That goes to the setter, or is
+	// reported as reaching nothing where there is none.
+	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) && !readsState(value) {
 		return nil
 	}
 	// A window that names no title is built with none.
@@ -1231,4 +1235,28 @@ func (t *fyneTranslator) copiesType(id string) *ir.Type {
 		return ft
 	}
 	return ir.NativeGoNamed(copyMapType(t.fieldType(id).Meta.(ir.NativeTypeRef).Name))
+}
+
+// readsState reports whether e reads a var or a parameter, or calls anything:
+// a value that may differ each time the write runs.
+func readsState(e ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		switch y := x.(type) {
+		case *ir.Call, *ir.Lambda:
+			found = true
+		case *ir.Ident:
+			switch sym := y.Sym.(type) {
+			case *ir.Var:
+				found = found || !sym.IsConst
+			case *ir.Param:
+				found = true
+			}
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

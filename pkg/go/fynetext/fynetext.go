@@ -285,6 +285,14 @@ func (s *Span) SetSpanStyle(weight, slant, family string, underline, strike bool
 	s.refresh()
 }
 
+// SetToken is what a `token` run is when the program reads it while it
+// runs -- a document's runs, highlighted from data: a kind the constructor
+// could not read off a literal reached no run, which took no token's color.
+func (s *Span) SetToken(kind string) {
+	s.Style.Token = kind
+	s.refresh()
+}
+
 // SetHref replaces where this run leads.
 func (s *Span) SetHref(href string) {
 	s.Href = href
