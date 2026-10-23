@@ -18,10 +18,25 @@ function M.setup(opts)
     -- Parser not built; surface a hint rather than failing silently.
     vim.notify(
       "sngl: tree-sitter parser not found at " .. so_path ..
-      "\nBuild it with: cd " .. ts_dir .. " && tree-sitter build",
+      "\nBuild it with: make -C " .. ts_dir .. " sngl.so",
       vim.log.levels.WARN
     )
     return
+  end
+
+  -- A parser older than the grammar it was built from rejects the queries,
+  -- which name the grammar's current nodes, and Neovim then highlights
+  -- nothing at all.
+  local built = vim.fn.getftime(so_path)
+  for _, src in ipairs({ "src/parser.c", "src/scanner.c" }) do
+    if vim.fn.getftime(ts_dir .. src) > built then
+      vim.notify(
+        "sngl: " .. so_path .. " is older than the grammar it was built from" ..
+        "\nRebuild it with: make -C " .. ts_dir .. " sngl.so",
+        vim.log.levels.WARN
+      )
+      break
+    end
   end
 
   -- Nvim 0.10+: language.add(name, {path = ...}) registers an external

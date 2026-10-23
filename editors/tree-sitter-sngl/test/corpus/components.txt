@@ -240,7 +240,7 @@ component App {
         (var_spec
           (identifier_list
             (identifier))
-          (true)))
+          (identifier)))
       (if_node
         (identifier)
         (statement_block
@@ -273,7 +273,7 @@ component App {
         (var_spec
           (identifier_list
             (identifier))
-          (true)))
+          (identifier)))
       (if_node
         (identifier)
         (statement_block
