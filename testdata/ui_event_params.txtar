@@ -243,13 +243,13 @@ func (m *Model) resizeWidgets() {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -299,85 +299,79 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -656,13 +650,13 @@ func (m *Model) fieldInput(v string) {
 func (m *Model) __widget1_change(__v *time.Time) {
 	value := __v
 	_ = value
-	var __lt13 string
+	var __lt10 string
 	if value == nil {
-		__lt13 = "no day"
+		__lt10 = "no day"
 	} else {
-		__lt13 = "day"
+		__lt10 = "day"
 	}
-	m.seen = __lt13
+	m.seen = __lt10
 }
 
 // dayChange types v into the #day widget and runs its @change; for tests.
@@ -841,25 +835,31 @@ func New() *Model {
 }
 
 func (m *Model) box_toggle_handler(on__p0 bool) {
-	m.on = on__p0
-	m.box.SetChecked(m.on)
-	m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
-	m.__n0.SetText(m.seen)
+	if on__p0 != m.on {
+		m.on = on__p0
+		m.box.SetChecked(m.on)
+		m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
+		m.__n0.SetText(m.seen)
+	}
 }
 
 func (m *Model) sw_toggle_handler(on bool) {
-	m.checked__inst0 = on
-	m.sw.SetChecked(m.checked__inst0)
-	m.lit = on
-	m.seen = ("sw " + fmt.Sprint(on))
-	m.__n0.SetText(m.seen)
+	if on != m.checked__inst0 {
+		m.checked__inst0 = on
+		m.sw.SetChecked(m.checked__inst0)
+		m.lit = on
+		m.seen = ("sw " + fmt.Sprint(on))
+		m.__n0.SetText(m.seen)
+	}
 }
 
 func (m *Model) field_input_handler(v string) {
-	m.name = v
-	m.field.SetText(m.name)
-	m.seen = ((("input " + v) + " ") + m.name)
-	m.__n0.SetText(m.seen)
+	if v != m.name {
+		m.name = v
+		m.field.SetText(m.name)
+		m.seen = ((("input " + v) + " ") + m.name)
+		m.__n0.SetText(m.seen)
+	}
 }
 
 func (m *Model) field_change_handler(v string) {
@@ -868,16 +868,18 @@ func (m *Model) field_change_handler(v string) {
 }
 
 func (m *Model) day_pick_handler(d *time.Time) {
-	m.picked = d
-	m.day.SetDate(m.picked)
-	var __lt15 string
-	if d == nil {
-		__lt15 = "no day"
-	} else {
-		__lt15 = "day"
+	if d != m.picked {
+		m.picked = d
+		m.day.SetDate(m.picked)
+		var __lt7 string
+		if d == nil {
+			__lt7 = "no day"
+		} else {
+			__lt7 = "day"
+		}
+		m.seen = __lt7
+		m.__n0.SetText(m.seen)
 	}
-	m.seen = __lt15
-	m.__n0.SetText(m.seen)
 }
 
 func (m *Model) press_click_handler() {
@@ -1116,7 +1118,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -1157,11 +1158,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -1234,12 +1237,17 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
 // Selects a day the way a click on it does, for gtk4's datepicker override
 // (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
 // 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
 static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
     if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_calendar_select_day(c, dt);
     G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }
 
@@ -1261,7 +1269,6 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
@@ -1316,6 +1323,17 @@ func boolToInt(b bool) int {
 	}
 	return 0
 }
+
+var (
+	__cstr0 = C.CString("a")
+	__cstr1 = C.CString("toggled")
+	__cstr2 = C.CString("notify::active")
+	__cstr3 = C.CString("changed")
+	__cstr4 = C.CString("activate")
+	__cstr5 = C.CString("day-selected")
+	__cstr6 = C.CString("go")
+	__cstr7 = C.CString("clicked")
+)
 
 type Measurement struct {
 	Px  float64
@@ -1387,11 +1405,15 @@ type Model struct {
 	seen                string
 	clicks              int
 	checked__inst0      bool
-	__effect0_key       *time.Time
-	__effect0_live      []*time.Time
-	__effect0_desired   []*time.Time
+	__effect0_key       string
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effect1_key       *time.Time
+	__effect1_live      []*time.Time
+	__effect1_desired   []*time.Time
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	box                 *C.GtkCheckButton
 	sw                  *C.GtkSwitch
@@ -1413,11 +1435,15 @@ func New() *Model {
 	m.seen = "none"
 	m.clicks = 0
 	m.checked__inst0 = m.lit
-	m.__effect0_key = nil
-	m.__effect0_live = []*time.Time{}
-	m.__effect0_desired = []*time.Time{}
+	m.__effect0_key = ""
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effect1_key = nil
+	m.__effect1_live = []*time.Time{}
+	m.__effect1_desired = []*time.Time{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -1444,221 +1470,177 @@ func CssOf(s Style) string {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	case "baseline":
+		__lt2 = 4
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func TextAlignOf(a string) int {
+	var __lt3 int
+	switch a {
+	case "center":
+		__lt3 = 1
+	case "right":
+		__lt3 = 2
+	case "justify":
+		__lt3 = 3
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func WrapOf(w string) int {
 	var __lt4 int
-	if a == "center" {
+	switch w {
+	case "pre", "nowrap":
+		__lt4 = 1
+	case "preWrap", "preLine":
 		__lt4 = 2
-	} else {
-		var __lt3 int
-		if a == "end" {
-			__lt3 = 3
-		} else {
-			var __lt2 int
-			if a == "baseline" {
-				__lt2 = 4
-			} else {
-				__lt2 = 0
-			}
-			__lt3 = __lt2
-		}
-		__lt4 = __lt3
+	default:
+		__lt4 = 0
 	}
 	return __lt4
 }
 
-func TextAlignOf(a string) int {
-	var __lt7 int
-	if a == "center" {
-		__lt7 = 1
-	} else {
-		var __lt6 int
-		if a == "right" {
-			__lt6 = 2
-		} else {
-			var __lt5 int
-			if a == "justify" {
-				__lt5 = 3
-			} else {
-				__lt5 = 0
-			}
-			__lt6 = __lt5
-		}
-		__lt7 = __lt6
+func ClipOf(o string) bool {
+	var __lt5 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt5 = true
+	default:
+		__lt5 = false
 	}
-	return __lt7
+	return __lt5
 }
 
-func WrapOf(w string) int {
-	var __lt9 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt9 = 1
+func Decl(name string, value string) string {
+	var __lt6 string
+	if value == "" {
+		__lt6 = ""
 	} else {
-		var __lt8 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt8 = 2
+		__lt6 = (((name + ": ") + value) + "; ")
+	}
+	return __lt6
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
 		} else {
-			__lt8 = 0
+			__lt7 = all
 		}
-		__lt9 = __lt8
+		__lt8 = __lt7
+	}
+	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt9 string
+	if v == 0.0 {
+		__lt9 = ""
+	} else {
+		__lt9 = (fmt.Sprint(v) + "px")
 	}
 	return __lt9
 }
 
-func ClipOf(o string) bool {
-	var __lt10 bool
-	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
-		__lt10 = true
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt10 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt10 = ""
 	} else {
-		__lt10 = false
+		__lt10 = c__r0.Hex()
 	}
 	return __lt10
 }
 
-func Decl(name string, value string) string {
+func Points(v float64) string {
 	var __lt11 string
-	if value == "" {
+	if v == 0.0 {
 		__lt11 = ""
 	} else {
-		__lt11 = (((name + ": ") + value) + "; ")
+		__lt11 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt11
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt13 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt13 = own
-	} else {
-		var __lt12 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt12 = axis
-		} else {
-			__lt12 = all
-		}
-		__lt13 = __lt12
+func WeightOf(w string) string {
+	var __lt12 string
+	switch w {
+	case "bold":
+		__lt12 = "bold"
+	case "bolder":
+		__lt12 = "bolder"
+	case "lighter":
+		__lt12 = "lighter"
+	default:
+		__lt12 = ""
 	}
-	return Length(max((__lt13.Px + (11.0 * (__lt13.Em + __lt13.Rem))), 0.0))
+	return __lt12
 }
 
-func Length(v float64) string {
+func SlantOf(s string) string {
+	var __lt13 string
+	switch s {
+	case "italic":
+		__lt13 = "italic"
+	case "oblique":
+		__lt13 = "oblique"
+	default:
+		__lt13 = ""
+	}
+	return __lt13
+}
+
+func LineOf(s Style) string {
 	var __lt14 string
-	if v == 0.0 {
-		__lt14 = ""
-	} else {
-		__lt14 = (fmt.Sprint(v) + "px")
+	switch s.BorderStyle {
+	case "solid":
+		__lt14 = "solid"
+	case "dashed":
+		__lt14 = "dashed"
+	case "dotted":
+		__lt14 = "dotted"
+	case "double":
+		__lt14 = "double"
+	default:
+		var __lt15 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt15 = "solid"
+		} else {
+			__lt15 = ""
+		}
+		__lt14 = __lt15
 	}
 	return __lt14
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt15 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt15 = ""
-	} else {
-		__lt15 = c__r0.Hex()
-	}
-	return __lt15
-}
-
-func Points(v float64) string {
-	var __lt16 string
-	if v == 0.0 {
-		__lt16 = ""
-	} else {
-		__lt16 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt16
-}
-
-func WeightOf(w string) string {
-	var __lt19 string
-	if w == "bold" {
-		__lt19 = "bold"
-	} else {
-		var __lt18 string
-		if w == "bolder" {
-			__lt18 = "bolder"
-		} else {
-			var __lt17 string
-			if w == "lighter" {
-				__lt17 = "lighter"
-			} else {
-				__lt17 = ""
-			}
-			__lt18 = __lt17
-		}
-		__lt19 = __lt18
-	}
-	return __lt19
-}
-
-func SlantOf(s string) string {
-	var __lt21 string
-	if s == "italic" {
-		__lt21 = "italic"
-	} else {
-		var __lt20 string
-		if s == "oblique" {
-			__lt20 = "oblique"
-		} else {
-			__lt20 = ""
-		}
-		__lt21 = __lt20
-	}
-	return __lt21
-}
-
-func LineOf(s Style) string {
-	var __lt26 string
-	if s.BorderStyle == "solid" {
-		__lt26 = "solid"
-	} else {
-		var __lt25 string
-		if s.BorderStyle == "dashed" {
-			__lt25 = "dashed"
-		} else {
-			var __lt24 string
-			if s.BorderStyle == "dotted" {
-				__lt24 = "dotted"
-			} else {
-				var __lt23 string
-				if s.BorderStyle == "double" {
-					__lt23 = "double"
-				} else {
-					var __lt22 string
-					if (s.BorderWidth != Measurement{Px: 0}) {
-						__lt22 = "solid"
-					} else {
-						__lt22 = ""
-					}
-					__lt23 = __lt22
-				}
-				__lt24 = __lt23
-			}
-			__lt25 = __lt24
-		}
-		__lt26 = __lt25
-	}
-	return __lt26
-}
-
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key != nil {
-		C.sngl_calendar_select(m.day, C.int(func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}()), C.int(func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}()), C.int(func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}()))
+	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field)))) != m.__effect0_key {
+		__ctmp1 := C.CString(m.__effect0_key)
+		C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.field)), __ctmp1)
+		C.free(unsafe.Pointer(__ctmp1))
 	}
 }
 
 func (m *Model) __effect0_down() {
-	m.__effect0_desired = []*time.Time{}
-	m.__effect0_desired = append(m.__effect0_desired, m.picked)
+	m.__effect0_desired = []string{}
+	m.__effect0_desired = append(m.__effect0_desired, m.name)
 }
 
 func (m *Model) __effect0_up() {
@@ -1676,59 +1658,116 @@ func (m *Model) __effect0_up() {
 	m.__effect0_live = m.__effect0_desired
 }
 
-func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
+func (m *Model) __effect1_mount() {
+	if m.__effect1_key != nil {
+		C.sngl_calendar_select(m.day, C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[0:4]), 10, 64)
+			return int(__v)
+		}()), C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[5:7]), 10, 64)
+			return int(__v)
+		}()), C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[8:10]), 10, 64)
+			return int(__v)
+		}()))
+	}
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []*time.Time{}
+	m.__effect1_desired = append(m.__effect1_desired, m.picked)
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if ((m.__effect1_live[__effect1_i] == nil) && (__effect1_k != nil)) || ((m.__effect1_live[__effect1_i] != nil) && ((__effect1_k == nil) || ((*(m.__effect1_live[__effect1_i])) != (*(__effect1_k))))) {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
 		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) box_toggled_handler() {
-	m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
-	m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0) != m.on {
+		m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
+		C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.on)))
+		m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
+		__ctmp2 := C.CString(m.seen)
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp2)
+		C.free(unsafe.Pointer(__ctmp2))
+	}
 }
 
 func (m *Model) sw_notifyActive_handler() {
-	m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
-	m.lit = m.checked__inst0
-	m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0) != m.checked__inst0 {
+		m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
+		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst0)))
+		m.lit = m.checked__inst0
+		m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
+		__ctmp3 := C.CString(m.seen)
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp3)
+		C.free(unsafe.Pointer(__ctmp3))
+	}
 }
 
 func (m *Model) field_changed_handler() {
-	m.name = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field))))
-	m.seen = ((("input " + m.name) + " ") + m.name)
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field)))) != m.name {
+		m.name = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field))))
+		m.seen = ((("input " + m.name) + " ") + m.name)
+		__ctmp4 := C.CString(m.seen)
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp4)
+		C.free(unsafe.Pointer(__ctmp4))
+	}
+	m.__effects0_settle()
 }
 
 func (m *Model) field_activate_handler() {
 	m.name = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.field))))
+	m.__effects0_settle()
 }
 
 func (m *Model) day_daySelected_handler() {
 	m.picked = snglCalendarDate((*C.GtkCalendar)(unsafe.Pointer(m.day)))
-	var __lt27 string
+	var __lt16 string
 	if m.picked == nil {
-		__lt27 = "no day"
+		__lt16 = "no day"
 	} else {
-		__lt27 = "day"
+		__lt16 = "day"
 	}
-	m.seen = __lt27
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	m.seen = __lt16
+	__ctmp5 := C.CString(m.seen)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp5)
+	C.free(unsafe.Pointer(__ctmp5))
 	m.__effects0_settle()
 }
 
@@ -1801,36 +1840,37 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n1)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n1)), C.int(6))
 	m.box = (*C.GtkCheckButton)(unsafe.Pointer(C.gtk_check_button_new()))
-	C.gtk_check_button_set_label((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.CString("a"))
+	C.gtk_check_button_set_label((*C.GtkCheckButton)(unsafe.Pointer(m.box)), __cstr0)
 	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.on)))
 	snglCallbacks = append(snglCallbacks, m.box_toggled_handler)
-	C.sngl_connect(unsafe.Pointer(m.box), C.CString("toggled"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.box), __cstr1, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
 	m.sw = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst0)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.sw_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.sw), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.sw), __cstr2, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
 	m.field = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
-	C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(m.field)), C.CString(m.name))
 	snglCallbacks = append(snglCallbacks, m.field_changed_handler)
-	C.sngl_connect(unsafe.Pointer(m.field), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.field), __cstr3, C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.field_activate_handler)
-	C.sngl_connect(unsafe.Pointer(m.field), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.field), __cstr4, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.field)))
 	m.day = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.day)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.day_daySelected_handler)
-	C.sngl_connect(unsafe.Pointer(m.day), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.day), __cstr5, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.day)))
 	m.press = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.press)), C.CString("go"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.press)), __cstr6)
 	snglCallbacks = append(snglCallbacks, m.press_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.press), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.press), __cstr7, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.press)))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	__ctmp0 := C.CString(m.seen)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp0)
+	C.free(unsafe.Pointer(__ctmp0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
@@ -2086,7 +2126,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -2129,7 +2168,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performTextReplacement("ada"); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("ada")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"input ada ada\")", (c.seen == "input ada ada"))
         org.junit.Assert.assertTrue("(c.name == \"ada\")", (c.name == "ada"))
     }
@@ -2139,7 +2178,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         var d = "2024-03-05"
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performTextReplacement(d); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(d)) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.picked == d)", (c.picked == d))
         org.junit.Assert.assertTrue("(c.seen == \"day\")", (c.seen == "day"))
     }
@@ -2286,12 +2325,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:293800a82355156f25030f1a63741113
+pass sha256:b2501874ea2f3aae14a891227b40d02e
 -- run/go/fyne --
-pass sha256:cb67eed5b7cff8f304adbc70404e9509
+pass sha256:1f8d7b5b5a7dbf529c194aa85b3cf9a6
 -- run/go/gtk4 --
-pass sha256:59a74d9acb9217ae199a8d04b0ba4e0d
+pass sha256:8325903ad449db97375bf1e7f8c5dfc5
 -- run/kotlin/android --
-pass sha256:47c40c76f21967680028849fe28e1a2f
+pass sha256:6654b6253022a85779fbb6e523ead2a2
 -- run/none/html --
 pass sha256:39a7ec5df31369c005bacf45496efdcf

@@ -66,7 +66,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
@@ -94,7 +94,15 @@ fun MainScreen() {
     var value__inst3 by remember { mutableStateOf<String?>(null) }
     var value__inst4 by remember { mutableStateOf<String?>(birthday) }
     var visible__inst0 by remember { mutableStateOf(true) }
-    var expanded__inst0 by remember { mutableStateOf(false) }
+    var open__inst0 by remember { mutableStateOf(false) }
+
+
+    fun choose__inst0(v: String) {
+        open__inst0 = false
+        if (((v != value__inst2) && (listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana")).map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
+        	value__inst2 = v
+        }
+    }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -114,19 +122,24 @@ fun MainScreen() {
             OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst1 = v
             })
-            Box(modifier = Modifier.safeDrawingPadding()) {
-                OutlinedButton(onClick = {
-                    expanded__inst0 = true
-                }) {
-                    Text(text = (if ((value__inst2 != "")) value__inst2 else "Pick"), modifier = Modifier)
+            Box(modifier = Modifier.snglChooses({ v: String ->
+    choose__inst0(v)
+}).safeDrawingPadding()) {
+                OutlinedTextField(value = value__inst2, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+                    Text(text = "Pick", modifier = Modifier)
+                }, trailingIcon = {
+                    Text(text = "▾", modifier = Modifier)
+                })
+                Box(modifier = Modifier.matchParentSize().clickable(enabled = true, onClick = {  ->
+    open__inst0 = true
+})) {
                 }
-                DropdownMenu(expanded = expanded__inst0, onDismissRequest = {
-                    expanded__inst0 = false
+                DropdownMenu(expanded = open__inst0, onDismissRequest = {
+                    open__inst0 = false
                 }) {
                     for (opt in listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana"))) {
                         DropdownMenuItem(onClick = {
-                            value__inst2 = opt.label
-                            expanded__inst0 = false
+                            choose__inst0(opt.label)
                         }, text = {
                             Text(text = opt.label, modifier = Modifier)
                         })
@@ -143,6 +156,25 @@ fun MainScreen() {
                 value__inst4 = v
             })
         }
+    }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglChooses.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setText
+
+// snglChooses makes a select's box a dropdown list to accessibility and to a
+// test: setting its text is choosing, and onText is handed the text set.
+// Compose says it in a lambda with a receiver, which SNGL has no way to write.
+fun Modifier.snglChooses(onText: (String) -> Unit): Modifier = semantics {
+    role = Role.DropdownList
+    setText { typed ->
+        onText(typed.text)
+        true
     }
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglDateField.kt --
@@ -233,4 +265,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:82dd0bce2694505a9888c5ba160d52e4
+pass sha256:f009d94c5c8ea8ddcdee6bb0c9e677b7

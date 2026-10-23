@@ -26,6 +26,24 @@ func InstanceRegistry(id string) string { return "__listInst_" + id }
 // InstanceRecordType is the Go type of comp's record.
 func InstanceRecordType(comp *ir.Component) string { return "*" + ComponentInstanceType(comp.Name) }
 
+// InstanceRecordTypes is the Go type of the record of each component pkg
+// builds at run time. A record holding a nested one holds it in a field beside
+// its widgets, and the nested instance takes itself out of the Model's maps as
+// it is destroyed (UnlistInstance): a map of widget copies has no place for
+// it, and listing it there compared a widget with a record.
+func InstanceRecordTypes(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	if pkg == nil {
+		return out
+	}
+	for _, c := range pkg.Components {
+		if c.RuntimeInstance {
+			out[InstanceRecordType(c)] = true
+		}
+	}
+	return out
+}
+
 // InstanceHolds is each Model field the reads need, by name, with its Go type.
 func InstanceHolds(reads []codegen.InstanceRead) [][2]string {
 	var out [][2]string

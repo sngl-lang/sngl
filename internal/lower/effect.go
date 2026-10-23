@@ -55,7 +55,7 @@ func lowerEffects(pkg *ir.Package, feats Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &effectState{pkg: pkg, native: feats.Effects, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}, cellBy: map[*ir.Var][]*loweredEffect{}}
+	st := &effectState{pkg: pkg, native: feats.Effects, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}, rekeyBy: map[*ir.Var][]*loweredEffect{}, cellBy: map[*ir.Var][]*loweredEffect{}}
 	for _, o := range ir.Owners(pkg) {
 		if err := st.owner(o); err != nil {
 			return err
@@ -83,6 +83,10 @@ type effectState struct {
 	// dirtyBy is the brackets with an `@update` a write to each state var
 	// marks owed one: those whose `on` reads it.
 	dirtyBy map[*ir.Var][]*loweredEffect
+	// rekeyBy is the brackets under a loop whose key reads the loop's
+	// variable, by the list the loop walks: a write to it reaches every copy
+	// whose key it changed.
+	rekeyBy map[*ir.Var][]*loweredEffect
 	// cellBy is the brackets with an `@update` keyed on a cell of each state
 	// var, which a write reaches by where it landed rather than by the var
 	// alone (notesFor).
@@ -114,7 +118,14 @@ type effectGroup struct {
 	settling *ir.Var
 	pending  *ir.Var
 	steps    *ir.Var
-	settle   *ir.Func
+	// torn is set by the teardown, and a settle after it does nothing. An
+	// answer reaching a torn-down instance is stale, since the teardown
+	// ended its attempt, but a stale answer still settles, and a settle
+	// there found every bracket the teardown had let go of still wanted and
+	// mounted it again: it asked a second time, and rendered into a box the
+	// destroy had freed (cmd/sngl/testdata/async_query_destroyed_instance_runs.txt).
+	torn   *ir.Var
+	settle *ir.Func
 }
 
 // maxEffectSettleSteps bounds the settle loop: an effect that rekeys itself
@@ -167,12 +178,27 @@ type loweredEffect struct {
 	// settle evaluates the key and the position from when it does.
 	update *ir.Func
 	dirty  *ir.Var
+	// absent says the position described no key at the last report, for a
+	// bracket under an `if` but no loop: one it describes now began its
+	// lifetime in this pass, after every write that set dirty. False to start,
+	// since an instance may never settle before its first write. A loop's
+	// copies would need keys, so it keeps none.
+	absent *ir.Var
+	// keys is each copy's key at the last pass, by the copy, for a computed
+	// key under a loop: an `@update` is owed to a copy the last pass
+	// described, and after a write to the list the loop walks (rekey) only
+	// to one whose key changed. A copy the last pass did not describe was
+	// made with its key and is owed nothing; a position of `if`s keeps the
+	// same with absent.
+	keys, rekey *ir.Var
+	loops       []*ir.For
 	// mark sets dirty, for a test body: a test reaches the instance's state
 	// through the instance, and html keeps a synthesized var where only the
 	// page's script can name it. Built the first time a test needs it.
-	mark   *ir.Func
-	key    ir.Expr
-	frames []effectFrame
+	mark      *ir.Func
+	rekeyMark *ir.Func
+	key       ir.Expr
+	frames    []effectFrame
 	// cell is the cell `on` names, or nil for a computed key, whose writes
 	// mark it by the vars it reads.
 	cell *effectCell
@@ -191,10 +217,16 @@ type loweredEffect struct {
 	atVar, itemVar  *ir.Var
 	length          *ir.Var
 	notes           map[string]*ir.Func
+	// on is the key the bracket holds a lifetime per, nil for one it holds
+	// without.
+	on ir.Expr
 	// down and up are nil for a bracket with neither @mount nor @unmount,
 	// which reports writes and holds no lifetime.
 	down *ir.Func
 	up   *ir.Func
+	// enter is an Enter bracket's one function (lowerEnter), which has no
+	// down or up.
+	enter *ir.Func
 	// group is the scope's settle entry point, which calls this bracket's two
 	// halves in their place among the others.
 	group *effectGroup
@@ -222,11 +254,13 @@ type effectFrame struct {
 }
 
 func (st *effectState) owner(o ir.Owner) error {
+	from := len(st.effects)
 	body, err := st.stmts(o.Stmts(), &o, nil)
 	if err != nil {
 		return err
 	}
 	*o.Body = body
+	st.remountOnBuild(&o, st.effects[from:])
 	return nil
 }
 
@@ -268,6 +302,20 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 			}
 			n.Body, n.Else = b, e
 			if len(n.Body) == 0 && len(n.Else) == 0 {
+				continue
+			}
+			out = append(out, n)
+		case *ir.Match:
+			empty := true
+			for i, arm := range n.Arms {
+				b, err := st.stmts(arm.Body, o, pushFrame(frames, effectFrame{cond: n.Taken(i)}))
+				if err != nil {
+					return nil, err
+				}
+				arm.Body = b
+				empty = empty && len(b) == 0
+			}
+			if empty {
 				continue
 			}
 			out = append(out, n)
@@ -314,6 +362,12 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFrame) error {
 	prefix := "__effect" + strconv.Itoa(st.counter)
 	st.counter++
+	if n.Enter {
+		if !st.native {
+			st.lowerEnter(n, o, frames, prefix)
+		}
+		return nil
+	}
 
 	key := effectKeyExpr(n)
 	fx := &loweredEffect{comp: o.Comp, elem: ir.TypBool, prefix: prefix}
@@ -358,19 +412,36 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		if fx.cell != nil && fx.cell.loop != nil {
 			fx.dirtyAt = &ir.Var{Name: prefix + "_dirtyAt", Type: ir.ListOf(ir.TypInt), Init: &ir.ListLit{Type: ir.ListOf(ir.TypInt)}, Synthesized: true}
 			st.addVar(o, fx.dirtyAt)
+		} else if len(frames) > 0 && !slices.ContainsFunc(frames, func(f effectFrame) bool { return f.loop != nil && !f.loopElse }) {
+			fx.absent = &ir.Var{Name: prefix + "_absent", Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Synthesized: true}
+			st.addVar(o, fx.absent)
 		}
 		if fx.cell != nil {
 			st.cellBy[fx.cell.root] = append(st.cellBy[fx.cell.root], fx)
 		} else {
-			for _, v := range st.reactiveVarsIn(key) {
+			direct := st.reactiveVarsIn(key)
+			for _, v := range direct {
 				st.dirtyBy[v] = append(st.dirtyBy[v], fx)
+			}
+			if loops := positionLoops(frames); key != nil && len(loops) > 0 {
+				keysT := ir.MapOf(ir.TypString, key.ExprType())
+				fx.keys = &ir.Var{Name: prefix + "_keys", Type: keysT, Init: &ir.MapLitIR{Type: keysT}, Synthesized: true}
+				fx.rekey = &ir.Var{Name: prefix + "_rekey", Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Synthesized: true}
+				fx.loops = loops
+				st.addVar(o, fx.keys)
+				st.addVar(o, fx.rekey)
+				for _, v := range st.loopIterableVars(key, frames) {
+					if !slices.Contains(direct, v) {
+						st.rekeyBy[v] = append(st.rekeyBy[v], fx)
+					}
+				}
 			}
 		}
 	}
 	if fx.mount == nil && fx.unmount == nil {
 		// Reports only: no lifetime to hold, so nothing to keep the keys of.
 		st.effects = append(st.effects, fx)
-		for _, v := range st.positionVars(key, frames) {
+		for _, v := range st.positionVars(key, frames, fx.comp) {
 			st.byVar[v] = append(st.byVar[v], fx)
 		}
 		return nil
@@ -390,6 +461,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	}
 	st.addVar(o, fx.desired)
 
+	fx.on = key
 	fx.down = st.downFunc(prefix, fx, key, frames)
 	st.addFunc(o, fx.down)
 	fx.up = st.upFunc(prefix, fx)
@@ -404,10 +476,87 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	// describes -- the `on` expression's own dependencies, and those of every
 	// condition and iteration between it and the body. A position that reads
 	// nothing reactive describes one list forever.
-	for _, v := range st.positionVars(key, frames) {
+	for _, v := range st.positionVars(key, frames, fx.comp) {
 		st.byVar[v] = append(st.byVar[v], fx)
 	}
 	return nil
+}
+
+// lowerEnter lowers an Enter bracket to one function the settle runs ahead of
+// every other bracket of the scope, so a key or an @mount written after it
+// already reads what it set. Its @mount is run inside the rebuilt position, a
+// loop's variables in scope, for each key the position describes that it did
+// not at the last pass, and never from outside it: it has no @unmount.
+//
+//	func __effectN_enter() {
+//	    __effectN_desired = []
+//	    <the if/for chain> {
+//	        __effectN_fresh := true
+//	        if __effectN_desired.length() < __effectN_live.length() {
+//	            __effectN_fresh = __effectN_live[__effectN_desired.length()] != <on>
+//	        }
+//	        if __effectN_fresh { <@mount> }
+//	        __effectN_desired.push(<on>)
+//	    }
+//	    __effectN_live = __effectN_desired
+//	}
+func (st *effectState) lowerEnter(n *ir.NodeInst, o *ir.Owner, frames []effectFrame, prefix string) {
+	var mount []ir.Stmt
+	for _, h := range n.Handlers {
+		if h.Name == ir.EffectMount && h.Func != nil {
+			mount = h.Func.Block
+		}
+	}
+	key := effectKeyExpr(n)
+	fx := &loweredEffect{comp: o.Comp, elem: ir.TypBool, prefix: prefix}
+	if key != nil {
+		fx.elem = key.ExprType()
+	}
+	listT := ir.ListOf(fx.elem)
+	fx.live = &ir.Var{Name: prefix + "_live", Type: listT, Init: &ir.ListLit{Type: listT}, Synthesized: true}
+	fx.desired = &ir.Var{Name: prefix + "_desired", Type: listT, Init: &ir.ListLit{Type: listT}, Synthesized: true}
+	st.addVar(o, fx.live)
+	st.addVar(o, fx.desired)
+
+	at := func() ir.Expr { return callListLength(st.varIdent(fx.desired)) }
+	push := func() ir.Expr {
+		if key == nil {
+			return &ir.Literal{Type: ir.TypBool, Value: "true"}
+		}
+		return deepCloneExpr(key)
+	}
+	freshSym := &ir.Var{Name: prefix + "_fresh", Type: ir.TypBool, Synthesized: true}
+	fresh := func() *ir.Ident {
+		return &ir.Ident{Name: freshSym.Name, Type: ir.TypBool, Sym: freshSym, Synthesized: true}
+	}
+	leaf := []ir.Stmt{
+		&ir.LocalVar{Name: freshSym.Name, Type: ir.TypBool, Sym: freshSym, Init: &ir.Literal{Type: ir.TypBool, Value: "true"}},
+		&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinLt, Left: at(), Right: callListLength(st.varIdent(fx.live))},
+			Body: []ir.Stmt{&ir.Assign{Target: fresh(), Op: ast.AssignSet, Value: rebuildDiffers(
+				&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: at()},
+				push(),
+				fx.elem,
+			)}},
+		},
+		&ir.If{Cond: fresh(), Body: mount},
+		callListPush(st.varIdent(fx.desired), push(), fx.elem),
+	}
+	block := []ir.Stmt{&ir.Assign{Target: st.varIdent(fx.desired), Op: ast.AssignSet, Value: &ir.ListLit{Type: listT}}}
+	block = append(block, st.positionBlock(prefix, frames, leaf)...)
+	block = append(block, &ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: st.varIdent(fx.desired)})
+	fx.enter = &ir.Func{
+		Name:        prefix + "_enter",
+		Return:      ir.TypVoid,
+		Purity:      ir.PurityMutates,
+		Synthesized: true,
+		Block:       block,
+	}
+	st.addFunc(o, fx.enter)
+	st.effects = append(st.effects, fx)
+	for _, v := range st.positionVars(key, frames, fx.comp) {
+		st.byVar[v] = append(st.byVar[v], fx)
+	}
 }
 
 // nativeHalf is what a platform bracketing a lifetime itself is left of an
@@ -478,7 +627,7 @@ func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, f
 		}
 		run := []ir.Stmt{
 			&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: &ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: j()}},
-			callOf(fx.unmount),
+			startOf(fx.unmount),
 		}
 		if fx.keyVar == nil {
 			run = run[1:]
@@ -547,7 +696,7 @@ func (st *effectState) upFunc(prefix string, fx *loweredEffect) *ir.Func {
 		}
 		run := []ir.Stmt{
 			&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: elemRef()},
-			callOf(fx.mount),
+			startOf(fx.mount),
 		}
 		if fx.keyVar == nil {
 			run = run[1:]
@@ -605,7 +754,7 @@ func (st *effectState) tearFunc(prefix string, fx *loweredEffect) *ir.Func {
 				Right: &ir.Ident{Name: idx.Name, Type: ir.TypInt, Sym: idx, Synthesized: true},
 			},
 		}},
-		callOf(fx.unmount),
+		startOf(fx.unmount),
 	}
 	loop := &ir.For{Key: idx.Name, KeySym: idx, Value: "_", Iter: st.varIdent(fx.live), ElemType: fx.elem}
 	if fx.keyVar == nil {
@@ -702,15 +851,33 @@ func (st *effectState) emptyLoopBlock(name string, loop *ir.For, leaf []ir.Stmt)
 
 // reportBlock is what a settle pass runs for one bracket's `@update` before any
 // lifetime moves: the handler, once, if a write has reached the key since the
-// last pass and the position still describes the bracket.
+// last pass and the position still describes the bracket. Under an `if`, a
+// bracket the position did not describe at the last pass is owed nothing: the
+// interpreter reports to a bracket only the writes made while it ran.
 //
 //	if __effectN_dirty {
 //	    __effectN_dirty = false
 //	    <the if chain> { __effectN_key = <on>; __effectN_update() }
 //	}
+//
+// or, under an `if`:
+//
+//	__effectN_seen := false
+//	<the if chain> {
+//	    if __effectN_dirty {
+//	        __effectN_dirty = false
+//	        if !__effectN_absent { __effectN_key = <on>; __effectN_update() }
+//	    }
+//	    __effectN_seen = true
+//	}
+//	__effectN_absent = !__effectN_seen
+//	if __effectN_absent { __effectN_dirty = false }
 func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
 	if fx.dirtyAt != nil {
 		return st.copyReportBlock(prefix, fx)
+	}
+	if fx.keys != nil {
+		return st.keysReportBlock(prefix, fx)
 	}
 	var out []ir.Stmt
 	if fx.kinds != nil {
@@ -720,10 +887,120 @@ func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
 		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
 	}
 	run = append(run, callHandler(fx.update)...)
-	return append(out, &ir.If{
-		Cond: st.varIdent(fx.dirty),
-		Body: append([]ir.Stmt{st.setFlag(fx.dirty, false)}, st.positionBlock(prefix, fx.frames, run)...),
+	if fx.absent == nil {
+		return append(out, &ir.If{
+			Cond: st.varIdent(fx.dirty),
+			Body: append([]ir.Stmt{st.setFlag(fx.dirty, false)}, st.positionBlock(prefix, fx.frames, run)...),
+		})
+	}
+	not := func(e ir.Expr) ir.Expr { return &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: e} }
+	seen := &ir.Var{Name: fx.prefix + "_seen", Type: ir.TypBool, Synthesized: true}
+	ref := &ir.Ident{Name: seen.Name, Type: seen.Type, Sym: seen, Synthesized: true}
+	leaf := []ir.Stmt{
+		&ir.If{
+			Cond: st.varIdent(fx.dirty),
+			Body: []ir.Stmt{
+				st.setFlag(fx.dirty, false),
+				&ir.If{Cond: not(st.varIdent(fx.absent)), Body: run},
+			},
+		},
+		&ir.Assign{Target: deepCloneExpr(ref), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: "true"}},
+	}
+	out = append(out, &ir.LocalVar{Name: seen.Name, Type: ir.TypBool, Sym: seen, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}})
+	out = append(out, st.positionBlock(prefix, fx.frames, leaf)...)
+	return append(out,
+		&ir.Assign{Target: st.varIdent(fx.absent), Op: ast.AssignSet, Value: not(deepCloneExpr(ref))},
+		&ir.If{Cond: st.varIdent(fx.absent), Body: []ir.Stmt{st.setFlag(fx.dirty, false)}},
+	)
+}
+
+// keysReportBlock is reportBlock for a computed key under a loop, where the
+// copies the position describes come and go: each copy's key at the last
+// pass is kept by the copy, so a copy the last pass described runs its
+// `@update` on a write to what the key reads, or on one to the list the loop
+// walks where its key changed, and a copy that entered since -- made with its
+// key -- is owed nothing.
+//
+//	__effectN_next := {}
+//	<the position> {
+//	    __effectN_key = <on>
+//	    __effectN_copy := <the copy>
+//	    if __effectN_keys.contains(__effectN_copy) {
+//	        __effectN_prev := __effectN_keys.get(__effectN_copy)
+//	        if __effectN_dirty || __effectN_rekey && __effectN_prev != __effectN_key { __effectN_update() }
+//	    }
+//	    __effectN_next[__effectN_copy] = __effectN_key
+//	}
+//	__effectN_keys = __effectN_next
+//	__effectN_dirty = false; __effectN_rekey = false
+//
+// Every pass, flagged or not, since the copies a pass describes are what the
+// next one compares against.
+func (st *effectState) keysReportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
+	keyT := fx.keyVar.Type
+	next := &ir.Var{Name: fx.prefix + "_next", Type: fx.keys.Type, Synthesized: true}
+	copyVar := &ir.Var{Name: fx.prefix + "_copy", Type: ir.TypString, Synthesized: true}
+	or := func(a, b ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypBool, Op: ast.BinOr, Left: a, Right: b} }
+	and := func(a, b ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: a, Right: b} }
+	prev := &ir.Var{Name: fx.prefix + "_prev", Type: keyT, Synthesized: true}
+	owed := or(st.varIdent(fx.dirty), and(st.varIdent(fx.rekey), rebuildDiffers(st.varIdent(prev), st.varIdent(fx.keyVar), keyT)))
+	leaf := []ir.Stmt{
+		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
+		&ir.LocalVar{Name: copyVar.Name, Type: copyVar.Type, Sym: copyVar, Init: CopyKey(fx.loops)},
+		&ir.If{
+			Cond: callMapContains(st.varIdent(fx.keys), st.varIdent(copyVar), keyT),
+			Body: []ir.Stmt{
+				&ir.LocalVar{Name: prev.Name, Type: keyT, Sym: prev, Init: callMapGet(st.varIdent(fx.keys), st.varIdent(copyVar), st.varIdent(fx.keyVar), keyT)},
+				&ir.If{Cond: owed, Body: callHandler(fx.update)},
+			},
+		},
+		&ir.Assign{Target: &ir.Index{Type: keyT, Operand: st.varIdent(next), Idx: st.varIdent(copyVar)}, Op: ast.AssignSet, Value: st.varIdent(fx.keyVar)},
+	}
+	out := []ir.Stmt{&ir.LocalVar{Name: next.Name, Type: next.Type, Sym: next, Init: &ir.MapLitIR{Type: next.Type}}}
+	out = append(out, st.positionBlock(prefix, fx.frames, leaf)...)
+	return append(out,
+		&ir.Assign{Target: st.varIdent(fx.keys), Op: ast.AssignSet, Value: st.varIdent(next)},
+		st.setFlag(fx.dirty, false),
+		st.setFlag(fx.rekey, false),
+	)
+}
+
+// positionLoops is the loops a position holds copies of, outermost first.
+func positionLoops(frames []effectFrame) []*ir.For {
+	var out []*ir.For
+	for _, f := range frames {
+		if f.loop != nil && !f.loopElse {
+			out = append(out, f.loop)
+		}
+	}
+	return out
+}
+
+// loopIterableVars is the reactive vars read by the iterable of each enclosing
+// loop whose variable key names: a copy's key `{copy, on: k}` reads `k` off
+// the list the loop walks, so replacing the list may rekey any copy.
+func (st *effectState) loopIterableVars(key ir.Expr, frames []effectFrame) []*ir.Var {
+	named := map[*ir.LoopVar]bool{}
+	_ = ir.WalkExprs(key, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok {
+			if lv, ok := id.Sym.(*ir.LoopVar); ok {
+				named[lv] = true
+			}
+		}
+		return nil
 	})
+	var out []*ir.Var
+	for _, f := range frames {
+		if f.loop == nil || f.loopElse || !(named[f.loop.KeySym] || named[f.loop.ValueSym]) {
+			continue
+		}
+		for _, v := range st.reactiveVarsIn(f.loop.Iter) {
+			if !slices.Contains(out, v) {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
 }
 
 // checkHandlerScope refuses a handler body that reads a loop variable of an
@@ -794,6 +1071,13 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 			continue
 		}
 		block := h.Func.Block
+		// An empty handler is still declared -- `@update {}` decides which
+		// handler a write reaches -- but a function with no statements is a
+		// signature to the Go emitter, which wrote no method for the call
+		// the effect makes, and the Go targets did not build.
+		if len(block) == 0 {
+			block = []ir.Stmt{&ir.Return{}}
+		}
 		if len(h.Func.Params) > 0 {
 			p := h.Func.Params[0]
 			// Without an `on` the parameter can only ever hold the default the
@@ -912,15 +1196,18 @@ func (st *effectState) varIdent(v *ir.Var) *ir.Ident {
 // positionVars is the state the position reads: the `on` expression's
 // dependencies plus those of every condition and iteration enclosing it.
 // Writing any of them may change the list of keys the position describes.
-func (st *effectState) positionVars(key ir.Expr, frames []effectFrame) []*ir.Var {
+func (st *effectState) positionVars(key ir.Expr, frames []effectFrame, comp *ir.Component) []*ir.Var {
 	var out []*ir.Var
 	seen := map[*ir.Var]bool{}
+	take := func(v *ir.Var) {
+		if !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
 	add := func(e ir.Expr) {
 		for _, v := range st.reactiveVarsIn(e) {
-			if !seen[v] {
-				seen[v] = true
-				out = append(out, v)
-			}
+			take(v)
 		}
 	}
 	add(key)
@@ -931,7 +1218,113 @@ func (st *effectState) positionVars(key ir.Expr, frames []effectFrame) []*ir.Var
 		}
 		add(f.cond)
 	}
+	// A key reading a node names what a render built, and any write the
+	// owner's view reads may build it afresh, which lets go of the keys the
+	// bracket held (remountOnBuild). So every reactive var of the owner
+	// settles it, or a click that rendered gtk4's select again left the new
+	// drop-down offered nothing until some write `on` reads; a settle whose
+	// keys did not move does nothing.
+	if readsElementRef(key) {
+		vars := st.pkg.Vars
+		if comp != nil {
+			vars = comp.Vars
+		}
+		for _, v := range vars {
+			if st.reactive[v] {
+				take(v)
+			}
+		}
+	}
 	return out
+}
+
+// elementRefsIn is the nodes e reads by their #id -- a node handle a program
+// wrote, or one a lowering synthesized -- each by its handle where it has one
+// and by its id where it has not.
+func elementRefsIn(e ir.Expr) (handles map[*ir.Var]bool, ids map[string]bool) {
+	handles, ids = map[*ir.Var]bool{}, map[string]bool{}
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		id, ok := x.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if v, isVar := id.Sym.(*ir.Var); isVar && v.NodeHandle {
+			handles[v] = true
+		} else if id.IsElementRef {
+			ids[id.Name] = true
+		}
+		return nil
+	})
+	return handles, ids
+}
+
+// readsElementRef reports whether e reads a node by its #id.
+func readsElementRef(e ir.Expr) bool {
+	handles, ids := elementRefsIn(e)
+	return len(handles) > 0 || len(ids) > 0
+}
+
+// remountOnBuild has each bracket whose key reads a node mount again wherever
+// that node is built: a call after the node, in the view, of a function that
+// lets go of every key the bracket holds -- unmounting them, where it has an
+// @unmount. A key holding the node cannot say so itself. A render that builds
+// the node afresh frees the old one, and the new one may be handed the old
+// one's address, which then compares equal: gtk4's select offered a
+// drop-down a re-rendered panel built nothing, since its key, the labels and
+// the drop-down, had not moved.
+func (st *effectState) remountOnBuild(o *ir.Owner, fxs []*loweredEffect) {
+	type rebuilt struct {
+		handles map[*ir.Var]bool
+		ids     map[string]bool
+		call    *ir.Func
+	}
+	var all []rebuilt
+	for _, fx := range fxs {
+		if fx.live == nil || fx.on == nil {
+			continue
+		}
+		handles, ids := elementRefsIn(fx.on)
+		if len(handles) == 0 && len(ids) == 0 {
+			continue
+		}
+		body := []ir.Stmt{&ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(fx.elem)}}}
+		if fx.tear != nil {
+			body = []ir.Stmt{callOf(fx.tear)}
+		}
+		fn := &ir.Func{
+			Name:        fx.prefix + "_rebuilt",
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block:       body,
+		}
+		st.addFunc(o, fn)
+		all = append(all, rebuilt{handles: handles, ids: ids, call: fn})
+	}
+	if len(all) == 0 {
+		return
+	}
+	var walk func(block *[]ir.Stmt)
+	walk = func(block *[]ir.Stmt) {
+		out := make([]ir.Stmt, 0, len(*block))
+		for _, s := range *block {
+			for _, b := range ir.ViewBlocks(s) {
+				walk(b)
+			}
+			out = append(out, s)
+			n, ok := s.(*ir.NodeInst)
+			if !ok {
+				continue
+			}
+			for _, r := range all {
+				if n.Handle != nil && r.handles[n.Handle] || n.ID != "" && r.ids[n.ID] {
+					out = append(out, callOf(r.call))
+				}
+			}
+		}
+		*block = out
+	}
+	walk(o.Body)
 }
 
 // reactiveVarsIn is the state an expression reads, directly or through what it
@@ -1004,7 +1397,8 @@ func (st *effectState) finishTeardown() error {
 		// Reverse the order the program wrote them in: an effect set up later
 		// may hold something an earlier one handed it, so releasing in
 		// acquisition order can release a thing still in use.
-		body := make([]ir.Stmt, 0, len(tears[o]))
+		body := make([]ir.Stmt, 0, len(tears[o])+1)
+		body = append(body, st.setFlag(tears[o][0].group.torn, true))
 		for _, fx := range slices.Backward(tears[o]) {
 			body = append(body, callOf(fx.tear))
 		}
@@ -1055,6 +1449,7 @@ func (st *effectState) buildGroups() {
 		o := &ir.Owner{Comp: g.comp}
 		g.settling = st.flagVar(o, prefix+"_settling")
 		g.pending = st.flagVar(o, prefix+"_pending")
+		g.torn = st.flagVar(o, prefix+"_torn")
 		g.steps = &ir.Var{
 			Name:        prefix + "_steps",
 			Type:        ir.TypInt,
@@ -1074,6 +1469,11 @@ func (st *effectState) buildGroups() {
 			Target: st.varIdent(g.steps), Op: ast.AssignSet,
 			Value: &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: st.varIdent(g.steps), Right: intLiteralLit(1)},
 		})
+		for _, fx := range g.fxs {
+			if fx.enter != nil {
+				pass = append(pass, callOf(fx.enter))
+			}
+		}
 		// Reports before any lifetime moves, in the order the scope wrote
 		// them: a write was made while the bracket it reaches was running.
 		for j, fx := range g.fxs {
@@ -1097,55 +1497,59 @@ func (st *effectState) buildGroups() {
 			Purity:      ir.PurityMutates,
 			Synthesized: true,
 			Block: []ir.Stmt{&ir.If{
-				Cond: st.varIdent(g.settling),
-				Body: []ir.Stmt{st.setFlag(g.pending, true)},
-				Else: []ir.Stmt{
-					st.setFlag(g.settling, true),
-					st.setFlag(g.pending, true),
-					&ir.Assign{Target: st.varIdent(g.steps), Op: ast.AssignSet, Value: intLiteralLit(0)},
-					&ir.For{
-						Iter: &ir.Binary{
-							Type: ir.TypBool, Op: ast.BinAnd,
-							Left: st.varIdent(g.pending),
-							Right: &ir.Binary{
-								Type: ir.TypBool, Op: ast.BinLt,
-								Left:  st.varIdent(g.steps),
-								Right: intLiteralLit(maxEffectSettleSteps),
+				Cond: &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: st.varIdent(g.torn)},
+				Body: []ir.Stmt{&ir.If{
+					Cond: st.varIdent(g.settling),
+					Body: []ir.Stmt{st.setFlag(g.pending, true)},
+					Else: []ir.Stmt{
+						st.setFlag(g.settling, true),
+						st.setFlag(g.pending, true),
+						&ir.Assign{Target: st.varIdent(g.steps), Op: ast.AssignSet, Value: intLiteralLit(0)},
+						&ir.For{
+							Iter: &ir.Binary{
+								Type: ir.TypBool, Op: ast.BinAnd,
+								Left: st.varIdent(g.pending),
+								Right: &ir.Binary{
+									Type: ir.TypBool, Op: ast.BinLt,
+									Left:  st.varIdent(g.steps),
+									Right: intLiteralLit(maxEffectSettleSteps),
+								},
 							},
+							Body: pass,
 						},
-						Body: pass,
+						st.setFlag(g.settling, false),
+						// The loop's condition is `pending && steps < bound`, so
+						// leaving it with `pending` still set is the bound
+						// stopping it rather than the settle finishing. Reported,
+						// because the alternative -- what this used to do -- is a
+						// program that quietly runs on with brackets that do not
+						// describe its tree, while the interpreter refuses the
+						// same program outright.
+						//
+						// No handler scope: a settle is called from the body, from
+						// every event handler that writes a key it reads, and from
+						// the platform's mount, so there is no one errorBoundary it
+						// sits inside the way a recursive instantiation sits inside
+						// the body that wrote it. Native is the honest answer, and
+						// reporting nowhere is louder than settling nowhere.
+						&ir.If{
+							Cond: st.varIdent(g.pending),
+							Body: []ir.Stmt{raiseStmt(
+								fmt.Sprintf("effects did not settle in %d passes; an effect is rekeying itself", maxEffectSettleSteps),
+								"effect",
+								nil,
+							)},
+						},
 					},
-					st.setFlag(g.settling, false),
-					// The loop's condition is `pending && steps < bound`, so
-					// leaving it with `pending` still set is the bound
-					// stopping it rather than the settle finishing. Reported,
-					// because the alternative -- what this used to do -- is a
-					// program that quietly runs on with brackets that do not
-					// describe its tree, while the interpreter refuses the
-					// same program outright.
-					//
-					// No handler scope: a settle is called from the body, from
-					// every event handler that writes a key it reads, and from
-					// the platform's mount, so there is no one errorBoundary it
-					// sits inside the way a recursive instantiation sits inside
-					// the body that wrote it. Native is the honest answer, and
-					// reporting nowhere is louder than settling nowhere.
-					&ir.If{
-						Cond: st.varIdent(g.pending),
-						Body: []ir.Stmt{raiseStmt(
-							fmt.Sprintf("effects did not settle in %d passes; an effect is rekeying itself", maxEffectSettleSteps),
-							"effect",
-							nil,
-						)},
-					},
-				},
+				}},
 			}},
 		}
 		st.addFunc(o, g.settle)
+		st.reportProps(g)
 
 		// A scope whose brackets only report has nothing for a first settle
 		// to do: nothing has been written, and no lifetime begins.
-		if !slices.ContainsFunc(g.fxs, func(fx *loweredEffect) bool { return fx.down != nil }) {
+		if !slices.ContainsFunc(g.fxs, func(fx *loweredEffect) bool { return fx.down != nil || fx.enter != nil }) {
 			continue
 		}
 		// The first settle runs after the body, not where the node was written.
@@ -1159,6 +1563,38 @@ func (st *effectState) buildGroups() {
 			st.pkg.Body = append(st.pkg.Body, callOf(g.settle))
 		}
 		st.pkg.Mounts = append(st.pkg.Mounts, g.settle)
+	}
+}
+
+// reportProps records each of g's reports whose key reads a prop, which no
+// write this pass sees ever reaches: the setter a component built at run time
+// gives the prop is the write (settleOnSet).
+func (st *effectState) reportProps(g *effectGroup) {
+	if g.comp == nil {
+		return
+	}
+	for _, fx := range g.fxs {
+		if fx.dirty == nil || fx.key == nil {
+			continue
+		}
+		_ = ir.Walk(fx.key, func(n ir.Node) error {
+			id, ok := n.(*ir.Ident)
+			if !ok {
+				return nil
+			}
+			p, ok := id.Sym.(*ir.Param)
+			if !ok || !slices.ContainsFunc(g.comp.Props, func(pr *ir.Prop) bool { return pr.Sym == p }) {
+				return nil
+			}
+			if st.pkg.PropReports == nil {
+				st.pkg.PropReports = map[*ir.Param][]ir.PropReport{}
+			}
+			r := ir.PropReport{Dirty: fx.dirty, Settle: g.settle}
+			if !slices.Contains(st.pkg.PropReports[p], r) {
+				st.pkg.PropReports[p] = append(st.pkg.PropReports[p], r)
+			}
+			return nil
+		})
 	}
 }
 
@@ -1225,6 +1661,15 @@ func (st *effectState) injectSettles() {
 	for _, b := range blocks {
 		own[b] = true
 	}
+	// An enter runs ahead of every other bracket in the pass, which so reads
+	// what it wrote, and starts lifetimes no write has yet reached: settling
+	// or marking after it would only report one.
+	enters := map[*[]ir.Stmt]bool{}
+	for _, fx := range st.effects {
+		if fx.enter != nil {
+			enters[&fx.enter.Block] = true
+		}
+	}
 	tests := map[*[]ir.Stmt]bool{}
 	for _, fn := range st.pkg.Funcs {
 		if fn.IsTest {
@@ -1232,6 +1677,9 @@ func (st *effectState) injectSettles() {
 		}
 	}
 	for _, block := range blocks {
+		if enters[block] {
+			continue
+		}
 		hit := map[*effectGroup]bool{}
 		st.collectSettled(*block, own, hit)
 		if len(hit) == 0 {
@@ -1270,6 +1718,21 @@ func (st *effectState) markFunc(fx *loweredEffect) *ir.Func {
 	return fx.mark
 }
 
+// rekeyMarkFunc is fx's rekey mark, built on first use.
+func (st *effectState) rekeyMarkFunc(fx *loweredEffect) *ir.Func {
+	if fx.rekeyMark == nil {
+		fx.rekeyMark = &ir.Func{
+			Name:        fx.rekey.Name + "_mark",
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block:       []ir.Stmt{st.setFlag(fx.rekey, true)},
+		}
+		st.addFunc(&ir.Owner{Comp: fx.comp}, fx.rekeyMark)
+	}
+	return fx.rekeyMark
+}
+
 // settleAfterWrites settles after each statement of a test body that writes:
 // a test reads the instance between statements, and the interpreter settles
 // before every read, so each write is a handler of its own.
@@ -1281,12 +1744,15 @@ func (st *effectState) settleAfterWrites(stmts []ir.Stmt, own map[*[]ir.Stmt]boo
 				*b = st.markInto(*b, own)
 			}
 		}
-		before, after, dirty := st.writeNotes(s)
+		before, after, dirty, rekey := st.writeNotes(s)
 		out = append(out, before...)
 		out = append(out, s)
 		out = append(out, after...)
 		for _, fx := range dirty {
 			out = append(out, call(fx.group, st.markFunc(fx)))
+		}
+		for _, fx := range rekey {
+			out = append(out, call(fx.group, st.rekeyMarkFunc(fx)))
 		}
 		hit := map[*effectGroup]bool{}
 		st.collectSettled([]ir.Stmt{s}, own, hit)
@@ -1323,12 +1789,15 @@ func (st *effectState) markInto(stmts []ir.Stmt, own map[*[]ir.Stmt]bool) []ir.S
 				*b = st.markInto(*b, own)
 			}
 		}
-		before, after, dirty := st.writeNotes(s)
+		before, after, dirty, rekey := st.writeNotes(s)
 		out = append(out, before...)
 		out = append(out, s)
 		out = append(out, after...)
 		for _, fx := range dirty {
 			out = append(out, st.setFlag(fx.dirty, true))
+		}
+		for _, fx := range rekey {
+			out = append(out, st.setFlag(fx.rekey, true))
 		}
 	}
 	return out
@@ -1374,10 +1843,8 @@ func isReturnStmt(s ir.Stmt) bool {
 // on its own iteration.
 func nestedBodies(s ir.Stmt) []*[]ir.Stmt {
 	switch n := s.(type) {
-	case *ir.If:
-		return []*[]ir.Stmt{&n.Body, &n.Else}
-	case *ir.For:
-		return []*[]ir.Stmt{&n.Body, &n.Else}
+	case *ir.If, *ir.For, *ir.Match:
+		return ir.TransparentBlocks(n)
 	}
 	return nil
 }
@@ -1386,7 +1853,7 @@ func nestedBodies(s ir.Stmt) []*[]ir.Stmt {
 // the notes around it for each change a bracket handles, and every bracket
 // owed a report -- a computed key's whose reads it wrote, whatever value it
 // wrote, and a cell key's that it reached and no change handler described.
-func (st *effectState) writeNotes(s ir.Stmt) (before, after []ir.Stmt, dirty []*loweredEffect) {
+func (st *effectState) writeNotes(s ir.Stmt) (before, after []ir.Stmt, dirty, rekey []*loweredEffect) {
 	before, after, cellDirty := st.notesFor(s)
 	seen := map[*loweredEffect]bool{}
 	add := func(fx *loweredEffect) {
@@ -1403,7 +1870,14 @@ func (st *effectState) writeNotes(s ir.Stmt) (before, after []ir.Stmt, dirty []*
 	for _, fx := range cellDirty {
 		add(fx)
 	}
-	return before, after, dirty
+	for _, v := range st.writtenVars(s) {
+		for _, fx := range st.rekeyBy[v] {
+			if !seen[fx] && !slices.Contains(rekey, fx) {
+				rekey = append(rekey, fx)
+			}
+		}
+	}
+	return before, after, dirty, rekey
 }
 
 // settledBy is the scopes whose brackets a statement may have moved, in a
@@ -1548,6 +2022,14 @@ func callHandler(fn *ir.Func) []ir.Stmt {
 
 func callOf(fn *ir.Func) ir.Stmt {
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn}}
+}
+
+// startOf is a call of one of a bracket's handlers: started, not waited for
+// (ir.Call.Detached). A lifetime begins when its mount starts, and a mount that
+// waits on a request must not hold the settle -- every other bracket's mount,
+// the next key's included -- until the answer comes.
+func startOf(fn *ir.Func) ir.Stmt {
+	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn, Detached: true}}
 }
 
 // isEffectNode reports whether a node is a lifetime bracket, by the kind its

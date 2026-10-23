@@ -164,6 +164,14 @@ func (w *rewriter) expr(e Expr) Expr {
 		x.Cond = w.expr(x.Cond)
 		x.Then = w.expr(x.Then)
 		x.Else = w.expr(x.Else)
+	case *MatchExpr:
+		x.Subject = w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			for i := range arm.Patterns {
+				arm.Patterns[i] = w.expr(arm.Patterns[i])
+			}
+			arm.Value = w.expr(arm.Value)
+		}
 	case *Call:
 		x.Receiver = w.expr(x.Receiver)
 		x.Callee = w.expr(x.Callee)
@@ -240,6 +248,12 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		for i := range n.Props {
 			n.Props[i].Value = w.expr(n.Props[i].Value)
 		}
+		// A `:prop=x` binding names its target here until passPropBindings
+		// makes it a write-back: a rename skipping it left a component's copy
+		// writing the original's var.
+		for i := range n.Bindings {
+			n.Bindings[i].Target = w.expr(n.Bindings[i].Target)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				w.fn(h.Func)
@@ -282,6 +296,14 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		n.Cond = w.expr(n.Cond)
 		n.Body = w.stmts(n.Body)
 		n.Else = w.stmts(n.Else)
+	case *Match:
+		n.Subject = w.expr(n.Subject)
+		for _, arm := range n.Arms {
+			for i := range arm.Patterns {
+				arm.Patterns[i] = w.expr(arm.Patterns[i])
+			}
+			arm.Body = w.stmts(arm.Body)
+		}
 	case *For:
 		n.Iter = w.expr(n.Iter)
 		n.Body = w.stmts(n.Body)

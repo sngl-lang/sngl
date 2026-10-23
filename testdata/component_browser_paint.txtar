@@ -173,6 +173,8 @@ window.__sngl_boot = () => {
     Object.assign(window, { red, cssColor, _avatarSide, _avatarRadius });
   }
   var __slot0 = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(255,0,0,1)";
@@ -180,28 +182,38 @@ window.__sngl_boot = () => {
     ctx.restore();
   }
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __n2 = document.createElement("span");
-    __n2.textContent = "JD";
-    __n2.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
-    __n2.addEventListener("click", () => {
-    });
-    let __place0_i_ref0 = null;
-    if (__place0_i < __place0_prev.length) {
-      __place0_i_ref0 = __place0_prev[__place0_i];
-    }
-    if (__place0_i_ref0 === __n2) {
-      __place0_i = __place0_i + 1;
+    if (__rendering0) {
+      __renderAgain0 = true;
     } else {
-      parent.insertBefore(__n2, __place0_i_ref0);
-    }
-    __slot0.push(__n2);
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __n2 = document.createElement("span");
+        __n2.textContent = "JD";
+        __n2.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+        __n2.addEventListener("click", () => {
+        });
+        let __place0_i_ref0 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref0 = __place0_prev[__place0_i];
+        }
+        if (__place0_i_ref0 === __n2) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(__n2, __place0_i_ref0);
+        }
+        __slot0.push(__n2);
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
+      __rendering0 = false;
     }
   }
   function _snglImageDraw(el, w, h, draw) {
@@ -273,9 +285,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ef322a738592d0c37db63ee5df889277
+pass sha256:4c332d68d0449297b9bc7b23f5c2afc0
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
-sha256:220ce85f36fdbf994d55b4b9b80b4faa
+sha256:e044bd7711baf9bd5ddc0ddb103646a2
 {
   "results": [
     {
@@ -285,7 +297,7 @@ sha256:220ce85f36fdbf994d55b4b9b80b4faa
   ]
 }
 -- testrun/html/none/component_browser_paint.sngl/sources/1 --
-sha256:c07fb5bb03a3ddb07b7623be46e11277
+sha256:5574282f3c08bbcd39f067fa192f9abd
 {
   "results": [
     {

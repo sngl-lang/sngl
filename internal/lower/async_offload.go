@@ -15,9 +15,8 @@ import (
 // AsyncDoIntrinsic runs its one argument back on the thread the target
 // draws on. The *platform* answers that one, because there is no such thread
 // in general and no two toolkits reach theirs the same way: fyne queues onto
-// the driver and gtk4 onto a GLib idle tick. Those two are the whole list --
-// Bubble Tea owns its loop and lets nothing outside Update touch the model,
-// which is the same reason it cannot take an effect timer.
+// the driver, gtk4 onto a GLib idle tick, and Bubble Tea, which lets nothing
+// outside Update touch the model, sends the closure to Update as a message.
 //
 // Both are declared in sngl:async, which is what separates them from
 // ir.NodeOps: those name nobody's contract, and these name a platform
@@ -97,10 +96,27 @@ func refuseAsyncOffload(pkg *ir.Package, opts Options, st *offloadState) error {
 			if !st.stmtWaits(s) {
 				continue
 			}
-			return fmt.Errorf("%s: this call blocks and %s has no way to run anything back on the thread it draws on, so there is nowhere for the answer to land -- the call would freeze the interface", ir.StmtPos(s), platformOrThis(opts.Platform))
+			return fmt.Errorf("%s: this call blocks and %s has no way to run anything back on the thread it draws on, so there is nowhere for the answer to land -- the call would freeze the interface", waitingCallPos(s), platformOrThis(opts.Platform))
 		}
 	}
 	return nil
+}
+
+// waitingCallPos is where s makes the call that waits, or s's own position:
+// a statement a pass synthesized -- the binding a match's subject became --
+// has none, and the call it holds was written somewhere.
+func waitingCallPos(s ir.Stmt) ast.Pos {
+	var at ast.Pos
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && at.Line == 0 && c.AST != nil && !c.Detached && c.Func != nil && c.Func.IsAsync {
+			at = c.AST.Pos
+		}
+		return nil
+	})
+	if at.Line == 0 {
+		return ir.StmtPos(s)
+	}
+	return at
 }
 
 func platformOrThis(name string) string {
@@ -154,8 +170,9 @@ func offloadEntryPoints(pkg *ir.Package) []*ir.Func {
 	var cands []*ir.Func
 	for _, fn := range offloadableFuncs(pkg) {
 		// A bodyless declaration is the blocking function itself, not a place
-		// one is called from.
-		if fn.IsAsync && returnsNothing(fn) && len(fn.Block) > 0 {
+		// one is called from. A test is entered by the harness, which runs it
+		// to its end and draws nothing meanwhile, so it waits where it calls.
+		if fn.IsAsync && returnsNothing(fn) && len(fn.Block) > 0 && !fn.IsTest {
 			cands = append(cands, fn)
 		}
 	}
@@ -374,13 +391,21 @@ func collectCallees(stmts []ir.Stmt, out map[*ir.Func]bool) {
 // statement alone: a call through a funcvar names no ir.Func, and the only
 // record of what it may reach is the analysis the checker already ran.
 type offloadState struct {
-	n   int
-	pts *ir.PointsToInfo
+	n    int
+	args int
+	pts  *ir.PointsToInfo
 }
 
 func (st *offloadState) fresh() string {
 	name := "__async_off" + strconv.Itoa(st.n)
 	st.n++
+	return name
+}
+
+// freshArg names a temp bindArgs binds an argument to.
+func (st *offloadState) freshArg() string {
+	name := "__async_arg" + strconv.Itoa(st.args)
+	st.args++
 	return name
 }
 
@@ -417,6 +442,7 @@ func (st *offloadState) transform(block []ir.Stmt) ([]ir.Stmt, error) {
 		bg = append(bg, callStmt(AsyncDoIntrinsic, closure(post)))
 	}
 	out := append([]ir.Stmt(nil), block[:first]...)
+	out = append(out, st.bindArgs(block[first])...)
 	return append(out, callStmt(AsyncStartIntrinsic, closure(bg))), nil
 }
 
@@ -444,14 +470,14 @@ func (st *offloadState) split(s ir.Stmt) (bg, post []ir.Stmt, err error) {
 			Value:  &ir.Ident{Name: name, Type: t, Sym: sym, Synthesized: true},
 		}
 		return []ir.Stmt{tmp}, []ir.Stmt{back}, nil
-	case *ir.If, *ir.For:
+	case *ir.If, *ir.For, *ir.Match:
 		// The split is over one flat run of statements, and the branch a
 		// blocking call sits in is not that run: whether it happens at all is
 		// decided on the drawing thread, and hoisting the whole `if` onto the
 		// goroutine would move its condition -- and anything else in it -- off
 		// that thread with it. Saying so is the honest answer; saying "no
 		// answer to hand back" named the wrong thing entirely.
-		return nil, nil, fmt.Errorf("%s: this blocking call is inside an if or for, and only a call written directly in the body can be moved off the drawing thread -- lift it out, or put it in a function of its own marked as blocking", offloadPos(s))
+		return nil, nil, fmt.Errorf("%s: this blocking call is inside an if, a for or a match, and only a call written directly in the body can be moved off the drawing thread -- lift it out, or put it in a function of its own marked as blocking", offloadPos(s))
 	// An ir.Return is deliberately not here. An entry point returns nothing --
 	// that is what makes it one -- so a `return` in its body carries no value,
 	// and a case for one would be a branch no program can reach.
@@ -487,6 +513,15 @@ func (st *offloadState) stmtWaits(s ir.Stmt) bool {
 		return st.exprWaits(n.Value)
 	case *ir.If:
 		return st.exprWaits(n.Cond) || st.blockWaits(n.Body) || st.blockWaits(n.Else)
+	case *ir.Match:
+		if st.exprWaits(n.Subject) {
+			return true
+		}
+		for _, arm := range n.Arms {
+			if st.blockWaits(arm.Body) {
+				return true
+			}
+		}
 	case *ir.For:
 		return st.exprWaits(n.Iter) || st.blockWaits(n.Body) || st.blockWaits(n.Else)
 	}
@@ -495,6 +530,126 @@ func (st *offloadState) stmtWaits(s ir.Stmt) bool {
 
 func (st *offloadState) blockWaits(stmts []ir.Stmt) bool {
 	return slices.ContainsFunc(stmts, st.stmtWaits)
+}
+
+// callWaits is whether x itself waits -- a call of an async function, or
+// through a func value an async function may flow into -- leaving aside what
+// its operands wait on. A detached call starts its callee and waits on
+// nothing (ir.Call.Detached).
+func (st *offloadState) callWaits(x *ir.Call) bool {
+	if x.Detached {
+		return false
+	}
+	if x.Func != nil && x.Func.IsAsync || ir.CallsAsyncValue(x) {
+		return true
+	}
+	// A call through a funcvar names no ir.Func at all -- the callee is
+	// the variable -- so the flag is not there to read, and the answer is
+	// the slot colour the checker's points-to analysis left behind. Asking
+	// only for the flag left `greeting = handler()` on the drawing thread
+	// with no goroutine and no diagnostic, which is the exact failure the
+	// mark exists to prevent.
+	if x.Func == nil && x.Callee != nil && st.pts != nil {
+		if k, ok := ir.CalleeSlotKey(x.Callee); ok {
+			if colour, present := st.pts.SlotColor[k]; present {
+				if colour == ir.ColorAsync {
+					return true
+				}
+			} else {
+				for _, fn := range st.pts.Candidates(k) {
+					if fn.IsAsync {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+// bindArgs binds each argument of the calls s waits on to a temp declared
+// ahead of it, and returns those declarations: they run where the statement
+// was written, on the drawing thread, and the goroutine reads only the temps.
+// Read on the goroutine, an argument naming the program's state -- an effect's
+// key, which the next settle overwrites -- is a data race that may also read
+// the wrong value. An argument that itself waits stays, since it has to run on
+// the goroutine, and so does a constant.
+//
+// Only the first waiting statement is asked: a later one may read what an
+// earlier one answered.
+func (st *offloadState) bindArgs(s ir.Stmt) []ir.Stmt {
+	var root *ir.Expr
+	switch n := s.(type) {
+	case *ir.CallStmt:
+		e := ir.Expr(n.Call)
+		root = &e
+		defer func() { n.Call = e.(*ir.Call) }()
+	case *ir.Assign:
+		root = &n.Value
+	case *ir.LocalVar:
+		root = &n.Init
+	case *ir.Return:
+		root = &n.Value
+	default:
+		return nil
+	}
+	var pre []ir.Stmt
+	var visit func(e ir.Expr)
+	visit = func(e ir.Expr) {
+		c, ok := e.(*ir.Call)
+		if !ok {
+			switch x := e.(type) {
+			case *ir.Binary:
+				visit(x.Left)
+				visit(x.Right)
+			case *ir.Unary:
+				visit(x.Operand)
+			case *ir.Conversion:
+				visit(x.Operand)
+			case *ir.Select:
+				visit(x.Operand)
+			case *ir.StructLit:
+				for _, f := range x.Fields {
+					visit(f.Value)
+				}
+			}
+			return
+		}
+		if !st.callWaits(c) {
+			for _, a := range c.Args {
+				visit(a.Value)
+			}
+			return
+		}
+		// So is the value a call through a var calls: a prop's cell, which a
+		// setter on the drawing thread may write while the goroutine reads it.
+		if id, ok := c.Callee.(*ir.Ident); ok && c.Func == nil {
+			if _, isVar := id.Sym.(*ir.Var); isVar {
+				name := st.freshArg()
+				sym := &ir.Var{Name: name, Type: id.Type, Synthesized: true}
+				pre = append(pre, &ir.LocalVar{Name: name, Type: id.Type, Init: id, Sym: sym})
+				c.Callee = &ir.Ident{Name: name, Type: id.Type, Sym: sym, Synthesized: true}
+			}
+		}
+		for i, a := range c.Args {
+			if a.Value == nil || st.exprWaits(a.Value) || isConstLeaf(a.Value) {
+				continue
+			}
+			name := st.freshArg()
+			t := a.Value.ExprType()
+			sym := &ir.Var{Name: name, Type: t, Synthesized: true}
+			pre = append(pre, &ir.LocalVar{Name: name, Type: t, Init: a.Value, Sym: sym})
+			c.Args[i].Value = &ir.Ident{Name: name, Type: t, Sym: sym, Synthesized: true}
+		}
+	}
+	visit(*root)
+	return pre
+}
+
+// isConstLeaf is a value reading nothing: a literal.
+func isConstLeaf(e ir.Expr) bool {
+	_, ok := e.(*ir.Literal)
+	return ok
 }
 
 // exprWaits recurses by hand rather than through ir.Walk because it must stop
@@ -507,29 +662,8 @@ func (st *offloadState) exprWaits(e ir.Expr) bool {
 	case *ir.Lambda, *ir.Closure:
 		return false
 	case *ir.Call:
-		if x.Func != nil && x.Func.IsAsync {
+		if st.callWaits(x) {
 			return true
-		}
-		// A call through a funcvar names no ir.Func at all -- the callee is
-		// the variable -- so the flag is not there to read, and the answer is
-		// the slot colour the checker's points-to analysis left behind. Asking
-		// only for the flag left `greeting = handler()` on the drawing thread
-		// with no goroutine and no diagnostic, which is the exact failure the
-		// mark exists to prevent.
-		if x.Func == nil && x.Callee != nil && st.pts != nil {
-			if k, ok := ir.CalleeSlotKey(x.Callee); ok {
-				if colour, present := st.pts.SlotColor[k]; present {
-					if colour == ir.ColorAsync {
-						return true
-					}
-				} else {
-					for _, fn := range st.pts.Candidates(k) {
-						if fn.IsAsync {
-							return true
-						}
-					}
-				}
-			}
 		}
 		if st.exprWaits(x.Receiver) || st.exprWaits(x.Callee) {
 			return true
@@ -545,6 +679,15 @@ func (st *offloadState) exprWaits(e ir.Expr) bool {
 		return st.exprWaits(x.Operand)
 	case *ir.Ternary:
 		return st.exprWaits(x.Cond) || st.exprWaits(x.Then) || st.exprWaits(x.Else)
+	case *ir.MatchExpr:
+		if st.exprWaits(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if st.exprWaits(arm.Value) {
+				return true
+			}
+		}
 	case *ir.Conversion:
 		return st.exprWaits(x.Operand)
 	case *ir.Select:

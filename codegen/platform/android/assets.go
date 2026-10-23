@@ -17,14 +17,40 @@ import (
 //go:embed assets.kt
 var assetsKt string
 
-const assetImageIntrinsic = intrinsicNS + "SnglAssetImage"
+const (
+	assetImageIntrinsic  = intrinsicNS + "SnglAssetImage"
+	remoteImageIntrinsic = intrinsicNS + "SnglRemoteImage"
+	imageIntrinsic       = intrinsicNS + "SnglImage"
+)
 
-// usesAssets reports whether the program reads a picture out of the app's
-// assets: an image of a file, or a drawing, whose image shim can.
+// usesAssets reports whether the program shows a picture through SnglAssets:
+// an image, a file's or a URL's picture, or a drawing, whose image shim
+// reads the app's assets.
 func usesAssets(pkg *ir.Package) bool {
+	return reaches(pkg, func(n ir.Node) bool {
+		ni, ok := n.(*ir.NodeInst)
+		if !ok {
+			return false
+		}
+		if ir.IsShapeContainer(ni) {
+			return true
+		}
+		if ni.Component == nil {
+			return false
+		}
+		switch ni.Component.Intrinsic {
+		case assetImageIntrinsic, remoteImageIntrinsic, imageIntrinsic:
+			return true
+		}
+		return false
+	})
+}
+
+// reaches reports whether any node of pkg satisfies is.
+func reaches(pkg *ir.Package, is func(ir.Node) bool) bool {
 	found := false
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if ni, ok := n.(*ir.NodeInst); ok && (ir.IsShapeContainer(ni) || ni.Component != nil && ni.Component.Intrinsic == assetImageIntrinsic) {
+		if is(n) {
 			found = true
 			return ir.SkipAll
 		}

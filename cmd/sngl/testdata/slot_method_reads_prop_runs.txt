@@ -1,0 +1,203 @@
+# A loop over what a method returns, where the method reads a prop of its
+# component -- itself, or through a method it calls inside a lambda -- and the
+# component is spliced into one that hands the prop its own var. The slot
+# re-renders on what its iterable reads, which reactivity learns of a call from
+# the callee's Func.Reads, so it heard of neither: a prop is no var, and the
+# splice put the caller's var into the method's body without adding it there
+# (withSubstitutedReads); and a call inside a lambda in the method was not
+# followed (gatherFuncReads). Either way, writing the caller's var re-rendered
+# nothing and the card kept its old key.
+
+sngl test --platform=none app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component card(name string) ui.node {
+    var size option[int] = null
+    async.query(on=name, fetch=lookup, :value=size)
+    ui.text #len(value=size != null ? "{name} {size}" : name)
+}
+
+// Every fruit but the one chosen.
+component others(chosen = "") ui.node {
+    var all = ["blueberry", "fig"]
+
+    func rest() list[string] {
+        return all.filter(func(f string) => f != chosen)
+    }
+
+    for var n = rest() {
+        card #c(name=n)
+    }
+}
+
+// The same, the prop read by a method the lambda calls.
+component besides(chosen = "") ui.node {
+    var all = ["blueberry", "fig"]
+
+    func picked() => chosen != "" ? chosen : "fig"
+
+    func rest() list[string] {
+        return all.filter(func(f string) => f != picked())
+    }
+
+    for var n = rest() {
+        card #c(name=n)
+    }
+}
+
+component pick ui.node {
+    var chosen = "fig"
+
+    others #o(chosen=chosen)
+    ui.button #swap(text="Swap", @click { chosen = "blueberry" })
+}
+
+component pickAgain ui.node {
+    var chosen = ""
+
+    besides #o(chosen=chosen)
+    ui.button #swap(text="Swap", @click { chosen = "blueberry" })
+}
+
+func testTheRestFollowsTheProp(t test.Test, c pick) {
+    t.assert(c.o.c[0].len.value == "blueberry 9")
+    c.swap.click()
+    t.wait(func() => c.o.c[0].size == 3, 2000)
+    t.assert(c.o.c[0].len.value == "fig 3")
+}
+
+func testTheRestFollowsAMethodTheLambdaCalls(t test.Test, c pickAgain) {
+    t.assert(c.o.c[0].len.value == "blueberry 9")
+    c.swap.click()
+    t.wait(func() => c.o.c[0].size == 3, 2000)
+    t.assert(c.o.c[0].len.value == "fig 3")
+}
+
+ui.window {
+    pick()
+    pickAgain()
+}
+-- testrun/android/kotlin/app.sngl/pick/1 --
+sha256:8e56d66dd464fa02218779f831c795c1
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/pickAgain/1 --
+sha256:7798cb758c7d1732d0f877b43e8b5a17
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsAMethodTheLambdaCalls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/pick/1 --
+sha256:c2997e9f1a2ee29f8eeff87a9433037a
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/pickAgain/1 --
+sha256:ca86728d5d1d13d36aad6c3d74792ad9
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsAMethodTheLambdaCalls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pick/1 --
+sha256:10d9c56eee85e522148b77aec6c4e2cf
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pickAgain/1 --
+sha256:17c4e80a1d399eac5e41401144e8dc52
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsAMethodTheLambdaCalls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pick/1 --
+sha256:d9aca995b8d34fe78b3ec54f7b29e396
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pickAgain/1 --
+sha256:5fe34de499dea619d57ce5a3a925c153
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsAMethodTheLambdaCalls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pick/1 --
+sha256:ddb0553db7a1007626caa5de6a53742d
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsTheProp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pickAgain/1 --
+sha256:65a68fdfb5ac2657b83e576e8fb54686
+{
+  "results": [
+    {
+      "Desc": "TheRestFollowsAMethodTheLambdaCalls",
+      "Passed": true
+    }
+  ]
+}

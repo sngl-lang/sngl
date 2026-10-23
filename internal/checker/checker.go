@@ -321,8 +321,17 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.analyzeErrors()
 	c.analyzeAsync()
 	analyzePointsTo(c.pkg)
-	c.analyzeAsyncWithPointsTo()
+	// A slot coloured async makes a call through it async, which may make
+	// another function async and so colour another slot.
+	for {
+		c.analyzeAsyncWithPointsTo()
+		if !colorAsyncSlots(c.pkg.PointsTo) {
+			break
+		}
+		c.analyzeAsync()
+	}
 	c.checkAsyncRules()
+	c.checkOwnedDerived()
 	c.pkg.Symbols = c.symtab
 	// Last, because it needs every lib package loaded and every target's
 	// overrides merged.
@@ -342,6 +351,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// codecReported is the calls checkCodecCall has refused, since a
+	// component body is read twice.
+	codecReported map[ast.Pos]bool
 	// anyWritten collects where `any` is written as a type while a marked
 	// declaration is typed (holdAny), nil otherwise.
 	anyWritten *[]ast.Pos
@@ -386,6 +398,8 @@ type checker struct {
 	// so every macro a mark may name is registered by the time one runs.
 	// Non-nil only for that window.
 	pendingMarks *[]pendingMark
+	// ownedMarks are the #[owned] marks whose release is still to be judged.
+	ownedMarks []ownedMark
 
 	// curFileScope is the file whose imports are in scope, or nil outside any
 	// file (loading a library, checking synthesized IR).
@@ -425,6 +439,12 @@ type checker struct {
 	// bodyChecked is the components whose body pass2 has already walked. A
 	// body may register another as it is checked, so the walk is resumable.
 	bodyChecked map[*ir.Component]bool
+	// propDefaultsChecked is each component whose prop defaults are checked,
+	// ahead of its body where a call site above it needs their types.
+	propDefaultsChecked map[*ir.Component]bool
+	// afterPropDefaults is what waits on a prop's type that only its default
+	// gives: an override's restatement of it, held to it once it is known.
+	afterPropDefaults []func()
 	// lateOverrides is a program's overrides of a declaration the program
 	// also wrote, which checkBodyOnce checks after that declaration's body.
 	lateOverrides map[*ir.Component][]pendingExtension
@@ -537,6 +557,10 @@ type checker struct {
 	// matchSubjects are the match subjects read once per arm, judged once
 	// purity is known (reportImpureMatchSubjects).
 	matchSubjects []viewSpread
+	// matchBinds are the names `match var` gives where the arm reads off the
+	// subject in place of a local, so they may not be written (match.go's
+	// matchBind).
+	matchBinds map[*ir.Var]bool
 	// stmtCall is the call a call statement is about to check: the one call
 	// whose @error handler has a statement to be attached to.
 	stmtCall *ast.CallExpr
@@ -1505,7 +1529,12 @@ func (c *checker) pass1() {
 		doc  *ast.Document
 		decl *ast.ComponentDecl
 	}
+	type pendingEnum struct {
+		doc *ast.Document
+		ed  *ir.EnumDef
+	}
 	var structShells []pendingShell
+	var enumShells []pendingEnum
 	var pendingComponents []pendingComp
 	c.pendingMarks = &[]pendingMark{}
 	c.pendingInits = &[]pendingInit{}
@@ -1516,7 +1545,7 @@ func (c *checker) pass1() {
 			case *ast.StructDef:
 				structShells = append(structShells, pendingShell{d, c.registerStructShell(s)})
 			case *ast.EnumDef:
-				c.registerEnum(s)
+				enumShells = append(enumShells, pendingEnum{d, c.registerEnum(s)})
 			case *ast.UnitDef:
 				c.registerUnit(s)
 			case *ast.ComponentDecl:
@@ -1534,6 +1563,10 @@ func (c *checker) pass1() {
 	for _, p := range structShells {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
+	}
+	for _, p := range enumShells {
+		c.resumeFile(p.doc)
+		c.resolveEnumBody(p.ed)
 	}
 
 	for _, d := range c.docs {
@@ -2081,15 +2114,30 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	for _, v := range src.Consts {
 		c.mergeInto(declPos(v), dst.Symbols.Root, v)
 	}
+	// A context the package declared, and not one it adopted from its own
+	// imports: `p.server(url) { … }` provides it, and `p.server` reads it.
+	for _, ctx := range src.Contexts {
+		if ctx.Pkg != src || ctx.Name == "" {
+			continue
+		}
+		var pos ast.Pos
+		if ctx.AST != nil {
+			pos = ctx.AST.Pos
+		}
+		c.mergeInto(pos, dst.Symbols.Root, ctx)
+	}
 }
 
-func (c *checker) registerEnum(e *ast.EnumDef) {
+// registerEnum registers an enum's name and members; what a member carries
+// is resolved by resolveEnumBody once every type's shell exists.
+func (c *checker) registerEnum(e *ast.EnumDef) *ir.EnumDef {
 	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
 	c.applyMarks(e, ed)
 	c.declPkg().Enums = append(c.declPkg().Enums, ed)
 	c.bindDeclared(claimed, ed)
-	c.registerNestedMethods(ed.Name, nil, e.Funcs())
+	c.registerNestedMethods(ed.Name, e.TypeParams, e.Funcs())
+	return ed
 }
 
 // registerStructShell registers a struct's name and type parameters without
@@ -2170,7 +2218,8 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 		c.applyMarks(s, ed)
 		c.declPkg().Enums = append(c.declPkg().Enums, ed)
 		c.declare(s.Pos, ed)
-		c.registerNestedMethods(ed.Name, nil, s.Funcs())
+		c.resolveEnumBody(ed)
+		c.registerNestedMethods(ed.Name, s.TypeParams, s.Funcs())
 		return ed
 	case *ast.UnitDef:
 		ud := c.buildUnitDef(s)
@@ -3502,6 +3551,9 @@ func (c *checker) checkPackageBody() {
 	c.pushScope()
 	defer c.popScope()
 	for _, st := range c.pendingPkgBody {
+		inStmtFile(c, st, func() { c.preSpecializeHandles(st, true) })
+	}
+	for _, st := range c.pendingPkgBody {
 		inStmtFile(c, st, func() {
 			if checked := c.checkStmt(st); checked != nil {
 				c.pkg.Body = append(c.pkg.Body, checked)
@@ -3819,6 +3871,7 @@ func (c *checker) pass2() {
 	c.checkGenSchemes()
 	c.checkCLinks()
 	c.reportUnlinkedCNativeCalls()
+	c.checkOwnedReleases()
 
 	// Every body has now been read, which is what a family read off one waits
 	// for -- and every membership check waits for that in turn. A library
@@ -3826,6 +3879,7 @@ func (c *checker) pass2() {
 	c.inferComponentFamilies()
 
 	c.finishDeclarations(c.pkg)
+	c.refuseBuilderState()
 }
 
 // hasDeclaredBody reports whether fn has a body of its own to analyze: one
@@ -4201,6 +4255,15 @@ func stmtAlwaysReturns(s ir.Stmt) bool {
 	case *ir.If:
 		// An if terminates only when it has an else and both arms terminate.
 		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
+	case *ir.Match:
+		// A checked match takes one of its arms, so it terminates when each
+		// does.
+		for _, arm := range n.Arms {
+			if !blockAlwaysReturns(arm.Body) {
+				return false
+			}
+		}
+		return len(n.Arms) > 0
 	case *ir.For:
 		// A loop with no condition never falls out of the bottom, so the only
 		// way past it is a `break` -- and without one, the statement after it
@@ -4245,9 +4308,9 @@ func loopEscapes(stmts []ir.Stmt) (breaks, continues bool) {
 			breaks = true
 		case *ir.Continue:
 			continues = true
-		case *ir.If:
-			for _, block := range [][]ir.Stmt{n.Body, n.Else} {
-				b, c := loopEscapes(block)
+		case *ir.If, *ir.Match:
+			for _, block := range ir.TransparentBlocks(n) {
+				b, c := loopEscapes(*block)
 				breaks, continues = breaks || b, continues || c
 			}
 		case *ir.For:
@@ -4391,6 +4454,15 @@ func (c *checker) noteBodyOwner(owner *ir.Component, sym ir.Symbol) {
 // checkComponentBodies checks every component body in the package, including
 // one registered mid-walk -- a range would snapshot pkg.Components' length.
 func (c *checker) checkComponentBodies(pkg *ir.Package) {
+	for _, comp := range pkg.Components {
+		if !strings.Contains(comp.Name, ".") {
+			c.ensurePropDefaults(comp)
+		}
+	}
+	for _, f := range c.afterPropDefaults {
+		f()
+	}
+	c.afterPropDefaults = nil
 	for i := 0; i < len(pkg.Components); i++ {
 		// A dotted name is an extension declaration, `component sngl.X`:
 		// mergePlatformExtensions splices its blocks into the component it
@@ -4400,6 +4472,94 @@ func (c *checker) checkComponentBodies(pkg *ir.Package) {
 		}
 		c.checkBodyOnce(pkg.Components[i])
 	}
+}
+
+// checkPropDefaults checks comp's prop defaults against what each prop takes
+// under declBindings, and gives an unannotated prop the type of its default.
+func (c *checker) checkPropDefaults(comp *ir.Component, declBindings map[string]*ir.Type) {
+	if c.propDefaultsChecked == nil {
+		c.propDefaultsChecked = map[*ir.Component]bool{}
+	}
+	c.propDefaultsChecked[comp] = true
+	// param entry we declare below picks up the inferred type.
+	if comp.AST != nil {
+		// Matched by name: an override's copy holds only the props its list
+		// selected, and a slot is a Param too without being a prop.
+		byName := make(map[string]*ir.Prop, len(comp.Props))
+		for _, p := range comp.Props {
+			byName[p.Name] = p
+		}
+		for _, p := range comp.AST.Props.Props {
+			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
+				// A default is the declaration's, written in its file against
+				// its imports. An override installed on the declaration has
+				// no business reading it again from the override's file, where
+				// `task Task = Task.none` names a type nothing there imports;
+				// once the declaration's own check has set it, it stands.
+				prop := byName[pd.Name]
+				if prop != nil && pd.Default != nil && !(c.installedOverride == comp && prop.Default != nil) {
+					// A default states a value of what the prop takes here,
+					// which for `on T = 0` under `<T = int>` is an int. A
+					// parameter with no default of its own leaves the prop type
+					// standing, and then the declaration says nothing the
+					// default could disagree with.
+					want := prop.Type.Substitute(declBindings)
+					// `T{}` is the zero of whatever T is bound to, the default
+					// T's own default makes it here included.
+					s := defaultSlot(comp.AST.Pos)
+					s.accept = func(val ir.Expr, _ *ir.Type) bool { return typeParamZero(val) }
+					prop.Default = c.checkExprAs(pd.Default, want, s)
+					if prop.Const {
+						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
+					}
+					// A family's default is what every member omitting the
+					// prop holds, and no call site sets it.
+					if comp.IsFamily() {
+						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, fmt.Sprintf("the default of %s's prop %q", comp.Name, prop.Name))
+						c.inheritDefault(prop)
+					}
+					initType := exprType(prop.Default)
+					if pd.Type == nil && initType.Kind != ir.TypeInvalid && initType.Kind != ir.TypeVoid {
+						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
+					}
+				}
+			}
+		}
+	}
+}
+
+// ensurePropDefaults types comp's unannotated props from their defaults
+// before any body is checked, in the scope comp's own body check gives them.
+// A prop typed by its default is typed: a call site gives it what it gives an
+// annotated one, a struct literal its type included, wherever the component
+// is declared -- `box(style={fontWeight=bold})` above `component box(style =
+// ui.Style{})` read `bold` as a name of its own.
+func (c *checker) ensurePropDefaults(comp *ir.Component) {
+	if c.propDefaultsChecked[comp] || comp.AST == nil || !hasUntypedDefault(comp.AST) {
+		return
+	}
+	defer c.fileOf(c.bodyFilePos(comp))()
+	c.scope = ir.NewScope(c.scope)
+	defer c.popScope()
+	prevComp, prevScope := c.currentComponent, c.componentScope
+	c.currentComponent, c.componentScope = comp, c.scope
+	defer func() { c.currentComponent, c.componentScope = prevComp, prevScope }()
+	c.declareEnclosingBody(comp)
+	if len(comp.TypeParams) > 0 {
+		defer pushTypeParams(c, comp.TypeParams)()
+	}
+	c.checkPropDefaults(comp, declTypeBindings(comp))
+}
+
+// hasUntypedDefault reports whether a component declares a prop whose type
+// only its default gives.
+func hasUntypedDefault(comp *ast.ComponentDecl) bool {
+	for _, p := range comp.Props.Props {
+		if pd, ok := p.(ast.Param); ok && !pd.IsSlot() && pd.Type == nil && pd.Default != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // checkBodyOnce checks comp's body, and the body that declared it first: an
@@ -4526,50 +4686,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 	// Check prop defaults first (before declaring props as params in scope) so
 	// that an unannotated prop's type can be inferred from its default and the
-	// param entry we declare below picks up the inferred type.
-	if comp.AST != nil {
-		// Matched by name: an override's copy holds only the props its list
-		// selected, and a slot is a Param too without being a prop.
-		byName := make(map[string]*ir.Prop, len(comp.Props))
-		for _, p := range comp.Props {
-			byName[p.Name] = p
-		}
-		for _, p := range comp.AST.Props.Props {
-			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
-				// A default is the declaration's, written in its file against
-				// its imports. An override installed on the declaration has
-				// no business reading it again from the override's file, where
-				// `task Task = Task.none` names a type nothing there imports;
-				// once the declaration's own check has set it, it stands.
-				prop := byName[pd.Name]
-				if prop != nil && pd.Default != nil && !(c.installedOverride == comp && prop.Default != nil) {
-					// A default states a value of what the prop takes here,
-					// which for `on T = 0` under `<T = int>` is an int. A
-					// parameter with no default of its own leaves the prop type
-					// standing, and then the declaration says nothing the
-					// default could disagree with.
-					want := prop.Type.Substitute(declBindings)
-					// `T{}` is the zero of whatever T is bound to, the default
-					// T's own default makes it here included.
-					s := defaultSlot(comp.AST.Pos)
-					s.accept = func(val ir.Expr, _ *ir.Type) bool { return typeParamZero(val) }
-					prop.Default = c.checkExprAs(pd.Default, want, s)
-					if prop.Const {
-						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
-					}
-					// A family's default is what every member omitting the
-					// prop holds, and no call site sets it.
-					if comp.IsFamily() {
-						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, fmt.Sprintf("the default of %s's prop %q", comp.Name, prop.Name))
-						c.inheritDefault(prop)
-					}
-					initType := exprType(prop.Default)
-					if pd.Type == nil && initType.Kind != ir.TypeInvalid && initType.Kind != ir.TypeVoid {
-						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
-					}
-				}
-			}
-		}
+	// param entry we declare below picks up the inferred type. A component a
+	// call site above it names had them checked ahead (ensurePropDefaults).
+	if !c.propDefaultsChecked[comp] {
+		c.checkPropDefaults(comp, declBindings)
 	}
 
 	// Declare props as params now that any default-driven type inference has
@@ -4618,6 +4738,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			case *ast.VarDecl:
 				c.checkComponentVars(s, comp)
 			}
+		}
+		// With the vars typed, so a prop reading one binds.
+		for _, stmt := range comp.AST.Body.Stmts {
+			c.preSpecializeHandles(stmt, true)
 		}
 	}
 
@@ -4760,20 +4884,20 @@ func (c *checker) declareOwnNodeIDs(block *ast.StmtBlock, headNames ...string) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
-	declared := blockDeclaredNames(block)
+	heads := map[string]bool{}
 	for _, n := range headNames {
-		if n == "" {
-			continue
+		if n != "" {
+			heads[n] = true
 		}
-		if declared == nil {
-			declared = map[string]bool{}
-		}
-		declared[n] = true
 	}
-	c.declareOwnNodeIDsIn(block, declared)
+	c.declareOwnNodeIDsIn(block, heads, blockDeclaredNames(block))
 }
 
-func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]bool) {
+// declareOwnNodeIDsIn re-binds each id in block's scope, where it reads as
+// the plain handle rather than the counted one the component scope holds. A
+// head, and a name the block itself declares, are closer than the component
+// scope the id belongs to, and shadow it there as they would any outer name.
+func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, heads, declared map[string]bool) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
@@ -4781,8 +4905,8 @@ func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]
 		switch n := s.(type) {
 		case *ast.VisualNode:
 			target := visualNodeTarget(n)
-			if !declared[n.ID] {
-				c.declareNodeID(n.ID, target, nil, shadowOuter)
+			if !heads[n.ID] && !declared[n.ID] {
+				c.declareNodeID(n.ID, target, n.Pos, nil)
 			}
 			// Through a canvas as through anything else. Stopping at a family
 			// change here while declareNodeIDsStmt no longer does left an id
@@ -4790,24 +4914,18 @@ func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]
 			// at the outer scope and never re-declared in the `if`'s own -- so
 			// a read from inside that same `if` was told to "read it inside
 			// the if", which is where it already was.
-			c.declareOwnNodeIDsIn(&n.Block, declared)
+			c.declareOwnNodeIDsIn(&n.Block, heads, declared)
 		case *ast.CallStmt:
-			if target, id, isElem := elementRefCallInfo(n.Call); isElem && !declared[id] {
-				c.declareNodeID(id, target, nil, shadowOuter)
+			if target, id, isElem := elementRefCallInfo(n.Call); isElem && !heads[id] && !declared[id] {
+				c.declareNodeID(id, target, n.Pos, nil)
 			}
 		}
 	}
 }
 
-// blockDeclaredNames is the names this block's own statements declare. A node
-// id written beside one of them declines to it, which is the rule a same-scope
-// `var label` beside a `#label` has always had: the hoist runs before the
-// statements are checked, so measuring the scope would find nothing there yet
-// and the var would then collide with the id rather than win over it.
-//
-// Only this block's own statements, not a nested one's: an id inside an `if`
-// is in a scope of its own and shadows an outer binding, which is the whole
-// point of hoisting it there.
+// blockDeclaredNames is the names this block's own statements declare, read
+// before they are checked: the re-binding runs first, so measuring the scope
+// would find nothing there yet.
 func blockDeclaredNames(block *ast.StmtBlock) map[string]bool {
 	if block == nil || !block.IsDefined() {
 		return nil
@@ -4853,7 +4971,7 @@ func blockDeclaredNames(block *ast.StmtBlock) map[string]bool {
 func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
-		c.declareNodeID(n.ID, visualNodeTarget(n), counts, yieldToOuter)
+		c.declareNodeID(n.ID, visualNodeTarget(n), n.Pos, counts)
 		// What a node's block renders hoists at the node's own count, whatever
 		// family it is: a window's body as a vbox's. A canvas used to stop the
 		// hoist outright, because a shape is spliced into the calls that paint
@@ -4868,7 +4986,7 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
 		if target, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id, target, counts, yieldToOuter)
+			c.declareNodeID(id, target, n.Pos, counts)
 		}
 	case *ast.IfStmt:
 		c.declareNodeIDsIn(&n.Body, withCount(counts, countOption))
@@ -4892,50 +5010,30 @@ func countsRepeat(counts []nodeCount) bool {
 	return slices.Contains(counts, countList)
 }
 
-// declareNodeID binds one node id. target names the component the node
-// instantiates.
-// idMode says what a node id may take the name from, and the two hoists differ
-// because they put the binding in different places.
+// declareNodeID binds one node id, as any declaration binds its name: hoisted
+// to the scope of the component (or window) it is written in, where it
+// shadows whatever an enclosing scope bound -- a package's `component card`
+// beside `card #card`, a package func beside `button #bump`. target names the
+// component the node instantiates.
 //
-// shadowOuter is the id in the scope it was written in: it is lexically here,
-// so it wins over anything an enclosing scope bound -- a var, a const, a
-// package declaration -- exactly as a nested binding of any other kind does.
-// What it declines to is a name this same block declares (blockDeclaredNames),
-// which is the sibling `var label` beside `#label` that has always won.
-//
-// yieldToOuter is the counted hoist, which puts the id in a scope the node is
-// *not* in so that a read from out there carries the scope's count. That
-// binding exists only to be refused, so it must not take a name an outer scope
-// legitimately holds: `#greeting` inside an `if` may not stop a package
-// `const greeting` resolving out here, where the node is not.
-type idMode int
-
-const (
-	shadowOuter idMode = iota
-	yieldToOuter
-)
-
-func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMode) {
+// Another declaration of the name in that same scope -- a var, a prop, a
+// method -- is a redeclaration. The same id written again is the one handle,
+// which a node reading it may not be rendered twice (see design/nodes.md).
+func (c *checker) declareNodeID(id, target string, pos ast.Pos, counts []nodeCount) {
 	if id == "" {
 		return
 	}
-	if _, ok := c.scope.LookupLocal(id); ok {
+	if sym, ok := c.scope.LookupLocal(id); ok {
+		if v, isVar := sym.(*ir.Var); !isVar || !v.NodeHandle {
+			c.reportNodeIDRedeclared(id, pos, declPos(sym))
+		}
 		return
 	}
-	if sym, ok := c.scope.Lookup(id); ok && mode == yieldToOuter {
-		// The one thing a counted hoist still shadows is a node handle an
-		// enclosing scope bound, which is this same id hoisted at a shallower
-		// count.
-		v, isVar := sym.(*ir.Var)
-		if !isVar || !v.NodeHandle {
-			return
-		}
-	}
-	// A component's methods are registered under the component as receiver, not
-	// in scope by bare name: inferIdent reaches them only when the scope lookup
-	// misses. So `button #bump` beside `func bump()` would shadow the method.
+	// A component's methods are registered under the component as receiver,
+	// not in scope by bare name, so the scope does not see them.
 	if c.currentComponent != nil {
-		if _, ok := c.lookupBodyMethod(id); ok {
+		if fn, ok := c.lookupBodyMethod(id); ok {
+			c.reportNodeIDRedeclared(id, pos, funcDeclPos(fn))
 			return
 		}
 	}
@@ -4951,7 +5049,15 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 		}
 		c.handleCount[v] = counts[0]
 	}
-	c.declare(ast.Pos{}, v)
+	c.declare(pos, v)
+}
+
+func (c *checker) reportNodeIDRedeclared(id string, pos, prev ast.Pos) {
+	if prev.Line > 0 {
+		c.error(pos, "%q redeclared in this component (previous declaration at %s)", id, prev)
+		return
+	}
+	c.error(pos, "%q redeclared in this component", id)
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
@@ -4989,7 +5095,8 @@ func (c *checker) componentNamed(target string) *ir.Component {
 	}
 	pkg, name, qualified := strings.Cut(target, ".")
 	if !qualified {
-		if sym, ok := c.scope.Lookup(target); ok {
+		// A node position names a component, past an id of the same name.
+		if sym, ok := c.scope.LookupComponent(target); ok {
 			comp, _ := sym.(*ir.Component)
 			return comp
 		}

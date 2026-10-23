@@ -13,7 +13,7 @@ import (
 // Nothing refused it, and each consumer that met one grew a guard of its own
 // instead: `optimize.evalCtx.foldingProp` leaves such a prop standing so the
 // fold terminates, which is a page emitted with no <title> and nothing said.
-// CLAUDE.md names that guard, and the sibling `const a int = a`, as the
+// design/windows.md names that guard, and the sibling `const a int = a`, as the
 // survivable answer rather than the right one; this is the right one for the
 // half a node's id covers. The const case is a scope of its own and is
 // untouched.

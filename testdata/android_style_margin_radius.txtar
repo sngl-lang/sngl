@@ -291,13 +291,13 @@ fun MainScreen() {
             }
         }
         Column(modifier = styleModifier(Style(margin = Measurement(px = 12.0), borderRadius = Measurement(px = 6.0)), true).safeDrawingPadding()) {
-            Text(text = "literal", modifier = styleModifier(Style(margin = Measurement(px = 4.0), borderRadius = Measurement(px = 2.0), flex = 1.0), true).then(Modifier.weight(1.0f).fillMaxWidth()), style = LocalTextStyle.current.merge(TextStyle.Default))
-            Button(onClick = {}, modifier = (if ((held.flex == 0.0)) (if ((held == Style())) Modifier else styleModifier(held, false)) else (if ((held == Style())) Modifier else styleModifier(held, false)).then(Modifier.weight(held.flex.toFloat()).fillMaxWidth())), colors = ButtonDefaults.buttonColors(containerColor = (if ((held.background == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.background.r.toInt(), green = held.background.g.toInt(), blue = held.background.b.toInt(), alpha = held.background.a.toInt())), contentColor = (if ((held.color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.color.r.toInt(), green = held.color.g.toInt(), blue = held.color.b.toInt(), alpha = held.color.a.toInt()))), shape = (if ((held.borderRadius == Measurement(px = 0.0))) CircleShape else RoundedCornerShape(Dp((held.borderRadius.px + (16.0 * (held.borderRadius.em + held.borderRadius.rem))).toFloat())))) {
+            Text(text = "literal", modifier = styleModifier(Style(margin = Measurement(px = 4.0), borderRadius = Measurement(px = 2.0), flex = 1.0), true).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(1.0f)), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Button(onClick = {}, modifier = (if ((held.flex == 0.0)) (if ((held == Style())) Modifier else styleModifier(held, false)) else (if ((held == Style())) Modifier else styleModifier(held, false)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(held.flex.toFloat()))), colors = ButtonDefaults.buttonColors(containerColor = (if ((held.background == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.background.r.toInt(), green = held.background.g.toInt(), blue = held.background.b.toInt(), alpha = held.background.a.toInt())), contentColor = (if ((held.color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = held.color.r.toInt(), green = held.color.g.toInt(), blue = held.color.b.toInt(), alpha = held.color.a.toInt()))), shape = (if ((held.borderRadius == Measurement(px = 0.0))) CircleShape else RoundedCornerShape(Dp((held.borderRadius.px + (16.0 * (held.borderRadius.em + held.borderRadius.rem))).toFloat())))) {
                 Text(text = "held", modifier = Modifier)
             }
             Text(text = "prop", modifier = styleModifier(Style(margin = Measurement(px = 3.0), borderRadius = Measurement(px = 5.0)), true), style = LocalTextStyle.current.merge(TextStyle.Default))
             Row(modifier = Modifier) {
-                Text(text = "row", modifier = styleModifier(Style(flex = 2.0), true).then(Modifier.weight(2.0f).fillMaxHeight()), style = LocalTextStyle.current.merge(TextStyle.Default))
+                Text(text = "row", modifier = styleModifier(Style(flex = 2.0), true).then({ w: Float -> Modifier.weight(w).fillMaxHeight() }(2.0f)), style = LocalTextStyle.current.merge(TextStyle.Default))
                 for (l in listOf("a", "b")) {
                     Tally(label = l, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxHeight() })
                 }
@@ -366,4 +366,4 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     return m
 }
 -- run/kotlin/android --
-pass sha256:d146e070c5629f55319190d6e43b7064
+pass sha256:dcdc912cfc12e80b06e4a6562082f640

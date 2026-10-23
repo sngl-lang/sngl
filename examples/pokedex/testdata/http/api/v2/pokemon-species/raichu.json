@@ -1,0 +1,463 @@
+{
+ "base_happiness": 70,
+ "capture_rate": 75,
+ "color": {
+  "name": "yellow",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-color/10/"
+ },
+ "egg_groups": [
+  {
+   "name": "ground",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/5/"
+  },
+  {
+   "name": "fairy",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/egg-group/6/"
+  }
+ ],
+ "evolution_chain": {
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/evolution-chain/10/"
+ },
+ "evolves_from_species": {
+  "name": "pikachu",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/25/"
+ },
+ "flavor_text_entries": [
+  {
+   "flavor_text": "Its long tail\nserves as a\nground to protect\fitself from its\nown high voltage\npower.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "red",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/1/"
+   }
+  },
+  {
+   "flavor_text": "Il se protège des décharges grâce\nà sa queue qui dissipe l’électricité\ndans le sol.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "black",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/17/"
+   }
+  },
+  {
+   "flavor_text": "でんきが　たまってくると\nきんにくが　しげきされ　いつもより\nこうげきてきに　なってしまう。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Wenn es sich auflädt, zucken seine Muskeln\nund es wird aggressiver und kampflustiger.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "Cuando se carga de electricidad, sus músculos se\ntensan y se vuelve más agresivo de lo normal.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "電気が　たまってくると\n筋肉が　刺激され\nいつもより　攻撃的に　なってしまう。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/23/"
+   }
+  },
+  {
+   "flavor_text": "でんきぶくろが　からっぽに　なると\nしっぽを　まっすぐ　たてて\nくうきちゅうの　でんきを　あつめる。",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Si ses joues sont à court d’énergie, il lève la queue\net capte l’électricité contenue dans l’atmosphère.",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Wenn der in seinen Backentaschen gespeicherte\nStrom leer ist, stellt es seinen Schweif auf, um\nElektrizität aus der Luft zu ziehen.",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "Cuando ha descargado las bolsas de las mejillas,\nlevanta la cola y absorbe la carga eléctrica que\nhay en el ambiente.",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "電気袋が　空っぽに　なると\nしっぽを　まっすぐ　立てて\n空気中の　電気を　集める。",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "version": {
+    "name": "shield",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/34/"
+   }
+  },
+  {
+   "flavor_text": "It can discharge bursts of electricity exceeding 100,000 volts—\na single strike with that amount of power would incapacitate one\nof the Copperajah of my homeland.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "version": {
+    "name": "legends-arceus",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/39/"
+   }
+  }
+ ],
+ "form_descriptions": [],
+ "forms_switchable": false,
+ "gender_rate": 4,
+ "genera": [
+  {
+   "genus": "ねずみポケモン",
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   }
+  },
+  {
+   "genus": "Pokémon Souris",
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   }
+  },
+  {
+   "genus": "Maus-Pokémon",
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   }
+  },
+  {
+   "genus": "Pokémon Ratón",
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   }
+  },
+  {
+   "genus": "Mouse Pokémon",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   }
+  },
+  {
+   "genus": "ねずみポケモン",
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-i",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/1/"
+ },
+ "growth_rate": {
+  "name": "medium",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/growth-rate/2/"
+ },
+ "habitat": {
+  "name": "forest",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-habitat/2/"
+ },
+ "has_gender_differences": true,
+ "hatch_counter": 10,
+ "id": 26,
+ "is_baby": false,
+ "is_legendary": false,
+ "is_mythical": false,
+ "name": "raichu",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ライチュウ"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Raichu"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Raichu"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Raichu"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Raichu"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "ライチュウ"
+  }
+ ],
+ "order": 27,
+ "pal_park_encounters": [
+  {
+   "area": {
+    "name": "forest",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pal-park-area/1/"
+   },
+   "base_score": 90,
+   "rate": 3
+  }
+ ],
+ "pokedex_numbers": [
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "national",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/1/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/2/"
+   }
+  },
+  {
+   "entry_number": 23,
+   "pokedex": {
+    "name": "original-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/3/"
+   }
+  },
+  {
+   "entry_number": 157,
+   "pokedex": {
+    "name": "hoenn",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/4/"
+   }
+  },
+  {
+   "entry_number": 105,
+   "pokedex": {
+    "name": "original-sinnoh",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/5/"
+   }
+  },
+  {
+   "entry_number": 105,
+   "pokedex": {
+    "name": "extended-sinnoh",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/6/"
+   }
+  },
+  {
+   "entry_number": 23,
+   "pokedex": {
+    "name": "updated-johto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/7/"
+   }
+  },
+  {
+   "entry_number": 17,
+   "pokedex": {
+    "name": "conquest-gallery",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/11/"
+   }
+  },
+  {
+   "entry_number": 37,
+   "pokedex": {
+    "name": "kalos-central",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/12/"
+   }
+  },
+  {
+   "entry_number": 164,
+   "pokedex": {
+    "name": "updated-hoenn",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/15/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "original-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/16/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "original-melemele",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/17/"
+   }
+  },
+  {
+   "entry_number": 33,
+   "pokedex": {
+    "name": "updated-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/21/"
+   }
+  },
+  {
+   "entry_number": 33,
+   "pokedex": {
+    "name": "updated-melemele",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/22/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "letsgo-kanto",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/26/"
+   }
+  },
+  {
+   "entry_number": 195,
+   "pokedex": {
+    "name": "galar",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/27/"
+   }
+  },
+  {
+   "entry_number": 86,
+   "pokedex": {
+    "name": "isle-of-armor",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/28/"
+   }
+  },
+  {
+   "entry_number": 57,
+   "pokedex": {
+    "name": "hisui",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/30/"
+   }
+  },
+  {
+   "entry_number": 75,
+   "pokedex": {
+    "name": "paldea",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/31/"
+   }
+  },
+  {
+   "entry_number": 22,
+   "pokedex": {
+    "name": "kitakami",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/32/"
+   }
+  },
+  {
+   "entry_number": 54,
+   "pokedex": {
+    "name": "lumiose-city",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/34/"
+   }
+  },
+  {
+   "entry_number": 26,
+   "pokedex": {
+    "name": "champions",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokedex/36/"
+   }
+  }
+ ],
+ "shape": {
+  "name": "upright",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-shape/6/"
+ },
+ "varieties": [
+  {
+   "is_default": true,
+   "pokemon": {
+    "name": "raichu",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/26/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "raichu-alola",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10100/"
+   }
+  },
+  {
+   "is_default": false,
+   "pokemon": {
+    "name": "raichu-mega-x",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10304/"
+   }
+  }
+ ]
+}

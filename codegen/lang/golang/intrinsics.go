@@ -69,6 +69,21 @@ func init() {
 	regImp("math.atan", []string{"math"}, func(a []string) string { return "math.Atan(" + a[0] + ")" })
 	regImp("math.atan2", []string{"math"}, func(a []string) string { return "math.Atan2(" + a[0] + ", " + a[1] + ")" })
 
+	// --- builder ---
+	// A builder is a []byte, added to in place: append reassigns the
+	// receiver, as list.push does. `line()` arrives with no argument, since
+	// an intrinsic's defaults are not written into its calls.
+	reg(ir.BuilderAdd, func(a []string) string {
+		return a[0] + " = append(" + a[0] + ", " + a[1] + "...)"
+	})
+	reg(ir.BuilderLine, func(a []string) string {
+		if len(a) < 2 {
+			return a[0] + " = append(" + a[0] + ", '\\n')"
+		}
+		return a[0] + " = append(append(" + a[0] + ", " + a[1] + "...), '\\n')"
+	})
+	reg(ir.BuilderString, func(a []string) string { return "string(" + a[0] + ")" })
+
 	// --- list ---
 	reg("list.length", func(a []string) string { return "len(" + a[0] + ")" })
 

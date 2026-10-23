@@ -21,6 +21,7 @@ const (
 	ktCanvas = "androidx.compose.foundation.Canvas"
 
 	ktColumn             = ktLayout + "Column"
+	ktArrangement        = ktLayout + "Arrangement"
 	ktAspectRatio        = ktLayout + "aspectRatio"
 	ktFillMaxWidth       = ktLayout + "fillMaxWidth"
 	ktSafeDrawingPadding = ktLayout + "safeDrawingPadding"
@@ -41,6 +42,7 @@ const (
 	ktToMutableStateList = ktRT + "toMutableStateList"
 
 	ktModifier      = ktUI + "Modifier"
+	ktAlignment     = ktUI + "Alignment"
 	ktComposed      = ktUI + "composed"
 	ktColor         = ktUI + "graphics.Color"
 	ktTestTag       = ktUI + "platform.testTag"

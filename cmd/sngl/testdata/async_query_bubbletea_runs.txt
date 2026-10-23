@@ -1,0 +1,178 @@
+# bubbletea answers async.do by posting the closure back through Update
+# (#272), so a query whose fetch waits runs there: the wait is on a goroutine,
+# and what the mount writes after it lands in the Model the loop owns. The
+# latest attempt wins and an unmounted query's answer lands nowhere, as on
+# every other target.
+#
+# A query in a component built per copy of a loop -- a card per row -- keeps
+# its state in a cell per copy, and its effect is keyed on the pair of the
+# copy and its own key, so each row asks for its own and a row whose key
+# changes asks again. A fetch that answers at once keeps the mount's writes in
+# one function, where the two writes of `pending` -- each a copy of the
+# write the wrapper of query's unbound props rewrote -- once declared one
+# temporary twice.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import . "sngl:test"
+import . "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("time", "time.Sleep")]
+#[go.async]
+func sleep(ns int)
+
+// A slow name answers after the quick one asked behind it.
+func lookup(name string) async.Result[int] {
+    if name == "slow" {
+        sleep(400000000)
+    } else {
+        sleep(10000000)
+    }
+    return {ok=name.length()}
+}
+
+component detail node {
+    var name = "apricot"
+    var length option[int] = null
+    var loading = false
+    async.query(on=name, fetch=lookup, :value=length, :pending=loading)
+    button #fig(text="fig", @click { name = "fig" })
+    button #slow(text="slow", @click { name = "slow" })
+}
+
+component dropped node {
+    var shown = true
+    var answer option[int] = null
+    if shown {
+        async.query(on="slow", fetch=lookup, :value=answer)
+    }
+    button #hide(text="hide", @click { shown = false })
+}
+
+func testAnswerArrives(t Test, c detail) {
+    t.assert(c.loading)
+    t.wait(func() => c.length != null, 5000)
+    t.assert(c.length == 7)
+    t.assert(!c.loading)
+}
+
+func testLatestWins(t Test, c detail) {
+    c.slow.click()
+    c.fig.click()
+    t.wait(func() => c.length == 3, 5000)
+    t.wait(func() => false, 800)
+    t.assert(c.length == 3)
+}
+
+component row(name string) node {
+    var length option[int] = null
+    async.query(on=name, fetch=lookup, :value=length)
+    button #pick(text=name, @click { picked = length != null ? length : -1 })
+}
+
+var picked = 0
+
+component rows node {
+    var names = ["fig", "apricot"]
+    for var n = names {
+        row #r(name=n)
+    }
+    button #swap(text="swap", @click { names = ["grape", "fig"] })
+}
+
+func testEachRowAsksForItsOwn(t Test, c rows) {
+    t.wait(func() => false, 300)
+    c.r[0].pick.click()
+    t.assert(picked == 3)
+    c.r[1].pick.click()
+    t.assert(picked == 7)
+    c.swap.click()
+    t.wait(func() => false, 300)
+    c.r[0].pick.click()
+    t.assert(picked == 5)
+    c.r[1].pick.click()
+    t.assert(picked == 3)
+}
+
+func quick(name string) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component quickRow(name string) node {
+    var length option[int] = null
+    async.query(on=name, fetch=quick, :value=length)
+    button #pick(text=name, @click { picked = length != null ? length : -1 })
+}
+
+component quickRows node {
+    var names = ["fig", "apricot"]
+    for var n = names {
+        quickRow #r(name=n)
+    }
+}
+
+func testEachRowAnswersAtOnce(t Test, c quickRows) {
+    c.r[1].pick.click()
+    t.assert(picked == 7)
+}
+
+func testUnmountDrops(t Test, c dropped) {
+    c.hide.click()
+    t.wait(func() => false, 800)
+    t.assert(c.answer == null)
+}
+
+window {
+    detail
+    dropped
+    rows
+    quickRows
+}
+-- testrun/bubbletea/go/app.sngl/detail/1 --
+sha256:68cde2ec8f32176898c915429fd5762f
+{
+  "results": [
+    {
+      "Desc": "AnswerArrives",
+      "Passed": true
+    },
+    {
+      "Desc": "LatestWins",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/dropped/1 --
+sha256:4e77ed1c79247dc617660f05ccf11593
+{
+  "results": [
+    {
+      "Desc": "UnmountDrops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/quickRows/1 --
+sha256:fa2371867ad7829e72cb23653aa05467
+{
+  "results": [
+    {
+      "Desc": "EachRowAnswersAtOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/rows/1 --
+sha256:b41675a7cc0ad9ae7b97be8faf9f7202
+{
+  "results": [
+    {
+      "Desc": "EachRowAsksForItsOwn",
+      "Passed": true
+    }
+  ]
+}

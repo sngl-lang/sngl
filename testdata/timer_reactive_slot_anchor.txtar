@@ -76,6 +76,7 @@ body { font-family: system-ui, sans-serif; }
     clearInterval(state.handle__inst0__inst0);
   }
   function __snglTeardown() {
+    __effects0_torn = true;
     __effect0_teardown();
   }
   var __effect0_key = 0;
@@ -83,9 +84,14 @@ body { font-family: system-ui, sans-serif; }
   var __effect0_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   var __slot0 = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   var __slot1 = [];
+  var __rendering1 = false;
+  var __renderAgain1 = false;
   function __effect0_down() {
     __effect0_desired = [];
     __effect0_desired.push(1e3);
@@ -124,70 +130,92 @@ body { font-family: system-ui, sans-serif; }
     __effect0_live = [];
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect0_down();
-        __effect0_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect0_down();
+          __effect0_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    if (state.a__inst0 === 0) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "ZERO";
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        if (state.a__inst0 === 0) {
+          let __n1 = document.createElement("span");
+          __n1.textContent = "ZERO";
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n1) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n1, __place0_i_ref0);
+          }
+          __slot0.push(__n1);
+        }
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      if (__place0_i_ref0 === __n1) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n1, __place0_i_ref0);
-      }
-      __slot0.push(__n1);
-    }
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
-    let __place1_prev = __slot1;
-    let __place1_i = 0;
-    __slot1 = [];
-    if (state.a__inst0 === 1) {
-      let __n2 = document.createElement("span");
-      __n2.textContent = "ONE";
-      let __place1_i_ref0 = null;
-      if (__place1_i < __place1_prev.length) {
-        __place1_i_ref0 = __place1_prev[__place1_i];
+    if (__rendering1) {
+      __renderAgain1 = true;
+    } else {
+      __rendering1 = true;
+      __renderAgain1 = true;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place1_prev = __slot1;
+        let __place1_i = 0;
+        __slot1 = [];
+        if (state.a__inst0 === 1) {
+          let __n2 = document.createElement("span");
+          __n2.textContent = "ONE";
+          let __place1_i_ref0 = null;
+          if (__place1_i < __place1_prev.length) {
+            __place1_i_ref0 = __place1_prev[__place1_i];
+          }
+          if (__place1_i_ref0 === __n2) {
+            __place1_i = __place1_i + 1;
+          } else {
+            parent.insertBefore(__n2, __place1_i_ref0);
+          }
+          __slot1.push(__n2);
+        }
+        for (const __place1_prev_e of __place1_prev) {
+          if (__slot1.indexOf(__place1_prev_e) < 0) {
+            parent.removeChild(__place1_prev_e);
+          }
+        }
       }
-      if (__place1_i_ref0 === __n2) {
-        __place1_i = __place1_i + 1;
-      } else {
-        parent.insertBefore(__n2, __place1_i_ref0);
-      }
-      __slot1.push(__n2);
-    }
-    for (const __place1_prev_e of __place1_prev) {
-      if (__slot1.indexOf(__place1_prev_e) < 0) {
-        parent.removeChild(__place1_prev_e);
-      }
+      __rendering1 = false;
     }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
@@ -200,4 +228,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:603c479cbd107832282b92d7abe6d650
+pass sha256:dd6d5682c04dd3781c33df4895bf10d4

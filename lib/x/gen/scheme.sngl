@@ -6,7 +6,8 @@ import marks "sngl:internal/marks"
 // resolves to is the SNGL package `@generate` writes:
 //
 //     gen.scheme(name="pc", @generate(out, importPath) {
-//         out.write("pc.sngl", "const name = \"{importPath}\"\n")
+//         var f = out.file("pc.sngl")
+//         f.line("const name = \"{importPath}\"")
 //     })
 //
 // The handler runs when a build meets an import of the scheme, and is handed
@@ -34,9 +35,31 @@ component scheme(const name string, @generate(out Out, importPath string)) root 
 // resolves to, a family's `@generate` the files its emitter generates.
 struct Out {}
 
-// Writes one file: for a scheme, name is a `.sngl` file name with no
-// directory, and src its source; for a family's emitter, name is a path
-// inside the output directory. Each name is written once. It records
-// nothing, since it is the output.
-#[marks.intrinsic("gen.Out.write", build)]
-func Out.write(name string, src string)
+// Opens one file for writing: for a scheme, name is a `.sngl` file name with
+// no directory; for a family's emitter, a path inside the output directory.
+// What is added to the handle is the file's text, held by the build and
+// written when the handler returns, so a file built a line at a time costs
+// its length rather than the square of it. Each name is opened once. It
+// records nothing, since it is the output.
+#[marks.intrinsic("gen.Out.file", build)]
+func Out.file(name string) File
+
+// A file a handler is writing, which `Out.file` opens. A handle: storing one
+// stores the handle, and what is added through either copy is the file's.
+#[marks.intrinsic("gen:File")]
+struct File {}
+
+// Puts text on the end of the file.
+#[marks.intrinsic("gen.File.add", build)]
+func File.add(text string)
+
+// Puts text and then a newline on the end of the file.
+#[marks.intrinsic("gen.File.line", build)]
+func File.line(text string = "")
+
+// Says something about what the import resolved to that its author should
+// read: a construct the plugin left out, a name it changed. Each note is a
+// warning at the import, given every time the import is checked, the stored
+// package's included. It records nothing, since it is part of the output.
+#[marks.intrinsic("gen.Out.note", build)]
+func Out.note(message string)

@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"slices"
+
 	"duckfam.us/sngl/ir"
 )
 
@@ -88,6 +90,11 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 		w.walkExpr(x.Cond)
 		w.walkStmts(x.Body)
 		w.walkStmts(x.Else)
+	case *ir.Match:
+		w.walkExpr(x.Subject)
+		for _, arm := range x.Arms {
+			w.walkStmts(arm.Body)
+		}
 	case *ir.For:
 		w.walkExpr(x.Iter)
 		w.walkStmts(x.Body)
@@ -95,6 +102,26 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 	case *ir.CallStmt:
 		w.walkExpr(x.Call)
 	case *ir.NodeInst:
+		// A component's func-typed prop is a parameter its body reads, so
+		// what a call site hands it flows there as an argument does. Not a
+		// library's: its declaration is every check's, and colouring the
+		// prop's signature would write it. Nothing needs the colour there --
+		// the body is spliced where it is written, and the call through the
+		// prop becomes a call of what the call site handed it.
+		if x.Component != nil {
+			for _, a := range x.Props {
+				if !exprIsFuncTyped(a.Value) || x.Component.Frozen {
+					w.walkExpr(a.Value)
+					continue
+				}
+				for _, p := range x.Component.Props {
+					if p.Name == a.Name && p.Sym != nil && isFuncType(p.Type) {
+						w.bindRHS(ir.SlotParamKey(p.Sym), a.Value)
+					}
+				}
+				w.walkExpr(a.Value)
+			}
+		}
 		w.walkStmts(x.Children)
 		for i := range x.Handlers {
 			if x.Handlers[i].Func != nil {
@@ -144,6 +171,11 @@ func (w *pointsToWalker) walkExpr(e ir.Expr) {
 		w.walkExpr(x.Cond)
 		w.walkExpr(x.Then)
 		w.walkExpr(x.Else)
+	case *ir.MatchExpr:
+		w.walkExpr(x.Subject)
+		for _, arm := range x.Arms {
+			w.walkExpr(arm.Value)
+		}
 	case *ir.Conversion:
 		w.walkExpr(x.Operand)
 	case *ir.Select:
@@ -345,4 +377,31 @@ func analyzePointsTo(pkg *ir.Package) *ir.PointsToInfo {
 	}
 
 	return info
+}
+
+// colorAsyncSlots stamps ColorAsync on the signature of every parameter --
+// a component's prop among them -- and var an async function may flow into,
+// and reports whether it stamped one it had not. The colour is inferred and
+// never written: what it buys is that it travels with the type, so a call
+// through the slot is still known to wait after a lowering has moved it into
+// a declaration points-to never saw.
+func colorAsyncSlots(info *ir.PointsToInfo) bool {
+	changed := false
+	for key, fns := range info.Sites {
+		if !slices.ContainsFunc(fns, func(f *ir.Func) bool { return f.IsAsync }) {
+			continue
+		}
+		var t *ir.Type
+		switch key.Kind {
+		case ir.SlotParam:
+			t = key.Param.Type
+		case ir.SlotVar:
+			t = key.Var.Type
+		}
+		if t != nil && t.Sig != nil && t.Sig.Color != ir.ColorAsync {
+			t.Sig.Color = ir.ColorAsync
+			changed = true
+		}
+	}
+	return changed
 }

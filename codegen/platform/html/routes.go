@@ -101,25 +101,18 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	if err := codegen.ApplyOptions(&opts, req.Options); err != nil {
 		return fmt.Errorf("html: %w", err)
 	}
-	pkgName := opts.Package
-	if pkgName == "" {
-		if opts.Main {
-			pkgName = "main"
-		} else {
-			pkgName = "ui"
-		}
-	}
 	framework := opts.Framework
 	if framework == "" {
 		framework = "net/http"
 	}
 
 	httpReq := &codegen.HTTPRequest{
-		Pkg:       req.Pkg,
-		Package:   pkgName,
-		Main:      opts.Main,
-		Framework: framework,
-		Routes:    routes,
+		Pkg:        req.Pkg,
+		Package:    opts.Package,
+		Main:       opts.Main,
+		Executable: opts.Executable,
+		Framework:  framework,
+		Routes:     routes,
 		RenderHTML: func(idx int) string {
 			if idx < 0 || idx >= len(perWindow) {
 				return ""
@@ -214,12 +207,10 @@ func backendHandlerWindow(pkg *ir.Package) (string, bool) {
 						walk(sc.Body, in)
 					}
 				}
-			case *ir.If:
-				walk(n.Body, win)
-				walk(n.Else, win)
-			case *ir.For:
-				walk(n.Body, win)
-				walk(n.Else, win)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b, win)
+				}
 			case *ir.ErrorBoundary:
 				walk(n.Children, win)
 			case *ir.ContextProvider:
@@ -552,12 +543,10 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 		case *ir.NodeInst:
 			fn(n)
 			walkInstances(n.Children, fn)
-		case *ir.If:
-			walkInstances(n.Body, fn)
-			walkInstances(n.Else, fn)
-		case *ir.For:
-			walkInstances(n.Body, fn)
-			walkInstances(n.Else, fn)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				walkInstances(*b, fn)
+			}
 		case *ir.SlotInst:
 			walkInstances(n.Children, fn)
 		case *ir.ErrorBoundary:

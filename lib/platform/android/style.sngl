@@ -17,8 +17,6 @@ const unset ui.Style = {}
 
 // What a Style may say that this platform does not answer:
 //
-//   - gap, alignItems, justifyContent: Column and Row arguments rather than
-//     Modifiers, not passed yet.
 //   - flexDirection: vbox and hbox are the axis.
 //   - position, top, bottom, left, right: Compose has no flow to take a node
 //     out of, nor CSS's offsets from one.
@@ -31,9 +29,6 @@ const unset ui.Style = {}
 //   - overflow: scrolling is ui.scroll's, and clipping a shape's.
 //   - listStyleType: no widget here draws a list marker.
 const unstyled list[string] = [
-    "gap",
-    "alignItems",
-    "justifyContent",
     "flexDirection",
     "position",
     "top",
@@ -137,6 +132,89 @@ const func styleModifier(s ui.Style, paints bool) Modifier {
     }
     return m
 }
+
+// A Column's or a Row's children placed down or along it, as `gap` and
+// `justifyContent` say: Compose's Arrangement, which no Modifier says. A spread
+// of the free space leaves the gap to it, as CSS's minimum between children is
+// no more than what spreads them. `start` is Compose's default, and the zero
+// a Style leaves.
+const func columnArrangement(s ui.Style) VerticalArrangement {
+    return s.gap == unset.gap ? columnPlacement(s.justifyContent) : columnSpacing(s.justifyContent, length(s.gap))
+}
+
+const func columnPlacement(j ui.Justification) VerticalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenV
+        spaceAround => arrangeSpaceAroundV
+        spaceEvenly => arrangeSpaceEvenlyV
+        center => arrangeCenterV
+        end => arrangeBottom
+        start => arrangeTop
+    }
+}
+
+const func columnSpacing(j ui.Justification, gap Dp) VerticalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenV
+        spaceAround => arrangeSpaceAroundV
+        spaceEvenly => arrangeSpaceEvenlyV
+        center => spacedByAlignedV(gap, alignCenterVertically)
+        end => spacedByAlignedV(gap, alignBottom)
+        start => spacedByV(gap)
+    }
+}
+
+const func rowArrangement(s ui.Style) HorizontalArrangement {
+    return s.gap == unset.gap ? rowPlacement(s.justifyContent) : rowSpacing(s.justifyContent, length(s.gap))
+}
+
+const func rowPlacement(j ui.Justification) HorizontalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenH
+        spaceAround => arrangeSpaceAroundH
+        spaceEvenly => arrangeSpaceEvenlyH
+        center => arrangeCenterH
+        end => arrangeEnd
+        start => arrangeStart
+    }
+}
+
+const func rowSpacing(j ui.Justification, gap Dp) HorizontalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenH
+        spaceAround => arrangeSpaceAroundH
+        spaceEvenly => arrangeSpaceEvenlyH
+        center => spacedByAlignedH(gap, alignCenterHorizontally)
+        end => spacedByAlignedH(gap, alignHorizontalEnd)
+        start => spacedByH(gap)
+    }
+}
+
+// Where `alignItems` puts a Column's or a Row's children across it. `start`
+// is the zero a Style leaves as well as a value, so it is read as CSS's
+// default, stretch: Compose's own default is the start, and a child that
+// flexes fills the cross axis itself (stretches).
+const func columnAlignment(a ui.Alignment) HorizontalAlignment {
+    return match a {
+        center => alignCenterHorizontally
+        end => alignHorizontalEnd
+        start, stretch, baseline => alignStart
+    }
+}
+
+const func rowAlignment(a ui.Alignment) VerticalAlignment {
+    return match a {
+        center => alignCenterVertically
+        end => alignBottom
+        start, stretch, baseline => alignTop
+    }
+}
+
+// Whether a flex child fills its parent's cross axis, CSS's stretch. A parent
+// aligning its children otherwise gives the share alone: filling is the most
+// the parent may be, not the size of its largest child, which made a stats
+// bar in a centred row the whole screen.
+const func stretches(s ui.Style) => s.alignItems != ui.Alignment.center && s.alignItems != ui.Alignment.end
 
 const func flexed(m Modifier, flex float, share func(float32) Modifier) Modifier {
     return flex == 0.0 ? m : chain(m, share(float32(flex)))

@@ -1,0 +1,70 @@
+// What a payload enum refuses, each at its position.
+
+enum Shape {
+    empty
+    circle float
+    sized  int
+}
+
+enum Maybe {
+    none
+    some option[int]
+}
+
+enum Bag {
+    nothing
+    items list[int]
+}
+
+func two() Shape {
+    return Shape{circle=1.0, sized=2} // ERROR(check) "an enum value holds one member: name one of circle, sized"
+}
+
+func none() Shape {
+    return Shape{} // ERROR(check) "an enum value holds one member: name one of circle, sized"
+}
+
+func unknown() Shape {
+    return {square=1.0} // ERROR(check) "Shape has no member square"
+}
+
+func atom() Shape {
+    return {empty=1.0} // ERROR(check) "member empty carries no payload: write Shape.empty"
+}
+
+func read(s Shape) float {
+    s.circle = 2.0 // ERROR(check) "s.circle is read off the member s holds and cannot be assigned: assign s a new value"
+    return 0.0
+}
+
+func nested(m Maybe) int {
+    if m.some != null { // ERROR(check) "member some carries an option, which a selector cannot wrap in another: match m instead"
+        return 1
+    }
+    return 0
+}
+
+func missing(s Shape) => match var r = s { // ERROR(check) "match is not exhaustive: missing sized"
+    empty => 0.0
+    circle => r
+}
+
+// An arm naming two members takes the subject under the name, whatever the
+// members carry.
+func twoMembers(s Shape) => match var v = s {
+    circle, sized => v + 1.0 // ERROR(check) "operator + not defined for Shape and float"
+    else => 0.0
+}
+
+func bound(s Shape) => match var r = s {
+    circle => func() { r = 2.0 } // ERROR(check) "r is named by match var and is read-only here: only an arm that is a block in a function may write it"
+    else => func() {}
+}
+
+func compare(a Bag, b Bag) bool {
+    return a == b // ERROR(check) "Bag cannot be compared with ==: list[int] (payload of member items of enum Bag) does not compare alike on every target"
+}
+
+func spelled(s Shape) string {
+    return "{s}" // ERROR(check) "cannot interpolate Shape: type has no string() method"
+}

@@ -9,6 +9,8 @@
 package fynelayout
 
 import (
+	"reflect"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
@@ -198,3 +200,27 @@ func (l *Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 		offset += extent[i] + between
 	}
 }
+
+// Adopt makes c a Weighted box when o asks it for a share and c is one of
+// Fyne's own boxes, which would pack o at its minimum: a box the generated
+// code built as Fyne's may still be handed a growing child -- a page a
+// navigation stack shows, a slot's content.
+func Adopt(c *fyne.Container, o fyne.CanvasObject) {
+	if c == nil {
+		return
+	}
+	if b, ok := o.(*Box); !ok || b.Grow() == 0 {
+		return
+	}
+	switch reflect.TypeOf(c.Layout) {
+	case vboxType:
+		c.Layout = &Weighted{c: c}
+	case hboxType:
+		c.Layout = &Weighted{Horizontal: true, c: c}
+	}
+}
+
+var (
+	vboxType = reflect.TypeOf(layout.NewVBoxLayout())
+	hboxType = reflect.TypeOf(layout.NewHBoxLayout())
+)

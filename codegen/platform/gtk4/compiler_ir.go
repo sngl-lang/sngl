@@ -1,7 +1,6 @@
 package gtk4
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -84,43 +83,23 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, _ *codegen.Common
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
-	modelSrc, callbacksSrc, err := c.emitIR()
+	model, callbacks, err := c.emitIR()
 	if err != nil {
 		return err
 	}
 	var prune []string
 	for _, name := range golang.PayloadPruneCandidates(c.ctx.Pkg, codegen.TriggerArgs(c.ctx.Pkg)) {
-		if !bytes.Contains(callbacksSrc, []byte(name)) {
+		if !strings.Contains(callbacks.body, name) {
 			prune = append(prune, name)
 		}
 	}
-	modelSrc = []byte(golang.PruneStructDecls(string(modelSrc), prune))
-
-	// The templates already render `package main` and the import block, so
-	// PackageName is left empty; the FileEmitter still owns the header, the
-	// gofmt pass and source-map emission.
-	for _, pair := range []struct {
-		name    string
-		content []byte
-	}{
-		{"model.go", modelSrc},
-		{"callbacks.go", callbacksSrc},
-	} {
-		e := req.Lang.NewFileEmitter(sink, codegen.FileOptions{
-			Name:     pair.name,
-			Source:   req.Source,
-			Platform: "gtk4",
-			Maps:     req.Maps,
-		})
-		if _, err := e.Write(pair.content); err != nil {
-			e.Close()
-			return err
-		}
-		if err := e.Close(); err != nil {
-			return err
-		}
+	if len(prune) > 0 {
+		model.body = golang.PruneStructDecls(model.body, prune)
 	}
-	return nil
+	if err := model.write(sink, "model.go", c.cfg.Package, req); err != nil {
+		return err
+	}
+	return callbacks.write(sink, "callbacks.go", c.cfg.Package, req)
 }
 
 // mainBodyStmts is what buildWidgetTree builds: the package body, whose
@@ -210,10 +189,18 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				if strings.HasPrefix(ctxGoType, "time.") {
 					gc.RequireImport("time")
 				}
+				init := irVarInit(v, ctxGC)
+				// Written in a context of its own, as a component's var is
+				// below: its imports are the file's -- the i18n runtime a
+				// locale's default names, which a test build rooted at the
+				// component wrote with none.
+				for _, p := range ctxGC.Imports() {
+					gc.RequireImport(p)
+				}
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
 					goType:      ctxGoType,
-					init:        irVarInit(v, ctxGC),
+					init:        init,
 					noAccessors: true,
 				})
 				continue
@@ -286,10 +273,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // emitIR emits model.go + callbacks.go. It attempts wrapped mode (targeting
 // pkg/go/gtk4rt, no cgo) and falls back to inline cgo if any cgo survives, so
 // a program is never half-wrapped.
-func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error) {
+func (c *compilation) emitIR() (model, callbacks goFile, err error) {
 	if !c.disableWrapped {
 		m, cb, werr := c.emitIRMode(true)
-		if werr == nil && !bytesUseCgo(m) && !bytesUseCgo(cb) {
+		if werr == nil && !cgoRefRE.MatchString(m.body) && !cgoRefRE.MatchString(cb.body) {
 			return m, cb, nil
 		}
 	}
@@ -309,9 +296,9 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 	}
 }
 
-func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
+func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)
@@ -444,13 +431,12 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// The inline-cgo scaffold has no runtime to attach a window to, so it puts
 	// the first one's box in the window BuildUI makes, as it did the one
 	// window it could build before a window was a node.
-	cgoTitle, cgoIcon := "", ""
+	var cgoTitle ir.Expr
+	cgoIcon := ""
 	if appRoot && !c.wrapped {
 		topLevelRefs = append(slices.Clip(topLevelRefs), appChildren...)
 		if len(appChildren) > 0 {
-			if t := c.shared.toplevelTitles[appChildren[0]]; t != nil {
-				cgoTitle = gc.EvalExpr(t)
-			}
+			cgoTitle = c.shared.toplevelTitles[appChildren[0]]
 			cgoIcon = c.shared.toplevelIcons[appChildren[0]]
 		}
 	}
@@ -476,7 +462,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 
 	// Pre-rendered so gc.RequireImport calls from EvalExpr land before
-	// newTemplateData samples gc.Imports().
+	// newScaffoldData samples gc.Imports().
 	var buildUIBuf strings.Builder
 	if appRoot && c.wrapped {
 		first := ""
@@ -485,7 +471,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
 	} else {
-		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoTitle, cgoIcon, widgetFieldNames(widgetFields))
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, c.shared, cgoTitle, cgoIcon, widgetFieldNames(widgetFields))
 	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
@@ -495,7 +481,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	var eventInvokersBuf strings.Builder
 	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers, c.wrapped)
 	for _, inv := range vc.eventInvokers {
-		// A calendar's invoker selects the day through the template's helper.
+		// A calendar's invoker selects the day through model.go's helper.
 		if inv.WidgetType == "GtkCalendar" {
 			c.shared.calendarDate = true
 		}
@@ -518,9 +504,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		gc.RequireImport(canvasutil.ColorImportPath)
 	}
 
-	td, err := c.newTemplateData(widgetFields, funcBuf.String(), gc)
+	td, err := c.newScaffoldData(widgetFields, funcBuf.String(), gc)
 	if err != nil {
-		return nil, nil, err
+		return goFile{}, goFile{}, err
 	}
 	if hasCanvas {
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
@@ -529,18 +515,13 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	if c.ctx != nil && c.ctx.Pkg != nil && c.ctx.Pkg.UsesErrorHandling {
 		td.LangHelpers += golang.ErrorEventDecl
 	}
-
-	tmplFiles := codegen.RenderTemplates(templateFS, "templates", td)
-	var modelBuf, callbacksBuf strings.Builder
-	for _, f := range tmplFiles {
-		switch f.Name {
-		case "model.go":
-			f.WriteTo(&modelBuf)
-		case "callbacks.go":
-			f.WriteTo(&callbacksBuf)
-		}
+	if c.ctx != nil && c.ctx.Pkg != nil {
+		td.LangHelpers += golang.PackageConstDecls(c.ctx.Pkg, gc)
 	}
 
+	var modelBuf, callbacksBuf strings.Builder
+	writeModelHead(&modelBuf, td)
+	writeCallbacksHead(&callbacksBuf, td)
 	modelBuf.WriteString(buildUIBuf.String())
 	modelBuf.WriteString(eventInvokersBuf.String())
 	// main() goes in callbacks.go, not model.go: cgo //export directives can't
@@ -552,47 +533,45 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 
 	if len(c.shared.errs) > 0 {
-		return nil, nil, errors.Join(c.shared.errs...)
+		return goFile{}, goFile{}, errors.Join(c.shared.errs...)
 	}
-	modelSrc = []byte(modelBuf.String())
-	return modelSrc, []byte(callbacksBuf.String()), nil
+	model = goFile{cgoPreamble: modelPreamble(td), imports: td.Imports, body: modelBuf.String()}
+	callbacks = goFile{cgoPreamble: callbacksPreamble(td), imports: callbacksImports(td), body: callbacksBuf.String()}
+	return model, callbacks, nil
 }
 
-func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (templateData, error) {
-	td := templateData{
+func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (scaffoldData, error) {
+	td := scaffoldData{
 		Package:           c.cfg.Package,
 		Main:              c.cfg.Main,
 		FunctionCode:      functionCode,
-		Imports:           map[string]bool{},
 		NeedsBoolToInt:    c.shared.boolToInt,
+		CStrings:          c.shared.cStrings,
 		NeedsGObjectSet:   c.shared.gObjectSet,
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,
+		NeedsDropDown:     c.shared.dropDown,
 		Wrapped:           c.wrapped,
 		CLinks:            golang.CPreambleLines(ir.ReachedCLinks(c.ctx.Pkg)),
 	}
 	if c.wrapped {
 		// Widget fields are gtk4rt.Handle; ensure the import is present even if
 		// (unusually) no gtk4rt call was emitted into this file.
-		td.Imports[gtk4rtPkg] = true
+		td.Imports = append(td.Imports, gtk4rtPkg)
 	}
 	// Lang-tracked helpers + their imports.
 	helpers := golang.HelpersNeeded(c.ctx.Pkg)
-	for _, imp := range helpers.Imports() {
-		td.Imports[imp] = true
-	}
+	td.Imports = append(td.Imports, helpers.Imports()...)
 	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(c.ctx.Pkg.MergeStructs)
 
 	// Units (excluding the special-cased `duration`).
-	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units)
+	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units) + golang.EmitEnumTypeDecls(c.info.Enums)
 
 	// Structs
 	for _, sd := range c.info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
 		for _, f := range sd.Fields {
-			for _, p := range golang.TypeImports(f.Type) {
-				td.Imports[p] = true
-			}
+			td.Imports = append(td.Imports, golang.TypeImports(f.Type)...)
 			s.Fields = append(s.Fields, structFieldData{
 				Name: golang.ExportName(f.Name),
 				Type: golang.IRTypeToGo(f.Type),
@@ -671,12 +650,8 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 
 	// Sampled LAST: an import can first be required while rendering a computed
 	// body above (e.g. "fmt" via string interpolation).
-	for _, p := range c.info.gc.Imports() {
-		td.Imports[p] = true
-	}
-	for _, p := range gc.Imports() {
-		td.Imports[p] = true
-	}
+	td.Imports = append(td.Imports, c.info.gc.Imports()...)
+	td.Imports = append(td.Imports, gc.Imports()...)
 
 	return td, nil
 }
@@ -694,6 +669,10 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.Lowered.LocalRefs).withWrapped(wrapped).
 		withInvokerSink(invokerSink).withIndexed(indexed, present, fn.Block)
+	// A handler the slot builds may patch a node BuildUI or another slot
+	// creates, which OnPropAssign can only write knowing its C type; without
+	// it the write was dropped and the node went stale.
+	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(fn.Block)
 	block := readWidgets(fn.Block, widgetReader(wrapped, shared, modelNode(wrapped)))
 	bodyStmts := codegen.WalkLowered(context.Background(), block, tr)
@@ -724,10 +703,26 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 // `@toggled(b) { checked = checkActive(b) }` is how the value a change
 // reports reaches the program.
 var widgetReads = map[string]string{
-	"gtk4.checkActive":  "GtkCheckButton",
-	"gtk4.switchActive": "GtkSwitch",
-	"gtk4.entryText":    "GtkEntry",
-	"gtk4.calendarDate": "GtkCalendar",
+	"gtk4.checkActive":   "GtkCheckButton",
+	"gtk4.switchActive":  "GtkSwitch",
+	"gtk4.entryText":     "GtkEntry",
+	"gtk4.calendarDate":  "GtkCalendar",
+	"gtk4.dropDownLabel": "GtkDropDown",
+}
+
+// widgetWrites are the setters gtk4.sngl declares for an override to write
+// what a control holds when it decides to, by intrinsic id, and the widget
+// each writes.
+var widgetWrites = map[string]string{
+	"gtk4.setEntryText": "GtkEntry",
+}
+
+// widgetAccess spells widgetReads and widgetWrites calls for one scope.
+type widgetAccess struct {
+	read  func(cType string, ref ir.Expr) ir.Expr
+	write func(cType string, ref, value ir.Expr) ir.Expr
+	// shared releases the C strings a write makes (ownCStrings).
+	shared *emitShared
 }
 
 // selfIsNode is a signal handler's body with its parameters read as the node
@@ -753,13 +748,14 @@ func selfIsNode(stmts []ir.Stmt, params []*ir.Param, node ir.Expr) []ir.Stmt {
 	return stmts
 }
 
-// readWidgets rewrites each widgetReads call in stmts to the getter read
-// answers for the widget it is handed. The statements are copied first: a
-// body is the lowered IR's, shared with every other reader of it.
-func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) []ir.Stmt {
+// readWidgets rewrites each widgetReads and widgetWrites call in stmts to the
+// getter or setter access answers for the widget it is handed. The statements
+// are copied first: a body is the lowered IR's, shared with every other reader
+// of it.
+func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 	found := false
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && widgetReads[c.Func.Intrinsic] != "" {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && (widgetReads[c.Func.Intrinsic] != "" || widgetWrites[c.Func.Intrinsic] != "") {
 			found = true
 			return ir.SkipAll
 		}
@@ -769,21 +765,48 @@ func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) 
 		return stmts
 	}
 	stmts = ir.CloneStmtsSharingDecls(stmts)
+	// A handler attached in these statements reads the node it is attached to
+	// through its parameter, which signalLambda maps once the node is in scope;
+	// read here, the parameter would be taken for a widget handed in as a value.
+	attached := map[*ir.Param]struct{}{}
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) == 3 {
+			if lam, ok := c.Args[2].Value.(*ir.Lambda); ok && lam.Func != nil {
+				for _, p := range lam.Func.Params {
+					attached[p] = struct{}{}
+				}
+			}
+		}
+		return nil
+	})
 	_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
 		c, ok := e.(*ir.Call)
-		if !ok || c.Func == nil || len(c.Args) != 1 {
+		if !ok || c.Func == nil || len(c.Args) == 0 {
+			return e, nil
+		}
+		if id, ok := c.Args[0].Value.(*ir.Ident); ok {
+			if p, ok := id.Sym.(*ir.Param); ok {
+				if _, ok := attached[p]; ok {
+					return e, nil
+				}
+			}
+		}
+		if cType := widgetWrites[c.Func.Intrinsic]; cType != "" && len(c.Args) == 2 {
+			if w := access.write(cType, c.Args[0].Value, c.Args[1].Value); w != nil {
+				return w, ir.SkipDir
+			}
 			return e, nil
 		}
 		cType := widgetReads[c.Func.Intrinsic]
-		if cType == "" {
+		if cType == "" || len(c.Args) != 1 {
 			return e, nil
 		}
-		if g := read(cType, c.Args[0].Value); g != nil {
+		if g := access.read(cType, c.Args[0].Value); g != nil {
 			return g, ir.SkipDir
 		}
 		return e, nil
 	})
-	return stmts
+	return access.shared.ownCStrings(stmts)
 }
 
 // widgetReader is readWidgets' read for one scope, which qualify spells a
@@ -793,25 +816,43 @@ func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) 
 // widget value has no Go type of its own, so it is asserted to its field's.
 // gtk4rt wraps no getter for some widgets, and the cgo one there is what makes
 // the program fall back to inline cgo.
-func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir.Expr) func(cType string, ref ir.Expr) ir.Expr {
-	return func(cType string, ref ir.Expr) ir.Expr {
-		// What is not a name is a node already spelled: selfIsNode's, which
-		// is the Model's field.
-		w := ref
+func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir.Expr) widgetAccess {
+	// What is not a name is a node already spelled: selfIsNode's, which is
+	// the Model's field.
+	spell := func(cType string, ref ir.Expr) ir.Expr {
 		if id, ok := ref.(*ir.Ident); ok {
 			if isNodeRef(id) {
-				w = qualify(strings.TrimPrefix(id.Name, "m."))
-			} else {
-				w = &ir.Ident{Name: id.Name + ".(" + widgetFieldGoType(cType, wrapped) + ")"}
+				return qualify(strings.TrimPrefix(id.Name, "m."))
 			}
+			return &ir.Ident{Name: id.Name + ".(" + widgetFieldGoType(cType, wrapped) + ")"}
 		}
+		return ref
+	}
+	return widgetAccess{shared: shared, read: func(cType string, ref ir.Expr) ir.Expr {
+		w := spell(cType, ref)
 		if wrapped {
 			if g := rtEventGetterExpr(cType, w); g != nil {
 				return g
 			}
 		}
 		return shared.cgoEventGetter(cType, w)
+	}, write: func(cType string, ref, value ir.Expr) ir.Expr {
+		w := spell(cType, ref)
+		if wrapped {
+			return rtEventSetterExpr(cType, w, value)
+		}
+		return cgoEventSetterExpr(cType, w, value)
+	}}
+}
+
+// cgoEventSetterExpr is the inline-cgo write of widgetWrites, the twin of
+// cgoEventGetterExpr.
+func cgoEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
+	switch cType {
+	case "GtkEntry":
+		return nativeCall("sngl_set_entry_text_quiet", ir.TypVoid, cgoCast("GtkEditable", widgetRef), cString(value))
 	}
+	return nil
 }
 
 // isNodeRef reports whether id names a node: one a lowering synthesized, or a
@@ -834,7 +875,7 @@ func modelNode(wrapped bool) func(name string) ir.Expr {
 	}
 }
 
-// cgoEventGetter is cgoEventGetterExpr, noting a helper the template must
+// cgoEventGetter is cgoEventGetterExpr, noting a helper model.go must
 // emit for the getter it returns.
 func (s *emitShared) cgoEventGetter(cType string, widgetRef ir.Expr) ir.Expr {
 	g := cgoEventGetterExpr(cType, widgetRef)
@@ -868,17 +909,30 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 	case "GtkCalendar":
 		// The date is a *time.Time built from three getters on a GDateTime
 		// that has to be released, which no one expression can say: the
-		// helper is Go in the template, emitted when this is reached.
+		// helper is Go in model.go's head, emitted when this is reached.
 		return &ir.Call{
 			Type: ir.NativeGoPointerOf("time.Time"),
 			Func: &ir.Func{Name: calendarDateHelper, Foreign: ir.Foreign{Name: calendarDateHelper}},
 			Args: []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
 		}
+	case "GtkDropDown":
+		label := &ir.Call{
+			Type:     ir.NativePointerOf("char"),
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("sngl_drop_down_label"),
+			Args:     []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
+		}
+		return &ir.Call{
+			Type:     ir.TypString,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("GoString"),
+			Args:     []ir.CallArg{{Value: label}},
+		}
 	}
 	return nil
 }
 
-// calendarDateHelper is the template's Go function reading a GtkCalendar's
+// calendarDateHelper is model.go's Go function reading a GtkCalendar's
 // selected day, and calendarSelectHelper the one selecting a day;
 // emitShared.calendarDate says they are called.
 const (
@@ -899,8 +953,8 @@ func cgoGBoolean(getter, cType string, widgetRef ir.Expr) ir.Expr {
 }
 
 // collectNodeCTypes returns a node-id → GTK C type map from every
-// `lower.CreateNode` in the package. A promoted handler needs it to resolve
-// element refs created in a sibling Func.
+// `lower.CreateNode` in the package. A promoted handler and a render slot's
+// handlers need it to resolve element refs created in a sibling Func.
 func collectNodeCTypes(pkg *ir.Package) map[string]string {
 	out, _ := collectNodeTags(pkg)
 	return out
@@ -933,6 +987,19 @@ func collectImages(pkg *ir.Package) map[string]string {
 	return out
 }
 
+// collectScrolls is every Scroll primitive id, for the reason
+// collectToplevels is.
+func collectScrolls(pkg *ir.Package) map[string]bool {
+	_, prims := collectNodeTags(pkg)
+	out := map[string]bool{}
+	for id, tag := range prims {
+		if tag == scrollTag {
+			out[id] = true
+		}
+	}
+	return out
+}
+
 func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]string) {
 	out := map[string]string{}
 	prims := map[string]string{}
@@ -955,12 +1022,10 @@ func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]string) {
 						}
 					}
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.NodeInst:
 				walk(n.Children)
 			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
@@ -1019,12 +1084,10 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 				}
 			case *ir.CallStmt:
 				record(n.Call)
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.NodeInst:
 				walk(n.Children)
 			}
@@ -1073,9 +1136,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 	stmts = readWidgets(stmts, widgetReader(wrapped, shared, modelNode(wrapped)))
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	// Drop self-setter splices: writing the entry's text from inside its own
-	// "changed" handler re-fires the signal and recurses.
-	body = dropSelfSetterCalls(body, nodeID)
 	synthesized := &ir.Func{
 		Name:    fn.Name,
 		Lowered: ir.FuncLowering{HostReceiver: "Model"},
@@ -1088,47 +1148,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
-}
-
-// dropSelfSetterCalls filters out setter calls on selfNode so a two-way bound
-// widget does not recurse into its own changed-signal handler.
-func dropSelfSetterCalls(stmts []ir.Stmt, selfNode string) []ir.Stmt {
-	if selfNode == "" {
-		return stmts
-	}
-	out := stmts[:0:0]
-	for _, s := range stmts {
-		if cs, ok := s.(*ir.CallStmt); ok && cs != nil && isSetterOn(cs.Call, selfNode) {
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
-}
-
-// isSetterOn reports whether a Call is a C.gtk_*_set_* invocation whose
-// first argument resolves to m.<selfNode>.
-func isSetterOn(call *ir.Call, selfNode string) bool {
-	if call == nil || call.Func == nil || len(call.Args) == 0 {
-		return false
-	}
-	if call.Func.Foreign.Path != "C" || !strings.Contains(call.Func.Foreign.Name, "_set_") {
-		return false
-	}
-	first := call.Args[0].Value
-	for {
-		conv, ok := first.(*ir.Conversion)
-		if !ok {
-			break
-		}
-		first = conv.Operand
-	}
-	if sel, ok := first.(*ir.Select); ok {
-		if op, ok := sel.Operand.(*ir.Ident); ok && op.Name == "m" && sel.Field == selfNode {
-			return true
-		}
-	}
-	return false
 }
 
 // gtk4ComponentFuncs is every func some component declares; what is left in
@@ -1152,11 +1171,11 @@ func gtk4ComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // emitGTK4FreeFunc emits a top-level func under its exported name, which is
 // what ExprCtx.FreeFuncs told the call sites to expect.
 func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Name)
+	fnCopy.Name = gc.FreeFuncName(fn.Name)
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
@@ -1169,7 +1188,7 @@ func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 // body touches no widget, so it goes through the plain renderer rather than
 // the gtk4 translator.
 func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	for _, line := range gc.EmitTypeMethodDef(fn) {
@@ -1182,7 +1201,7 @@ func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 // emitGTK4Func emits a top-level user function as a method on *Model, routing
 // the body through WalkLowered so a CanvasRedrawStmt becomes queue_draw.
 func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withRegistry(reg).withShared(shared).withWrapped(wrapped)
@@ -1260,9 +1279,9 @@ func isWindowClass(cType string) bool {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title, icon string, fields map[string]bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, shared *emitShared, title ir.Expr, icon string, fields map[string]bool) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title, fields)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, "", fields)
 		return
 	}
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
@@ -1333,10 +1352,14 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		fmt.Fprintf(b, "\t%s\n", line)
 	}
 	// Not through gtk4rt: the cgo scaffold does not require that module, so
-	// importing it does not build. The string is allocated once and not freed.
-	if title != "" {
-		fmt.Fprintf(b, "\tC.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString(%s))\n", title)
-		gc.RequireImport("unsafe")
+	// importing it does not build.
+	if title != nil {
+		setTitle := &ir.CallStmt{Call: nativeCall("gtk_window_set_title", ir.TypVoid, cgoCast("GtkWindow", winRef), cString(title))}
+		for _, st := range shared.ownCStrings([]ir.Stmt{setTitle}) {
+			for _, line := range gc.EvalStmt(st) {
+				fmt.Fprintf(b, "\t%s\n", line)
+			}
+		}
 	}
 	setChildCall := &ir.Call{
 		Type:     ir.TypVoid,
@@ -1392,9 +1415,10 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	var trailer string
 	switch tops := tr.topLevel; {
 	case len(tops) == 0 && wrapped:
-		trailer = "\treturn gtk4rt.LabelNew(\"\")\n"
+		trailer = "\treturn gtk4rt.Nothing()\n"
 	case len(tops) == 0:
-		trailer = "\treturn C.gtk_label_new(nil)\n"
+		// Hidden, so the box holding it gives it no room (gtk4rt.Nothing).
+		trailer = "\tnothing := C.gtk_label_new(nil)\n\tC.gtk_widget_set_visible(nothing, 0)\n\treturn nothing\n"
 	case len(tops) == 1 && wrapped:
 		ref := tr.qualifyNodeExpr(&ir.Ident{Name: tops[0], IsElementRef: true, Synthesized: true})
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(ref))
@@ -1469,8 +1493,16 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 			continue // duplicate id+event — keep the first
 		}
 		seen[methodName] = true
-		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
-			methodName, inv.GTKSignal, inv.IDLabel)
+		if inv.WidgetType == "GtkDropDown" {
+			fmt.Fprintf(b, "// %s selects the choice labelled v on the #%s widget; for tests.\n",
+				methodName, inv.IDLabel)
+		} else if inv.RtFire != "" {
+			fmt.Fprintf(b, "// %s fires %q on the #%s widget; for tests.\n",
+				methodName, inv.SnglEvent, inv.IDLabel)
+		} else {
+			fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
+				methodName, inv.GTKSignal, inv.IDLabel)
+		}
 		emitEventInvoker(b, inv, methodName, "", "m."+inv.FieldName, wrapped)
 		if !keyed[inv.IDLabel] {
 			continue
@@ -1505,6 +1537,17 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 			preFire = fmt.Sprintf("%s((*C.GtkCalendar)(unsafe.Pointer(%s)), v)", calendarSelectHelper, w)
 		}
 	}
+	// A drop-down's carries the label chosen, which the invoker selects: the
+	// selection notifies, as a click on the choice does, so nothing is fired
+	// after it.
+	if inv.WidgetType == "GtkDropDown" {
+		valueParam = "v string"
+		if wrapped {
+			preFire = fmt.Sprintf("gtk4rt.DropDownSelect(%s, v)", w)
+		} else {
+			preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_drop_down_select((*C.GtkDropDown)(unsafe.Pointer(%s)), __v)", w)
+		}
+	}
 	params := func(p string) string {
 		if lead == "" {
 			return p
@@ -1531,7 +1574,15 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 	if preFire != "" {
 		fmt.Fprintf(b, "\t%s\n", preFire)
 	}
+	if inv.WidgetType == "GtkDropDown" {
+		b.WriteString("}\n\n")
+		return
+	}
 	switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
+	case inv.RtFire != "" && wrapped:
+		fmt.Fprintf(b, "\tgtk4rt.%s(%s)\n", inv.RtFire, w)
+	case inv.RtFire != "":
+		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s)))\n", inv.RtFire, w)
 	case inv.GTKSignal == "pressed":
 		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
 	case notify:
@@ -1573,26 +1624,18 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wr
 // preamble is declarations only, so the //export snglActivate can coexist.
 func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, app bool) error {
 	if app {
-		callee := ""
-		if pkg.Run != nil && len(pkg.Run.Block) > 0 {
-			callee = golang.ModelCallee(pkg, pkg.Run, "m")
-		}
-		emitGTK4AppMain(b, callee, pkg.Run != nil, pkg.Teardown)
+		emitGTK4AppMain(b, pkg)
 		return nil
 	}
 	if pkg != nil && pkg.Run != nil {
 		if !wrapped {
 			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
 		}
-		callee := ""
-		if len(pkg.Run.Block) > 0 {
-			callee = golang.ModelCallee(pkg, pkg.Run, "m")
-		}
-		emitGTK4RunMainWrapped(b, callee)
+		emitGTK4RunMainWrapped(b, pkg)
 		return nil
 	}
 	if wrapped {
-		emitGTK4MainWrapped(b)
+		emitGTK4MainWrapped(b, pkg.Teardown)
 		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil
@@ -1613,13 +1656,14 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package,
 	b.WriteString("\twin := m.BuildUI(app)\n")
 	b.WriteString("\tC.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))\n")
 	b.WriteString("}\n\n")
+	b.WriteString("var snglActivateSignal = C.CString(\"activate\")\n\n")
 	b.WriteString("func main() {\n")
 	b.WriteString("\truntime.LockOSThread()\n")
 	// G_APPLICATION_NON_UNIQUE avoids needing an app-id, which
 	// gtk_application_new otherwise requires to be reverse-DNS-valid.
 	b.WriteString("\tapp := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)\n")
 	b.WriteString("\tC.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),\n")
-	b.WriteString("\t\tC.CString(\"activate\"),\n")
+	b.WriteString("\t\tsnglActivateSignal,\n")
 	b.WriteString("\t\tC.GCallback(C.snglActivate), nil, nil, 0)\n")
 	b.WriteString("\tstatus := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)\n")
 	if teardown {

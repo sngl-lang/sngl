@@ -75,6 +75,15 @@ func (w *viewWalk) stmts(stmts []ir.Stmt, gc *golang.GoIRContext) {
 				w.indent--
 			}
 			w.line("%s", gc.BlockEnd())
+		case *ir.Match:
+			w.line("%s", gc.SwitchHead(&n.MatchArms))
+			for i, arm := range n.Arms {
+				w.line("%s", gc.SwitchCase(&n.MatchArms, i))
+				w.indent++
+				w.stmts(arm.Body, gc)
+				w.indent--
+			}
+			w.line("%s", gc.BlockEnd())
 		case *ir.ErrorBoundary:
 			w.stmts(n.Children, gc)
 		}
@@ -164,6 +173,10 @@ func overlayGates(stmts []ir.Stmt, gate *ir.If, out map[*ir.NodeInst]*ir.If) map
 		case *ir.If:
 			overlayGates(n.Body, n, out)
 			overlayGates(n.Else, gate, out)
+		case *ir.Match:
+			for i, arm := range n.Arms {
+				overlayGates(arm.Body, armGate(n, i), out)
+			}
 		case *ir.For:
 			overlayGates(n.Body, gate, out)
 			overlayGates(n.Else, gate, out)
@@ -200,16 +213,21 @@ func overlayClear(gate *ir.If) ir.Stmt {
 	return nil
 }
 
+// armGate is the gate an overlay directly in arm i of m is open under, which
+// is the arm being the one taken: an `if` on ir.MatchArms.Taken.
+func armGate(m *ir.Match, i int) *ir.If {
+	return &ir.If{Cond: m.Taken(i), Body: m.Arms[i].Body}
+}
+
 // keepsTemps reports whether s computes a temp the view reads rather than
-// rendering anything: a local, a write of one, or a ternary's `if`.
+// rendering anything: a local, a write of one, or a ternary's `if` or a
+// match expression's switch.
 func keepsTemps(s ir.Stmt) bool {
-	switch n := s.(type) {
+	switch s.(type) {
 	case *ir.LocalVar, *ir.Assign:
 		return true
-	case *ir.If:
-		return n.FromTernary
 	}
-	return false
+	return ir.ComputesValue(s)
 }
 
 func (w *viewWalk) declare(name string) {

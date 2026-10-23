@@ -111,6 +111,17 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	}
 	var addedEnums []*ir.EnumDef
 	var want func(t *ir.Type)
+	// A payload enum's declaration names what each member carries, as a
+	// struct's names its fields: `async.Result[http.Response]` is a Go
+	// struct of a `Response` and a `Failure`, which nothing else declared
+	// where nothing held either.
+	wantPayloads := func(ed *ir.EnumDef) {
+		for _, m := range ed.Members {
+			if m.Payload != nil && !namesBuiltinStruct(m.Payload) {
+				want(m.Payload)
+			}
+		}
+	}
 	want = func(t *ir.Type) {
 		// A list, option or map of a library struct names the struct as much
 		// as a parameter of it does.
@@ -126,6 +137,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			if ed, ok := t.Decl.(*ir.EnumDef); ok && ed != nil && !haveEnum[ed] && ed.PkgPath() != "" && ed.Foreign.Name == "" {
 				haveEnum[ed] = true
 				addedEnums = append(addedEnums, ed)
+				wantPayloads(ed)
 			}
 			return
 		}
@@ -193,6 +205,11 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	})
 	for _, t := range storedStructTypes(pkg) {
 		want(t)
+	}
+	for _, ed := range pkg.Enums {
+		if ed != nil && ed.Foreign.Name == "" {
+			wantPayloads(ed)
+		}
 	}
 	for _, t := range handlerPayloadTypes(pkg) {
 		// sngl:builtin's `error`, an @error handler's, is each backend's own
@@ -513,8 +530,17 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 					walkExpr(f.Default, used, walk)
 				}
 			}
+			// Lowering calls it wherever a value of the struct is let go of,
+			// and nothing before that names it.
+			if s.Release != nil {
+				walk(s.Release)
+			}
 		case *ir.EnumDef:
 			for _, m := range s.Members {
+				// A payload enum's declaration names what each member
+				// carries: Go's `Result__Response` holds a `Response`
+				// and a `Failure`, which nothing else may name.
+				walkType(m.Payload, used, walk)
 				if m.Value != nil {
 					walkExpr(m.Value, used, walk)
 				}
@@ -698,6 +724,14 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 			walkExpr(n.Cond, nil, buildWalk)
 			walkViewStmts(n.Body, walk, buildWalk)
 			walkViewStmts(n.Else, walk, buildWalk)
+		case *ir.Match:
+			walkExpr(n.Subject, nil, buildWalk)
+			for _, arm := range n.Arms {
+				for _, p := range arm.Patterns {
+					walkExpr(p, nil, buildWalk)
+				}
+				walkViewStmts(arm.Body, walk, buildWalk)
+			}
 		case *ir.For:
 			walkExpr(n.Iter, nil, buildWalk)
 			walkViewStmts(n.Body, walk, buildWalk)

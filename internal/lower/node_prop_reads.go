@@ -3,6 +3,7 @@ package lower
 import (
 	"duckfam.us/sngl/ast"
 	"fmt"
+	"maps"
 	"slices"
 
 	"duckfam.us/sngl/ir"
@@ -351,7 +352,7 @@ func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) (ir.Expr, bool
 	if comp == nil {
 		return nil, false
 	}
-	node, loops := nodeUnderLoops(comp.Stmts, id)
+	node, loops, provs := nodeInScope(comp.Stmts, id)
 	if node == nil || node.Component == nil || len(loops) != len(idxs) {
 		return nil, false
 	}
@@ -370,7 +371,87 @@ func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) (ir.Expr, bool
 		return nil, true
 	}
 	out = answerTestEmpty(out, inst, tests)
-	return out, out == nil
+	if out == nil {
+		return nil, true
+	}
+	return underProviders(out, append(providersAround(inst, tests), rebasedProviders(provs, comp, inst, env)...)), false
+}
+
+// provided is a context and the value a provider around a node gives it,
+// read through the instance the provider is written in.
+type provided struct {
+	ctx   *ir.Context
+	value ir.Expr
+}
+
+// providersAround is what every provider between the test's instance and
+// the instance inst names gives, outermost first: those around each call site
+// on the way, each read through the instance that call site is written in.
+func providersAround(inst ir.Expr, tests map[*ir.Param]bool) []provided {
+	outer, id, idxs, ok := testNodeRef(inst, tests)
+	if !ok {
+		return nil
+	}
+	comp := componentOf(outer)
+	if comp == nil {
+		return nil
+	}
+	_, loops, provs := nodeInScope(comp.Stmts, id)
+	if len(loops) != len(idxs) {
+		return nil
+	}
+	return append(providersAround(outer, tests), rebasedProviders(provs, comp, outer, loopBindings(loops, idxs))...)
+}
+
+// rebasedProviders is provs, around a node in comp's body, with each value
+// read through inst, or through the instance of the call a slot's provider is
+// written in. A value reading what a test cannot name is left out, and the
+// read stands under the values around it.
+func rebasedProviders(provs []scopedProvider, comp *ir.Component, inst ir.Expr, env map[ir.Symbol]ir.Expr) []provided {
+	var out []provided
+	for _, sp := range provs {
+		owner, at := comp, inst
+		if sp.via != nil {
+			if at = viaInstance(comp, inst, sp.via); at == nil {
+				continue
+			}
+			owner = sp.via.Component
+		}
+		if v := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(sp.p.Value), owner, at, env); v != nil {
+			out = append(out, provided{ctx: sp.p.Ref, value: v})
+		}
+	}
+	return out
+}
+
+// viaInstance is the instance of call, a node of comp's body that inst
+// names, read through inst: nil where the body may not render it once and
+// always, or it carries no id to read it by.
+func viaInstance(comp *ir.Component, inst ir.Expr, call *ir.NodeInst) ir.Expr {
+	if call.ID == "" {
+		return nil
+	}
+	if n, always := ownNode(comp, call.ID); n != call || !always {
+		return nil
+	}
+	return &ir.Select{Type: handleType(call), Operand: inst, Field: call.ID, Ref: ir.RefOne}
+}
+
+// underProviders is e read under provs, outermost first: a function literal
+// called in place whose body is the providers around a return of e, so that
+// passContext hands what e reads of each context the value the node is drawn
+// under rather than the test's own. A test is a root, and reads its own
+// values everywhere else.
+func underProviders(e ir.Expr, provs []provided) ir.Expr {
+	if len(provs) == 0 {
+		return e
+	}
+	t := e.ExprType()
+	body := []ir.Stmt{&ir.Return{Value: e}}
+	for _, prov := range slices.Backward(provs) {
+		body = []ir.Stmt{&ir.ContextProvider{Ref: prov.ctx, Value: prov.value, Children: body}}
+	}
+	return &ir.Call{Type: t, Callee: &ir.Lambda{Type: ir.FuncOf(nil, t), Func: &ir.Func{Return: t, Block: body}}}
 }
 
 // testNodeRef reads e as a node a test reaches through an instance: the
@@ -392,32 +473,96 @@ func testNodeRef(e ir.Expr, tests map[*ir.Param]bool) (inst ir.Expr, id string, 
 // nodeUnderLoops is the node a body renders under the id, as far as its own
 // view reaches, and the loops around it there, outermost first.
 func nodeUnderLoops(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For) {
-	var walk func(stmts []ir.Stmt, loops []*ir.For) (*ir.NodeInst, []*ir.For)
-	walk = func(stmts []ir.Stmt, loops []*ir.For) (*ir.NodeInst, []*ir.For) {
+	n, loops, _ := nodeInScope(stmts, id)
+	return n, loops
+}
+
+// scopedProvider is a provider around a node: one in the body the node is
+// written in, via nil, or one in the body of the component call via, around
+// the slot the node is content of.
+type scopedProvider struct {
+	p   *ir.ContextProvider
+	via *ir.NodeInst
+}
+
+// nodeInScope is nodeUnderLoops with the context providers around the node,
+// outermost first: those in the body, and those a component the node is slot
+// content of wraps that slot in.
+func nodeInScope(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For, []scopedProvider) {
+	var walk func(stmts []ir.Stmt, loops []*ir.For, provs []scopedProvider) (*ir.NodeInst, []*ir.For, []scopedProvider)
+	walk = func(stmts []ir.Stmt, loops []*ir.For, provs []scopedProvider) (*ir.NodeInst, []*ir.For, []scopedProvider) {
 		for _, s := range stmts {
 			if n, ok := s.(*ir.NodeInst); ok && n.ID == id {
-				return n, loops
+				return n, loops, provs
 			}
-			inner := loops
-			if f, ok := s.(*ir.For); ok {
-				inner = append(slices.Clip(loops), f)
+			inner := provs
+			if p, ok := s.(*ir.ContextProvider); ok {
+				inner = append(slices.Clip(provs), scopedProvider{p: p})
 			}
 			for _, b := range ir.ViewBlocks(s) {
-				if n, at := walk(*b, inner); n != nil {
-					return n, at
+				around := inner
+				if n, ok := s.(*ir.NodeInst); ok {
+					around = append(slices.Clip(inner), slotProviders(n, b)...)
+				}
+				if n, at, found := walk(*b, BlockLoops(s, b, loops), around); n != nil {
+					return n, at, found
 				}
 			}
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
-	return walk(stmts, nil)
+	return walk(stmts, nil, nil)
+}
+
+// slotProviders is the providers n's component wraps the slot b fills in,
+// outermost first, each via n: b is n's children or one of its slots' content.
+func slotProviders(n *ir.NodeInst, b *[]ir.Stmt) []scopedProvider {
+	if n.Component == nil {
+		return nil
+	}
+	name, rest := "", b == &n.Children
+	if !rest {
+		found := false
+		for k, sc := range n.Slots {
+			if sc != nil && b == &sc.Body {
+				name, found = k, true
+			}
+		}
+		if !found {
+			return nil
+		}
+	}
+	var out []scopedProvider
+	var walk func(stmts []ir.Stmt, provs []scopedProvider) bool
+	walk = func(stmts []ir.Stmt, provs []scopedProvider) bool {
+		for _, s := range stmts {
+			if si, ok := s.(*ir.SlotInst); ok && (rest && si.Rest || !rest && si.Name == name) {
+				out = provs
+				return true
+			}
+			inner := provs
+			if p, ok := s.(*ir.ContextProvider); ok {
+				inner = append(slices.Clip(provs), scopedProvider{p: p, via: n})
+			}
+			for _, cb := range ir.ViewBlocks(s) {
+				if walk(*cb, inner) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	walk(n.Component.Stmts, nil)
+	return out
 }
 
 // loopBindings is what each loop's variables were bound to in the copy idxs
 // names, one index per loop: the element of a list the loop walks or the
 // number a sngl:seq sequence counts there, and the index itself for the
 // loop's ordinal. A loop over anything else binds nothing, and a read of its
-// variable stays unnamed.
+// variable stays unnamed. A loop inside another may walk what the outer one
+// bound -- `for var cell = row` -- so each iterable is read with the outer
+// loops' bindings in it, and no binding names another loop's variable.
 func loopBindings(loops []*ir.For, idxs []ir.Expr) map[ir.Symbol]ir.Expr {
 	env := map[ir.Symbol]ir.Expr{}
 	for i, f := range loops {
@@ -429,6 +574,16 @@ func loopBindings(loops []*ir.For, idxs []ir.Expr) map[ir.Symbol]ir.Expr {
 			env[ord] = idxs[i]
 		}
 		iter := unnarrowed(f.Iter)
+		if i > 0 {
+			iter = newExprWalker(func(x ir.Expr) ir.Expr {
+				if id, ok := x.(*ir.Ident); ok && id.Sym != nil {
+					if bound, ok := env[id.Sym]; ok {
+						return ir.CloneExprSharingDecls(bound)
+					}
+				}
+				return x
+			}).expr(ir.CloneExprSharingDecls(iter))
+		}
 		if elem == nil {
 			continue
 		}
@@ -664,6 +819,9 @@ func ownNode(comp *ir.Component, id string) (node *ir.NodeInst, always bool) {
 			}
 			_, isFor := s.(*ir.For)
 			_, isIf := s.(*ir.If)
+			if _, isMatch := s.(*ir.Match); isMatch {
+				isIf = true
+			}
 			page := false
 			if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
 				page = true
@@ -729,6 +887,13 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 		}
 		return true
 	})
+	// What a function literal in e binds is bound wherever e is read, the
+	// test included.
+	bound := maps.Clone(keep)
+	if bound == nil {
+		bound = map[ir.Symbol]bool{}
+	}
+	keep = handlerParams(e, bound)
 	unnamed := false
 	out := newExprWalker(func(x ir.Expr) ir.Expr {
 		// A context answers the provider the instance is under, which the
@@ -736,6 +901,23 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 		if _, ok := x.(*ir.ContextRead); ok {
 			unnamed = true
 			return x
+		}
+		// A method of comp called with its receiver left implicit, as its
+		// own body calls one, is called on inst, as a test calls one.
+		if call, ok := x.(*ir.Call); ok && call.Func != nil && call.Func.RecvDecl() == ir.Symbol(comp) && len(call.Args) < len(call.Func.Params) {
+			args := []ir.CallArg{{Value: ir.CloneExprSharingDecls(inst)}}
+			for _, a := range call.Args {
+				v := rebaseKeeping(a.Value, comp, inst, env, keep)
+				if v == nil {
+					unnamed = true
+					return x
+				}
+				a.Value = v
+				args = append(args, a)
+			}
+			out := *call
+			out.Args = args
+			return &out
 		}
 		id, ok := x.(*ir.Ident)
 		if !ok || id.Sym == nil {

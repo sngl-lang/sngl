@@ -17,26 +17,98 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	// sngl:builtin's private copies, which keep the package free of imports.
-	{"builtin", "_builtin"}:       markBuiltin,
-	{"builtin", "_intrinsic"}:     markIntrinsic,
-	{"family", "crosses"}:         markFamilyCrosses,
-	{"family", "eventless"}:       markFamilyEventless,
-	{"macro", "wildcard"}:         markWildcard,
-	{"macro", "construct"}:        markConstruct,
-	{"macro", "foreign"}:          markForeign,
-	{"macro", "cnative"}:          markCNative,
-	{"macro", "unusable"}:         markUnusable,
-	{"language/kotlin", "native"}: markKotlinNative,
-	{"language/go", "native"}:     markGoNative,
-	{"language/go", "async"}:      markGoAsync,
-	{"language/js", "native"}:     markJSNative,
-	{"x/gen", "can"}:              markGenCan,
-	{"x/gen", "cannot"}:           markGenCannot,
-	{"x/gen", "wants"}:            markGenWants,
-	{"x/gen", "renders"}:          markGenRenders,
-	{"x/gen", "name"}:             markGenName,
-	{"x/gen", "native"}:           markGenNative,
-	{"ui/markup/md", "order"}:     markMdOrder,
+	{"builtin", "_builtin"}:            markBuiltin,
+	{"builtin", "_intrinsic"}:          markIntrinsic,
+	{"family", "crosses"}:              markFamilyCrosses,
+	{"family", "eventless"}:            markFamilyEventless,
+	{"macro", "wildcard"}:              markWildcard,
+	{"macro", "construct"}:             markConstruct,
+	{"macro", "foreign"}:               markForeign,
+	{"macro", "cnative"}:               markCNative,
+	{"macro", "owned"}:                 markOwned,
+	{"macro", "retains"}:               markRetains,
+	{"macro", "moves"}:                 markMoves,
+	{"macro", "unusable"}:              markUnusable,
+	{"language/kotlin", "native"}:      markKotlinNative,
+	{"language/go", "native"}:          markGoNative,
+	{"language/go", "async"}:           markGoAsync,
+	{"language/js", "native"}:          markJSNative,
+	{"x/gen", "can"}:                   markGenCan,
+	{"x/gen", "cannot"}:                markGenCannot,
+	{"x/gen", "wants"}:                 markGenWants,
+	{"x/gen", "renders"}:               markGenRenders,
+	{"x/gen", "name"}:                  markGenName,
+	{"x/gen", "native"}:                markGenNative,
+	{"ui/markup/md", "order"}:          markMdOrder,
+	{"json", "identifier"}:             markJSONIdentifier,
+	{"http", "identifier"}:             markHTTPIdentifier,
+	{"platform/android", "permission"}: markAndroidPermission,
+}
+
+// markAndroidPermission implements #[android.permission("…")]: a permission
+// an android app asks for wherever the declaration is reached, written on the
+// native or primitive that needs it -- the one an override calls -- so the
+// build collects what the program uses rather than guessing from what it
+// imports.
+func markAndroidPermission(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[android.permission] requires a non-empty name")
+	}
+	var info *ir.DeclInfo
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		info = &d.DeclInfo
+	case *ir.Component:
+		info = &d.DeclInfo
+	default:
+		return fmt.Errorf("#[android.permission] cannot mark %s; only a function or a component is reached", ast.DeclFormName(m.decl))
+	}
+	if !slices.Contains(info.Permissions, name) {
+		info.Permissions = append(info.Permissions, name)
+	}
+	return nil
+}
+
+// markJSONIdentifier implements #[json.identifier("name")]: the name a struct
+// field or an enum member is written under in JSON. A fact about the format
+// rather than the field, so the field keeps its own name everywhere else and
+// only an encoder reads this one.
+func markJSONIdentifier(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[json.identifier] requires a non-empty name")
+	}
+	switch d := m.sym.(type) {
+	case *ir.StructField:
+		if n := markedNames(m.decl); n > 1 {
+			return fmt.Errorf("#[json.identifier(%q)] marks %d fields at once; one key cannot name several fields", name, n)
+		}
+		d.JSON = name
+	case *ir.EnumMember:
+		d.JSON = name
+	default:
+		return fmt.Errorf("#[json.identifier] cannot mark %s; only a struct field or an enum member has a name in JSON", ast.DeclFormName(m.decl))
+	}
+	return nil
+}
+
+// markHTTPIdentifier implements #[http.identifier("name")]: the key a field of
+// a request's query struct is sent under, where it is no SNGL identifier.
+func markHTTPIdentifier(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[http.identifier] requires a non-empty name")
+	}
+	d, ok := m.sym.(*ir.StructField)
+	if !ok {
+		return fmt.Errorf("#[http.identifier] cannot mark %s; only a struct field is a query parameter", ast.DeclFormName(m.decl))
+	}
+	if n := markedNames(m.decl); n > 1 {
+		return fmt.Errorf("#[http.identifier(%q)] marks %d fields at once; one key cannot name several fields", name, n)
+	}
+	d.HTTP = name
+	return nil
 }
 
 // markMdOrder implements #[md.order]. The md: importer reads it from source
@@ -331,6 +403,12 @@ func markBuiltin(m *mark) error {
 		d.Builtin = kind
 	case *ir.UnitDef:
 		d.Builtin = kind
+	case *ir.Func:
+		if !kind.IsCMarshal() {
+			return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
+		}
+		d.Builtin = kind
+		return nil
 	default:
 		return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
 	}
@@ -419,6 +497,7 @@ func markIntrinsic(m *mark) error {
 	fn.Intrinsic = id
 	fn.MutatesReceiver = slices.Contains(flags, flagMutatesReceiver)
 	fn.BuildOnly = slices.Contains(flags, flagBuild)
+	fn.IsAsync = slices.Contains(flags, flagAsync)
 	switch {
 	case slices.Contains(flags, flagMutates):
 		fn.Purity = ir.PurityMutates

@@ -132,9 +132,11 @@ func NewIRContext(ctx *codegen.ExprCtx) *KtIRContext {
 	return &KtIRContext{Ctx: ctx, imports: newKtImportSet()}
 }
 
-// Unscoped is a context over kc's ExprCtx with none of its rewrites, writing
-// to kc's import set: what a member of a class kc's file declares reads.
-func (kc *KtIRContext) Unscoped() *KtIRContext {
+// Unrewritten is a context for the file kc writes that rewrites no
+// identifier: the imports its code requires are the file's, which a context
+// of its own would require of nobody. Android's hoisted state class is
+// written through one, since its members reach each other through `this`.
+func (kc *KtIRContext) Unrewritten() *KtIRContext {
 	return &KtIRContext{Ctx: kc.Ctx, imports: kc.imports}
 }
 
@@ -271,6 +273,9 @@ func selectField(n *ir.Select) string {
 }
 
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
+	if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {
+		return "(" + operand + " as? " + enumVariant(t, n.Field) + ")?.value"
+	}
 	return operand + "." + selectField(n)
 }
 
@@ -306,6 +311,12 @@ func (kc *KtIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	return b.String()
 }
 func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	if member, _, ok := ir.EnumLitMember(n); ok {
+		return enumLitKt(n.Type, member, fieldStrs[0])
+	}
+	if ir.IsBuilder(n.Type) {
+		return "StringBuilder()"
+	}
 	name := "Any"
 	if n.Def != nil {
 		name = exportName(n.Def.Name)
@@ -642,10 +653,11 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 				}
 			}
 		}
-		// A host value may be a narrower Kotlin type than the one SNGL declared
-		// -- Compose's empty `Modifier` is its companion object -- and a
-		// later assignment needs the declared one.
-		if sd, ok := hostStruct(n.Type); ok && sd.Foreign.Scheme == "kotlin" {
+		// A variant's class is narrower than the sealed class a later write
+		// may hold another variant of, and a host value may be narrower than
+		// the type SNGL declared -- Compose's empty `Modifier` is its
+		// companion object.
+		if sd, ok := hostStruct(n.Type); ir.PayloadEnum(n.Type) != nil || ok && sd.Foreign.Scheme == "kotlin" {
 			return "var " + n.Name + ": " + IRTypeToKt(n.Type) + " = " + kc.valueCopyFor(n, initStr)
 		}
 		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
@@ -666,6 +678,11 @@ func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
 	}
 	return ret
 }
+
+// BreakText is a bare break whatever its label: Kotlin's when takes no break
+// of its own, so one in a when leaves the loop around it, and the loop needs
+// no label (ForHead writes none).
+func (kc *KtIRContext) BreakText(*ir.Break) string { return "break" }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
 	// A loop that declared no variable still binds one: Kotlin's `_` is for
@@ -742,8 +759,10 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 		return n.Name
 	}
 	// A write names the var it writes, so a same-named lambda parameter in
-	// scope (android's checkbox hands its lambda `on`) does not shadow it.
-	if _, isVar := n.Sym.(*ir.Var); isVar {
+	// scope (android's checkbox hands its lambda `on`) does not shadow it --
+	// and a function's own local is not the page's var of its name:
+	// sngl:http's `checked()` wrote its `kind` as `state.kind`.
+	if v, isVar := n.Sym.(*ir.Var); isVar && kc.declared(v) {
 		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
 			return rewritten
 		}
@@ -752,6 +771,23 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 		return rewritten
 	}
 	return n.Name
+}
+
+// declared reports whether v is a var the package or one of its components
+// declares, rather than a local a body binds.
+func (kc *KtIRContext) declared(v *ir.Var) bool {
+	if kc.Ctx == nil || kc.Ctx.Pkg == nil {
+		return true
+	}
+	if slices.Contains(kc.Ctx.Pkg.Vars, v) {
+		return true
+	}
+	for _, c := range kc.Ctx.Pkg.Components {
+		if slices.Contains(c.Vars, v) {
+			return true
+		}
+	}
+	return false
 }
 
 // identRewrite is the rewrite for a name the page's state declares, unless
@@ -787,7 +823,7 @@ func ktLiteral(n *ir.Literal) string {
 	}
 	switch n.Type.Kind {
 	case ir.TypeString:
-		return fmt.Sprintf("%q", n.Value)
+		return Quote(n.Value)
 	case ir.TypeInt:
 		return n.Value
 	case ir.TypeFloat:
@@ -812,7 +848,7 @@ func ktLiteral(n *ir.Literal) string {
 		return "null"
 	case ir.TypeStruct:
 		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Value)
+			return Quote(n.Value)
 		}
 		return n.Value
 	default:
@@ -826,12 +862,19 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		return s
 	}
 	if n.Member != "" {
+		if ir.PayloadEnum(n.Type) != nil {
+			return enumLitKt(n.Type, n.Member, "")
+		}
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
 			return EnumName(n.Type.Decl) + "." + EnumEntry(n.Member)
 		}
 		return fmt.Sprintf("%q", n.Member)
+	}
+	// A name the emitted code bound itself (codegen.HostValue).
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
 	}
 	name := n.Name
 	if host, ok := kc.hostValueIdent(n); ok {
@@ -899,7 +942,17 @@ func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
 	name := kc.NativeName(n.Func.Foreign.Path, n.Func.Foreign.Name)
 	args := kc.evalCallArgs(n.Args)
 	if n.Func.NativeMethod && len(args) > 0 {
-		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
+		rest := args[1:]
+		if n.Func.NativeNamedArgs {
+			// The receiver is args[0], declared as the first parameter or
+			// as the method's receiver.
+			params := n.Func.Params
+			if len(params) == len(args) {
+				params = params[1:]
+			}
+			rest = ktNameArgs(params, rest)
+		}
+		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(rest, ", ") + ")", true
 	}
 	if n.Func.NativeNamedArgs {
 		args = ktNameArgs(n.Func.Params, args)
@@ -935,6 +988,10 @@ func ktMethodTail(name string) string {
 }
 
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
+	// A codec call reads the type it reads or writes, which is the call's.
+	if out, ok := kc.codecCall(n); ok {
+		return out
+	}
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
 	if out, imports, ok := codegen.EmitIntrinsicCall(langKt, kc.Ctx.Platform, n, kc.EvalExpr); ok {
@@ -971,7 +1028,8 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 			if codegen.IsComputed(n.Func) {
 				return name
 			}
-			return name + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
+			_, args := carriedReceiver(n)
+			return name + "(" + strings.Join(kc.evalCallArgs(args), ", ") + ")"
 		}
 	}
 	if n.Func != nil && n.Func.IsMethod() {
@@ -1001,10 +1059,45 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := kc.evalCallArgs(n.Args)
+	if lam, ok := n.Callee.(*ir.Lambda); ok && lam.Func != nil && ir.BlockHasAsyncCall(lam.Func.Block) {
+		return kc.waitingLiteralCall(lam, args)
+	}
 	if n.Callee != nil {
 		return kc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
 	}
 	return "(" + strings.Join(args, ", ") + ")"
+}
+
+// waitingLiteralCall is a function literal that waits, called where it
+// stands -- an adapter's `fetch=func(k) => call(k)` spliced into the mount
+// that calls it. A Kotlin lambda is no suspend function, so the body is
+// written in place as a block its parameters are bound in, which waits
+// wherever its caller does, and whose `return` leaves the block.
+func (kc *KtIRContext) waitingLiteralCall(lam *ir.Lambda, args []string) string {
+	inner := *kc
+	inner.returnTo = "run"
+	lines := []string{"run {"}
+	for i, a := range args {
+		lines = append(lines, fmt.Sprintf("\tval __arg%d = %s", i, a))
+	}
+	for i, p := range lam.Func.Params {
+		if i < len(args) {
+			lines = append(lines, fmt.Sprintf("\tval %s = __arg%d", SafeIdent(p.Name), i))
+		}
+	}
+	body := &inner
+	for _, p := range lam.Func.Params {
+		body = body.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(lam.Func.Block) {
+		body = body.WithLocal(name)
+	}
+	for _, stmt := range lam.Func.Block {
+		for _, line := range body.EvalStmt(stmt) {
+			lines = append(lines, "\t"+line)
+		}
+	}
+	return strings.Join(append(lines, "}"), "\n")
 }
 
 // evalQualifiedCall is a call named through an import, where the import still
@@ -1143,15 +1236,22 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// test-mode `state.` prefixing still applies.
 	if n.Func.OnComponent() {
 		name := method
+		rewritten := false
 		if kc.IdentRewrites != nil {
 			if rw, ok := kc.IdentRewrites[name]; ok {
-				name = rw
+				name, rewritten = rw, true
 			}
+		}
+		// A rewrite already names the method through the instance, and
+		// otherwise the receiver is spelled before the dot.
+		recv, args := carriedReceiver(n)
+		if recv != nil && !rewritten {
+			name = kc.EvalExpr(recv) + "." + name
 		}
 		if codegen.IsComputed(n.Func) {
 			return name
 		}
-		callArgs := kc.evalCallArgs(n.Args)
+		callArgs := kc.evalCallArgs(args)
 		return name + "(" + strings.Join(callArgs, ", ") + ")"
 	}
 
@@ -1176,6 +1276,19 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return args[0] + "." + method
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// carriedReceiver splits off the instance a call of a component's method
+// carries in front of its arguments, which a test's call through the
+// instance does -- `c.rows().size` -- and the composable's own call leaves
+// implicit. The func takes no such parameter: it is a member of what holds
+// the state. recv is nil for a call carrying none.
+func carriedReceiver(n *ir.Call) (recv ir.Expr, args []ir.CallArg) {
+	fn := n.Func
+	if fn != nil && fn.OnComponent() && len(n.Args) > 0 && len(n.Args) == len(fn.Params) && fn.Params[0].Receiver {
+		return n.Args[0].Value, n.Args[1:]
+	}
+	return nil, n.Args
 }
 
 // isScopeComputed reports whether a bare call names derived state of the
@@ -1270,6 +1383,13 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if _, dst, ok := ir.NumericListConversion(n); ok {
 		return operand + ".map { it." + ktNumberConvMethod(dst.Elems[0]) + " }"
 	}
+	// The checker lets only a literal 0 become a unit; one of several bases
+	// is a data class, and its zero is the one built with none.
+	if isMultiBaseUnitKt(n.Type) {
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeInt {
+			return exportName(ir.UnitDeclOf(n.Type).Name) + "()"
+		}
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeInt, ir.TypeFloat:
@@ -1329,6 +1449,9 @@ func ktZeroFor(t *ir.Type) string {
 	case ir.TypeList:
 		return "listOf()"
 	case ir.TypeEnum:
+		if ir.PayloadEnum(t) != nil {
+			return enumZeroKt(t)
+		}
 		// An enum's zero is its first member, as it is on every other target.
 		// `null` is not a value of a non-nullable Kotlin enum, so a struct
 		// field left at its default did not compile.
@@ -1379,7 +1502,16 @@ func EnumName(decl ir.Symbol) string {
 // EnumDecl declares ed as a Kotlin enum class. Each entry carries the member's
 // SNGL name as its string form, because the entry's own name is upper-cased
 // and a program printing a member prints it as declared on every target.
+//
+// An enum carrying payloads is a sealed class instead (PayloadEnumDecl), and a
+// generic one is declared per instantiation passMonomorphize made.
 func EnumDecl(ed *ir.EnumDef) string {
+	if len(ed.TypeParams) > 0 {
+		return ""
+	}
+	if ed.Carries() {
+		return PayloadEnumDecl(ed)
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "enum class %s(private val sngl: String) {\n", EnumName(ed))
 	entries := make([]string, len(ed.Members))
@@ -1402,11 +1534,25 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 			params[i] += ": " + IRTypeToKt(p.Type)
 		}
 	}
+	for _, name := range codegen.BodyLocals(n.Func.Block) {
+		kc = kc.WithLocal(name)
+	}
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := kc.EvalExpr(ret.Value)
 			return "{ " + strings.Join(params, ", ") + " -> " + body + " }"
 		}
+	}
+	// A handler that waits is started rather than run: the host calls it
+	// with nowhere to wait, so its body is a coroutine of its own.
+	if ir.BlockHasAsyncCall(n.Func.Block) && (n.Func.Return == nil || n.Func.Return.Kind == ir.TypeVoid) {
+		var b strings.Builder
+		b.WriteString("{ " + strings.Join(params, ", ") + " ->\n")
+		for _, line := range kc.Coroutine(n.Func.Block) {
+			b.WriteString("    " + line + "\n")
+		}
+		b.WriteString("}")
+		return b.String()
 	}
 	var b strings.Builder
 	body := kc
@@ -1424,6 +1570,36 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	}
 	b.WriteString("}")
 	return b.String()
+}
+
+// Coroutine is a body that waits, started on the thread the target draws on
+// where nothing waits for it -- a handler, an effect's mount -- so what it
+// writes after a wait lands where every write does. A `return` in it leaves
+// the coroutine.
+func (kc *KtIRContext) Coroutine(block []ir.Stmt) []string {
+	inner := *kc
+	inner.returnTo = "start"
+	out := []string{"SnglCodec.start {"}
+	for _, stmt := range block {
+		for _, line := range inner.EvalStmt(stmt) {
+			out = append(out, "\t"+line)
+		}
+	}
+	return append(out, "}")
+}
+
+// Labeled is a body run where it stands whose `return` leaves the body
+// alone, as a handler's does: an effect's mount inlined into the bracket.
+func (kc *KtIRContext) Labeled(block []ir.Stmt) []string {
+	inner := *kc
+	inner.returnTo = "run"
+	out := []string{"run {"}
+	for _, stmt := range block {
+		for _, line := range inner.EvalStmt(stmt) {
+			out = append(out, "\t"+line)
+		}
+	}
+	return append(out, "}")
 }
 
 // LambdaReturns reports whether a lambda's body returns, outside a lambda of
@@ -1541,6 +1717,9 @@ func IRTypeToKt(t *ir.Type) string {
 		}
 		return "Any?"
 	case ir.TypeStruct:
+		if ir.IsBuilder(t) {
+			return "StringBuilder"
+		}
 		// A color is the emitted Color data class, matching the
 		// `Color(r=…, g=…, b=…, a=…)` every color *value* already renders as
 		// and what `color.hex` and composeColorExpr read. Answering String
@@ -1592,6 +1771,11 @@ func IRTypeToKt(t *ir.Type) string {
 		ret := "Unit"
 		if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
 			ret = IRTypeToKt(t.Sig.Return)
+		}
+		// One that waits is a suspend function, as an async function is
+		// declared: a query's fetch prop is handed `::fetchBook`.
+		if t.Sig.Color == ir.ColorAsync {
+			return "suspend (" + strings.Join(params, ", ") + ") -> " + ret
 		}
 		return "(" + strings.Join(params, ", ") + ") -> " + ret
 	case ir.TypeNull:
@@ -1652,6 +1836,12 @@ func IRLiteralToKt(e ir.Expr) string {
 		b.WriteString(")")
 		return b.String()
 	case *ir.StructLit:
+		if member, payload, ok := ir.EnumLitMember(n); ok {
+			return enumLitKt(n.Type, member, IRLiteralToKt(payload))
+		}
+		if ir.IsBuilder(n.Type) {
+			return "StringBuilder()"
+		}
 		name := "Any"
 		if n.Def != nil {
 			name = exportName(n.Def.Name)
@@ -1668,6 +1858,9 @@ func IRLiteralToKt(e ir.Expr) string {
 		// an identifier. Falling through to the empty string put `op = ""` in
 		// a constructor call whose parameter is an enum.
 		if n.Member != "" {
+			if ir.PayloadEnum(n.Type) != nil {
+				return enumLitKt(n.Type, n.Member, "")
+			}
 			if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
 				return EnumName(n.Type.Decl) + "." + EnumEntry(n.Member)
 			}
@@ -1808,6 +2001,16 @@ func ktMapValZero(t *ir.Type) string {
 	if t == nil || len(t.Elems) < 2 {
 		return "null"
 	}
+	// A struct the program declares is a data class whose every field has a
+	// default, so its zero is the class called with none. `null` was no value
+	// of it: `(facts[m] ?: null).kind` did not compile.
+	if v := t.Elems[1]; v.Kind == ir.TypeStruct && !ir.IsColorStruct(v) && !ir.StringReprStruct(v) {
+		if sd, ok := v.Decl.(*ir.StructDef); ok && sd.Foreign.Name == "" {
+			if name := IRTypeToKt(v); name != "String" {
+				return name + "()"
+			}
+		}
+	}
 	return ktZeroFor(t.Elems[1])
 }
 
@@ -1882,4 +2085,76 @@ func hostStruct(t *ir.Type) (*ir.StructDef, bool) {
 	}
 	sd, ok := t.Decl.(*ir.StructDef)
 	return sd, ok && sd != nil
+}
+
+// Match writes a match statement as a when. The last arm of an exhaustive
+// match keeps its patterns, so Kotlin checks the when covers its subject as
+// the checker did; an else arm is the when's else.
+func (kc *KtIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
+	in := kc.Indent()
+	lines := []string{kc.whenHead(&n.MatchArms, subject) + " {"}
+	for i := range n.Arms {
+		lines = append(lines, in+kc.whenCondition(&n.MatchArms, i, patterns[i])+" -> {")
+		lines = append(lines, irwalk.IndentLines(in+in, bodies[i])...)
+		lines = append(lines, in+"}")
+	}
+	return append(lines, "}")
+}
+
+// MatchExpr writes a match expression as a when expression.
+func (kc *KtIRContext) MatchExpr(n *ir.MatchExpr) string {
+	subject := ""
+	if n.Subject != nil {
+		subject = irwalk.EvalExpr(kc, n.Subject)
+	}
+	arms := make([]string, len(n.Arms))
+	for i, arm := range n.Arms {
+		var pats []string
+		for _, p := range arm.Patterns {
+			pats = append(pats, irwalk.EvalExpr(kc, p))
+		}
+		arms[i] = kc.whenCondition(&n.MatchArms, i, pats) + " -> " + irwalk.EvalExpr(kc, arm.Value)
+	}
+	return "(" + kc.whenHead(&n.MatchArms, subject) + " { " + strings.Join(arms, "; ") + " })"
+}
+
+// WhenHead opens a when over m, for a platform rendering a match's arms
+// itself -- Compose's in a composable.
+func (kc *KtIRContext) WhenHead(m *ir.MatchArms) string {
+	subject := ""
+	if m.Subject != nil {
+		subject = irwalk.EvalExpr(kc, m.Subject)
+	}
+	return kc.whenHead(m, subject) + " {"
+}
+
+// WhenArm opens arm i of a when WhenHead opened.
+func (kc *KtIRContext) WhenArm(m *ir.MatchArms, i int) string {
+	var pats []string
+	for _, p := range m.Arms[i].Patterns {
+		pats = append(pats, irwalk.EvalExpr(kc, p))
+	}
+	return kc.whenCondition(m, i, pats) + " -> {"
+}
+
+func (kc *KtIRContext) whenHead(m *ir.MatchArms, subject string) string {
+	if m.Subject == nil {
+		return "when"
+	}
+	return "when (" + subject + ")"
+}
+
+// whenCondition is what selects arm i: its patterns, or else. Headless, the
+// conditions are joined into one, which a subjectless when takes.
+func (kc *KtIRContext) whenCondition(m *ir.MatchArms, i int, patterns []string) string {
+	if m.Arms[i].Else || len(patterns) == 0 || (m.Exhaustive && i == len(m.Arms)-1 && m.Subject == nil) {
+		return "else"
+	}
+	if m.Subject == nil {
+		if len(patterns) == 1 {
+			return patterns[0]
+		}
+		return "(" + strings.Join(patterns, ") || (") + ")"
+	}
+	return strings.Join(patterns, ", ")
 }

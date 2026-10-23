@@ -1,0 +1,711 @@
+{
+ "abilities": [
+  {
+   "ability": {
+    "name": "snow-cloak",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/ability/81/"
+   },
+   "is_hidden": false,
+   "slot": 1
+  },
+  {
+   "ability": {
+    "name": "snow-warning",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/ability/117/"
+   },
+   "is_hidden": true,
+   "slot": 3
+  }
+ ],
+ "base_experience": 60,
+ "cries": {
+  "latest": null,
+  "legacy": null
+ },
+ "forms": [
+  {
+   "name": "vulpix-alola",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-form/10205/"
+  }
+ ],
+ "game_indices": [],
+ "height": 6,
+ "held_items": [
+  {
+   "item": {
+    "name": "snowball",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item/689/"
+   },
+   "version_details": [
+    {
+     "rarity": 5,
+     "version": {
+      "name": "sun",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/27/"
+     }
+    },
+    {
+     "rarity": 5,
+     "version": {
+      "name": "moon",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/28/"
+     }
+    },
+    {
+     "rarity": 5,
+     "version": {
+      "name": "ultra-sun",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/29/"
+     }
+    },
+    {
+     "rarity": 5,
+     "version": {
+      "name": "ultra-moon",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version/30/"
+     }
+    }
+   ]
+  }
+ ],
+ "id": 10103,
+ "is_default": false,
+ "location_area_encounters": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/10103/encounters",
+ "moves": [
+  {
+   "move": {
+    "name": "body-slam",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/34/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "take-down",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/36/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "double-edge",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/38/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "tail-whip",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/39/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 1,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": 1,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "roar",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/46/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "disable",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/50/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 4,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "mist",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/54/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 40,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "ice-beam",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/58/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 32,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "blizzard",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/59/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 52,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "aurora-beam",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/62/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 24,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "dig",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/91/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "hypnosis",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/95/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "confuse-ray",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/109/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 20,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "flail",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/175/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "spite",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/180/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 12,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "powder-snow",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/181/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 1,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": 2,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "icy-wind",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/196/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 16,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "imprison",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/286/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 36,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    },
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "machine",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/4/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "extrasensory",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/326/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 28,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "howl",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/336/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 0,
+     "move_learn_method": {
+      "name": "egg",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/2/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "ice-shard",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/420/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 8,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "freeze-dry",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/573/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 48,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  },
+  {
+   "move": {
+    "name": "aurora-veil",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/694/"
+   },
+   "version_group_details": [
+    {
+     "level_learned_at": 44,
+     "move_learn_method": {
+      "name": "level-up",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move-learn-method/1/"
+     },
+     "order": null,
+     "version_group": {
+      "name": "scarlet-violet",
+      "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/25/"
+     }
+    }
+   ]
+  }
+ ],
+ "name": "vulpix-alola",
+ "order": 67,
+ "past_abilities": [],
+ "past_stats": [],
+ "past_types": [],
+ "species": {
+  "name": "vulpix",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/37/"
+ },
+ "sprites": {
+  "back_default": "http://127.0.0.1:47819/dot.png?sprite=back/10103.png",
+  "back_female": null,
+  "back_shiny": "http://127.0.0.1:47819/dot.png?sprite=back/shiny/10103.png",
+  "back_shiny_female": null,
+  "front_default": "http://127.0.0.1:47819/dot.png?sprite=10103.png",
+  "front_female": null,
+  "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=shiny/10103.png",
+  "front_shiny_female": null,
+  "other": {
+   "home": {
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/home/10103.png",
+    "front_female": null,
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/home/shiny/10103.png",
+    "front_shiny_female": null
+   },
+   "official-artwork": {
+    "front_default": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/10103.png",
+    "front_shiny": "http://127.0.0.1:47819/dot.png?sprite=other/official-artwork/shiny/10103.png"
+   }
+  }
+ },
+ "stats": [
+  {
+   "base_stat": 38,
+   "effort": 0,
+   "stat": {
+    "name": "hp",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/stat/1/"
+   }
+  },
+  {
+   "base_stat": 41,
+   "effort": 0,
+   "stat": {
+    "name": "attack",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/stat/2/"
+   }
+  },
+  {
+   "base_stat": 40,
+   "effort": 0,
+   "stat": {
+    "name": "defense",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/stat/3/"
+   }
+  },
+  {
+   "base_stat": 50,
+   "effort": 0,
+   "stat": {
+    "name": "special-attack",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/stat/4/"
+   }
+  },
+  {
+   "base_stat": 65,
+   "effort": 0,
+   "stat": {
+    "name": "special-defense",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/stat/5/"
+   }
+  },
+  {
+   "base_stat": 65,
+   "effort": 1,
+   "stat": {
+    "name": "speed",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/stat/6/"
+   }
+  }
+ ],
+ "types": [
+  {
+   "slot": 1,
+   "type": {
+    "name": "ice",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/15/"
+   }
+  }
+ ],
+ "weight": 99
+}

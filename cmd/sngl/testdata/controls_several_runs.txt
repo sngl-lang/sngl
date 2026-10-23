@@ -1,0 +1,142 @@
+# Two selects and two datepickers in one component, and a select a render slot
+# builds, on every target. gtk4's overrides name their widget (`#drop`, `#cal`)
+# for an effect beside it to read, and every splice of an override shared the
+# declaration's handle, so two of them were one handle rendered twice and the
+# build refused the read; now each splice has its own (freshNodeHandles). And a
+# select in a render slot read its signal's parameter as an unbound `d`: the
+# slot's emitter spelled widget reads into native code before the attach said
+# `d` was the dropdown, and readWidgets now leaves an attached handler's
+# parameter for signalLambda.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import time "sngl:time"
+import ui "sngl:ui"
+
+component form ui.node {
+    var shown = true
+    var size = "S"
+    var color = "Red"
+    var extra = "No"
+    var from option[time.date] = null
+    var until option[time.date] = null
+
+    ui.select #sizes(:value=size) {
+        ui.choice(label="S")
+        ui.choice(label="M")
+    }
+    ui.select #colors(:value=color) {
+        ui.choice(label="Red")
+        ui.choice(label="Blue")
+    }
+    if shown {
+        ui.select #extras(:value=extra) {
+            ui.choice(label="No")
+            ui.choice(label="Yes")
+        }
+    }
+    ui.datepicker(:value=from)
+    ui.datepicker(:value=until)
+}
+
+func testEachSelectChoosesItsOwn(t test.Test, c form) {
+    c.colors.change("Blue")
+    t.assert(c.color == "Blue" && c.size == "S")
+    c.sizes.change("M")
+    t.assert(c.size == "M" && c.color == "Blue")
+}
+
+func testASelectInASlotChooses(t test.Test, c form) {
+    if c.extras != null {
+        c.extras.change("Yes")
+    }
+    t.assert(c.extra == "Yes")
+}
+-- testrun/android/kotlin/app.sngl/form/1 --
+sha256:b4334278923bb80d1c39108862aaa04a
+{
+  "results": [
+    {
+      "Desc": "ASelectInASlotChooses",
+      "Passed": true
+    },
+    {
+      "Desc": "EachSelectChoosesItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/form/1 --
+sha256:6e90baed4ed74f8f6e7ee59b13566880
+{
+  "results": [
+    {
+      "Desc": "ASelectInASlotChooses",
+      "Passed": true
+    },
+    {
+      "Desc": "EachSelectChoosesItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/form/1 --
+sha256:ab16578a9f31d32140a5ef06f8f6df7d
+{
+  "results": [
+    {
+      "Desc": "ASelectInASlotChooses",
+      "Passed": true
+    },
+    {
+      "Desc": "EachSelectChoosesItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/form/1 --
+sha256:8b4a15fb3830ad8ab81add218fea1a61
+{
+  "results": [
+    {
+      "Desc": "ASelectInASlotChooses",
+      "Passed": true
+    },
+    {
+      "Desc": "EachSelectChoosesItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/form/1 --
+sha256:8c16c19374c1850fb903dfb8bd14afbc
+{
+  "results": [
+    {
+      "Desc": "ASelectInASlotChooses",
+      "Passed": true
+    },
+    {
+      "Desc": "EachSelectChoosesItsOwn",
+      "Passed": true
+    }
+  ]
+}

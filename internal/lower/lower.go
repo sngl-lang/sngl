@@ -36,11 +36,14 @@ type pass struct {
 // pass wherever the stated requirements allow; if it has a requirement not yet
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
+	passEnumReads,
+	passMatch,
 	passTestInstanceReach,
 	passTestReach,
 	passTestRefOwner,
 	passHoistBodyTypes,
 	passHoistState,
+	passStringBuilders,
 	// Before every pass that writes a store of its own: what it copies is
 	// what the program wrote. After passHoistState, which turns a view block's
 	// local into a var whose initializer it reaches.
@@ -77,6 +80,7 @@ var passes = []pass{
 	// reads, and before anything rewrites a body out from under a position.
 	passAsyncCapable,
 	passAsyncReactive,
+	passOwnedState,
 	passComputed,
 	passLambda,
 	passNoListLambdas,
@@ -95,6 +99,8 @@ var passes = []pass{
 	passCanvasInstances,
 	// After every pass that elects or copies a component built at run time.
 	passCopyKeys,
+	// After the inliners, which splice a generic library body at bound types.
+	passMonomorphizeEnums,
 	// After every pass that copies a body at bound types, and before any that
 	// names a struct by its declaration's name: a copy's structs are no
 	// package's until this points them at one.
@@ -105,12 +111,15 @@ var passes = []pass{
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
+	passCMarshal,
 	passDirectCalls,
+	passAsyncProps,
 	passEffect,
 	passSlotChildInstances,
 	passInstanceEvents,
 	passComponentProps,
 	passReactivity,
+	passMatchLate,
 	passTernary,
 	passCanvasReactivity,
 	passFocusOrder,
@@ -126,6 +135,7 @@ var passes = []pass{
 	passIndexedIter,
 	passForElse,
 	passErrorCatch,
+	passReleaseTemps,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,
@@ -368,9 +378,11 @@ func addForeignTypes(pkg *ir.Package) {
 	}
 }
 
-// userPackages is every package the program imports by directory, transitively:
-// its own source, split across directories. A `sngl:` import is a library and
-// is not one of these -- what it declares is the target's to provide.
+// userPackages is every package the program imports by directory, or by a
+// scheme that writes SNGL -- `md:`, `openapi:` -- transitively: its own source,
+// split across directories or generated for it. A `sngl:` import is a library
+// and is not one of these -- what it declares is the target's to provide --
+// and nor is a scheme's native package, whose declarations are the host's.
 func userPackages(pkg *ir.Package) []*ir.Package {
 	var out []*ir.Package
 	seen := map[*ir.Package]bool{pkg: true}
@@ -380,7 +392,7 @@ func userPackages(pkg *ir.Package) []*ir.Package {
 			if imp == nil || imp.Pkg == nil || seen[imp.Pkg] {
 				continue
 			}
-			if scheme, _ := imports.ParseScheme(imp.Path); scheme != "" {
+			if scheme, _ := imports.ParseScheme(imp.Path); scheme == "sngl" || imp.Native != nil {
 				continue
 			}
 			seen[imp.Pkg] = true
@@ -426,6 +438,8 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 			switch x := e.(type) {
 			case *ir.Call:
 				visit(x.Func)
+			case *ir.StructLit:
+				visit(ir.ReleaseOf(x.Type))
 			case *ir.Ident:
 				// Held as a value -- handed to a func-typed prop, stored in a
 				// record -- a function is as much the program's as one it
@@ -438,12 +452,15 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		}).stmts(stmts)
 	}
 	visit = func(fn *ir.Func) {
-		if fn == nil || have[fn] || !mine[fn] || fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 {
+		if fn == nil || have[fn] || !mine[fn] || fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 && !ir.IsRelease(fn) {
 			return
 		}
 		have[fn] = true
 		out = append(out, fn)
 		walk(fn.Block)
+		// Lowering releases what the program allocates, so an owned type's
+		// release is called as surely as the function that made the value.
+		visit(ir.ReleaseOf(fn.Return))
 	}
 	for _, c := range pkg.Components {
 		walk(c.Stmts)

@@ -1,0 +1,125 @@
+# An async.query under an `if` reading the state of a component that is
+# itself built at run time, under an `if` of its own: the shape of a detail
+# page asking for a second answer keyed on the first. Its unbound two-way
+# props are cells of a wrapper ImplicitState writes, and query's family is its
+# type parameter F, which the call site leaves to the position: the wrapper
+# had no family, and once built at run time with the query's effect in it no
+# pass could type its root. It is a member of the family the position takes.
+#
+# The fetch waits on a request to the script harness's server, and html's
+# factory for a component built at run time wrote each of its functions
+# without its colour: the query's mount, which awaits, was a sync function
+# holding an `await`, which esbuild refused.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(k string) async.Result[string] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+        failed { return {failed=r} }
+        ok { return {ok=r.status == 200 ? k + "!" : "-"} }
+    }
+}
+
+component second(s string) ui.node {
+    var first = ""
+    var answer option[string] = null
+    if first != "" {
+        async.query(on=first, fetch=lookup, :value=answer)
+    }
+    ui.button #ask(text="ask", @click { first = s })
+    ui.text(value=answer != null ? answer : "-")
+}
+
+component page ui.node {
+    var open = false
+    if open {
+        second #inner(s="b")
+    }
+    ui.button #show(text="show", @click { open = true })
+}
+
+func testTheSecondQueryAnswers(t test.Test, c page) {
+    c.show.click()
+    t.assert(c.inner != null)
+    if c.inner != null {
+        c.inner.ask.click()
+        t.wait(func() => c.inner != null && c.inner.answer == "b!", 5000)
+        t.assert(c.inner.answer == "b!")
+    }
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:00570a4757bb6ce27bd0adae09a04816
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:1b64cf97fceeb17b89feb01f7bd8134b
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:fff39855cece4f57483eb66cb29c69ca
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:bc5cc012c5df3d1d25950b95b1bb7ab4
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:e6cc76164236cee1000c5a0b44f3a6f1
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}

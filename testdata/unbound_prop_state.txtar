@@ -123,6 +123,11 @@ type Style struct {
 	ListStyleType  string
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -135,6 +140,12 @@ type modelState struct {
 	checked__inst0      bool
 	checked__inst1      bool
 	checked__inst2      map[string]bool
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop2_cursor int
 
@@ -149,8 +160,15 @@ func New() Model {
 	m.checked__inst0 = false
 	m.checked__inst1 = true
 	m.checked__inst2 = map[string]bool{}
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -162,13 +180,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -218,85 +236,122 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, _ := range m.items__inst0 {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			__cell1_checked__inst2 := func() bool {
+				if __v, __ok := m.checked__inst2[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return false
+			}()
+			__cell1_checked__inst2 = false
+			m.checked__inst2[fmt.Sprint(__copy0)] = __cell1_checked__inst2
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop2_len() int {
@@ -469,19 +524,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = it
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__cell1_checked__inst2 := func() bool {
+						__cell2_checked__inst2 := func() bool {
 							if __v, __ok := m.checked__inst2[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell1_checked__inst2 = !func() bool {
+						__cell2_checked__inst2 = !func() bool {
 							if __v, __ok := m.checked__inst2[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						m.checked__inst2[fmt.Sprint(__copy0)] = __cell1_checked__inst2
+						m.checked__inst2[fmt.Sprint(__copy0)] = __cell2_checked__inst2
 						return
 					}
 					__focusPos2++
@@ -502,58 +557,61 @@ func (m *Model) boxChange() {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentChildren []string
-		var content_0 string
-		content_0Focused := (m.__focusID == 0)
-		content_0Prefix := " "
-		if content_0Focused {
-			content_0Prefix = ">"
+		var part0Children []string
+		var part0_0 string
+		part0_0Focused := (m.__focusID == 0)
+		part0_0Prefix := " "
+		if part0_0Focused {
+			part0_0Prefix = ">"
 		}
-		content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("alone"))
-		contentChildren = append(contentChildren, content_0)
-		var __lt13 string
+		part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint("alone"))
+		part0Children = append(part0Children, part0_0)
+		var __lt10 string
 		if m.checked__inst0 {
-			__lt13 = "on"
+			__lt10 = "on"
 		} else {
-			__lt13 = "off"
+			__lt10 = "off"
 		}
-		var content_3 string
-		content_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt13))
-		contentChildren = append(contentChildren, content_3)
-		var content_4 string
-		content_4Focused := (m.__focusID == 1)
-		content_4Prefix := " "
-		if content_4Focused {
-			content_4Prefix = ">"
+		var part0_3 string
+		part0_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
+		part0Children = append(part0Children, part0_3)
+		var part0_4 string
+		part0_4Focused := (m.__focusID == 1)
+		part0_4Prefix := " "
+		if part0_4Focused {
+			part0_4Prefix = ">"
 		}
-		content_4 = BoxLook(Style{}, true).Render(content_4Prefix + " " + fmt.Sprint("starts on"))
-		contentChildren = append(contentChildren, content_4)
-		var content_5 string
+		part0_4 = BoxLook(Style{}, true).Render(part0_4Prefix + " " + fmt.Sprint("starts on"))
+		part0Children = append(part0Children, part0_4)
+		var part0_5 string
 		__focusPos2 := 0
 		_ = __focusPos2
-		var content_5Items []string
+		var part0_5Items []string
 		for __copy0, it := range m.items__inst0 {
 			_ = __copy0
 			_ = it
-			var content_5Item string
-			content_5ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
-			content_5ItemPrefix := " "
-			if content_5ItemFocused {
-				content_5ItemPrefix = ">"
+			var part0_5Item string
+			part0_5ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+			part0_5ItemPrefix := " "
+			if part0_5ItemFocused {
+				part0_5ItemPrefix = ">"
 			}
-			content_5Item = BoxLook(Style{}, true).Render(content_5ItemPrefix + " " + fmt.Sprint(it))
+			part0_5Item = BoxLook(Style{}, true).Render(part0_5ItemPrefix + " " + fmt.Sprint(it))
 			__focusPos2++
-			content_5Items = append(content_5Items, content_5Item)
+			part0_5Items = append(part0_5Items, part0_5Item)
 		}
-		content_5 = strings.Join(content_5Items, "\n")
-		if content_5 != "" {
-			contentChildren = append(contentChildren, content_5)
+		part0_5 = strings.Join(part0_5Items, "\n")
+		if part0_5 != "" {
+			part0Children = append(part0Children, part0_5)
 		}
-		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{}, true).Render(content)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+		part0 = BoxLook(Style{}, true).Render(part0)
 	}
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -590,6 +648,8 @@ type Model struct {
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*__checkbox_state3Instance
+	__rendering0   bool
+	__renderAgain0 bool
 
 	__n1    *fynelayout.Toplevel
 	__n5    *fyne.Container
@@ -609,42 +669,54 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state3Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*__checkbox_state3Instance{}
-	var __inst0_i int = 0
-	for _, it := range m.items__inst0 {
-		var __n4 *__checkbox_state3Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(it)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n4__new := new__checkbox_state3Instance(m, false, it)
-			__n4 = __n4__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*__checkbox_state3Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items__inst0 {
+				var __n4 *__checkbox_state3Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.SetLabel(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := new__checkbox_state3Instance(m, false, it)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+				m.__slot0 = append(m.__slot0, __n4__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n4)
-		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -656,20 +728,24 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) box_toggle_handler(on bool) {
-	m.checked__inst0 = on
-	m.box.SetChecked(m.checked__inst0)
-	var __lt15 string
-	if m.checked__inst0 {
-		__lt15 = "on"
-	} else {
-		__lt15 = "off"
+	if on != m.checked__inst0 {
+		m.checked__inst0 = on
+		m.box.SetChecked(m.checked__inst0)
+		var __lt7 string
+		if m.checked__inst0 {
+			__lt7 = "on"
+		} else {
+			__lt7 = "off"
+		}
+		m.__n2.SetText(__lt7)
 	}
-	m.__n2.SetText(__lt15)
 }
 
 func (m *Model) __n3_toggle_handler(on bool) {
-	m.checked__inst1 = on
-	m.__n3.SetChecked(m.checked__inst1)
+	if on != m.checked__inst1 {
+		m.checked__inst1 = on
+		m.__n3.SetChecked(m.checked__inst1)
+	}
 }
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
@@ -729,14 +805,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.box.SetChecked(m.checked__inst0)
 	m.box.OnChanged = m.box_toggle_handler
 	m.__n5.Add(m.box)
-	var __lt16 string
+	var __lt8 string
 	if m.checked__inst0 {
-		__lt16 = "on"
+		__lt8 = "on"
 	} else {
-		__lt16 = "off"
+		__lt8 = "off"
 	}
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(__lt16)
+	m.__n2.SetText(__lt8)
 	m.__n5.Add(m.__n2)
 	m.__n3 = widget.NewCheck("", nil)
 	m.__n3.SetText("starts on")
@@ -774,8 +850,10 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0.SetText(c.__prop_label)
 	c.__n0.SetChecked(c.checked)
 	c.__n0.OnChanged = func(on bool) {
-		c.checked = on
-		c.__n0.SetChecked(c.checked)
+		if on != c.checked {
+			c.checked = on
+			c.__n0.SetChecked(c.checked)
+		}
 	}
 	c.Root = c.__n0
 	return c
@@ -817,9 +895,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -830,6 +906,8 @@ type Model struct {
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__checkbox_state3Instance
+	__rendering0   bool
+	__renderAgain0 bool
 	__n1           gtk4rt.Handle
 	__n5           gtk4rt.Handle
 	box            gtk4rt.Handle
@@ -849,42 +927,54 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state3Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*__checkbox_state3Instance{}
-	var __inst0_i int = 0
-	for _, it := range m.items__inst0 {
-		var __n4 *__checkbox_state3Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(it)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n4__new := new__checkbox_state3Instance(m, false, it)
-			__n4 = __n4__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*__checkbox_state3Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items__inst0 {
+				var __n4 *__checkbox_state3Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.SetLabel(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := new__checkbox_state3Instance(m, false, it)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+				m.__slot0 = append(m.__slot0, __n4__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n4)
-		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -896,20 +986,24 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) box_toggled_handler() {
-	m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
-	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
-	var __lt27 string
-	if m.checked__inst0 {
-		__lt27 = "on"
-	} else {
-		__lt27 = "off"
+	if gtk4rt.CheckButtonGetActive(m.box) != m.checked__inst0 {
+		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
+		gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
+		var __lt16 string
+		if m.checked__inst0 {
+			__lt16 = "on"
+		} else {
+			__lt16 = "off"
+		}
+		gtk4rt.LabelSetLabel(m.__n2, __lt16)
 	}
-	gtk4rt.LabelSetLabel(m.__n2, __lt27)
 }
 
 func (m *Model) __n3_toggled_handler() {
-	m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.__n3)
-	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
+	if gtk4rt.CheckButtonGetActive(m.__n3) != m.checked__inst1 {
+		m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.__n3)
+		gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
+	}
 }
 
 // __checkbox_state3Instance is one live instance of the __checkbox_state3 component.
@@ -937,8 +1031,10 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.CheckButtonSetLabel(c.__n0, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
-		c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
-		gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
+			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
+			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		}
 	})
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1013,14 +1109,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 	gtk4rt.Connect(m.box, "toggled", m.box_toggled_handler)
 	gtk4rt.BoxAppend(m.__n5, m.box)
-	var __lt28 string
+	var __lt17 string
 	if m.checked__inst0 {
-		__lt28 = "on"
+		__lt17 = "on"
 	} else {
-		__lt28 = "off"
+		__lt17 = "off"
 	}
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n2, __lt28)
+	gtk4rt.LabelSetLabel(m.__n2, __lt17)
 	gtk4rt.BoxAppend(m.__n5, m.__n2)
 	m.__n3 = gtk4rt.CheckButtonNew()
 	gtk4rt.CheckButtonSetLabel(m.__n3, "starts on")
@@ -1202,49 +1298,61 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const it of state.items__inst0) {
-      let __n6 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n6 = __inst1_live[__inst1_i];
-        __n6.__set_label(it);
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const it of state.items__inst0) {
+          let __n6 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n6 = __inst1_live[__inst1_i];
+            __n6.__set_label(it);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n6__new = __cf___checkbox_state3({ label: it });
+            __n6 = __n6__new;
+          }
+          __inst1_next.push(__n6);
+          __inst1_i = __inst1_i + 1;
+          let __n6__el = __n6.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n6__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n6__el, __place0_i_ref0);
+          }
+          __slot0.push(__n6__el);
         }
-        let __n6__new = __cf___checkbox_state3({ label: it });
-        __n6 = __n6__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n6);
-      __inst1_i = __inst1_i + 1;
-      let __n6__el = __n6.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n6__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n6__el, __place0_i_ref0);
-      }
-      __slot0.push(__n6__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
@@ -1271,12 +1379,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bf850c84a4397d2cf4504c95ee879b5e
+pass sha256:7caae619c629f07d07eb5e460feddb8d
 -- run/go/fyne --
-pass sha256:4039a04c1cef0d1466621ed7a79ab868
+pass sha256:3e01aae302d1df202b803f4aa4e771a5
 -- run/go/gtk4 --
-pass sha256:abee07a30de704a6e616e5bd5bdc22f1
+pass sha256:cecf13b13d2fb5480a81b6834953eccc
 -- run/kotlin/android --
-pass sha256:5d6ef00cc90ab5655053a71429501171
+pass sha256:e8c1536da29e45b8388a3b57318b2645
 -- run/none/html --
-pass sha256:b8779496cbbf4bac312f49ceb23262d6
+pass sha256:bd1a09c14e25c8d1d32df46d6e17f033

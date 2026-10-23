@@ -192,12 +192,10 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 			case *NodeInst:
 				specializeComp(n.Component, t, bodiedOnly)
 				walk(n.Children)
-			case *For:
-				walk(n.Body)
-				walk(n.Else)
-			case *If:
-				walk(n.Body)
-				walk(n.Else)
+			case *For, *If, *Match:
+				for _, b := range TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *SlotInst:
 				walk(n.Children)
 			case *ErrorBoundary:

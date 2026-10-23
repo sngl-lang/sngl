@@ -1,0 +1,26 @@
+// A Pokédex over PokéAPI, on every target SNGL has: a choice of Pokédex and a
+// grid of its Pokémon, and a page per species, a header over tabs about it.
+//
+// Nothing here makes a request by hand. `import poke "openapi:./pokeapi.yml"`
+// writes a package from PokéAPI's own OpenAPI document -- a struct per schema,
+// a function per operation, and a component per `GET` over `async.query` --
+// and each screen is that component written where its answer is wanted:
+//
+//	poke.pokemonRetrieve(id=name, :value=mon, :pending=loading, :failure=failure)
+//
+// asks when the page mounts and again whenever `name` changes, keeps the last
+// answer while it does, and drops one that arrives after the page is gone.
+//
+//	app.sngl            the window: a choice of language over a nav.stack of
+//	                    home, a page per Pokémon and a page per form of one
+//	home.sngl           a select of Pokédex and a grid of its Pokémon, a page
+//	                    more as its end comes into view
+//	detail.sngl         a species' page: its header over About, Stats,
+//	                    Evolution, Sprites and Moves
+//	names.sngl          ids, names, rows, artwork, and what a page's lines say
+//	pokeapi.yml         PokéAPI's document, vendored, with the corrections in
+//	                    README.md
+//	i18n.manifest.json  the app's own words in French, German, Spanish and
+//	                    Japanese
+//	icon.svg            the app's icon
+//	pokedex_test.sngl   the tests, against the answers in testdata/http

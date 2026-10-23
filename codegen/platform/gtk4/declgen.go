@@ -56,7 +56,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\n")
+	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport c \"sngl:x/c\"\n")
 	b.WriteString(lookDecl)
 	declared := map[string]bool{}
 	for _, name := range names {
@@ -145,19 +145,42 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			if !ok || taken[n] || events[n] {
 				continue
 			}
-			fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nfunc %s.%s()\n", a.CIdent, info.CType, n)
+			if params, ok := actionParams(a.Params); ok {
+				fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nfunc %s.%s(%s)\n", a.CIdent, info.CType, n, params)
+			}
 		}
 	}
 	return []byte(b.String())
 }
 
+// actionParams is the parameter list of an action's declaration, and false
+// when a parameter's name has no SNGL spelling. A transfer-full parameter is
+// #[moves]: GTK frees what it is handed, so the caller must not.
+func actionParams(ps []gir.ActionParam) (string, bool) {
+	out := make([]string, len(ps))
+	for i, p := range ps {
+		n, ok := snglName(p.Name)
+		typ, typed := snglTypeName(gir.TypeToIR(p.GIRType))
+		if !ok || !typed {
+			return "", false
+		}
+		if p.Moves {
+			n = "#[macro.moves] " + n
+		}
+		out[i] = n + " " + typ
+	}
+	return strings.Join(out, ", "), true
+}
+
 // notifyProps are the properties whose change a widget reports only through
 // GObject's `notify::<prop>`, declared as `@notify<Prop>`. GtkSwitch's own
 // `state-set` returns a gboolean and passes the state, which the connect
-// trampoline cannot carry. Every property notifies, and declaring an event
-// per property on every class would be most of the generated package.
+// trampoline cannot carry; GtkDropDown has no signal for a choice at all.
+// Every property notifies, and declaring an event per property on every class
+// would be most of the generated package.
 var notifyProps = map[string][]string{
-	"GtkSwitch": {"active"},
+	"GtkSwitch":   {"active"},
+	"GtkDropDown": {"selected"},
 }
 
 // notifySignal is the GObject signal behind a `@notify<Prop>` event, or ""
@@ -238,7 +261,7 @@ func isSnglIdent(s string) bool {
 	return s != ""
 }
 
-// snglTypeName is the source spelling of the type girTypeToIR resolved, and
+// snglTypeName is the source spelling of the type TypeToIR resolved, and
 // false for a GIR type with no SNGL equivalent.
 func snglTypeName(t *ir.Type) (string, bool) {
 	if t == nil {

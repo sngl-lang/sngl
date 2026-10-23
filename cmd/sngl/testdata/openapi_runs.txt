@@ -1,0 +1,467 @@
+# The package an openapi: import writes, run against the local server the
+# script harness runs at 127.0.0.1:47819 (internal/testhttp) on
+# every target.
+
+sngl test --platform=none app.sngl
+stdout '4 tests, 0 failures'
+stderr 'import "openapi:./petstore.yml": field breed_lineage of PetBreedDetail is left out: a map of any value'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+-- app.sngl --
+// The package an openapi: import writes, run against the local server: a
+// function called from a test with server set for it, a 404 classified, a
+// query written from a function's parameters, and the adapter component
+// asking again when its key changes.
+
+import async "sngl:async"
+import pets "openapi:./petstore.yml"
+import . "sngl:test"
+import . "sngl:ui"
+
+const local = "http://127.0.0.1:47819"
+
+func testRetrieve(t Test) {
+    t.setContext(pets.server, local)
+    match var p = pets.petRetrieveCall(id="rex") {
+        ok {
+            t.assert(p.id == 1)
+            t.assert(p.adoptionFee == 120)
+            t.assert(p.tags.length() == 2)
+            t.assert(p.tags[1].type.name == "small")
+            t.assert(p.photos.thumbnailUrl == "https://example.com/1.png")
+            t.assert(p.measurements[0].baseValue == 45)
+        }
+        failed { t.assert(p.message == "") }
+    }
+}
+
+func testNotFound(t Test) {
+    t.setContext(pets.server, local)
+    match var f = pets.petRetrieveCall(id="nobody") {
+        ok { t.assert(false) }
+        failed {
+            t.assert(f.kind == async.FailureKind.request)
+            t.assert(f.code == "404")
+        }
+    }
+}
+
+func testListQuery(t Test) {
+    t.setContext(pets.server, local)
+    match var page = pets.petListCall(limit=2, offset=1) {
+        ok {
+            t.assert(page.count == 5)
+            t.assert(page.results.length() == 2)
+            t.assert(page.results[0].name == "bella")
+            t.assert(page.next != null)
+            t.assert(page.previous != null)
+        }
+        failed { t.assert(page.message == "") }
+    }
+}
+
+component pager node {
+    var offset = 0
+    var page option[pets.PaginatedPetSummaryList] = null
+    pets.server(local) {
+        pets.petList(limit=2, offset=offset, :value=page)
+    }
+    text #first(value=page != null && page.results.length() > 0 ? page.results[0].name : "-")
+    button #more(text="More", @click { offset += 2 })
+}
+
+func testAdapterAsksAgain(t Test, c pager) {
+    t.wait(func() => c.first.value == "rex", 5000)
+    t.assert(c.first.value == "rex")
+    c.more.click()
+    t.wait(func() => c.first.value == "milo", 5000)
+    t.assert(c.first.value == "milo")
+}
+
+window {
+    pager
+}
+-- petstore.yml --
+openapi: 3.1.0
+info:
+  title: Petstore
+  version: 1.0.0
+servers:
+- url: https://petstore.example
+paths:
+  /api/v1/pets/:
+    get:
+      operationId: pet_list
+      summary: List pets
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPetSummaryList'
+          description: ''
+  /api/v1/pets/{id}/:
+    get:
+      operationId: pet_retrieve
+      summary: Get pet
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: This parameter can be a string or an integer.
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetDetail'
+          description: ''
+  /api/v1/pet-breeds/{id}/:
+    get:
+      operationId: pet_breed_retrieve
+      summary: Get pet breed
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetBreedDetail'
+          description: ''
+components:
+  schemas:
+    PaginatedPetSummaryList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+        previous:
+          type: string
+          nullable: true
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetSummary'
+    PetSummary:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        url:
+          type: string
+          format: uri
+          readOnly: true
+      required:
+      - name
+      - url
+    PetDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        adoption_fee:
+          type:
+          - integer
+          - 'null'
+        age:
+          type:
+          - integer
+          - 'null'
+        is_available:
+          type: boolean
+        breed:
+          $ref: '#/components/schemas/PetBreedSummary'
+        photos:
+          allOf:
+          - $ref: '#/components/schemas/PetPhotos'
+          readOnly: true
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetMeasurement'
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetTag'
+          readOnly: true
+      required:
+      - id
+      - name
+      - breed
+      - photos
+      - measurements
+      - tags
+    PetPhotos:
+      type: object
+      properties:
+        thumbnail_url:
+          type:
+          - string
+          - 'null'
+      required:
+      - thumbnail_url
+    PetMeasurement:
+      type: object
+      properties:
+        base_value:
+          type: integer
+        margin:
+          type: integer
+        measure:
+          $ref: '#/components/schemas/MeasureSummary'
+      required:
+      - base_value
+      - margin
+      - measure
+    MeasureSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PetTag:
+      type: object
+      properties:
+        slot:
+          type: integer
+        type:
+          $ref: '#/components/schemas/TagSummary'
+      required:
+      - slot
+      - type
+    TagSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PetBreedSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PetBreedDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        parent_breed:
+          oneOf:
+          - $ref: '#/components/schemas/PetBreedSummary'
+          - type: 'null'
+        breed_lineage:
+          type: object
+          additionalProperties: {}
+      required:
+      - id
+      - name
+      - parent_breed
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:b8be9d584992757d1ac66389d01f194b
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/pager/1 --
+sha256:96b803f2834f2c0b77765c068add60b6
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:5ac6a97eb2eea33a808b5a00f86b1604
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/pager/1 --
+sha256:66d6a3d9f0bb1dea87b6ff302c7dfe98
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:a2ac7142a7193a88ff5f79ff26844e65
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pager/1 --
+sha256:246ea2d3589f5fba7bd734c9392515a5
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:3211aec01f3ea85cf9672578bacdc230
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pager/1 --
+sha256:c7b5080babdc98f80177e3b69c072652
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:68a4c58e616ed90926876facf24bea43
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pager/1 --
+sha256:e365ca772b633982716df11ee74b38be
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}

@@ -167,9 +167,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Action__record struct {
 	Label string
@@ -319,6 +317,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:4b8a74b47cf38ff333040de5f3a71201
 -- run/go/gtk4 --
-pass sha256:06ae953e54d3027471fe7b9d47fb9b47
+pass sha256:0135e4edd23869554a1efccf6dd4c725
 -- run/none/html --
 pass sha256:01483a03a0f47cd1bcfba782f2220d84

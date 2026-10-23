@@ -213,7 +213,7 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
 	switch child.(type) {
-	case *ir.If, *ir.For:
+	case *ir.If, *ir.Match, *ir.For:
 		// A branch not taken or a loop over nothing renders nothing, and
 		// joining its empty string would put a blank line in the box.
 		vc.line("if %s != \"\" {", childVar)
@@ -261,8 +261,8 @@ func rendersPart(s ir.Stmt) bool {
 		return !ir.IsTimerPrimitive(n.Component)
 	case *ir.LocalVar:
 		return false
-	case *ir.If:
-		return !n.FromTernary
+	case *ir.If, *ir.Match:
+		return !ir.ComputesValue(n)
 	case *ir.For:
 		return !computesOnly(n)
 	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
@@ -281,8 +281,10 @@ func computesOnly(f *ir.For) bool {
 
 func draws(s ir.Stmt) bool {
 	switch n := s.(type) {
-	case *ir.If:
-		return !n.FromTernary && (slices.ContainsFunc(n.Body, draws) || slices.ContainsFunc(n.Else, draws))
+	case *ir.If, *ir.Match:
+		return !ir.ComputesValue(n) && slices.ContainsFunc(ir.TransparentBlocks(n), func(b *[]ir.Stmt) bool {
+			return slices.ContainsFunc(*b, draws)
+		})
 	case *ir.For:
 		return !computesOnly(n)
 	case *ir.NodeInst:
@@ -315,16 +317,21 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		}
 		vc.renderNode(s, resultVar)
 		vc.countFocusPos(s)
-	case *ir.If:
-		if s.FromTernary {
-			// NoTernary hoists `var __ltN` + this value-only If (Assign bodies,
-			// no NodeInst children) before the widget whose prop reads __ltN.
-			// Emit it as imperative Go so the temp is assigned in scope; the
-			// structural renderIf path would drop the Assign bodies.
+	case *ir.If, *ir.Match:
+		if ir.ComputesValue(s) {
+			// NoTernary hoists `var __ltN` + this value-only If or Match
+			// (Assign bodies, no NodeInst children) before the widget whose
+			// prop reads __ltN. Emit it as imperative Go so the temp is
+			// assigned in scope; the structural path would drop the Assign
+			// bodies.
 			vc.emitIRStmt(s)
 			return
 		}
-		vc.renderIf(s, resultVar)
+		if m, ok := s.(*ir.Match); ok {
+			vc.renderMatch(m, resultVar)
+			return
+		}
+		vc.renderIf(s.(*ir.If), resultVar)
 	case *ir.For:
 		if computesOnly(s) {
 			vc.emitIRStmt(s)
@@ -367,6 +374,19 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 		vc.line("%s", vc.gc.ElseHead())
 		vc.indent++
 		vc.renderBranch(s.Else, resultVar)
+		vc.indent--
+	}
+	vc.line("%s", vc.gc.BlockEnd())
+}
+
+// renderMatch is a switch in the view, each arm rendering what it holds, as
+// renderIf is an if.
+func (vc *irViewContext) renderMatch(s *ir.Match, resultVar string) {
+	vc.line("%s", vc.gc.SwitchHead(&s.MatchArms))
+	for i, arm := range s.Arms {
+		vc.line("%s", vc.gc.SwitchCase(&s.MatchArms, i))
+		vc.indent++
+		vc.renderBranch(arm.Body, resultVar)
 		vc.indent--
 	}
 	vc.line("%s", vc.gc.BlockEnd())
@@ -539,12 +559,11 @@ func tooltipFocusExpr(stmts []ir.Stmt, gc *golang.GoIRContext) string {
 			if expr := tooltipFocusExpr(n.Children, gc); expr != "" {
 				return expr
 			}
-		case *ir.If:
-			if expr := tooltipFocusExpr(n.Body, gc); expr != "" {
-				return expr
-			}
-			if expr := tooltipFocusExpr(n.Else, gc); expr != "" {
-				return expr
+		case *ir.If, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				if expr := tooltipFocusExpr(*b, gc); expr != "" {
+					return expr
+				}
 			}
 		}
 	}

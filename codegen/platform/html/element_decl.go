@@ -186,6 +186,13 @@ var voidElements = map[string]bool{
 	"source": true, "track": true, "wbr": true,
 }
 
+// tableParts are the tags whose content the HTML parser takes only table
+// parts from: anything else written in one is moved out, before the table.
+var tableParts = map[string]bool{
+	"table": true, "thead": true, "tbody": true, "tfoot": true, "tr": true,
+	"colgroup": true,
+}
+
 // isEmptyIDProp reports an `id` prop whose value is the empty string literal.
 // An id attribute may not be empty, and a flow passes its anchor whether or
 // not one was named, so an empty one is no attribute rather than `id=""`.

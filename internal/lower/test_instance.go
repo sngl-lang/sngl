@@ -269,6 +269,21 @@ func (m *movedRefs) stmts(list []ir.Stmt) {
 			m.moved = before
 			m.stmts(x.Else)
 			m.merge(after)
+		case *ir.Match:
+			// Each arm starts from what was moved before the match, and what
+			// follows it is moved where any arm moved it.
+			m.expr(x.Subject)
+			before := maps.Clone(m.moved)
+			var after []map[ir.Symbol]bool
+			for _, arm := range x.Arms {
+				m.moved = maps.Clone(before)
+				m.stmts(arm.Body)
+				after = append(after, m.moved)
+			}
+			m.moved = before
+			for _, a := range after {
+				m.merge(a)
+			}
 		case *ir.For:
 			m.expr(x.Iter)
 			before := maps.Clone(m.moved)
@@ -350,6 +365,20 @@ func (m *movedRefs) expr(root any) {
 			m.moved = before
 			m.expr(x.Else)
 			m.merge(after)
+			return ir.SkipDir
+		case *ir.MatchExpr:
+			m.expr(x.Subject)
+			before := maps.Clone(m.moved)
+			var after []map[ir.Symbol]bool
+			for _, arm := range x.Arms {
+				m.moved = maps.Clone(before)
+				m.expr(arm.Value)
+				after = append(after, m.moved)
+			}
+			m.moved = before
+			for _, a := range after {
+				m.merge(a)
+			}
 			return ir.SkipDir
 		case *ir.Binary:
 			if x.Op != ast.BinAnd && x.Op != ast.BinOr {

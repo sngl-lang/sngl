@@ -237,12 +237,10 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 				used[n.Name] = true
 			}
 			collectUsedIRStmts(n.Children, used)
-		case *ir.If:
-			collectUsedIRStmts(n.Body, used)
-			collectUsedIRStmts(n.Else, used)
-		case *ir.For:
-			collectUsedIRStmts(n.Body, used)
-			collectUsedIRStmts(n.Else, used)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				collectUsedIRStmts(*b, used)
+			}
 		case *ir.ErrorBoundary:
 			collectUsedIRStmts(n.Children, used)
 		case *ir.ContextProvider:

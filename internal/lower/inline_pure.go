@@ -231,6 +231,14 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 				read(n.Cond)
 				visit(n.Body)
 				visit(n.Else)
+			case *ir.Match:
+				read(n.Subject)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						read(p)
+					}
+					visit(arm.Body)
+				}
 			case *ir.For:
 				read(n.Iter)
 				visit(n.Body)
@@ -275,6 +283,18 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 		return false
 	}
 	if len(c.Funcs) > 0 {
+		return false
+	}
+	// A lifetime is state as a var is: spliced under a `for`, every copy's
+	// effect shares one key and one handle.
+	if st.loopDepth > 0 && holdsLifetime(c.Stmts) {
+		return false
+	}
+	// A library component's state the body would splice is the body's
+	// (splicesLibraryState), and an owned var is a lifetime wherever it
+	// stands: initialized where the owner is built, gtk4's picture was loaded
+	// for a branch not yet shown, reading what the branch guards.
+	if splicesLibraryState(c.Stmts) || slices.ContainsFunc(c.Vars, func(v *ir.Var) bool { return ir.ReleaseOf(v.Type) != nil }) {
 		return false
 	}
 	if len(c.Vars) == 0 {
@@ -353,6 +373,14 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 	case *ir.NodeInst:
 		return st.inlineNodeInst(n)
 	case *ir.If:
+		// A substitution can leave a branch on a literal: a const override's
+		// `if clickable` where the call site wrote nothing. Only the branch
+		// taken is kept, since passReactivity would otherwise give the other
+		// one render slots, and codegen, dropping the branch, kept the calls
+		// re-rendering them into nodes it never built.
+		if taken, ok := decidedBranch(n); ok {
+			return st.inlineStmts(taken)
+		}
 		body, err := st.inlineStmts(n.Body)
 		if err != nil {
 			return nil, err
@@ -363,6 +391,15 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 		}
 		n.Body = body
 		n.Else = els
+		return []ir.Stmt{n}, nil
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			body, err := st.inlineStmts(arm.Body)
+			if err != nil {
+				return nil, err
+			}
+			arm.Body = body
+		}
 		return []ir.Stmt{n}, nil
 	case *ir.For:
 		st.loopDepth++
@@ -686,13 +723,14 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	provided := providedContextVars(comp, callsite.Props)
 	typeArgs := spliceTypeArgs(comp, callsite)
 	var own []ir.Stmt
+	symRenames := map[ir.Symbol]ir.Symbol{}
 	if st.takesBody(comp) {
 		own, comp.Stmts = ir.InstantiateStmts(comp.Stmts, typeArgs), nil
 	} else {
 		own = splicedBody(comp, typeArgs)
+		freshNodeHandles(own, symRenames)
 	}
-	body := substituteVars(own, provided)
-	symRenames := map[ir.Symbol]ir.Symbol{}
+	body := own
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -723,12 +761,13 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			// Before the props: an argument may carry the caller's own
 			// `.empty`, which asks about the caller's slot.
 			(*st.hoist)[i].Init = answerSlotEmptyIn((*st.hoist)[i].Init, callsite)
-			(*st.hoist)[i].Init = substituteVarsExpr((*st.hoist)[i].Init, provided)
 			(*st.hoist)[i].Init = substituteParamsExpr((*st.hoist)[i].Init, bindings)
+			(*st.hoist)[i].Init = substituteVarsExpr((*st.hoist)[i].Init, provided)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
 		}
-		body = renameIdents(body, renames, symRenames)
+		body = renameIdents(body, renames, nil)
 	}
+	body = renameIdents(body, nil, symRenames)
 
 	// The call site's handlers and slot content are spliced into the body's own
 	// handlers below, so a parameter of the body's sharing a name they read
@@ -737,17 +776,23 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
+	// A provided context value is the caller's expression, so it goes in
+	// after the props: substituted first, a `style` it read became this
+	// component's `style`.
+	body = substituteVars(body, provided)
 
 	// Apply event-invocation substitution: replace any *ir.Emit whose
 	// Name matches a user-provided event handler with the handler body.
 	// Before the slots are spliced, since an emit in the content the call
 	// site supplied is the caller's own and names none of these events.
+	NamePresses(st.pkg, body, callsite)()
 	body = substituteEvents(body, callsite.Handlers)
 
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
 	// site supplied for it -- its ordinary children for the anonymous slot,
 	// the matching `slot name { ... }` block for a named one.
 	body = spliceSlots(body, callsite)
+	body = calleeReadsInContent(body, calleeProps(comp, bindings), nil, symRenames)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.
@@ -829,12 +874,10 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 				for _, f := range propLambdas(n) {
 					visit(f.Block)
 				}
-			case *ir.If:
-				visit(n.Body)
-				visit(n.Else)
-			case *ir.For:
-				visit(n.Body)
-				visit(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					visit(*b)
+				}
 			case *ir.SlotInst:
 				visit(n.Children)
 			case *ir.ErrorBoundary:
@@ -1010,12 +1053,10 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			continue
 		}
 		switch n := s.(type) {
-		case *ir.If:
-			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
-			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
-		case *ir.For:
-			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
-			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				*b = substituteEventsUnder(*b, handlers, enclosing, under)
+			}
 		case *ir.NodeInst:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 			substituteEventsInPopulations(n.Slots, handlers, enclosing, under)
@@ -1305,6 +1346,17 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 			pc.Value = deepCloneExpr(p.Value)
 			clone.Props[i] = pc
 		}
+		// A binding's target is renamed with the rest of the copy, so a copy
+		// sharing it renamed every other copy's too: two instances of one
+		// body bound one `:value=fruit`, and the second named a var the
+		// first had renamed away.
+		if n.Bindings != nil {
+			clone.Bindings = make([]ir.PropBinding, len(n.Bindings))
+			for i, b := range n.Bindings {
+				b.Target = deepCloneExpr(b.Target)
+				clone.Bindings[i] = b
+			}
+		}
 		clone.Key = deepCloneExpr(n.Key)
 		clone.Ref = deepCloneExpr(n.Ref)
 		return &clone
@@ -1313,6 +1365,10 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 		clone.Cond = deepCloneExpr(n.Cond)
 		clone.Body = deepCloneStmts(n.Body)
 		clone.Else = deepCloneStmts(n.Else)
+		return &clone
+	case *ir.Match:
+		clone := *n
+		clone.MatchArms = deepCloneMatchArms(n.MatchArms, func(a *ir.MatchArm) { a.Body = deepCloneStmts(a.Body) })
 		return &clone
 	case *ir.For:
 		clone := *n
@@ -1397,6 +1453,24 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	panic(fmt.Sprintf("deepCloneStmt: unhandled %T", s))
 }
 
+// deepCloneMatchArms copies a match's subject and arms, each arm's patterns
+// copied and what it does handed to own to copy.
+func deepCloneMatchArms(m ir.MatchArms, own func(*ir.MatchArm)) ir.MatchArms {
+	out := m
+	out.Subject = deepCloneExpr(m.Subject)
+	out.Arms = make([]*ir.MatchArm, len(m.Arms))
+	for i, arm := range m.Arms {
+		a := *arm
+		a.Patterns = make([]ir.Expr, len(arm.Patterns))
+		for j, p := range arm.Patterns {
+			a.Patterns[j] = deepCloneExpr(p)
+		}
+		own(&a)
+		out.Arms[i] = &a
+	}
+	return out
+}
+
 // deepCloneExpr is the expression analog of deepCloneStmt.
 func deepCloneExpr(e ir.Expr) ir.Expr {
 	if e == nil {
@@ -1423,6 +1497,10 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 		clone.Cond = deepCloneExpr(n.Cond)
 		clone.Then = deepCloneExpr(n.Then)
 		clone.Else = deepCloneExpr(n.Else)
+		return &clone
+	case *ir.MatchExpr:
+		clone := *n
+		clone.MatchArms = deepCloneMatchArms(n.MatchArms, func(a *ir.MatchArm) { a.Value = deepCloneExpr(a.Value) })
 		return &clone
 	case *ir.Select:
 		clone := *n
@@ -1589,6 +1667,11 @@ func callsiteNames(callsite *ir.NodeInst) map[string]bool {
 		}
 	}
 	roots = append(roots, callsite.Children)
+	for _, a := range callsite.Props {
+		if a.Value != nil {
+			roots = append(roots, a.Value)
+		}
+	}
 	for _, name := range ir.SlotNames(callsite.Slots) {
 		if sc := callsite.Slots[name]; sc != nil {
 			for _, p := range sc.Params {
@@ -1635,12 +1718,17 @@ func callsiteNames(callsite *ir.NodeInst) map[string]bool {
 }
 
 // freshenShadowingParams renames each parameter of a handler or lambda in
-// body whose name is in taken, and repoints its reads. A platform override's
+// body, and each local it declares, whose name is in taken, and repoints its
+// reads. A platform override's
 // `onCheckedChange = func(on) { checked = on; change(on) }` has the call
 // site's `@change { on = !on }` spliced in for `change(on)`: left alone, the
 // two `on`s are one name in every target that spells a local bare -- a
 // Kotlin lambda parameter captured the component's `var on` -- and the
-// body's is the one renamed, since the call site's is the program's.
+// body's is the one renamed, since the call site's is the program's. A local
+// is the same collision: `async.query`'s `match var got = r` beside a
+// `:value=got` the call site bound wrote `got = got` on html, fyne and gtk4
+// once the query was spliced into a component they build at run time
+// (`cmd/sngl/testdata/spliced_local_shadows_runs.txt`).
 func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer) []ir.Stmt {
 	renames := map[ir.Symbol]string{}
 	symRenames := map[ir.Symbol]ir.Symbol{}
@@ -1674,8 +1762,58 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 			}
 		case *ir.Lambda:
 			freshen(v.Func)
+		case *ir.LocalVar:
+			if v.Sym == nil || !taken[v.Name] {
+				break
+			}
+			fresh := cloneVarShallow(v.Sym)
+			fresh.Name = names.next(v.Name, "l")
+			renames[v.Sym] = fresh.Name
+			symRenames[v.Sym] = fresh
+			v.Name, v.Sym = fresh.Name, fresh
 		}
 		return nil
 	})
 	return renameIdents(body, renames, symRenames)
+}
+
+// freshNodeHandles gives each node in a spliced copy of a body a handle of its
+// own, recorded in renames for the reads of it. Shared, two splices of one
+// override held one `#cal`, and its own effect's read of it could not say
+// which copy it meant (uniqueNodeIDs).
+func freshNodeHandles(body []ir.Stmt, renames map[ir.Symbol]ir.Symbol) {
+	_ = ir.Walk(body, func(node ir.Node) error {
+		n, ok := node.(*ir.NodeInst)
+		if !ok || n.Handle == nil {
+			return nil
+		}
+		fresh, ok := renames[n.Handle].(*ir.Var)
+		if !ok {
+			fresh = cloneVarShallow(n.Handle)
+			renames[n.Handle] = fresh
+		}
+		n.Handle = fresh
+		return nil
+	})
+}
+
+// decidedBranch is the branch an `if` on a bool literal takes, where that
+// branch can stand in the `if`'s place: one declaring no local of its own,
+// which would then share the enclosing block's scope, and an `if` that is
+// neither a catch block nor the root of a spliced instance.
+func decidedBranch(n *ir.If) ([]ir.Stmt, bool) {
+	lit, ok := n.Cond.(*ir.Literal)
+	if !ok || lit.Type != ir.TypBool || n.Catch != nil || n.FromTernary || len(n.Instances) > 0 {
+		return nil, false
+	}
+	taken := n.Else
+	if lit.Value == "true" {
+		taken = n.Body
+	}
+	for _, s := range taken {
+		if _, ok := s.(*ir.LocalVar); ok {
+			return nil, false
+		}
+	}
+	return taken, true
 }

@@ -261,7 +261,7 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 		return nil, false, fmt.Errorf("%s: `%s` writes a prop of the node it is handed, so it is inlined where it is called, and cannot return from the middle", handleCallPos(call), fn.Name)
 	}
 	params, args := bindings(call)
-	var out []ir.Stmt
+	var out, post []ir.Stmt
 	subst := map[*ir.Param]func() ir.Expr{}
 	nodeOf := map[*ir.Param]*ir.NodeInst{}
 	argOf := map[*ir.Param]ir.Expr{}
@@ -277,6 +277,12 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 		st.temps++
 		out = append(out, &ir.LocalVar{Name: tmp.Name, Type: tmp.Type, Init: tmp.Init, Sym: tmp})
 		subst[p] = func() ir.Expr { return &ir.Ident{Name: tmp.Name, Type: tmp.Type, Sym: tmp} }
+		// The call this inlines would have released an allocation its
+		// parameter borrows after the statement; bound to a local, it is
+		// released after the body, which is the statement now.
+		if p.Transfer == ir.TransferBorrow && isAllocation(tmp.Init) {
+			post = append([]ir.Stmt{releaseStmt(identOf(tmp))}, post...)
+		}
 	}
 	body := deepCloneStmts(fn.Block)
 	// A bound prop's write goes to the var it is bound to; an unbound one is
@@ -315,5 +321,5 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	return append(out, body...), true, nil
+	return append(append(out, body...), post...), true, nil
 }

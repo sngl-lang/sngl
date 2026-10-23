@@ -1,0 +1,66 @@
+# A name the import has to change is changed once and said: a field named
+# for a keyword, two keys one camelCase name, two schemas one declaration
+# name, an enum member, and a parameter named like one of the adapter's own
+# props, and a component named like a schema but for its first letter, which
+# Go would export as one identifier. The program reads each by the name the
+# warning gives.
+env SNGL_GENCACHE=off
+
+sngl check app.sngl
+stderr 'import "openapi:./api.yml": thing is declared as Thing2: Thing is taken or reserved'
+stderr 'import "openapi:./api.yml": field for of Thing is for_'
+stderr 'import "openapi:./api.yml": field pageCount of Thing is pageCount2'
+stderr 'import "openapi:./api.yml": member "a-b" of ThingKind is aB2'
+stderr 'import "openapi:./api.yml": parameter value of GET /things is value2'
+stderr 'import "openapi:./api.yml": listThings is declared as listThings2: the name is taken or reserved'
+
+-- app.sngl --
+import ui "sngl:ui"
+import api "openapi:./api.yml"
+
+func read(t api.Thing, u api.Thing2) string {
+    return "{t.for_} {t.pageCount} {t.pageCount2} {u.a}"
+}
+
+func kinds() list[api.ThingKind] {
+    return [api.ThingKind.aB, api.ThingKind.aB2]
+}
+
+component page ui.node {
+    var got option[list[api.Thing]] = null
+    api.listThings2(value2="x", :value=got)
+}
+
+ui.window(title="t") {
+    page
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+servers:
+- url: https://api.example
+paths:
+  /things:
+    get:
+      operationId: listThings
+      parameters:
+      - {name: value, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: '', content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Thing'}}}}}
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        for: {type: string}
+        page_count: {type: string}
+        pageCount: {type: string}
+        kind: {type: string, enum: [aB, a-b]}
+    thing:
+      type: object
+      properties:
+        a: {type: string}
+    ListThings:
+      type: object
+      properties:
+        n: {type: integer}

@@ -192,11 +192,26 @@ type Package struct {
 	// called, are the lowering's answers and not a name to look up.
 	Mounts []*Func `json:"-"`
 
+	// PropReports are the effects reporting writes to what reads a
+	// component's prop, by the prop's parameter: written by the effect
+	// lowering while the prop is a parameter nothing writes, and read by
+	// passComponentProps, whose setter is the one write it gets.
+	PropReports map[*Param][]PropReport `json:"-"`
+
 	// Run is the build's function for the target's `@run` handler: it takes
 	// the command line and the host's `run`, and the host's own entry point
 	// calls it before anything the program renders exists. Nil where the
 	// program wrote none, and the host starts as it always has.
 	Run *Func `json:"-"`
+	// RunPos is where the handler Run was made from is written, which a host
+	// names when the handler calls `run` a second time.
+	RunPos ast.Pos `json:"-"`
+}
+
+// PropReport is one effect a prop's setter marks written and settles.
+type PropReport struct {
+	Dirty  *Var
+	Settle *Func
 }
 
 // RootMounts are the first settles of the brackets written at the root of a
@@ -598,6 +613,11 @@ type DeclInfo struct {
 	// one target spells and SNGL cannot describe (`go:chan`). Namespaced by
 	// that target in both of the latter.
 	Intrinsic string `json:",omitempty"`
+	// Permissions are what an app the declaration is reached in asks its host
+	// for, written by a target's own mark (`#[android.permission(…)]`) on the
+	// native a target's override calls, and collected by that target's build
+	// from every declaration the program reaches.
+	Permissions []string `json:",omitempty"`
 	// Foreign is what the declaration corresponds to outside SNGL. The tag is
 	// load-bearing: without it Foreign.Name and Name collide in the encoder
 	// and neither is written.
@@ -1333,7 +1353,23 @@ type Param struct {
 	Variadic bool `json:",omitempty"`
 	// Doc is the comment written on a declared function's parameter.
 	Doc string `json:",omitempty"`
+	// Transfer is what a native function does with the argument past the
+	// call, written `#[retains]` or `#[moves]`.
+	Transfer Transfer `json:",omitempty"`
 }
+
+// Transfer is what a callee does with an owned argument once it returns.
+type Transfer int
+
+const (
+	// TransferBorrow copies or reads the argument and keeps nothing.
+	TransferBorrow Transfer = iota
+	// TransferRetains keeps a pointer the caller still owns, so the value
+	// lives as long as the node that made the call.
+	TransferRetains
+	// TransferMoves takes the value: the callee releases it, never the caller.
+	TransferMoves
+)
 
 func (p *Param) SymName() string { return p.Name }
 func (p *Param) SymType() *Type  { return p.Type }
@@ -1380,6 +1416,9 @@ type StructDef struct {
 	// where every type's methods live — struct, enum, unit and component
 	// alike.
 	Methods map[string]*Func `json:"-"`
+	// Release is the function `#[owned(release)]` names: a value of this type
+	// is something the program must give back, and this is how.
+	Release *Func `json:"-"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }
@@ -1414,15 +1453,30 @@ type StructField struct {
 	// on meaning unset to a backend that reads presence.
 	DefaultWritten bool `json:",omitempty"`
 	Foreign        `json:"Foreign,omitzero"`
+	// JSON and HTTP are the field's name on the wire in each format, as
+	// `#[json.identifier]` and `#[http.identifier]` give it; empty is the
+	// field's own name (WireName). Only an encoder reads them: a field keeps
+	// its SNGL name in the IR and on every host.
+	JSON string `json:",omitempty"`
+	HTTP string `json:",omitempty"`
 }
 
 // EnumDef is a resolved enum type declaration.
 type EnumDef struct {
 	AST *ast.EnumDef
 	DeclInfo
-	Members   []*EnumMember
-	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
-	Methods   map[string]*Func `json:"-"`
+	// TypeParams are what a member's payload may name, as a struct's fields
+	// may: `enum Result[T any] { ok T, failed Failure }`.
+	TypeParams []TypeParam `json:",omitempty"`
+	Members    []*EnumMember
+	BodyOwner  string           `json:",omitempty"` // see StructDef.BodyOwner
+	Methods    map[string]*Func `json:"-"`
+	// InstanceOf and InstanceArgs are the generic enum this one is a copy of
+	// and the type arguments it was copied at, on a target that copies a
+	// generic per instantiation: what lets a later copying find this one
+	// rather than declaring the same instantiation twice.
+	InstanceOf   *EnumDef `json:"-"`
+	InstanceArgs []*Type  `json:"-"`
 }
 
 func (e *EnumDef) SymName() string { return e.Name }
@@ -1431,10 +1485,16 @@ func (e *EnumDef) SymType() *Type  { return &Type{Kind: TypeEnum, Decl: e} }
 // IsExported reports whether the enum is part of its package's public API.
 func (e *EnumDef) IsExported() bool { return isExportedName(e.Name) }
 
-// EnumMember is a single value in an enum.
+// EnumMember is a single value in an enum. Payload is the type the member
+// carries, nil for one that carries none; a member with a payload has no
+// Value.
 type EnumMember struct {
-	Name  string
-	Value Expr // nil for bare members
+	Name    string
+	Payload *Type `json:",omitempty"`
+	Value   Expr  // nil for bare members
+	// JSON is the member's name on the wire, as `#[json.identifier]` gives
+	// it; empty is the member's own name.
+	JSON string `json:",omitempty"`
 }
 
 // UnitDef is a resolved unit type declaration with conversion table.

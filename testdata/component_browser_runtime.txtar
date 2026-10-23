@@ -1010,517 +1010,637 @@ window.__sngl_boot = () => {
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   var __slot1 = [];
   var __inst3_live = [];
+  var __rendering1 = false;
+  var __renderAgain1 = false;
   var __slot2 = [];
   var __inst5_live = [];
+  var __rendering2 = false;
+  var __renderAgain2 = false;
   var __slot3 = [];
   var __inst7_live = /* @__PURE__ */ new Map([]);
+  var __rendering3 = false;
+  var __renderAgain3 = false;
   var __slot4 = [];
   var __inst9_live = /* @__PURE__ */ new Map([]);
+  var __rendering4 = false;
+  var __renderAgain4 = false;
   var __slot5 = [];
   var __inst11_live = [];
+  var __rendering5 = false;
+  var __renderAgain5 = false;
   var __slot6 = [];
   var __inst13_live = [];
+  var __rendering6 = false;
+  var __renderAgain6 = false;
   var __slot7 = [];
   var __inst15_live = [];
+  var __rendering7 = false;
+  var __renderAgain7 = false;
   var __slot8 = [];
   var __inst17_live = [];
   var __inst17_was_start = [];
+  var __rendering8 = false;
+  var __renderAgain8 = false;
   var __slot9 = [];
   var __inst19_live = [];
+  var __rendering9 = false;
+  var __renderAgain9 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const [__copy0, n] of state.names__inst0.entries()) {
-      let b = null;
-      if (__inst1_live.length > __inst1_i) {
-        b = __inst1_live[__inst1_i];
-        b.__set_label(n);
-        b.__set___copy(String(__copy0));
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const [__copy0, n] of state.names__inst0.entries()) {
+          let b = null;
+          if (__inst1_live.length > __inst1_i) {
+            b = __inst1_live[__inst1_i];
+            b.__set_label(n);
+            b.__set___copy(String(__copy0));
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let b__new = __cf_badge__site0({ label: n, __copy: String(__copy0) });
+            b = b__new;
+          }
+          __inst1_next.push(b);
+          __inst1_i = __inst1_i + 1;
+          let b__el = b.__root;
+          b__el.setAttribute("data-sngl-instance", "b");
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === b__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(b__el, __place0_i_ref0);
+          }
+          __slot0.push(b__el);
         }
-        let b__new = __cf_badge__site0({ label: n, __copy: String(__copy0) });
-        b = b__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(b);
-      __inst1_i = __inst1_i + 1;
-      let b__el = b.__root;
-      b__el.setAttribute("data-sngl-instance", "b");
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === b__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(b__el, __place0_i_ref0);
-      }
-      __slot0.push(b__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
-    let __place2_prev = __slot1;
-    let __place2_i = 0;
-    __slot1 = [];
-    let __inst3_next = [];
-    let __inst3_i = 0;
-    for (const [__copy0, n] of state.names__inst1.entries()) {
-      let b__1 = null;
-      if (__inst3_live.length > __inst3_i) {
-        b__1 = __inst3_live[__inst3_i];
-        b__1.__set_label(n + state.tag__inst0);
-        b__1.__set___copy(String(__copy0));
-      } else {
-        if (__inst3_live.length > __inst3_i) {
-          __inst3_live[__inst3_i].__destroy();
+    if (__rendering1) {
+      __renderAgain1 = true;
+    } else {
+      __rendering1 = true;
+      __renderAgain1 = true;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place2_prev = __slot1;
+        let __place2_i = 0;
+        __slot1 = [];
+        let __inst3_next = [];
+        let __inst3_i = 0;
+        for (const [__copy0, n] of state.names__inst1.entries()) {
+          let b__1 = null;
+          if (__inst3_live.length > __inst3_i) {
+            b__1 = __inst3_live[__inst3_i];
+            b__1.__set_label(n + state.tag__inst0);
+            b__1.__set___copy(String(__copy0));
+          } else {
+            if (__inst3_live.length > __inst3_i) {
+              __inst3_live[__inst3_i].__destroy();
+            }
+            let b__1__new = __cf_badge__site1({ label: n + state.tag__inst0, __copy: String(__copy0) });
+            b__1 = b__1__new;
+          }
+          __inst3_next.push(b__1);
+          __inst3_i = __inst3_i + 1;
+          let b__1__el = b__1.__root;
+          b__1__el.setAttribute("data-sngl-instance", "b__1");
+          let __place2_i_ref0 = null;
+          if (__place2_i < __place2_prev.length) {
+            __place2_i_ref0 = __place2_prev[__place2_i];
+          }
+          if (__place2_i_ref0 === b__1__el) {
+            __place2_i = __place2_i + 1;
+          } else {
+            parent.insertBefore(b__1__el, __place2_i_ref0);
+          }
+          __slot1.push(b__1__el);
         }
-        let b__1__new = __cf_badge__site1({ label: n + state.tag__inst0, __copy: String(__copy0) });
-        b__1 = b__1__new;
+        for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+          let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+          if (__inst3_i_j >= __inst3_i) {
+            __inst3_live[__inst3_i_j].__destroy();
+          }
+        }
+        __inst3_live = __inst3_next;
+        for (const __place2_prev_e of __place2_prev) {
+          if (__slot1.indexOf(__place2_prev_e) < 0) {
+            parent.removeChild(__place2_prev_e);
+          }
+        }
       }
-      __inst3_next.push(b__1);
-      __inst3_i = __inst3_i + 1;
-      let b__1__el = b__1.__root;
-      b__1__el.setAttribute("data-sngl-instance", "b__1");
-      let __place2_i_ref0 = null;
-      if (__place2_i < __place2_prev.length) {
-        __place2_i_ref0 = __place2_prev[__place2_i];
-      }
-      if (__place2_i_ref0 === b__1__el) {
-        __place2_i = __place2_i + 1;
-      } else {
-        parent.insertBefore(b__1__el, __place2_i_ref0);
-      }
-      __slot1.push(b__1__el);
-    }
-    for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-      let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-      if (__inst3_i_j >= __inst3_i) {
-        __inst3_live[__inst3_i_j].__destroy();
-      }
-    }
-    __inst3_live = __inst3_next;
-    for (const __place2_prev_e of __place2_prev) {
-      if (__slot1.indexOf(__place2_prev_e) < 0) {
-        parent.removeChild(__place2_prev_e);
-      }
+      __rendering1 = false;
     }
   }
   function __renderSlot2(parent) {
-    let __place4_prev = __slot2;
-    let __place4_i = 0;
-    __slot2 = [];
-    let __inst5_next = [];
-    let __inst5_i = 0;
-    for (const [__copy0, n] of state.names__inst2.entries()) {
-      let b__2 = null;
-      if (__inst5_live.length > __inst5_i) {
-        b__2 = __inst5_live[__inst5_i];
-        b__2.__set_label(n);
-        b__2.__set___copy(String(__copy0));
-      } else {
-        if (__inst5_live.length > __inst5_i) {
-          __inst5_live[__inst5_i].__destroy();
+    if (__rendering2) {
+      __renderAgain2 = true;
+    } else {
+      __rendering2 = true;
+      __renderAgain2 = true;
+      while (__renderAgain2) {
+        __renderAgain2 = false;
+        let __place4_prev = __slot2;
+        let __place4_i = 0;
+        __slot2 = [];
+        let __inst5_next = [];
+        let __inst5_i = 0;
+        for (const [__copy0, n] of state.names__inst2.entries()) {
+          let b__2 = null;
+          if (__inst5_live.length > __inst5_i) {
+            b__2 = __inst5_live[__inst5_i];
+            b__2.__set_label(n);
+            b__2.__set___copy(String(__copy0));
+          } else {
+            if (__inst5_live.length > __inst5_i) {
+              __inst5_live[__inst5_i].__destroy();
+            }
+            let b__2__new = __cf_badge__site2({ label: n, __copy: String(__copy0) });
+            b__2 = b__2__new;
+          }
+          __inst5_next.push(b__2);
+          __inst5_i = __inst5_i + 1;
+          let b__2__el = b__2.__root;
+          b__2__el.setAttribute("data-sngl-instance", "b__2");
+          let __place4_i_ref0 = null;
+          if (__place4_i < __place4_prev.length) {
+            __place4_i_ref0 = __place4_prev[__place4_i];
+          }
+          if (__place4_i_ref0 === b__2__el) {
+            __place4_i = __place4_i + 1;
+          } else {
+            parent.insertBefore(b__2__el, __place4_i_ref0);
+          }
+          __slot2.push(b__2__el);
         }
-        let b__2__new = __cf_badge__site2({ label: n, __copy: String(__copy0) });
-        b__2 = b__2__new;
+        for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+          let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+          if (__inst5_i_j >= __inst5_i) {
+            __inst5_live[__inst5_i_j].__destroy();
+          }
+        }
+        __inst5_live = __inst5_next;
+        for (const __place4_prev_e of __place4_prev) {
+          if (__slot2.indexOf(__place4_prev_e) < 0) {
+            parent.removeChild(__place4_prev_e);
+          }
+        }
       }
-      __inst5_next.push(b__2);
-      __inst5_i = __inst5_i + 1;
-      let b__2__el = b__2.__root;
-      b__2__el.setAttribute("data-sngl-instance", "b__2");
-      let __place4_i_ref0 = null;
-      if (__place4_i < __place4_prev.length) {
-        __place4_i_ref0 = __place4_prev[__place4_i];
-      }
-      if (__place4_i_ref0 === b__2__el) {
-        __place4_i = __place4_i + 1;
-      } else {
-        parent.insertBefore(b__2__el, __place4_i_ref0);
-      }
-      __slot2.push(b__2__el);
-    }
-    for (const [__inst5_i_d, _] of __inst5_live.entries()) {
-      let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
-      if (__inst5_i_j >= __inst5_i) {
-        __inst5_live[__inst5_i_j].__destroy();
-      }
-    }
-    __inst5_live = __inst5_next;
-    for (const __place4_prev_e of __place4_prev) {
-      if (__slot2.indexOf(__place4_prev_e) < 0) {
-        parent.removeChild(__place4_prev_e);
-      }
+      __rendering2 = false;
     }
   }
   function __renderSlot3(parent) {
-    let __place6_prev = __slot3;
-    let __place6_i = 0;
-    __slot3 = [];
-    let __inst7_next = /* @__PURE__ */ new Map([]);
-    let __inst7_seen = /* @__PURE__ */ new Map([]);
-    for (const [__copy0, n] of state.names__inst3.entries()) {
-      let b__3 = null;
-      let __key8 = String(n);
-      let __key8_n = __inst7_seen.has(__key8) ? __inst7_seen.get(__key8) : 0;
-      __inst7_seen.set(__key8, __key8_n + 1);
-      if (__key8_n > 0) {
-        __key8 = __key8 + "#" + String(__key8_n);
-      }
-      if (__inst7_live.has(__key8)) {
-        b__3 = __inst7_live.has(__key8) ? __inst7_live.get(__key8) : null;
-        b__3.__set_label(n);
-        b__3.__set___copy(String(__copy0));
-      } else {
-        if (__inst7_live.has(__key8)) {
-          (__inst7_live.has(__key8) ? __inst7_live.get(__key8) : null).__destroy();
+    if (__rendering3) {
+      __renderAgain3 = true;
+    } else {
+      __rendering3 = true;
+      __renderAgain3 = true;
+      while (__renderAgain3) {
+        __renderAgain3 = false;
+        let __place6_prev = __slot3;
+        let __place6_i = 0;
+        __slot3 = [];
+        let __inst7_next = /* @__PURE__ */ new Map([]);
+        let __inst7_seen = /* @__PURE__ */ new Map([]);
+        for (const [__copy0, n] of state.names__inst3.entries()) {
+          let b__3 = null;
+          let __key8 = String(n);
+          let __key8_n = __inst7_seen.has(__key8) ? __inst7_seen.get(__key8) : 0;
+          __inst7_seen.set(__key8, __key8_n + 1);
+          if (__key8_n > 0) {
+            __key8 = __key8 + "#" + String(__key8_n);
+          }
+          if (__inst7_live.has(__key8)) {
+            b__3 = __inst7_live.has(__key8) ? __inst7_live.get(__key8) : null;
+            b__3.__set_label(n);
+            b__3.__set___copy(String(__copy0));
+          } else {
+            if (__inst7_live.has(__key8)) {
+              (__inst7_live.has(__key8) ? __inst7_live.get(__key8) : null).__destroy();
+            }
+            let b__3__new = __cf_badge__site3({ label: n, __copy: String(__copy0) });
+            b__3 = b__3__new;
+          }
+          __inst7_next.set(__key8, b__3);
+          let b__3__el = b__3.__root;
+          b__3__el.setAttribute("data-sngl-instance", "b__3");
+          let __place6_i_ref0 = null;
+          if (__place6_i < __place6_prev.length) {
+            __place6_i_ref0 = __place6_prev[__place6_i];
+          }
+          if (__place6_i_ref0 === b__3__el) {
+            __place6_i = __place6_i + 1;
+          } else {
+            parent.insertBefore(b__3__el, __place6_i_ref0);
+          }
+          __slot3.push(b__3__el);
         }
-        let b__3__new = __cf_badge__site3({ label: n, __copy: String(__copy0) });
-        b__3 = b__3__new;
+        for (const [__inst7_live_k, __inst7_live_v] of __inst7_live.entries()) {
+          if (!__inst7_next.has(__inst7_live_k)) {
+            __inst7_live_v.__destroy();
+          }
+        }
+        __inst7_live = __inst7_next;
+        for (const __place6_prev_e of __place6_prev) {
+          if (__slot3.indexOf(__place6_prev_e) < 0) {
+            parent.removeChild(__place6_prev_e);
+          }
+        }
       }
-      __inst7_next.set(__key8, b__3);
-      let b__3__el = b__3.__root;
-      b__3__el.setAttribute("data-sngl-instance", "b__3");
-      let __place6_i_ref0 = null;
-      if (__place6_i < __place6_prev.length) {
-        __place6_i_ref0 = __place6_prev[__place6_i];
-      }
-      if (__place6_i_ref0 === b__3__el) {
-        __place6_i = __place6_i + 1;
-      } else {
-        parent.insertBefore(b__3__el, __place6_i_ref0);
-      }
-      __slot3.push(b__3__el);
-    }
-    for (const [__inst7_live_k, __inst7_live_v] of __inst7_live.entries()) {
-      if (!__inst7_next.has(__inst7_live_k)) {
-        __inst7_live_v.__destroy();
-      }
-    }
-    __inst7_live = __inst7_next;
-    for (const __place6_prev_e of __place6_prev) {
-      if (__slot3.indexOf(__place6_prev_e) < 0) {
-        parent.removeChild(__place6_prev_e);
-      }
+      __rendering3 = false;
     }
   }
   function __renderSlot4(parent) {
-    let __place8_prev = __slot4;
-    let __place8_i = 0;
-    __slot4 = [];
-    let __inst9_next = /* @__PURE__ */ new Map([]);
-    let __inst9_seen = /* @__PURE__ */ new Map([]);
-    for (const [__copy0, n] of state.names__inst4.entries()) {
-      let b__4 = null;
-      let __key10 = String(n);
-      let __key10_n = __inst9_seen.has(__key10) ? __inst9_seen.get(__key10) : 0;
-      __inst9_seen.set(__key10, __key10_n + 1);
-      if (__key10_n > 0) {
-        __key10 = __key10 + "#" + String(__key10_n);
-      }
-      if (__inst9_live.has(__key10)) {
-        b__4 = __inst9_live.has(__key10) ? __inst9_live.get(__key10) : null;
-        b__4.__set_label(n);
-        b__4.__set___copy(String(__copy0));
-      } else {
-        if (__inst9_live.has(__key10)) {
-          (__inst9_live.has(__key10) ? __inst9_live.get(__key10) : null).__destroy();
+    if (__rendering4) {
+      __renderAgain4 = true;
+    } else {
+      __rendering4 = true;
+      __renderAgain4 = true;
+      while (__renderAgain4) {
+        __renderAgain4 = false;
+        let __place8_prev = __slot4;
+        let __place8_i = 0;
+        __slot4 = [];
+        let __inst9_next = /* @__PURE__ */ new Map([]);
+        let __inst9_seen = /* @__PURE__ */ new Map([]);
+        for (const [__copy0, n] of state.names__inst4.entries()) {
+          let b__4 = null;
+          let __key10 = String(n);
+          let __key10_n = __inst9_seen.has(__key10) ? __inst9_seen.get(__key10) : 0;
+          __inst9_seen.set(__key10, __key10_n + 1);
+          if (__key10_n > 0) {
+            __key10 = __key10 + "#" + String(__key10_n);
+          }
+          if (__inst9_live.has(__key10)) {
+            b__4 = __inst9_live.has(__key10) ? __inst9_live.get(__key10) : null;
+            b__4.__set_label(n);
+            b__4.__set___copy(String(__copy0));
+          } else {
+            if (__inst9_live.has(__key10)) {
+              (__inst9_live.has(__key10) ? __inst9_live.get(__key10) : null).__destroy();
+            }
+            let b__4__new = __cf_badge__site4({ label: n, __copy: String(__copy0) });
+            b__4 = b__4__new;
+          }
+          __inst9_next.set(__key10, b__4);
+          let b__4__el = b__4.__root;
+          b__4__el.setAttribute("data-sngl-instance", "b__4");
+          let __place8_i_ref0 = null;
+          if (__place8_i < __place8_prev.length) {
+            __place8_i_ref0 = __place8_prev[__place8_i];
+          }
+          if (__place8_i_ref0 === b__4__el) {
+            __place8_i = __place8_i + 1;
+          } else {
+            parent.insertBefore(b__4__el, __place8_i_ref0);
+          }
+          __slot4.push(b__4__el);
         }
-        let b__4__new = __cf_badge__site4({ label: n, __copy: String(__copy0) });
-        b__4 = b__4__new;
+        for (const [__inst9_live_k, __inst9_live_v] of __inst9_live.entries()) {
+          if (!__inst9_next.has(__inst9_live_k)) {
+            __inst9_live_v.__destroy();
+          }
+        }
+        __inst9_live = __inst9_next;
+        for (const __place8_prev_e of __place8_prev) {
+          if (__slot4.indexOf(__place8_prev_e) < 0) {
+            parent.removeChild(__place8_prev_e);
+          }
+        }
       }
-      __inst9_next.set(__key10, b__4);
-      let b__4__el = b__4.__root;
-      b__4__el.setAttribute("data-sngl-instance", "b__4");
-      let __place8_i_ref0 = null;
-      if (__place8_i < __place8_prev.length) {
-        __place8_i_ref0 = __place8_prev[__place8_i];
-      }
-      if (__place8_i_ref0 === b__4__el) {
-        __place8_i = __place8_i + 1;
-      } else {
-        parent.insertBefore(b__4__el, __place8_i_ref0);
-      }
-      __slot4.push(b__4__el);
-    }
-    for (const [__inst9_live_k, __inst9_live_v] of __inst9_live.entries()) {
-      if (!__inst9_next.has(__inst9_live_k)) {
-        __inst9_live_v.__destroy();
-      }
-    }
-    __inst9_live = __inst9_next;
-    for (const __place8_prev_e of __place8_prev) {
-      if (__slot4.indexOf(__place8_prev_e) < 0) {
-        parent.removeChild(__place8_prev_e);
-      }
+      __rendering4 = false;
     }
   }
   function __renderSlot5(parent) {
-    let __place10_prev = __slot5;
-    let __place10_i = 0;
-    __slot5 = [];
-    let __inst11_next = [];
-    let __inst11_i = 0;
-    if (state.shown__inst0) {
-      let inner = null;
-      if (__inst11_live.length > __inst11_i) {
-        inner = __inst11_live[__inst11_i];
-        inner.__set_label("i");
-      } else {
-        if (__inst11_live.length > __inst11_i) {
-          __inst11_live[__inst11_i].__destroy();
+    if (__rendering5) {
+      __renderAgain5 = true;
+    } else {
+      __rendering5 = true;
+      __renderAgain5 = true;
+      while (__renderAgain5) {
+        __renderAgain5 = false;
+        let __place10_prev = __slot5;
+        let __place10_i = 0;
+        __slot5 = [];
+        let __inst11_next = [];
+        let __inst11_i = 0;
+        if (state.shown__inst0) {
+          let inner = null;
+          if (__inst11_live.length > __inst11_i) {
+            inner = __inst11_live[__inst11_i];
+            inner.__set_label("i");
+          } else {
+            if (__inst11_live.length > __inst11_i) {
+              __inst11_live[__inst11_i].__destroy();
+            }
+            let inner__new = __cf_badge__site5({ label: "i" });
+            inner = inner__new;
+          }
+          __inst11_next.push(inner);
+          __inst11_i = __inst11_i + 1;
+          let inner__el = inner.__root;
+          inner__el.setAttribute("data-sngl-instance", "inner");
+          let __place10_i_ref0 = null;
+          if (__place10_i < __place10_prev.length) {
+            __place10_i_ref0 = __place10_prev[__place10_i];
+          }
+          if (__place10_i_ref0 === inner__el) {
+            __place10_i = __place10_i + 1;
+          } else {
+            parent.insertBefore(inner__el, __place10_i_ref0);
+          }
+          __slot5.push(inner__el);
         }
-        let inner__new = __cf_badge__site5({ label: "i" });
-        inner = inner__new;
+        for (const [__inst11_i_d, _] of __inst11_live.entries()) {
+          let __inst11_i_j = __inst11_live.length - 1 - __inst11_i_d;
+          if (__inst11_i_j >= __inst11_i) {
+            __inst11_live[__inst11_i_j].__destroy();
+          }
+        }
+        __inst11_live = __inst11_next;
+        for (const __place10_prev_e of __place10_prev) {
+          if (__slot5.indexOf(__place10_prev_e) < 0) {
+            parent.removeChild(__place10_prev_e);
+          }
+        }
       }
-      __inst11_next.push(inner);
-      __inst11_i = __inst11_i + 1;
-      let inner__el = inner.__root;
-      inner__el.setAttribute("data-sngl-instance", "inner");
-      let __place10_i_ref0 = null;
-      if (__place10_i < __place10_prev.length) {
-        __place10_i_ref0 = __place10_prev[__place10_i];
-      }
-      if (__place10_i_ref0 === inner__el) {
-        __place10_i = __place10_i + 1;
-      } else {
-        parent.insertBefore(inner__el, __place10_i_ref0);
-      }
-      __slot5.push(inner__el);
-    }
-    for (const [__inst11_i_d, _] of __inst11_live.entries()) {
-      let __inst11_i_j = __inst11_live.length - 1 - __inst11_i_d;
-      if (__inst11_i_j >= __inst11_i) {
-        __inst11_live[__inst11_i_j].__destroy();
-      }
-    }
-    __inst11_live = __inst11_next;
-    for (const __place10_prev_e of __place10_prev) {
-      if (__slot5.indexOf(__place10_prev_e) < 0) {
-        parent.removeChild(__place10_prev_e);
-      }
+      __rendering5 = false;
     }
   }
   function __renderSlot6(parent) {
-    let __place12_prev = __slot6;
-    let __place12_i = 0;
-    __slot6 = [];
-    let __inst13_next = [];
-    let __inst13_i = 0;
-    for (const [__copy0, item] of state.items__inst0.entries()) {
-      let r = null;
-      if (__inst13_live.length > __inst13_i) {
-        r = __inst13_live[__inst13_i];
-        r.__set_label(item);
-        r.__set___copy(String(__copy0));
-        r.__set_pick((_) => {
-          state.picked__inst0 = item;
-          __n9.textContent = "picked=" + state.picked__inst0;
-        });
-      } else {
-        if (__inst13_live.length > __inst13_i) {
-          __inst13_live[__inst13_i].__destroy();
+    if (__rendering6) {
+      __renderAgain6 = true;
+    } else {
+      __rendering6 = true;
+      __renderAgain6 = true;
+      while (__renderAgain6) {
+        __renderAgain6 = false;
+        let __place12_prev = __slot6;
+        let __place12_i = 0;
+        __slot6 = [];
+        let __inst13_next = [];
+        let __inst13_i = 0;
+        for (const [__copy0, item] of state.items__inst0.entries()) {
+          let r = null;
+          if (__inst13_live.length > __inst13_i) {
+            r = __inst13_live[__inst13_i];
+            r.__set_pick((_) => {
+              state.picked__inst0 = item;
+              __n9.textContent = "picked=" + state.picked__inst0;
+            });
+            r.__set_label(item);
+            r.__set___copy(String(__copy0));
+          } else {
+            if (__inst13_live.length > __inst13_i) {
+              __inst13_live[__inst13_i].__destroy();
+            }
+            let r__new = __cf_row({ label: item, __copy: String(__copy0), pick: (_) => {
+              state.picked__inst0 = item;
+              __n9.textContent = "picked=" + state.picked__inst0;
+            } });
+            r = r__new;
+          }
+          __inst13_next.push(r);
+          __inst13_i = __inst13_i + 1;
+          let r__el = r.__root;
+          r__el.setAttribute("data-sngl-instance", "r");
+          let __place12_i_ref0 = null;
+          if (__place12_i < __place12_prev.length) {
+            __place12_i_ref0 = __place12_prev[__place12_i];
+          }
+          if (__place12_i_ref0 === r__el) {
+            __place12_i = __place12_i + 1;
+          } else {
+            parent.insertBefore(r__el, __place12_i_ref0);
+          }
+          __slot6.push(r__el);
         }
-        let r__new = __cf_row({ label: item, __copy: String(__copy0), pick: (_) => {
-          state.picked__inst0 = item;
-          __n9.textContent = "picked=" + state.picked__inst0;
-        } });
-        r = r__new;
+        for (const [__inst13_i_d, _] of __inst13_live.entries()) {
+          let __inst13_i_j = __inst13_live.length - 1 - __inst13_i_d;
+          if (__inst13_i_j >= __inst13_i) {
+            __inst13_live[__inst13_i_j].__destroy();
+          }
+        }
+        __inst13_live = __inst13_next;
+        for (const __place12_prev_e of __place12_prev) {
+          if (__slot6.indexOf(__place12_prev_e) < 0) {
+            parent.removeChild(__place12_prev_e);
+          }
+        }
       }
-      __inst13_next.push(r);
-      __inst13_i = __inst13_i + 1;
-      let r__el = r.__root;
-      r__el.setAttribute("data-sngl-instance", "r");
-      let __place12_i_ref0 = null;
-      if (__place12_i < __place12_prev.length) {
-        __place12_i_ref0 = __place12_prev[__place12_i];
-      }
-      if (__place12_i_ref0 === r__el) {
-        __place12_i = __place12_i + 1;
-      } else {
-        parent.insertBefore(r__el, __place12_i_ref0);
-      }
-      __slot6.push(r__el);
-    }
-    for (const [__inst13_i_d, _] of __inst13_live.entries()) {
-      let __inst13_i_j = __inst13_live.length - 1 - __inst13_i_d;
-      if (__inst13_i_j >= __inst13_i) {
-        __inst13_live[__inst13_i_j].__destroy();
-      }
-    }
-    __inst13_live = __inst13_next;
-    for (const __place12_prev_e of __place12_prev) {
-      if (__slot6.indexOf(__place12_prev_e) < 0) {
-        parent.removeChild(__place12_prev_e);
-      }
+      __rendering6 = false;
     }
   }
   function __renderSlot7(parent) {
-    let __place14_prev = __slot7;
-    let __place14_i = 0;
-    __slot7 = [];
-    let __inst15_next = [];
-    let __inst15_i = 0;
-    for (const [__copy0, item] of state.items__inst1.entries()) {
-      let ch = null;
-      if (__inst15_live.length > __inst15_i) {
-        ch = __inst15_live[__inst15_i];
-        ch.__set_label(item);
-        ch.__set_onpick((s) => {
-          state.picked__inst1 = s;
-          $6.textContent = "picked=" + state.picked__inst1;
-        });
-        ch.__set___copy(String(__copy0));
-      } else {
-        if (__inst15_live.length > __inst15_i) {
-          __inst15_live[__inst15_i].__destroy();
+    if (__rendering7) {
+      __renderAgain7 = true;
+    } else {
+      __rendering7 = true;
+      __renderAgain7 = true;
+      while (__renderAgain7) {
+        __renderAgain7 = false;
+        let __place14_prev = __slot7;
+        let __place14_i = 0;
+        __slot7 = [];
+        let __inst15_next = [];
+        let __inst15_i = 0;
+        for (const [__copy0, item] of state.items__inst1.entries()) {
+          let ch = null;
+          if (__inst15_live.length > __inst15_i) {
+            ch = __inst15_live[__inst15_i];
+            ch.__set_onpick((s) => {
+              state.picked__inst1 = s;
+              $6.textContent = "picked=" + state.picked__inst1;
+            });
+            ch.__set_label(item);
+            ch.__set___copy(String(__copy0));
+          } else {
+            if (__inst15_live.length > __inst15_i) {
+              __inst15_live[__inst15_i].__destroy();
+            }
+            let ch__new = __cf_choice({ label: item, onpick: (s) => {
+              state.picked__inst1 = s;
+              $6.textContent = "picked=" + state.picked__inst1;
+            }, __copy: String(__copy0) });
+            ch = ch__new;
+          }
+          __inst15_next.push(ch);
+          __inst15_i = __inst15_i + 1;
+          let ch__el = ch.__root;
+          ch__el.setAttribute("data-sngl-instance", "ch");
+          let __place14_i_ref0 = null;
+          if (__place14_i < __place14_prev.length) {
+            __place14_i_ref0 = __place14_prev[__place14_i];
+          }
+          if (__place14_i_ref0 === ch__el) {
+            __place14_i = __place14_i + 1;
+          } else {
+            parent.insertBefore(ch__el, __place14_i_ref0);
+          }
+          __slot7.push(ch__el);
         }
-        let ch__new = __cf_choice({ label: item, onpick: (s) => {
-          state.picked__inst1 = s;
-          $6.textContent = "picked=" + state.picked__inst1;
-        }, __copy: String(__copy0) });
-        ch = ch__new;
+        for (const [__inst15_i_d, _] of __inst15_live.entries()) {
+          let __inst15_i_j = __inst15_live.length - 1 - __inst15_i_d;
+          if (__inst15_i_j >= __inst15_i) {
+            __inst15_live[__inst15_i_j].__destroy();
+          }
+        }
+        __inst15_live = __inst15_next;
+        for (const __place14_prev_e of __place14_prev) {
+          if (__slot7.indexOf(__place14_prev_e) < 0) {
+            parent.removeChild(__place14_prev_e);
+          }
+        }
       }
-      __inst15_next.push(ch);
-      __inst15_i = __inst15_i + 1;
-      let ch__el = ch.__root;
-      ch__el.setAttribute("data-sngl-instance", "ch");
-      let __place14_i_ref0 = null;
-      if (__place14_i < __place14_prev.length) {
-        __place14_i_ref0 = __place14_prev[__place14_i];
-      }
-      if (__place14_i_ref0 === ch__el) {
-        __place14_i = __place14_i + 1;
-      } else {
-        parent.insertBefore(ch__el, __place14_i_ref0);
-      }
-      __slot7.push(ch__el);
-    }
-    for (const [__inst15_i_d, _] of __inst15_live.entries()) {
-      let __inst15_i_j = __inst15_live.length - 1 - __inst15_i_d;
-      if (__inst15_i_j >= __inst15_i) {
-        __inst15_live[__inst15_i_j].__destroy();
-      }
-    }
-    __inst15_live = __inst15_next;
-    for (const __place14_prev_e of __place14_prev) {
-      if (__slot7.indexOf(__place14_prev_e) < 0) {
-        parent.removeChild(__place14_prev_e);
-      }
+      __rendering7 = false;
     }
   }
   function __renderSlot8(parent) {
-    let __place16_prev = __slot8;
-    let __place16_i = 0;
-    __slot8 = [];
-    let __inst17_next = [];
-    let __inst17_i = 0;
-    let __inst17_now_start = [];
-    for (const [__copy0, nm] of state.names__inst5.entries()) {
-      let b__5 = null;
-      if (__inst17_live.length > __inst17_i && __inst17_was_start[__inst17_i] === state.base__inst0) {
-        b__5 = __inst17_live[__inst17_i];
-        b__5.__set_label(nm + state.tag__inst1);
-        b__5.__set___copy(String(__copy0));
-      } else {
-        if (__inst17_live.length > __inst17_i) {
-          __inst17_live[__inst17_i].__destroy();
+    if (__rendering8) {
+      __renderAgain8 = true;
+    } else {
+      __rendering8 = true;
+      __renderAgain8 = true;
+      while (__renderAgain8) {
+        __renderAgain8 = false;
+        let __place16_prev = __slot8;
+        let __place16_i = 0;
+        __slot8 = [];
+        let __inst17_next = [];
+        let __inst17_i = 0;
+        let __inst17_now_start = [];
+        for (const [__copy0, nm] of state.names__inst5.entries()) {
+          let b__5 = null;
+          if (__inst17_live.length > __inst17_i && __inst17_was_start[__inst17_i] === state.base__inst0) {
+            b__5 = __inst17_live[__inst17_i];
+            b__5.__set_label(nm + state.tag__inst1);
+            b__5.__set___copy(String(__copy0));
+          } else {
+            if (__inst17_live.length > __inst17_i) {
+              __inst17_live[__inst17_i].__destroy();
+            }
+            let b__5__new = __cf_seededBadge({ start: state.base__inst0, label: nm + state.tag__inst1, __copy: String(__copy0) });
+            b__5 = b__5__new;
+          }
+          __inst17_next.push(b__5);
+          __inst17_now_start.push(state.base__inst0);
+          __inst17_i = __inst17_i + 1;
+          let b__5__el = b__5.__root;
+          b__5__el.setAttribute("data-sngl-instance", "b__5");
+          let __place16_i_ref0 = null;
+          if (__place16_i < __place16_prev.length) {
+            __place16_i_ref0 = __place16_prev[__place16_i];
+          }
+          if (__place16_i_ref0 === b__5__el) {
+            __place16_i = __place16_i + 1;
+          } else {
+            parent.insertBefore(b__5__el, __place16_i_ref0);
+          }
+          __slot8.push(b__5__el);
         }
-        let b__5__new = __cf_seededBadge({ start: state.base__inst0, label: nm + state.tag__inst1, __copy: String(__copy0) });
-        b__5 = b__5__new;
+        for (const [__inst17_i_d, _] of __inst17_live.entries()) {
+          let __inst17_i_j = __inst17_live.length - 1 - __inst17_i_d;
+          if (__inst17_i_j >= __inst17_i) {
+            __inst17_live[__inst17_i_j].__destroy();
+          }
+        }
+        __inst17_live = __inst17_next;
+        __inst17_was_start = __inst17_now_start;
+        for (const __place16_prev_e of __place16_prev) {
+          if (__slot8.indexOf(__place16_prev_e) < 0) {
+            parent.removeChild(__place16_prev_e);
+          }
+        }
       }
-      __inst17_next.push(b__5);
-      __inst17_now_start.push(state.base__inst0);
-      __inst17_i = __inst17_i + 1;
-      let b__5__el = b__5.__root;
-      b__5__el.setAttribute("data-sngl-instance", "b__5");
-      let __place16_i_ref0 = null;
-      if (__place16_i < __place16_prev.length) {
-        __place16_i_ref0 = __place16_prev[__place16_i];
-      }
-      if (__place16_i_ref0 === b__5__el) {
-        __place16_i = __place16_i + 1;
-      } else {
-        parent.insertBefore(b__5__el, __place16_i_ref0);
-      }
-      __slot8.push(b__5__el);
-    }
-    for (const [__inst17_i_d, _] of __inst17_live.entries()) {
-      let __inst17_i_j = __inst17_live.length - 1 - __inst17_i_d;
-      if (__inst17_i_j >= __inst17_i) {
-        __inst17_live[__inst17_i_j].__destroy();
-      }
-    }
-    __inst17_live = __inst17_next;
-    __inst17_was_start = __inst17_now_start;
-    for (const __place16_prev_e of __place16_prev) {
-      if (__slot8.indexOf(__place16_prev_e) < 0) {
-        parent.removeChild(__place16_prev_e);
-      }
+      __rendering8 = false;
     }
   }
   function __renderSlot9(parent) {
-    let __place18_prev = __slot9;
-    let __place18_i = 0;
-    __slot9 = [];
-    let __inst19_next = [];
-    let __inst19_i = 0;
-    for (const [__copy0, l] of state.levels__inst0.entries()) {
-      let g = null;
-      if (__inst19_live.length > __inst19_i) {
-        g = __inst19_live[__inst19_i];
-        g.__set_level(l);
-        g.__set___copy(String(__copy0));
-      } else {
-        if (__inst19_live.length > __inst19_i) {
-          __inst19_live[__inst19_i].__destroy();
+    if (__rendering9) {
+      __renderAgain9 = true;
+    } else {
+      __rendering9 = true;
+      __renderAgain9 = true;
+      while (__renderAgain9) {
+        __renderAgain9 = false;
+        let __place18_prev = __slot9;
+        let __place18_i = 0;
+        __slot9 = [];
+        let __inst19_next = [];
+        let __inst19_i = 0;
+        for (const [__copy0, l] of state.levels__inst0.entries()) {
+          let g = null;
+          if (__inst19_live.length > __inst19_i) {
+            g = __inst19_live[__inst19_i];
+            g.__set_level(l);
+            g.__set___copy(String(__copy0));
+          } else {
+            if (__inst19_live.length > __inst19_i) {
+              __inst19_live[__inst19_i].__destroy();
+            }
+            let g__new = __cf_gauge({ level: l, __copy: String(__copy0) });
+            g = g__new;
+          }
+          __inst19_next.push(g);
+          __inst19_i = __inst19_i + 1;
+          let g__el = g.__root;
+          g__el.setAttribute("data-sngl-instance", "g");
+          let __place18_i_ref0 = null;
+          if (__place18_i < __place18_prev.length) {
+            __place18_i_ref0 = __place18_prev[__place18_i];
+          }
+          if (__place18_i_ref0 === g__el) {
+            __place18_i = __place18_i + 1;
+          } else {
+            parent.insertBefore(g__el, __place18_i_ref0);
+          }
+          __slot9.push(g__el);
         }
-        let g__new = __cf_gauge({ level: l, __copy: String(__copy0) });
-        g = g__new;
+        for (const [__inst19_i_d, _] of __inst19_live.entries()) {
+          let __inst19_i_j = __inst19_live.length - 1 - __inst19_i_d;
+          if (__inst19_i_j >= __inst19_i) {
+            __inst19_live[__inst19_i_j].__destroy();
+          }
+        }
+        __inst19_live = __inst19_next;
+        for (const __place18_prev_e of __place18_prev) {
+          if (__slot9.indexOf(__place18_prev_e) < 0) {
+            parent.removeChild(__place18_prev_e);
+          }
+        }
       }
-      __inst19_next.push(g);
-      __inst19_i = __inst19_i + 1;
-      let g__el = g.__root;
-      g__el.setAttribute("data-sngl-instance", "g");
-      let __place18_i_ref0 = null;
-      if (__place18_i < __place18_prev.length) {
-        __place18_i_ref0 = __place18_prev[__place18_i];
-      }
-      if (__place18_i_ref0 === g__el) {
-        __place18_i = __place18_i + 1;
-      } else {
-        parent.insertBefore(g__el, __place18_i_ref0);
-      }
-      __slot9.push(g__el);
-    }
-    for (const [__inst19_i_d, _] of __inst19_live.entries()) {
-      let __inst19_i_j = __inst19_live.length - 1 - __inst19_i_d;
-      if (__inst19_i_j >= __inst19_i) {
-        __inst19_live[__inst19_i_j].__destroy();
-      }
-    }
-    __inst19_live = __inst19_next;
-    for (const __place18_prev_e of __place18_prev) {
-      if (__slot9.indexOf(__place18_prev_e) < 0) {
-        parent.removeChild(__place18_prev_e);
-      }
+      __rendering9 = false;
     }
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
@@ -1639,9 +1759,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b46f7c4154310c9b09b5223a0884df56
+pass sha256:eb8efcf0e83ef14abb904f0cc3856cf3
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:61b65e43fc07dc50b372b18d30cdd76c
+sha256:08580abf613025bd6fb371485d179e6f
 {
   "results": [
     {
@@ -1651,7 +1771,7 @@ sha256:61b65e43fc07dc50b372b18d30cdd76c
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:d30debe19aeb334c6ac77d98140f4187
+sha256:47e7d3096d6029b7b06b1ce2c135ddc2
 {
   "results": [
     {
@@ -1661,7 +1781,7 @@ sha256:d30debe19aeb334c6ac77d98140f4187
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:f63c4bcf6c1668db947c31cacd9c45ad
+sha256:ff2267d14065f2b68e01553af35eb46c
 {
   "results": [
     {
@@ -1671,7 +1791,7 @@ sha256:f63c4bcf6c1668db947c31cacd9c45ad
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:07d99fdeaa66385feb96698c20b1e15d
+sha256:f0315bde91fe29b863fd6c2c208ac28f
 {
   "results": [
     {
@@ -1685,7 +1805,7 @@ sha256:07d99fdeaa66385feb96698c20b1e15d
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:34cd55b72404d0e3797ca4a4e1e51a71
+sha256:fd496c4a02f6b64cc3aac210c76719d3
 {
   "results": [
     {
@@ -1695,7 +1815,7 @@ sha256:34cd55b72404d0e3797ca4a4e1e51a71
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:abd50cf4cf6e62fdd6742629f0593f8d
+sha256:e868fb92b0f81997f58fa4156c29737e
 {
   "results": [
     {
@@ -1705,7 +1825,7 @@ sha256:abd50cf4cf6e62fdd6742629f0593f8d
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:893ed98f2d4e4ea57fe4d26359108480
+sha256:54d6ae4906826a41684f9fbdd24dbfd2
 {
   "results": [
     {
@@ -1715,7 +1835,7 @@ sha256:893ed98f2d4e4ea57fe4d26359108480
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:69f602acfb07bec64e62845cb63ea79f
+sha256:62d5f68d4450ddfbc58eb2dd811bd295
 {
   "results": [
     {
@@ -1725,7 +1845,7 @@ sha256:69f602acfb07bec64e62845cb63ea79f
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:ec37e0d752a656ba38f37b45dd558f98
+sha256:26ec85166bce5dba28db9f2d788b2ec0
 {
   "results": [
     {
@@ -1739,7 +1859,7 @@ sha256:ec37e0d752a656ba38f37b45dd558f98
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:e5d9e9b3f3ac61b3c157d5b0c698dae0
+sha256:9cd9fd2987a75253481d20e5526d400f
 {
   "results": [
     {

@@ -1,0 +1,90 @@
+# A string holding a control character or a dollar sign is the same string on
+# every target. Kotlin's literal is not Go's: android quoted with Go's %q,
+# writing `\f` for a form feed, which Kotlin refuses, and `$cost` bare, which
+# Kotlin reads as a template naming `cost`.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A form feed and a dollar sign, which a Kotlin string writes as `\u000c`
+// and `\$`.
+func tidy(s string) => string.replace(string.replace(s, "\x0c", " "), "$cost", "5")
+
+component receipt ui.node {
+    var raw = "pay\x0c$cost"
+    ui.text #total(value=tidy(raw))
+}
+
+func testAStringKeepsWhatItWrote(t test.Test, c receipt) {
+    t.assert(c.total.value == "pay 5")
+    t.assert(string.length("a\x0cb") == 3 && "$cost" != "")
+}
+-- testrun/android/kotlin/app.sngl/receipt/1 --
+sha256:d28e3295ee2bb43ae89550fa60f60c46
+{
+  "results": [
+    {
+      "Desc": "AStringKeepsWhatItWrote",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/receipt/1 --
+sha256:9471a35636fae17629f60523c875d63b
+{
+  "results": [
+    {
+      "Desc": "AStringKeepsWhatItWrote",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/receipt/1 --
+sha256:2bb97c18d3e609b7707ec9cfa50050d3
+{
+  "results": [
+    {
+      "Desc": "AStringKeepsWhatItWrote",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/receipt/1 --
+sha256:b44a011bdffeff6c253b83717b1bf725
+{
+  "results": [
+    {
+      "Desc": "AStringKeepsWhatItWrote",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/receipt/1 --
+sha256:0de1d51b59d103e7c04200226ad20736
+{
+  "results": [
+    {
+      "Desc": "AStringKeepsWhatItWrote",
+      "Passed": true
+    }
+  ]
+}

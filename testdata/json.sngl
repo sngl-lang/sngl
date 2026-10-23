@@ -1,0 +1,63 @@
+// sngl:json reads text as a declared type and writes a value back. A field or
+// an enum member is named on the wire by #[json.identifier]; an option is a
+// key that may be missing or null; a failure is a value saying where the text
+// did not match. The interpreter answers it as every target does.
+
+import async "sngl:async"
+import json "sngl:json"
+import . "sngl:test"
+
+enum Kind {
+    #[json.identifier("hard-cover")]
+    hardcover
+    paperback
+}
+
+struct Score {
+    #[json.identifier("base_score")]
+    baseScore int
+    name      string
+}
+
+struct Book {
+    id     int
+    #[json.identifier("page_count")]
+    pages  option[int]
+    kind   Kind
+    scores list[Score]
+    tags   map[string, float]
+}
+
+func message[T any](r async.Result[T]) => match var f = r {
+    ok => ""
+    failed => f.message
+}
+
+func testDecode(t Test) {
+    match var b = json.decode[Book](`{"id": 1, "kind": "hard-cover", "scores": [{"base_score": 45, "name": "plot"}], "tags": {"a": 0.5}, "x": 1}`) {
+        ok {
+            t.assert(b.id == 1)
+            t.assert(b.pages == null)
+            t.assert(b.kind == Kind.hardcover)
+            t.assert(b.scores[0].baseScore == 45)
+            t.assert(b.tags.get("a", 0.0) == 0.5)
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testEncode(t Test) {
+    var b = Book{id=2, pages=null, kind=Kind.paperback, scores=[Score{baseScore=1, name="plot"}], tags={"b"=1.5, "a"=2.0}}
+    t.assert(json.encode(b) == `{"id":2,"kind":"paperback","scores":[{"base_score":1,"name":"plot"}],"tags":{"a":2,"b":1.5}}`)
+}
+
+func testFailures(t Test) {
+    t.assert(message(json.decode[Book](`{"id": 1.5}`)) == "$.id: want an integer")
+    t.assert(message(json.decode[Book](`{"id": 1}`)) == "$.kind: missing")
+    t.assert(message(json.decode[Kind](`"ebook"`)) == "$: want one of hard-cover, paperback")
+    t.assert(message(json.decode[int](`{`)) == "not JSON")
+    match var f = json.decode[Score](`[]`) {
+        ok { t.assert(false) }
+        failed { t.assert(f.kind == async.FailureKind.decode) }
+    }
+}

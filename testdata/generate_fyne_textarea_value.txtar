@@ -69,8 +69,10 @@ func (m *Model) app__r0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n0_input_handler(v string) {
-	m.content__r0 = v
-	m.__n0.SetText(m.content__r0)
+	if v != m.content__r0 {
+		m.content__r0 = v
+		m.__n0.SetText(m.content__r0)
+	}
 }
 
 func (m *Model) __n0_change_handler(v string) {
@@ -151,4 +153,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:776c8081e9dfac6e8e78df1a21278ea5
+pass sha256:d5c1bd4f30f60c037eabc22f565b5c04

@@ -275,11 +275,14 @@ StructBodyDecl = FuncDecl | kw_const FuncDecl | StructField .
 StructField = IdentList Type [ assign Expr ] .
 
 # Enum body accepts members and nested funcs, separated by comma or semi.
-EnumDecl = kw_enum [ ident ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
+EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
 
-EnumBodyItem = FuncDecl | kw_const FuncDecl | EnumMember .
+EnumBodyItem = { MacroAttr } EnumBodyDecl .
 
-EnumMember = ident [ assign Expr ] .
+EnumBodyDecl = FuncDecl | kw_const FuncDecl | EnumMember .
+
+# A member may carry a type, its payload; one that does takes no value.
+EnumMember = ident [ Type ] [ assign Expr ] .
 
 # Unit suffixes use the same brace list: unit Length{px, em, rem=16}
 UnitDecl = kw_unit [ ident ] lbrace [ ArgList ] rbrace .
@@ -511,8 +514,10 @@ ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr 
 # is a CondExpr: like an if's head it may not begin with the brace that opens
 # the arms, and a pattern may not take a struct literal's brace for the same
 # reason. Arms are separated, by a line break or a `;`, so that an arm's value
-# never runs into the next arm's pattern.
-Match    = kw_match [ CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
+# never runs into the next arm's pattern. `match var v = subject` names the
+# subject for the arms, as `for var x = xs` names the element: kw_var opens the
+# declaration and anything else the subject, so the head stays LL(1).
+Match    = kw_match [ kw_var ident assign CondExpr | CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
 MatchArm = ( kw_else | CondExpr { comma CondExpr } ) ( StmtBlock | fat_arrow Expr ) .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .

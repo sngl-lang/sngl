@@ -1,0 +1,4304 @@
+An `openapi:` import resolves through the library's own plugin,
+`sngl:x/scheme/openapi`, whose handler hands the spec to `openapi.generate`,
+which reads it and writes the package in Go -- a declaration per
+schema, a `…Call` function per operation and a component over `async.query`
+per GET, and `server`, the context the spec's first server defaults. The spec
+is a small petstore: 3.1 null unions in both spellings (`type: [T, 'null']`
+and 3.0's `nullable`), a `oneOf` of a `$ref` and null, an `allOf` of one
+`$ref` beside `readOnly`, a paged list, a field named `type`, snake_case keys
+and operation ids written in camelCase, and a map of any value, which is left
+out and said.
+
+The program uses each: a component keyed on two parameters, which is an
+anonymous struct, one keyed on its one, a function from a handler, and
+`server` provided around a subtree.
+
+written openapi:./petstore.yml
+-- app.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+import pets "openapi:./petstore.yml"
+
+output {
+    none {
+        html
+    }
+    go {
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+}
+
+// A page of names, a page further each time More is pressed.
+component names ui.node {
+    var offset = 0
+    var page option[pets.PaginatedPetSummaryList] = null
+    pets.petList(limit=20, offset=offset, :value=page)
+    if page != null {
+        for var p = page.results {
+            ui.text(value=p.name)
+        }
+    }
+    ui.button(text="More", @click { offset += 20 })
+}
+
+// One pet, asked again whenever name changes.
+component detail(name string) ui.node {
+    var pet option[pets.PetDetail] = null
+    var loading = false
+    var failure option[async.Failure] = null
+    pets.petRetrieve(id=name, :value=pet, :pending=loading, :failure=failure)
+    if loading {
+        ui.spinner()
+    }
+    if failure != null {
+        ui.text(value="Could not load {name}: {failure.message}")
+    }
+    if pet != null {
+        ui.text(value="#{pet.id} {pet.name}")
+        for var t = pet.tags {
+            ui.badge(value=t.type.name)
+        }
+    }
+}
+
+// The breed, asked from a handler rather than a component.
+component breed(name string) ui.node {
+    var from = "-"
+    ui.button(text="Bred from", @click {
+        match var r = pets.petBreedRetrieveCall(id=name) {
+            ok { from = r.parentBreed != null ? r.parentBreed.name : "nothing" }
+            failed { from = r.message }
+        }
+    })
+    ui.text(value=from)
+}
+
+ui.window(title="Petstore") {
+    names
+    pets.server("https://mirror.example") {
+        detail(name="rex")
+        breed(name="beagle")
+    }
+}
+-- petstore.yml --
+openapi: 3.1.0
+info:
+  title: Petstore
+  version: 1.0.0
+servers:
+- url: https://petstore.example
+paths:
+  /api/v1/pets/:
+    get:
+      operationId: pet_list
+      summary: List pets
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPetSummaryList'
+          description: ''
+  /api/v1/pets/{id}/:
+    get:
+      operationId: pet_retrieve
+      summary: Get pet
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: This parameter can be a string or an integer.
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetDetail'
+          description: ''
+  /api/v1/pet-breeds/{id}/:
+    get:
+      operationId: pet_breed_retrieve
+      summary: Get pet breed
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetBreedDetail'
+          description: ''
+components:
+  schemas:
+    PaginatedPetSummaryList:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+        previous:
+          type: string
+          nullable: true
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetSummary'
+    PetSummary:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        url:
+          type: string
+          format: uri
+          readOnly: true
+      required:
+      - name
+      - url
+    PetDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        adoption_fee:
+          type:
+          - integer
+          - 'null'
+        age:
+          type:
+          - integer
+          - 'null'
+        is_available:
+          type: boolean
+        breed:
+          $ref: '#/components/schemas/PetBreedSummary'
+        photos:
+          allOf:
+          - $ref: '#/components/schemas/PetPhotos'
+          readOnly: true
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetMeasurement'
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/PetTag'
+          readOnly: true
+      required:
+      - id
+      - name
+      - breed
+      - photos
+      - measurements
+      - tags
+    PetPhotos:
+      type: object
+      properties:
+        thumbnail_url:
+          type:
+          - string
+          - 'null'
+      required:
+      - thumbnail_url
+    PetMeasurement:
+      type: object
+      properties:
+        base_value:
+          type: integer
+        margin:
+          type: integer
+        measure:
+          $ref: '#/components/schemas/MeasureSummary'
+      required:
+      - base_value
+      - margin
+      - measure
+    MeasureSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PetTag:
+      type: object
+      properties:
+        slot:
+          type: integer
+        type:
+          $ref: '#/components/schemas/TagSummary'
+      required:
+      - slot
+      - type
+    TagSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PetBreedSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PetBreedDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        parent_breed:
+          oneOf:
+          - $ref: '#/components/schemas/PetBreedSummary'
+          - type: 'null'
+        breed_lineage:
+          type: object
+          additionalProperties: {}
+      required:
+      - id
+      - name
+      - parent_breed
+-- out/go/fyne/model.go --
+// Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
+
+package main
+
+import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglhttp"
+	"duckfam.us/sngl/pkg/go/sngljson"
+	"fmt"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
+	"os"
+)
+
+func snglSome[T any](v T) *T {
+	return &v
+}
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
+type Result__Response struct {
+	tag    int
+	Ok     Response
+	Failed Failure
+}
+
+type Result__PaginatedPetSummaryList struct {
+	tag    int
+	Ok     PaginatedPetSummaryList
+	Failed Failure
+}
+
+type Result__PetDetail struct {
+	tag    int
+	Ok     PetDetail
+	Failed Failure
+}
+
+type Result__PetBreedDetail struct {
+	tag    int
+	Ok     PetBreedDetail
+	Failed Failure
+}
+
+type Failure struct {
+	Kind    string
+	Message string
+	Code    string
+}
+
+type PaginatedPetSummaryList struct {
+	Count    int
+	Next     *string
+	Previous *string
+	Results  []PetSummary
+}
+
+type PetSummary struct {
+	Name string
+	Url  string
+}
+
+type PetDetail struct {
+	Id           int
+	Name         string
+	AdoptionFee  *int
+	Age          *int
+	IsAvailable  *bool
+	Breed        PetBreedSummary
+	Photos       PetPhotos
+	Measurements []PetMeasurement
+	Tags         []PetTag
+}
+
+type PetPhotos struct {
+	ThumbnailUrl *string
+}
+
+type PetMeasurement struct {
+	BaseValue int
+	Margin    int
+	Measure   MeasureSummary
+}
+
+type MeasureSummary struct {
+	Name string
+	Url  string
+}
+
+type PetTag struct {
+	Slot int
+	Type TagSummary
+}
+
+type TagSummary struct {
+	Name string
+	Url  string
+}
+
+type PetBreedSummary struct {
+	Name string
+	Url  string
+}
+
+type PetBreedDetail struct {
+	Id          int
+	Name        string
+	ParentBreed *PetBreedSummary
+}
+
+type __anon_limit_offset_7e7555 struct {
+	Limit  *int
+	Offset *int
+}
+
+type __anon_key_n_92242e struct {
+	Key __anon_limit_offset_7e7555
+	N   int
+}
+
+type __anon_key_n_a1dba7 struct {
+	Key string
+	N   int
+}
+
+type Response struct {
+	Status  int
+	Headers map[string]string
+	Body    string
+}
+
+// Model holds the state for this SNGL UI.
+type Model struct {
+	offset__inst0       int
+	page__inst0         *PaginatedPetSummaryList
+	pet__inst0          *PetDetail
+	loading__inst0      bool
+	failure__inst0      *Failure
+	from__inst0         string
+	visible__inst0      bool
+	pending__inst0      bool
+	failure__inst1      *Failure
+	attempt__inst0      int
+	refreshes__inst0    int
+	attempt__inst1      int
+	refreshes__inst1    int
+	__effect0_key       __anon_key_n_92242e
+	__effect0_live      []__anon_key_n_92242e
+	__effect0_desired   []__anon_key_n_92242e
+	__effect1_key       __anon_key_n_a1dba7
+	__effect1_live      []__anon_key_n_a1dba7
+	__effect1_desired   []__anon_key_n_a1dba7
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__slot0             []fyne.CanvasObject
+	__slot0_at          fyne.CanvasObject
+	__rendering0        bool
+	__renderAgain0      bool
+	__slot1             []fyne.CanvasObject
+	__slot1_at          fyne.CanvasObject
+	__rendering1        bool
+	__renderAgain1      bool
+	__slot2             []fyne.CanvasObject
+	__slot2_at          fyne.CanvasObject
+	__inst0_live        []*__child0Instance
+	__rendering2        bool
+	__renderAgain2      bool
+	__slot3             []fyne.CanvasObject
+	__slot3_at          fyne.CanvasObject
+	__inst1_live        []*__child1Instance
+	__rendering3        bool
+	__renderAgain3      bool
+
+	__n2    *fynelayout.Toplevel
+	__n9    *widget.Button
+	__n10   *widget.Button
+	__n3    *widget.Label
+	__built bool
+}
+
+// New creates a Model with default values.
+func New() *Model {
+	m := &Model{}
+	m.offset__inst0 = 0
+	m.page__inst0 = nil
+	m.pet__inst0 = nil
+	m.loading__inst0 = false
+	m.failure__inst0 = nil
+	m.from__inst0 = "-"
+	m.visible__inst0 = true
+	m.pending__inst0 = false
+	m.failure__inst1 = nil
+	m.attempt__inst0 = 0
+	m.refreshes__inst0 = 0
+	m.attempt__inst1 = 0
+	m.refreshes__inst1 = 0
+	m.__effect0_key = __anon_key_n_92242e{}
+	m.__effect0_live = []__anon_key_n_92242e{}
+	m.__effect0_desired = []__anon_key_n_92242e{}
+	m.__effect1_key = __anon_key_n_a1dba7{}
+	m.__effect1_live = []__anon_key_n_a1dba7{}
+	m.__effect1_desired = []__anon_key_n_a1dba7{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__rendering0 = false
+	m.__renderAgain0 = false
+	m.__slot1 = nil
+	m.__slot1_at = nil
+	m.__rendering1 = false
+	m.__renderAgain1 = false
+	m.__slot2 = nil
+	m.__slot2_at = nil
+	m.__inst0_live = []*__child0Instance{}
+	m.__rendering2 = false
+	m.__renderAgain2 = false
+	m.__slot3 = nil
+	m.__slot3_at = nil
+	m.__inst1_live = []*__child1Instance{}
+	m.__rendering3 = false
+	m.__renderAgain3 = false
+	return m
+}
+
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
+func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail {
+	__match2 := _answered(func() Result__Response {
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
+		if __snglF != nil {
+			if __snglF.Timeout {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+			}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+		}
+		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
+	}())
+	switch {
+	case (__match2.tag == 1):
+		r := __match2.Failed
+		return Result__PetBreedDetail{tag: 1, Failed: r}
+	default:
+		r := __match2.Ok
+		return func() Result__PetBreedDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetBreedDetail](r.Body, func() *sngljson.Codec {
+				c0 := &sngljson.Codec{Kind: sngljson.Struct}
+				c1 := &sngljson.Codec{Kind: sngljson.Struct}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "parent_breed", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: c1}}}
+				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				return c0
+			}())
+			if __snglMsg != "" {
+				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+			}
+			return Result__PetBreedDetail{tag: 0, Ok: __snglV}
+		}()
+	}
+	return Result__PetBreedDetail{tag: 0, Ok: PetBreedDetail{}}
+}
+
+func _answered(r Result__Response) Result__Response {
+	switch {
+	case (r.tag == 1):
+		got := r.Failed
+		return Result__Response{tag: 1, Failed: got}
+	default:
+		got := r.Ok
+		return ResponseChecked(got)
+	}
+	return Result__Response{tag: 0, Ok: Response{}}
+}
+
+func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
+	__match0 := _answered(func() Result__Response {
+		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
+			c0 := &sngljson.Codec{Kind: sngljson.Struct}
+			c0.Fields = []sngljson.Field{{Wire: "limit", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "offset", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}}
+			return c0
+		}())), nil, nil)
+		if __snglF != nil {
+			if __snglF.Timeout {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+			}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+		}
+		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
+	}())
+	switch {
+	case (__match0.tag == 1):
+		r := __match0.Failed
+		return Result__PaginatedPetSummaryList{tag: 1, Failed: r}
+	default:
+		r := __match0.Ok
+		return func() Result__PaginatedPetSummaryList {
+			__snglV, __snglMsg := sngljson.Decode[PaginatedPetSummaryList](r.Body, func() *sngljson.Codec {
+				c0 := &sngljson.Codec{Kind: sngljson.Struct}
+				c1 := &sngljson.Codec{Kind: sngljson.Struct}
+				c0.Fields = []sngljson.Field{{Wire: "count", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "next", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "previous", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "results", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c1}}}
+				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				return c0
+			}())
+			if __snglMsg != "" {
+				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+			}
+			return Result__PaginatedPetSummaryList{tag: 0, Ok: __snglV}
+		}()
+	}
+	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{}}
+}
+
+func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
+	__match1 := _answered(func() Result__Response {
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
+		if __snglF != nil {
+			if __snglF.Timeout {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+			}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+		}
+		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
+	}())
+	switch {
+	case (__match1.tag == 1):
+		r := __match1.Failed
+		return Result__PetDetail{tag: 1, Failed: r}
+	default:
+		r := __match1.Ok
+		return func() Result__PetDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetDetail](r.Body, func() *sngljson.Codec {
+				c0 := &sngljson.Codec{Kind: sngljson.Struct}
+				c1 := &sngljson.Codec{Kind: sngljson.Struct}
+				c2 := &sngljson.Codec{Kind: sngljson.Struct}
+				c3 := &sngljson.Codec{Kind: sngljson.Struct}
+				c4 := &sngljson.Codec{Kind: sngljson.Struct}
+				c5 := &sngljson.Codec{Kind: sngljson.Struct}
+				c6 := &sngljson.Codec{Kind: sngljson.Struct}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "adoption_fee", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "age", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "is_available", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Bool}}}, {Wire: "breed", Codec: c1}, {Wire: "photos", Codec: c2}, {Wire: "measurements", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c3}}, {Wire: "tags", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c5}}}
+				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				c2.Fields = []sngljson.Field{{Wire: "thumbnail_url", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}}
+				c3.Fields = []sngljson.Field{{Wire: "base_value", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "margin", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "measure", Codec: c4}}
+				c4.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				c5.Fields = []sngljson.Field{{Wire: "slot", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "type", Codec: c6}}
+				c6.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				return c0
+			}())
+			if __snglMsg != "" {
+				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+			}
+			return Result__PetDetail{tag: 0, Ok: __snglV}
+		}()
+	}
+	return Result__PetDetail{tag: 0, Ok: PetDetail{}}
+}
+
+func ResponseChecked(r Response) Result__Response {
+	if (r.Status >= 200) && (r.Status < 300) {
+		return Result__Response{tag: 0, Ok: r}
+	}
+	kind := "transport"
+	if (r.Status == 401) || (r.Status == 403) {
+		kind = "auth"
+	} else {
+		if (r.Status >= 400) && (r.Status < 500) {
+			kind = "request"
+		} else {
+			if (r.Status >= 500) && (r.Status < 600) {
+				kind = "server"
+			}
+		}
+	}
+	return Result__Response{tag: 1, Failed: Failure{Kind: kind, Message: ("HTTP " + fmt.Sprint(r.Status)), Code: fmt.Sprint(r.Status)}}
+}
+
+func (m *Model) __effect0_mount() {
+	m.attempt__inst1 += 1
+	var mine int = m.attempt__inst1
+	m.pending__inst0 = true
+	__async_arg0 := m.__effect0_key.Key
+	go func() {
+		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
+		__snglDo(func() {
+			if mine != m.attempt__inst1 {
+				return
+			}
+			m.pending__inst0 = false
+			switch {
+			case (r.tag == 0):
+				got := r.Ok
+				m.page__inst0 = snglSome(got)
+				m.__renderSlot0(m.__n2.Container)
+				m.failure__inst1 = nil
+			default:
+				got := r.Failed
+				m.failure__inst1 = func(_p1 *Failure) *Failure {
+					if _p1 == nil {
+						return nil
+					}
+					_v2 := *_p1
+					return &_v2
+				}(snglSome(got))
+			}
+		})
+	}()
+}
+
+func (m *Model) __effect0_unmount() {
+	m.attempt__inst1 += 1
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []__anon_key_n_92242e{}
+	m.__effect0_desired = append(m.__effect0_desired, __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{Limit: snglSome(20), Offset: snglSome(m.offset__inst0)}, N: m.refreshes__inst1})
+	for __effect0_i, _ := range m.__effect0_live {
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
+		if __effect0_j >= len(m.__effect0_desired) {
+			m.__effect0_key = m.__effect0_live[__effect0_j]
+			m.__effect0_unmount()
+		} else {
+			if ((((m.__effect0_desired[__effect0_j].Key.Limit == nil) && (m.__effect0_live[__effect0_j].Key.Limit != nil)) || ((m.__effect0_desired[__effect0_j].Key.Limit != nil) && ((m.__effect0_live[__effect0_j].Key.Limit == nil) || ((*(m.__effect0_desired[__effect0_j].Key.Limit)) != (*(m.__effect0_live[__effect0_j].Key.Limit)))))) || (((m.__effect0_desired[__effect0_j].Key.Offset == nil) && (m.__effect0_live[__effect0_j].Key.Offset != nil)) || ((m.__effect0_desired[__effect0_j].Key.Offset != nil) && ((m.__effect0_live[__effect0_j].Key.Offset == nil) || ((*(m.__effect0_desired[__effect0_j].Key.Offset)) != (*(m.__effect0_live[__effect0_j].Key.Offset))))))) || (m.__effect0_desired[__effect0_j].N != m.__effect0_live[__effect0_j].N) {
+				m.__effect0_key = m.__effect0_live[__effect0_j]
+				m.__effect0_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if ((((m.__effect0_live[__effect0_i].Key.Limit == nil) && (__effect0_k.Key.Limit != nil)) || ((m.__effect0_live[__effect0_i].Key.Limit != nil) && ((__effect0_k.Key.Limit == nil) || ((*(m.__effect0_live[__effect0_i].Key.Limit)) != (*(__effect0_k.Key.Limit)))))) || (((m.__effect0_live[__effect0_i].Key.Offset == nil) && (__effect0_k.Key.Offset != nil)) || ((m.__effect0_live[__effect0_i].Key.Offset != nil) && ((__effect0_k.Key.Offset == nil) || ((*(m.__effect0_live[__effect0_i].Key.Offset)) != (*(__effect0_k.Key.Offset))))))) || (m.__effect0_live[__effect0_i].N != __effect0_k.N) {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect0_teardown() {
+	for __effect0_ti, _ := range m.__effect0_live {
+		m.__effect0_key = m.__effect0_live[((len(m.__effect0_live) - 1) - __effect0_ti)]
+		m.__effect0_unmount()
+	}
+	m.__effect0_live = []__anon_key_n_92242e{}
+}
+
+func (m *Model) __effect1_mount() {
+	m.attempt__inst0 += 1
+	var mine int = m.attempt__inst0
+	m.loading__inst0 = true
+	m.__renderSlot1(m.__n2.Container)
+	__async_arg1 := m.__effect1_key.Key
+	go func() {
+		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
+		__snglDo(func() {
+			if mine != m.attempt__inst0 {
+				return
+			}
+			m.loading__inst0 = false
+			m.__renderSlot1(m.__n2.Container)
+			switch {
+			case (r.tag == 0):
+				got := r.Ok
+				m.pet__inst0 = snglSome(got)
+				m.__renderSlot3(m.__n2.Container)
+				m.failure__inst0 = nil
+				m.__renderSlot2(m.__n2.Container)
+			default:
+				got := r.Failed
+				m.failure__inst0 = func(_p1 *Failure) *Failure {
+					if _p1 == nil {
+						return nil
+					}
+					_v2 := *_p1
+					return &_v2
+				}(snglSome(got))
+				m.__renderSlot2(m.__n2.Container)
+			}
+		})
+	}()
+}
+
+func (m *Model) __effect1_unmount() {
+	m.attempt__inst0 += 1
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []__anon_key_n_a1dba7{}
+	m.__effect1_desired = append(m.__effect1_desired, __anon_key_n_a1dba7{Key: "rex", N: m.refreshes__inst0})
+	for __effect1_i, _ := range m.__effect1_live {
+		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
+		if __effect1_j >= len(m.__effect1_desired) {
+			m.__effect1_key = m.__effect1_live[__effect1_j]
+			m.__effect1_unmount()
+		} else {
+			if (m.__effect1_desired[__effect1_j].Key != m.__effect1_live[__effect1_j].Key) || (m.__effect1_desired[__effect1_j].N != m.__effect1_live[__effect1_j].N) {
+				m.__effect1_key = m.__effect1_live[__effect1_j]
+				m.__effect1_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if (m.__effect1_live[__effect1_i].Key != __effect1_k.Key) || (m.__effect1_live[__effect1_i].N != __effect1_k.N) {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effect1_teardown() {
+	for __effect1_ti, _ := range m.__effect1_live {
+		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
+		m.__effect1_unmount()
+	}
+	m.__effect1_live = []__anon_key_n_a1dba7{}
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
+	m.__effect1_teardown()
+	m.__effect0_teardown()
+}
+
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			if m.page__inst0 != nil {
+				for _, p := range (*(m.page__inst0)).Results {
+					__n4 := widget.NewLabel("")
+					__n4.SetText(p.Name)
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n4)
+					m.__slot0 = append(m.__slot0, __n4)
+				}
+			}
+		}
+		m.__rendering0 = false
+	}
+}
+
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			if m.loading__inst0 {
+				__n5 := widget.NewLabel("")
+				__n5.SetText("")
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n5)
+				m.__slot1 = append(m.__slot1, __n5)
+			}
+		}
+		m.__rendering1 = false
+	}
+}
+
+func (m *Model) __renderSlot2(__parent *fyne.Container) {
+	if m.__rendering2 {
+		m.__renderAgain2 = true
+	} else {
+		m.__rendering2 = true
+		m.__renderAgain2 = true
+		for m.__renderAgain2 {
+			m.__renderAgain2 = false
+			for _, __entry := range m.__slot2 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot2 = nil
+			m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			if m.failure__inst0 != nil {
+				var __n6 *__child0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n6 = m.__inst0_live[__inst0_i]
+					__n6.Set__p0(m.failure__inst0)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n6__new := new__child0Instance(m, m.failure__inst0)
+					__n6 = __n6__new
+				}
+				__inst0_next = append(__inst0_next, __n6)
+				__inst0_i = (__inst0_i + 1)
+				__n6__el := __n6.Root
+				fynelayout.InsertBefore(__parent, m.__slot2_at, __n6__el)
+				m.__slot2 = append(m.__slot2, __n6__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+		}
+		m.__rendering2 = false
+	}
+}
+
+func (m *Model) __renderSlot3(__parent *fyne.Container) {
+	if m.__rendering3 {
+		m.__renderAgain3 = true
+	} else {
+		m.__rendering3 = true
+		m.__renderAgain3 = true
+		for m.__renderAgain3 {
+			m.__renderAgain3 = false
+			for _, __entry := range m.__slot3 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot3 = nil
+			m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
+			__inst1_next := []*__child1Instance{}
+			var __inst1_i int = 0
+			if m.pet__inst0 != nil {
+				var __n7 *__child1Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n7 = m.__inst1_live[__inst1_i]
+					__n7.Set__p0(m.pet__inst0)
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n7__new := new__child1Instance(m, m.pet__inst0)
+					__n7 = __n7__new
+				}
+				__inst1_next = append(__inst1_next, __n7)
+				__inst1_i = (__inst1_i + 1)
+				__n7__el := __n7.Root
+				fynelayout.InsertBefore(__parent, m.__slot3_at, __n7__el)
+				m.__slot3 = append(m.__slot3, __n7__el)
+				for _, t := range (*(m.pet__inst0)).Tags {
+					__n8 := widget.NewLabel("")
+					__n8__box := fynelayout.NewBox(__n8)
+					__n8.SetText(t.Type.Name)
+					__n8__box.SetLook(fynelayout.Look{PaddingTop: 2.0, PaddingRight: 8.0, PaddingBottom: 2.0, PaddingLeft: 8.0, Radius: 12.0})
+					fynelayout.InsertBefore(__parent, m.__slot3_at, __n8__box)
+					m.__slot3 = append(m.__slot3, __n8__box)
+				}
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
+		}
+		m.__rendering3 = false
+	}
+}
+
+func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n2.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) __n9_click_handler() {
+	m.offset__inst0 += 20
+	m.__effects0_settle()
+}
+
+func (m *Model) __n10_click_handler() {
+	go func() {
+		__match0 := PetBreedRetrieveCall("beagle", "https://mirror.example")
+		__snglDo(func() {
+			switch {
+			case (__match0.tag == 0):
+				r := __match0.Ok
+				var __lt7 string
+				if r.ParentBreed != nil {
+					__lt7 = (*(r.ParentBreed)).Name
+				} else {
+					__lt7 = "nothing"
+				}
+				m.from__inst0 = __lt7
+				m.__n3.SetText(m.from__inst0)
+			default:
+				r := __match0.Failed
+				m.from__inst0 = r.Message
+				m.__n3.SetText(m.from__inst0)
+			}
+		})
+	}()
+}
+
+func (m *Model) Offset__inst0() int {
+	return m.offset__inst0
+}
+
+func (m *Model) SetOffset__inst0(v int) {
+	m.offset__inst0 = v
+}
+
+func (m *Model) Page__inst0() *PaginatedPetSummaryList {
+	return m.page__inst0
+}
+
+func (m *Model) SetPage__inst0(v *PaginatedPetSummaryList) {
+	m.page__inst0 = v
+}
+
+func (m *Model) Pet__inst0() *PetDetail {
+	return m.pet__inst0
+}
+
+func (m *Model) SetPet__inst0(v *PetDetail) {
+	m.pet__inst0 = v
+}
+
+func (m *Model) Loading__inst0() bool {
+	return m.loading__inst0
+}
+
+func (m *Model) SetLoading__inst0(v bool) {
+	m.loading__inst0 = v
+}
+
+func (m *Model) Failure__inst0() *Failure {
+	return m.failure__inst0
+}
+
+func (m *Model) SetFailure__inst0(v *Failure) {
+	m.failure__inst0 = v
+}
+
+func (m *Model) From__inst0() string {
+	return m.from__inst0
+}
+
+func (m *Model) SetFrom__inst0(v string) {
+	m.from__inst0 = v
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) Pending__inst0() bool {
+	return m.pending__inst0
+}
+
+func (m *Model) SetPending__inst0(v bool) {
+	m.pending__inst0 = v
+}
+
+func (m *Model) Failure__inst1() *Failure {
+	return m.failure__inst1
+}
+
+func (m *Model) SetFailure__inst1(v *Failure) {
+	m.failure__inst1 = v
+}
+
+func (m *Model) Attempt__inst0() int {
+	return m.attempt__inst0
+}
+
+func (m *Model) SetAttempt__inst0(v int) {
+	m.attempt__inst0 = v
+}
+
+func (m *Model) Refreshes__inst0() int {
+	return m.refreshes__inst0
+}
+
+func (m *Model) SetRefreshes__inst0(v int) {
+	m.refreshes__inst0 = v
+}
+
+func (m *Model) Attempt__inst1() int {
+	return m.attempt__inst1
+}
+
+func (m *Model) SetAttempt__inst1(v int) {
+	m.attempt__inst1 = v
+}
+
+func (m *Model) Refreshes__inst1() int {
+	return m.refreshes__inst1
+}
+
+func (m *Model) SetRefreshes__inst1(v int) {
+	m.refreshes__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
+func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.__n2.Container
+	}
+	m.__built = true
+	m.__n2 = fynelayout.NewToplevel()
+	m.__n2.SetTitle("Petstore")
+	m.__n2.SetVisible(m.visible__inst0)
+	m.__n2.OnClosed = m.__n2_closed_handler
+	m.__n2.OnVisible = m.__n2_visible_handler
+	m.__renderSlot0(m.__n2.Container)
+	m.__n9 = widget.NewButton("", nil)
+	m.__n9.SetText("More")
+	m.__n9.OnTapped = m.__n9_click_handler
+	m.__n2.Add(m.__n9)
+	m.__renderSlot1(m.__n2.Container)
+	m.__renderSlot2(m.__n2.Container)
+	m.__renderSlot3(m.__n2.Container)
+	m.__n10 = widget.NewButton("", nil)
+	m.__n10.SetText("Bred from")
+	m.__n10.OnTapped = m.__n10_click_handler
+	m.__n2.Add(m.__n10)
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(m.from__inst0)
+	m.__n2.Add(m.__n3)
+	fynelayout.AppAttach(m.__n2)
+	m.__effects0_settle()
+	return m.__n2.Container
+}
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root        fyne.CanvasObject
+	__model     *Model
+	__prop___p0 *Failure
+	__root      *fyne.Container
+	__slot0     []fyne.CanvasObject
+	__slot0_at  fyne.CanvasObject
+	__slot1     []fyne.CanvasObject
+	__slot1_at  fyne.CanvasObject
+	__slot2     []fyne.CanvasObject
+	__slot2_at  fyne.CanvasObject
+	__slot3     []fyne.CanvasObject
+	__slot3_at  fyne.CanvasObject
+	__n0        *widget.Label
+}
+
+func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__slot2 = nil
+	c.__slot3 = nil
+	c.__n0 = widget.NewLabel("")
+	c.__n0.SetText(("Could not load rex: " + (*(c.__prop___p0)).Message))
+	c.Root = c.__n0
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v *Failure) {
+	c.__prop___p0 = __v
+	c.__n0.SetText(("Could not load rex: " + (*(c.__prop___p0)).Message))
+}
+
+func (c *__child0Instance) Destroy() {}
+
+// __child1Instance is one live instance of the __child1 component.
+type __child1Instance struct {
+	Root        fyne.CanvasObject
+	__model     *Model
+	__prop___p0 *PetDetail
+	__root      *fyne.Container
+	__slot0     []fyne.CanvasObject
+	__slot0_at  fyne.CanvasObject
+	__slot1     []fyne.CanvasObject
+	__slot1_at  fyne.CanvasObject
+	__slot2     []fyne.CanvasObject
+	__slot2_at  fyne.CanvasObject
+	__slot3     []fyne.CanvasObject
+	__slot3_at  fyne.CanvasObject
+	__n1        *widget.Label
+}
+
+func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance {
+	c := &__child1Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__slot2 = nil
+	c.__slot3 = nil
+	c.__n1 = widget.NewLabel("")
+	c.__n1.SetText(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
+	c.Root = c.__n1
+	return c
+}
+
+func (c *__child1Instance) Set__p0(__v *PetDetail) {
+	c.__prop___p0 = __v
+	c.__n1.SetText(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
+}
+
+func (c *__child1Instance) Destroy() {}
+
+func main() {
+	a := app.New()
+	m := New()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
+	_ = os.Stderr
+}
+-- out/go/gtk4/callbacks.go --
+// Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
+
+package main
+
+/*
+#include <gtk/gtk.h>
+
+extern void sngl_gtk_idle_add(void* fn);
+extern void snglActivate(GtkApplication* app, gpointer data);
+*/
+import "C"
+import (
+	"fmt"
+	"os"
+	"runtime"
+	"unsafe"
+)
+
+// snglCallbacks holds registered Go signal handlers indexed by int.
+var snglCallbacks []func()
+
+// The index arrives as GTK's user_data pointer round-tripped through
+// GPOINTER_TO_INT, so a stray pointer lands here as an arbitrary int —
+// negative included. Bound it on both sides. (//export must sit directly
+// above the declaration, so this note goes above it.)
+//
+//export snglGoDispatch
+func snglGoDispatch(idx C.int) {
+	if idx >= 0 && int(idx) < len(snglCallbacks) {
+		snglCallbacks[int(idx)]()
+	}
+}
+
+//export snglIdleCallback
+func snglIdleCallback(ptr unsafe.Pointer) {
+	fn := *(*func())(ptr)
+	fn()
+}
+
+func gtkPost(fn func()) {
+	f := fn
+	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
+}
+
+var snglModel *Model
+
+//export snglActivate
+func snglActivate(app *C.GtkApplication, _ C.gpointer) {
+	m := New()
+	snglModel = m
+	win := m.BuildUI(app)
+	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
+}
+
+var snglActivateSignal = C.CString("activate")
+
+func main() {
+	runtime.LockOSThread()
+	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
+	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
+		snglActivateSignal,
+		C.GCallback(C.snglActivate), nil, nil, 0)
+	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
+	if status != 0 {
+		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
+		os.Exit(int(status))
+	}
+}
+-- out/go/gtk4/model.go --
+// Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
+
+package main
+
+/*
+#cgo pkg-config: gtk4
+#include <gtk/gtk.h>
+#include <stdlib.h>
+
+extern void snglGoDispatch(int idx);
+// g_signal_connect callbacks are invoked with the signal's signature
+// (self, ...args, user_data). This one is (instance, user_data), which
+// is the signature of a void signal that carries no arguments of its
+// own — and gir.Signal.Connectable is what holds every connection to
+// that shape, since otherwise GTK would pass the signal's first real
+// argument into `data` and snglGoDispatch would fire a wildly wrong
+// callback. 155 of GTK's 400 signals qualify; the rest are neither
+// declared nor connectable.
+static void sngl_cb(gpointer instance, gpointer data) {
+    (void)instance;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
+static void sngl_connect(void* widget, const char* signal, int idx) {
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
+}
+
+extern void snglIdleCallback(void* fn);
+static gboolean sngl_idle_tramp(gpointer data) {
+    snglIdleCallback(data);
+    return G_SOURCE_REMOVE;
+}
+void sngl_gtk_idle_add(void* fn) {
+    g_idle_add(sngl_idle_tramp, fn);
+}
+
+// Variadic wrapper — cgo cannot call `g_signal_emit_by_name` directly
+// (the `...` in its prototype trips the cgo type checker). Used by
+// per-id test invokers to fire signals with no extra args.
+static void sngl_emit(gpointer instance, const char *signal) {
+    g_signal_emit_by_name(instance, signal);
+}
+
+// Reactive-safe entry setter — GtkEditable's set_text fires "changed"
+// even when the new text equals the current text, which loops back
+// through any change handler that wrote the mutating var and re-applies
+// reactivity, blowing the stack. Skip the call when the value already
+// matches.
+// g_object_unref takes a gpointer, and a declaration that names it directly
+// would need a cast a SNGL override has no way to write. The shim is where the
+// cast belongs -- it is C, which is what this preamble is.
+static void sngl_unref_pixbuf(GdkPixbuf *p) {
+    if (p != NULL) g_object_unref(p);
+}
+
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    g_date_time_unref(dt);
+}
+
+static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
+    if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
+    GtkWidget *w = gtk_label_new(NULL);
+    gtk_widget_set_visible(w, FALSE);
+    g_object_ref_sink(w);
+    gtk_box_append(box, w);
+    return w;
+}
+
+static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
+    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
+        gtk_box_append(box, child);
+        return;
+    }
+    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
+}
+
+static GtkBox *sngl_slot_box(GtkBox *b) {
+    if (b != NULL) return b;
+    GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    g_object_ref_sink(w);
+    return GTK_BOX(w);
+}
+
+static void sngl_set_entry_text(GtkEditable *e, const char *t) {
+    const char *cur = gtk_editable_get_text(e);
+    if (t == NULL) t = "";
+    if (cur != NULL && strcmp(cur, t) == 0) return;
+    gtk_editable_set_text(e, t);
+}
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}
+*/
+import "C"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglhttp"
+	"duckfam.us/sngl/pkg/go/sngljson"
+	"fmt"
+	"unsafe"
+)
+
+func snglSome[T any](v T) *T {
+	return &v
+}
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+var (
+	__cstr0 = C.CString("More")
+	__cstr1 = C.CString("clicked")
+	__cstr2 = C.CString("Bred from")
+	__cstr3 = C.CString("")
+	__cstr4 = C.CString("Petstore")
+)
+
+type Result__Response struct {
+	tag    int
+	Ok     Response
+	Failed Failure
+}
+
+type Result__PaginatedPetSummaryList struct {
+	tag    int
+	Ok     PaginatedPetSummaryList
+	Failed Failure
+}
+
+type Result__PetDetail struct {
+	tag    int
+	Ok     PetDetail
+	Failed Failure
+}
+
+type Result__PetBreedDetail struct {
+	tag    int
+	Ok     PetBreedDetail
+	Failed Failure
+}
+
+type Failure struct {
+	Kind    string
+	Message string
+	Code    string
+}
+
+type PaginatedPetSummaryList struct {
+	Count    int
+	Next     *string
+	Previous *string
+	Results  []PetSummary
+}
+
+type PetSummary struct {
+	Name string
+	Url  string
+}
+
+type PetDetail struct {
+	Id           int
+	Name         string
+	AdoptionFee  *int
+	Age          *int
+	IsAvailable  *bool
+	Breed        PetBreedSummary
+	Photos       PetPhotos
+	Measurements []PetMeasurement
+	Tags         []PetTag
+}
+
+type PetPhotos struct {
+	ThumbnailUrl *string
+}
+
+type PetMeasurement struct {
+	BaseValue int
+	Margin    int
+	Measure   MeasureSummary
+}
+
+type MeasureSummary struct {
+	Name string
+	Url  string
+}
+
+type PetTag struct {
+	Slot int
+	Type TagSummary
+}
+
+type TagSummary struct {
+	Name string
+	Url  string
+}
+
+type PetBreedSummary struct {
+	Name string
+	Url  string
+}
+
+type PetBreedDetail struct {
+	Id          int
+	Name        string
+	ParentBreed *PetBreedSummary
+}
+
+type __anon_limit_offset_7e7555 struct {
+	Limit  *int
+	Offset *int
+}
+
+type __anon_key_n_92242e struct {
+	Key __anon_limit_offset_7e7555
+	N   int
+}
+
+type __anon_key_n_a1dba7 struct {
+	Key string
+	N   int
+}
+
+type Response struct {
+	Status  int
+	Headers map[string]string
+	Body    string
+}
+
+// Model holds the state and widget references for this SNGL UI.
+type Model struct {
+	offset__inst0       int
+	page__inst0         *PaginatedPetSummaryList
+	pet__inst0          *PetDetail
+	loading__inst0      bool
+	failure__inst0      *Failure
+	from__inst0         string
+	visible__inst0      bool
+	pending__inst0      bool
+	failure__inst1      *Failure
+	attempt__inst0      int
+	refreshes__inst0    int
+	attempt__inst1      int
+	refreshes__inst1    int
+	__effect0_key       __anon_key_n_92242e
+	__effect0_live      []__anon_key_n_92242e
+	__effect0_desired   []__anon_key_n_92242e
+	__effect1_key       __anon_key_n_a1dba7
+	__effect1_live      []__anon_key_n_a1dba7
+	__effect1_desired   []__anon_key_n_a1dba7
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__slot0             []*C.GtkWidget
+	__slot0_at          *C.GtkWidget
+	__rendering0        bool
+	__renderAgain0      bool
+	__slot1             []*C.GtkWidget
+	__slot1_at          *C.GtkWidget
+	__rendering1        bool
+	__renderAgain1      bool
+	__slot2             []*C.GtkWidget
+	__slot2_at          *C.GtkWidget
+	__inst0_live        []*__child0Instance
+	__rendering2        bool
+	__renderAgain2      bool
+	__slot3             []*C.GtkWidget
+	__slot3_at          *C.GtkWidget
+	__inst1_live        []*__child1Instance
+	__rendering3        bool
+	__renderAgain3      bool
+	__n2                *C.GtkBox
+	__n9                *C.GtkButton
+	__n10               *C.GtkButton
+	__n3                *C.GtkLabel
+	__root              *C.GtkBox
+}
+
+// New creates a Model with default values. Binds initialize
+// sequentially so later inits can reference earlier `m.<name>` fields.
+func New() *Model {
+	m := &Model{}
+	m.offset__inst0 = 0
+	m.page__inst0 = nil
+	m.pet__inst0 = nil
+	m.loading__inst0 = false
+	m.failure__inst0 = nil
+	m.from__inst0 = "-"
+	m.visible__inst0 = true
+	m.pending__inst0 = false
+	m.failure__inst1 = nil
+	m.attempt__inst0 = 0
+	m.refreshes__inst0 = 0
+	m.attempt__inst1 = 0
+	m.refreshes__inst1 = 0
+	m.__effect0_key = __anon_key_n_92242e{}
+	m.__effect0_live = []__anon_key_n_92242e{}
+	m.__effect0_desired = []__anon_key_n_92242e{}
+	m.__effect1_key = __anon_key_n_a1dba7{}
+	m.__effect1_live = []__anon_key_n_a1dba7{}
+	m.__effect1_desired = []__anon_key_n_a1dba7{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__rendering0 = false
+	m.__renderAgain0 = false
+	m.__slot1 = nil
+	m.__slot1_at = nil
+	m.__rendering1 = false
+	m.__renderAgain1 = false
+	m.__slot2 = nil
+	m.__slot2_at = nil
+	m.__inst0_live = []*__child0Instance{}
+	m.__rendering2 = false
+	m.__renderAgain2 = false
+	m.__slot3 = nil
+	m.__slot3_at = nil
+	m.__inst1_live = []*__child1Instance{}
+	m.__rendering3 = false
+	m.__renderAgain3 = false
+	return m
+}
+
+func PetBreedRetrieveCall(id string, __ctx_server string) Result__PetBreedDetail {
+	__match2 := _answered(func() Result__Response {
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pet-breeds/") + sngljson.Escape(id)) + "/"), nil, nil)
+		if __snglF != nil {
+			if __snglF.Timeout {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+			}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+		}
+		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
+	}())
+	switch {
+	case (__match2.tag == 1):
+		r := __match2.Failed
+		return Result__PetBreedDetail{tag: 1, Failed: r}
+	default:
+		r := __match2.Ok
+		return func() Result__PetBreedDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetBreedDetail](r.Body, func() *sngljson.Codec {
+				c0 := &sngljson.Codec{Kind: sngljson.Struct}
+				c1 := &sngljson.Codec{Kind: sngljson.Struct}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "parent_breed", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: c1}}}
+				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				return c0
+			}())
+			if __snglMsg != "" {
+				return Result__PetBreedDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+			}
+			return Result__PetBreedDetail{tag: 0, Ok: __snglV}
+		}()
+	}
+	return Result__PetBreedDetail{tag: 0, Ok: PetBreedDetail{}}
+}
+
+func _answered(r Result__Response) Result__Response {
+	switch {
+	case (r.tag == 1):
+		got := r.Failed
+		return Result__Response{tag: 1, Failed: got}
+	default:
+		got := r.Ok
+		return ResponseChecked(got)
+	}
+	return Result__Response{tag: 0, Ok: Response{}}
+}
+
+func PetListCall(limit *int, offset *int, __ctx_server string) Result__PaginatedPetSummaryList {
+	__match0 := _answered(func() Result__Response {
+		__snglR, __snglF := snglhttp.Send("GET", sngljson.WithQuery((__ctx_server+"/api/v1/pets/"), sngljson.Query(__anon_limit_offset_7e7555{Limit: limit, Offset: offset}, func() *sngljson.Codec {
+			c0 := &sngljson.Codec{Kind: sngljson.Struct}
+			c0.Fields = []sngljson.Field{{Wire: "limit", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "offset", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}}
+			return c0
+		}())), nil, nil)
+		if __snglF != nil {
+			if __snglF.Timeout {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+			}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+		}
+		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
+	}())
+	switch {
+	case (__match0.tag == 1):
+		r := __match0.Failed
+		return Result__PaginatedPetSummaryList{tag: 1, Failed: r}
+	default:
+		r := __match0.Ok
+		return func() Result__PaginatedPetSummaryList {
+			__snglV, __snglMsg := sngljson.Decode[PaginatedPetSummaryList](r.Body, func() *sngljson.Codec {
+				c0 := &sngljson.Codec{Kind: sngljson.Struct}
+				c1 := &sngljson.Codec{Kind: sngljson.Struct}
+				c0.Fields = []sngljson.Field{{Wire: "count", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "next", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "previous", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "results", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c1}}}
+				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				return c0
+			}())
+			if __snglMsg != "" {
+				return Result__PaginatedPetSummaryList{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+			}
+			return Result__PaginatedPetSummaryList{tag: 0, Ok: __snglV}
+		}()
+	}
+	return Result__PaginatedPetSummaryList{tag: 0, Ok: PaginatedPetSummaryList{}}
+}
+
+func PetRetrieveCall(id string, __ctx_server string) Result__PetDetail {
+	__match1 := _answered(func() Result__Response {
+		__snglR, __snglF := snglhttp.Send("GET", (((__ctx_server + "/api/v1/pets/") + sngljson.Escape(id)) + "/"), nil, nil)
+		if __snglF != nil {
+			if __snglF.Timeout {
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+			}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+		}
+		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
+	}())
+	switch {
+	case (__match1.tag == 1):
+		r := __match1.Failed
+		return Result__PetDetail{tag: 1, Failed: r}
+	default:
+		r := __match1.Ok
+		return func() Result__PetDetail {
+			__snglV, __snglMsg := sngljson.Decode[PetDetail](r.Body, func() *sngljson.Codec {
+				c0 := &sngljson.Codec{Kind: sngljson.Struct}
+				c1 := &sngljson.Codec{Kind: sngljson.Struct}
+				c2 := &sngljson.Codec{Kind: sngljson.Struct}
+				c3 := &sngljson.Codec{Kind: sngljson.Struct}
+				c4 := &sngljson.Codec{Kind: sngljson.Struct}
+				c5 := &sngljson.Codec{Kind: sngljson.Struct}
+				c6 := &sngljson.Codec{Kind: sngljson.Struct}
+				c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "adoption_fee", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "age", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}}}, {Wire: "is_available", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Bool}}}, {Wire: "breed", Codec: c1}, {Wire: "photos", Codec: c2}, {Wire: "measurements", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c3}}, {Wire: "tags", Codec: &sngljson.Codec{Kind: sngljson.List, Elem: c5}}}
+				c1.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				c2.Fields = []sngljson.Field{{Wire: "thumbnail_url", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}}
+				c3.Fields = []sngljson.Field{{Wire: "base_value", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "margin", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "measure", Codec: c4}}
+				c4.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				c5.Fields = []sngljson.Field{{Wire: "slot", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "type", Codec: c6}}
+				c6.Fields = []sngljson.Field{{Wire: "name", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "url", Codec: &sngljson.Codec{Kind: sngljson.String}}}
+				return c0
+			}())
+			if __snglMsg != "" {
+				return Result__PetDetail{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+			}
+			return Result__PetDetail{tag: 0, Ok: __snglV}
+		}()
+	}
+	return Result__PetDetail{tag: 0, Ok: PetDetail{}}
+}
+
+func ResponseChecked(r Response) Result__Response {
+	if (r.Status >= 200) && (r.Status < 300) {
+		return Result__Response{tag: 0, Ok: r}
+	}
+	kind := "transport"
+	if (r.Status == 401) || (r.Status == 403) {
+		kind = "auth"
+	} else {
+		if (r.Status >= 400) && (r.Status < 500) {
+			kind = "request"
+		} else {
+			if (r.Status >= 500) && (r.Status < 600) {
+				kind = "server"
+			}
+		}
+	}
+	return Result__Response{tag: 1, Failed: Failure{Kind: kind, Message: ("HTTP " + fmt.Sprint(r.Status)), Code: fmt.Sprint(r.Status)}}
+}
+
+func (m *Model) __effect0_mount() {
+	m.attempt__inst1 += 1
+	var mine int = m.attempt__inst1
+	m.pending__inst0 = true
+	__async_arg0 := m.__effect0_key.Key
+	go func() {
+		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
+		gtk4rt.Post(func() {
+			if mine != m.attempt__inst1 {
+				return
+			}
+			m.pending__inst0 = false
+			switch {
+			case (r.tag == 0):
+				got := r.Ok
+				m.page__inst0 = snglSome(got)
+				m.__renderSlot0(m.__n2)
+				m.failure__inst1 = nil
+			default:
+				got := r.Failed
+				m.failure__inst1 = func(_p1 *Failure) *Failure {
+					if _p1 == nil {
+						return nil
+					}
+					_v2 := *_p1
+					return &_v2
+				}(snglSome(got))
+			}
+		})
+	}()
+}
+
+func (m *Model) __effect0_unmount() {
+	m.attempt__inst1 += 1
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []__anon_key_n_92242e{}
+	m.__effect0_desired = append(m.__effect0_desired, __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{Limit: snglSome(20), Offset: snglSome(m.offset__inst0)}, N: m.refreshes__inst1})
+	for __effect0_i, _ := range m.__effect0_live {
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
+		if __effect0_j >= len(m.__effect0_desired) {
+			m.__effect0_key = m.__effect0_live[__effect0_j]
+			m.__effect0_unmount()
+		} else {
+			if ((((m.__effect0_desired[__effect0_j].Key.Limit == nil) && (m.__effect0_live[__effect0_j].Key.Limit != nil)) || ((m.__effect0_desired[__effect0_j].Key.Limit != nil) && ((m.__effect0_live[__effect0_j].Key.Limit == nil) || ((*(m.__effect0_desired[__effect0_j].Key.Limit)) != (*(m.__effect0_live[__effect0_j].Key.Limit)))))) || (((m.__effect0_desired[__effect0_j].Key.Offset == nil) && (m.__effect0_live[__effect0_j].Key.Offset != nil)) || ((m.__effect0_desired[__effect0_j].Key.Offset != nil) && ((m.__effect0_live[__effect0_j].Key.Offset == nil) || ((*(m.__effect0_desired[__effect0_j].Key.Offset)) != (*(m.__effect0_live[__effect0_j].Key.Offset))))))) || (m.__effect0_desired[__effect0_j].N != m.__effect0_live[__effect0_j].N) {
+				m.__effect0_key = m.__effect0_live[__effect0_j]
+				m.__effect0_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if ((((m.__effect0_live[__effect0_i].Key.Limit == nil) && (__effect0_k.Key.Limit != nil)) || ((m.__effect0_live[__effect0_i].Key.Limit != nil) && ((__effect0_k.Key.Limit == nil) || ((*(m.__effect0_live[__effect0_i].Key.Limit)) != (*(__effect0_k.Key.Limit)))))) || (((m.__effect0_live[__effect0_i].Key.Offset == nil) && (__effect0_k.Key.Offset != nil)) || ((m.__effect0_live[__effect0_i].Key.Offset != nil) && ((__effect0_k.Key.Offset == nil) || ((*(m.__effect0_live[__effect0_i].Key.Offset)) != (*(__effect0_k.Key.Offset))))))) || (m.__effect0_live[__effect0_i].N != __effect0_k.N) {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect0_teardown() {
+	for __effect0_ti, _ := range m.__effect0_live {
+		m.__effect0_key = m.__effect0_live[((len(m.__effect0_live) - 1) - __effect0_ti)]
+		m.__effect0_unmount()
+	}
+	m.__effect0_live = []__anon_key_n_92242e{}
+}
+
+func (m *Model) __effect1_mount() {
+	m.attempt__inst0 += 1
+	var mine int = m.attempt__inst0
+	m.loading__inst0 = true
+	m.__renderSlot1(m.__n2)
+	__async_arg1 := m.__effect1_key.Key
+	go func() {
+		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
+		gtk4rt.Post(func() {
+			if mine != m.attempt__inst0 {
+				return
+			}
+			m.loading__inst0 = false
+			m.__renderSlot1(m.__n2)
+			switch {
+			case (r.tag == 0):
+				got := r.Ok
+				m.pet__inst0 = snglSome(got)
+				m.__renderSlot3(m.__n2)
+				m.failure__inst0 = nil
+				m.__renderSlot2(m.__n2)
+			default:
+				got := r.Failed
+				m.failure__inst0 = func(_p1 *Failure) *Failure {
+					if _p1 == nil {
+						return nil
+					}
+					_v2 := *_p1
+					return &_v2
+				}(snglSome(got))
+				m.__renderSlot2(m.__n2)
+			}
+		})
+	}()
+}
+
+func (m *Model) __effect1_unmount() {
+	m.attempt__inst0 += 1
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []__anon_key_n_a1dba7{}
+	m.__effect1_desired = append(m.__effect1_desired, __anon_key_n_a1dba7{Key: "rex", N: m.refreshes__inst0})
+	for __effect1_i, _ := range m.__effect1_live {
+		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
+		if __effect1_j >= len(m.__effect1_desired) {
+			m.__effect1_key = m.__effect1_live[__effect1_j]
+			m.__effect1_unmount()
+		} else {
+			if (m.__effect1_desired[__effect1_j].Key != m.__effect1_live[__effect1_j].Key) || (m.__effect1_desired[__effect1_j].N != m.__effect1_live[__effect1_j].N) {
+				m.__effect1_key = m.__effect1_live[__effect1_j]
+				m.__effect1_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if (m.__effect1_live[__effect1_i].Key != __effect1_k.Key) || (m.__effect1_live[__effect1_i].N != __effect1_k.N) {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effect1_teardown() {
+	for __effect1_ti, _ := range m.__effect1_live {
+		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
+		m.__effect1_unmount()
+	}
+	m.__effect1_live = []__anon_key_n_a1dba7{}
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
+	m.__effect1_teardown()
+	m.__effect0_teardown()
+}
+
+func (m *Model) __renderSlot0(parent *C.GtkBox) {
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+			}
+			m.__slot0 = nil
+			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
+			if m.page__inst0 != nil {
+				for _, p := range (*(m.page__inst0)).Results {
+					__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+					__ctmp1 := C.CString(p.Name)
+					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n4)), __ctmp1)
+					C.free(unsafe.Pointer(__ctmp1))
+					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
+					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4)))
+				}
+			}
+		}
+		m.__rendering0 = false
+	}
+}
+
+func (m *Model) __renderSlot1(parent *C.GtkBox) {
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+			}
+			m.__slot1 = nil
+			m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
+			if m.loading__inst0 {
+				__n5 := (*C.GtkSpinner)(unsafe.Pointer(C.gtk_spinner_new()))
+				C.gtk_spinner_set_spinning((*C.GtkSpinner)(unsafe.Pointer(__n5)), C.gboolean(boolToInt(true)))
+				C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n5)), __cstr3)
+				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n5)))
+				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n5)))
+			}
+		}
+		m.__rendering1 = false
+	}
+}
+
+func (m *Model) __renderSlot2(parent *C.GtkBox) {
+	if m.__rendering2 {
+		m.__renderAgain2 = true
+	} else {
+		m.__rendering2 = true
+		m.__renderAgain2 = true
+		for m.__renderAgain2 {
+			m.__renderAgain2 = false
+			for _, __entry := range m.__slot2 {
+				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+			}
+			m.__slot2 = nil
+			m.__slot2_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot2_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			if m.failure__inst0 != nil {
+				var __n6 *__child0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n6 = m.__inst0_live[__inst0_i]
+					__n6.Set__p0(m.failure__inst0)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n6__new := new__child0Instance(m, m.failure__inst0)
+					__n6 = __n6__new
+				}
+				__inst0_next = append(__inst0_next, __n6)
+				__inst0_i = (__inst0_i + 1)
+				__n6__el := __n6.Root
+				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot2_at, (*C.GtkWidget)(unsafe.Pointer(__n6__el)))
+				m.__slot2 = append(m.__slot2, (*C.GtkWidget)(unsafe.Pointer(__n6__el)))
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+		}
+		m.__rendering2 = false
+	}
+}
+
+func (m *Model) __renderSlot3(parent *C.GtkBox) {
+	if m.__rendering3 {
+		m.__renderAgain3 = true
+	} else {
+		m.__rendering3 = true
+		m.__renderAgain3 = true
+		for m.__renderAgain3 {
+			m.__renderAgain3 = false
+			for _, __entry := range m.__slot3 {
+				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+			}
+			m.__slot3 = nil
+			m.__slot3_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at)
+			__inst1_next := []*__child1Instance{}
+			var __inst1_i int = 0
+			if m.pet__inst0 != nil {
+				var __n7 *__child1Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n7 = m.__inst1_live[__inst1_i]
+					__n7.Set__p0(m.pet__inst0)
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n7__new := new__child1Instance(m, m.pet__inst0)
+					__n7 = __n7__new
+				}
+				__inst1_next = append(__inst1_next, __n7)
+				__inst1_i = (__inst1_i + 1)
+				__n7__el := __n7.Root
+				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
+				m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
+				for _, t := range (*(m.pet__inst0)).Tags {
+					__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+					__ctmp2 := C.CString(t.Type.Name)
+					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n8)), __ctmp2)
+					C.free(unsafe.Pointer(__ctmp2))
+					gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n8)), gtk4rt.Look{Css: "padding-top: 2px; padding-right: 8px; padding-bottom: 2px; padding-left: 8px; border-radius: 12px; "})
+					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n8)))
+					m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n8)))
+				}
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
+		}
+		m.__rendering3 = false
+	}
+}
+
+func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+}
+
+func (m *Model) __n9_clicked_handler() {
+	m.offset__inst0 += 20
+	m.__effects0_settle()
+}
+
+func (m *Model) __n10_clicked_handler() {
+	go func() {
+		__match0 := PetBreedRetrieveCall("beagle", "https://mirror.example")
+		gtk4rt.Post(func() {
+			switch {
+			case (__match0.tag == 0):
+				r := __match0.Ok
+				var __lt15 string
+				if r.ParentBreed != nil {
+					__lt15 = (*(r.ParentBreed)).Name
+				} else {
+					__lt15 = "nothing"
+				}
+				m.from__inst0 = __lt15
+				__ctmp3 := C.CString(m.from__inst0)
+				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp3)
+				C.free(unsafe.Pointer(__ctmp3))
+			default:
+				r := __match0.Failed
+				m.from__inst0 = r.Message
+				__ctmp4 := C.CString(m.from__inst0)
+				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp4)
+				C.free(unsafe.Pointer(__ctmp4))
+			}
+		})
+	}()
+}
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root        *C.GtkWidget
+	__model     *Model
+	__prop___p0 *Failure
+	__root      *C.GtkBox
+	__slot0     []*C.GtkWidget
+	__slot0_at  *C.GtkWidget
+	__slot1     []*C.GtkWidget
+	__slot1_at  *C.GtkWidget
+	__slot2     []*C.GtkWidget
+	__slot2_at  *C.GtkWidget
+	__slot3     []*C.GtkWidget
+	__slot3_at  *C.GtkWidget
+	__n0        *C.GtkLabel
+}
+
+func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__slot2 = nil
+	c.__slot3 = nil
+	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	__ctmp5 := C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp5)
+	C.free(unsafe.Pointer(__ctmp5))
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
+	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v *Failure) {
+	c.__prop___p0 = __v
+	__ctmp6 := C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp6)
+	C.free(unsafe.Pointer(__ctmp6))
+}
+
+func (c *__child0Instance) Destroy() {
+	if c.Root != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
+	if c.__slot1_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
+	}
+	if c.__slot2_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot2_at)))
+	}
+	if c.__slot3_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot3_at)))
+	}
+}
+
+// __child1Instance is one live instance of the __child1 component.
+type __child1Instance struct {
+	Root        *C.GtkWidget
+	__model     *Model
+	__prop___p0 *PetDetail
+	__root      *C.GtkBox
+	__slot0     []*C.GtkWidget
+	__slot0_at  *C.GtkWidget
+	__slot1     []*C.GtkWidget
+	__slot1_at  *C.GtkWidget
+	__slot2     []*C.GtkWidget
+	__slot2_at  *C.GtkWidget
+	__slot3     []*C.GtkWidget
+	__slot3_at  *C.GtkWidget
+	__n1        *C.GtkLabel
+}
+
+func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance {
+	c := &__child1Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__slot2 = nil
+	c.__slot3 = nil
+	c.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	__ctmp7 := C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp7)
+	C.free(unsafe.Pointer(__ctmp7))
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n1))
+	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
+	return c
+}
+
+func (c *__child1Instance) Set__p0(__v *PetDetail) {
+	c.__prop___p0 = __v
+	__ctmp8 := C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp8)
+	C.free(unsafe.Pointer(__ctmp8))
+}
+
+func (c *__child1Instance) Destroy() {
+	if c.Root != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
+	if c.__slot1_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
+	}
+	if c.__slot2_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot2_at)))
+	}
+	if c.__slot3_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot3_at)))
+	}
+}
+
+func (m *Model) Offset__inst0() int {
+	return m.offset__inst0
+}
+
+func (m *Model) SetOffset__inst0(v int) {
+	m.offset__inst0 = v
+}
+
+func (m *Model) Page__inst0() *PaginatedPetSummaryList {
+	return m.page__inst0
+}
+
+func (m *Model) SetPage__inst0(v *PaginatedPetSummaryList) {
+	m.page__inst0 = v
+}
+
+func (m *Model) Pet__inst0() *PetDetail {
+	return m.pet__inst0
+}
+
+func (m *Model) SetPet__inst0(v *PetDetail) {
+	m.pet__inst0 = v
+}
+
+func (m *Model) Loading__inst0() bool {
+	return m.loading__inst0
+}
+
+func (m *Model) SetLoading__inst0(v bool) {
+	m.loading__inst0 = v
+}
+
+func (m *Model) Failure__inst0() *Failure {
+	return m.failure__inst0
+}
+
+func (m *Model) SetFailure__inst0(v *Failure) {
+	m.failure__inst0 = v
+}
+
+func (m *Model) From__inst0() string {
+	return m.from__inst0
+}
+
+func (m *Model) SetFrom__inst0(v string) {
+	m.from__inst0 = v
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) Pending__inst0() bool {
+	return m.pending__inst0
+}
+
+func (m *Model) SetPending__inst0(v bool) {
+	m.pending__inst0 = v
+}
+
+func (m *Model) Failure__inst1() *Failure {
+	return m.failure__inst1
+}
+
+func (m *Model) SetFailure__inst1(v *Failure) {
+	m.failure__inst1 = v
+}
+
+func (m *Model) Attempt__inst0() int {
+	return m.attempt__inst0
+}
+
+func (m *Model) SetAttempt__inst0(v int) {
+	m.attempt__inst0 = v
+}
+
+func (m *Model) Refreshes__inst0() int {
+	return m.refreshes__inst0
+}
+
+func (m *Model) SetRefreshes__inst0(v int) {
+	m.refreshes__inst0 = v
+}
+
+func (m *Model) Attempt__inst1() int {
+	return m.attempt__inst1
+}
+
+func (m *Model) SetAttempt__inst1(v int) {
+	m.attempt__inst1 = v
+}
+
+func (m *Model) Refreshes__inst1() int {
+	return m.refreshes__inst1
+}
+
+func (m *Model) SetRefreshes__inst1(v int) {
+	m.refreshes__inst1 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__root != nil {
+		return
+	}
+	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__renderSlot0(m.__n2)
+	m.__n9 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n9)), __cstr0)
+	snglCallbacks = append(snglCallbacks, m.__n9_clicked_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n9), __cstr1, C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
+	m.__renderSlot1(m.__n2)
+	m.__renderSlot2(m.__n2)
+	m.__renderSlot3(m.__n2)
+	m.__n10 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n10)), __cstr2)
+	snglCallbacks = append(snglCallbacks, m.__n10_clicked_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n10), __cstr1, C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
+	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	__ctmp0 := C.CString(m.from__inst0)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp0)
+	C.free(unsafe.Pointer(__ctmp0))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	m.__effects0_settle()
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+}
+
+// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
+	m.buildWidgetTree()
+	win := C.gtk_application_window_new(app)
+	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr4)
+	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
+	return win
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
+// Code generated by sngl (android) from app.sngl; DO NOT EDIT.
+
+package test.sngl.app
+
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgeDefaults
+import androidx.compose.material3.contentColorFor
+
+data class Failure(
+    var kind: SnglFailureKind = SnglFailureKind.TRANSPORT,
+    var message: String = "",
+    var code: String = ""
+)
+
+data class PaginatedPetSummaryList(
+    var count: Int = 0,
+    var next: String? = null,
+    var previous: String? = null,
+    var results: List<PetSummary> = listOf()
+)
+
+data class PetSummary(
+    var name: String = "",
+    var url: String = ""
+)
+
+data class PetDetail(
+    var id: Int = 0,
+    var name: String = "",
+    var adoptionFee: Int? = null,
+    var age: Int? = null,
+    var isAvailable: Boolean? = null,
+    var breed: PetBreedSummary = PetBreedSummary(),
+    var photos: PetPhotos = PetPhotos(),
+    var measurements: List<PetMeasurement> = listOf(),
+    var tags: List<PetTag> = listOf()
+)
+
+data class PetPhotos(
+    var thumbnailUrl: String? = null
+)
+
+data class PetMeasurement(
+    var baseValue: Int = 0,
+    var margin: Int = 0,
+    var measure: MeasureSummary = MeasureSummary()
+)
+
+data class MeasureSummary(
+    var name: String = "",
+    var url: String = ""
+)
+
+data class PetTag(
+    var slot: Int = 0,
+    var type: TagSummary = TagSummary()
+)
+
+data class TagSummary(
+    var name: String = "",
+    var url: String = ""
+)
+
+data class PetBreedSummary(
+    var name: String = "",
+    var url: String = ""
+)
+
+data class PetBreedDetail(
+    var id: Int = 0,
+    var name: String = "",
+    var parentBreed: PetBreedSummary? = null
+)
+
+data class __anon_limit_offset_7e7555(
+    var limit: Int? = null,
+    var offset: Int? = null
+)
+
+data class __anon_key_n_92242e(
+    var key: __anon_limit_offset_7e7555 = __anon_limit_offset_7e7555(),
+    var n: Int = 0
+)
+
+data class __anon_key_n_a1dba7(
+    var key: String = "",
+    var n: Int = 0
+)
+
+data class Response(
+    var status: Int = 0,
+    var headers: Map<String, String> = mapOf(),
+    var body: String = ""
+)
+
+fun _snglFloatStr(v: Double): String =
+    if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+
+fun _snglSplit(s: String, sep: String): List<String> =
+    if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+
+enum class SnglFailureKind(private val sngl: String) {
+    TRANSPORT("transport"),
+    TIMEOUT("timeout"),
+    AUTH("auth"),
+    REQUEST("request"),
+    SERVER("server"),
+    DECODE("decode");
+
+    override fun toString(): String = sngl
+}
+
+sealed class SnglResult__Response {
+    data class Ok(val value: Response) : SnglResult__Response()
+    data class Failed(val value: Failure) : SnglResult__Response()
+}
+
+sealed class SnglResult__PaginatedPetSummaryList {
+    data class Ok(val value: PaginatedPetSummaryList) : SnglResult__PaginatedPetSummaryList()
+    data class Failed(val value: Failure) : SnglResult__PaginatedPetSummaryList()
+}
+
+sealed class SnglResult__PetDetail {
+    data class Ok(val value: PetDetail) : SnglResult__PetDetail()
+    data class Failed(val value: Failure) : SnglResult__PetDetail()
+}
+
+sealed class SnglResult__PetBreedDetail {
+    data class Ok(val value: PetBreedDetail) : SnglResult__PetBreedDetail()
+    data class Failed(val value: Failure) : SnglResult__PetBreedDetail()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen() {
+    var offset__inst0 by remember { mutableStateOf(0) }
+    var page__inst0 by remember { mutableStateOf<PaginatedPetSummaryList?>(null) }
+    var pet__inst0 by remember { mutableStateOf<PetDetail?>(null) }
+    var loading__inst0 by remember { mutableStateOf(false) }
+    var failure__inst0 by remember { mutableStateOf<Failure?>(null) }
+    var from__inst0 by remember { mutableStateOf("-") }
+    var visible__inst0 by remember { mutableStateOf(true) }
+    var pending__inst0 by remember { mutableStateOf(false) }
+    var failure__inst1 by remember { mutableStateOf<Failure?>(null) }
+    var attempt__inst0 by remember { mutableStateOf(0) }
+    var refreshes__inst0 by remember { mutableStateOf(0) }
+    var attempt__inst1 by remember { mutableStateOf(0) }
+    var refreshes__inst1 by remember { mutableStateOf(0) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            DisposableEffect(__anon_key_n_92242e(key = __anon_limit_offset_7e7555(limit = 20, offset = offset__inst0), n = refreshes__inst1)) {
+                val __snglEffectKey = __anon_key_n_92242e(key = __anon_limit_offset_7e7555(limit = 20, offset = offset__inst0), n = refreshes__inst1)
+                run {
+                    val k = __snglEffectKey
+                    SnglCodec.start {
+                    	attempt__inst1 += 1
+                    	var mine = attempt__inst1
+                    	pending__inst0 = true
+                    	var r: SnglResult__PaginatedPetSummaryList = petListCall(k.key.limit, k.key.offset, "https://petstore.example")
+                    	if ((mine != attempt__inst1)) {
+                    		return@start
+                    	}
+                    	pending__inst0 = false
+                    	when {
+                    		(r is SnglResult__PaginatedPetSummaryList.Ok) -> {
+                    			var got = (r as SnglResult__PaginatedPetSummaryList.Ok).value
+                    			page__inst0 = got
+                    			failure__inst1 = null
+                    		}
+                    		else -> {
+                    			var got = (r as SnglResult__PaginatedPetSummaryList.Failed).value
+                    			failure__inst1 = got?.let { _o1 -> _o1.copy() }
+                    		}
+                    	}
+                    }
+                }
+                onDispose {
+                    attempt__inst1 += 1
+                }
+            }
+            if ((page__inst0 != null)) {
+                for (p in page__inst0!!.results) {
+                    Text(text = p.name, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+                }
+            }
+            Button(onClick = {
+                offset__inst0 += 20
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                Text(text = "More", modifier = Modifier)
+            }
+            DisposableEffect(__anon_key_n_a1dba7(key = "rex", n = refreshes__inst0)) {
+                val __snglEffectKey = __anon_key_n_a1dba7(key = "rex", n = refreshes__inst0)
+                run {
+                    val k = __snglEffectKey
+                    SnglCodec.start {
+                    	attempt__inst0 += 1
+                    	var mine = attempt__inst0
+                    	loading__inst0 = true
+                    	var r: SnglResult__PetDetail = petRetrieveCall(k.key, "https://mirror.example")
+                    	if ((mine != attempt__inst0)) {
+                    		return@start
+                    	}
+                    	loading__inst0 = false
+                    	when {
+                    		(r is SnglResult__PetDetail.Ok) -> {
+                    			var got = (r as SnglResult__PetDetail.Ok).value
+                    			pet__inst0 = got
+                    			failure__inst0 = null
+                    		}
+                    		else -> {
+                    			var got = (r as SnglResult__PetDetail.Failed).value
+                    			failure__inst0 = got?.let { _o1 -> _o1.copy() }
+                    		}
+                    	}
+                    }
+                }
+                onDispose {
+                    attempt__inst0 += 1
+                }
+            }
+            if (loading__inst0) {
+                CircularProgressIndicator(modifier = Modifier.safeDrawingPadding())
+            }
+            if ((failure__inst0 != null)) {
+                Text(text = ("Could not load rex: " + failure__inst0!!.message), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            }
+            if ((pet__inst0 != null)) {
+                Text(text = ((("#" + pet__inst0!!.id.toString()) + " ") + pet__inst0!!.name), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+                for (t in pet__inst0!!.tags) {
+                    Badge(modifier = Modifier.safeDrawingPadding(), containerColor = BadgeDefaults.containerColor, contentColor = contentColorFor(BadgeDefaults.containerColor)) {
+                        Text(text = t.type.name, modifier = Modifier)
+                    }
+                }
+            }
+            Button(onClick = {
+                SnglCodec.start {
+                	var __match0: SnglResult__PetBreedDetail = petBreedRetrieveCall("beagle", "https://mirror.example")
+                	when {
+                		(__match0 is SnglResult__PetBreedDetail.Ok) -> {
+                			var r = (__match0 as SnglResult__PetBreedDetail.Ok).value
+                			from__inst0 = (if ((r.parentBreed != null)) r.parentBreed!!.name else "nothing")
+                		}
+                		else -> {
+                			var r = (__match0 as SnglResult__PetBreedDetail.Failed).value
+                			from__inst0 = r.message
+                		}
+                	}
+                }
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
+                Text(text = "Bred from", modifier = Modifier)
+            }
+            Text(text = from__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+        }
+    }
+}
+
+suspend fun petBreedRetrieveCall(id: String, __ctx_server: String): SnglResult__PetBreedDetail {
+    var __match2: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pet-breeds/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+    when {
+    	(__match2 is SnglResult__Response.Failed) -> {
+    		var r = (__match2 as SnglResult__Response.Failed).value
+    		return SnglResult__PetBreedDetail.Failed(r.copy())
+    	}
+    	else -> {
+    		var r = (__match2 as SnglResult__Response.Ok).value
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("parent_breed", SnglCodec.of(SnglCodec.OPTION, c1))); c0.make = { a -> PetBreedDetail(id = a[0] as Int, name = a[1] as String, parentBreed = a[2] as PetBreedSummary?) }; c0.read = { v -> (v as PetBreedDetail).let { listOf<Any?>(it.id, it.name, it.parentBreed) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetBreedDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PetBreedDetail.Ok((__r.value as PetBreedDetail)) }
+    	}
+    }
+    return SnglResult__PetBreedDetail.Ok(PetBreedDetail())
+}
+
+fun _answered(r: SnglResult__Response): SnglResult__Response {
+    when {
+    	(r is SnglResult__Response.Failed) -> {
+    		var got = (r as SnglResult__Response.Failed).value
+    		return SnglResult__Response.Failed(got.copy())
+    	}
+    	else -> {
+    		var got = (r as SnglResult__Response.Ok).value
+    		return got.checked()
+    	}
+    }
+    return SnglResult__Response.Ok(Response())
+}
+
+suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglResult__PaginatedPetSummaryList {
+    var __match0: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", SnglCodec.withQuery((__ctx_server + "/api/v1/pets/"), __anon_limit_offset_7e7555(limit = limit, offset = offset), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("limit", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("offset", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT)))); c0.make = { a -> __anon_limit_offset_7e7555(limit = a[0] as Int?, offset = a[1] as Int?) }; c0.read = { v -> (v as __anon_limit_offset_7e7555).let { listOf<Any?>(it.limit, it.offset) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+    when {
+    	(__match0 is SnglResult__Response.Failed) -> {
+    		var r = (__match0 as SnglResult__Response.Failed).value
+    		return SnglResult__PaginatedPetSummaryList.Failed(r.copy())
+    	}
+    	else -> {
+    		var r = (__match0 as SnglResult__Response.Ok).value
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.of(SnglCodec.INT)), SnglCodecField("next", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("previous", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("results", SnglCodec.of(SnglCodec.LIST, c1))); c0.make = { a -> PaginatedPetSummaryList(count = a[0] as Int, next = a[1] as String?, previous = a[2] as String?, results = a[3] as List<PetSummary>) }; c0.read = { v -> (v as PaginatedPetSummaryList).let { listOf<Any?>(it.count, it.next, it.previous, it.results) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PaginatedPetSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PaginatedPetSummaryList.Ok((__r.value as PaginatedPetSummaryList)) }
+    	}
+    }
+    return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList())
+}
+
+suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDetail {
+    var __match1: SnglResult__Response = _answered(run { val __r = SnglCodec.send("get", (((__ctx_server + "/api/v1/pets/") + SnglCodec.escape(id)) + "/"), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) })
+    when {
+    	(__match1 is SnglResult__Response.Failed) -> {
+    		var r = (__match1 as SnglResult__Response.Failed).value
+    		return SnglResult__PetDetail.Failed(r.copy())
+    	}
+    	else -> {
+    		var r = (__match1 as SnglResult__Response.Ok).value
+    		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); val c2 = SnglCodec(SnglCodec.STRUCT); val c3 = SnglCodec(SnglCodec.STRUCT); val c4 = SnglCodec(SnglCodec.STRUCT); val c5 = SnglCodec(SnglCodec.STRUCT); val c6 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("adoption_fee", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("age", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("is_available", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.BOOL))), SnglCodecField("breed", c1), SnglCodecField("photos", c2), SnglCodecField("measurements", SnglCodec.of(SnglCodec.LIST, c3)), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, c5))); c0.make = { a -> PetDetail(id = a[0] as Int, name = a[1] as String, adoptionFee = a[2] as Int?, age = a[3] as Int?, isAvailable = a[4] as Boolean?, breed = a[5] as PetBreedSummary, photos = a[6] as PetPhotos, measurements = a[7] as List<PetMeasurement>, tags = a[8] as List<PetTag>) }; c0.read = { v -> (v as PetDetail).let { listOf<Any?>(it.id, it.name, it.adoptionFee, it.age, it.isAvailable, it.breed, it.photos, it.measurements, it.tags) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c2.fields = listOf(SnglCodecField("thumbnail_url", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING)))); c2.make = { a -> PetPhotos(thumbnailUrl = a[0] as String?) }; c2.read = { v -> (v as PetPhotos).let { listOf<Any?>(it.thumbnailUrl) } }; c3.fields = listOf(SnglCodecField("base_value", SnglCodec.of(SnglCodec.INT)), SnglCodecField("margin", SnglCodec.of(SnglCodec.INT)), SnglCodecField("measure", c4)); c3.make = { a -> PetMeasurement(baseValue = a[0] as Int, margin = a[1] as Int, measure = a[2] as MeasureSummary) }; c3.read = { v -> (v as PetMeasurement).let { listOf<Any?>(it.baseValue, it.margin, it.measure) } }; c4.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c4.make = { a -> MeasureSummary(name = a[0] as String, url = a[1] as String) }; c4.read = { v -> (v as MeasureSummary).let { listOf<Any?>(it.name, it.url) } }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.of(SnglCodec.INT)), SnglCodecField("type", c6)); c5.make = { a -> PetTag(slot = a[0] as Int, type = a[1] as TagSummary) }; c5.read = { v -> (v as PetTag).let { listOf<Any?>(it.slot, it.type) } }; c6.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c6.make = { a -> TagSummary(name = a[0] as String, url = a[1] as String) }; c6.read = { v -> (v as TagSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__PetDetail.Ok((__r.value as PetDetail)) }
+    	}
+    }
+    return SnglResult__PetDetail.Ok(PetDetail())
+}
+
+fun Response.checked(): SnglResult__Response {
+    if (((this.status >= 200) && (this.status < 300))) {
+    	return SnglResult__Response.Ok(this)
+    }
+    var kind = SnglFailureKind.TRANSPORT
+    if (((this.status == 401) || (this.status == 403))) {
+    	kind = SnglFailureKind.AUTH
+    } else {
+    	if (((this.status >= 400) && (this.status < 500))) {
+    		kind = SnglFailureKind.REQUEST
+    	} else {
+    		if (((this.status >= 500) && (this.status < 600))) {
+    			kind = SnglFailureKind.SERVER
+    		}
+    	}
+    }
+    return SnglResult__Response.Failed(Failure(kind = kind, message = ("HTTP " + this.status.toString()), code = this.status.toString()))
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglCodec.kt --
+package test.sngl.app
+
+// The runtime behind sngl:json and sngl:http, written beside MainScreen.kt
+// when a program reaches either. The compiler hands each call a Codec it
+// wrote from the SNGL type -- how to build and read each struct, the name each
+// field and enum member travels under -- and the rules and the words are
+// pkg/go/sngljson's: a key the type does not name is ignored, a missing key
+// fails unless its field is an option, a value of the wrong kind fails naming
+// where it was, writing leaves an absent option's key out, and a map's keys are
+// visited in order so a failure names the same one everywhere.
+
+import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import org.json.JSONTokener
+
+class SnglCodec(val kind: Int) {
+    var elem: SnglCodec? = null
+    var fields: List<SnglCodecField> = emptyList()
+    var make: ((List<Any?>) -> Any)? = null
+    var read: ((Any) -> List<Any?>)? = null
+    var wires: List<String> = emptyList()
+    var values: List<Any> = emptyList()
+
+    class Decoded(val value: Any?, val error: String?)
+
+    class Response(
+        val status: Int,
+        val headers: Map<String, String>,
+        val body: String,
+        val failed: Boolean,
+        val timeout: Boolean,
+        val message: String,
+    )
+
+    private class Fail(message: String) : Exception(message)
+
+    companion object {
+        const val BOOL = 0
+        const val INT = 1
+        const val LONG = 2
+        const val FLOAT = 3
+        const val STRING = 4
+        const val DATE = 5
+        const val DATETIME = 6
+        const val OPTION = 7
+        const val LIST = 8
+        const val MAP = 9
+        const val ENUM = 10
+        const val STRUCT = 11
+
+        private val dateRE = Regex("""^\d{4}-\d{2}-\d{2}$""")
+        private val datetimeRE = Regex("""^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$""")
+
+        fun of(kind: Int, elem: SnglCodec? = null): SnglCodec = SnglCodec(kind).also { it.elem = elem }
+
+        private val scope = kotlinx.coroutines.MainScope()
+
+        // How many bodies start began are still running: a test waits for none
+        // before it reads what they wrote.
+        val active = java.util.concurrent.atomic.AtomicInteger()
+
+        // Starts a body that waits -- a handler, an effect's mount -- on the
+        // thread the target draws on, which a wait leaves and comes back to.
+        fun start(block: suspend () -> Unit) {
+            active.incrementAndGet()
+            scope.launch {
+                try {
+                    block()
+                } finally {
+                    active.decrementAndGet()
+                }
+            }
+        }
+
+        fun decode(text: String, c: SnglCodec): Decoded {
+            val v: Any? = try {
+                val t = JSONTokener(text)
+                val parsed = t.nextValue()
+                if (t.nextClean() != '\u0000') throw Fail("not JSON")
+                parsed
+            } catch (e: Exception) {
+                return Decoded(null, "not JSON")
+            }
+            return try {
+                Decoded(dec(if (v == JSONObject.NULL) null else v, c, "$"), null)
+            } catch (e: Fail) {
+                Decoded(null, e.message)
+            }
+        }
+
+        private fun describe(c: SnglCodec): String = when (c.kind) {
+            BOOL -> "a boolean"
+            INT, LONG -> "an integer"
+            FLOAT -> "a number"
+            STRING -> "a string"
+            DATE -> "a date"
+            DATETIME -> "a datetime"
+            OPTION -> describe(c.elem!!)
+            LIST -> "an array"
+            ENUM -> "one of " + c.wires.joinToString(", ")
+            else -> "an object"
+        }
+
+        private fun integral(v: Any?): Long? {
+            if (v !is Number) return null
+            val d = v.toDouble()
+            if (v is Double || v is Float) {
+                if (d.isNaN() || d.isInfinite() || d != Math.floor(d) || Math.abs(d) > 9.223372036854776E18) return null
+                return d.toLong()
+            }
+            return v.toLong()
+        }
+
+        private fun dec(v: Any?, c: SnglCodec, path: String): Any? {
+            fun want(): Fail = Fail(path + ": want " + describe(c))
+            when (c.kind) {
+                OPTION -> return if (v == null) null else dec(v, c.elem!!, path)
+                BOOL -> return v as? Boolean ?: throw want()
+                INT -> {
+                    val n = integral(v) ?: throw want()
+                    if (n < Int.MIN_VALUE || n > Int.MAX_VALUE) throw want()
+                    return n.toInt()
+                }
+                LONG -> return integral(v) ?: throw want()
+                FLOAT -> return (v as? Number)?.toDouble() ?: throw want()
+                STRING -> return v as? String ?: throw want()
+                DATE -> {
+                    val s = v as? String ?: throw want()
+                    if (!dateRE.matches(s)) throw want()
+                    try { java.time.LocalDate.parse(s) } catch (e: Exception) { throw want() }
+                    return s
+                }
+                DATETIME -> {
+                    val s = v as? String ?: throw want()
+                    if (!datetimeRE.matches(s)) throw want()
+                    try { java.time.OffsetDateTime.parse(s.uppercase()) } catch (e: Exception) { throw want() }
+                    return s
+                }
+                ENUM -> {
+                    val i = if (v is String) c.wires.indexOf(v) else -1
+                    if (i < 0) throw want()
+                    return c.values[i]
+                }
+                LIST -> {
+                    val a = v as? JSONArray ?: throw want()
+                    val out = ArrayList<Any?>(a.length())
+                    for (i in 0 until a.length()) out.add(dec(unwrap(a.get(i)), c.elem!!, "$path[$i]"))
+                    return out
+                }
+                MAP -> {
+                    val o = v as? JSONObject ?: throw want()
+                    val out = LinkedHashMap<String, Any?>()
+                    for (k in o.keys().asSequence().toList().sorted()) out[k] = dec(unwrap(o.get(k)), c.elem!!, "$path.$k")
+                    return out
+                }
+                STRUCT -> {
+                    val o = v as? JSONObject ?: throw want()
+                    val args = ArrayList<Any?>(c.fields.size)
+                    for (f in c.fields) {
+                        val present = o.has(f.wire)
+                        if (!present && f.codec.kind != OPTION) throw Fail("$path.${f.wire}: missing")
+                        args.add(dec(if (present) unwrap(o.get(f.wire)) else null, f.codec, "$path.${f.wire}"))
+                    }
+                    return c.make!!(args)
+                }
+            }
+            throw want()
+        }
+
+        private fun unwrap(v: Any?): Any? = if (v == JSONObject.NULL) null else v
+
+        fun encode(v: Any?, c: SnglCodec): String = StringBuilder().also { enc(it, v, c) }.toString()
+
+        private fun enc(b: StringBuilder, v: Any?, c: SnglCodec) {
+            when (c.kind) {
+                OPTION -> if (v == null) b.append("null") else enc(b, v, c.elem!!)
+                BOOL -> b.append(if (v == true) "true" else "false")
+                INT, LONG -> b.append((v as Number).toLong().toString())
+                FLOAT -> b.append(number((v as Number).toDouble()))
+                STRING, DATE, DATETIME -> quote(b, v as String)
+                ENUM -> quote(b, enumWire(c, v))
+                LIST -> {
+                    b.append('[')
+                    (v as List<*>).forEachIndexed { i, x ->
+                        if (i > 0) b.append(',')
+                        enc(b, x, c.elem!!)
+                    }
+                    b.append(']')
+                }
+                MAP -> {
+                    val m = v as Map<*, *>
+                    b.append('{')
+                    m.keys.map { it as String }.sorted().forEachIndexed { i, k ->
+                        if (i > 0) b.append(',')
+                        quote(b, k)
+                        b.append(':')
+                        enc(b, m[k], c.elem!!)
+                    }
+                    b.append('}')
+                }
+                STRUCT -> {
+                    val vals = c.read!!(v!!)
+                    b.append('{')
+                    var first = true
+                    c.fields.forEachIndexed { i, f ->
+                        val x = vals[i]
+                        if (f.codec.kind == OPTION && x == null) return@forEachIndexed
+                        if (!first) b.append(',')
+                        first = false
+                        quote(b, f.wire)
+                        b.append(':')
+                        enc(b, x, f.codec)
+                    }
+                    b.append('}')
+                }
+            }
+        }
+
+        private fun enumWire(c: SnglCodec, v: Any?): String {
+            val i = c.values.indexOf(v)
+            return if (i < 0) v.toString() else c.wires[i]
+        }
+
+        // A float as JSON and JavaScript write one: the shortest decimal that
+        // reads back as the same value, with no fraction for a whole number and
+        // an exponent from 1e21 up and below 1e-6.
+        fun number(d: Double): String {
+            if (d.isNaN() || d.isInfinite()) return "null"
+            if (d == 0.0) return "0"
+            val bd = java.math.BigDecimal(d.toString()).stripTrailingZeros()
+            val a = Math.abs(d)
+            if (a >= 1e-6 && a < 1e21) return bd.toPlainString()
+            val digits = bd.unscaledValue().abs().toString()
+            val exp = digits.length - 1 - bd.scale()
+            val mant = if (digits.length > 1) digits[0] + "." + digits.substring(1) else digits
+            return (if (d < 0) "-" else "") + mant + "e" + (if (exp >= 0) "+" else "-") + Math.abs(exp)
+        }
+
+        private fun quote(b: StringBuilder, s: String) {
+            b.append('"')
+            for (ch in s) {
+                when (ch) {
+                    '"' -> b.append("\\\"")
+                    '\\' -> b.append("\\\\")
+                    '\b' -> b.append("\\b")
+                    '\u000C' -> b.append("\\f")
+                    '\n' -> b.append("\\n")
+                    '\r' -> b.append("\\r")
+                    '\t' -> b.append("\\t")
+                    else -> if (ch < ' ') b.append(String.format("\\u%04x", ch.code)) else b.append(ch)
+                }
+            }
+            b.append('"')
+        }
+
+        fun escape(s: String): String {
+            val hex = "0123456789ABCDEF"
+            val b = StringBuilder()
+            for (byte in s.toByteArray(Charsets.UTF_8)) {
+                val c = byte.toInt() and 0xff
+                val ch = c.toChar()
+                if (ch in 'A'..'Z' || ch in 'a'..'z' || ch in '0'..'9' || ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+                    b.append(ch)
+                } else {
+                    b.append('%').append(hex[c shr 4]).append(hex[c and 15])
+                }
+            }
+            return b.toString()
+        }
+
+        private fun queryValues(v: Any?, c: SnglCodec): List<String> = when (c.kind) {
+            OPTION -> if (v == null) emptyList() else queryValues(v, c.elem!!)
+            LIST -> (v as List<*>).flatMap { queryValues(it, c.elem!!) }
+            BOOL -> listOf(if (v == true) "true" else "false")
+            INT, LONG -> listOf((v as Number).toLong().toString())
+            FLOAT -> listOf(number((v as Number).toDouble()))
+            ENUM -> listOf(enumWire(c, v))
+            else -> listOf(v.toString())
+        }
+
+        fun withQuery(url: String, q: Any, c: SnglCodec): String {
+            val vals = c.read!!(q)
+            val parts = ArrayList<String>()
+            c.fields.forEachIndexed { i, f ->
+                for (s in queryValues(vals[i], f.codec)) parts.add(escape(f.wire) + "=" + escape(s))
+            }
+            if (parts.isEmpty()) return url
+            return url + (if (url.contains('?')) "&" else "?") + parts.joinToString("&")
+        }
+
+        // Sends one request on a thread of its own and waits for its answer
+        // there: a failure only where no response arrived.
+        suspend fun send(method: String, url: String, headers: Map<String, String>, body: String?): Response =
+            withContext(Dispatchers.IO) {
+                try {
+                    val conn = URL(url).openConnection() as HttpURLConnection
+                    conn.requestMethod = method.uppercase()
+                    for (k in headers.keys.sorted()) conn.setRequestProperty(k, headers[k])
+                    if (body != null) {
+                        conn.doOutput = true
+                        conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                    }
+                    val status = conn.responseCode
+                    val stream = if (status >= 400) conn.errorStream else conn.inputStream
+                    val text = stream?.use { it.readBytes().toString(Charsets.UTF_8) } ?: ""
+                    val hs = LinkedHashMap<String, String>()
+                    for ((k, vs) in conn.headerFields) {
+                        if (k != null) hs[k.lowercase()] = vs.joinToString(", ")
+                    }
+                    conn.disconnect()
+                    Response(status, hs, text, false, false, "")
+                } catch (e: SocketTimeoutException) {
+                    Response(0, emptyMap(), "", true, true, e.toString())
+                } catch (e: Exception) {
+                    Response(0, emptyMap(), "", true, false, e.toString())
+                }
+            }
+    }
+}
+
+class SnglCodecField(val wire: String, val codec: SnglCodec)
+-- out/none/html/index.html --
+<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
+
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Petstore</title>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<span data-sngl-slot="0" style="display:contents"></span>
+<button id="$0">
+  <span>More</span>
+</button>
+<span data-sngl-slot="1" style="display:contents"></span>
+<span data-sngl-slot="2" style="display:contents"></span>
+<span data-sngl-slot="3" style="display:contents"></span>
+<button id="$1">
+  <span>Bred from</span>
+</button>
+<span id="__n5" data-sngl-id="__n5">
+</span>
+
+<script>
+(() => {
+  // sngl-entry.js
+  var state = { offset__inst0: 0, page__inst0: null, pet__inst0: null, loading__inst0: false, failure__inst0: null, from__inst0: "-", visible__inst0: true, pending__inst0: false, failure__inst1: null, attempt__inst0: 0, refreshes__inst0: 0, attempt__inst1: 0, refreshes__inst1: 0 };
+  async function petBreedRetrieveCall(id, __ctx_server) {
+    let __match2 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pet-breeds/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
+    if (__match2.tag === "failed") {
+      ;
+      let r = __match2.value;
+      return { tag: "failed", value: { ...r } };
+    } else {
+      ;
+      let r = __match2.value;
+      return ((__r) => __r.e !== void 0 ? { tag: "failed", value: { kind: "decode", message: __r.e, code: "" } } : { tag: "ok", value: __r.v })(_snglJSONDecode(r.body, (() => {
+        const c0 = { k: "s" };
+        const c1 = { k: "s" };
+        c0.f = [["id", "id", { k: "i" }], ["name", "name", { k: "str" }], ["parentBreed", "parent_breed", { k: "o", e: c1 }]];
+        c1.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
+        return c0;
+      })()));
+    }
+    ;
+    return { tag: "ok", value: {} };
+  }
+  function _answered(r) {
+    if (r.tag === "failed") {
+      ;
+      let got = r.value;
+      return { tag: "failed", value: { ...got } };
+    } else {
+      ;
+      let got = r.value;
+      return Response_checked(got);
+    }
+    ;
+    return { tag: "ok", value: {} };
+  }
+  async function petListCall(limit, offset, __ctx_server) {
+    let __match0 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", _snglWithQuery(__ctx_server + "/api/v1/pets/", { limit, offset }, (() => {
+      const c0 = { k: "s" };
+      c0.f = [["limit", "limit", { k: "o", e: { k: "i" } }], ["offset", "offset", { k: "o", e: { k: "i" } }]];
+      return c0;
+    })()), null, null)));
+    if (__match0.tag === "failed") {
+      ;
+      let r = __match0.value;
+      return { tag: "failed", value: { ...r } };
+    } else {
+      ;
+      let r = __match0.value;
+      return ((__r) => __r.e !== void 0 ? { tag: "failed", value: { kind: "decode", message: __r.e, code: "" } } : { tag: "ok", value: __r.v })(_snglJSONDecode(r.body, (() => {
+        const c0 = { k: "s" };
+        const c1 = { k: "s" };
+        c0.f = [["count", "count", { k: "i" }], ["next", "next", { k: "o", e: { k: "str" } }], ["previous", "previous", { k: "o", e: { k: "str" } }], ["results", "results", { k: "l", e: c1 }]];
+        c1.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
+        return c0;
+      })()));
+    }
+    ;
+    return { tag: "ok", value: {} };
+  }
+  async function petRetrieveCall(id, __ctx_server) {
+    let __match1 = _answered(((__r) => __r.f ? __r.t ? { tag: "failed", value: { kind: "timeout", message: __r.m, code: "" } } : { tag: "failed", value: { kind: "transport", message: __r.m, code: "" } } : { tag: "ok", value: { status: __r.s, headers: __r.h, body: __r.b } })(await _snglHTTPSend("get", __ctx_server + "/api/v1/pets/" + encodeURIComponent(id).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase()) + "/", null, null)));
+    if (__match1.tag === "failed") {
+      ;
+      let r = __match1.value;
+      return { tag: "failed", value: { ...r } };
+    } else {
+      ;
+      let r = __match1.value;
+      return ((__r) => __r.e !== void 0 ? { tag: "failed", value: { kind: "decode", message: __r.e, code: "" } } : { tag: "ok", value: __r.v })(_snglJSONDecode(r.body, (() => {
+        const c0 = { k: "s" };
+        const c1 = { k: "s" };
+        const c2 = { k: "s" };
+        const c3 = { k: "s" };
+        const c4 = { k: "s" };
+        const c5 = { k: "s" };
+        const c6 = { k: "s" };
+        c0.f = [["id", "id", { k: "i" }], ["name", "name", { k: "str" }], ["adoptionFee", "adoption_fee", { k: "o", e: { k: "i" } }], ["age", "age", { k: "o", e: { k: "i" } }], ["isAvailable", "is_available", { k: "o", e: { k: "b" } }], ["breed", "breed", c1], ["photos", "photos", c2], ["measurements", "measurements", { k: "l", e: c3 }], ["tags", "tags", { k: "l", e: c5 }]];
+        c1.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
+        c2.f = [["thumbnailUrl", "thumbnail_url", { k: "o", e: { k: "str" } }]];
+        c3.f = [["baseValue", "base_value", { k: "i" }], ["margin", "margin", { k: "i" }], ["measure", "measure", c4]];
+        c4.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
+        c5.f = [["slot", "slot", { k: "i" }], ["type", "type", c6]];
+        c6.f = [["name", "name", { k: "str" }], ["url", "url", { k: "str" }]];
+        return c0;
+      })()));
+    }
+    ;
+    return { tag: "ok", value: {} };
+  }
+  function Response_checked(r) {
+    if (r.status >= 200 && r.status < 300) {
+      ;
+      return { tag: "ok", value: r };
+    }
+    ;
+    let kind = "transport";
+    if (r.status === 401 || r.status === 403) {
+      ;
+      kind = "auth";
+    } else {
+      ;
+      if (r.status >= 400 && r.status < 500) {
+        ;
+        kind = "request";
+      } else {
+        ;
+        if (r.status >= 500 && r.status < 600) {
+          ;
+          kind = "server";
+        }
+        ;
+      }
+      ;
+    }
+    ;
+    return { tag: "failed", value: { kind, message: "HTTP " + String(r.status), code: String(r.status) } };
+  }
+  async function __effect0_mount() {
+    state.attempt__inst1 += 1;
+    let mine = state.attempt__inst1;
+    state.pending__inst0 = true;
+    let r = await petListCall(__effect0_key.key.limit, __effect0_key.key.offset, "https://petstore.example");
+    if (mine !== state.attempt__inst1) {
+      ;
+      return;
+    }
+    ;
+    state.pending__inst0 = false;
+    if (r.tag === "ok") {
+      ;
+      let got = r.value;
+      state.page__inst0 = got;
+      __renderSlot0(__slotAnchor_0);
+      state.failure__inst1 = null;
+    } else {
+      ;
+      let got = r.value;
+      state.failure__inst1 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(got);
+    }
+    ;
+  }
+  function __effect0_unmount() {
+    state.attempt__inst1 += 1;
+  }
+  async function __effect1_mount() {
+    state.attempt__inst0 += 1;
+    let mine = state.attempt__inst0;
+    state.loading__inst0 = true;
+    __renderSlot1(__slotAnchor_1);
+    let r = await petRetrieveCall(__effect1_key.key, "https://mirror.example");
+    if (mine !== state.attempt__inst0) {
+      ;
+      return;
+    }
+    ;
+    state.loading__inst0 = false;
+    __renderSlot1(__slotAnchor_1);
+    if (r.tag === "ok") {
+      ;
+      let got = r.value;
+      state.pet__inst0 = got;
+      __renderSlot3(__slotAnchor_3);
+      state.failure__inst0 = null;
+      __renderSlot2(__slotAnchor_2);
+    } else {
+      ;
+      let got = r.value;
+      state.failure__inst0 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(got);
+      __renderSlot2(__slotAnchor_2);
+    }
+    ;
+  }
+  function __effect1_unmount() {
+    state.attempt__inst0 += 1;
+  }
+  function __snglTeardown() {
+    __effects0_torn = true;
+    __effect1_teardown();
+    __effect0_teardown();
+  }
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.textContent = "Could not load rex: " + __prop___p0.message;
+    }
+    let __n0 = document.createElement("span");
+    __n0.textContent = "Could not load rex: " + __prop___p0.message;
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  function __cf___child1(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n1.textContent = "#" + String(__prop___p0.id) + " " + __prop___p0.name;
+    }
+    let __n1 = document.createElement("span");
+    __n1.textContent = "#" + String(__prop___p0.id) + " " + __prop___p0.name;
+    __root.appendChild(__n1);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  function __cf___child2(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n2.textContent = __prop___p0.name;
+    }
+    let __n2 = document.createElement("span");
+    __n2.textContent = __prop___p0.name;
+    __root.appendChild(__n2);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  function __cf___child3(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n3.textContent = __prop___p0.type.name;
+    }
+    let __n3 = document.createElement("span");
+    __n3.setAttribute("class", "sngl-badge");
+    __n3.textContent = __prop___p0.type.name;
+    __n3.setAttribute("style", "padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px;border-radius:12px;display:inline-block");
+    __root.appendChild(__n3);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  var __effect0_key = {};
+  var __effect0_live = [];
+  var __effect0_desired = [];
+  var __effect1_key = {};
+  var __effect1_live = [];
+  var __effect1_desired = [];
+  var __effects0_settling = false;
+  var __effects0_pending = false;
+  var __effects0_torn = false;
+  var __effects0_steps = 0;
+  var __slot0 = [];
+  var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
+  var __slot1 = [];
+  var __rendering1 = false;
+  var __renderAgain1 = false;
+  var __slot2 = [];
+  var __inst4_live = [];
+  var __rendering2 = false;
+  var __renderAgain2 = false;
+  var __slot3 = [];
+  var __inst6_live = [];
+  var __inst7_live = [];
+  var __rendering3 = false;
+  var __renderAgain3 = false;
+  function __effect0_down() {
+    __effect0_desired = [];
+    __effect0_desired.push({ key: { limit: 20, offset: state.offset__inst0 }, n: state.refreshes__inst1 });
+    for (const [__effect0_i, _] of __effect0_live.entries()) {
+      let __effect0_j = __effect0_live.length - 1 - __effect0_i;
+      if (__effect0_j >= __effect0_desired.length) {
+        __effect0_key = __effect0_live[__effect0_j];
+        __effect0_unmount();
+      } else {
+        if (__effect0_desired[__effect0_j].key.limit === null && __effect0_live[__effect0_j].key.limit !== null || __effect0_desired[__effect0_j].key.limit !== null && (__effect0_live[__effect0_j].key.limit === null || __effect0_desired[__effect0_j].key.limit !== __effect0_live[__effect0_j].key.limit) || (__effect0_desired[__effect0_j].key.offset === null && __effect0_live[__effect0_j].key.offset !== null || __effect0_desired[__effect0_j].key.offset !== null && (__effect0_live[__effect0_j].key.offset === null || __effect0_desired[__effect0_j].key.offset !== __effect0_live[__effect0_j].key.offset)) || __effect0_desired[__effect0_j].n !== __effect0_live[__effect0_j].n) {
+          __effect0_key = __effect0_live[__effect0_j];
+          __effect0_unmount();
+        }
+      }
+    }
+  }
+  function __effect0_up() {
+    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {
+      if (__effect0_i >= __effect0_live.length) {
+        __effect0_key = __effect0_k;
+        __effect0_mount();
+      } else {
+        if (__effect0_live[__effect0_i].key.limit === null && __effect0_k.key.limit !== null || __effect0_live[__effect0_i].key.limit !== null && (__effect0_k.key.limit === null || __effect0_live[__effect0_i].key.limit !== __effect0_k.key.limit) || (__effect0_live[__effect0_i].key.offset === null && __effect0_k.key.offset !== null || __effect0_live[__effect0_i].key.offset !== null && (__effect0_k.key.offset === null || __effect0_live[__effect0_i].key.offset !== __effect0_k.key.offset)) || __effect0_live[__effect0_i].n !== __effect0_k.n) {
+          __effect0_key = __effect0_k;
+          __effect0_mount();
+        }
+      }
+    }
+    __effect0_live = __effect0_desired;
+  }
+  function __effect0_teardown() {
+    for (const [__effect0_ti, _] of __effect0_live.entries()) {
+      __effect0_key = __effect0_live[__effect0_live.length - 1 - __effect0_ti];
+      __effect0_unmount();
+    }
+    __effect0_live = [];
+  }
+  function __effect1_down() {
+    __effect1_desired = [];
+    __effect1_desired.push({ key: "rex", n: state.refreshes__inst0 });
+    for (const [__effect1_i, _] of __effect1_live.entries()) {
+      let __effect1_j = __effect1_live.length - 1 - __effect1_i;
+      if (__effect1_j >= __effect1_desired.length) {
+        __effect1_key = __effect1_live[__effect1_j];
+        __effect1_unmount();
+      } else {
+        if (__effect1_desired[__effect1_j].key !== __effect1_live[__effect1_j].key || __effect1_desired[__effect1_j].n !== __effect1_live[__effect1_j].n) {
+          __effect1_key = __effect1_live[__effect1_j];
+          __effect1_unmount();
+        }
+      }
+    }
+  }
+  function __effect1_up() {
+    for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
+      if (__effect1_i >= __effect1_live.length) {
+        __effect1_key = __effect1_k;
+        __effect1_mount();
+      } else {
+        if (__effect1_live[__effect1_i].key !== __effect1_k.key || __effect1_live[__effect1_i].n !== __effect1_k.n) {
+          __effect1_key = __effect1_k;
+          __effect1_mount();
+        }
+      }
+    }
+    __effect1_live = __effect1_desired;
+  }
+  function __effect1_teardown() {
+    for (const [__effect1_ti, _] of __effect1_live.entries()) {
+      __effect1_key = __effect1_live[__effect1_live.length - 1 - __effect1_ti];
+      __effect1_unmount();
+    }
+    __effect1_live = [];
+  }
+  function __effects0_settle() {
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
+      }
+    }
+  }
+  function __renderSlot0(parent) {
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        if (state.page__inst0 !== null) {
+          for (const p of state.page__inst0.results) {
+            let __n6 = null;
+            if (__inst1_live.length > __inst1_i) {
+              __n6 = __inst1_live[__inst1_i];
+              __n6.__set___p0(p);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n6__new = __cf___child2({ __p0: p });
+              __n6 = __n6__new;
+            }
+            __inst1_next.push(__n6);
+            __inst1_i = __inst1_i + 1;
+            let __n6__el = __n6.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n6__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n6__el, __place0_i_ref0);
+            }
+            __slot0.push(__n6__el);
+          }
+        }
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
+      }
+      __rendering0 = false;
+    }
+  }
+  function __renderSlot1(parent) {
+    if (__rendering1) {
+      __renderAgain1 = true;
+    } else {
+      __rendering1 = true;
+      __renderAgain1 = true;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place2_prev = __slot1;
+        let __place2_i = 0;
+        __slot1 = [];
+        if (state.loading__inst0) {
+          let __n7 = document.createElement("span");
+          __n7.setAttribute("style", "align-items:center;display:inline-flex;gap:8px");
+          let __n8 = document.createElement("span");
+          __n8.setAttribute("class", "sngl-spinner");
+          __n7.appendChild(__n8);
+          let __n9 = document.createElement("span");
+          __n9.textContent = "";
+          __n7.appendChild(__n9);
+          let __place2_i_ref0 = null;
+          if (__place2_i < __place2_prev.length) {
+            __place2_i_ref0 = __place2_prev[__place2_i];
+          }
+          if (__place2_i_ref0 === __n7) {
+            __place2_i = __place2_i + 1;
+          } else {
+            parent.insertBefore(__n7, __place2_i_ref0);
+          }
+          __slot1.push(__n7);
+        }
+        for (const __place2_prev_e of __place2_prev) {
+          if (__slot1.indexOf(__place2_prev_e) < 0) {
+            parent.removeChild(__place2_prev_e);
+          }
+        }
+      }
+      __rendering1 = false;
+    }
+  }
+  function __renderSlot2(parent) {
+    if (__rendering2) {
+      __renderAgain2 = true;
+    } else {
+      __rendering2 = true;
+      __renderAgain2 = true;
+      while (__renderAgain2) {
+        __renderAgain2 = false;
+        let __place3_prev = __slot2;
+        let __place3_i = 0;
+        __slot2 = [];
+        let __inst4_next = [];
+        let __inst4_i = 0;
+        if (state.failure__inst0 !== null) {
+          let __n10 = null;
+          if (__inst4_live.length > __inst4_i) {
+            __n10 = __inst4_live[__inst4_i];
+            __n10.__set___p0(state.failure__inst0);
+          } else {
+            if (__inst4_live.length > __inst4_i) {
+              __inst4_live[__inst4_i].__destroy();
+            }
+            let __n10__new = __cf___child0({ __p0: state.failure__inst0 });
+            __n10 = __n10__new;
+          }
+          __inst4_next.push(__n10);
+          __inst4_i = __inst4_i + 1;
+          let __n10__el = __n10.__root;
+          let __place3_i_ref0 = null;
+          if (__place3_i < __place3_prev.length) {
+            __place3_i_ref0 = __place3_prev[__place3_i];
+          }
+          if (__place3_i_ref0 === __n10__el) {
+            __place3_i = __place3_i + 1;
+          } else {
+            parent.insertBefore(__n10__el, __place3_i_ref0);
+          }
+          __slot2.push(__n10__el);
+        }
+        for (const [__inst4_i_d, _] of __inst4_live.entries()) {
+          let __inst4_i_j = __inst4_live.length - 1 - __inst4_i_d;
+          if (__inst4_i_j >= __inst4_i) {
+            __inst4_live[__inst4_i_j].__destroy();
+          }
+        }
+        __inst4_live = __inst4_next;
+        for (const __place3_prev_e of __place3_prev) {
+          if (__slot2.indexOf(__place3_prev_e) < 0) {
+            parent.removeChild(__place3_prev_e);
+          }
+        }
+      }
+      __rendering2 = false;
+    }
+  }
+  function __renderSlot3(parent) {
+    if (__rendering3) {
+      __renderAgain3 = true;
+    } else {
+      __rendering3 = true;
+      __renderAgain3 = true;
+      while (__renderAgain3) {
+        __renderAgain3 = false;
+        let __place5_prev = __slot3;
+        let __place5_i = 0;
+        __slot3 = [];
+        let __inst6_next = [];
+        let __inst6_i = 0;
+        let __inst7_next = [];
+        let __inst7_i = 0;
+        if (state.pet__inst0 !== null) {
+          let __n11 = null;
+          if (__inst6_live.length > __inst6_i) {
+            __n11 = __inst6_live[__inst6_i];
+            __n11.__set___p0(state.pet__inst0);
+          } else {
+            if (__inst6_live.length > __inst6_i) {
+              __inst6_live[__inst6_i].__destroy();
+            }
+            let __n11__new = __cf___child1({ __p0: state.pet__inst0 });
+            __n11 = __n11__new;
+          }
+          __inst6_next.push(__n11);
+          __inst6_i = __inst6_i + 1;
+          let __n11__el = __n11.__root;
+          let __place5_i_ref0 = null;
+          if (__place5_i < __place5_prev.length) {
+            __place5_i_ref0 = __place5_prev[__place5_i];
+          }
+          if (__place5_i_ref0 === __n11__el) {
+            __place5_i = __place5_i + 1;
+          } else {
+            parent.insertBefore(__n11__el, __place5_i_ref0);
+          }
+          __slot3.push(__n11__el);
+          for (const t of state.pet__inst0.tags) {
+            let __n12 = null;
+            if (__inst7_live.length > __inst7_i) {
+              __n12 = __inst7_live[__inst7_i];
+              __n12.__set___p0(t);
+            } else {
+              if (__inst7_live.length > __inst7_i) {
+                __inst7_live[__inst7_i].__destroy();
+              }
+              let __n12__new = __cf___child3({ __p0: t });
+              __n12 = __n12__new;
+            }
+            __inst7_next.push(__n12);
+            __inst7_i = __inst7_i + 1;
+            let __n12__el = __n12.__root;
+            let __place5_i_ref1 = null;
+            if (__place5_i < __place5_prev.length) {
+              __place5_i_ref1 = __place5_prev[__place5_i];
+            }
+            if (__place5_i_ref1 === __n12__el) {
+              __place5_i = __place5_i + 1;
+            } else {
+              parent.insertBefore(__n12__el, __place5_i_ref1);
+            }
+            __slot3.push(__n12__el);
+          }
+        }
+        for (const [__inst6_i_d, _] of __inst6_live.entries()) {
+          let __inst6_i_j = __inst6_live.length - 1 - __inst6_i_d;
+          if (__inst6_i_j >= __inst6_i) {
+            __inst6_live[__inst6_i_j].__destroy();
+          }
+        }
+        __inst6_live = __inst6_next;
+        for (const [__inst7_i_d, _] of __inst7_live.entries()) {
+          let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
+          if (__inst7_i_j >= __inst7_i) {
+            __inst7_live[__inst7_i_j].__destroy();
+          }
+        }
+        __inst7_live = __inst7_next;
+        for (const __place5_prev_e of __place5_prev) {
+          if (__slot3.indexOf(__place5_prev_e) < 0) {
+            parent.removeChild(__place5_prev_e);
+          }
+        }
+      }
+      __rendering3 = false;
+    }
+  }
+  function String(v) {
+    return "" + v;
+  }
+  function _snglCodecFail(m) {
+    const e = new Error(m);
+    e._snglCodec = true;
+    return e;
+  }
+  function _snglDescribe(c) {
+    switch (c.k) {
+      case "b":
+        return "a boolean";
+      case "i":
+        return "an integer";
+      case "f":
+        return "a number";
+      case "str":
+        return "a string";
+      case "d":
+        return "a date";
+      case "dt":
+        return "a datetime";
+      case "o":
+        return _snglDescribe(c.e);
+      case "l":
+        return "an array";
+      case "e":
+        return "one of " + c.w.join(", ");
+    }
+    return "an object";
+  }
+  var _snglDateRE = /^\d{4}-\d{2}-\d{2}$/;
+  var _snglDatetimeRE = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
+  function _snglValidDate(s) {
+    const y = +s.slice(0, 4), m = +s.slice(5, 7), d = +s.slice(8, 10);
+    const t = /* @__PURE__ */ new Date(0);
+    t.setUTCFullYear(y, m - 1, d);
+    return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+  }
+  function _snglValidDatetime(s) {
+    const h = +s.slice(11, 13), mi = +s.slice(14, 16), se = +s.slice(17, 19);
+    return _snglValidDate(s) && h < 24 && mi < 60 && se < 60;
+  }
+  function _snglIsObject(v) {
+    return v !== null && typeof v === "object" && !Array.isArray(v);
+  }
+  function _snglDec(v, c, path) {
+    const want = () => _snglCodecFail(path + ": want " + _snglDescribe(c));
+    switch (c.k) {
+      case "o":
+        return v === null ? null : _snglDec(v, c.e, path);
+      case "b":
+        if (typeof v !== "boolean") throw want();
+        return v;
+      case "i":
+        if (typeof v !== "number" || !Number.isInteger(v)) throw want();
+        return v;
+      case "f":
+        if (typeof v !== "number") throw want();
+        return v;
+      case "str":
+        if (typeof v !== "string") throw want();
+        return v;
+      case "d":
+        if (typeof v !== "string" || !_snglDateRE.test(v) || !_snglValidDate(v)) throw want();
+        return v;
+      case "dt":
+        if (typeof v !== "string" || !_snglDatetimeRE.test(v) || !_snglValidDatetime(v)) throw want();
+        return v;
+      case "e": {
+        const i = typeof v === "string" ? c.w.indexOf(v) : -1;
+        if (i < 0) throw want();
+        return c.n[i];
+      }
+      case "l":
+        if (!Array.isArray(v)) throw want();
+        return v.map((x, i) => _snglDec(x, c.e, path + "[" + i + "]"));
+      case "m": {
+        if (!_snglIsObject(v)) throw want();
+        const out = /* @__PURE__ */ new Map();
+        for (const k of Object.keys(v).sort()) out.set(k, _snglDec(v[k], c.e, path + "." + k));
+        return out;
+      }
+      case "s": {
+        if (!_snglIsObject(v)) throw want();
+        const out = {};
+        for (const [key, wire, fc] of c.f) {
+          const present = Object.prototype.hasOwnProperty.call(v, wire);
+          if (!present && fc.k !== "o") throw _snglCodecFail(path + "." + wire + ": missing");
+          out[key] = _snglDec(present ? v[wire] : null, fc, path + "." + wire);
+        }
+        return out;
+      }
+    }
+    throw want();
+  }
+  function _snglJSONDecode(text, c) {
+    let v;
+    try {
+      v = JSON.parse(text);
+    } catch (e) {
+      return { e: "not JSON" };
+    }
+    try {
+      return { v: _snglDec(v, c, "$") };
+    } catch (e) {
+      if (e && e._snglCodec) return { e: e.message };
+      throw e;
+    }
+  }
+  function _snglEnumWire(c, v) {
+    const i = c.n.indexOf(v);
+    return i < 0 ? v : c.w[i];
+  }
+  function _snglEnc(v, c) {
+    switch (c.k) {
+      case "o":
+        return v === null || v === void 0 ? "null" : _snglEnc(v, c.e);
+      case "b":
+        return v ? "true" : "false";
+      case "i":
+      case "f":
+        return JSON.stringify(v);
+      case "str":
+      case "d":
+      case "dt":
+        return JSON.stringify(v);
+      case "e":
+        return JSON.stringify(_snglEnumWire(c, v));
+      case "l":
+        return "[" + v.map((x) => _snglEnc(x, c.e)).join(",") + "]";
+      case "m":
+        return "{" + [...v.keys()].sort().map((k) => JSON.stringify(k) + ":" + _snglEnc(v.get(k), c.e)).join(",") + "}";
+      case "s": {
+        const parts = [];
+        for (const [key, wire, fc] of c.f) {
+          const x = v[key];
+          if (fc.k === "o" && (x === null || x === void 0)) continue;
+          parts.push(JSON.stringify(wire) + ":" + _snglEnc(x, fc));
+        }
+        return "{" + parts.join(",") + "}";
+      }
+    }
+    return "null";
+  }
+  function _snglJSONEncode(v, c) {
+    return _snglEnc(v, c);
+  }
+  function _snglEscape(s) {
+    return encodeURIComponent(s).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+  }
+  function _snglQueryValues(v, c) {
+    switch (c.k) {
+      case "o":
+        return v === null || v === void 0 ? [] : _snglQueryValues(v, c.e);
+      case "l":
+        return v.flatMap((x) => _snglQueryValues(x, c.e));
+      case "b":
+        return [v ? "true" : "false"];
+      case "i":
+      case "f":
+        return [JSON.stringify(v)];
+      case "e":
+        return [_snglEnumWire(c, v)];
+    }
+    return [String(v)];
+  }
+  function _snglWithQuery(url, q, c) {
+    const parts = [];
+    for (const [key, wire, fc] of c.f) for (const s of _snglQueryValues(q[key], fc)) parts.push(_snglEscape(wire) + "=" + _snglEscape(s));
+    if (parts.length === 0) return url;
+    return url + (url.includes("?") ? "&" : "?") + parts.join("&");
+  }
+  async function _snglHTTPSend(method, url, headers, body) {
+    const init = { method: String(method).toUpperCase(), headers: {} };
+    if (headers) for (const [k, v] of headers) init.headers[k] = v;
+    if (body !== null && body !== void 0) init.body = body;
+    let resp, text;
+    try {
+      resp = await fetch(url, init);
+      text = await resp.text();
+    } catch (e) {
+      return { f: true, t: !!e && e.name === "TimeoutError", m: String(e && e.message || e) };
+    }
+    const h = /* @__PURE__ */ new Map();
+    resp.headers.forEach((v, k) => h.set(k.toLowerCase(), v));
+    return { s: resp.status, h, b: text };
+  }
+  var $0 = document.getElementById("$0");
+  var $1 = document.getElementById("$1");
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
+  var __slotAnchor_2 = document.querySelector('[data-sngl-slot="2"]');
+  __renderSlot2(__slotAnchor_2);
+  var __slotAnchor_3 = document.querySelector('[data-sngl-slot="3"]');
+  __renderSlot3(__slotAnchor_3);
+  $0.addEventListener("click", function() {
+    state.offset__inst0 += 20;
+    __effects0_settle();
+  });
+  $1.addEventListener("click", async function() {
+    let __match0 = await petBreedRetrieveCall("beagle", "https://mirror.example");
+    if (__match0.tag === "ok") {
+      ;
+      let r = __match0.value;
+      state.from__inst0 = r.parentBreed !== null ? r.parentBreed.name : "nothing";
+      __n5.textContent = state.from__inst0;
+    } else {
+      ;
+      let r = __match0.value;
+      state.from__inst0 = r.message;
+      __n5.textContent = state.from__inst0;
+    }
+    ;
+  });
+  function __sngl_init() {
+    __n5.textContent = state.from__inst0;
+  }
+  __sngl_init();
+  __effects0_settle();
+  window.addEventListener("pagehide", __snglTeardown);
+})();
+</script>
+</body></html>
+-- written/openapi/notes --
+field breed_lineage of PetBreedDetail is left out: a map of any value
+-- written/openapi/petstore.sngl --
+// Code generated by the openapi: scheme from ./petstore.yml. DO NOT EDIT.
+
+import async "sngl:async"
+import http "sngl:http"
+import json "sngl:json"
+
+// Where Petstore is: the spec's first server. Provide another to
+// point a subtree, or a test, somewhere else.
+context #server("https://petstore.example")
+
+struct PaginatedPetSummaryList {
+    count    int
+    next     option[string]
+    previous option[string]
+    results  list[PetSummary]
+}
+
+struct PetSummary {
+    name string
+    url  string
+}
+
+struct PetDetail {
+    id           int
+    name         string
+    #[json.identifier("adoption_fee")]
+    adoptionFee  option[int]
+    age          option[int]
+    #[json.identifier("is_available")]
+    isAvailable  option[bool]
+    breed        PetBreedSummary
+    photos       PetPhotos
+    measurements list[PetMeasurement]
+    tags         list[PetTag]
+}
+
+struct PetPhotos {
+    #[json.identifier("thumbnail_url")]
+    thumbnailUrl option[string]
+}
+
+struct PetMeasurement {
+    #[json.identifier("base_value")]
+    baseValue int
+    margin    int
+    measure   MeasureSummary
+}
+
+struct MeasureSummary {
+    name string
+    url  string
+}
+
+struct PetTag {
+    slot int
+    type TagSummary
+}
+
+struct TagSummary {
+    name string
+    url  string
+}
+
+struct PetBreedSummary {
+    name string
+    url  string
+}
+
+struct PetBreedDetail {
+    id          int
+    name        string
+    #[json.identifier("parent_breed")]
+    parentBreed option[PetBreedSummary]
+}
+
+// What a request answered, where it arrived with a 2xx status: the response,
+// or the failure that kept it from arriving or that its status says.
+func _answered(r async.Result[http.Response]) async.Result[http.Response] {
+    match var got = r {
+        failed { return {failed=got} }
+        ok { return got.checked() }
+    }
+}
+
+// GET /api/v1/pets/
+//
+// List pets
+func petListCall(limit option[int] = null, offset option[int] = null) async.Result[PaginatedPetSummaryList] {
+    match var r = _answered(http.get(url="{server}/api/v1/pets/", query={limit=limit, offset=offset})) {
+        failed { return {failed=r} }
+        ok { return json.decode[PaginatedPetSummaryList](r.body) }
+    }
+}
+
+// GET /api/v1/pets/{id}/
+//
+// Get pet
+func petRetrieveCall(id string) async.Result[PetDetail] {
+    match var r = _answered(http.get(url="{server}/api/v1/pets/{http.pathEscape(id)}/")) {
+        failed { return {failed=r} }
+        ok { return json.decode[PetDetail](r.body) }
+    }
+}
+
+// GET /api/v1/pet-breeds/{id}/
+//
+// Get pet breed
+func petBreedRetrieveCall(id string) async.Result[PetBreedDetail] {
+    match var r = _answered(http.get(url="{server}/api/v1/pet-breeds/{http.pathEscape(id)}/")) {
+        failed { return {failed=r} }
+        ok { return json.decode[PetBreedDetail](r.body) }
+    }
+}
+
+// GET /api/v1/pets/, asked again whenever limit or offset changes.
+//
+// List pets
+component petList[F any](
+    limit    option[int] = null,
+    offset   option[int] = null,
+    :value   option[PaginatedPetSummaryList] = null,
+    :pending bool = false,
+    :failure option[async.Failure] = null,
+    @load(value PaginatedPetSummaryList),
+    @fail(f async.Failure),
+) F {
+    async.query(
+        on = {limit=limit, offset=offset},
+        fetch = func(k struct {
+            limit  option[int]
+            offset option[int]
+        }) => petListCall(limit=k.limit, offset=k.offset),
+        :value = value,
+        :pending = pending,
+        :failure = failure,
+        @load { load() },
+        @fail { fail() },
+    )
+}
+
+// GET /api/v1/pets/{id}/, asked again whenever id changes.
+//
+// Get pet
+component petRetrieve[F any](
+    id       string,
+    :value   option[PetDetail] = null,
+    :pending bool = false,
+    :failure option[async.Failure] = null,
+    @load(value PetDetail),
+    @fail(f async.Failure),
+) F {
+    async.query(
+        on = id,
+        fetch = petRetrieveCall,
+        :value = value,
+        :pending = pending,
+        :failure = failure,
+        @load { load() },
+        @fail { fail() },
+    )
+}
+
+// GET /api/v1/pet-breeds/{id}/, asked again whenever id changes.
+//
+// Get pet breed
+component petBreedRetrieve[F any](
+    id       string,
+    :value   option[PetBreedDetail] = null,
+    :pending bool = false,
+    :failure option[async.Failure] = null,
+    @load(value PetBreedDetail),
+    @fail(f async.Failure),
+) F {
+    async.query(
+        on = id,
+        fetch = petBreedRetrieveCall,
+        :value = value,
+        :pending = pending,
+        :failure = failure,
+        @load { load() },
+        @fail { fail() },
+    )
+}
+-- run/go/fyne --
+pass sha256:6c1c9c40f9f94cbba2ca55156766c609
+-- run/go/gtk4 --
+pass sha256:37445e1e121fc65271f240e24bee0f45
+-- run/kotlin/android --
+pass sha256:63291a928982f114ab8a4327b21aad69
+-- run/none/html --
+pass sha256:af3d455e63cb46ba70ecabe36351d61b

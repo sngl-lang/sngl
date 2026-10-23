@@ -1,0 +1,514 @@
+{
+  "‹ Back": {
+    "translations": {
+      "fr": "‹ Retour",
+      "de": "‹ Zurück",
+      "es": "‹ Atrás",
+      "ja": "‹ 戻る"
+    }
+  },
+  "About": {
+    "translations": {
+      "fr": "À propos",
+      "de": "Info",
+      "es": "Información",
+      "ja": "概要"
+    }
+  },
+  "Stats": {
+    "translations": {
+      "fr": "Statistiques",
+      "de": "Werte",
+      "es": "Estadísticas",
+      "ja": "ステータス"
+    }
+  },
+  "Evolution": {
+    "translations": {
+      "fr": "Évolution",
+      "de": "Entwicklung",
+      "es": "Evolución",
+      "ja": "進化"
+    }
+  },
+  "Sprites": {
+    "translations": {
+      "fr": "Images",
+      "de": "Bilder",
+      "es": "Imágenes",
+      "ja": "画像"
+    }
+  },
+  "Moves": {
+    "translations": {
+      "fr": "Capacités",
+      "de": "Attacken",
+      "es": "Movimientos",
+      "ja": "わざ"
+    }
+  },
+  "Height": {
+    "translations": {
+      "fr": "Taille",
+      "de": "Größe",
+      "es": "Altura",
+      "ja": "高さ"
+    }
+  },
+  "Weight": {
+    "translations": {
+      "fr": "Poids",
+      "de": "Gewicht",
+      "es": "Peso",
+      "ja": "重さ"
+    }
+  },
+  "Abilities": {
+    "translations": {
+      "fr": "Talents",
+      "de": "Fähigkeiten",
+      "es": "Habilidades",
+      "ja": "特性"
+    }
+  },
+  "Habitat": {
+    "translations": {
+      "fr": "Habitat",
+      "de": "Lebensraum",
+      "es": "Hábitat",
+      "ja": "生息地"
+    }
+  },
+  "Egg groups": {
+    "translations": {
+      "fr": "Groupes d’œufs",
+      "de": "Ei-Gruppen",
+      "es": "Grupos Huevo",
+      "ja": "タマゴグループ"
+    }
+  },
+  "Gender": {
+    "translations": {
+      "fr": "Sexe",
+      "de": "Geschlecht",
+      "es": "Sexo",
+      "ja": "性別"
+    }
+  },
+  "Capture rate": {
+    "translations": {
+      "fr": "Taux de capture",
+      "de": "Fangrate",
+      "es": "Ratio de captura",
+      "ja": "捕獲率"
+    }
+  },
+  "Unknown": {
+    "translations": {
+      "fr": "Inconnu",
+      "de": "Unbekannt",
+      "es": "Desconocido",
+      "ja": "不明"
+    }
+  },
+  "Genderless": {
+    "translations": {
+      "fr": "Asexué",
+      "de": "Geschlechtslos",
+      "es": "Sin sexo",
+      "ja": "性別不明"
+    }
+  },
+  "{males}% male, {females}% female": {
+    "translations": {
+      "fr": "{males} % mâles, {females} % femelles",
+      "de": "{males} % männlich, {females} % weiblich",
+      "es": "{males} % machos, {females} % hembras",
+      "ja": "オス {males}%、メス {females}%"
+    }
+  },
+  "{ability} (hidden)": {
+    "translations": {
+      "fr": "{ability} (caché)",
+      "de": "{ability} (versteckt)",
+      "es": "{ability} (oculta)",
+      "ja": "{ability}（隠れ特性）"
+    }
+  },
+  "Total": {
+    "translations": {
+      "fr": "Total",
+      "de": "Gesamt",
+      "es": "Total",
+      "ja": "合計"
+    }
+  },
+  "EVs given": {
+    "translations": {
+      "fr": "EV donnés",
+      "de": "Gegebene EV",
+      "es": "EV que otorga",
+      "ja": "もらえる努力値"
+    }
+  },
+  "{text}, {p}": {
+    "translations": {
+      "fr": "{text}, {p}",
+      "de": "{text}, {p}",
+      "es": "{text}, {p}",
+      "ja": "{text}、{p}"
+    }
+  },
+  "Lv. {level}": {
+    "translations": {
+      "fr": "N. {level}",
+      "de": "Lv. {level}",
+      "es": "Nv. {level}",
+      "ja": "Lv.{level}"
+    }
+  },
+  "holding {holding}": {
+    "translations": {
+      "fr": "en tenant {holding}",
+      "de": "mit {holding}",
+      "es": "llevando {holding}",
+      "ja": "{holding}を持たせて"
+    }
+  },
+  "High Friendship": {
+    "translations": {
+      "fr": "Amitié élevée",
+      "de": "Hohe Freundschaft",
+      "es": "Amistad alta",
+      "ja": "なつき度が高い"
+    }
+  },
+  "High Affection": {
+    "translations": {
+      "fr": "Affection élevée",
+      "de": "Hohe Zuneigung",
+      "es": "Afecto alto",
+      "ja": "なかよし度が高い"
+    }
+  },
+  "knowing a {kind} move": {
+    "translations": {
+      "fr": "en connaissant une capacité {kind}",
+      "de": "mit einer Attacke vom Typ {kind}",
+      "es": "conociendo un movimiento de tipo {kind}",
+      "ja": "{kind}タイプのわざを覚えて"
+    }
+  },
+  "knowing {knowing}": {
+    "translations": {
+      "fr": "en connaissant {knowing}",
+      "de": "mit {knowing}",
+      "es": "conociendo {knowing}",
+      "ja": "{knowing}を覚えて"
+    }
+  },
+  "day": {
+    "translations": {
+      "fr": "de jour",
+      "de": "tagsüber",
+      "es": "de día",
+      "ja": "昼"
+    }
+  },
+  "night": {
+    "translations": {
+      "fr": "de nuit",
+      "de": "nachts",
+      "es": "de noche",
+      "ja": "夜"
+    }
+  },
+  "Trade": {
+    "translations": {
+      "fr": "Échange",
+      "de": "Tausch",
+      "es": "Intercambio",
+      "ja": "通信交換"
+    }
+  },
+  "Front": {
+    "translations": {
+      "fr": "Face",
+      "de": "Vorne",
+      "es": "Frente",
+      "ja": "正面"
+    }
+  },
+  "Back": {
+    "translations": {
+      "fr": "Dos",
+      "de": "Hinten",
+      "es": "Espalda",
+      "ja": "背面"
+    }
+  },
+  "Shiny front": {
+    "translations": {
+      "fr": "Face chromatique",
+      "de": "Schillernd vorne",
+      "es": "Frente variocolor",
+      "ja": "色違い 正面"
+    }
+  },
+  "Shiny back": {
+    "translations": {
+      "fr": "Dos chromatique",
+      "de": "Schillernd hinten",
+      "es": "Espalda variocolor",
+      "ja": "色違い 背面"
+    }
+  },
+  "Female front": {
+    "translations": {
+      "fr": "Face femelle",
+      "de": "Weiblich vorne",
+      "es": "Frente hembra",
+      "ja": "メス 正面"
+    }
+  },
+  "Female back": {
+    "translations": {
+      "fr": "Dos femelle",
+      "de": "Weiblich hinten",
+      "es": "Espalda hembra",
+      "ja": "メス 背面"
+    }
+  },
+  "Shiny female front": {
+    "translations": {
+      "fr": "Face femelle chromatique",
+      "de": "Schillernd weiblich vorne",
+      "es": "Frente hembra variocolor",
+      "ja": "色違い メス 正面"
+    }
+  },
+  "Shiny female back": {
+    "translations": {
+      "fr": "Dos femelle chromatique",
+      "de": "Schillernd weiblich hinten",
+      "es": "Espalda hembra variocolor",
+      "ja": "色違い メス 背面"
+    }
+  },
+  "Official artwork": {
+    "translations": {
+      "fr": "Illustration officielle",
+      "de": "Offizielles Artwork",
+      "es": "Ilustración oficial",
+      "ja": "公式イラスト"
+    }
+  },
+  "Shiny official artwork": {
+    "translations": {
+      "fr": "Illustration officielle chromatique",
+      "de": "Schillerndes offizielles Artwork",
+      "es": "Ilustración oficial variocolor",
+      "ja": "色違い 公式イラスト"
+    }
+  },
+  "Home": {
+    "translations": {
+      "fr": "HOME",
+      "de": "HOME",
+      "es": "HOME",
+      "ja": "HOME"
+    }
+  },
+  "Shiny Home": {
+    "translations": {
+      "fr": "HOME chromatique",
+      "de": "HOME schillernd",
+      "es": "HOME variocolor",
+      "ja": "色違い HOME"
+    }
+  },
+  "Female Home": {
+    "translations": {
+      "fr": "HOME femelle",
+      "de": "HOME weiblich",
+      "es": "HOME hembra",
+      "ja": "メス HOME"
+    }
+  },
+  "Shiny female Home": {
+    "translations": {
+      "fr": "HOME femelle chromatique",
+      "de": "HOME weiblich schillernd",
+      "es": "HOME hembra variocolor",
+      "ja": "色違い メス HOME"
+    }
+  },
+  "Forms": {
+    "translations": {
+      "fr": "Formes",
+      "de": "Formen",
+      "es": "Formas",
+      "ja": "すがた"
+    }
+  },
+  "Level": {
+    "translations": {
+      "fr": "Niveau",
+      "de": "Level",
+      "es": "Nivel",
+      "ja": "レベル"
+    }
+  },
+  "Machine": {
+    "translations": {
+      "fr": "CT",
+      "de": "TM",
+      "es": "MT",
+      "ja": "わざマシン"
+    }
+  },
+  "Egg": {
+    "translations": {
+      "fr": "Œuf",
+      "de": "Ei",
+      "es": "Huevo",
+      "ja": "タマゴ"
+    }
+  },
+  "Tutor": {
+    "translations": {
+      "fr": "Donneur de capacités",
+      "de": "Attacken-Lehrer",
+      "es": "Tutor",
+      "ja": "教え技"
+    }
+  },
+  "Move": {
+    "translations": {
+      "fr": "Capacité",
+      "de": "Attacke",
+      "es": "Movimiento",
+      "ja": "わざ"
+    }
+  },
+  "Type": {
+    "translations": {
+      "fr": "Type",
+      "de": "Typ",
+      "es": "Tipo",
+      "ja": "タイプ"
+    }
+  },
+  "Power": {
+    "translations": {
+      "fr": "Puissance",
+      "de": "Stärke",
+      "es": "Potencia",
+      "ja": "いりょく"
+    }
+  },
+  "Accuracy": {
+    "translations": {
+      "fr": "Précision",
+      "de": "Genauigkeit",
+      "es": "Precisión",
+      "ja": "めいちゅう"
+    }
+  },
+  "{count, plural, =0{It learns no moves this way.} one{It learns # move this way.} other{It learns # moves this way.}}": {
+    "translations": {
+      "fr": "{count, plural, =0{Il n’apprend aucune capacité de cette façon.} one{Il apprend # capacité de cette façon.} other{Il apprend # capacités de cette façon.}}",
+      "de": "{count, plural, =0{Es erlernt auf diesem Weg keine Attacke.} one{Es erlernt auf diesem Weg # Attacke.} other{Es erlernt auf diesem Weg # Attacken.}}",
+      "es": "{count, plural, =0{No aprende movimientos de esta forma.} one{Aprende # movimiento de esta forma.} other{Aprende # movimientos de esta forma.}}",
+      "ja": "{count, plural, =0{この方法で覚えるわざはありません。} other{この方法で覚えるわざは#個です。}}"
+    }
+  },
+  "{count, plural, one{# Pokémon} other{# Pokémon}}": {
+    "translations": {
+      "fr": "{count, plural, one{# Pokémon} other{# Pokémon}}",
+      "de": "{count, plural, one{# Pokémon} other{# Pokémon}}",
+      "es": "{count, plural, one{# Pokémon} other{# Pokémon}}",
+      "ja": "{count, plural, other{#匹}}"
+    }
+  },
+  "every region": {
+    "translations": {
+      "fr": "toutes les régions",
+      "de": "alle Regionen",
+      "es": "todas las regiones",
+      "ja": "全地方"
+    }
+  },
+  "Search this Pokédex": {
+    "translations": {
+      "fr": "Rechercher dans ce Pokédex",
+      "de": "Diesen Pokédex durchsuchen",
+      "es": "Buscar en esta Pokédex",
+      "ja": "この図鑑を検索"
+    }
+  },
+  "Loading": {
+    "translations": {
+      "fr": "Chargement",
+      "de": "Wird geladen",
+      "es": "Cargando",
+      "ja": "読み込み中"
+    }
+  },
+  "Loading {name}": {
+    "translations": {
+      "fr": "Chargement de {name}",
+      "de": "{name} wird geladen",
+      "es": "Cargando {name}",
+      "ja": "{name}を読み込み中"
+    }
+  },
+  "Could not load {name}: {why}": {
+    "translations": {
+      "fr": "Impossible de charger {name} : {why}",
+      "de": "{name} konnte nicht geladen werden: {why}",
+      "es": "No se pudo cargar {name}: {why}",
+      "ja": "{name}を読み込めませんでした：{why}"
+    }
+  },
+  "Could not load {name}'s types and stats: {why}": {
+    "translations": {
+      "fr": "Impossible de charger les types et les statistiques de {name} : {why}",
+      "de": "Typen und Werte von {name} konnten nicht geladen werden: {why}",
+      "es": "No se pudieron cargar los tipos y las estadísticas de {name}: {why}",
+      "ja": "{name}のタイプと能力を読み込めませんでした：{why}"
+    }
+  },
+  "Could not load the Pokédex: {why}": {
+    "translations": {
+      "fr": "Impossible de charger le Pokédex : {why}",
+      "de": "Der Pokédex konnte nicht geladen werden: {why}",
+      "es": "No se pudo cargar la Pokédex: {why}",
+      "ja": "図鑑を読み込めませんでした：{why}"
+    }
+  },
+  "{n} m": {
+    "translations": {
+      "fr": "{n} m",
+      "de": "{n} m",
+      "es": "{n} m",
+      "ja": "{n} m"
+    }
+  },
+  "{n} kg": {
+    "translations": {
+      "fr": "{n} kg",
+      "de": "{n} kg",
+      "es": "{n} kg",
+      "ja": "{n} kg"
+    }
+  },
+  "{count} {stat}": {
+    "translations": {
+      "fr": "{count} {stat}",
+      "de": "{count} {stat}",
+      "es": "{count} {stat}",
+      "ja": "{count} {stat}"
+    }
+  }
+}

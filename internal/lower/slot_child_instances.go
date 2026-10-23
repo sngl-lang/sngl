@@ -162,7 +162,7 @@ func (st *slotChildSynth) convertible(n *ir.NodeInst) bool {
 	simple := true
 	_ = ir.Walk(n, func(node ir.Node) error {
 		switch node.(type) {
-		case *ir.If, *ir.For, *ir.SlotInst, *ir.ErrorBoundary:
+		case *ir.If, *ir.Match, *ir.For, *ir.SlotInst, *ir.ErrorBoundary:
 			simple = false
 		}
 		return nil
@@ -235,12 +235,17 @@ func isDrawShape(n *ir.NodeInst) bool {
 	return n.Component != nil && ir.IsShapeFamily(n.Component.Family)
 }
 
-// handlerParams is the parameters of every handler under n, which no lifting
-// may make a prop of: nothing outside the handler binds them.
-func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
-	add := func(h *ir.EventHandler) {
-		if h != nil && h.Func != nil {
-			for _, p := range h.Func.Params {
+// handlerParams is the parameters of every handler and lambda under n, and
+// every local and loop variable a body under n declares, which no lifting may
+// make a prop of: nothing outside n binds them. A lambda in a prop's value
+// (`options.map(func(o) => o.label)`) is one: lifting its parameter handed
+// the instance an `o` the site never declared. A runtime instance's content
+// lifted whole (liftContent) and a test's read rebased through an instance
+// (rebaseKeeping) ask it too.
+func handlerParams(n any, into map[ir.Symbol]bool) map[ir.Symbol]bool {
+	add := func(f *ir.Func) {
+		if f != nil {
+			for _, p := range f.Params {
 				into[p] = true
 			}
 		}
@@ -249,10 +254,25 @@ func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 		switch x := node.(type) {
 		case *ir.NodeInst:
 			for i := range x.Handlers {
-				add(&x.Handlers[i])
+				add(x.Handlers[i].Func)
 			}
 		case *ir.ErrorBoundary:
-			add(x.Handler)
+			if x.Handler != nil {
+				add(x.Handler.Func)
+			}
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				into[x.Sym] = true
+			}
+		case *ir.For:
+			if x.KeySym != nil {
+				into[x.KeySym] = true
+			}
+			if x.ValueSym != nil {
+				into[x.ValueSym] = true
+			}
 		}
 		return nil
 	})
@@ -407,10 +427,12 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] || l.relayed[x.Sym] {
 				return node, nil
 			}
-			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &ir.Ident{
-				// The read as the site wrote it, before this walk repoints it.
-				Name: x.Name, Type: x.Type, Sym: x.Sym,
-			})
+			// The read as the site wrote it, before this walk repoints it, and
+			// marked as it was: a synthesized one -- the __ctx_locale the
+			// context lowering declares -- is the page's own binding, and
+			// rebuilt unmarked html read it off `state`, where nothing is.
+			site := *x
+			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &site)
 			x.Name = p.Name
 			x.Sym = p
 			return node, nil

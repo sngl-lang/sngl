@@ -98,6 +98,7 @@ type Box struct {
 }
 
 type text struct {
+	style       fyne.TextStyle
 	align       fyne.TextAlign
 	buttonAlign widget.ButtonAlign
 	wrap        fyne.TextWrap
@@ -110,7 +111,7 @@ func NewBox(content fyne.CanvasObject) *Box {
 	}
 	switch w := content.(type) {
 	case *widget.Label:
-		b.own.align, b.own.wrap = w.Alignment, w.Wrapping
+		b.own.style, b.own.align, b.own.wrap = w.TextStyle, w.Alignment, w.Wrapping
 	case *widget.Button:
 		b.own.buttonAlign = w.Alignment
 	case *widget.Entry:
@@ -173,7 +174,11 @@ func (b *Box) setText(l Look) {
 	}
 	switch w := b.Content.(type) {
 	case *widget.Label:
-		w.Alignment, w.Wrapping = align, wrap
+		// A label measures itself in its TextStyle's face, not its theme's,
+		// so the face the theme draws it in is its TextStyle's too.
+		style := b.own.style
+		style.Bold, style.Italic, style.Monospace = style.Bold || l.Bold, style.Italic || l.Italic, style.Monospace || l.Monospace
+		w.Alignment, w.Wrapping, w.TextStyle = align, wrap, style
 	case *widget.Button:
 		w.Alignment = buttonAlign
 	case *widget.Entry:

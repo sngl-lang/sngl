@@ -1,0 +1,101 @@
+{
+ "attributes": [],
+ "baby_trigger_for": null,
+ "category": {
+  "name": "evolution",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/item-category/10/"
+ },
+ "effect_entries": [
+  {
+   "effect": "Used on a party Pokémon\n:   Evolves an Alola Sandshrew into Alola Sandslash or an Alola Vulpix into Alola Ninetales.",
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "short_effect": "Evolves an Alola Sandshrew into Alola Sandslash or an Alola Vulpix into Alola Ninetales."
+  }
+ ],
+ "flavor_text_entries": [
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "text": "A peculiar stone that can make certain species of\nPokémon evolve. It has an unmistakable\nsnowflake pattern.",
+   "version_group": {
+    "name": "sun-moon",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/version-group/17/"
+   }
+  }
+ ],
+ "fling_effect": null,
+ "fling_power": 30,
+ "game_indices": [
+  {
+   "game_index": 849,
+   "generation": {
+    "name": "generation-vii",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/7/"
+   }
+  },
+  {
+   "game_index": 849,
+   "generation": {
+    "name": "generation-viii",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/8/"
+   }
+  }
+ ],
+ "held_by_pokemon": [],
+ "id": 885,
+ "machines": [],
+ "name": "ice-stone",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "こおりのいし"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Pierre Glace"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Eisstein"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Piedra Hielo"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Ice Stone"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "こおりのいし"
+  }
+ ],
+ "prices": [],
+ "sprites": {
+  "default": "http://127.0.0.1:47819/dot.png"
+ }
+}

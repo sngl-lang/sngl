@@ -131,6 +131,12 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 			if stmtsUseErrorHandling(x.Body) || stmtsUseErrorHandling(x.Else) {
 				return true
 			}
+		case *ir.Match:
+			for _, arm := range x.Arms {
+				if stmtsUseErrorHandling(arm.Body) {
+					return true
+				}
+			}
 		case *ir.For:
 			if stmtsUseErrorHandling(x.Body) || stmtsUseErrorHandling(x.Else) {
 				return true

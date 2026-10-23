@@ -1,0 +1,179 @@
+# A test's read of a node's prop is the value the node is drawn with, so what
+# it reads of a context is the value of the provider the node is mounted
+# beneath -- one in the instance's own body, or one around the call site of an
+# instance on the way to it -- and the test's own value only where no provider
+# stands between the test's instance and the node. A test is a root: what it
+# reads itself, and what a func it calls reads, is its own.
+#
+# The read is the expression the node's call site gave, read through the
+# instance (design/testing.md), and the compiled targets read its context
+# where the test stands: `c.inside.label.value` read the test's "plain", so
+# a page's words read in English after a test chose French above them.
+# context_through_slot.txt is the same claim for the interpreter alone.
+
+sngl test --platform=none app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +3 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+context #tone("plain")
+
+func said(s string) => tone == "plain" ? s : "{s} ({tone})"
+
+component leaf ui.node {
+    ui.text #label(value=said("hi"))
+}
+
+// A leaf under a provider of its own body's, and one under none.
+component pair ui.node {
+    tone("soft") {
+        leaf #near
+    }
+    leaf #far
+}
+
+component probe ui.node {
+    var picked = "loud"
+
+    ui.select #pick(:value=picked) {
+        ui.choice(label="loud")
+        ui.choice(label="quiet")
+    }
+    tone(picked) {
+        leaf #inside
+        ui.text #own(value=said("yo"))
+    }
+    leaf #outside
+    pair #both
+}
+
+func testAReadIsUnderTheProviderAroundTheNode(t test.Test, c probe) {
+    t.assert(c.own.value == "yo (loud)")
+    t.assert(c.inside.label.value == "hi (loud)")
+    t.assert(c.outside.label.value == "hi")
+    t.assert(c.both.near.label.value == "hi (soft)")
+    t.assert(c.both.far.label.value == "hi")
+}
+
+func testAReadFollowsTheProvidersValue(t test.Test, c probe) {
+    c.pick.change("quiet")
+    t.assert(c.picked == "quiet")
+    t.assert(c.own.value == "yo (quiet)")
+    t.assert(c.inside.label.value == "hi (quiet)")
+}
+
+// The test's own value is a provider around the test's instance, and over
+// what the test reads itself.
+func testATestsValueIsUnderNoProvider(t test.Test, c probe) {
+    t.setContext(tone, "dim")
+    t.assert(said("hey") == "hey (dim)")
+    t.assert(c.outside.label.value == "hi (dim)")
+    t.assert(c.both.far.label.value == "hi (dim)")
+    t.assert(c.inside.label.value == "hi (loud)")
+}
+
+ui.window {
+    probe()
+}
+-- testrun/android/kotlin/app.sngl/probe/1 --
+sha256:5df08068c4e140c98578ba1ccf1b34ef
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/probe/1 --
+sha256:c5bac889887d3b728c26336d9ae6a35f
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/probe/1 --
+sha256:ea0c4cdb7c55bad6cae660bd2c95188e
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/probe/1 --
+sha256:126219e464a3a5ce8853eef02f22cbfe
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/probe/1 --
+sha256:d73d820d1446d1d46bc4e9928c6cf325
+{
+  "results": [
+    {
+      "Desc": "AReadFollowsTheProvidersValue",
+      "Passed": true
+    },
+    {
+      "Desc": "AReadIsUnderTheProviderAroundTheNode",
+      "Passed": true
+    },
+    {
+      "Desc": "ATestsValueIsUnderNoProvider",
+      "Passed": true
+    }
+  ]
+}

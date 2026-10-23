@@ -36,6 +36,13 @@ func TestScript(t *testing.T) {
 		}
 	}
 	goEnvFile = hostGoEnvFile()
+	// A script copies what the repository ships -- the examples -- from here
+	// rather than holding a second copy of it.
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	startTestHTTP(t, root)
 	conds := scripttest.DefaultConds()
 	// `gtk4` is true when the gtk4 development libraries are installed, so the
 	// generated cgo can be compiled.
@@ -103,7 +110,7 @@ func TestScript(t *testing.T) {
 			// records its own. GOENV is pinned first, since the go command
 			// finds its own config under the same directory.
 			work := t.TempDir()
-			env := append(os.Environ(), "WORK="+work, "GOENV="+goEnvFile, "XDG_CONFIG_HOME="+filepath.Join(work, "config"))
+			env := append(os.Environ(), "WORK="+work, "GOENV="+goEnvFile, "XDG_CONFIG_HOME="+filepath.Join(work, "config"), "SNGL_ROOT="+root)
 			s, err := script.NewState(context.Background(), work, env)
 			if err != nil {
 				t.Fatal(err)

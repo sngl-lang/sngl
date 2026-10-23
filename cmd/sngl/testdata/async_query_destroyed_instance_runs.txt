@@ -1,0 +1,123 @@
+# A query in a component built at run time, the component removed before its
+# answer lands: a detail page under an `if`, left while it is still asking.
+#
+# The removal tears the instance down, and the teardown bumps the query's
+# attempt, so the answer is stale -- but a stale answer still settles, and a
+# settle of a torn-down instance found the bracket it had just let go of
+# wanted and mounted it again. That mount asked a second time and rendered
+# into the instance's freed box, and its answer was not stale: gtk4 reported
+# GTK_IS_BOX failures and then crashed in sngl_slot_anchor, and every target
+# fired `@load` from an instance no longer on screen.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(k string) async.Result[string] {
+    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+        failed { return {failed=r} }
+        ok { return {ok=k} }
+    }
+}
+
+component pane(seen func()) ui.node {
+    var busy = false
+    var answer option[string] = null
+    var more option[string] = null
+    async.query(on="a", fetch=lookup, :value=answer, :pending=busy, @load(got) { seen() })
+    if answer != null {
+        async.query(on=answer + "b", fetch=lookup, :value=more, @load(got) { seen() })
+    }
+    if busy {
+        ui.text(value="asking")
+    }
+    ui.text(value=more != null ? more : "-")
+}
+
+component page ui.node {
+    var open = false
+    var loads = 0
+    if open {
+        pane(seen=func() { loads += 1 })
+    }
+    ui.button #show(text="show", @click { open = true })
+    ui.button #hide(text="hide", @click { open = false })
+}
+
+func testAPaneRemovedWhileAskingAnswersNothing(t test.Test, c page) {
+    c.show.click()
+    c.hide.click()
+    // The interpreter and android answer at mount, before the hide.
+    var gone = c.loads
+    t.wait(func() => c.loads > gone, 1000)
+    t.assert(c.loads == gone)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:d76607917c2fd30def83ebccdc6c2af5
+{
+  "results": [
+    {
+      "Desc": "APaneRemovedWhileAskingAnswersNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:441b4bd2e92839459818801b2e2a4e4c
+{
+  "results": [
+    {
+      "Desc": "APaneRemovedWhileAskingAnswersNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:2dcf9bb513e33c483290aea078f0f2cc
+{
+  "results": [
+    {
+      "Desc": "APaneRemovedWhileAskingAnswersNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:6b955d975d45711a820d9eb1a87868bd
+{
+  "results": [
+    {
+      "Desc": "APaneRemovedWhileAskingAnswersNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:409a6fc64a90472e616d5a5b1cf56d1d
+{
+  "results": [
+    {
+      "Desc": "APaneRemovedWhileAskingAnswersNothing",
+      "Passed": true
+    }
+  ]
+}

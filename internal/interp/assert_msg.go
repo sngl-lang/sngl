@@ -267,7 +267,7 @@ func compareOp(op ast.BinaryOp, left, right any) (bool, error) {
 		if err := orderable(left, right); err != nil {
 			return false, err
 		}
-		switch cmp := compareNum(left, right); op {
+		switch cmp := compareOrdered(left, right); op {
 		case ast.BinLt:
 			return cmp < 0, nil
 		case ast.BinLte:
@@ -366,6 +366,10 @@ func IRASTOf(e ir.Expr) ast.Expr {
 			return x.AST
 		}
 	case *ir.Ternary:
+		if x.AST != nil {
+			return x.AST
+		}
+	case *ir.MatchExpr:
 		if x.AST != nil {
 			return x.AST
 		}

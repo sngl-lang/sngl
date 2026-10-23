@@ -341,6 +341,47 @@ func forwardingDescendant(n *Node, event string) (*Node, string) {
 	return find(n.Children)
 }
 
+// Choosing is the node the view rendered, in mount order, whose handler emits
+// event with the index of the loop copy it is, at the index arg names, and that
+// handler's name: what a trigger of event presses where no node reports it
+// itself (ir.EmittedIndex) -- `c.strip.change(1)` on a tab strip presses the
+// tab at 1, whose click writes `selected` and emits the change, as a user's
+// press would.
+func (v *View) Choosing(event string, arg any) (*Node, string) {
+	if v == nil {
+		return nil, ""
+	}
+	var find func(ns []*Node) (*Node, string)
+	find = func(ns []*Node) (*Node, string) {
+		for _, k := range ns {
+			for _, h := range k.Handlers {
+				fn, ok := h.Body.(*ir.Func)
+				// Only what the component's own body wrote emits its events: a
+				// panel's nodes are the writer's.
+				if !ok || k.Env == nil || k.Owner != v.owner {
+					continue
+				}
+				lv := ir.EmittedIndex(fn.Block, event)
+				if lv == nil {
+					continue
+				}
+				at, err := k.Env.Eval(&ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv})
+				if err != nil {
+					continue
+				}
+				if eq, ok := Equal(at, arg); ok && eq {
+					return k, h.Name
+				}
+			}
+			if d, name := find(k.Children); d != nil {
+				return d, name
+			}
+		}
+		return nil, ""
+	}
+	return find(v.Roots)
+}
+
 // instanceBody is what the component instance a handle map names rendered: n
 // itself once its body is mounted beneath it, and otherwise a mount of the
 // instance's own scope. A map a test reads off a handle was taken when the
@@ -534,6 +575,12 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 		return prefix + "/" + s
 	}
 
+	// Visited whether or not it renders a child: one whose only child sat
+	// under an `if` that went false still holds that child's state.
+	if m.visited != nil {
+		m.visited[env] = true
+	}
+
 	// A `var` written in the list is state of the block: the list mounts in a
 	// scope of its own, kept across mounts by its path as a component's is,
 	// and dropped with it when a mount no longer reaches it.
@@ -570,6 +617,18 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 				branch, path = n.Body, p+":then"
 			}
 			nodes, err := m.stmts(env, branch, path)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, nodes...)
+
+		case *ir.Match:
+			p := join(fmt.Sprintf("match@%d", next("match")))
+			i, err := env.matchArm(&n.MatchArms)
+			if err != nil || i < 0 {
+				continue
+			}
+			nodes, err := m.stmts(env, n.Arms[i].Body, fmt.Sprintf("%s:arm%d", p, i))
 			if err != nil {
 				return nil, err
 			}
@@ -916,6 +975,7 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
 	nodes, err := m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	cenv.writeBackMountCopies()
 	m.owner, m.iters, m.supplied, m.base = prevOwner, prevIters, prevSupplied, prevBase
 	m.push(frame)
 	// Content that renders nothing is the fallback's place as much as no
@@ -971,7 +1031,9 @@ func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, err
 	owner := m.owner
 	m.owner = nil
 	defer func() { m.owner = owner }()
-	return m.stmts(cenv, content.Body, path+"/supplied:"+x.Name)
+	nodes, err := m.stmts(cenv, content.Body, path+"/supplied:"+x.Name)
+	cenv.writeBackMountCopies()
+	return nodes, err
 }
 
 // mountBody mounts a component instance's own body, whose nodes are that
@@ -1023,6 +1085,7 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 		m.iters = append(slices.Clip(iters), copyPath)
 		m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: f})
 		nodes, err := m.stmts(child, f.Body, copyPath)
+		child.writeBackMountCopies()
 		if err != nil {
 			return nil, err
 		}
@@ -1128,6 +1191,7 @@ func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
 	child.Pkg = env.Pkg
 	child.handling = env.handling
 	child.wlog = env.writes()
+	child.handles = env.owned()
 	child.Units = env.Units
 	child.Comp = env.Comp
 	child.parent = env

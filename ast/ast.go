@@ -109,11 +109,15 @@ func (d *Document) BlankBefore(line int) bool {
 
 // --- Type declarations ---
 
-// EnumMember is a single value in an enum declaration.
+// EnumMember is a single value in an enum declaration. Payload is the type
+// the member carries, nil for one that carries none; a member with a payload
+// takes no Value.
 type EnumMember struct {
-	Pos   Pos
-	Name  string
-	Value Expr // nil for bare members
+	Pos     Pos
+	Name    string
+	Payload TypeExpr    `json:",omitempty"`
+	Value   Expr        // nil for bare members
+	Attrs   []MacroAttr `json:",omitempty"`
 }
 
 // EnumBodyItem is one element inside an enum body — a member or a nested func.
@@ -133,6 +137,7 @@ func (*Comment) enumBodyItem() {}
 type EnumDef struct {
 	Pos         Pos
 	Name        string
+	TypeParams  []TypeParam    `json:",omitempty"` // generic parameters: ["T"] for `enum Result[T any] {…}`
 	Body        []EnumBodyItem // members and nested funcs, in source order
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
@@ -539,7 +544,11 @@ type ForStmt struct {
 // are conditions. The grammar takes either arm form in either position, and
 // the checker refuses the one that does not belong where the match is written.
 type Match struct {
-	Pos     Pos
+	Pos Pos
+	// Bind is the name `match var v = subject` gives the subject for the
+	// arms, at BindPos; "" where the head names nothing.
+	Bind    string
+	BindPos Pos
 	Subject Expr
 	Arms    []*MatchArm
 	// Head is the comment written after the opening brace on its line.
@@ -596,6 +605,7 @@ func (s *StructDef) StmtPos() *Pos { return &s.Pos }
 
 // A field is a Stmt only so it can carry marks; nothing executes it.
 func (f *StructField) StmtPos() *Pos { return &f.Pos }
+func (m *EnumMember) StmtPos() *Pos  { return &m.Pos }
 
 func (e *EnumDef) StmtPos() *Pos       { return &e.Pos }
 func (u *UnitDef) StmtPos() *Pos       { return &u.Pos }

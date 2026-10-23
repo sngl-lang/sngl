@@ -2,8 +2,11 @@ package interp
 
 import (
 	"fmt"
+	"path/filepath"
+	"sync"
 
 	"duckfam.us/sngl/ir"
+	goi18n "duckfam.us/sngl/pkg/go/i18n"
 )
 
 // BuildEnv creates an Env populated for evaluation in the scope of the given
@@ -14,8 +17,17 @@ import (
 // is evaluated here, before BuildEnv returns, so a caller that assigned the
 // field afterwards had already read the wall clock. Nil is the wall clock.
 func BuildEnv(pkg *ir.Package, compName string, clock Clock) (*Env, error) {
+	return BuildSimulatedEnv(pkg, compName, clock, "")
+}
+
+// BuildSimulatedEnv is BuildEnv for a package PrepareFor specialized for
+// platform, whose natives it stubs: each call answers a zero value, or a fresh
+// handle where it returns an owned type, and does with its arguments what the
+// declaration says. Set before the initializers run, for the reason clock is.
+func BuildSimulatedEnv(pkg *ir.Package, compName string, clock Clock, platform string) (*Env, error) {
 	env := newPackageEnv(pkg)
 	env.Clock = clock
+	env.owned().simulated = platform
 	if compName == "" {
 		seedPackageState(env, pkg)
 		return env, nil
@@ -215,4 +227,28 @@ func FindComponent(pkg *ir.Package, name string) *ir.Component {
 		}
 	}
 	return nil
+}
+
+// manifests holds each i18n.manifest.json read, by path: a test run builds a
+// package env per test.
+var manifests sync.Map // map[string]goi18n.Manifest
+
+// manifestBeside is the i18n.manifest.json in the directory of the source at
+// `path`, where every generator finds a package's manifest; nil where there is
+// none, or no path. A manifest that does not parse is none, as an absent one
+// is: the inlined templates answer.
+func manifestBeside(path string) goi18n.Manifest {
+	if path == "" {
+		return nil
+	}
+	file := filepath.Join(filepath.Dir(path), "i18n.manifest.json")
+	if m, ok := manifests.Load(file); ok {
+		return m.(goi18n.Manifest)
+	}
+	m, err := goi18n.LoadManifestFromFile(file)
+	if err != nil {
+		m = nil
+	}
+	manifests.Store(file, m)
+	return m
 }

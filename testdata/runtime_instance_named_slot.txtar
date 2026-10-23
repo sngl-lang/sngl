@@ -181,11 +181,16 @@ type modelState struct {
 	mounted             string
 	rows__inst0         map[string][]int
 	rows__inst1         map[string][]int
-	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
+	__effect1_key       string
+	__effect1_live      []string
+	__effect1_desired   []string
+	__effect2_live      []string
+	__effect2_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 	__focusLoop1_cursor int
@@ -201,11 +206,16 @@ func New() Model {
 	m.mounted = ""
 	m.rows__inst0 = map[string][]int{}
 	m.rows__inst1 = map[string][]int{}
-	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
+	m.__effect1_key = ""
+	m.__effect1_live = []string{}
+	m.__effect1_desired = []string{}
+	m.__effect2_live = []string{}
+	m.__effect2_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
@@ -222,13 +232,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -278,136 +288,178 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
 }
 
-func (m *Model) __effect0_mount() {
-	m.mounted = ((m.mounted + m.__effect0_key) + " ")
-}
-
-func (m *Model) __effect0_down() {
+func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
+	for __copy0, i := range m.items {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			__cell1_rows__inst0 := func() []int {
+				if __v, __ok := m.rows__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return []int{}
+			}()
+			__cell1_rows__inst0 = []int{i, (i + 10)}
+			m.rows__inst0[fmt.Sprint(__copy0)] = __cell1_rows__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_mount() {
+	m.mounted = ((m.mounted + m.__effect1_key) + " ")
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []string{}
 	for __copy0, i := range m.items {
 		for _, r := range func() []int {
 			if __v, __ok := m.rows__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return []int{i, (i + 10)}
+			return []int{}
 		}() {
-			m.__effect0_desired = append(m.__effect0_desired, ((fmt.Sprint(i) + ":") + fmt.Sprint(r)))
+			m.__effect1_desired = append(m.__effect1_desired, ((fmt.Sprint(i) + ":") + fmt.Sprint(r)))
 		}
 	}
 }
 
-func (m *Model) __effect0_up() {
-	for __effect0_i, __effect0_k := range m.__effect0_desired {
-		if __effect0_i >= len(m.__effect0_live) {
-			m.__effect0_key = __effect0_k
-			m.__effect0_mount()
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
 		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
-				m.__effect0_key = __effect0_k
-				m.__effect0_mount()
+			if m.__effect1_live[__effect1_i] != __effect1_k {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
 			}
 		}
 	}
-	m.__effect0_live = m.__effect0_desired
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effect2_enter() {
+	m.__effect2_desired = []string{}
+	for __copy0, i := range m.items {
+		__effect2_fresh := true
+		if len(m.__effect2_desired) < len(m.__effect2_live) {
+			__effect2_fresh = (m.__effect2_live[len(m.__effect2_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect2_fresh {
+			__cell1_rows__inst1 := func() []int {
+				if __v, __ok := m.rows__inst1[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return []int{}
+			}()
+			__cell1_rows__inst1 = []int{i, (i + 10)}
+			m.rows__inst1[fmt.Sprint(__copy0)] = __cell1_rows__inst1
+		}
+		m.__effect2_desired = append(m.__effect2_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect2_live = m.__effect2_desired
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect2_enter()
+				m.__effect1_down()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -578,14 +630,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = i
 					if m.__focusLoop1_cursor == __focusPos1 {
-						__cell1_rows__inst0 := func() []int {
+						__cell2_rows__inst0 := func() []int {
 							if __v, __ok := m.rows__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
-							return []int{i, (i + 10)}
+							return []int{}
 						}()
-						__cell1_rows__inst0 = append(__cell1_rows__inst0, (i + 100))
-						m.rows__inst0[fmt.Sprint(__copy0)] = __cell1_rows__inst0
+						__cell2_rows__inst0 = append(__cell2_rows__inst0, (i + 100))
+						m.rows__inst0[fmt.Sprint(__copy0)] = __cell2_rows__inst0
 						m.__effects0_settle()
 						return
 					}
@@ -599,14 +651,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = i
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__cell1_rows__inst1 := func() []int {
+						__cell2_rows__inst1 := func() []int {
 							if __v, __ok := m.rows__inst1[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
-							return []int{i, (i + 10)}
+							return []int{}
 						}()
-						__cell1_rows__inst1 = append(__cell1_rows__inst1, (i + 100))
-						m.rows__inst1[fmt.Sprint(__copy0)] = __cell1_rows__inst1
+						__cell2_rows__inst1 = append(__cell2_rows__inst1, (i + 100))
+						m.rows__inst1[fmt.Sprint(__copy0)] = __cell2_rows__inst1
 						return
 					}
 					__focusPos2++
@@ -662,7 +714,7 @@ func (m Model) View() tea.View {
 			if __v, __ok := m.rows__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return []int{i, (i + 10)}
+			return []int{}
 		}() {
 			_ = r
 			var part0_1Item_1Item string
@@ -705,7 +757,7 @@ func (m Model) View() tea.View {
 			if __v, __ok := m.rows__inst1[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return []int{i, (i + 10)}
+			return []int{}
 		}() {
 			var part0_2Item_1Item string
 			part0_2Item_1Item = BoxLook(Style{}, true).Render(fmt.Sprint("empty"))
@@ -777,19 +829,23 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	items        []int
-	mounted      string
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
-	__inst1_live []*Card__slot0Instance
-	__slot3      []fyne.CanvasObject
-	__slot3_at   fyne.CanvasObject
-	__inst2_live []*CardInstance
+	items          []int
+	mounted        string
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__slot2        []fyne.CanvasObject
+	__slot2_at     fyne.CanvasObject
+	__inst1_live   []*Card__slot0Instance
+	__rendering2   bool
+	__renderAgain2 bool
+	__slot3        []fyne.CanvasObject
+	__slot3_at     fyne.CanvasObject
+	__inst2_live   []*CardInstance
+	__rendering3   bool
+	__renderAgain3 bool
 
 	__n7 *fyne.Container
 	add  *widget.Button
@@ -808,86 +864,110 @@ func New() *Model {
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst1_live = []*Card__slot0Instance{}
+	m.__rendering2 = false
+	m.__renderAgain2 = false
 	m.__slot3 = nil
 	m.__slot3_at = nil
 	m.__inst2_live = []*CardInstance{}
+	m.__rendering3 = false
+	m.__renderAgain3 = false
 	return m
 }
 
 func (m *Model) __renderSlot2(__parent *fyne.Container) {
-	for _, __entry := range m.__slot2 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot2 = nil
-	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
-	__inst1_next := []*Card__slot0Instance{}
-	var __inst1_i int = 0
-	for _, i := range m.items {
-		var __n5 *Card__slot0Instance
-		if len(m.__inst1_live) > __inst1_i {
-			__n5 = m.__inst1_live[__inst1_i]
-			__n5.SetStart(i)
-			__n5.Set__p0(i)
-			__n5.Set__on0(func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+	if m.__rendering2 {
+		m.__renderAgain2 = true
+	} else {
+		m.__rendering2 = true
+		m.__renderAgain2 = true
+		for m.__renderAgain2 {
+			m.__renderAgain2 = false
+			for _, __entry := range m.__slot2 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n5__new := newCard__slot0Instance(m, i, i, func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-			__n5 = __n5__new
+			m.__slot2 = nil
+			m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
+			__inst1_next := []*Card__slot0Instance{}
+			var __inst1_i int = 0
+			for _, i := range m.items {
+				var __n5 *Card__slot0Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n5 = m.__inst1_live[__inst1_i]
+					__n5.Set__on0(func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n5.SetStart(i)
+					__n5.Set__p0(i)
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n5__new := newCard__slot0Instance(m, i, i, func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n5 = __n5__new
+				}
+				__inst1_next = append(__inst1_next, __n5)
+				__inst1_i = (__inst1_i + 1)
+				__n5__el := __n5.Root
+				fynelayout.InsertBefore(__parent, m.__slot2_at, __n5__el)
+				m.__slot2 = append(m.__slot2, __n5__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n5)
-		__inst1_i = (__inst1_i + 1)
-		__n5__el := __n5.Root
-		fynelayout.InsertBefore(__parent, m.__slot2_at, __n5__el)
-		m.__slot2 = append(m.__slot2, __n5__el)
+		m.__rendering2 = false
 	}
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) __renderSlot3(__parent *fyne.Container) {
-	for _, __entry := range m.__slot3 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot3 = nil
-	m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
-	__inst2_next := []*CardInstance{}
-	var __inst2_i int = 0
-	for _, i := range m.items {
-		var __n6 *CardInstance
-		if len(m.__inst2_live) > __inst2_i {
-			__n6 = m.__inst2_live[__inst2_i]
-			__n6.SetStart(i)
-		} else {
-			if len(m.__inst2_live) > __inst2_i {
-				m.__inst2_live[__inst2_i].Destroy()
+	if m.__rendering3 {
+		m.__renderAgain3 = true
+	} else {
+		m.__rendering3 = true
+		m.__renderAgain3 = true
+		for m.__renderAgain3 {
+			m.__renderAgain3 = false
+			for _, __entry := range m.__slot3 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n6__new := newCardInstance(m, i)
-			__n6 = __n6__new
+			m.__slot3 = nil
+			m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
+			__inst2_next := []*CardInstance{}
+			var __inst2_i int = 0
+			for _, i := range m.items {
+				var __n6 *CardInstance
+				if len(m.__inst2_live) > __inst2_i {
+					__n6 = m.__inst2_live[__inst2_i]
+					__n6.SetStart(i)
+				} else {
+					if len(m.__inst2_live) > __inst2_i {
+						m.__inst2_live[__inst2_i].Destroy()
+					}
+					__n6__new := newCardInstance(m, i)
+					__n6 = __n6__new
+				}
+				__inst2_next = append(__inst2_next, __n6)
+				__inst2_i = (__inst2_i + 1)
+				__n6__el := __n6.Root
+				fynelayout.InsertBefore(__parent, m.__slot3_at, __n6__el)
+				m.__slot3 = append(m.__slot3, __n6__el)
+			}
+			for __inst2_i_d, _ := range m.__inst2_live {
+				var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
+				if __inst2_i_j >= __inst2_i {
+					m.__inst2_live[__inst2_i_j].Destroy()
+				}
+			}
+			m.__inst2_live = __inst2_next
 		}
-		__inst2_next = append(__inst2_next, __n6)
-		__inst2_i = (__inst2_i + 1)
-		__n6__el := __n6.Root
-		fynelayout.InsertBefore(__parent, m.__slot3_at, __n6__el)
-		m.__slot3 = append(m.__slot3, __n6__el)
+		m.__rendering3 = false
 	}
-	for __inst2_i_d, _ := range m.__inst2_live {
-		var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
-		if __inst2_i_j >= __inst2_i {
-			m.__inst2_live[__inst2_i_j].Destroy()
-		}
-	}
-	m.__inst2_live = __inst2_next
 }
 
 func (m *Model) add_click_handler() {
@@ -934,20 +1014,22 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // CardInstance is one live instance of the Card component.
 type CardInstance struct {
-	Root         fyne.CanvasObject
-	__model      *Model
-	__prop_start int
-	rows         []int
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__slot1      []fyne.CanvasObject
-	__slot1_at   fyne.CanvasObject
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
-	__slot3      []fyne.CanvasObject
-	__slot3_at   fyne.CanvasObject
-	__n2         *fyne.Container
+	Root           fyne.CanvasObject
+	__model        *Model
+	__prop_start   int
+	rows           []int
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__rendering0   bool
+	__renderAgain0 bool
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__slot2        []fyne.CanvasObject
+	__slot2_at     fyne.CanvasObject
+	__slot3        []fyne.CanvasObject
+	__slot3_at     fyne.CanvasObject
+	__n2           *fyne.Container
 }
 
 func newCardInstance(__model *Model, __a_start int) *CardInstance {
@@ -957,6 +1039,8 @@ func newCardInstance(__model *Model, __a_start int) *CardInstance {
 	c.rows = []int{c.__prop_start, (c.__prop_start + 10)}
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
+	c.__rendering0 = false
+	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
@@ -978,16 +1062,26 @@ func (c *CardInstance) SetStart(__v int) {
 }
 
 func (c *CardInstance) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range c.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot0 = nil
-	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
-	for range c.rows {
-		__n1 := widget.NewLabel("")
-		__n1.SetText("empty")
-		fynelayout.InsertBefore(__parent, c.__slot0_at, __n1)
-		c.__slot0 = append(c.__slot0, __n1)
+	if c.__rendering0 {
+		c.__renderAgain0 = true
+	} else {
+		c.__rendering0 = true
+		c.__renderAgain0 = true
+		for c.__renderAgain0 {
+			c.__renderAgain0 = false
+			for _, __entry := range c.__slot0 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			c.__slot0 = nil
+			c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
+			for range c.rows {
+				__n1 := widget.NewLabel("")
+				__n1.SetText("empty")
+				fynelayout.InsertBefore(__parent, c.__slot0_at, __n1)
+				c.__slot0 = append(c.__slot0, __n1)
+			}
+		}
+		c.__rendering0 = false
 	}
 }
 
@@ -1006,6 +1100,7 @@ type Card__slot0Instance struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -1013,6 +1108,8 @@ type Card__slot0Instance struct {
 	__slot1             []fyne.CanvasObject
 	__slot1_at          fyne.CanvasObject
 	__inst0_live        []*__child0Instance
+	__rendering1        bool
+	__renderAgain1      bool
 	__slot2             []fyne.CanvasObject
 	__slot2_at          fyne.CanvasObject
 	__slot3             []fyne.CanvasObject
@@ -1032,11 +1129,14 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effect0_desired = []string{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst0_live = []*__child0Instance{}
+	c.__rendering1 = false
+	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n4 = fynelayout.NewVBox()
@@ -1081,21 +1181,23 @@ func (c *Card__slot0Instance) __effect0_up() {
 }
 
 func (c *Card__slot0Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1118,39 +1220,49 @@ func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 }
 
 func (c *Card__slot0Instance) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range c.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	c.__slot1 = nil
-	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
-	__inst0_next := []*__child0Instance{}
-	var __inst0_i int = 0
-	for _, r := range c.rows {
-		var __n3 *__child0Instance
-		if len(c.__inst0_live) > __inst0_i {
-			__n3 = c.__inst0_live[__inst0_i]
-			__n3.Set__p0(c.__prop___p0)
-			__n3.Set__p1(r)
-		} else {
-			if len(c.__inst0_live) > __inst0_i {
-				c.__inst0_live[__inst0_i].Destroy()
+	if c.__rendering1 {
+		c.__renderAgain1 = true
+	} else {
+		c.__rendering1 = true
+		c.__renderAgain1 = true
+		for c.__renderAgain1 {
+			c.__renderAgain1 = false
+			for _, __entry := range c.__slot1 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n3__new := new__child0Instance(c.__model, c.__prop___p0, r)
-			__n3 = __n3__new
+			c.__slot1 = nil
+			c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			for _, r := range c.rows {
+				var __n3 *__child0Instance
+				if len(c.__inst0_live) > __inst0_i {
+					__n3 = c.__inst0_live[__inst0_i]
+					__n3.Set__p0(c.__prop___p0)
+					__n3.Set__p1(r)
+				} else {
+					if len(c.__inst0_live) > __inst0_i {
+						c.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := new__child0Instance(c.__model, c.__prop___p0, r)
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				fynelayout.InsertBefore(__parent, c.__slot1_at, __n3__el)
+				c.__slot1 = append(c.__slot1, __n3__el)
+			}
+			for __inst0_i_d, _ := range c.__inst0_live {
+				var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					c.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			c.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, c.__slot1_at, __n3__el)
-		c.__slot1 = append(c.__slot1, __n3__el)
+		c.__rendering1 = false
 	}
-	for __inst0_i_d, _ := range c.__inst0_live {
-		var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			c.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	c.__inst0_live = __inst0_next
 }
 
 func (c *Card__slot0Instance) Destroy() {
@@ -1269,21 +1381,25 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	items        []int
-	mounted      string
-	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
-	__inst1_live []*Card__slot0Instance
-	__slot3      []gtk4rt.Handle
-	__slot3_at   gtk4rt.Handle
-	__inst2_live []*CardInstance
-	__n7         gtk4rt.Handle
-	add          gtk4rt.Handle
+	items          []int
+	mounted        string
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
+	__slot2        []gtk4rt.Handle
+	__slot2_at     gtk4rt.Handle
+	__inst1_live   []*Card__slot0Instance
+	__rendering2   bool
+	__renderAgain2 bool
+	__slot3        []gtk4rt.Handle
+	__slot3_at     gtk4rt.Handle
+	__inst2_live   []*CardInstance
+	__rendering3   bool
+	__renderAgain3 bool
+	__n7           gtk4rt.Handle
+	add            gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -1300,86 +1416,110 @@ func New() *Model {
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst1_live = []*Card__slot0Instance{}
+	m.__rendering2 = false
+	m.__renderAgain2 = false
 	m.__slot3 = nil
 	m.__slot3_at = nil
 	m.__inst2_live = []*CardInstance{}
+	m.__rendering3 = false
+	m.__renderAgain3 = false
 	return m
 }
 
 func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot2 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot2 = nil
-	m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
-	__inst1_next := []*Card__slot0Instance{}
-	var __inst1_i int = 0
-	for _, i := range m.items {
-		var __n5 *Card__slot0Instance
-		if len(m.__inst1_live) > __inst1_i {
-			__n5 = m.__inst1_live[__inst1_i]
-			__n5.SetStart(i)
-			__n5.Set__p0(i)
-			__n5.Set__on0(func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+	if m.__rendering2 {
+		m.__renderAgain2 = true
+	} else {
+		m.__rendering2 = true
+		m.__renderAgain2 = true
+		for m.__renderAgain2 {
+			m.__renderAgain2 = false
+			for _, __entry := range m.__slot2 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n5__new := newCard__slot0Instance(m, i, i, func(k string) {
-				m.mounted = ((m.mounted + k) + " ")
-			})
-			__n5 = __n5__new
+			m.__slot2 = nil
+			m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
+			__inst1_next := []*Card__slot0Instance{}
+			var __inst1_i int = 0
+			for _, i := range m.items {
+				var __n5 *Card__slot0Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n5 = m.__inst1_live[__inst1_i]
+					__n5.Set__on0(func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n5.SetStart(i)
+					__n5.Set__p0(i)
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n5__new := newCard__slot0Instance(m, i, i, func(k string) {
+						m.mounted = ((m.mounted + k) + " ")
+					})
+					__n5 = __n5__new
+				}
+				__inst1_next = append(__inst1_next, __n5)
+				__inst1_i = (__inst1_i + 1)
+				__n5__el := __n5.Root
+				gtk4rt.InsertBefore(parent, m.__slot2_at, __n5__el)
+				m.__slot2 = append(m.__slot2, __n5__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n5)
-		__inst1_i = (__inst1_i + 1)
-		__n5__el := __n5.Root
-		gtk4rt.InsertBefore(parent, m.__slot2_at, __n5__el)
-		m.__slot2 = append(m.__slot2, __n5__el)
+		m.__rendering2 = false
 	}
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot3 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot3 = nil
-	m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
-	__inst2_next := []*CardInstance{}
-	var __inst2_i int = 0
-	for _, i := range m.items {
-		var __n6 *CardInstance
-		if len(m.__inst2_live) > __inst2_i {
-			__n6 = m.__inst2_live[__inst2_i]
-			__n6.SetStart(i)
-		} else {
-			if len(m.__inst2_live) > __inst2_i {
-				m.__inst2_live[__inst2_i].Destroy()
+	if m.__rendering3 {
+		m.__renderAgain3 = true
+	} else {
+		m.__rendering3 = true
+		m.__renderAgain3 = true
+		for m.__renderAgain3 {
+			m.__renderAgain3 = false
+			for _, __entry := range m.__slot3 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n6__new := newCardInstance(m, i)
-			__n6 = __n6__new
+			m.__slot3 = nil
+			m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
+			__inst2_next := []*CardInstance{}
+			var __inst2_i int = 0
+			for _, i := range m.items {
+				var __n6 *CardInstance
+				if len(m.__inst2_live) > __inst2_i {
+					__n6 = m.__inst2_live[__inst2_i]
+					__n6.SetStart(i)
+				} else {
+					if len(m.__inst2_live) > __inst2_i {
+						m.__inst2_live[__inst2_i].Destroy()
+					}
+					__n6__new := newCardInstance(m, i)
+					__n6 = __n6__new
+				}
+				__inst2_next = append(__inst2_next, __n6)
+				__inst2_i = (__inst2_i + 1)
+				__n6__el := __n6.Root
+				gtk4rt.InsertBefore(parent, m.__slot3_at, __n6__el)
+				m.__slot3 = append(m.__slot3, __n6__el)
+			}
+			for __inst2_i_d, _ := range m.__inst2_live {
+				var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
+				if __inst2_i_j >= __inst2_i {
+					m.__inst2_live[__inst2_i_j].Destroy()
+				}
+			}
+			m.__inst2_live = __inst2_next
 		}
-		__inst2_next = append(__inst2_next, __n6)
-		__inst2_i = (__inst2_i + 1)
-		__n6__el := __n6.Root
-		gtk4rt.InsertBefore(parent, m.__slot3_at, __n6__el)
-		m.__slot3 = append(m.__slot3, __n6__el)
+		m.__rendering3 = false
 	}
-	for __inst2_i_d, _ := range m.__inst2_live {
-		var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
-		if __inst2_i_j >= __inst2_i {
-			m.__inst2_live[__inst2_i_j].Destroy()
-		}
-	}
-	m.__inst2_live = __inst2_next
 }
 
 func (m *Model) add_clicked_handler() {
@@ -1390,20 +1530,22 @@ func (m *Model) add_clicked_handler() {
 
 // CardInstance is one live instance of the Card component.
 type CardInstance struct {
-	Root         gtk4rt.Handle
-	__model      *Model
-	__prop_start int
-	rows         []int
-	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__slot1      []gtk4rt.Handle
-	__slot1_at   gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
-	__slot3      []gtk4rt.Handle
-	__slot3_at   gtk4rt.Handle
-	__n2         gtk4rt.Handle
+	Root           gtk4rt.Handle
+	__model        *Model
+	__prop_start   int
+	rows           []int
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__rendering0   bool
+	__renderAgain0 bool
+	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
+	__slot2        []gtk4rt.Handle
+	__slot2_at     gtk4rt.Handle
+	__slot3        []gtk4rt.Handle
+	__slot3_at     gtk4rt.Handle
+	__n2           gtk4rt.Handle
 }
 
 func newCardInstance(__model *Model, __a_start int) *CardInstance {
@@ -1413,6 +1555,8 @@ func newCardInstance(__model *Model, __a_start int) *CardInstance {
 	c.rows = []int{c.__prop_start, (c.__prop_start + 10)}
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
+	c.__rendering0 = false
+	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
@@ -1437,16 +1581,26 @@ func (c *CardInstance) SetStart(__v int) {
 }
 
 func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot0 = nil
-	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
-	for range c.rows {
-		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetLabel(__n1, "empty")
-		gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
-		c.__slot0 = append(c.__slot0, __n1)
+	if c.__rendering0 {
+		c.__renderAgain0 = true
+	} else {
+		c.__rendering0 = true
+		c.__renderAgain0 = true
+		for c.__renderAgain0 {
+			c.__renderAgain0 = false
+			for _, __entry := range c.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
+			}
+			c.__slot0 = nil
+			c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
+			for range c.rows {
+				__n1 := gtk4rt.LabelNew("")
+				gtk4rt.LabelSetLabel(__n1, "empty")
+				gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
+				c.__slot0 = append(c.__slot0, __n1)
+			}
+		}
+		c.__rendering0 = false
 	}
 }
 
@@ -1482,6 +1636,7 @@ type Card__slot0Instance struct {
 	__effect0_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -1489,6 +1644,8 @@ type Card__slot0Instance struct {
 	__slot1             []gtk4rt.Handle
 	__slot1_at          gtk4rt.Handle
 	__inst0_live        []*__child0Instance
+	__rendering1        bool
+	__renderAgain1      bool
 	__slot2             []gtk4rt.Handle
 	__slot2_at          gtk4rt.Handle
 	__slot3             []gtk4rt.Handle
@@ -1508,11 +1665,14 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effect0_desired = []string{}
 	c.__effects0_settling = false
 	c.__effects0_pending = false
+	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst0_live = []*__child0Instance{}
+	c.__rendering1 = false
+	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -1560,21 +1720,23 @@ func (c *Card__slot0Instance) __effect0_up() {
 }
 
 func (c *Card__slot0Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
-	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
-		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1597,39 +1759,49 @@ func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 }
 
 func (c *Card__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
-	for _, __entry := range c.__slot1 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	c.__slot1 = nil
-	c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
-	__inst0_next := []*__child0Instance{}
-	var __inst0_i int = 0
-	for _, r := range c.rows {
-		var __n3 *__child0Instance
-		if len(c.__inst0_live) > __inst0_i {
-			__n3 = c.__inst0_live[__inst0_i]
-			__n3.Set__p0(c.__prop___p0)
-			__n3.Set__p1(r)
-		} else {
-			if len(c.__inst0_live) > __inst0_i {
-				c.__inst0_live[__inst0_i].Destroy()
+	if c.__rendering1 {
+		c.__renderAgain1 = true
+	} else {
+		c.__rendering1 = true
+		c.__renderAgain1 = true
+		for c.__renderAgain1 {
+			c.__renderAgain1 = false
+			for _, __entry := range c.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n3__new := new__child0Instance(c.__model, c.__prop___p0, r)
-			__n3 = __n3__new
+			c.__slot1 = nil
+			c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			for _, r := range c.rows {
+				var __n3 *__child0Instance
+				if len(c.__inst0_live) > __inst0_i {
+					__n3 = c.__inst0_live[__inst0_i]
+					__n3.Set__p0(c.__prop___p0)
+					__n3.Set__p1(r)
+				} else {
+					if len(c.__inst0_live) > __inst0_i {
+						c.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := new__child0Instance(c.__model, c.__prop___p0, r)
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				gtk4rt.InsertBefore(parent, c.__slot1_at, __n3__el)
+				c.__slot1 = append(c.__slot1, __n3__el)
+			}
+			for __inst0_i_d, _ := range c.__inst0_live {
+				var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					c.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			c.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, c.__slot1_at, __n3__el)
-		c.__slot1 = append(c.__slot1, __n3__el)
+		c.__rendering1 = false
 	}
-	for __inst0_i_d, _ := range c.__inst0_live {
-		var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			c.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	c.__inst0_live = __inst0_next
 }
 
 func (c *Card__slot0Instance) teardown() {
@@ -1866,7 +2038,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1942,6 +2113,8 @@ window.__sngl_boot = () => {
     let rows = [__prop_start, __prop_start + 10];
     let __slot02 = [];
     let __inst1_live = [];
+    let __rendering0 = false;
+    let __renderAgain0 = false;
     let __slot12 = [];
     let __slot22 = [];
     let __slot32 = [];
@@ -1949,47 +2122,57 @@ window.__sngl_boot = () => {
       __prop_start = __v;
     }
     function __renderSlot0(parent) {
-      let __place0_prev = __slot02;
-      let __place0_i = 0;
-      __slot02 = [];
-      let __inst1_next = [];
-      let __inst1_i = 0;
-      for (const r of rows) {
-        let __n1 = null;
-        if (__inst1_live.length > __inst1_i) {
-          __n1 = __inst1_live[__inst1_i];
-        } else {
-          if (__inst1_live.length > __inst1_i) {
-            __inst1_live[__inst1_i].__destroy();
+      if (__rendering0) {
+        __renderAgain0 = true;
+      } else {
+        __rendering0 = true;
+        __renderAgain0 = true;
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot02;
+          let __place0_i = 0;
+          __slot02 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const r of rows) {
+            let __n1 = null;
+            if (__inst1_live.length > __inst1_i) {
+              __n1 = __inst1_live[__inst1_i];
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n1__new = __cf___child1({});
+              __n1 = __n1__new;
+            }
+            __inst1_next.push(__n1);
+            __inst1_i = __inst1_i + 1;
+            let __n1__el = __n1.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n1__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n1__el, __place0_i_ref0);
+            }
+            __slot02.push(__n1__el);
           }
-          let __n1__new = __cf___child1({});
-          __n1 = __n1__new;
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
+          }
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot02.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
+          }
         }
-        __inst1_next.push(__n1);
-        __inst1_i = __inst1_i + 1;
-        let __n1__el = __n1.__root;
-        let __place0_i_ref0 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref0 = __place0_prev[__place0_i];
-        }
-        if (__place0_i_ref0 === __n1__el) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n1__el, __place0_i_ref0);
-        }
-        __slot02.push(__n1__el);
-      }
-      for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-        let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-        if (__inst1_i_j >= __inst1_i) {
-          __inst1_live[__inst1_i_j].__destroy();
-        }
-      }
-      __inst1_live = __inst1_next;
-      for (const __place0_prev_e of __place0_prev) {
-        if (__slot02.indexOf(__place0_prev_e) < 0) {
-          parent.removeChild(__place0_prev_e);
-        }
+        __rendering0 = false;
       }
     }
     function __snglTeardown() {
@@ -2042,10 +2225,13 @@ window.__sngl_boot = () => {
     let __effect0_desired = [];
     let __effects0_settling = false;
     let __effects0_pending = false;
+    let __effects0_torn = false;
     let __effects0_steps = 0;
     let __slot02 = [];
     let __slot12 = [];
     let __inst3_live = [];
+    let __rendering1 = false;
+    let __renderAgain1 = false;
     let __slot22 = [];
     let __slot32 = [];
     function __effect0_mount() {
@@ -2072,21 +2258,23 @@ window.__sngl_boot = () => {
       __effect0_live = __effect0_desired;
     }
     function __effects0_settle() {
-      if (__effects0_settling) {
-        __effects0_pending = true;
-      } else {
-        __effects0_settling = true;
-        __effects0_pending = true;
-        __effects0_steps = 0;
-        while (__effects0_pending && __effects0_steps < 512) {
-          __effects0_pending = false;
-          __effects0_steps = __effects0_steps + 1;
-          __effect0_down();
-          __effect0_up();
-        }
-        __effects0_settling = false;
-        if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects0_torn) {
+        if (__effects0_settling) {
+          __effects0_pending = true;
+        } else {
+          __effects0_settling = true;
+          __effects0_pending = true;
+          __effects0_steps = 0;
+          while (__effects0_pending && __effects0_steps < 512) {
+            __effects0_pending = false;
+            __effects0_steps = __effects0_steps + 1;
+            __effect0_down();
+            __effect0_up();
+          }
+          __effects0_settling = false;
+          if (__effects0_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
@@ -2105,49 +2293,59 @@ window.__sngl_boot = () => {
       __effects0_settle();
     }
     function __renderSlot1(parent) {
-      let __place2_prev = __slot12;
-      let __place2_i = 0;
-      __slot12 = [];
-      let __inst3_next = [];
-      let __inst3_i = 0;
-      for (const r of rows) {
-        let __n3 = null;
-        if (__inst3_live.length > __inst3_i) {
-          __n3 = __inst3_live[__inst3_i];
-          __n3.__set___p0(__prop___p0);
-          __n3.__set___p1(r);
-        } else {
-          if (__inst3_live.length > __inst3_i) {
-            __inst3_live[__inst3_i].__destroy();
+      if (__rendering1) {
+        __renderAgain1 = true;
+      } else {
+        __rendering1 = true;
+        __renderAgain1 = true;
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place2_prev = __slot12;
+          let __place2_i = 0;
+          __slot12 = [];
+          let __inst3_next = [];
+          let __inst3_i = 0;
+          for (const r of rows) {
+            let __n3 = null;
+            if (__inst3_live.length > __inst3_i) {
+              __n3 = __inst3_live[__inst3_i];
+              __n3.__set___p0(__prop___p0);
+              __n3.__set___p1(r);
+            } else {
+              if (__inst3_live.length > __inst3_i) {
+                __inst3_live[__inst3_i].__destroy();
+              }
+              let __n3__new = __cf___child0({ __p0: __prop___p0, __p1: r });
+              __n3 = __n3__new;
+            }
+            __inst3_next.push(__n3);
+            __inst3_i = __inst3_i + 1;
+            let __n3__el = __n3.__root;
+            let __place2_i_ref0 = null;
+            if (__place2_i < __place2_prev.length) {
+              __place2_i_ref0 = __place2_prev[__place2_i];
+            }
+            if (__place2_i_ref0 === __n3__el) {
+              __place2_i = __place2_i + 1;
+            } else {
+              parent.insertBefore(__n3__el, __place2_i_ref0);
+            }
+            __slot12.push(__n3__el);
           }
-          let __n3__new = __cf___child0({ __p0: __prop___p0, __p1: r });
-          __n3 = __n3__new;
+          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+            if (__inst3_i_j >= __inst3_i) {
+              __inst3_live[__inst3_i_j].__destroy();
+            }
+          }
+          __inst3_live = __inst3_next;
+          for (const __place2_prev_e of __place2_prev) {
+            if (__slot12.indexOf(__place2_prev_e) < 0) {
+              parent.removeChild(__place2_prev_e);
+            }
+          }
         }
-        __inst3_next.push(__n3);
-        __inst3_i = __inst3_i + 1;
-        let __n3__el = __n3.__root;
-        let __place2_i_ref0 = null;
-        if (__place2_i < __place2_prev.length) {
-          __place2_i_ref0 = __place2_prev[__place2_i];
-        }
-        if (__place2_i_ref0 === __n3__el) {
-          __place2_i = __place2_i + 1;
-        } else {
-          parent.insertBefore(__n3__el, __place2_i_ref0);
-        }
-        __slot12.push(__n3__el);
-      }
-      for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-        let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-        if (__inst3_i_j >= __inst3_i) {
-          __inst3_live[__inst3_i_j].__destroy();
-        }
-      }
-      __inst3_live = __inst3_next;
-      for (const __place2_prev_e of __place2_prev) {
-        if (__slot12.indexOf(__place2_prev_e) < 0) {
-          parent.removeChild(__place2_prev_e);
-        }
+        __rendering1 = false;
       }
     }
     function __snglTeardown() {
@@ -2238,102 +2436,126 @@ window.__sngl_boot = () => {
   var __slot1 = [];
   var __slot2 = [];
   var __inst5_live = [];
+  var __rendering2 = false;
+  var __renderAgain2 = false;
   var __slot3 = [];
   var __inst7_live = [];
+  var __rendering3 = false;
+  var __renderAgain3 = false;
   function __renderSlot2(parent) {
-    let __place4_prev = __slot2;
-    let __place4_i = 0;
-    __slot2 = [];
-    let __inst5_next = [];
-    let __inst5_i = 0;
-    for (const i of state.items) {
-      let __n5 = null;
-      if (__inst5_live.length > __inst5_i) {
-        __n5 = __inst5_live[__inst5_i];
-        __n5.__set_start(i);
-        __n5.__set___p0(i);
-        __n5.__set___on0((k) => {
-          state.mounted = state.mounted + k + " ";
-        });
-      } else {
-        if (__inst5_live.length > __inst5_i) {
-          __inst5_live[__inst5_i].__destroy();
+    if (__rendering2) {
+      __renderAgain2 = true;
+    } else {
+      __rendering2 = true;
+      __renderAgain2 = true;
+      while (__renderAgain2) {
+        __renderAgain2 = false;
+        let __place4_prev = __slot2;
+        let __place4_i = 0;
+        __slot2 = [];
+        let __inst5_next = [];
+        let __inst5_i = 0;
+        for (const i of state.items) {
+          let __n5 = null;
+          if (__inst5_live.length > __inst5_i) {
+            __n5 = __inst5_live[__inst5_i];
+            __n5.__set___on0((k) => {
+              state.mounted = state.mounted + k + " ";
+            });
+            __n5.__set_start(i);
+            __n5.__set___p0(i);
+          } else {
+            if (__inst5_live.length > __inst5_i) {
+              __inst5_live[__inst5_i].__destroy();
+            }
+            let __n5__new = __cf_Card__slot0({ start: i, __p0: i, __on0: (k) => {
+              state.mounted = state.mounted + k + " ";
+            } });
+            __n5 = __n5__new;
+          }
+          __inst5_next.push(__n5);
+          __inst5_i = __inst5_i + 1;
+          let __n5__el = __n5.__root;
+          let __place4_i_ref0 = null;
+          if (__place4_i < __place4_prev.length) {
+            __place4_i_ref0 = __place4_prev[__place4_i];
+          }
+          if (__place4_i_ref0 === __n5__el) {
+            __place4_i = __place4_i + 1;
+          } else {
+            parent.insertBefore(__n5__el, __place4_i_ref0);
+          }
+          __slot2.push(__n5__el);
         }
-        let __n5__new = __cf_Card__slot0({ start: i, __p0: i, __on0: (k) => {
-          state.mounted = state.mounted + k + " ";
-        } });
-        __n5 = __n5__new;
+        for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+          let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+          if (__inst5_i_j >= __inst5_i) {
+            __inst5_live[__inst5_i_j].__destroy();
+          }
+        }
+        __inst5_live = __inst5_next;
+        for (const __place4_prev_e of __place4_prev) {
+          if (__slot2.indexOf(__place4_prev_e) < 0) {
+            parent.removeChild(__place4_prev_e);
+          }
+        }
       }
-      __inst5_next.push(__n5);
-      __inst5_i = __inst5_i + 1;
-      let __n5__el = __n5.__root;
-      let __place4_i_ref0 = null;
-      if (__place4_i < __place4_prev.length) {
-        __place4_i_ref0 = __place4_prev[__place4_i];
-      }
-      if (__place4_i_ref0 === __n5__el) {
-        __place4_i = __place4_i + 1;
-      } else {
-        parent.insertBefore(__n5__el, __place4_i_ref0);
-      }
-      __slot2.push(__n5__el);
-    }
-    for (const [__inst5_i_d, _] of __inst5_live.entries()) {
-      let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
-      if (__inst5_i_j >= __inst5_i) {
-        __inst5_live[__inst5_i_j].__destroy();
-      }
-    }
-    __inst5_live = __inst5_next;
-    for (const __place4_prev_e of __place4_prev) {
-      if (__slot2.indexOf(__place4_prev_e) < 0) {
-        parent.removeChild(__place4_prev_e);
-      }
+      __rendering2 = false;
     }
   }
   function __renderSlot3(parent) {
-    let __place6_prev = __slot3;
-    let __place6_i = 0;
-    __slot3 = [];
-    let __inst7_next = [];
-    let __inst7_i = 0;
-    for (const i of state.items) {
-      let __n6 = null;
-      if (__inst7_live.length > __inst7_i) {
-        __n6 = __inst7_live[__inst7_i];
-        __n6.__set_start(i);
-      } else {
-        if (__inst7_live.length > __inst7_i) {
-          __inst7_live[__inst7_i].__destroy();
+    if (__rendering3) {
+      __renderAgain3 = true;
+    } else {
+      __rendering3 = true;
+      __renderAgain3 = true;
+      while (__renderAgain3) {
+        __renderAgain3 = false;
+        let __place6_prev = __slot3;
+        let __place6_i = 0;
+        __slot3 = [];
+        let __inst7_next = [];
+        let __inst7_i = 0;
+        for (const i of state.items) {
+          let __n6 = null;
+          if (__inst7_live.length > __inst7_i) {
+            __n6 = __inst7_live[__inst7_i];
+            __n6.__set_start(i);
+          } else {
+            if (__inst7_live.length > __inst7_i) {
+              __inst7_live[__inst7_i].__destroy();
+            }
+            let __n6__new = __cf_Card({ start: i });
+            __n6 = __n6__new;
+          }
+          __inst7_next.push(__n6);
+          __inst7_i = __inst7_i + 1;
+          let __n6__el = __n6.__root;
+          let __place6_i_ref0 = null;
+          if (__place6_i < __place6_prev.length) {
+            __place6_i_ref0 = __place6_prev[__place6_i];
+          }
+          if (__place6_i_ref0 === __n6__el) {
+            __place6_i = __place6_i + 1;
+          } else {
+            parent.insertBefore(__n6__el, __place6_i_ref0);
+          }
+          __slot3.push(__n6__el);
         }
-        let __n6__new = __cf_Card({ start: i });
-        __n6 = __n6__new;
+        for (const [__inst7_i_d, _] of __inst7_live.entries()) {
+          let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
+          if (__inst7_i_j >= __inst7_i) {
+            __inst7_live[__inst7_i_j].__destroy();
+          }
+        }
+        __inst7_live = __inst7_next;
+        for (const __place6_prev_e of __place6_prev) {
+          if (__slot3.indexOf(__place6_prev_e) < 0) {
+            parent.removeChild(__place6_prev_e);
+          }
+        }
       }
-      __inst7_next.push(__n6);
-      __inst7_i = __inst7_i + 1;
-      let __n6__el = __n6.__root;
-      let __place6_i_ref0 = null;
-      if (__place6_i < __place6_prev.length) {
-        __place6_i_ref0 = __place6_prev[__place6_i];
-      }
-      if (__place6_i_ref0 === __n6__el) {
-        __place6_i = __place6_i + 1;
-      } else {
-        parent.insertBefore(__n6__el, __place6_i_ref0);
-      }
-      __slot3.push(__n6__el);
-    }
-    for (const [__inst7_i_d, _] of __inst7_live.entries()) {
-      let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
-      if (__inst7_i_j >= __inst7_i) {
-        __inst7_live[__inst7_i_j].__destroy();
-      }
-    }
-    __inst7_live = __inst7_next;
-    for (const __place6_prev_e of __place6_prev) {
-      if (__slot3.indexOf(__place6_prev_e) < 0) {
-        parent.removeChild(__place6_prev_e);
-      }
+      __rendering3 = false;
     }
   }
   function String(v) {
@@ -2355,12 +2577,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3b7c6bea9da6deb0842639d8b0951390
+pass sha256:7922bf106605107abf2a55cb83e73515
 -- run/go/fyne --
-pass sha256:75fd3680aac865929f33f6ba74eae381
+pass sha256:b8ef92927840202173d206d56a8177ba
 -- run/go/gtk4 --
-pass sha256:6f8267f71508bba23a113016abf0b673
+pass sha256:c9b0c21da199acc796cd1d2bf1989d2e
 -- run/kotlin/android --
-pass sha256:4f1cc2a545184803f2fb3f6a6eee39d6
+pass sha256:fe3bed2ffd362d2950354149f1ef9e70
 -- run/none/html --
-pass sha256:65cee73488ba9131fd06a5580070a42a
+pass sha256:1612df797c6b257e27e7c1cdf920c47b

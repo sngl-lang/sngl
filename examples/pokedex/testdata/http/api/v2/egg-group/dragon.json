@@ -1,0 +1,51 @@
+{
+ "id": 14,
+ "name": "dragon",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "ドラゴン"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Draconique"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Drache"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Dragón"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Dragon"
+  }
+ ],
+ "pokemon_species": [
+  {
+   "name": "charmander",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/4/"
+  },
+  {
+   "name": "charmeleon",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/5/"
+  }
+ ]
+}

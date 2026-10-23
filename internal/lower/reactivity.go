@@ -36,6 +36,8 @@ type reactiveProp struct {
 	// html it emitted `__n1.setAttribute("label", ...)` against a node that is
 	// not the instance, and the page did not change.
 	Instance bool
+	// owner is the body the node is written in.
+	owner reactivityOwner
 }
 
 // reactivityState carries the analysis built up before mutation injection.
@@ -48,6 +50,8 @@ type reactivityState struct {
 	// to every instance the site holds when the var changes rather than by
 	// re-firing the slot (registerSlotBodyDeps).
 	reverseLive map[*ir.Var][]liveProp
+	// slotOwners is the body each slot is written in.
+	slotOwners map[string]reactivityOwner
 	// sites is the instance registry each slot-body instantiation keeps, by
 	// the site, so an updater and the render share one.
 	sites map[*ir.NodeInst]*slotInstance
@@ -190,6 +194,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
 		reverseLive:  make(map[*ir.Var][]liveProp),
+		slotOwners:   map[string]reactivityOwner{},
 		sites:        make(map[*ir.NodeInst]*slotInstance),
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
@@ -383,6 +388,11 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			}
 			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
 			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
+		case *ir.Match:
+			// Imperative: passMatch wrote a view's as the chain here.
+			for _, arm := range n.Arms {
+				arm.Body = st.rewriteReactiveStructures(arm.Body, parentRef)
+			}
 		case *ir.For:
 			if n.LoweredSlotID != "" {
 				ref := parentRef
@@ -643,6 +653,10 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 			// or re-fires the slot where it cannot.
 			st.registerSlotBodyDeps(n, n.LoweredSlotID)
 		}
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			st.collectFromStmts(arm.Body)
+		}
 	case *ir.For:
 		st.collectFromFor(n)
 		if n.LoweredSlotID == "" {
@@ -688,6 +702,7 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 				Instance: instance,
 				Comp:     n.Component,
 				Node:     n,
+				owner:    st.owner,
 			})
 		}
 	}
@@ -777,6 +792,14 @@ func (st *reactivityState) registerSlotBodyDeps(s ir.Stmt, slotID string) {
 				slotDeps(n.Cond)
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.Match:
+				slotDeps(n.Subject)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						slotDeps(p)
+					}
+					walk(arm.Body)
+				}
 			case *ir.For:
 				slotDeps(n.Iter)
 				walk(n.Body)
@@ -949,6 +972,14 @@ func slotBodyExprs(stmts []ir.Stmt, addDep func(ir.Expr)) {
 				addDep(n.Cond)
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.Match:
+				addDep(n.Subject)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						addDep(p)
+					}
+					walk(arm.Body)
+				}
 			case *ir.For:
 				addDep(n.Iter)
 				walk(n.Body)
@@ -978,6 +1009,7 @@ func (st *reactivityState) addSlotDep(v *ir.Var, slotID string) {
 
 func (st *reactivityState) freshSlotID() string {
 	id := ir.SlotVarPrefix + strconv.Itoa(st.slotCounter)
+	st.slotOwners[id] = st.owner
 	st.slotCounter++
 	return id
 }
@@ -1019,93 +1051,15 @@ func gatherFuncReads(fn *ir.Func, reactive map[*ir.Var]bool, out map[*ir.Var]boo
 			out[v] = true
 		}
 	}
-	for _, s := range fn.Block {
-		eachCallInStmt(s, func(c *ir.Call) {
+	// Every call the body makes, a lambda's included: `all.filter(func(f) =>
+	// f != picked())` reads what picked reads
+	// (cmd/sngl/testdata/slot_method_reads_prop_runs.txt).
+	_ = ir.WalkExprs(fn.Block, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok {
 			gatherFuncReads(c.Func, reactive, out, visited)
-		})
-	}
-}
-
-// eachCallInStmt invokes fn for every *ir.Call reachable from s (and nested
-// statements). Used to follow the call graph for transitive reactive-dep
-// gathering; only the call nodes matter, so non-call exprs are descended
-// without other side effects.
-func eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
-	switch n := s.(type) {
-	case *ir.Return:
-		eachCallInExpr(n.Value, fn)
-	case *ir.LocalVar:
-		eachCallInExpr(n.Init, fn)
-	case *ir.Assign:
-		eachCallInExpr(n.Value, fn)
-	case *ir.CallStmt:
-		eachCallInExpr(n.Call, fn)
-	case *ir.Emit:
-		for _, a := range n.Args {
-			eachCallInExpr(a.Value, fn)
 		}
-	case *ir.If:
-		eachCallInExpr(n.Cond, fn)
-		for _, c := range n.Body {
-			eachCallInStmt(c, fn)
-		}
-		for _, c := range n.Else {
-			eachCallInStmt(c, fn)
-		}
-	case *ir.For:
-		eachCallInExpr(n.Iter, fn)
-		for _, c := range n.Body {
-			eachCallInStmt(c, fn)
-		}
-		for _, c := range n.Else {
-			eachCallInStmt(c, fn)
-		}
-	}
-}
-
-// eachCallInExpr invokes fn for every *ir.Call reachable from e.
-func eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
-	switch x := e.(type) {
-	case nil:
-		return
-	case *ir.Call:
-		fn(x)
-		eachCallInExpr(x.Receiver, fn)
-		for _, a := range x.Args {
-			eachCallInExpr(a.Value, fn)
-		}
-	case *ir.Binary:
-		eachCallInExpr(x.Left, fn)
-		eachCallInExpr(x.Right, fn)
-	case *ir.Unary:
-		eachCallInExpr(x.Operand, fn)
-	case *ir.Ternary:
-		eachCallInExpr(x.Cond, fn)
-		eachCallInExpr(x.Then, fn)
-		eachCallInExpr(x.Else, fn)
-	case *ir.Conversion:
-		eachCallInExpr(x.Operand, fn)
-	case *ir.Select:
-		eachCallInExpr(x.Operand, fn)
-	case *ir.Index:
-		eachCallInExpr(x.Operand, fn)
-		eachCallInExpr(x.Idx, fn)
-	case *ir.ListLit:
-		for _, el := range x.Elems {
-			eachCallInExpr(el, fn)
-		}
-	case *ir.MapLitIR:
-		for _, en := range x.Entries {
-			eachCallInExpr(en.Key, fn)
-			eachCallInExpr(en.Value, fn)
-		}
-	case *ir.StructLit:
-		for _, f := range x.Fields {
-			eachCallInExpr(f.Value, fn)
-		}
-	case *ir.Spread:
-		eachCallInExpr(x.Operand, fn)
-	}
+		return nil
+	})
 }
 
 func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
@@ -1126,12 +1080,27 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		st.gatherDeps(x.Cond, out)
 		st.gatherDeps(x.Then, out)
 		st.gatherDeps(x.Else, out)
+	case *ir.MatchExpr:
+		st.gatherDeps(x.Subject, out)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				st.gatherDeps(p, out)
+			}
+			st.gatherDeps(arm.Value, out)
+		}
 	case *ir.Call:
 		if x.Receiver != nil {
 			st.gatherDeps(x.Receiver, out)
 		}
 		for _, a := range x.Args {
 			st.gatherDeps(a.Value, out)
+			// A const callee cannot keep a function it is handed for later,
+			// so one it takes runs inside the call -- `xs.filter(f)` is
+			// read whole where it stands -- and what that body reads is the
+			// call's.
+			if x.Func != nil && x.Func.Const {
+				st.gatherLambdaReads(a.Value, out)
+			}
 		}
 		// A call to a derived/computed func transitively reads that func's
 		// dep set: a reactive `if isLong` where `isLong() => name.length > 3`
@@ -1174,6 +1143,32 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 	default:
 		panic(fmt.Sprintf("gatherDeps: unhandled %T", x))
 	}
+}
+
+// gatherLambdaReads adds what the body of the function e writes reads, when e
+// is one written in place.
+func (st *reactivityState) gatherLambdaReads(e ir.Expr, out map[*ir.Var]bool) {
+	var fn *ir.Func
+	switch x := e.(type) {
+	case *ir.Lambda:
+		fn = x.Func
+	case *ir.Closure:
+		fn = x.Func
+	}
+	if fn == nil {
+		return
+	}
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			if v, ok := x.Sym.(*ir.Var); ok && st.reactiveVars[v] {
+				out[v] = true
+			}
+		case *ir.Call:
+			st.gatherFuncReads(x.Func, out, nil)
+		}
+		return nil
+	})
 }
 
 // handlerBodiesIn reports the callback bodies one statement holds in its own
@@ -1233,6 +1228,10 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 		case *ir.If:
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				arm.Body = st.injectIntoStmts(arm.Body)
+			}
 		case *ir.For:
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
@@ -1300,8 +1299,9 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	if v == nil {
 		return nil
 	}
-	out := st.updaterStmts(st.reverseDeps[v], st.reverseSlots[v], fieldRewrite)
-	if live := st.liveUpdaters(st.reverseLive[v], st.reverseSlots[v], fieldRewrite); len(live) > 0 {
+	props, slots, live := st.reachable(v)
+	out := st.updaterStmts(props, slots, fieldRewrite)
+	if live := st.liveUpdaters(live, slots, fieldRewrite); len(live) > 0 {
 		// Ahead of the slot re-fires, which a render reading a sibling
 		// instance's state would want settled first -- the order props and
 		// slots already keep.
@@ -1312,6 +1312,42 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		out = append(out[:n:n], append(live, out[n:]...)...)
 	}
 	return out
+}
+
+// reachable is what a write to v updates from the body being walked: every
+// node, slot and instance reading v but, from a component's body, those
+// another component's body writes. A component the build keeps -- one built at run time, a recursion
+// -- holds its nodes itself, so a write elsewhere has no way to them: one
+// instance writing page state another reads named the other's nodes and
+// panel instances from its own record, which has none. Such a reader shows
+// what it read when it was built (design/instances.md).
+func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot, []liveProp) {
+	// A package func may be any body's code -- a lambda lifted out of one --
+	// so only a component's own body is held to its own.
+	_, inComp := st.owner.(compOwner)
+	foreign := func(o reactivityOwner) bool {
+		_, other := o.(compOwner)
+		return inComp && other && st.owner != o
+	}
+	var props []reactiveProp
+	for _, p := range st.reverseDeps[v] {
+		if !foreign(p.owner) {
+			props = append(props, p)
+		}
+	}
+	var slots []reactiveSlot
+	for _, s := range st.reverseSlots[v] {
+		if !foreign(st.slotOwners[s.SlotID]) {
+			slots = append(slots, s)
+		}
+	}
+	var live []liveProp
+	for _, p := range st.reverseLive[v] {
+		if !foreign(p.owner) {
+			live = append(live, p)
+		}
+	}
+	return props, slots, live
 }
 
 // isSlotRefire reports whether s is a call of a slot's render function.
@@ -1641,6 +1677,20 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 		cp.Then = rewriteIdentsToCaptures(x.Then, rewrite)
 		cp.Else = rewriteIdentsToCaptures(x.Else, rewrite)
 		return &cp
+	case *ir.MatchExpr:
+		cp := *x
+		cp.Subject = rewriteIdentsToCaptures(x.Subject, rewrite)
+		cp.Arms = make([]*ir.MatchArm, len(x.Arms))
+		for i, arm := range x.Arms {
+			a := *arm
+			a.Patterns = make([]ir.Expr, len(arm.Patterns))
+			for j, p := range arm.Patterns {
+				a.Patterns[j] = rewriteIdentsToCaptures(p, rewrite)
+			}
+			a.Value = rewriteIdentsToCaptures(arm.Value, rewrite)
+			cp.Arms[i] = &a
+		}
+		return &cp
 	case *ir.Call:
 		cp := *x
 		cp.Receiver = rewriteIdentsToCaptures(x.Receiver, rewrite)
@@ -1784,10 +1834,61 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	if sp := placement; sp != nil {
 		fn.Block = append(sp.open(), body...)
 		fn.Block = append(fn.Block, st.closeSlotPlacement(sp)...)
-		return fn
+	} else {
+		fn.Block = append([]ir.Stmt{teardown, reset}, body...)
 	}
-	fn.Block = append([]ir.Stmt{teardown, reset}, body...)
+	fn.Block = st.renderOnce(slotID, fn.Block)
 	return fn
+}
+
+// renderOnce has a slot's render, asked for again while it runs, run again
+// after it rather than inside it.
+//
+//	if __renderingN {
+//	    __renderAgainN = true
+//	} else {
+//	    __renderingN = true
+//	    __renderAgainN = true
+//	    for __renderAgainN {
+//	        __renderAgainN = false
+//	        <render>
+//	    }
+//	    __renderingN = false
+//	}
+//
+// A render builds the instances its body holds, and a query's mounts in the
+// instance's constructor: a fetch that answers at once runs the call site's
+// @load there, and a @load writing what the slot renders asked for the slot
+// again. Re-entered, that render built the instance afresh -- the list it
+// would have reused is set only at the render's end -- whose mount answered
+// again, until the stack overflowed. Run after, it finds the instance held
+// and keyed as before, and stops.
+func (st *reactivityState) renderOnce(slotID string, render []ir.Stmt) []ir.Stmt {
+	n := strings.TrimPrefix(slotID, ir.SlotVarPrefix)
+	// Not __slotN_rendering: a backend takes a name with the slot prefix for
+	// the slot's own list.
+	flag := func(prefix string) *ir.Var {
+		v := &ir.Var{Name: prefix + n, Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Synthesized: true}
+		st.owner.addVar(v)
+		return v
+	}
+	rendering, again := flag("__rendering"), flag("__renderAgain")
+	ref := func(v *ir.Var) *ir.Ident {
+		return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true}
+	}
+	set := func(v *ir.Var, to bool) ir.Stmt {
+		return &ir.Assign{Target: ref(v), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(to)}}
+	}
+	return []ir.Stmt{&ir.If{
+		Cond: ref(rendering),
+		Body: []ir.Stmt{set(again, true)},
+		Else: []ir.Stmt{
+			set(rendering, true),
+			set(again, true),
+			&ir.For{Iter: ref(again), Body: append([]ir.Stmt{set(again, false)}, render...)},
+			set(rendering, false),
+		},
+	}}
 }
 
 // renderSlotBody emits the cond/iter-gated create+append sequence for the
@@ -1856,6 +1957,19 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		// the instance itself.
 		return append(sub, pushToSlot(n))
 	}
+	// An instance under a node of the body is the slot's to keep too: built
+	// bare, nothing destroyed it when the next render dropped it, so its
+	// effects ran on and a test still found its widgets. It is kept across
+	// renders as one at the top is, handed to the node built afresh around
+	// it: built afresh itself, a query in it asked again on every render, and
+	// a render its own answer asked for asked again, without end.
+	outerNested := declSt.nestedInstance
+	declSt.nestedInstance = func(n *ir.NodeInst) []ir.Stmt {
+		si := st.siteInstance(n, st.owner)
+		instances = append(instances, si)
+		return append(st.reuseOrCreate(si, n, declSt), declSt.componentRootBinding(n)...)
+	}
+	defer func() { declSt.nestedInstance = outerNested }()
 	// Recursively process a body: NodeInsts are realized + pushed onto the
 	// slot list. Nested If/For without their own slot (i.e. depending only
 	// on loop variables / non-reactive state) are kept structurally; their
@@ -1883,6 +1997,15 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 					inner.Else = emitStmts(sx.Else)
 				}
 				out = append(out, inner)
+			case *ir.Match:
+				inner := *sx
+				inner.Arms = make([]*ir.MatchArm, len(sx.Arms))
+				for i, arm := range sx.Arms {
+					a := *arm
+					a.Body = emitStmts(arm.Body)
+					inner.Arms[i] = &a
+				}
+				out = append(out, &inner)
 			case *ir.For:
 				if sx.LoweredSlotID != "" {
 					var pos ast.Pos
@@ -1999,6 +2122,10 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				}
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.Match:
+				for _, arm := range n.Arms {
+					walk(arm.Body)
+				}
 			case *ir.NodeInst:
 				walk(ir.WidgetChildren(n))
 				for _, h := range n.Handlers {

@@ -82,7 +82,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 		if len(testFns) > 0 {
 			if agentMode {
-				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitAgent)
+				src := golang.LowerTestFile(c.cfg.Package, "fyne", req.Pkg, testFns, suffixes, methodFields, golang.TestEmitAgent)
 				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
 					return err
 				}
@@ -95,6 +95,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 import (
 	"bytes"
 	"image/png"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
@@ -110,6 +111,7 @@ func currentTestModel() *Model     { return currentModel }
 // assigned by BuildUI, so a test that never renders would nil-deref on the
 // first state change. The test app has to exist before any widget does.
 func newTestComponent() *Model {
+	` + dropPostsFunc + `()
 	test.NewApp()
 	m := New()
 	m.BuildUI()
@@ -133,12 +135,12 @@ func init() {
 		return snapshotBytes(currentTestModel())
 	})
 }
-`)
+` + agentPosts(req.Pkg))
 				if err := writeRawFile(sink, "snapshot.go", snapshotSrc); err != nil {
 					return err
 				}
 			} else {
-				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
+				src := golang.LowerTestFile(c.cfg.Package, "fyne", req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
 				if err := writeRawFile(sink, "model_test.go", []byte(src)); err != nil {
 					return err
 				}

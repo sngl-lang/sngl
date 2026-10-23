@@ -54,6 +54,8 @@ func spreadOwnExprs(s Stmt) []Expr {
 		return []Expr{n.Call}
 	case *If:
 		return []Expr{n.Cond}
+	case *Match:
+		return []Expr{n.Subject}
 	case *For:
 		if DeriveIterKind(n) == IterCondition {
 			return nil
@@ -97,6 +99,15 @@ func (c *spreadCollector) walk(e Expr, cond bool) {
 			c.walk(x.Cond, cond)
 			c.walk(x.Then, true)
 			c.walk(x.Else, true)
+			return SkipDir
+		case *MatchExpr:
+			c.walk(x.Subject, cond)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					c.walk(p, true)
+				}
+				c.walk(arm.Value, true)
+			}
 			return SkipDir
 		case *Select:
 			if x.Spread != 0 {

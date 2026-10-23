@@ -351,6 +351,7 @@ type htmlConfig struct {
 	ProjectDir  string
 	Package     string
 	Main        bool
+	Executable  bool
 	Framework   string
 	Listen      string
 	Minify      bool
@@ -550,10 +551,21 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			// A static site serves no pattern: whether this language serves
 			// routes is the platform's to know, and a page under a `for` has
 			// its href only once the copy is known.
-			h, ok := codegen.IRLiteralString(href)
-			if !ok || len(extractRouteParams(h)) > 0 {
-				at := "a pattern"
+			h, literal := codegen.IRLiteralString(href)
+			if (!literal || len(extractRouteParams(h)) > 0) && opts.Test {
+				// A test runs in the document it is loaded in, the stack's
+				// page at "/", and a `go` loads another, which ends the run
+				// whatever it loads: a page at a pattern is one no test
+				// reaches, so a test build writes no document for it.
+				doc, docErr, ok = following, followingErr, more
 				if ok {
+					following, followingErr, more = next()
+				}
+				continue
+			}
+			if !literal || len(extractRouteParams(h)) > 0 {
+				at := "a pattern"
+				if literal {
 					at = h + ", a pattern"
 				}
 				return nil, fmt.Errorf("%s: page %q is served at %s: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID, at)
@@ -766,6 +778,11 @@ type htmlGen struct {
 	// funcs are collected per owner, and a root component spliced into the
 	// package body owns every window's, so a page boots only its own.
 	pageSlots map[string]bool
+	// templateSlots are the page's slots whose anchor is a template, written
+	// where the parser would move a span (tableParts).
+	templateSlots map[string]bool
+	// parentTag is the element whose children are being written.
+	parentTag string
 
 	// irWindow is the Window this generator emits a document from, or nil
 	// when it is emitting a harness root's body. It carries the route's params
@@ -878,6 +895,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		loweredRefs:    make(map[string]bool),
 		loweredLocals:  make(map[string]bool),
 		pageSlots:      make(map[string]bool),
+		templateSlots:  make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
 		shared:         shared,
 	}
@@ -1064,12 +1082,10 @@ func prewalkOrder(out []*ir.NodeInst, stmts []ir.Stmt) []*ir.NodeInst {
 					visitStmts(h.Func.Block)
 				}
 			}
-		case *ir.If:
-			visitStmts(n.Body)
-			visitStmts(n.Else)
-		case *ir.For:
-			visitStmts(n.Body)
-			visitStmts(n.Else)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				visitStmts(*b)
+			}
 		case *ir.SlotInst:
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
@@ -1466,6 +1482,15 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		if n.Call != nil && n.Call.Func != nil {
 			if idx := slotIndexFromRenderFunc(n.Call.Func.Name); idx != "" {
 				g.pageSlots[idx] = true
+				if tableParts[g.parentTag] {
+					// The parser moves a span out of a table, before it, and
+					// the slot's rows with it; it leaves a template where it
+					// is written, and the boot puts the span there.
+					g.templateSlots[idx] = true
+					fmt.Fprintf(b, "%s<template data-sngl-slot=\"%s\"></template>\n",
+						strings.Repeat("  ", depth), idx)
+					return
+				}
 				fmt.Fprintf(b, "%s<span data-sngl-slot=\"%s\" style=\"display:contents\"></span>\n",
 					strings.Repeat("  ", depth), idx)
 				return
@@ -1485,6 +1510,12 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		}
 		for _, child := range n.Else {
 			g.renderIRStmt(b, child, depth)
+		}
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			for _, child := range arm.Body {
+				g.renderIRStmt(b, child, depth)
+			}
 		}
 	case *ir.For:
 		for _, child := range n.Body {
@@ -2075,9 +2106,12 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else {
 			b.WriteString("\n")
+			outer := g.parentTag
+			g.parentTag = tag
 			for _, s := range ir.WidgetChildren(n) {
 				g.renderIRStmt(b, s, depth+1)
 			}
+			g.parentTag = outer
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		}
 	}
@@ -2182,14 +2216,22 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// Ahead of the state, whose initializers may read one.
 	consts := g.pkgConsts()
+	var ownConsts []string
 	for _, c := range consts {
 		if g.sharesConst(c) {
 			continue
 		}
 		fmt.Fprintf(b, "const %s = %s;\n", c.Name, g.literalToJS(c.Init))
+		ownConsts = append(ownConsts, c.Name)
 	}
 	if len(consts) > 0 {
 		b.WriteString("\n")
+	}
+	// The test module finds the page's names on window, its consts as its
+	// funcs: a test reading a const map -- or a func the optimizer inlined
+	// into one -- read a name nothing declared there.
+	if g.testMode && len(ownConsts) > 0 {
+		fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(ownConsts, ", "))
 	}
 
 	// A var whose initializer reads other state is emitted as a separate
@@ -2333,7 +2375,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		// bindings are renamed.
 		var names []string
 		for _, fn := range funcs {
-			if len(fn.Block) == 0 {
+			if !codegen.HasBody(fn) {
 				continue
 			}
 			names = append(names, jsFuncName(fn))
@@ -2391,6 +2433,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
 	}
+	if g.pkg != nil && rendersReachEnd(g.pkg) {
+		b.WriteString(reachEndHelper + "\n")
+	}
 	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
 		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
 	}
@@ -2401,6 +2446,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if g.ctx.Helpers[dialogHelper] {
 		b.WriteString(dialogHelperJS + "\n")
+	}
+	// A test calling a codec intrinsic runs in a module bundled beside the
+	// page, which finds the runtime on window.
+	testCodec := g.testsCallCodec()
+	if g.ctx.Helpers[javascript.CodecHelper] || testCodec {
+		b.WriteString(javascript.CodecHelperJS + "\n")
+	}
+	if testCodec {
+		b.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { _snglJSONDecode, _snglJSONEncode, _snglWithQuery, _snglHTTPSend }); }\n\n")
 	}
 
 	// Before the refs below, which is where a handler's binding for the
@@ -2576,6 +2630,27 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 
 }
 
+// testsCallCodec reports whether, in test mode, a test calls json.decode,
+// json.encode, http.send or http.get itself.
+func (g *htmlGen) testsCallCodec() bool {
+	if !g.testMode {
+		return false
+	}
+	found := false
+	for _, fn := range g.pkg.Funcs {
+		if !fn.IsTest {
+			continue
+		}
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok && codegen.IsCodecCall(c) {
+				found = true
+			}
+			return nil
+		})
+	}
+	return found
+}
+
 // exportTestCalled publishes, in test mode, the synthesized functions a test
 // calls, as the page's own are published: the test module is bundled beside
 // the page and finds what it calls on window. A lowering may have a test call
@@ -2621,7 +2696,16 @@ func (g *htmlGen) emitSlotBoots(b *strings.Builder) {
 			continue
 		}
 		anchor := slotAnchorVar(idx)
-		fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
+		if g.templateSlots[idx] {
+			// A span the script places stays where it is put, which a
+			// table's markup could not say.
+			fmt.Fprintf(b, "var %s = document.createElement('span');\n", anchor)
+			fmt.Fprintf(b, "%s.setAttribute('data-sngl-slot', %q);\n", anchor, idx)
+			fmt.Fprintf(b, "%s.style.display = 'contents';\n", anchor)
+			fmt.Fprintf(b, "document.querySelector('template[data-sngl-slot=\"%s\"]').replaceWith(%s);\n", idx, anchor)
+		} else {
+			fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
+		}
 		fmt.Fprintf(b, "%s(%s);\n", fn.Name, anchor)
 	}
 }
@@ -2934,6 +3018,14 @@ func exprUsesI18n(expr ir.Expr) bool {
 			walk(x.Cond)
 			walk(x.Then)
 			walk(x.Else)
+		case *ir.MatchExpr:
+			walk(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walk(p)
+				}
+				walk(arm.Value)
+			}
 		case *ir.Conversion:
 			walk(x.Operand)
 		case *ir.Select:
@@ -2997,6 +3089,15 @@ func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
 		}
 		for _, c := range n.Else {
 			walkStmtExprs(c, walk)
+		}
+	case *ir.Match:
+		if n.Subject != nil {
+			walk(n.Subject)
+		}
+		for _, arm := range n.Arms {
+			for _, c := range arm.Body {
+				walkStmtExprs(c, walk)
+			}
 		}
 	case *ir.For:
 		walk(n.Iter)
@@ -3191,6 +3292,14 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			walkExpr(x.Cond)
 			walkExpr(x.Then)
 			walkExpr(x.Else)
+		case *ir.MatchExpr:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walkExpr(p)
+				}
+				walkExpr(arm.Value)
+			}
 		case *ir.Select:
 			walkExpr(x.Operand)
 		case *ir.Index:
@@ -3240,6 +3349,13 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		}
 		for _, b := range n.Else {
 			g.collectLoweredRefs(b)
+		}
+	case *ir.Match:
+		walkExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, b := range arm.Body {
+				g.collectLoweredRefs(b)
+			}
 		}
 	case *ir.For:
 		walkExpr(n.Iter)
@@ -3389,7 +3505,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 			return
 		}
 	}
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fmt.Fprintf(b, "%s %s(%s) {\n", keyword, jsName, paramStr)
@@ -3401,6 +3517,9 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	}
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		jc = jc.WithLocal(name)
 	}
 	tr := g.newHTMLTranslator(jc)
 	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
@@ -4009,6 +4128,10 @@ func dropDocWrites(id string, funcs []*ir.Func) {
 				x.Body, x.Else = filter(x.Body), filter(x.Else)
 			case *ir.For:
 				x.Body, x.Else = filter(x.Body), filter(x.Else)
+			case *ir.Match:
+				for _, arm := range x.Arms {
+					arm.Body = filter(arm.Body)
+				}
 			}
 			out = append(out, s)
 		}

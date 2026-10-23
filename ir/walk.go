@@ -84,6 +84,14 @@ func (w *walker) expr(e Expr) {
 		w.expr(x.Cond)
 		w.expr(x.Then)
 		w.expr(x.Else)
+	case *MatchExpr:
+		w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				w.expr(p)
+			}
+			w.expr(arm.Value)
+		}
 	case *Call:
 		w.expr(x.Receiver)
 		w.expr(x.Callee)
@@ -149,6 +157,9 @@ func (w *walker) stmt(s Stmt) {
 		for i := range n.Props {
 			w.expr(n.Props[i].Value)
 		}
+		for i := range n.Bindings {
+			w.expr(n.Bindings[i].Target)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				w.fn(h.Func)
@@ -184,6 +195,14 @@ func (w *walker) stmt(s Stmt) {
 		w.expr(n.Cond)
 		w.stmts(n.Body)
 		w.stmts(n.Else)
+	case *Match:
+		w.expr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				w.expr(p)
+			}
+			w.stmts(arm.Body)
+		}
 	case *For:
 		w.expr(n.Iter)
 		w.stmts(n.Body)

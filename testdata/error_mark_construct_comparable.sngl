@@ -55,8 +55,9 @@ component seededMap(
     text(value=string(m.length()))
 }
 
+// An option compares by presence and then by what it holds.
 component seededOption(
-    #[construct] o option[int], // ERROR(check) "option[int] does not"
+    #[construct] o option[int],
 ) node {
     text(value="o")
 }

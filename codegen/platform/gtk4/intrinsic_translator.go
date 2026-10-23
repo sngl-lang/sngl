@@ -24,8 +24,19 @@ type emitShared struct {
 	// calendarDate: a handler reads a GtkCalendar's day through
 	// calendarDateHelper.
 	calendarDate bool
-	errs         []error
-	seen         map[string]bool
+	// dropDown: the program builds a GtkDropDown, which the preamble's
+	// drop-down helpers serve.
+	dropDown bool
+	errs     []error
+	seen     map[string]bool
+
+	// cStrings are the literals handed to C, each a package-level var holding
+	// its C copy for the application's lifetime; cStringN numbers them and
+	// cTempN the locals a non-constant one is bound to (ownCStrings).
+	cStrings      []cStringDecl
+	cStringByText map[string]string
+	cStringN      int
+	cTempN        int
 
 	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
@@ -51,6 +62,8 @@ type emitShared struct {
 	toplevelTitles map[string]ir.Expr
 	// images are every image primitive id the file creates, by tag.
 	images map[string]string
+	// scrolls are every Scroll primitive id the file creates.
+	scrolls map[string]bool
 	// toplevelIcons is each window's icon source in an inline-cgo build, by
 	// the window's id.
 	toplevelIcons map[string]string
@@ -72,6 +85,85 @@ func (s *emitShared) needSlotAnchor() {
 	if s != nil {
 		s.slotAnchor = true
 	}
+}
+
+// cStringDecl is a package-level `*C.char` made once from a literal.
+type cStringDecl struct {
+	Name, Text string
+}
+
+const cTempPrefix = "__ctmp"
+
+func (s *emitShared) cTempName() string {
+	name := fmt.Sprintf("%s%d", cTempPrefix, s.cTempN)
+	s.cTempN++
+	return name
+}
+
+// constCString is the var holding a literal's C copy, one per distinct text.
+func (s *emitShared) constCString(text string) ir.Expr {
+	if s.cStringByText == nil {
+		s.cStringByText = map[string]string{}
+	}
+	name, ok := s.cStringByText[text]
+	if !ok {
+		name = fmt.Sprintf("__cstr%d", s.cStringN)
+		s.cStringN++
+		s.cStringByText[text] = name
+		s.cStrings = append(s.cStrings, cStringDecl{Name: name, Text: text})
+	}
+	return &ir.Ident{Name: name, Type: ir.NativePointerOf("char")}
+}
+
+// ownCStrings gives back each C string the statements make. The translator
+// builds these calls after lowering, so ReleaseTemps never saw the `C.CString`
+// in them, and the release it would have written is written here: a
+// literal's copy is a package-level var kept for the application's lifetime,
+// and any other is bound to a local before the statement that hands it to C
+// and freed after it. Every C function the translator calls copies the string
+// it is handed, so none outlives its statement. A nil shared frees nothing,
+// as it fails nothing.
+func (s *emitShared) ownCStrings(stmts []ir.Stmt) []ir.Stmt {
+	if s == nil {
+		return stmts
+	}
+	return ir.RewriteBlocks(stmts, func(block []ir.Stmt) []ir.Stmt {
+		out := make([]ir.Stmt, 0, len(block))
+		for _, st := range block {
+			if lv, ok := st.(*ir.LocalVar); ok && strings.HasPrefix(lv.Name, cTempPrefix) {
+				out = append(out, st)
+				continue
+			}
+			var frees []ir.Stmt
+			// Only the statement's own expressions: a nested block was
+			// rewritten before it, and binding its temps again would free
+			// each twice.
+			_ = ir.Rewrite(st, func(n ir.Node) (ir.Node, error) {
+				if nested, ok := n.(ir.Stmt); ok && nested != st {
+					return n, ir.SkipDir
+				}
+				c, ok := n.(*ir.Call)
+				if !ok || !isCString(c) {
+					return n, nil
+				}
+				if lit, ok := c.Args[0].Value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
+					return s.constCString(lit.Value), ir.SkipDir
+				}
+				ref := &ir.Ident{Name: s.cTempName(), Type: ir.NativePointerOf("char")}
+				out = append(out, &ir.LocalVar{Name: ref.Name, Type: ref.Type, Init: c})
+				frees = append([]ir.Stmt{&ir.CallStmt{Call: nativeCall("free", ir.TypVoid, cgoCast("", ref))}}, frees...)
+				return ref, ir.SkipDir
+			})
+			out = append(out, st)
+			out = append(out, frees...)
+		}
+		return out
+	})
+}
+
+func isCString(c *ir.Call) bool {
+	recv, ok := c.Receiver.(*ir.Ident)
+	return ok && recv.Name == "C" && c.Func != nil && c.Func.Name == "CString" && len(c.Args) == 1
 }
 
 // fail records that a property cannot be emitted. The same property assigned
@@ -96,8 +188,10 @@ func (s *emitShared) fail(err error) {
 // renders as cgo source; a cgo cast is an ir.Conversion to a
 // NativePointerOf type (see cgoCast).
 type gtk4Translator struct {
-	gc        *golang.GoIRContext
-	pkg       *ir.Package // optional; used to consult GIR-resolved native metadata
+	gc  *golang.GoIRContext
+	pkg *ir.Package // optional; used to consult GIR-resolved native metadata
+	// pkgCTypes is collectNodeCTypes(pkg), made when slotCType first asks.
+	pkgCTypes map[string]string
 	fieldSink func(name, cType string)
 	// fieldCTypes is what sinkField declared each field this translator
 	// writes as, which is the type a reference to it carries.
@@ -398,6 +492,12 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 		for _, c := range n.Else {
 			t.collectFromStmt(c)
 		}
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			for _, c := range arm.Body {
+				t.collectFromStmt(c)
+			}
+		}
 	case *ir.NodeInst:
 		for _, c := range n.Children {
 			t.collectFromStmt(c)
@@ -583,6 +683,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		return t.emitToplevelCreate(id)
 	case imageTag, imageURLTag, imageDrawingTag:
 		return t.emitImageCreate(id, tag)
+	case scrollTag:
+		return t.emitScrollCreate(id)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -615,6 +717,9 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.skipped[id] = struct{}{}
 		return nil
 	}
+	if cType == "GtkDropDown" {
+		t.shared.dropDown = true
+	}
 	ctorInfo := pickPrimaryConstructorInfo(info)
 	if t.wrapped {
 		if ctor, ok := rtCtorForCType(cType); ok {
@@ -640,7 +745,7 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		args = append(args, arg)
 	}
 	ctor := nativeCall(ctorInfo.Name, ir.NativePointerOf("GtkWidget"), args...)
-	return t.emitConstructorAssign(id, cType, ctor)
+	return t.shared.ownCStrings(t.emitConstructorAssign(id, cType, ctor))
 }
 
 // ctorZeroArg returns the IR expression for a typed-zero value matching one
@@ -1152,7 +1257,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 
 func (t *gtk4Translator) emitSetterCall(node ir.Expr, recvType, setter string, valArg ir.Expr) []ir.Stmt {
 	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, ir.TypVoid, cast, valArg)}}
+	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, ir.TypVoid, cast, valArg)}})
 }
 
 // gObjectSetFn is the preamble helper that carries each kind of value through
@@ -1184,7 +1289,7 @@ func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propV
 	t.shared.needGObjectSet()
 	obj := cgoCast("", t.qualifyNodeExpr(node))
 	name := cString(&ir.Literal{Type: ir.TypString, Value: p.Name})
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, obj, name, valArg)}}
+	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, obj, name, valArg)}})
 }
 
 func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType string, value ir.Expr) (ir.Expr, error) {
@@ -1353,15 +1458,45 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, self ir.Expr) ir.Expr {
 	}
 	fn := *lam.Func
 	fn.Params = nil
-	fn.Block = readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader())
+	fn.Block = t.boxSlotRenders(t.spellLocalNodes(readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader())))
 	out := *lam
 	out.Func = &fn
 	return &out
 }
 
+// spellLocalNodes respells each node ref in stmts that this scope declares as a
+// local, which the Go renderer otherwise writes as a field of the receiver: a
+// handler in an instance's render slot handing its widget on wrote `c.__n1`
+// for the slot's own `__n1`.
+func (t *gtk4Translator) spellLocalNodes(stmts []ir.Stmt) []ir.Stmt {
+	local := func(e ir.Expr) bool {
+		id, ok := e.(*ir.Ident)
+		return ok && id.IsElementRef && t.isLocalRef(id.Name)
+	}
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if local(e) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	if !found {
+		return stmts
+	}
+	stmts = ir.CloneStmtsSharingDecls(stmts)
+	_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+		if local(e) {
+			return t.qualifyNodeExpr(e), nil
+		}
+		return e, nil
+	})
+	return stmts
+}
+
 // widgetReader is readWidgets' read for what this translator emits, which
 // spells a node the way it spells every other.
-func (t *gtk4Translator) widgetReader() func(cType string, ref ir.Expr) ir.Expr {
+func (t *gtk4Translator) widgetReader() widgetAccess {
 	return widgetReader(t.wrapped, t.shared, func(name string) ir.Expr {
 		return t.qualifyNodeExpr(&ir.Ident{Name: name, IsElementRef: true})
 	})
@@ -1377,6 +1512,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}
 	if tag := t.imageTagOf(bare); tag != "" {
 		return t.imageAttachHandler(node, tag, event, handler)
+	}
+	if t.isScroll(bare) {
+		return t.scrollAttachHandler(node, event, handler)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
@@ -1442,7 +1580,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	connectStmt := &ir.CallStmt{
 		Call: nativeCall("sngl_connect", ir.TypVoid, widget, signalCStr, idxArg),
 	}
-	return []ir.Stmt{registerStmt, connectStmt}
+	return t.shared.ownCStrings([]ir.Stmt{registerStmt, connectStmt})
 }
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
@@ -1503,8 +1641,11 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 	}}
 }
 
+// OnIter reads a slot's list, a field the scope declares, through the
+// receiver. Any other name a pass made is a local of the code it is in: the
+// accumulator a `map` or `filter` builds, which a second one ranges over.
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
-	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
+	if id, ok := iter.(*ir.Ident); ok && id.Synthesized && (id.IsElementRef || ir.IsSlotVarName(id.Name)) {
 		return t.nodeFieldRef(id)
 	}
 	return iter
@@ -1550,7 +1691,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		return nil, false
 	}
 	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
-	cType := t.idCTypes[bare]
+	cType := t.slotCType(bare)
 	if cType == "" || cType == "GtkBox" {
 		return nil, false
 	}
@@ -1588,6 +1729,60 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		},
 		&ir.CallStmt{Call: &call},
 	}, true
+}
+
+// boxSlotRenders gives each render slot call in a handler's body the box its
+// container holds where that container holds one child, as translateDefault
+// does for one the build makes: a handler re-rendering a slot inside a card's
+// frame handed the frame itself to a function taking a GtkBox. The statements
+// are copied first, being the lowered IR's.
+func (t *gtk4Translator) boxSlotRenders(stmts []ir.Stmt) []ir.Stmt {
+	boxed := func(s ir.Stmt) bool {
+		cs, ok := s.(*ir.CallStmt)
+		if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
+			return false
+		}
+		cType := t.slotCType(codegen.IdentBareName(cs.Call.Args[0].Value))
+		return cType != "" && cType != "GtkBox"
+	}
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if s, ok := n.(ir.Stmt); ok && boxed(s) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	if !found {
+		return stmts
+	}
+	return ir.RewriteBlocks(ir.CloneStmtsSharingDecls(stmts), func(list []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range list {
+			if cs, ok := s.(*ir.CallStmt); ok && boxed(s) {
+				if b, ok := t.boxedSlotRenderCall(cs); ok {
+					out = append(out, b...)
+					continue
+				}
+			}
+			out = append(out, s)
+		}
+		return out
+	})
+}
+
+// slotCType is the C type of the container a slot renders into. A handler can
+// be attached before the node it re-renders into is built -- a card below the
+// loop whose click handler writes what the card shows -- so a container this
+// walk has not reached yet is looked up in the whole package.
+func (t *gtk4Translator) slotCType(bare string) string {
+	if c := t.idCTypes[bare]; c != "" {
+		return c
+	}
+	if t.pkgCTypes == nil {
+		t.pkgCTypes = collectNodeCTypes(t.pkg)
+	}
+	return t.pkgCTypes[bare]
 }
 
 // localSlotRenderCall rewrites a render slot call whose container is a local

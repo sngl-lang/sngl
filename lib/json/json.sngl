@@ -1,0 +1,17 @@
+import async "sngl:async"
+import ir "sngl:internal/ir"
+import marks "sngl:internal/marks"
+
+// Names a struct field or an enum member in JSON, where the wire name is not
+// the SNGL one: `#[json.identifier("page_count")] pageCount option[int]`.
+func identifier(name string) ir.Macro
+
+// Reads text as a value of T: the value, or a `decode` failure saying what in
+// the text did not match.
+#[marks.intrinsic("json.decode")]
+func decode[T any](text string) async.Result[T]
+
+// Writes a value as JSON text: compact, its keys in the order its type
+// declares them, an absent option's key left out.
+#[marks.intrinsic("json.encode")]
+func encode[T any](value T) string

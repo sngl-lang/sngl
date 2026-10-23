@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/ir"
@@ -396,6 +397,13 @@ func callsIn(root any, shadow map[*ir.Context]bool) []callEdge {
 		case *ir.Call:
 			if x.Func != nil {
 				calls = append(calls, callEdge{fn: x.Func, shadowed: shadow})
+			}
+		case *ir.Ident:
+			// A function taken as a value is bound where it is taken
+			// (funcValueUnder), so the scope taking it reads what it reads:
+			// `fetch=lookup` under a provider passes the provider's value.
+			if fn, ok := x.Sym.(*ir.Func); ok {
+				calls = append(calls, callEdge{fn: fn, shadowed: shadow})
 			}
 		case *ir.ContextProvider:
 			inner := copyContextShadow(shadow)
@@ -901,8 +909,11 @@ func (l *contextLowerer) visit(n ir.Node) (ir.Node, error) {
 					continue
 				}
 				paramName := "__ctx_" + ctx.Name
+				// A copy per call: passSlotChildInstances repoints a read it
+				// lifts in place, and one node shared by two lifted bodies
+				// left the second reading the first's prop.
 				if !hasArgNamed(x.Props, paramName) {
-					x.Props = append(x.Props, ir.Arg{Name: paramName, Value: l.active[ctx]})
+					x.Props = append(x.Props, ir.Arg{Name: paramName, Value: ir.CloneExprSharingDecls(l.active[ctx])})
 				}
 			}
 		}
@@ -949,7 +960,7 @@ func (l *contextLowerer) visit(n ir.Node) (ir.Node, error) {
 		// provider is rewriteReads' (the hidden parameter); one with no value
 		// here is left for codegen to refuse.
 		if val, ok := l.active[x.Ref]; ok {
-			return val, ir.SkipDir
+			return ir.CloneExprSharingDecls(val), ir.SkipDir
 		}
 
 	case *ir.Ident:
@@ -1032,11 +1043,15 @@ func funcValueUnder(id *ir.Ident, fn *ir.Func, active map[*ir.Context]ir.Expr, p
 	}
 	wrapper := &ir.Func{Return: fn.Return, Purity: fn.Purity, CanError: fn.CanError, IsAsync: fn.IsAsync}
 	call := &ir.Call{Type: fn.Return, Func: fn}
-	for _, p := range fn.Params {
+	for i, p := range fn.Params {
 		if hidden[p] {
 			continue
 		}
-		np := &ir.Param{Name: p.Name, Type: p.Type}
+		// A name of its own: the lambda stands where the function was taken,
+		// and a prop of the component it is spliced into named like the
+		// parameter -- an adapter's `id`, petRetrieveCall's `id` -- was read
+		// in its place.
+		np := &ir.Param{Name: "__ctxArg" + strconv.Itoa(i), Type: p.Type}
 		wrapper.Params = append(wrapper.Params, np)
 		call.Args = append(call.Args, ir.CallArg{Name: p.Name, Value: &ir.Ident{Name: np.Name, Type: np.Type, Sym: np}})
 	}

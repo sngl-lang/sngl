@@ -23,11 +23,12 @@ import (
 // `CalcDigit(…)`, a top-level func as the free `Format(…)`. Over an empty
 // package it knew neither, and emitted `Calc{…}.digit(…)` against a Go type
 // with no such method.
-func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool, instance string) *GoIRContext {
+func testIRContext(irPkg *ir.Package, platform string, fn *ir.Func, methodFields map[string]bool, instance string) *GoIRContext {
 	if irPkg == nil {
 		irPkg = &ir.Package{}
 	}
 	ctx := codegen.NewExprCtx(irPkg)
+	ctx.Platform = platform
 	// The component under test is the state a read names: a cell the
 	// lowering repointed a test's `c.box.checked` at is one of its vars.
 	if root := irPkg.RootDecl(); root != nil {
@@ -70,6 +71,9 @@ func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
 				return lines
 			}
 			if line, ok := lowerTestSnapshot(c, gc); ok {
+				return []string{line}
+			}
+			if line, ok := lowerTestWait(c, gc); ok {
 				return []string{line}
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in this platform's test runner", c.Func.Name)}
@@ -281,6 +285,26 @@ func lowerTestSnapshot(c *ir.Call, gc *GoIRContext) (string, bool) {
 	return fmt.Sprintf("t.Snapshot(%s)", nameExpr), true
 }
 
+// lowerTestWait renders `t.wait(predicate, ms)`: the predicate asked until it
+// holds or the timeout passes, with the test's goroutine sleeping between, so
+// work a handler started off it -- a request -- lands meanwhile.
+func lowerTestWait(c *ir.Call, gc *GoIRContext) (string, bool) {
+	if !ir.IsTestCall(c, ir.TestWaitID) || len(c.Args) != 3 {
+		return "", false
+	}
+	// A platform whose test runs on the thread its loop does says how to let
+	// the loop run meanwhile.
+	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, gc.Ctx.Platform, c, gc.EvalExpr); ok {
+		for _, p := range imports {
+			gc.RequireImport(p)
+		}
+		return out, true
+	}
+	gc.RequireImport("time")
+	return fmt.Sprintf("for __snglWait, __snglEnd := %s, time.Now().Add(time.Duration(%s)*time.Millisecond); !__snglWait() && time.Now().Before(__snglEnd); { time.Sleep(5 * time.Millisecond) }",
+		gc.EvalExpr(c.Args[1].Value), gc.EvalExpr(c.Args[2].Value)), true
+}
+
 func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
 	if c == nil || c.Func == nil {
@@ -320,7 +344,7 @@ const (
 //
 //   - Native: `package <pkg>` + import "testing" + funcs `func Test<X>(t *testing.T)`.
 //   - Agent:  `package <pkg>` + import "duckfam.us/sngl/pkg/go/testagent" + funcs `func test<X>(t *testagent.T)` + an init() that RegisterTests them.
-func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
+func LowerTestFile(pkg, platform string, irPkg *ir.Package, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
 	// Bodies first: what a test body calls decides what the file imports, and
 	// the header cannot be written until that is known. A fixed import line
 	// left `strings` and `utf8` undefined the moment a test asserted on
@@ -351,7 +375,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 		}
 		body.WriteString("\t_ = " + instance + "\n")
 		block, fields := codegen.LowerRefNullTests(codegen.LowerInstanceReads(fn.Block, irPkg), methodFields)
-		gc := testIRContext(irPkg, fn, fields, instance)
+		gc := testIRContext(irPkg, platform, fn, fields, instance)
 		for _, s := range block {
 			for _, line := range lowerTestStmt(s, gc) {
 				fmt.Fprintf(&body, "\t%s\n", line)

@@ -154,148 +154,142 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Italic(true)
 	}
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
-		var __lt1 lipgloss.Position
-		if s.TextAlign == "center" {
-			__lt1 = lipgloss.Center
-		} else {
-			var __lt0 lipgloss.Position
-			if s.TextAlign == "right" {
-				__lt0 = lipgloss.Right
-			} else {
-				__lt0 = lipgloss.Left
-			}
-			__lt1 = __lt0
+		var __lt0 lipgloss.Position
+		switch s.TextAlign {
+		case "center":
+			__lt0 = lipgloss.Center
+		case "right":
+			__lt0 = lipgloss.Right
+		default:
+			__lt0 = lipgloss.Left
 		}
-		l = l.AlignHorizontal(__lt1)
+		l = l.AlignHorizontal(__lt0)
 	}
 	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
-		var __lt4 lipgloss.Border
-		if s.BorderStyle == "double" {
-			__lt4 = lipgloss.DoubleBorder()
-		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-				__lt3 = tui.DashedBorder()
+		var __lt1 lipgloss.Border
+		switch s.BorderStyle {
+		case "double":
+			__lt1 = lipgloss.DoubleBorder()
+		case "dashed", "dotted":
+			__lt1 = tui.DashedBorder()
+		default:
+			var __lt2 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt2 = lipgloss.RoundedBorder()
 			} else {
-				var __lt2 lipgloss.Border
-				if (s.BorderRadius != Measurement{Px: 0}) {
-					__lt2 = lipgloss.RoundedBorder()
-				} else {
-					__lt2 = lipgloss.NormalBorder()
-				}
-				__lt3 = __lt2
+				__lt2 = lipgloss.NormalBorder()
 			}
-			__lt4 = __lt3
+			__lt1 = __lt2
 		}
-		l = l.Border(__lt4)
+		l = l.Border(__lt1)
 		if (s.BorderColor != snglcolor.Color{}) {
 			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
 		}
 	}
-	var __lt6 Measurement
+	var __lt4 Measurement
 	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt6 = s.MarginTop
+		__lt4 = s.MarginTop
+	} else {
+		var __lt3 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt3 = s.MarginY
+		} else {
+			__lt3 = s.Margin
+		}
+		__lt4 = __lt3
+	}
+	l = l.MarginTop(Cells(__lt4))
+	var __lt6 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt6 = s.MarginRight
 	} else {
 		var __lt5 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt5 = s.MarginY
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt5 = s.MarginX
 		} else {
 			__lt5 = s.Margin
 		}
 		__lt6 = __lt5
 	}
-	l = l.MarginTop(Cells(__lt6))
+	l = l.MarginRight(Cells(__lt6))
 	var __lt8 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt8 = s.MarginRight
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt8 = s.MarginBottom
 	} else {
 		var __lt7 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt7 = s.MarginX
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt7 = s.MarginY
 		} else {
 			__lt7 = s.Margin
 		}
 		__lt8 = __lt7
 	}
-	l = l.MarginRight(Cells(__lt8))
+	l = l.MarginBottom(Cells(__lt8))
 	var __lt10 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt10 = s.MarginBottom
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt10 = s.MarginLeft
 	} else {
 		var __lt9 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt9 = s.MarginY
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt9 = s.MarginX
 		} else {
 			__lt9 = s.Margin
 		}
 		__lt10 = __lt9
 	}
-	l = l.MarginBottom(Cells(__lt10))
+	l = l.MarginLeft(Cells(__lt10))
 	var __lt12 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt12 = s.MarginLeft
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt12 = s.PaddingTop
 	} else {
 		var __lt11 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt11 = s.MarginX
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt11 = s.PaddingY
 		} else {
-			__lt11 = s.Margin
+			__lt11 = s.Padding
 		}
 		__lt12 = __lt11
 	}
-	l = l.MarginLeft(Cells(__lt12))
+	l = l.PaddingTop(Cells(__lt12))
 	var __lt14 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt14 = s.PaddingTop
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt14 = s.PaddingRight
 	} else {
 		var __lt13 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt13 = s.PaddingY
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt13 = s.PaddingX
 		} else {
 			__lt13 = s.Padding
 		}
 		__lt14 = __lt13
 	}
-	l = l.PaddingTop(Cells(__lt14))
+	l = l.PaddingRight(Cells(__lt14))
 	var __lt16 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt16 = s.PaddingRight
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt16 = s.PaddingBottom
 	} else {
 		var __lt15 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt15 = s.PaddingX
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt15 = s.PaddingY
 		} else {
 			__lt15 = s.Padding
 		}
 		__lt16 = __lt15
 	}
-	l = l.PaddingRight(Cells(__lt16))
+	l = l.PaddingBottom(Cells(__lt16))
 	var __lt18 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt18 = s.PaddingBottom
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt18 = s.PaddingLeft
 	} else {
 		var __lt17 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt17 = s.PaddingY
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt17 = s.PaddingX
 		} else {
 			__lt17 = s.Padding
 		}
 		__lt18 = __lt17
 	}
-	l = l.PaddingBottom(Cells(__lt18))
-	var __lt20 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt20 = s.PaddingLeft
-	} else {
-		var __lt19 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt19 = s.PaddingX
-		} else {
-			__lt19 = s.Padding
-		}
-		__lt20 = __lt19
-	}
-	l = l.PaddingLeft(Cells(__lt20))
+	l = l.PaddingLeft(Cells(__lt18))
 	if (s.Width != Measurement{Px: 0}) {
 		l = l.Width(Cells(s.Width))
 	}
@@ -306,50 +300,50 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt25 int
+		var __lt23 int
 		if Cells(s.MaxHeight) == 0 {
-			var __lt21 int
+			var __lt19 int
 			if s.MaxLines == 0 {
-				__lt21 = 0
+				__lt19 = 0
 			} else {
-				__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
+				__lt19 = (s.MaxLines + l.GetVerticalFrameSize())
 			}
-			__lt25 = __lt21
+			__lt23 = __lt19
 		} else {
-			var __lt22 int
+			var __lt20 int
 			if s.MaxLines == 0 {
-				__lt22 = 0
+				__lt20 = 0
 			} else {
-				__lt22 = (s.MaxLines + l.GetVerticalFrameSize())
+				__lt20 = (s.MaxLines + l.GetVerticalFrameSize())
 			}
-			var __lt24 int
-			if __lt22 == 0 {
-				__lt24 = Cells(s.MaxHeight)
+			var __lt22 int
+			if __lt20 == 0 {
+				__lt22 = Cells(s.MaxHeight)
 			} else {
-				var __lt23 int
+				var __lt21 int
 				if s.MaxLines == 0 {
-					__lt23 = 0
+					__lt21 = 0
 				} else {
-					__lt23 = (s.MaxLines + l.GetVerticalFrameSize())
+					__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
 				}
-				__lt24 = min(Cells(s.MaxHeight), __lt23)
+				__lt22 = min(Cells(s.MaxHeight), __lt21)
 			}
-			__lt25 = __lt24
+			__lt23 = __lt22
 		}
-		l = l.MaxHeight(__lt25)
+		l = l.MaxHeight(__lt23)
 	}
 	return l
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt26 int
+	var __lt24 int
 	if px <= 0.0 {
-		__lt26 = 0
+		__lt24 = 0
 	} else {
-		__lt26 = max(1, (int(px) / 8))
+		__lt24 = max(1, (int(px) / 8))
 	}
-	return __lt26
+	return __lt24
 }
 
 func (m *Model) __focusNext() {
@@ -473,4 +467,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:a0128dd32abfb7f0f72d7d0bb5d011c0
+pass sha256:28f2b4a47206fbdd49eb227baf26b70a

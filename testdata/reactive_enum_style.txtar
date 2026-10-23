@@ -204,41 +204,38 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func SeedOf(s Style) SpanStyle {
-	var __lt3 snglcolor.Color
+	var __lt2 snglcolor.Color
 	if (s.Color == snglcolor.Color{}) {
-		__lt3 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+		__lt2 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 	} else {
-		__lt3 = s.Color
+		__lt2 = s.Color
 	}
-	var __lt5 string
-	if (s.FontWeight == "bold") || (s.FontWeight == "bolder") {
-		__lt5 = "bold"
-	} else {
-		var __lt4 string
-		if s.FontWeight == "lighter" {
-			__lt4 = "lighter"
-		} else {
-			__lt4 = "inherit"
-		}
-		__lt5 = __lt4
+	var __lt3 string
+	switch s.FontWeight {
+	case "bold", "bolder":
+		__lt3 = "bold"
+	case "lighter":
+		__lt3 = "lighter"
+	default:
+		__lt3 = "inherit"
 	}
-	var __lt6 string
+	var __lt4 string
 	if (s.FontStyle == "italic") || (s.FontStyle == "oblique") {
-		__lt6 = "italic"
+		__lt4 = "italic"
 	} else {
-		__lt6 = "inherit"
+		__lt4 = "inherit"
 	}
-	return SpanStyle{Color: __lt3, FontWeight: __lt5, FontStyle: __lt6, FontSize: Measurement{Px: 0}, FontFamily: "", Underline: false, Strike: false}
+	return SpanStyle{Color: __lt2, FontWeight: __lt3, FontStyle: __lt4, FontSize: Measurement{Px: 0}, FontFamily: "", Underline: false, Strike: false}
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -288,85 +285,79 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt7 int
+		var __lt5 int
 		if s.MaxLines == 0 {
-			__lt7 = 0
+			__lt5 = 0
 		} else {
-			__lt7 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt5 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt7))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt5))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt9 lipgloss.Position
-	if a == "center" {
-		__lt9 = lipgloss.Center
-	} else {
-		var __lt8 lipgloss.Position
-		if a == "right" {
-			__lt8 = lipgloss.Right
-		} else {
-			__lt8 = lipgloss.Left
-		}
-		__lt9 = __lt8
+	var __lt6 lipgloss.Position
+	switch a {
+	case "center":
+		__lt6 = lipgloss.Center
+	case "right":
+		__lt6 = lipgloss.Right
+	default:
+		__lt6 = lipgloss.Left
 	}
-	return __lt9
+	return __lt6
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt12 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt12 = lipgloss.DoubleBorder()
-	} else {
-		var __lt11 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt11 = tui.DashedBorder()
+	var __lt7 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt7 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt7 = tui.DashedBorder()
+	default:
+		var __lt8 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt8 = lipgloss.RoundedBorder()
 		} else {
-			var __lt10 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt10 = lipgloss.RoundedBorder()
-			} else {
-				__lt10 = lipgloss.NormalBorder()
-			}
-			__lt11 = __lt10
+			__lt8 = lipgloss.NormalBorder()
+		}
+		__lt7 = __lt8
+	}
+	return __lt7
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt10 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt10 = own
+	} else {
+		var __lt9 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
+	}
+	return Cells(__lt10)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt12 int
+	if height__r0 == 0 {
+		__lt12 = lines
+	} else {
+		var __lt11 int
+		if lines == 0 {
+			__lt11 = height__r0
+		} else {
+			__lt11 = min(height__r0, lines)
 		}
 		__lt12 = __lt11
 	}
 	return __lt12
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt14 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt14 = own
-	} else {
-		var __lt13 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt13 = axis
-		} else {
-			__lt13 = all
-		}
-		__lt14 = __lt13
-	}
-	return Cells(__lt14)
-}
-
-func LineCap(height__r0 int, lines int) int {
-	var __lt16 int
-	if height__r0 == 0 {
-		__lt16 = lines
-	} else {
-		var __lt15 int
-		if lines == 0 {
-			__lt15 = height__r0
-		} else {
-			__lt15 = min(height__r0, lines)
-		}
-		__lt16 = __lt15
-	}
-	return __lt16
 }
 
 func (m *Model) __focusNext() {
@@ -480,50 +471,50 @@ func (m Model) View() tea.View {
 		}
 		content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
 		contentChildren = append(contentChildren, tui.Fixed(content_0))
+		var __lt13 string
+		if m.on {
+			__lt13 = "bold"
+		} else {
+			__lt13 = "normal"
+		}
+		var __lt14 string
+		if m.on {
+			__lt14 = "bold"
+		} else {
+			__lt14 = "normal"
+		}
+		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt14}.Flex, func(content_5Cells int) string {
+			var content_5 string
+			content_5 = tui.Sized(BoxLook(Style{FontWeight: __lt13}, true), false, content_5Cells).Render(fmt.Sprint("weight"))
+			return content_5
+		}))
+		var __lt15 string
+		if m.on {
+			__lt15 = "italic"
+		} else {
+			__lt15 = "normal"
+		}
+		var __lt16 string
+		if m.on {
+			__lt16 = "center"
+		} else {
+			__lt16 = "right"
+		}
 		var __lt17 string
 		if m.on {
-			__lt17 = "bold"
+			__lt17 = "italic"
 		} else {
 			__lt17 = "normal"
 		}
 		var __lt18 string
 		if m.on {
-			__lt18 = "bold"
+			__lt18 = "center"
 		} else {
-			__lt18 = "normal"
+			__lt18 = "right"
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt18}.Flex, func(content_5Cells int) string {
-			var content_5 string
-			content_5 = tui.Sized(BoxLook(Style{FontWeight: __lt17}, true), false, content_5Cells).Render(fmt.Sprint("weight"))
-			return content_5
-		}))
-		var __lt19 string
-		if m.on {
-			__lt19 = "italic"
-		} else {
-			__lt19 = "normal"
-		}
-		var __lt20 string
-		if m.on {
-			__lt20 = "center"
-		} else {
-			__lt20 = "right"
-		}
-		var __lt21 string
-		if m.on {
-			__lt21 = "italic"
-		} else {
-			__lt21 = "normal"
-		}
-		var __lt22 string
-		if m.on {
-			__lt22 = "center"
-		} else {
-			__lt22 = "right"
-		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontStyle: __lt21, TextAlign: __lt22}.Flex, func(content_14Cells int) string {
+		contentChildren = append(contentChildren, tui.Grow(Style{FontStyle: __lt17, TextAlign: __lt18}.Flex, func(content_14Cells int) string {
 			var content_14 string
-			content_14 = tui.Sized(BoxLook(Style{FontStyle: __lt19, TextAlign: __lt20}, true), false, content_14Cells).Render(fmt.Sprint("slant"))
+			content_14 = tui.Sized(BoxLook(Style{FontStyle: __lt15, TextAlign: __lt16}, true), false, content_14Cells).Render(fmt.Sprint("slant"))
 			return content_14
 		}))
 		var content_15 string
@@ -535,127 +526,127 @@ func (m Model) View() tea.View {
 		var content_17 string
 		content_17 = BoxLook(Style{TextAlign: "justify"}, true).Render(fmt.Sprint("justified"))
 		contentChildren = append(contentChildren, tui.Fixed(content_17))
-		var __lt24 string
+		var __lt20 string
 		if m.on {
-			__lt24 = "center"
+			__lt20 = "center"
 		} else {
-			var __lt23 string
+			var __lt19 string
 			if m.n > 2 {
-				__lt23 = "left"
+				__lt19 = "left"
 			} else {
-				__lt23 = "right"
+				__lt19 = "right"
 			}
-			__lt24 = __lt23
+			__lt20 = __lt19
 		}
-		var __lt26 string
+		var __lt22 string
 		if m.on {
-			__lt26 = "center"
+			__lt22 = "center"
 		} else {
-			var __lt25 string
+			var __lt21 string
 			if m.n > 2 {
-				__lt25 = "left"
+				__lt21 = "left"
 			} else {
-				__lt25 = "right"
+				__lt21 = "right"
 			}
-			__lt26 = __lt25
+			__lt22 = __lt21
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{TextAlign: __lt26}.Flex, func(content_22Cells int) string {
+		contentChildren = append(contentChildren, tui.Grow(Style{TextAlign: __lt22}.Flex, func(content_22Cells int) string {
 			var content_22 string
-			content_22 = tui.Sized(BoxLook(Style{TextAlign: __lt24}, true), false, content_22Cells).Render(fmt.Sprint("nested"))
+			content_22 = tui.Sized(BoxLook(Style{TextAlign: __lt20}, true), false, content_22Cells).Render(fmt.Sprint("nested"))
 			return content_22
 		}))
+		var __lt23 Measurement
+		if m.on {
+			__lt23 = Measurement{Px: 20}
+		} else {
+			__lt23 = Measurement{Px: 10}
+		}
+		var __lt24 Measurement
+		if m.on {
+			__lt24 = Measurement{Px: 20}
+		} else {
+			__lt24 = Measurement{Px: 10}
+		}
+		contentChildren = append(contentChildren, tui.Grow(Style{FontSize: Measurement{Px: __lt24.Px * 2, Em: __lt24.Em * 2, Rem: __lt24.Rem * 2}}.Flex, func(content_27Cells int) string {
+			var content_27 string
+			content_27 = tui.Sized(BoxLook(Style{FontSize: Measurement{Px: __lt23.Px * 2, Em: __lt23.Em * 2, Rem: __lt23.Rem * 2}}, true), false, content_27Cells).Render(fmt.Sprint("grown"))
+			return content_27
+		}))
+		var __lt25 Measurement
+		if m.on {
+			__lt25 = Measurement{Px: 16}
+		} else {
+			__lt25 = Measurement{Px: 8}
+		}
+		var __lt26 Measurement
+		if m.on {
+			__lt26 = Measurement{Px: 160}
+		} else {
+			__lt26 = Measurement{Px: 80}
+		}
 		var __lt27 Measurement
 		if m.on {
 			__lt27 = Measurement{Px: 20}
 		} else {
-			__lt27 = Measurement{Px: 10}
+			__lt27 = Measurement{Px: 12}
 		}
-		var __lt28 Measurement
+		var __lt28 float64
 		if m.on {
-			__lt28 = Measurement{Px: 20}
+			__lt28 = 0.5
 		} else {
-			__lt28 = Measurement{Px: 10}
+			__lt28 = 1.0
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontSize: Measurement{Px: __lt28.Px * 2, Em: __lt28.Em * 2, Rem: __lt28.Rem * 2}}.Flex, func(content_27Cells int) string {
-			var content_27 string
-			content_27 = tui.Sized(BoxLook(Style{FontSize: Measurement{Px: __lt27.Px * 2, Em: __lt27.Em * 2, Rem: __lt27.Rem * 2}}, true), false, content_27Cells).Render(fmt.Sprint("grown"))
-			return content_27
-		}))
 		var __lt29 Measurement
 		if m.on {
-			__lt29 = Measurement{Px: 16}
+			__lt29 = Measurement{Px: 1}
 		} else {
-			__lt29 = Measurement{Px: 8}
+			__lt29 = Measurement{Px: 0}
 		}
-		var __lt30 Measurement
+		var __lt30 snglcolor.Color
 		if m.on {
-			__lt30 = Measurement{Px: 160}
+			__lt30 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 		} else {
-			__lt30 = Measurement{Px: 80}
+			__lt30 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
 		}
 		var __lt31 Measurement
 		if m.on {
-			__lt31 = Measurement{Px: 20}
+			__lt31 = Measurement{Px: 16}
 		} else {
-			__lt31 = Measurement{Px: 12}
+			__lt31 = Measurement{Px: 8}
 		}
-		var __lt32 float64
+		var __lt32 Measurement
 		if m.on {
-			__lt32 = 0.5
+			__lt32 = Measurement{Px: 160}
 		} else {
-			__lt32 = 1.0
+			__lt32 = Measurement{Px: 80}
 		}
 		var __lt33 Measurement
 		if m.on {
-			__lt33 = Measurement{Px: 1}
+			__lt33 = Measurement{Px: 20}
 		} else {
-			__lt33 = Measurement{Px: 0}
+			__lt33 = Measurement{Px: 12}
 		}
-		var __lt34 snglcolor.Color
+		var __lt34 float64
 		if m.on {
-			__lt34 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+			__lt34 = 0.5
 		} else {
-			__lt34 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+			__lt34 = 1.0
 		}
 		var __lt35 Measurement
 		if m.on {
-			__lt35 = Measurement{Px: 16}
+			__lt35 = Measurement{Px: 1}
 		} else {
-			__lt35 = Measurement{Px: 8}
+			__lt35 = Measurement{Px: 0}
 		}
-		var __lt36 Measurement
+		var __lt36 snglcolor.Color
 		if m.on {
-			__lt36 = Measurement{Px: 160}
+			__lt36 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 		} else {
-			__lt36 = Measurement{Px: 80}
+			__lt36 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
 		}
-		var __lt37 Measurement
-		if m.on {
-			__lt37 = Measurement{Px: 20}
-		} else {
-			__lt37 = Measurement{Px: 12}
-		}
-		var __lt38 float64
-		if m.on {
-			__lt38 = 0.5
-		} else {
-			__lt38 = 1.0
-		}
-		var __lt39 Measurement
-		if m.on {
-			__lt39 = Measurement{Px: 1}
-		} else {
-			__lt39 = Measurement{Px: 0}
-		}
-		var __lt40 snglcolor.Color
-		if m.on {
-			__lt40 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
-		} else {
-			__lt40 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
-		}
-		contentChildren = append(contentChildren, tui.Grow(Style{Padding: __lt35, Width: __lt36, FontSize: __lt37, Opacity: __lt38, BorderWidth: __lt39, Color: __lt40}.Flex, func(content_52Cells int) string {
+		contentChildren = append(contentChildren, tui.Grow(Style{Padding: __lt31, Width: __lt32, FontSize: __lt33, Opacity: __lt34, BorderWidth: __lt35, Color: __lt36}.Flex, func(content_52Cells int) string {
 			var content_52 string
-			content_52 = tui.Sized(BoxLook(Style{Padding: __lt29, Width: __lt30, FontSize: __lt31, Opacity: __lt32, BorderWidth: __lt33, Color: __lt34}, true), false, content_52Cells).Render(fmt.Sprint("box"))
+			content_52 = tui.Sized(BoxLook(Style{Padding: __lt25, Width: __lt26, FontSize: __lt27, Opacity: __lt28, BorderWidth: __lt29, Color: __lt30}, true), false, content_52Cells).Render(fmt.Sprint("box"))
 			return content_52
 		}))
 		contentChildren = append(contentChildren, tui.Grow(Style{PaddingLeft: Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}}.Flex, func(content_53Cells int) string {
@@ -663,6 +654,30 @@ func (m Model) View() tea.View {
 			content_53 = tui.Sized(BoxLook(Style{PaddingLeft: Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}}, true), false, content_53Cells).Render(fmt.Sprint("scaled"))
 			return content_53
 		}))
+		var __lt37 string
+		if m.on {
+			__lt37 = "bold"
+		} else {
+			__lt37 = "normal"
+		}
+		var __lt38 Measurement
+		if m.on {
+			__lt38 = Measurement{Px: 20}
+		} else {
+			__lt38 = Measurement{Px: 12}
+		}
+		var __lt39 string
+		if m.on {
+			__lt39 = "bold"
+		} else {
+			__lt39 = "normal"
+		}
+		var __lt40 Measurement
+		if m.on {
+			__lt40 = Measurement{Px: 20}
+		} else {
+			__lt40 = Measurement{Px: 12}
+		}
 		var __lt41 string
 		if m.on {
 			__lt41 = "bold"
@@ -675,75 +690,51 @@ func (m Model) View() tea.View {
 		} else {
 			__lt42 = Measurement{Px: 12}
 		}
-		var __lt43 string
-		if m.on {
-			__lt43 = "bold"
-		} else {
-			__lt43 = "normal"
-		}
-		var __lt44 Measurement
-		if m.on {
-			__lt44 = Measurement{Px: 20}
-		} else {
-			__lt44 = Measurement{Px: 12}
-		}
-		var __lt45 string
-		if m.on {
-			__lt45 = "bold"
-		} else {
-			__lt45 = "normal"
-		}
-		var __lt46 Measurement
-		if m.on {
-			__lt46 = Measurement{Px: 20}
-		} else {
-			__lt46 = Measurement{Px: 12}
-		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt45, FontSize: __lt46}.Flex, func(content_66Cells int) string {
+		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt41, FontSize: __lt42}.Flex, func(content_66Cells int) string {
 			var content_66 string
-			content_66Seed := SeedOf(Style{FontWeight: __lt43, FontSize: __lt44})
+			content_66Seed := SeedOf(Style{FontWeight: __lt39, FontSize: __lt40})
 			_ = content_66Seed
 			_ = content_66Seed
 			_ = content_66Seed
 			content_66 = ""
 			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique")).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint("flow "))
-			var __lt47 string
+			var __lt43 string
 			if m.on {
-				__lt47 = "inherit"
+				__lt43 = "inherit"
 			} else {
-				__lt47 = "lighter"
+				__lt43 = "lighter"
 			}
-			var __lt48 string
+			var __lt44 string
 			if m.on {
-				__lt48 = "italic"
+				__lt44 = "italic"
 			} else {
-				__lt48 = "inherit"
+				__lt44 = "inherit"
 			}
-			var __lt49 Measurement
+			var __lt45 Measurement
 			if m.on {
-				__lt49 = Measurement{Px: 18}
+				__lt45 = Measurement{Px: 18}
 			} else {
-				__lt49 = Measurement{Px: 0}
+				__lt45 = Measurement{Px: 0}
 			}
-			_ = __lt49
-			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((__lt47 == "bold" || __lt47 == "bolder" || __lt47 != "normal" && (content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder"))).Italic((__lt48 == "italic" || __lt48 == "oblique" || __lt48 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline((content_66Seed.Underline || m.on)).Strikethrough(content_66Seed.Strike).Faint((__lt47 == "lighter" || __lt47 != "normal" && (content_66Seed.FontWeight == "lighter"))).Render(fmt.Sprint("run"))
+			_ = __lt45
+			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((__lt43 == "bold" || __lt43 == "bolder" || __lt43 != "normal" && (content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder"))).Italic((__lt44 == "italic" || __lt44 == "oblique" || __lt44 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline((content_66Seed.Underline || m.on)).Strikethrough(content_66Seed.Strike).Faint((__lt43 == "lighter" || __lt43 != "normal" && (content_66Seed.FontWeight == "lighter"))).Render(fmt.Sprint("run"))
 			if m.on {
-				var __lt50 string
+				var __lt46 string
 				if m.n > 2 {
-					__lt50 = "italic"
+					__lt46 = "italic"
 				} else {
-					__lt50 = "normal"
+					__lt46 = "normal"
 				}
-				content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((__lt50 == "italic" || __lt50 == "oblique" || __lt50 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" gated"))
+				content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((__lt46 == "italic" || __lt46 == "oblique" || __lt46 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" gated"))
 			}
-			var __lt51 snglcolor.Color
+			var __lt47 snglcolor.Color
 			if m.on {
-				__lt51 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+				__lt47 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 			} else {
-				__lt51 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+				__lt47 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 			}
-			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt51.Or(content_66Seed.Color.Or("")))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique")).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" tinted"))
-			content_66 = tui.Sized(BoxLook(Style{FontWeight: __lt41, FontSize: __lt42}, false), false, content_66Cells).Render(content_66)
+			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt47.Or(content_66Seed.Color.Or("")))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique")).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" tinted"))
+			content_66 = tui.Sized(BoxLook(Style{FontWeight: __lt37, FontSize: __lt38}, false), false, content_66Cells).Render(content_66)
 			return content_66
 		}))
 		content = tui.Join(false, lipgloss.Left, 0, contentH, contentChildren)
@@ -1028,15 +1019,15 @@ fun MainScreen() {
             }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "toggle", modifier = Modifier)
             }
-            Text(text = "weight", modifier = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).flex == 0.0)) (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), true)) else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), true)).then(Modifier.weight(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).flex.toFloat()).fillMaxWidth())), style = LocalTextStyle.current.merge((if (!((((((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color != Color()) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize != Measurement(px = 0.0))) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily != "")) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.r.toInt(), green = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.g.toInt(), blue = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.b.toInt(), alpha = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.a.toInt())), fontSize = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize.px + (16.0 * (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize.em + Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontWeight == SnglFontWeight.NORMAL)) null else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontWeight == SnglFontWeight.BOLD)) FontWeight.Bold else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontWeight == SnglFontWeight.LIGHTER)) FontWeight.Light else FontWeight.ExtraBold))), fontStyle = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontStyle == SnglFontStyle.NORMAL)) null else FontStyle.Italic), fontFamily = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily == "")) null else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily == "monospace")) FontFamily.Monospace else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily == "serif")) FontFamily.Serif else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily == "sans-serif")) FontFamily.SansSerif else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily == "cursive")) FontFamily.Cursive else FontFamily.Default))))), textAlign = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).textAlign == SnglTextAlign.LEFT)) TextAlign.Unspecified else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).textAlign == SnglTextAlign.CENTER)) TextAlign.Center else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).textAlign == SnglTextAlign.RIGHT)) TextAlign.End else TextAlign.Justify)))))))
-            Text(text = "slant", modifier = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).flex == 0.0)) (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)) == Style())) Modifier else styleModifier(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)), true)) else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)) == Style())) Modifier else styleModifier(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)), true)).then(Modifier.weight(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).flex.toFloat()).fillMaxWidth())), style = LocalTextStyle.current.merge((if (!((((((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color != Color()) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize != Measurement(px = 0.0))) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily != "")) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.r.toInt(), green = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.g.toInt(), blue = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.b.toInt(), alpha = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.a.toInt())), fontSize = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize.px + (16.0 * (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize.em + Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontWeight == SnglFontWeight.NORMAL)) null else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontWeight == SnglFontWeight.BOLD)) FontWeight.Bold else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontWeight == SnglFontWeight.LIGHTER)) FontWeight.Light else FontWeight.ExtraBold))), fontStyle = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontStyle == SnglFontStyle.NORMAL)) null else FontStyle.Italic), fontFamily = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily == "")) null else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily == "monospace")) FontFamily.Monospace else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily == "serif")) FontFamily.Serif else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily == "sans-serif")) FontFamily.SansSerif else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily == "cursive")) FontFamily.Cursive else FontFamily.Default))))), textAlign = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).textAlign == SnglTextAlign.LEFT)) TextAlign.Unspecified else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).textAlign == SnglTextAlign.CENTER)) TextAlign.Center else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).textAlign == SnglTextAlign.RIGHT)) TextAlign.End else TextAlign.Justify)))))))
+            Text(text = "weight", modifier = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).flex == 0.0)) (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), true)) else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)), true)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).flex.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color != Color()) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize != Measurement(px = 0.0))) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily != "")) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.r.toInt(), green = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.g.toInt(), blue = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.b.toInt(), alpha = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).color.a.toInt())), fontSize = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize.px + (16.0 * (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize.em + Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL)).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "slant", modifier = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).flex == 0.0)) (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)) == Style())) Modifier else styleModifier(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)), true)) else (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)) == Style())) Modifier else styleModifier(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)), true)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).flex.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color != Color()) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize != Measurement(px = 0.0))) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily != "")) || (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.r.toInt(), green = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.g.toInt(), blue = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.b.toInt(), alpha = Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).color.a.toInt())), fontSize = (if ((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize.px + (16.0 * (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize.em + Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(fontStyle = (if (on) SnglFontStyle.ITALIC else SnglFontStyle.NORMAL), textAlign = (if (on) SnglTextAlign.CENTER else SnglTextAlign.RIGHT)).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
             Text(text = "still", modifier = styleModifier(Style(textAlign = SnglTextAlign.CENTER), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
             Text(text = "left", modifier = styleModifier(Style(textAlign = SnglTextAlign.LEFT, opacity = 1.0, borderWidth = Measurement(px = 0.0)), true), style = LocalTextStyle.current.merge(TextStyle.Default))
             Text(text = "justified", modifier = styleModifier(Style(textAlign = SnglTextAlign.JUSTIFY), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Justify)))
-            Text(text = "nested", modifier = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).flex == 0.0)) (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))) == Style())) Modifier else styleModifier(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))), true)) else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))) == Style())) Modifier else styleModifier(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))), true)).then(Modifier.weight(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).flex.toFloat()).fillMaxWidth())), style = LocalTextStyle.current.merge((if (!((((((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color != Color()) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize != Measurement(px = 0.0))) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontWeight != SnglFontWeight.NORMAL)) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontStyle != SnglFontStyle.NORMAL)) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily != "")) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.r.toInt(), green = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.g.toInt(), blue = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.b.toInt(), alpha = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.a.toInt())), fontSize = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize.px + (16.0 * (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize.em + Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontWeight == SnglFontWeight.NORMAL)) null else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontWeight == SnglFontWeight.BOLD)) FontWeight.Bold else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontWeight == SnglFontWeight.LIGHTER)) FontWeight.Light else FontWeight.ExtraBold))), fontStyle = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontStyle == SnglFontStyle.NORMAL)) null else FontStyle.Italic), fontFamily = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily == "")) null else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily == "monospace")) FontFamily.Monospace else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily == "serif")) FontFamily.Serif else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily == "sans-serif")) FontFamily.SansSerif else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily == "cursive")) FontFamily.Cursive else FontFamily.Default))))), textAlign = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).textAlign == SnglTextAlign.LEFT)) TextAlign.Unspecified else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).textAlign == SnglTextAlign.CENTER)) TextAlign.Center else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).textAlign == SnglTextAlign.RIGHT)) TextAlign.End else TextAlign.Justify)))))))
-            Text(text = "grown", modifier = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).flex == 0.0)) (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)) == Style())) Modifier else styleModifier(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)), true)) else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)) == Style())) Modifier else styleModifier(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)), true)).then(Modifier.weight(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).flex.toFloat()).fillMaxWidth())), style = LocalTextStyle.current.merge((if (!((((((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color != Color()) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize != Measurement(px = 0.0))) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily != "")) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.r.toInt(), green = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.g.toInt(), blue = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.b.toInt(), alpha = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.a.toInt())), fontSize = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize.px + (16.0 * (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize.em + Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontWeight == SnglFontWeight.NORMAL)) null else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontWeight == SnglFontWeight.BOLD)) FontWeight.Bold else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontWeight == SnglFontWeight.LIGHTER)) FontWeight.Light else FontWeight.ExtraBold))), fontStyle = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontStyle == SnglFontStyle.NORMAL)) null else FontStyle.Italic), fontFamily = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily == "")) null else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily == "monospace")) FontFamily.Monospace else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily == "serif")) FontFamily.Serif else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily == "sans-serif")) FontFamily.SansSerif else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily == "cursive")) FontFamily.Cursive else FontFamily.Default))))), textAlign = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).textAlign == SnglTextAlign.LEFT)) TextAlign.Unspecified else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).textAlign == SnglTextAlign.CENTER)) TextAlign.Center else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).textAlign == SnglTextAlign.RIGHT)) TextAlign.End else TextAlign.Justify)))))))
-            Text(text = "box", modifier = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).flex == 0.0)) (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))) == Style())) Modifier else styleModifier(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))), true)) else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))) == Style())) Modifier else styleModifier(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))), true)).then(Modifier.weight(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).flex.toFloat()).fillMaxWidth())), style = LocalTextStyle.current.merge((if (!((((((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color != Color()) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize != Measurement(px = 0.0))) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontWeight != SnglFontWeight.NORMAL)) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontStyle != SnglFontStyle.NORMAL)) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily != "")) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.r.toInt(), green = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.g.toInt(), blue = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.b.toInt(), alpha = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.a.toInt())), fontSize = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize.px + (16.0 * (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize.em + Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontWeight == SnglFontWeight.NORMAL)) null else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontWeight == SnglFontWeight.BOLD)) FontWeight.Bold else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontWeight == SnglFontWeight.LIGHTER)) FontWeight.Light else FontWeight.ExtraBold))), fontStyle = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontStyle == SnglFontStyle.NORMAL)) null else FontStyle.Italic), fontFamily = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily == "")) null else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily == "monospace")) FontFamily.Monospace else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily == "serif")) FontFamily.Serif else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily == "sans-serif")) FontFamily.SansSerif else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily == "cursive")) FontFamily.Cursive else FontFamily.Default))))), textAlign = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).textAlign == SnglTextAlign.LEFT)) TextAlign.Unspecified else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).textAlign == SnglTextAlign.CENTER)) TextAlign.Center else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).textAlign == SnglTextAlign.RIGHT)) TextAlign.End else TextAlign.Justify)))))))
-            Text(text = "scaled", modifier = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).flex == 0.0)) (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)) == Style())) Modifier else styleModifier(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)), true)) else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)) == Style())) Modifier else styleModifier(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)), true)).then(Modifier.weight(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).flex.toFloat()).fillMaxWidth())), style = LocalTextStyle.current.merge((if (!((((((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color != Color()) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize != Measurement(px = 0.0))) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontWeight != SnglFontWeight.NORMAL)) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontStyle != SnglFontStyle.NORMAL)) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily != "")) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.r.toInt(), green = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.g.toInt(), blue = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.b.toInt(), alpha = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.a.toInt())), fontSize = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize.px + (16.0 * (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize.em + Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontWeight == SnglFontWeight.NORMAL)) null else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontWeight == SnglFontWeight.BOLD)) FontWeight.Bold else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontWeight == SnglFontWeight.LIGHTER)) FontWeight.Light else FontWeight.ExtraBold))), fontStyle = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontStyle == SnglFontStyle.NORMAL)) null else FontStyle.Italic), fontFamily = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily == "")) null else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily == "monospace")) FontFamily.Monospace else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily == "serif")) FontFamily.Serif else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily == "sans-serif")) FontFamily.SansSerif else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily == "cursive")) FontFamily.Cursive else FontFamily.Default))))), textAlign = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).textAlign == SnglTextAlign.LEFT)) TextAlign.Unspecified else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).textAlign == SnglTextAlign.CENTER)) TextAlign.Center else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).textAlign == SnglTextAlign.RIGHT)) TextAlign.End else TextAlign.Justify)))))))
+            Text(text = "nested", modifier = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).flex == 0.0)) (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))) == Style())) Modifier else styleModifier(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))), true)) else (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))) == Style())) Modifier else styleModifier(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))), true)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).flex.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color != Color()) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize != Measurement(px = 0.0))) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontWeight != SnglFontWeight.NORMAL)) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontStyle != SnglFontStyle.NORMAL)) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily != "")) || (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.r.toInt(), green = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.g.toInt(), blue = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.b.toInt(), alpha = Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).color.a.toInt())), fontSize = (if ((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize.px + (16.0 * (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize.em + Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(textAlign = (if (on) SnglTextAlign.CENTER else (if ((n > 2)) SnglTextAlign.LEFT else SnglTextAlign.RIGHT))).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "grown", modifier = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).flex == 0.0)) (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)) == Style())) Modifier else styleModifier(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)), true)) else (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)) == Style())) Modifier else styleModifier(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)), true)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).flex.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color != Color()) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize != Measurement(px = 0.0))) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily != "")) || (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.r.toInt(), green = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.g.toInt(), blue = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.b.toInt(), alpha = Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).color.a.toInt())), fontSize = (if ((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize.px + (16.0 * (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize.em + Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(fontSize = Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "box", modifier = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).flex == 0.0)) (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))) == Style())) Modifier else styleModifier(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))), true)) else (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))) == Style())) Modifier else styleModifier(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))), true)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).flex.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color != Color()) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize != Measurement(px = 0.0))) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontWeight != SnglFontWeight.NORMAL)) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontStyle != SnglFontStyle.NORMAL)) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily != "")) || (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.r.toInt(), green = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.g.toInt(), blue = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.b.toInt(), alpha = Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).color.a.toInt())), fontSize = (if ((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize.px + (16.0 * (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize.em + Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(padding = (if (on) Measurement(px = 16.0) else Measurement(px = 8.0)), width = (if (on) Measurement(px = 160.0) else Measurement(px = 80.0)), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0)), opacity = (if (on) 0.5 else 1.0), borderWidth = (if (on) Measurement(px = 1.0) else Measurement(px = 0.0)), color = (if (on) Color(r = 255, g = 0, b = 0, a = 255) else Color(r = 0, g = 255, b = 0, a = 255))).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "scaled", modifier = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).flex == 0.0)) (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)) == Style())) Modifier else styleModifier(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)), true)) else (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)) == Style())) Modifier else styleModifier(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)), true)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).flex.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color != Color()) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize != Measurement(px = 0.0))) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontWeight != SnglFontWeight.NORMAL)) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontStyle != SnglFontStyle.NORMAL)) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily != "")) || (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.r.toInt(), green = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.g.toInt(), blue = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.b.toInt(), alpha = Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).color.a.toInt())), fontSize = (if ((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize.px + (16.0 * (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize.em + Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(paddingLeft = Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
             Text(text = buildAnnotatedString {
                 append("flow ")
                 withStyle(SpanStyle(fontWeight = (if (on) null else FontWeight.Light), fontStyle = (if (on) FontStyle.Italic else null), fontSize = ((((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).px + 16*(((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).em + ((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).rem))).let { if (it > 0) it.sp else TextUnit.Unspecified }, textDecoration = TextDecoration.combine(listOfNotNull(if (on) TextDecoration.Underline else null)))) {
@@ -1050,7 +1041,7 @@ fun MainScreen() {
                 withStyle(SpanStyle(color = (if (on) ComposeColor.Unspecified else ComposeColor(red = 255, green = 0, blue = 0, alpha = 255)))) {
                     append(" tinted")
                 }
-            }, modifier = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).flex == 0.0)) (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))), true)) else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))), true)).then(Modifier.weight(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).flex.toFloat()).fillMaxWidth())), style = LocalTextStyle.current.merge((if (!((((((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color != Color()) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize != Measurement(px = 0.0))) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily != "")) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.r.toInt(), green = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.g.toInt(), blue = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.b.toInt(), alpha = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.a.toInt())), fontSize = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize.px + (16.0 * (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize.em + Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontWeight == SnglFontWeight.NORMAL)) null else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontWeight == SnglFontWeight.BOLD)) FontWeight.Bold else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontWeight == SnglFontWeight.LIGHTER)) FontWeight.Light else FontWeight.ExtraBold))), fontStyle = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontStyle == SnglFontStyle.NORMAL)) null else FontStyle.Italic), fontFamily = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily == "")) null else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily == "monospace")) FontFamily.Monospace else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily == "serif")) FontFamily.Serif else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily == "sans-serif")) FontFamily.SansSerif else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily == "cursive")) FontFamily.Cursive else FontFamily.Default))))), textAlign = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).textAlign == SnglTextAlign.LEFT)) TextAlign.Unspecified else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).textAlign == SnglTextAlign.CENTER)) TextAlign.Center else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).textAlign == SnglTextAlign.RIGHT)) TextAlign.End else TextAlign.Justify)))))))
+            }, modifier = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).flex == 0.0)) (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))), true)) else (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))) == Style())) Modifier else styleModifier(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))), true)).then({ w: Float -> Modifier.weight(w).fillMaxWidth() }(Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).flex.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color != Color()) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize != Measurement(px = 0.0))) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontWeight != SnglFontWeight.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontStyle != SnglFontStyle.NORMAL)) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily != "")) || (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.r.toInt(), green = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.g.toInt(), blue = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.b.toInt(), alpha = Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).color.a.toInt())), fontSize = (if ((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize.px + (16.0 * (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize.em + Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(fontWeight = (if (on) SnglFontWeight.BOLD else SnglFontWeight.NORMAL), fontSize = (if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
         }
     }
 }
@@ -1104,6 +1095,6 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     return m
 }
 -- run/go/bubbletea --
-pass sha256:dc5b9f5937f421a9115f3a5e81894934
+pass sha256:1ba4f3ed8111b563d26125972b7fdfb4
 -- run/kotlin/android --
-pass sha256:f6e578eea8aeea603cc636790de09ba8
+pass sha256:e223f61a8ce552c0bcda51b0ce549130

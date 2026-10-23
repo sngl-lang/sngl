@@ -107,8 +107,10 @@ type Model struct {
 	__effect0_desired    []bool
 	__effect1_key        time.Duration
 	__effect1_dirty      bool
+	__effect1_absent     bool
 	__effects0_settling  bool
 	__effects0_pending   bool
+	__effects0_torn      bool
 	__effects0_steps     int
 
 	main    *fynelayout.Toplevel
@@ -129,10 +131,24 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_dirty = false
+	m.__effect1_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
+}
+
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
 }
 
 func (m *Model) __effect0_mount() {
@@ -147,7 +163,7 @@ func (m *Model) __effect0_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if m.gen__inst0__inst0 != mine {
 						return
 					}
@@ -163,11 +179,11 @@ func (m *Model) __effect0_mount() {
 									panic(__r)
 								}
 								_ = e
-								fyne.Do(func() {
+								__snglDo(func() {
 								})
 							}()
 							__async_off0 := func() string { v, _ := os.Hostname(); return v }()
-							fyne.Do(func() {
+							__snglDo(func() {
 								m.name__inst0 = __async_off0
 								m.__n0.SetText(m.name__inst0)
 							})
@@ -230,31 +246,42 @@ func (m *Model) __effect1_update() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			if m.__effect1_dirty {
-				m.__effect1_dirty = false
-				m.__effect1_key = (time.Duration(50) * time.Millisecond)
-				m.__effect1_update()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				__effect1_seen := false
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					if !m.__effect1_absent {
+						m.__effect1_key = (time.Duration(50) * time.Millisecond)
+						m.__effect1_update()
+					}
+				}
+				__effect1_seen = true
+				m.__effect1_absent = !__effect1_seen
+				if m.__effect1_absent {
+					m.__effect1_dirty = false
+				}
+				m.__effect0_down()
+				m.__effect0_up()
 			}
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
@@ -397,6 +424,7 @@ type Model struct {
 	__effect0_desired    []time.Duration
 	__effects0_settling  bool
 	__effects0_pending   bool
+	__effects0_torn      bool
 	__effects0_steps     int
 	main                 gtk4rt.Handle
 	__n0                 gtk4rt.Handle
@@ -415,6 +443,7 @@ func New() *Model {
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -491,26 +520,29 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
@@ -570,6 +602,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:6db6e2ca3b0a9d0ec3744911d97615e2
+pass sha256:123cb637cc9927759f753223625f8b06
 -- run/go/gtk4 --
-pass sha256:983c977fdade31eccf73d6a57a802a15
+pass sha256:5f9a89383c86381352f1d026f700fafb

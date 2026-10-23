@@ -53,12 +53,10 @@ func walkCanvases(stmts []ir.Stmt, failed *error) {
 				continue
 			}
 			walkCanvases(v.Children, failed)
-		case *ir.If:
-			walkCanvases(v.Body, failed)
-			walkCanvases(v.Else, failed)
-		case *ir.For:
-			walkCanvases(v.Body, failed)
-			walkCanvases(v.Else, failed)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(v) {
+				walkCanvases(*b, failed)
+			}
 		case *ir.ErrorBoundary:
 			// Children alone: passBoundaryFailed has already rewritten the
 			// pair into a reactive `if` over its flag, so walking Failed would
@@ -126,6 +124,12 @@ func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
 			emitShapes(v.Body, &then, env)
 			emitShapes(v.Else, &otherwise, env)
 			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
+		case *ir.Match:
+			*body = append(*body, v.Over(func(_ int, arm []ir.Stmt) []ir.Stmt {
+				var out []ir.Stmt
+				emitShapes(arm, &out, env)
+				return out
+			}))
 		case *ir.For:
 			var loop, empty []ir.Stmt
 			emitShapes(v.Body, &loop, env)
@@ -291,6 +295,12 @@ func emitSource(host *ir.NodeInst, stmts []ir.Stmt, body *[]ir.Stmt, env drawEnv
 			emitSource(host, v.Body, &then, env)
 			emitSource(host, v.Else, &otherwise, env)
 			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
+		case *ir.Match:
+			*body = append(*body, v.Over(func(_ int, arm []ir.Stmt) []ir.Stmt {
+				var out []ir.Stmt
+				emitSource(host, arm, &out, env)
+				return out
+			}))
 		case *ir.ErrorBoundary:
 			emitSource(host, v.Children, body, env)
 		case *ir.NodeInst:
@@ -300,23 +310,25 @@ func emitSource(host *ir.NodeInst, stmts []ir.Stmt, body *[]ir.Stmt, env drawEnv
 				*body = append(*body, handlerDrawBody(host, ir.DrawSourceEnter, inner, nil)...)
 				emitShapes(v.Children, body, inner)
 				*body = append(*body, handlerDrawBody(host, ir.DrawSourceLeave, inner, nil)...)
-			} else if url := v.Prop(ir.ImageSourceURL); url != nil {
-				*body = append(*body, handlerDrawBody(host, ir.DrawSourceURL, env, url)...)
+			} else if v.Prop(ir.ImageSourceURL) != nil {
+				*body = append(*body, handlerDrawBody(host, ir.DrawSourceURL, env, v)...)
 			}
 		}
 	}
 }
 
 // handlerDrawBody is the body of the primitive's handler of that name, rebound
-// as primitiveDrawBody rebinds one, with url the payload's URL.
-func handlerDrawBody(ni *ir.NodeInst, name string, env drawEnv, url ir.Expr) []ir.Stmt {
+// as primitiveDrawBody rebinds one, with src the source node whose props fill
+// the payload's fields of their names: its `url`, and what a target's source
+// carries beside it (gtk4's `picture`).
+func handlerDrawBody(ni *ir.NodeInst, name string, env drawEnv, src *ir.NodeInst) []ir.Stmt {
 	for _, h := range ni.Handlers {
 		if h.Name != name || h.Func == nil {
 			continue
 		}
 		bindings := map[string]ir.Expr{}
 		for _, p := range h.Func.Params {
-			bindings[p.Name] = drawPayloadWith(p.Type, env, url)
+			bindings[p.Name] = drawPayloadWith(p.Type, env, src)
 		}
 		return foldPayloadReads(substituteParams(deepCloneStmts(h.Func.Block), bindings))
 	}
@@ -366,8 +378,9 @@ func drawPayload(t *ir.Type, env drawEnv) ir.Expr {
 	return drawPayloadWith(t, env, nil)
 }
 
-// drawPayloadWith is drawPayload with a `url` field holding url.
-func drawPayloadWith(t *ir.Type, env drawEnv, url ir.Expr) ir.Expr {
+// drawPayloadWith is drawPayload with each field named as a prop of src
+// holding that prop's value.
+func drawPayloadWith(t *ir.Type, env drawEnv, src *ir.NodeInst) ir.Expr {
 	sd := payloadStruct(t)
 	if sd == nil {
 		return ctxExprAs(env.ctx, t)
@@ -380,13 +393,21 @@ func drawPayloadWith(t *ir.Type, env drawEnv, url ir.Expr) ir.Expr {
 			v = dimLit(env.width)
 		case "height":
 			v = dimLit(env.height)
-		case ir.ImageSourceURL:
-			v = url
-			if v == nil {
-				v = &ir.Literal{Type: ir.TypString, Value: ""}
-			}
 		default:
-			v = ctxExprAs(env.ctx, f.Type)
+			if src != nil {
+				if prop := src.Prop(f.Name); prop != nil {
+					v = ir.CloneExprSharingDecls(prop)
+				}
+			}
+			if v == nil {
+				if f.Name == ir.ImageSourceURL {
+					v = &ir.Literal{Type: ir.TypString, Value: ""}
+				} else if ir.ReleaseOf(f.Type) != nil {
+					v = ir.DeclaredDefault(f.Type)
+				} else {
+					v = ctxExprAs(env.ctx, f.Type)
+				}
+			}
 		}
 		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: v})
 	}

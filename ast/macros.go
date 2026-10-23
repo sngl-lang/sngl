@@ -29,6 +29,7 @@ func (c *ConstDecl) MacroAttrs() []MacroAttr     { return c.Attrs }
 func (v *VarDecl) MacroAttrs() []MacroAttr       { return v.Attrs }
 func (u *UnitDef) MacroAttrs() []MacroAttr       { return u.Attrs }
 func (e *EnumDef) MacroAttrs() []MacroAttr       { return e.Attrs }
+func (m *EnumMember) MacroAttrs() []MacroAttr    { return m.Attrs }
 
 // A node is marked where it is placed rather than where its component is
 // declared: `#[tree.crosses]` says one placement crosses a family. A node with
@@ -54,6 +55,7 @@ func (n *VisualNode) SetMacroAttrs(pos Pos, attrs []MacroAttr)    { n.Attrs, n.P
 func (s *CallStmt) SetMacroAttrs(pos Pos, attrs []MacroAttr)      { s.Attrs, s.Pos = attrs, pos }
 func (u *UnitDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { u.Attrs, u.Pos = attrs, pos }
 func (e *EnumDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { e.Attrs, e.Pos = attrs, pos }
+func (m *EnumMember) SetMacroAttrs(pos Pos, attrs []MacroAttr)    { m.Attrs, m.Pos = attrs, pos }
 
 // MacroName renders an attribute the way it was written, for diagnostics. A
 // bare one has no alias, so the dotted form would print as ".builtin".

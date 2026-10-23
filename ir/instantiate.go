@@ -55,6 +55,20 @@ func InstantiateStmts(stmts []Stmt, bindings map[string]*Type) []Stmt {
 	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
 }
 
+// InstantiateExpr is e copied with bindings applied to every type in it, as
+// InstantiateStmts copies a statement list: a prop's default written in a
+// generic declaration, read at the types a call site bound.
+func InstantiateExpr(e Expr, bindings map[string]*Type) Expr {
+	if e == nil || len(bindings) == 0 {
+		return e
+	}
+	c := newCloner()
+	c.shareDecls = true
+	c.subst = bindings
+	c.own = map[uintptr]bool{}
+	return c.clone(reflect.ValueOf(&e).Elem()).Interface().(Expr)
+}
+
 // InstantiateComponent copies c with its type parameters bound, as
 // InstantiateFunc copies a function: what c declares -- its props, events and
 // slots with their parameters, its state, its methods with what they declare,

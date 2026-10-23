@@ -2,7 +2,6 @@ package checker
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -10,135 +9,137 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// A match is checked into the constructs every later phase already knows: a
-// statement becomes an if/else-if chain and an expression a chain of
-// ternaries, each arm's patterns compared with `==` and joined by `||`. Nothing
-// after the checker learns there was a match, so the family, slot and
-// element-ref rules, the interpreter, the lowering and every backend read it
-// as the if or the ternary it is.
-//
-// What a match says that the chain does not -- that its arms cover every case,
-// that no pattern is written twice -- is checked here.
+// A match is checked into ir.Match, a statement, or ir.MatchExpr, a value: the
+// subject, each arm's patterns, and whether the last arm is taken unasked.
+// What a match says that an if chain does not -- that its arms cover every
+// case, that no pattern is written twice -- is checked here; a lowering turns
+// it into the chain for a target that cannot switch (lower.passMatch).
 //
 // The subject is evaluated once wherever a statement can hold it: in an
 // imperative block or an expression body, a subject that calls anything is
-// bound to a local ahead of the statement (preludeFor, bodyPrelude). Elsewhere -- a view body, which has nowhere to
-// put the local, or a position evaluated only some of the time -- it is read
-// again for each arm it is tested against, so it must be free of side effects
-// (reportImpureMatchSubjects).
-
-// matchArmIR is one arm, checked: the test that selects it (nil when it is the
-// arm taken whatever the subject is) and what it does.
-type matchArmIR struct {
-	pos   ast.Pos
-	cond  ir.Expr
-	body  []ir.Stmt
-	value ir.Expr
-}
+// bound to a local ahead of the statement (preludeFor, bodyPrelude), and the
+// match reads the local. Elsewhere -- a view body, which has nowhere to put the
+// local, or a position evaluated only some of the time -- the chain a lowering
+// writes reads it again for each arm it is tested against, so it must be free
+// of side effects (reportImpureMatchSubjects).
 
 // checkMatchStmt checks a match written where a statement goes.
 func (c *checker) checkMatchStmt(x *ast.MatchStmt) ir.Stmt {
 	arms := c.checkMatch(&x.Match, false)
-	if len(arms) == 0 {
+	if len(arms.Arms) == 0 {
 		return nil
 	}
-	var chain []ir.Stmt
-	for i, arm := range slices.Backward(arms) {
-		if arm.cond == nil {
-			// The last arm of an exhaustive match is taken unasked. Alone, it
-			// is still a block of its own, which a literal true says without
-			// a construct for it.
-			if i == 0 {
-				chain = []ir.Stmt{&ir.If{AST: &ast.IfStmt{Pos: arm.pos}, Cond: boolLiteral(true), Body: arm.body}}
-				continue
-			}
-			chain = arm.body
-			continue
-		}
-		chain = []ir.Stmt{&ir.If{AST: &ast.IfStmt{Pos: arm.pos}, Cond: arm.cond, Body: arm.body, Else: chain}}
-	}
-	if len(chain) == 1 {
-		return chain[0]
-	}
-	return nil
+	return &ir.Match{AST: x, MatchArms: arms}
 }
 
 // inferMatch checks a match written where a value goes.
 func (c *checker) inferMatch(x *ast.MatchExpr) ir.Expr {
 	expected := c.expected
 	arms := c.checkMatch(&x.Match, true)
-	if len(arms) == 0 {
+	if len(arms.Arms) == 0 {
 		return invalidValue()
 	}
 	// What the arms join to: the type wanted, or the first arm's.
 	want := expected
-	if want == nil {
-		want = exprType(arms[0].value)
+	if want == nil || want.Kind == ir.TypeInvalid {
+		want = exprType(arms.Arms[0].Value)
 	}
-	for _, arm := range arms[1:] {
-		t := exprType(arm.value)
+	for _, arm := range arms.Arms[1:] {
+		t := exprType(arm.Value)
 		if t == nil || want == nil || t.Kind == ir.TypeInvalid || want.Kind == ir.TypeInvalid {
 			continue
 		}
 		if !t.IsAssignableTo(want) {
-			c.error(arm.pos, "match arms have mismatched types %s and %s", want, t)
+			c.error(arm.Pos, "match arms have mismatched types %s and %s", want, t)
 		}
 	}
-	last := arms[len(arms)-1]
-	out := last.value
-	if last.cond != nil {
-		// Only an arm that failed to check leaves the last arm a test; the
-		// diagnostic is already reported, and the chain needs an end.
-		out = invalidValue()
-		out = &ir.Ternary{AST: &ast.TernaryExpr{Pos: last.pos}, Type: want, Cond: last.cond, Then: last.value, Else: out}
-	}
-	for i := len(arms) - 2; i >= 0; i-- {
-		arm := arms[i]
-		out = &ir.Ternary{AST: &ast.TernaryExpr{Pos: arm.pos}, Type: want, Cond: arm.cond, Then: arm.value, Else: out}
-	}
-	return out
+	return &ir.MatchExpr{AST: x, Type: want, MatchArms: arms}
 }
 
-// checkMatch checks a match's subject and arms and the rules a match states,
-// and returns the arms in order. isExpr says which arm form belongs.
-func (c *checker) checkMatch(m *ast.Match, isExpr bool) []matchArmIR {
+// checkMatch checks a match's subject and arms and the rules a match states.
+// isExpr says which arm form belongs.
+func (c *checker) checkMatch(m *ast.Match, isExpr bool) ir.MatchArms {
 	expected := c.expected
 	subject, read := c.matchSubject(m)
 	subjType := exprType(subject)
+	if ed := ir.PayloadEnum(optionElem(subjType)); ed != nil {
+		return c.checkMemberMatch(m, isExpr, expected, read, subjType, ed)
+	}
 	known := subject == nil || (subjType != nil && subjType.Kind != ir.TypeInvalid)
 
+	out := ir.MatchArms{}
+	if read != nil {
+		out.Subject = read()
+	}
 	cov := newMatchCoverage(subjType)
-	var out []matchArmIR
 	var elseAt *ast.MatchArm
 	for _, arm := range m.Arms {
 		if elseAt != nil {
 			c.error(arm.Pos, "arm is unreachable after else: else is taken whenever no arm before it is")
 		}
-		var conds []ir.Expr
+		a := &ir.MatchArm{Pos: arm.Pos, Else: arm.Else}
+		nullSeen := cov.seen["null"]
+		takesNull := false
 		restore := c.noPrelude()
 		for _, p := range arm.Patterns {
-			if cond := c.checkMatchPattern(m, p, subject, read, cov); cond != nil {
-				conds = append(conds, cond)
+			if pat := c.checkMatchPattern(m, p, subject, read, cov); pat != nil {
+				a.Patterns = append(a.Patterns, pat)
+				if key, _, ok := patternKey(pat); ok && key == "null" {
+					takesNull = true
+				}
 			}
 		}
 		restore()
-		a := matchArmIR{pos: arm.Pos}
 		if arm.Else {
 			elseAt = arm
-		} else {
-			a.cond = orAll(conds)
+			takesNull = !nullSeen
 		}
+		var bind *matchBind
+		if m.Bind != "" && read != nil {
+			bind = c.subjectBind(m, isExpr, subjType, read, takesNull)
+		}
+		c.checkArmBody(a, arm, isExpr, expected, out.Arms, bind)
+		out.Arms = append(out.Arms, a)
+	}
+
+	if elseAt == nil && known {
+		if missing := cov.missing(); missing != "" {
+			c.error(m.Pos, "match is not exhaustive: %s", missing)
+		} else if len(out.Arms) > 0 {
+			// Every case is covered, so the last arm is taken unasked.
+			out.Exhaustive = true
+		}
+	}
+	return out
+}
+
+// checkArmBody checks what an arm does -- its value in a match expression, its
+// block in a statement -- with bind, the name `match var` gives the subject,
+// in scope.
+func (c *checker) checkArmBody(a *ir.MatchArm, arm *ast.MatchArm, isExpr bool, expected *ir.Type, done []*ir.MatchArm, bind *matchBind) {
+	if bind != nil {
+		c.pushScope()
+		defer c.popScope()
+		c.declare(bind.pos, bind.sym)
+		if !bind.local {
+			if c.matchBinds == nil {
+				c.matchBinds = map[*ir.Var]bool{}
+			}
+			c.matchBinds[bind.sym] = true
+		}
+	}
+	{
 		if isExpr {
 			if arm.IsBlock() {
 				c.error(arm.Pos, "an arm of a match expression is written pattern => value: a block gives the match no value")
-				a.value = invalidValue()
+				a.Value = invalidValue()
 			} else {
 				want := expected
-				if want == nil && len(out) > 0 {
-					want = exprType(out[0].value)
+				if (want == nil || want.Kind == ir.TypeInvalid) && len(done) > 0 {
+					want = exprType(done[0].Value)
 				}
 				restore := c.noPrelude()
-				a.value = c.checkExprExpecting(arm.Value, want)
+				a.Value = c.checkExprExpecting(arm.Value, want)
 				restore()
 			}
 		} else {
@@ -148,26 +149,42 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) []matchArmIR {
 				c.checkExpr(arm.Value)
 				restore()
 			} else {
-				a.body = c.checkScopeBlockIR(&arm.Body)
+				var head []string
+				if bind != nil {
+					head = []string{bind.sym.Name}
+				}
+				a.Body = c.checkScopeBlockIR(&arm.Body, head...)
 			}
 		}
-		if a.cond == nil && !arm.Else {
-			// Every pattern failed to check, and each was reported. Keep the
-			// arm a test so that it does not stand in for an else.
-			a.cond = boolLiteral(false)
-		}
-		out = append(out, a)
 	}
-
-	if elseAt == nil && known {
-		if missing := cov.missing(); missing != "" {
-			c.error(m.Pos, "match is not exhaustive: %s", missing)
-		} else if len(out) > 0 {
-			// Every case is covered, so the last arm is taken unasked.
-			out[len(out)-1].cond = nil
-		}
+	if bind == nil {
+		return
 	}
-	return out
+	if bind.local {
+		// Declared only where the arm names it: an arm that does not would
+		// hand a host a local it never uses, which Go refuses.
+		if blockNames(a.Body, bind.sym) {
+			a.Body = append([]ir.Stmt{&ir.LocalVar{Name: bind.sym.Name, Type: bind.sym.Type, Init: bind.read(), Sym: bind.sym}}, a.Body...)
+		}
+		return
+	}
+	// Read in place: each read of the binding is a read off the subject,
+	// which a match may read again (matchSubject).
+	subst := func(e ir.Expr) (ir.Expr, error) {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(bind.sym) {
+			return bind.read(), nil
+		}
+		return e, nil
+	}
+	if a.Value != nil {
+		a.Value, _ = ir.RewriteExpr(a.Value, func(n ir.Node) (ir.Node, error) {
+			if e, ok := n.(ir.Expr); ok {
+				return subst(e)
+			}
+			return n, nil
+		})
+	}
+	_ = ir.RewriteExprs(a.Body, subst)
 }
 
 // matchSubject checks the subject, and returns it with the function each arm
@@ -203,8 +220,9 @@ func (c *checker) matchSubject(m *ast.Match) (ir.Expr, func() ir.Expr) {
 	return subject, func() ir.Expr { return ir.CloneExprSharingDecls(subject) }
 }
 
-// checkMatchPattern checks one pattern and returns the test it makes: the
-// subject compared with it, or the pattern itself in a headless match.
+// checkMatchPattern checks one pattern and returns it as the match holds it:
+// the value the subject is compared with, or the condition itself in a
+// headless match. Nil for one that failed to check, which is reported.
 func (c *checker) checkMatchPattern(m *ast.Match, p ast.Expr, subject ir.Expr, read func() ir.Expr, cov *matchCoverage) ir.Expr {
 	pos := *p.ExprPos()
 	if subject == nil {
@@ -244,8 +262,13 @@ func (c *checker) checkMatchPattern(m *ast.Match, p ast.Expr, subject ir.Expr, r
 			return nil
 		}
 	}
+	// Compared as `==` would compare them, which unifies a numeric literal
+	// with the subject's width.
 	synth := &ast.BinaryExpr{Pos: pos, Op: ast.BinEq, Left: m.Subject, Right: p}
-	return c.finishBinary(synth, read(), pat)
+	if b, ok := c.finishBinary(synth, read(), pat).(*ir.Binary); ok {
+		return b.Right
+	}
+	return pat
 }
 
 // noPrelude marks what is checked next as evaluated only some of the time --
@@ -308,21 +331,6 @@ func callsAnything(e ir.Expr) bool {
 		return nil
 	})
 	return found
-}
-
-func orAll(conds []ir.Expr) ir.Expr {
-	if len(conds) == 0 {
-		return nil
-	}
-	out := conds[0]
-	for _, cond := range conds[1:] {
-		out = &ir.Binary{Type: ir.TypBool, Op: ast.BinOr, Left: out, Right: cond}
-	}
-	return out
-}
-
-func boolLiteral(v bool) ir.Expr {
-	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(v)}
 }
 
 // patternKey is what two patterns matching the same value share, with the
@@ -446,3 +454,167 @@ func (m *matchCoverage) missing() string {
 
 // invalidValue stands where a value failed to check and was reported.
 func invalidValue() ir.Expr { return &ir.Literal{Type: &ir.Type{}} }
+
+// matchBind is what `match var v = subject` names in one arm: sym, declared
+// in the arm, and read, what it reads off the subject. In an arm whose one
+// pattern is a member carrying a payload that is the payload; in every other
+// arm it is the subject, and the subject's element where the subject is an
+// option the arm is not taken on null. A local holds it in a block run
+// imperatively, which the arm may write like any other; anywhere else -- a
+// view, a match expression -- there is no statement to hold one, so each read
+// of sym is that read in place and sym may not be written.
+type matchBind struct {
+	pos   ast.Pos
+	sym   *ir.Var
+	read  func() ir.Expr
+	local bool
+}
+
+// subjectBind names the subject in an arm, narrowed to its element where the
+// subject is an option and the arm is not taken on null.
+func (c *checker) subjectBind(m *ast.Match, isExpr bool, subjType *ir.Type, read func() ir.Expr, takesNull bool) *matchBind {
+	typ, at := subjType, read
+	if subjType != nil && subjType.Kind == ir.TypeOption && !takesNull {
+		typ = optionElem(subjType)
+		at = func() ir.Expr { return &ir.Conversion{Type: typ, Operand: read()} }
+	}
+	return c.newMatchBind(m, isExpr, typ, at)
+}
+
+func (c *checker) newMatchBind(m *ast.Match, isExpr bool, typ *ir.Type, read func() ir.Expr) *matchBind {
+	return &matchBind{
+		pos:   m.BindPos,
+		sym:   &ir.Var{Name: m.Bind, Type: typ},
+		read:  read,
+		local: !isExpr && c.funcDepth > 0,
+	}
+}
+
+// blockNames reports whether a block refers to sym anywhere.
+func blockNames(block []ir.Stmt, sym *ir.Var) bool {
+	found := false
+	_ = ir.WalkExprs(block, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(sym) {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// checkMemberMatch checks a match over an enum whose members carry payloads.
+// A pattern names a member, `ok`, and `match var v = r` names the payload of
+// the member an arm's one pattern names. The match it makes is headless: each arm is taken on whether
+// the subject holds its member, which reads the subject however a pattern
+// compared against it would.
+func (c *checker) checkMemberMatch(m *ast.Match, isExpr bool, expected *ir.Type, read func() ir.Expr, subjType *ir.Type, ed *ir.EnumDef) ir.MatchArms {
+	optional := subjType.Kind == ir.TypeOption
+	enumType := optionElem(subjType)
+	// held is the subject as the enum, where it is known to be present.
+	held := func() ir.Expr {
+		if optional {
+			return &ir.Conversion{Type: enumType, Operand: read()}
+		}
+		return read()
+	}
+	out := ir.MatchArms{}
+	cov := newMatchCoverage(subjType)
+	var elseAt *ast.MatchArm
+	for _, arm := range m.Arms {
+		if elseAt != nil {
+			c.error(arm.Pos, "arm is unreachable after else: else is taken whenever no arm before it is")
+		}
+		a := &ir.MatchArm{Pos: arm.Pos, Else: arm.Else}
+		nullSeen := cov.seen["null"]
+		takesNull := false
+		var payloadOf *ir.EnumMember
+		for _, p := range arm.Patterns {
+			member, isNull, ok := c.memberPattern(p, ed, optional)
+			if !ok {
+				continue
+			}
+			if isNull {
+				takesNull = true
+				if !cov.add("null") {
+					c.error(*p.ExprPos(), "pattern null is already matched by an arm above")
+					continue
+				}
+				a.Patterns = append(a.Patterns, &ir.Binary{Type: TypBool, Op: ast.BinEq, Left: read(), Right: &ir.Literal{Type: ir.TypNull, Value: "null"}})
+				continue
+			}
+			if !cov.add("member:" + member.Name) {
+				c.error(*p.ExprPos(), "pattern %s is already matched by an arm above", member.Name)
+				continue
+			}
+			var test ir.Expr = ir.EnumIs(held(), member.Name)
+			if optional {
+				test = &ir.Binary{Type: TypBool, Op: ast.BinAnd,
+					Left:  &ir.Binary{Type: TypBool, Op: ast.BinNeq, Left: read(), Right: &ir.Literal{Type: ir.TypNull, Value: "null"}},
+					Right: test}
+			}
+			a.Patterns = append(a.Patterns, test)
+			if member.Payload != nil && len(arm.Patterns) == 1 {
+				payloadOf = member
+			}
+		}
+		if arm.Else {
+			elseAt = arm
+			takesNull = !nullSeen
+		}
+		var bind *matchBind
+		switch {
+		case m.Bind == "":
+		case payloadOf != nil:
+			name := payloadOf.Name
+			bind = c.newMatchBind(m, isExpr, ir.MemberPayload(enumType, name), func() ir.Expr { return ir.EnumPayloadRead(held(), name) })
+		default:
+			bind = c.subjectBind(m, isExpr, subjType, read, takesNull)
+		}
+		c.checkArmBody(a, arm, isExpr, expected, out.Arms, bind)
+		out.Arms = append(out.Arms, a)
+	}
+	if elseAt == nil {
+		if missing := cov.missing(); missing != "" {
+			c.error(m.Pos, "match is not exhaustive: %s", missing)
+		} else if len(out.Arms) > 0 {
+			out.Exhaustive = true
+		}
+	}
+	return out
+}
+
+// memberPattern reads one pattern of a match over ed: a member, written bare
+// or through the enum's name, or null where the subject is an option.
+func (c *checker) memberPattern(p ast.Expr, ed *ir.EnumDef, optional bool) (member *ir.EnumMember, isNull, ok bool) {
+	var name string
+	switch h := p.(type) {
+	case *ast.LiteralExpr:
+		if h.Kind == ast.LiteralNull {
+			if !optional {
+				c.error(h.Pos, "pattern of type null cannot match %s", ed.Name)
+				return nil, false, false
+			}
+			return nil, true, true
+		}
+	case *ast.IdentExpr:
+		name = h.Name
+	case *ast.SelectExpr:
+		if id, isIdent := h.Operand.(*ast.IdentExpr); isIdent {
+			if sym, found := c.scope.Lookup(id.Name); found && sym == ir.Symbol(ed) {
+				name = h.Field
+			}
+		}
+	}
+	if name == "" {
+		c.error(*p.ExprPos(), "a pattern of a match over %s names one of its members", ed.Name)
+		return nil, false, false
+	}
+	member = ed.Member(name)
+	if member == nil || !c.enumMember(*p.ExprPos(), ed, name) {
+		if member == nil {
+			c.error(*p.ExprPos(), "%s has no member %s", ed.Name, name)
+		}
+		return nil, false, false
+	}
+	return member, false, true
+}

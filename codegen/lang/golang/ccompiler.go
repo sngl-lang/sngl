@@ -10,9 +10,14 @@ import (
 // EmitCHeader implements codegen.CCompiler for the Go/cgo translator.
 // Returns the cgo preamble comment block and `import "C"` line for the
 // headers the program's c.link directives name, or "" when there are none.
+// <stdlib.h> is always among them, as in gtk4's preamble: lowering frees
+// every `C.CString` with `C.free`.
 func (t *Translator) EmitCHeader(links []*ir.CLink) string {
 	if len(links) == 0 {
 		return ""
+	}
+	if !slices.ContainsFunc(links, func(l *ir.CLink) bool { return l.Include == "stdlib.h" }) {
+		links = append(slices.Clip(links), &ir.CLink{Include: "stdlib.h", System: true})
 	}
 	return "/*\n" + CPreambleLines(links) + "*/\nimport \"C\"\n"
 }

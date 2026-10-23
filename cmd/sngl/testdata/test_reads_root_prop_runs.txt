@@ -44,7 +44,7 @@ ui.window {
     counter(inc=3, start=1)
 }
 -- testrun/android/kotlin/app.sngl/counter/1 --
-sha256:4af1dc083b13e58c61e8cbaeb3bb037d
+sha256:5b7580a048f14bfb515245163d846f8b
 {
   "results": [
     {
@@ -64,7 +64,7 @@ sha256:985f6e6fef9b630540acd19537832f87
   ]
 }
 -- testrun/fyne/go/app.sngl/counter/1 --
-sha256:7c0306a998afc78200afdd67c24be764
+sha256:a5084de4cae791b595f7061f1f1f3011
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:b6cf58e668ab5fff361c99541c70c048
   ]
 }
 -- testrun/html/none/app.sngl/counter/1 --
-sha256:0252a509d2ec933be7de1d2f85881382
+sha256:efc09bedfae5ff0379fe8c654806f732
 {
   "results": [
     {

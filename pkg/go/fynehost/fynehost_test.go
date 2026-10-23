@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	fyne "fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -231,9 +230,9 @@ component main node {
 	if !ok {
 		t.Fatal("#s is not mounted")
 	}
-	sc, ok := obj.(*container.Scroll)
+	sc, ok := obj.(*fynelayout.ReachScroll)
 	if !ok {
-		t.Fatalf("#s is a %T, want a *container.Scroll", obj)
+		t.Fatalf("#s is a %T, want a *fynelayout.ReachScroll", obj)
 	}
 	if sc.Content == nil {
 		t.Fatal("the scroll has no content; its Content field was never assigned")

@@ -39,7 +39,7 @@ func girClassInfoFor(t *testing.T, cType string) *gir.ClassInfo {
 
 // TestWidgetSource_DeclaresProps pins what a generated declaration says: the
 // C type is the component name and its #[intrinsic] id, a GIR property is a
-// prop under the SNGL spelling of its name and the type girTypeToIR gave it,
+// prop under the SNGL spelling of its name and the type TypeToIR gave it,
 // and a GLib signal is an event.
 func TestWidgetSource_DeclaresProps(t *testing.T) {
 	reg, err := rulesGIR(t).gir()
@@ -545,11 +545,10 @@ func componentDecl(t *testing.T, src, name string) string {
 }
 
 // TestWidgetSource_DeclaresActions pins the methods a generated declaration
-// carries: a GIR method that takes nothing beyond its instance and returns
-// nothing is an action a program calls through a `#id` -- `bar.pulse()` --
-// declared as the C identifier it is. A method taking a value is a setter the
-// props already reach, and one returning a value is a query nothing here
-// reads, so neither is declared.
+// carries: a GIR method returning nothing is an action a program calls through
+// a `#id` -- `bar.pulse()` -- declared as the C identifier it is. A property's
+// setter is reached through the prop, and one returning a value is a query
+// nothing here reads, so neither is declared.
 func TestWidgetSource_DeclaresActions(t *testing.T) {
 	src := string(widgetSource(bundledGIR(t)))
 	for _, want := range []string{

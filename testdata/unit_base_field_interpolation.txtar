@@ -248,84 +248,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
-	if a == "center" {
-		__lt2 = lipgloss.Center
-	} else {
-		var __lt1 lipgloss.Position
-		if a == "right" {
-			__lt1 = lipgloss.Right
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
 		} else {
-			__lt1 = lipgloss.Left
+			__lt3 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt1
+		__lt2 = __lt3
 	}
 	return __lt2
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt5 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
 	} else {
-		var __lt4 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt4 = tui.DashedBorder()
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
 		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt3 = lipgloss.RoundedBorder()
-			} else {
-				__lt3 = lipgloss.NormalBorder()
-			}
-			__lt4 = __lt3
+			__lt4 = all
 		}
 		__lt5 = __lt4
 	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Cells(__lt7)
+	return Cells(__lt5)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt8 int
+	var __lt6 int
 	if px <= 0.0 {
-		__lt8 = 0
+		__lt6 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt6 = max(1, (int(px) / 8))
 	}
-	return __lt8
+	return __lt6
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt8 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt8 = lines
 	} else {
-		var __lt9 int
+		var __lt7 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt7 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt7 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt8 = __lt7
 	}
-	return __lt10
+	return __lt8
 }
 
 func (m Model) M__inst0() Measurement {
@@ -634,8 +628,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1f75e6d975705fdb9cb77826be5fe352
+pass sha256:36a8ccaaa679587ae6366c2fc06899ee
 -- run/kotlin/android --
-pass sha256:ec12f91c523e5089dc2aa6a49cdfe89d
+pass sha256:457b9e32a8d005f8ba21ca51a94a5f42
 -- run/none/html --
 pass sha256:4d5f529ef80a4f6bc16bf48ca993d78a

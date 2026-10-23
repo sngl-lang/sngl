@@ -75,8 +75,10 @@ type Model struct {
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
 	__effect1_dirty     bool
+	__effect1_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -98,10 +100,24 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_dirty = false
+	m.__effect1_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
+}
+
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
 }
 
 func (m *Model) __effect0_mount() {
@@ -116,7 +132,7 @@ func (m *Model) __effect0_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if m.gen__inst0 != mine {
 						return
 					}
@@ -179,31 +195,42 @@ func (m *Model) __effect1_update() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			if m.__effect1_dirty {
-				m.__effect1_dirty = false
-				m.__effect1_key = (time.Duration(1000) * time.Millisecond)
-				m.__effect1_update()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				__effect1_seen := false
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					if !m.__effect1_absent {
+						m.__effect1_key = (time.Duration(1000) * time.Millisecond)
+						m.__effect1_update()
+					}
+				}
+				__effect1_seen = true
+				m.__effect1_absent = !__effect1_seen
+				if m.__effect1_absent {
+					m.__effect1_dirty = false
+				}
+				m.__effect0_down()
+				m.__effect0_up()
 			}
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
 
@@ -216,7 +243,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n2_click_handler() {
-	fyne.Do(func() {
+	__snglDo(func() {
 		m.n = (m.n + 1)
 		m.__n1.SetText(fmt.Sprint(m.n))
 	})
@@ -302,4 +329,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:228580a90ecd4a5f25c334e619eeedc1
+pass sha256:53ec1f6cb1a73e8bdd1457c1d1ca8bac

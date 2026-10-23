@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -51,7 +52,54 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 	body = rewriteCells(body, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
 	restore()
 	passLoopVars(body, funcs, loops)
+	seen := map[string]bool{}
+	uniqueCellTemps(body, seen)
+	for _, fn := range funcs {
+		uniqueCellTemps(fn.Block, seen)
+	}
 	return body, nil
+}
+
+// uniqueCellTemps gives each cell write's temporary a name of its own. A
+// write of an enclosing component's cell reaches a body spliced inside it
+// through a two-way binding, as a copy of the write already rewritten --
+// async.query's `pending = true` and `pending = false`, writing the cell of
+// the wrapper holding its unbound props -- so two copies declared one name,
+// which the fold splicing each `if true` into its list made one scope.
+func uniqueCellTemps(stmts []ir.Stmt, seen map[string]bool) {
+	_ = ir.Walk(stmts, func(nd ir.Node) error {
+		w, ok := nd.(*ir.If)
+		if !ok || len(w.Body) == 0 {
+			return nil
+		}
+		lit, ok := w.Cond.(*ir.Literal)
+		if !ok || lit.Value != "true" {
+			return nil
+		}
+		lv, ok := w.Body[0].(*ir.LocalVar)
+		if !ok || lv.Sym == nil || !lv.Sym.Synthesized || !strings.HasPrefix(lv.Name, "__cell") {
+			return nil
+		}
+		if !seen[lv.Name] {
+			seen[lv.Name] = true
+			return nil
+		}
+		name := lv.Name
+		for k := 2; seen[name]; k++ {
+			name = fmt.Sprintf("%s_%d", lv.Name, k)
+		}
+		seen[name] = true
+		old := lv.Sym
+		fresh := &ir.Var{Name: name, Type: old.Type, Synthesized: true}
+		lv.Name, lv.Sym = name, fresh
+		_ = ir.Rewrite(w.Body[1:], func(n ir.Node) (ir.Node, error) {
+			if id, ok := n.(*ir.Ident); ok && id.Sym == ir.Symbol(old) {
+				return &ir.Ident{Name: name, Type: id.Type, Sym: fresh, Synthesized: true}, nil
+			}
+			return n, nil
+		})
+		return nil
+	})
 }
 
 // keyEffectsByCopy routes the cells an effect's handlers touch through the
@@ -59,7 +107,10 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 // them from the settle, outside the loops the key is built from. So the
 // effect is keyed `on` the copy's key -- which the settle evaluates where the
 // copy is, and hands each handler -- and each handler reads its cells through
-// the parameter that receives it.
+// the parameter that receives it. An effect keyed `on` something already --
+// async.query's, in a card per row -- is keyed on the pair, `{copy, on}`,
+// and its handlers read each half off what they are handed: a change of
+// either is a change of key, as it was of the one.
 //
 // The handlers are rewritten here and held out of the body's rewrite, which
 // would otherwise route the cells it already routed a second time; restore
@@ -73,29 +124,101 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 	}
 	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
 		n, ok := s.(*ir.NodeInst)
-		if !ok || !isEffectNode(n) || !handlersTouchCells(n, cells, keyed) {
+		if !ok || !isEffectNode(n) || n.Enter || !handlersTouchCells(n, cells, keyed) {
 			return nil
 		}
-		if effectKeyExpr(n) != nil {
-			err = fmt.Errorf("%s: an effect in a component built once per copy of a loop reads that component's state, and its handlers are handed the copy through `on`, which this one already sets; move the effect out of the loop, or its state into the component around the loop", at)
-			return ir.SkipAll
+		// Keyed by the copy already, by the splice of a component inside this
+		// one -- async.query inside the wrapper holding its unbound props --
+		// whose loops are these: each handler reads the key it was handed
+		// into its local, which routes these cells too.
+		if keyedByCopy(n) {
+			for i := range n.Handlers {
+				fn := n.Handlers[i].Func
+				if fn == nil {
+					continue
+				}
+				local := copyKeyLocal(fn)
+				block := rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
+				keyOf := func() ir.Expr {
+					return &ir.Ident{Name: local.Name, Type: local.Type, Sym: local, Synthesized: true}
+				}
+				block = keyPartsFrom(block, loops, keyOf)
+				block = loopVarsFrom(block, loops, keyOf)
+				fn.Block = nil
+				held = append(held, func() { fn.Block = block })
+			}
+			return nil
 		}
-		for _, h := range n.Handlers {
-			if h.Func != nil && len(h.Func.Params) > 0 {
-				err = fmt.Errorf("%s: an effect in a component built once per copy of a loop reads that component's state, and its @%s takes a parameter with no `on` to fill it; drop the parameter", at, h.Name)
-				return ir.SkipAll
+		on := effectKeyExpr(n)
+		if on == nil {
+			for _, h := range n.Handlers {
+				if h.Func != nil && len(h.Func.Params) > 0 {
+					err = fmt.Errorf("%s: an effect in a component built once per copy of a loop reads that component's state, and its @%s takes a parameter with no `on` to fill it; drop the parameter", at, h.Name)
+					return ir.SkipAll
+				}
 			}
 		}
-		n.Props = append(n.Props, ir.Arg{Name: ir.EffectOn, Value: CopyKey(loops)})
+		keyType := ir.TypString
+		key := ir.Expr(CopyKey(loops))
+		if on != nil {
+			pair := &ir.StructDef{Anon: true, Fields: []*ir.StructField{
+				{Name: "copy", Type: ir.TypString},
+				{Name: "on", Type: on.ExprType()},
+			}}
+			keyType = pair.SymType()
+			key = &ir.StructLit{Type: keyType, Def: pair, Fields: []ir.FieldInit{
+				{Name: "copy", Value: key},
+				{Name: "on", Value: on},
+			}}
+			n.Props = slices.DeleteFunc(n.Props, func(a ir.Arg) bool { return a.Name == ir.EffectOn })
+			if len(n.TypeArgs) > 0 {
+				n.TypeArgs = slices.Clone(n.TypeArgs)
+				n.TypeArgs[0] = keyType
+			}
+		}
+		n.Props = append(n.Props, ir.Arg{Name: ir.EffectOn, Value: key})
 		for i := range n.Handlers {
 			h := &n.Handlers[i]
 			if h.Func == nil {
 				continue
 			}
-			param := &ir.Param{Name: "__copy", Type: ir.TypString}
+			param := &ir.Param{Name: "__copy", Type: keyType}
+			// The halves are read into locals where the handler starts: the
+			// key is what the settle hands it now, and a mount that waits
+			// writes its cells after the wait, when a later copy's mount may
+			// have been handed another -- a local is what that tail captures.
+			var entry []ir.Stmt
+			local := func(name string, t *ir.Type, init ir.Expr) func() ir.Expr {
+				v := &ir.Var{Name: name, Type: t, Synthesized: true}
+				entry = append(entry, &ir.LocalVar{Name: name, Type: t, Init: init, Sym: v})
+				return func() ir.Expr { return &ir.Ident{Name: name, Type: t, Sym: v, Synthesized: true} }
+			}
+			var copyInit ir.Expr = paramIdent(param)
+			if on != nil {
+				copyInit = &ir.Select{Type: ir.TypString, Operand: paramIdent(param), Field: "copy"}
+			}
+			copyOf := local(copyKeyName, ir.TypString, copyInit)
+			var was *ir.Param
+			var onOf func() ir.Expr
+			if on != nil {
+				if len(h.Func.Params) > 0 {
+					was = h.Func.Params[0]
+					onOf = local(was.Name, was.Type, &ir.Select{Type: was.Type, Operand: paramIdent(param), Field: "on"})
+				}
+			}
 			h.Func.Params = []*ir.Param{param}
 			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
-			block = keyPartsFrom(block, loops, param)
+			block = keyPartsFrom(block, loops, copyOf)
+			block = loopVarsFrom(block, loops, copyOf)
+			if was != nil {
+				block = newExprWalker(func(e ir.Expr) ir.Expr {
+					if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(was) {
+						return onOf()
+					}
+					return e
+				}).stmts(block)
+			}
+			block = append(entry, block...)
 			fn := h.Func
 			fn.Block = nil
 			held = append(held, func() { fn.Block = block })
@@ -108,13 +231,38 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 	return restore, err
 }
 
+// copyKeyName is the local an effect's handler reads its copy's key into
+// where it starts (keyEffectsByCopy).
+const copyKeyName = "__copyKey"
+
+// copyKeyLocal is the local fn reads its copy's key into, nil for a handler
+// no splice keyed by its copy.
+func copyKeyLocal(fn *ir.Func) *ir.Var {
+	for _, st := range fn.Block {
+		if lv, ok := st.(*ir.LocalVar); ok && lv.Name == copyKeyName && lv.Sym != nil && lv.Sym.Synthesized {
+			return lv.Sym
+		}
+	}
+	return nil
+}
+
+// keyedByCopy reports whether a splice already keyed n's handlers by the copy.
+func keyedByCopy(n *ir.NodeInst) bool {
+	for _, h := range n.Handlers {
+		if h.Func != nil && copyKeyLocal(h.Func) != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // keyPartsFrom reads each loop index a copy key is built from out of param,
 // which holds the whole key (CopyKey): `string(__copy0)` is its first part.
 // That covers every key a splice wrote into the handlers, an enclosing
 // component's included -- a handler its call site wrote reads that
 // component's cells by the loops around it, which are the outer of these.
 // An index read any other way is the program's, and passEffect says where.
-func keyPartsFrom(block []ir.Stmt, loops []*ir.For, param *ir.Param) []ir.Stmt {
+func keyPartsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stmt {
 	part := map[*ir.LoopVar]int{}
 	for k, fs := range loops {
 		part[loopIndex(fs, k)] = k
@@ -137,17 +285,112 @@ func keyPartsFrom(block []ir.Stmt, loops []*ir.For, param *ir.Param) []ir.Stmt {
 			return nd, nil
 		}
 		if len(loops) == 1 {
-			return paramIdent(param), nil
+			return key(), nil
 		}
 		parts := ir.ListOf(ir.TypString)
 		split := &ir.Call{
 			Type: parts,
 			Func: ir.IntrinsicMethod("split", "string.split", ir.TypString, parts),
-			Args: []ir.CallArg{{Value: paramIdent(param)}, {Value: stringLit("/")}},
+			Args: []ir.CallArg{{Value: key()}, {Value: stringLit("/")}},
 		}
 		return &ir.Index{Type: ir.TypString, Operand: split, Idx: intLiteralLit(k)}, nil
 	})
 	return block
+}
+
+// loopVarsFrom binds each loop variable block reads -- a loop's index or its
+// element -- to the copy key names, where the handler starts: the handler
+// runs from the settle, outside the loops, and a call site's `@load(got) {
+// seen[w] = got }` under `for var w` named a w nothing there binds, which
+// passEffect refused. The element is found by walking the loop's iterable to
+// the index the key holds; an inner loop's iterable reads the outer loops'
+// variables as this binds them. Bound after the local the key is read into,
+// so a mount that waits reads the copy it was handed.
+func loopVarsFrom(block []ir.Stmt, loops []*ir.For, key func() ir.Expr) []ir.Stmt {
+	read := map[*ir.LoopVar]bool{}
+	_ = ir.Walk(block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if lv, ok := id.Sym.(*ir.LoopVar); ok {
+				read[lv] = true
+			}
+		}
+		return nil
+	})
+	deepest := -1
+	for k, fs := range loops {
+		if read[fs.KeySym] || fs.ValueSym != nil && read[fs.ValueSym] {
+			deepest = k
+		}
+	}
+	if deepest < 0 {
+		return block
+	}
+	// What the inner loops' iterables read is read too: they are walked here.
+	for _, fs := range loops[1 : deepest+1] {
+		_ = ir.Walk(fs.Iter, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if lv, ok := id.Sym.(*ir.LoopVar); ok {
+					read[lv] = true
+				}
+			}
+			return nil
+		})
+	}
+	renames := map[ir.Symbol]string{}
+	symRenames := map[ir.Symbol]ir.Symbol{}
+	var binds []ir.Stmt
+	for k, fs := range loops[:deepest+1] {
+		var part ir.Expr = key()
+		if len(loops) > 1 {
+			parts := ir.ListOf(ir.TypString)
+			part = &ir.Index{Type: ir.TypString, Operand: &ir.Call{
+				Type: parts,
+				Func: ir.IntrinsicMethod("split", "string.split", ir.TypString, parts),
+				Args: []ir.CallArg{{Value: key()}, {Value: stringLit("/")}},
+			}, Idx: intLiteralLit(k)}
+		}
+		scan := &ir.For{
+			Key:      fmt.Sprintf("__copyAt%d", k),
+			KeySym:   &ir.LoopVar{Name: fmt.Sprintf("__copyAt%d", k), Type: fs.KeySym.Type},
+			Iter:     renameInExpr(deepCloneExpr(fs.Iter), renames, symRenames),
+			ElemType: fs.ElemType,
+			AST:      fs.AST,
+		}
+		var found []ir.Stmt
+		bind := func(lv *ir.LoopVar, from *ir.LoopVar) {
+			v := &ir.Var{Name: fmt.Sprintf("%s__at%d", lv.Name, k), Type: lv.Type, Synthesized: true}
+			binds = append(binds, &ir.LocalVar{Name: v.Name, Type: v.Type, Sym: v, Init: ir.ZeroExpr(v.Type)})
+			found = append(found, &ir.Assign{Target: &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true}, Op: ast.AssignSet, Value: &ir.Ident{Name: from.Name, Type: from.Type, Sym: from, Synthesized: true}})
+			renames[ir.Symbol(lv)] = v.Name
+			symRenames[ir.Symbol(lv)] = v
+		}
+		if read[fs.KeySym] {
+			bind(fs.KeySym, scan.KeySym)
+		}
+		scan.Value = "_"
+		if fs.ValueSym != nil && read[fs.ValueSym] {
+			scan.Value = fmt.Sprintf("__copyElemAt%d", k)
+			scan.ValueSym = &ir.LoopVar{Name: scan.Value, Type: fs.ValueSym.Type}
+			bind(fs.ValueSym, scan.ValueSym)
+		}
+		scan.Body = []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq,
+				Left:  &ir.Conversion{Type: ir.TypString, Operand: &ir.Ident{Name: scan.Key, Type: scan.KeySym.Type, Sym: scan.KeySym, Synthesized: true}},
+				Right: part},
+			Body: found,
+		}}
+		scan.IterKind = ir.DeriveIterKind(scan)
+		binds = append(binds, scan)
+	}
+	block = renameIdents(block, renames, symRenames)
+	// After the local the key is read into, where a splice put one.
+	at := 0
+	for i, st := range block {
+		if lv, ok := st.(*ir.LocalVar); ok && lv.Name == copyKeyName {
+			at = i + 1
+		}
+	}
+	return slices.Concat(block[:at], binds, block[at:])
 }
 
 // handlersTouchCells reports whether any of n's handlers reads or writes a
@@ -346,6 +589,24 @@ func CopyKey(loops []*ir.For) ir.Expr {
 	return ir.CopyKey(indices)
 }
 
+// BlockLoops is the loops that make copies of what block b of s holds, given
+// loops, those around s: a `for`'s body is one more, and the content of a
+// record in its container's loop over the records one fewer
+// (ir.RecordBranchOf).
+func BlockLoops(s ir.Stmt, b *[]ir.Stmt, loops []*ir.For) []*ir.For {
+	switch x := s.(type) {
+	case *ir.For:
+		if b == &x.Body {
+			return append(slices.Clip(loops), x)
+		}
+	case *ir.If:
+		if f := ir.RecordBranchOf(x.Cond, loops); f != nil && b == &x.Body {
+			return slices.DeleteFunc(slices.Clone(loops), func(l *ir.For) bool { return l == f })
+		}
+	}
+	return loops
+}
+
 // loopIndex is the loop's index variable, rewriting a single-variable loop
 // into the two-variable form -- index in Key, element in Value -- that every
 // consumer downstream already reads Key off.
@@ -369,6 +630,10 @@ func loopIndex(fs *ir.For, depth int) *ir.LoopVar {
 		}
 		fs.Key = fmt.Sprintf("__copy%d", depth)
 		fs.KeySym = &ir.LoopVar{Name: fs.Key, Type: ir.TypInt}
+		// passIterKind classified the single-variable loop; a head written
+		// from the old kind binds the element to the index's name.
+		fs.Counted = ir.CountedSeq(fs)
+		fs.IterKind = ir.DeriveIterKind(fs)
 	}
 	if fs.KeySym == nil {
 		fs.KeySym = &ir.LoopVar{Name: fs.Key, Type: ir.TypInt}
@@ -532,6 +797,27 @@ func retargetCell(s ir.Stmt, v *ir.Var, tmp *ir.Var) {
 // InstanceState, has nowhere to keep.
 func holdsLifetime(stmts []ir.Stmt) bool {
 	return places(stmts, func(n *ir.NodeInst) bool { return ir.IsTimerPrimitive(n.Component) || isEffectNode(n) })
+}
+
+// splicesLibraryState reports whether stmts instantiate a library component
+// with state of its own -- a var, a lifetime, an owned derived value -- which
+// a splice of stmts splices with them: gtk4's `remote` in the wrapper
+// passImplicitState writes for it under a `for`, whose picture every copy
+// would otherwise share.
+func splicesLibraryState(stmts []ir.Stmt) bool {
+	seen := map[*ir.Component]bool{}
+	var holds func(stmts []ir.Stmt) bool
+	holds = func(stmts []ir.Stmt) bool {
+		return places(stmts, func(n *ir.NodeInst) bool {
+			c := n.Component
+			if c == nil || c.PkgPath() == "" || seen[c] {
+				return false
+			}
+			seen[c] = true
+			return len(c.Vars) > 0 || derivesOwned(c) || holdsLifetime(c.Stmts) || holds(c.Stmts)
+		})
+	}
+	return holds(stmts)
 }
 
 // placesTimer reports whether stmts place a timer primitive.

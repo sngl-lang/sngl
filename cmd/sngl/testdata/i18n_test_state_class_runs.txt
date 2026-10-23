@@ -1,0 +1,169 @@
+# A test build whose translation is in a method of the component it tests, on
+# every target a test runs on.
+#
+# On android a test build holds the page's state in a class, with the method
+# a member of it and the locale a field: the class was written through a
+# Kotlin context of its own, whose imports reached no file, and the test file
+# wrote a fixed list of imports and not the locale's. And a call of the
+# method through the instance inside another call, `c.lines().length()`,
+# handed the instance to the method as an argument.
+
+sngl test --platform=none app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+-- app.sngl --
+import i18n "sngl:i18n"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// The package's one $"...", in a method of a component the window renders,
+// which only `testGreets` reaches.
+component greeting ui.node {
+    var counts = [1, 2]
+
+    func lines() list[string] {
+        var out list[string] = []
+        for var n = counts {
+            out.push($"Hi {n}")
+        }
+        return out
+    }
+
+    ui.vbox {
+        for var l = lines() {
+            ui.text(value=l)
+        }
+    }
+}
+
+component plain ui.node {
+    ui.text #t(value="x")
+}
+
+ui.window {
+    greeting()
+}
+
+func testGreets(t test.Test, c greeting) {
+    t.assert(c.lines()[0] == "Hi 1")
+    t.assert(c.lines().length() == 2)
+}
+
+func testPlain(t test.Test, c plain) {
+    t.assert(c.t.value == "x")
+}
+-- testrun/android/kotlin/app.sngl/greeting/1 --
+sha256:c771b47b87ff0cd0e8d32c490fe082a6
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/plain/1 --
+sha256:58f37ba68b8f5c3ed54700f4e8e648b1
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/greeting/1 --
+sha256:db0413178a131df43cc36ef803ab8f0b
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/plain/1 --
+sha256:9b112d97d17805c37bc05911a0ee9987
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/greeting/1 --
+sha256:19ba8f33f3e334bb7bad507c2188e6e8
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/plain/1 --
+sha256:d6f14632541deb86f734de6617f2c8f9
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/greeting/1 --
+sha256:b35fdf6dfb9da9cda678b11210881388
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/plain/1 --
+sha256:cc436d2f6262256e8c11f02577478198
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/greeting/1 --
+sha256:d651188bd10b4f89d055a02f8256d3ca
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/plain/1 --
+sha256:b80cdd0d1ff647055a9ff0f973216711
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}

@@ -111,12 +111,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
 import test.sngl.app.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The theme is always light, so the bars' icons are always dark.
+        // The default follows the device's dark mode, which on a dark device
+        // drew white icons over the app's white.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )
         setContent {
             AppTheme {
                 MainScreen()
@@ -526,135 +533,123 @@ fun fontSizeOf(m__r1: Measurement): androidx.compose.ui.unit.TextUnit {
 }
 
 fun fontWeightOf(w: SnglFontWeight): androidx.compose.ui.text.font.FontWeight? {
-    var __lt12: androidx.compose.ui.text.font.FontWeight?
-    if ((w == SnglFontWeight.NORMAL)) {
-    	__lt12 = null
-    } else {
-    	var __lt11: androidx.compose.ui.text.font.FontWeight?
-    	if ((w == SnglFontWeight.BOLD)) {
-    		__lt11 = FontWeight.Bold
-    	} else {
-    		var __lt10: androidx.compose.ui.text.font.FontWeight?
-    		if ((w == SnglFontWeight.LIGHTER)) {
-    			__lt10 = FontWeight.Light
-    		} else {
-    			__lt10 = FontWeight.ExtraBold
-    		}
-    		__lt11 = __lt10
+    var __lt10: androidx.compose.ui.text.font.FontWeight?
+    when (w) {
+    	SnglFontWeight.NORMAL -> {
+    		__lt10 = null
     	}
-    	__lt12 = __lt11
+    	SnglFontWeight.BOLD -> {
+    		__lt10 = FontWeight.Bold
+    	}
+    	SnglFontWeight.LIGHTER -> {
+    		__lt10 = FontWeight.Light
+    	}
+    	SnglFontWeight.BOLDER -> {
+    		__lt10 = FontWeight.ExtraBold
+    	}
+    }
+    return __lt10
+}
+
+fun fontStyleOf(st: SnglFontStyle): androidx.compose.ui.text.font.FontStyle? {
+    var __lt11: androidx.compose.ui.text.font.FontStyle?
+    when (st) {
+    	SnglFontStyle.NORMAL -> {
+    		__lt11 = null
+    	}
+    	SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> {
+    		__lt11 = FontStyle.Italic
+    	}
+    }
+    return __lt11
+}
+
+fun fontFamilyOf(name: String): androidx.compose.ui.text.font.FontFamily? {
+    var __lt12: androidx.compose.ui.text.font.FontFamily?
+    when (name) {
+    	"" -> {
+    		__lt12 = null
+    	}
+    	"monospace" -> {
+    		__lt12 = FontFamily.Monospace
+    	}
+    	"serif" -> {
+    		__lt12 = FontFamily.Serif
+    	}
+    	"sans-serif" -> {
+    		__lt12 = FontFamily.SansSerif
+    	}
+    	"cursive" -> {
+    		__lt12 = FontFamily.Cursive
+    	}
+    	else -> {
+    		__lt12 = FontFamily.Default
+    	}
     }
     return __lt12
 }
 
-fun fontStyleOf(st: SnglFontStyle): androidx.compose.ui.text.font.FontStyle? {
-    var __lt13: androidx.compose.ui.text.font.FontStyle?
-    if ((st == SnglFontStyle.NORMAL)) {
-    	__lt13 = null
-    } else {
-    	__lt13 = FontStyle.Italic
+fun textAlignOf(a: SnglTextAlign): androidx.compose.ui.text.style.TextAlign {
+    var __lt13: androidx.compose.ui.text.style.TextAlign
+    when (a) {
+    	SnglTextAlign.LEFT -> {
+    		__lt13 = TextAlign.Unspecified
+    	}
+    	SnglTextAlign.CENTER -> {
+    		__lt13 = TextAlign.Center
+    	}
+    	SnglTextAlign.RIGHT -> {
+    		__lt13 = TextAlign.End
+    	}
+    	SnglTextAlign.JUSTIFY -> {
+    		__lt13 = TextAlign.Justify
+    	}
     }
     return __lt13
 }
 
-fun fontFamilyOf(name: String): androidx.compose.ui.text.font.FontFamily? {
-    var __lt18: androidx.compose.ui.text.font.FontFamily?
-    if ((name == "")) {
-    	__lt18 = null
-    } else {
-    	var __lt17: androidx.compose.ui.text.font.FontFamily?
-    	if ((name == "monospace")) {
-    		__lt17 = FontFamily.Monospace
-    	} else {
-    		var __lt16: androidx.compose.ui.text.font.FontFamily?
-    		if ((name == "serif")) {
-    			__lt16 = FontFamily.Serif
-    		} else {
-    			var __lt15: androidx.compose.ui.text.font.FontFamily?
-    			if ((name == "sans-serif")) {
-    				__lt15 = FontFamily.SansSerif
-    			} else {
-    				var __lt14: androidx.compose.ui.text.font.FontFamily?
-    				if ((name == "cursive")) {
-    					__lt14 = FontFamily.Cursive
-    				} else {
-    					__lt14 = FontFamily.Default
-    				}
-    				__lt15 = __lt14
-    			}
-    			__lt16 = __lt15
-    		}
-    		__lt17 = __lt16
-    	}
-    	__lt18 = __lt17
-    }
-    return __lt18
-}
-
-fun textAlignOf(a: SnglTextAlign): androidx.compose.ui.text.style.TextAlign {
-    var __lt21: androidx.compose.ui.text.style.TextAlign
-    if ((a == SnglTextAlign.LEFT)) {
-    	__lt21 = TextAlign.Unspecified
-    } else {
-    	var __lt20: androidx.compose.ui.text.style.TextAlign
-    	if ((a == SnglTextAlign.CENTER)) {
-    		__lt20 = TextAlign.Center
-    	} else {
-    		var __lt19: androidx.compose.ui.text.style.TextAlign
-    		if ((a == SnglTextAlign.RIGHT)) {
-    			__lt19 = TextAlign.End
-    		} else {
-    			__lt19 = TextAlign.Justify
-    		}
-    		__lt20 = __lt19
-    	}
-    	__lt21 = __lt20
-    }
-    return __lt21
-}
-
 fun side(all: Measurement, axis: Measurement, own: Measurement): Measurement {
-    var __lt23: Measurement
+    var __lt15: Measurement
     if ((own != Measurement(px = 0.0))) {
-    	__lt23 = own
+    	__lt15 = own
     } else {
-    	var __lt22: Measurement
+    	var __lt14: Measurement
     	if ((axis != Measurement(px = 0.0))) {
-    		__lt22 = axis
+    		__lt14 = axis
     	} else {
-    		__lt22 = all
+    		__lt14 = all
     	}
-    	__lt23 = __lt22
+    	__lt15 = __lt14
     }
-    return __lt23
+    return __lt15
 }
 
 fun shapeOf(s: Style): androidx.compose.ui.graphics.Shape {
-    var __lt24: androidx.compose.ui.graphics.Shape
+    var __lt16: androidx.compose.ui.graphics.Shape
     if ((s.borderRadius == Measurement(px = 0.0))) {
-    	__lt24 = RectangleShape
+    	__lt16 = RectangleShape
     } else {
-    	__lt24 = RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat()))
+    	__lt16 = RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat()))
     }
-    return __lt24
+    return __lt16
 }
 
 fun nonNegative(v: Double): Double {
-    var __lt25: Double
+    var __lt17: Double
     if ((v < 0.0)) {
-    	__lt25 = 0.0
+    	__lt17 = 0.0
     } else {
-    	__lt25 = v
+    	__lt17 = v
     }
-    return __lt25
+    return __lt17
 }
 -- out/go/android/app/src/main/java/test/sngl/app/ui/theme/Theme.kt --
 package test.sngl.app.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.ui.platform.LocalContext
 
 private val DefaultColorScheme = lightColorScheme()

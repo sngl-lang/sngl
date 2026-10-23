@@ -1,0 +1,50 @@
+# gtk4's pictures under --simulate, with no GTK: a source's picture is an
+# owned derived value of the source, made once per URL and released when the
+# URL changes or the source unmounts -- in an image, in a drawing, and in a
+# drawing's copies under a `for` -- so a test that rekeys every source and
+# tears the application down is left holding nothing.
+
+env PATH=
+
+sngl test --simulate gtk4 app.sngl
+stdout '^ok   2 tests, 0 failures$'
+! stdout 'leak'
+
+-- app.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+import "sngl:test"
+
+component page ui.node {
+    var src = "a.png"
+    var more = ["b.png", "c.png"]
+
+    ui.vbox {
+        ui.image {
+            ui.file(src)
+        }
+        draw.canvas(width=200px, height=100px) {
+            draw.canvasImage(x=0.0, y=0.0, w=100.0, h=100.0) {
+                ui.file(src)
+            }
+            for var p = more {
+                draw.canvasImage(x=100.0, y=0.0, w=50.0, h=50.0) {
+                    ui.remote(p)
+                }
+            }
+        }
+    }
+}
+
+func testRekeys(t test.Test, c page) {
+    c.src = "d.png"
+    c.more = ["e.png"]
+}
+
+func testHolds(t test.Test, c page) {
+    t.assert(c.src == "a.png")
+}
+
+ui.window(title="t") {
+    page
+}

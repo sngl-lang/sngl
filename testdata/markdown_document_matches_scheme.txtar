@@ -119,7 +119,7 @@ body { font-family: system-ui, sans-serif; }
         </li>
       </ol>
       <blockquote style="margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
-      <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
+      <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-function"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
       <hr/>
       <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
       <p style="margin:0px;white-space:pre-wrap"><span>The second heading of one name.</span></p>
@@ -166,7 +166,7 @@ body { font-family: system-ui, sans-serif; }
         </li>
       </ol>
       <blockquote style="margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
-      <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
+      <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-function"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
       <hr/>
       <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
       <p style="margin:0px;white-space:pre-wrap"><span>The second heading of one name.</span></p>
@@ -178,6 +178,8 @@ body { font-family: system-ui, sans-serif; }
 @media (prefers-color-scheme: dark) { :where(.sngl-code) { background-color:#161b22;color:#e6edf3 } }
 :where(.sngl-tok-keyword) { color:#cf222e }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }
+:where(.sngl-tok-function) { color:#8250df }
+@media (prefers-color-scheme: dark) { :where(.sngl-tok-function) { color:#d2a8ff } }
 </style>
 
 <script>
@@ -188,4 +190,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:145c09966943f8f2685b4b8ae7112850
+pass sha256:a228d32a0184015c57f49a353dbe489d

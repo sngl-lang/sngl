@@ -137,7 +137,7 @@ func TestTheShapesTheSplitCannotTakeSayWhichTheyAre(t *testing.T) {
 		want string
 	}{
 		{"between two blocking calls", wedged, "has to run somewhere"},
-		{"inside a branch", branched, "inside an if or for"},
+		{"inside a branch", branched, "inside an if, a for or a match"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := applyAsyncOffload(tc.mk(), withAsyncPost("asyncCalls"), Options{Platform: "fyne"})

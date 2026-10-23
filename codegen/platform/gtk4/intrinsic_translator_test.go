@@ -291,9 +291,11 @@ func TestGtk4Translator_OnAttachHandler_RefusesWrongArity(t *testing.T) {
 			t.Errorf("error %q does not mention %q", shared.errs[0], want)
 		}
 	}
-	// The connectable sibling still connects.
-	if got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "changed", handler)); !strings.Contains(got, `"changed"`) {
-		t.Errorf("changed was not connected: %s", got)
+	// The connectable sibling still connects, its signal name a C string
+	// made once (ownCStrings).
+	got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "changed", handler))
+	if !strings.Contains(got, "C.sngl_connect(") || len(shared.cStrings) != 1 || shared.cStrings[0].Text != "changed" {
+		t.Errorf("changed was not connected: %s\n%v", got, shared.cStrings)
 	}
 }
 

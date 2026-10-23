@@ -32,8 +32,9 @@ component platform(
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
     // that never calls it gets a process whose loop still runs -- timers,
-    // effects, posted work -- with no window on screen. `args` is the command
-    // line after the program's name.
+    // effects, posted work -- with no window on screen. The application has
+    // torn down when `run` returns, and a second call ends the process. `args`
+    // is the command line after the program's name.
     @run(args list[string], run func()),
     // What its generated code introduces beside a program's names: the packages
     // it imports, an instance record's receiver, the Model's own members, and
@@ -256,16 +257,17 @@ component Wrapper(
     @click(),
     @change(text string),
     @input(text string),
+    @reachEnd(),
     content     ...component option[ui.node],
 ) ui.node
 
 // --- The Fyne widgets ---
 //
-// Twelve declarations, one per Go constructor. Each is an ordinary component:
+// One declaration per Go constructor. Each is an ordinary component:
 // its body instantiates a primitive with the Spec that says which Fyne widget
 // to build, and the inliner collapses it into whatever instantiated it. They
 // are the vocabulary user code reaches for as `fyne.Label(...)`, and they are
-// written the same way a user would write a thirteenth.
+// written the same way a user would write one more.
 
 const component Label(text string = "", style ui.Style = ui.Style{}) ui.node {
     Widget(
@@ -445,6 +447,22 @@ const component HBox(style ui.Style = ui.Style{}, children ...component) ui.node
     }
 }
 
+// A grid of `columns` equal columns, its children laid out a row at a time.
+const component Grid(columns int = 1, style ui.Style = ui.Style{}, children ...component) ui.node {
+    Container(
+        spec = Spec{
+            new = Native{path="fyne.io/fyne/v2/container", name="NewGridWithColumns"},
+            args = [Arg{prop="number", raw="1"}],
+            goType = Native{path="fyne.io/fyne/v2", name="*Container"},
+            add = "Add",
+        },
+        number = columns,
+        look = lookOf(style),
+    ) {
+        children
+    }
+}
+
 const component VScroll(style ui.Style = ui.Style{}, content ...component option[ui.node]) ui.node {
     Wrapper(
         spec = Spec{
@@ -454,6 +472,25 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
             content = "Content",
         },
         look = lookOf(style),
+    ) {
+        content
+    }
+}
+
+// A vertical scroll reporting the end of its content coming within half a
+// viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports a scroll
+// and nothing about the content growing, which is what a handler adding a page
+// does.
+const component ReachScroll(style ui.Style = ui.Style{}, @reachEnd(), content ...component option[ui.node]) ui.node {
+    Wrapper(
+        spec = Spec{
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewReachScroll"},
+            goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*ReachScroll"},
+            content = "Content",
+            handlers = [Handler{on="reachEnd", field="OnReachEnd", signature="func()"}],
+        },
+        look = lookOf(style),
+        @reachEnd { reachEnd() },
     ) {
         content
     }
@@ -482,8 +519,8 @@ const component ui.stack[platform](style, layers) {
     }
 }
 
-const component ui.scroll[platform](style, content) {
-    VScroll(style=style) {
+const component ui.scroll[platform](style, @reachEnd, content) {
+    ReachScroll(style=style, @reachEnd { reachEnd() }) {
         content
     }
 }
@@ -492,9 +529,29 @@ const component ui.spacer[platform](style) {
     Spacer(style=style) {}
 }
 
-const component ui.card[platform](style, content) {
-    VBox(style=style) {
-        content
+// A clickable card is its box shown in a fynelayout.Tap, the widget Fyne hands
+// a tap to: a box is drawn and never tapped.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        Wrapper(
+            spec = Spec{
+                new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewTap"},
+                args = [Arg{raw="nil"}],
+                goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*Tap"},
+                content = "Content",
+                handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
+            },
+            look = lookOf(style),
+            @click { click() },
+        ) {
+            VBox {
+                content
+            }
+        }
+    } else {
+        VBox(style=style) {
+            content
+        }
     }
 }
 
@@ -560,12 +617,25 @@ const component ui.menu[platform](style) {
 
 // --- Data display ---
 //
-// `table`, `tree` and `radio` take their contents as a list prop rather than
-// as children, and Fyne's Table/Tree read theirs through callbacks a Spec has
-// no way to spell. Each renders as its container, empty.
+// `tree` and `radio` take their contents as a list prop rather than as
+// children, and Fyne's Tree reads its own through callbacks a Spec has no way
+// to spell. Each renders as its container, empty.
 
-const component ui.table[platform](style) {
-    VBox(style=style) {}
+// A table is a grid of labels a column per heading, the headings first and
+// then each row's cells, so a cell lines up under its heading. Fyne's own
+// Table reads its cells through callbacks a Spec cannot spell; the grid's
+// column count is a constructor argument, fixed where the table is built.
+const component ui.table[platform](style, columns, rows) {
+    Grid(columns=columns.length(), style=style) {
+        for var col = columns {
+            Label(text=col, style={fontWeight=bold})
+        }
+        for var row = rows {
+            for var cell = row.cells {
+                Label(text=cell)
+            }
+        }
+    }
 }
 
 const component ui.tree[platform](style) {
@@ -603,7 +673,7 @@ const component ui.progress[platform](style, value, label) {
 }
 
 // The picker shows its `placeholder` and neither reads the bound value nor
-// reports a selection: Fyne has no date widget among the twelve wrapped here,
+// reports a selection: Fyne has no date widget among those wrapped here,
 // so the Label is a stub standing in for one rather than a picker whose value
 // has nowhere to go.
 // Fyne's DateEntry takes a typed date or one picked from its calendar button,
@@ -633,8 +703,10 @@ const component DateEntry(
 
 const component ui.datepicker[platform](placeholder, value, style, @change) {
     DateEntry(value=value, placeholder=placeholder, style=style, @change(d) {
-        value = d
-        change(d)
+        if d != value {
+            value = d
+            change(d)
+        }
     }) {}
 }
 
@@ -706,8 +778,10 @@ const component shapes.image[platform](width, height, shapes) {
 
 const component ui.checkbox[platform](label, checked, style, @change) {
     Check(text=label, checked=checked, style=style, @change(on) {
-        checked = on
-        change(on)
+        if on != checked {
+            checked = on
+            change(on)
+        }
     }) {}
 }
 
@@ -715,15 +789,19 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // widget set this platform builds from.
 const component ui.toggle[platform](label, checked, style, @change) {
     Check(text=label, checked=checked, style=style, @change(on) {
-        checked = on
-        change(on)
+        if on != checked {
+            checked = on
+            change(on)
+        }
     }) {}
 }
 
 const component ui.select[platform](value, style, @change, options) {
     Select(selected=value, options=options.map(func(o) => o.label), style=style, @change(v) {
-        value = v
-        change(v)
+        if v != value {
+            value = v
+            change(v)
+        }
     }) {}
 }
 
@@ -735,8 +813,10 @@ const component ui.input[platform](placeholder, value, style, @input, @change) {
         placeholder = placeholder,
         style = style,
         @input(v) {
-            value = v
-            input(v)
+            if v != value {
+                value = v
+                input(v)
+            }
         },
         @change(v) {
             value = v
@@ -752,8 +832,10 @@ const component ui.textarea[platform](placeholder, value, rows, style, @input, @
         rows = rows,
         style = style,
         @input(v) {
-            value = v
-            input(v)
+            if v != value {
+                value = v
+                input(v)
+            }
         },
         @change(v) {
             value = v

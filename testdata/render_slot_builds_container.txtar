@@ -69,8 +69,13 @@ type Model struct {
 	__root          *fyne.Container
 	__slot0         []fyne.CanvasObject
 	__slot0_at      fyne.CanvasObject
+	__rendering0    bool
+	__renderAgain0  bool
 	__slot1         []fyne.CanvasObject
 	__slot1_at      fyne.CanvasObject
+	__inst0_live    []*__checkbox_state0Instance
+	__rendering1    bool
+	__renderAgain1  bool
 
 	__n7      *fyne.Container
 	__n8      *fyne.Container
@@ -86,47 +91,94 @@ func New() *Model {
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
+	m.__inst0_live = []*__checkbox_state0Instance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	for _, it := range m.items {
-		__n1 := fynelayout.NewHBox()
-		__n2 := widget.NewLabel("")
-		__n2.SetText(it)
-		__n1.Add(__n2)
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
-		m.__slot0 = append(m.__slot0, __n1)
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			for _, it := range m.items {
+				__n1 := fynelayout.NewHBox()
+				__n2 := widget.NewLabel("")
+				__n2.SetText(it)
+				__n1.Add(__n2)
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
+				m.__slot0 = append(m.__slot0, __n1)
+			}
+		}
+		m.__rendering0 = false
 	}
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range m.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-	for _, it := range m.items {
-		__n3 := fynelayout.NewHBox()
-		__n3__box := fynelayout.NewBox(__n3)
-		__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
-		__n4 := new__checkbox_state0Instance(m, true, true)
-		__n4__el := __n4.Root
-		__n3.Add(__n4__el)
-		__n5 := fynelayout.NewVBox()
-		__n6 := widget.NewLabel("")
-		__n6.SetText(it)
-		__n5.Add(__n6)
-		__n3.Add(__n5)
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
-		m.__slot1 = append(m.__slot1, __n3__box)
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
+			}
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			__inst0_next := []*__checkbox_state0Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items {
+				__n3 := fynelayout.NewHBox()
+				__n3__box := fynelayout.NewBox(__n3)
+				__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
+				var __n4 *__checkbox_state0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.Set__start_checked(true)
+					__n4.SetDisabled(true)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := new__checkbox_state0Instance(m, true, true)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				__n3.Add(__n4__el)
+				__n5 := fynelayout.NewVBox()
+				__n6 := widget.NewLabel("")
+				__n6.SetText(it)
+				__n5.Add(__n6)
+				__n3.Add(__n5)
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
+				m.__slot1 = append(m.__slot1, __n3__box)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+		}
+		m.__rendering1 = false
 	}
 }
 
@@ -196,8 +248,10 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked)
 	c.__n0.OnChanged = func(on bool) {
-		c.checked = on
-		c.__n0.SetChecked(c.checked)
+		if on != c.checked {
+			c.checked = on
+			c.__n0.SetChecked(c.checked)
+		}
 	}
 	c.Root = c.__n0
 	return c
@@ -262,9 +316,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -273,8 +325,13 @@ type Model struct {
 	__root          gtk4rt.Handle
 	__slot0         []gtk4rt.Handle
 	__slot0_at      gtk4rt.Handle
+	__rendering0    bool
+	__renderAgain0  bool
 	__slot1         []gtk4rt.Handle
 	__slot1_at      gtk4rt.Handle
+	__inst0_live    []*__checkbox_state0Instance
+	__rendering1    bool
+	__renderAgain1  bool
 	__n7            gtk4rt.Handle
 	__n8            gtk4rt.Handle
 	more            gtk4rt.Handle
@@ -289,51 +346,98 @@ func New() *Model {
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
+	m.__inst0_live = []*__checkbox_state0Instance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	for _, it := range m.items {
-		__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-		gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
-		gtk4rt.BoxSetSpacing(__n1, 6)
-		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetLabel(__n2, it)
-		gtk4rt.BoxAppend(__n1, __n2)
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
-		m.__slot0 = append(m.__slot0, __n1)
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
+			}
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			for _, it := range m.items {
+				__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+				gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
+				gtk4rt.BoxSetSpacing(__n1, 6)
+				__n2 := gtk4rt.LabelNew("")
+				gtk4rt.LabelSetLabel(__n2, it)
+				gtk4rt.BoxAppend(__n1, __n2)
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
+				m.__slot0 = append(m.__slot0, __n1)
+			}
+		}
+		m.__rendering0 = false
 	}
 }
 
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot1 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-	for _, it := range m.items {
-		__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-		gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
-		gtk4rt.BoxSetSpacing(__n3, 8)
-		__n4 := new__checkbox_state0Instance(m, true, true)
-		__n4__el := __n4.Root
-		gtk4rt.BoxAppend(__n3, __n4__el)
-		__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-		gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
-		gtk4rt.BoxSetSpacing(__n5, 6)
-		__n6 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetLabel(__n6, it)
-		gtk4rt.BoxAppend(__n5, __n6)
-		gtk4rt.BoxAppend(__n3, __n5)
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
-		m.__slot1 = append(m.__slot1, __n3)
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
+			}
+			m.__slot1 = nil
+			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+			__inst0_next := []*__checkbox_state0Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items {
+				__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+				gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
+				gtk4rt.BoxSetSpacing(__n3, 8)
+				var __n4 *__checkbox_state0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.Set__start_checked(true)
+					__n4.SetDisabled(true)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := new__checkbox_state0Instance(m, true, true)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				gtk4rt.BoxAppend(__n3, __n4__el)
+				__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+				gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
+				gtk4rt.BoxSetSpacing(__n5, 6)
+				__n6 := gtk4rt.LabelNew("")
+				gtk4rt.LabelSetLabel(__n6, it)
+				gtk4rt.BoxAppend(__n5, __n6)
+				gtk4rt.BoxAppend(__n3, __n5)
+				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
+				m.__slot1 = append(m.__slot1, __n3)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+		}
+		m.__rendering1 = false
 	}
 }
 
@@ -371,8 +475,10 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
-		c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
-		gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		if gtk4rt.CheckButtonGetActive(c.__n0) != c.checked {
+			c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
+			gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+		}
 	})
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -444,6 +550,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:206154438b7941999fb4335ee9924e6b
+pass sha256:6c3f122c5b3b66c038cbce03d89d8647
 -- run/go/gtk4 --
-pass sha256:01fafc69b1806802383b76b263d253f9
+pass sha256:467d204383a36188a759f5c6c0f08db0

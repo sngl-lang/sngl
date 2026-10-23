@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -25,11 +26,12 @@ import (
 //     reactive contexts; they run as async wrappers and can freely call
 //     parameterized async functions.
 //
-//  3. Async function into sync slot: deferred.  The ir.FuncSig / ir.Type for
-//     TypeFunc carries no IsAsync/color field, so there is no way to inspect
-//     whether the declared parameter/field type expects a sync vs async func.
-//     This rule will be implementable once FuncSig gains an IsAsync flag.
-//     See spec §5 rule 3 (closure points-to).
+//  3. Async function into a host's callback: a function that waits for an
+//     async call, handed to a parameter of a native or an intrinsic whose
+//     result the host uses (refuseAsyncIntoHostCallbacks). Anywhere else an
+//     async function may go wherever a function may: a func-typed slot is
+//     coloured by what flows into it (colorAsyncSlots), and a call through it
+//     waits.
 func (c *checker) checkAsyncRules() {
 	pkg := c.pkg
 	if pkg == nil {
@@ -61,6 +63,9 @@ func (c *checker) checkAsyncRules() {
 			}
 		}
 	}
+
+	// Rule 3: an async function into a host's callback.
+	c.refuseAsyncIntoHostCallbacks()
 
 	// Rule 2: parameterized async functions called from a reactive context.
 	// Collect all funcs directly referenced inside reactive prop expressions.
@@ -104,12 +109,22 @@ func collectCalleesInStmt(out map[*ir.Func]bool, s ir.Stmt) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
 		for _, prop := range n.Props {
+			// A function literal handed to a prop is a value the component
+			// calls where it means to -- a handler, a query's `fetch` -- and
+			// the render does not call it.
+			if _, isLambda := prop.Value.(*ir.Lambda); isLambda {
+				continue
+			}
 			collectCalleesInExpr(out, prop.Value)
 		}
 		collectCalleesInStmts(out, n.Children)
 	case *ir.If:
 		collectCalleesInStmts(out, n.Body)
 		collectCalleesInStmts(out, n.Else)
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			collectCalleesInStmts(out, arm.Body)
+		}
 	case *ir.For:
 		collectCalleesInStmts(out, n.Body)
 		collectCalleesInStmts(out, n.Else)
@@ -142,6 +157,11 @@ func collectCalleesInExpr(out map[*ir.Func]bool, e ir.Expr) {
 		collectCalleesInExpr(out, x.Cond)
 		collectCalleesInExpr(out, x.Then)
 		collectCalleesInExpr(out, x.Else)
+	case *ir.MatchExpr:
+		collectCalleesInExpr(out, x.Subject)
+		for _, arm := range x.Arms {
+			collectCalleesInExpr(out, arm.Value)
+		}
 	case *ir.Conversion:
 		collectCalleesInExpr(out, x.Operand)
 	case *ir.Select:
@@ -191,6 +211,11 @@ func collectCalleesInFuncStmt(out map[*ir.Func]bool, s ir.Stmt) {
 		collectCalleesInExpr(out, n.Cond)
 		collectCalleesInFuncBlock(out, n.Body)
 		collectCalleesInFuncBlock(out, n.Else)
+	case *ir.Match:
+		collectCalleesInExpr(out, n.Subject)
+		for _, arm := range n.Arms {
+			collectCalleesInFuncBlock(out, arm.Body)
+		}
 	case *ir.For:
 		collectCalleesInExpr(out, n.Iter)
 		collectCalleesInFuncBlock(out, n.Body)
@@ -212,4 +237,86 @@ func varDeclPos(stmt ast.Stmt) ast.Pos {
 		return *p
 	}
 	return ast.Pos{}
+}
+
+// refuseAsyncIntoHostCallbacks is rule 3: an async function handed to a
+// callback a host calls -- a parameter of a native or an intrinsic -- whose
+// result the host uses. The host calls it without waiting, so what it reads is
+// the wait rather than the answer. A callback whose result is ignored may wait.
+func (c *checker) refuseAsyncIntoHostCallbacks() {
+	pts := c.pkg.PointsTo
+	_ = ir.Walk(c.pkg, func(n ir.Node) error {
+		call, ok := n.(*ir.Call)
+		if !ok || call.Func == nil || !hostCalls(call.Func) {
+			return nil
+		}
+		params := call.Func.Params
+		args := call.Args
+		// A method whose parameters do not list its receiver is handed it
+		// first all the same.
+		if len(args) == len(params)+1 {
+			args = args[1:]
+		}
+		for i, a := range args {
+			if i >= len(params) {
+				break
+			}
+			t := params[i].Type
+			if t == nil || t.Kind != ir.TypeFunc || t.Sig == nil || t.Sig.Return == nil || t.Sig.Return.Kind == ir.TypeVoid {
+				continue
+			}
+			what := asyncValue(a.Value, pts)
+			if what == "" {
+				continue
+			}
+			pos := ast.Pos{}
+			switch v := a.Value.(type) {
+			case *ir.Ident:
+				if v.AST != nil {
+					pos = v.AST.Pos
+				}
+			case *ir.Lambda:
+				if v.AST != nil {
+					pos = v.AST.Pos
+				}
+			}
+			if !pos.IsSet() && call.AST != nil {
+				pos = call.AST.Pos
+			}
+			c.error(pos, "%s, so it cannot be handed to %s, which uses what it returns without waiting", what, call.Func.Name)
+		}
+		return nil
+	})
+}
+
+// hostCalls reports whether fn is the host's: a native or an intrinsic
+// declared with no body, which calls a function it is handed itself.
+func hostCalls(fn *ir.Func) bool {
+	return (fn.Intrinsic != "" || fn.Foreign.Name != "") && !hasDeclaredBody(fn)
+}
+
+// asyncValue says why e, a function handed somewhere, may wait for an async
+// call, or "" when it cannot.
+func asyncValue(e ir.Expr, pts *ir.PointsToInfo) string {
+	switch x := e.(type) {
+	case *ir.Lambda:
+		if x.Func != nil && (x.Func.IsAsync || ir.BlockHasAsyncCall(x.Func.Block)) {
+			return "this function waits for an async call"
+		}
+		return ""
+	case *ir.Ident:
+		if fn, ok := x.Sym.(*ir.Func); ok {
+			if fn.IsAsync {
+				return fn.Name + " waits for an async call"
+			}
+			return ""
+		}
+		if t := x.Type; t != nil && t.Sig != nil && t.Sig.Color == ir.ColorAsync {
+			return x.Name + " may hold a function that waits for an async call"
+		}
+		if k, ok := ir.CalleeSlotKey(x); ok && pts != nil && slices.ContainsFunc(pts.Candidates(k), func(f *ir.Func) bool { return f.IsAsync }) {
+			return x.Name + " may hold a function that waits for an async call"
+		}
+	}
+	return ""
 }

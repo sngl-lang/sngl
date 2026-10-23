@@ -78,6 +78,11 @@ type Style struct {
 	ListStyleType  string
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -89,6 +94,12 @@ type modelState struct {
 	todos               []Todo
 	checked__inst0      map[string]bool
 	visible__inst0      bool
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop2_cursor int
 
@@ -104,6 +115,12 @@ func New() Model {
 	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
 	m.checked__inst0 = map[string]bool{}
 	m.visible__inst0 = true
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
 	m.widget0 = textinput.New()
@@ -111,6 +128,7 @@ func New() Model {
 	m.widget0.SetValue(m.newTodo)
 	m.widget0.Focus()
 	m.resizeWidgets()
+	m.__effects0_settle()
 	return m
 }
 
@@ -132,13 +150,13 @@ func (m Model) status() string {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -188,85 +206,122 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for index, item := range m.todos {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(index))
+		}
+		if __effect0_fresh {
+			__cell1_checked__inst0 := func() bool {
+				if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+					return __v
+				}
+				return false
+			}()
+			__cell1_checked__inst0 = item.Done
+			m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(index))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop2_len() int {
@@ -434,6 +489,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
 			m.newTodo = ""
+			m.__effects0_settle()
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
 			func() {
 				__focusPos2 := 0
@@ -441,20 +497,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = index
 					_ = item
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__cell1_checked__inst0 := func() bool {
+						__cell2_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
 								return __v
 							}
-							return item.Done
+							return false
 						}()
-						__cell1_checked__inst0 = !func() bool {
+						__cell2_checked__inst0 = !func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
 								return __v
 							}
-							return item.Done
+							return false
 						}()
-						m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
+						m.checked__inst0[fmt.Sprint(index)] = __cell2_checked__inst0
 						m.todos[index].Done = !m.todos[index].Done
+						m.__effects0_settle()
 						return
 					}
 					__focusPos2++
@@ -464,6 +521,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if __i := (len(m.todos) - 1); __i >= 0 && __i < len(m.todos) {
 				m.todos = append(m.todos[:__i], m.todos[__i+1:]...)
 			}
+			m.__effects0_settle()
 		}
 	}
 	if m.__focusID == 0 {
@@ -475,65 +533,68 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentChildren []string
-		var content_0 string
-		content_0 = BoxLook(Style{FontWeight: "bold", FontSize: Measurement{Px: 24}}, true).Render(fmt.Sprint(m.status()))
-		contentChildren = append(contentChildren, content_0)
-		var content_1 string
-		var content_1Children []string
-		var content_1_0 string
-		content_1_0 = BoxLook(Style{}, true).Render(m.widget0.View())
-		content_1Children = append(content_1Children, content_1_0)
-		var content_1_1 string
-		content_1_1Focused := (m.__focusID == 1)
-		content_1_1Prefix := " "
-		if content_1_1Focused {
-			content_1_1Prefix = ">"
+		var part0Children []string
+		var part0_0 string
+		part0_0 = BoxLook(Style{FontWeight: "bold", FontSize: Measurement{Px: 24}}, true).Render(fmt.Sprint(m.status()))
+		part0Children = append(part0Children, part0_0)
+		var part0_1 string
+		var part0_1Children []string
+		var part0_1_0 string
+		part0_1_0 = BoxLook(Style{}, true).Render(m.widget0.View())
+		part0_1Children = append(part0_1Children, part0_1_0)
+		var part0_1_1 string
+		part0_1_1Focused := (m.__focusID == 1)
+		part0_1_1Prefix := " "
+		if part0_1_1Focused {
+			part0_1_1Prefix = ">"
 		}
-		content_1_1 = BoxLook(Style{}, true).Render(content_1_1Prefix + " " + fmt.Sprint("Add"))
-		content_1Children = append(content_1Children, content_1_1)
-		content_1 = tui.Spaced(true, lipgloss.Center, 1, content_1Children...)
-		content_1 = BoxLook(Style{AlignItems: "center", Gap: Measurement{Px: 8}, TextAlign: "center"}, true).Render(content_1)
-		contentChildren = append(contentChildren, content_1)
-		var content_2 string
-		var content_2Children []string
-		var content_2_0 string
+		part0_1_1 = BoxLook(Style{}, true).Render(part0_1_1Prefix + " " + fmt.Sprint("Add"))
+		part0_1Children = append(part0_1Children, part0_1_1)
+		part0_1 = tui.Spaced(true, lipgloss.Center, 1, part0_1Children...)
+		part0_1 = BoxLook(Style{AlignItems: "center", Gap: Measurement{Px: 8}, TextAlign: "center"}, true).Render(part0_1)
+		part0Children = append(part0Children, part0_1)
+		var part0_2 string
+		var part0_2Children []string
+		var part0_2_0 string
 		__focusPos2 := 0
 		_ = __focusPos2
-		var content_2_0Items []string
+		var part0_2_0Items []string
 		for index, item := range m.todos {
 			_ = index
 			_ = item
-			var content_2_0Item string
-			content_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
-			content_2_0ItemPrefix := " "
-			if content_2_0ItemFocused {
-				content_2_0ItemPrefix = ">"
+			var part0_2_0Item string
+			part0_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+			part0_2_0ItemPrefix := " "
+			if part0_2_0ItemFocused {
+				part0_2_0ItemPrefix = ">"
 			}
-			content_2_0Item = BoxLook(Style{}, true).Render(content_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
+			part0_2_0Item = BoxLook(Style{}, true).Render(part0_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
 			__focusPos2++
-			content_2_0Items = append(content_2_0Items, content_2_0Item)
+			part0_2_0Items = append(part0_2_0Items, part0_2_0Item)
 		}
-		content_2_0 = strings.Join(content_2_0Items, "\n")
-		if content_2_0 != "" {
-			content_2Children = append(content_2Children, content_2_0)
+		part0_2_0 = strings.Join(part0_2_0Items, "\n")
+		if part0_2_0 != "" {
+			part0_2Children = append(part0_2Children, part0_2_0)
 		}
-		content_2 = tui.Spaced(false, lipgloss.Left, 1, content_2Children...)
-		content_2 = BoxLook(Style{Gap: Measurement{Px: 4}}, true).Render(content_2)
-		contentChildren = append(contentChildren, content_2)
-		var content_3 string
-		content_3Focused := (m.__focusID == 3)
-		content_3Prefix := " "
-		if content_3Focused {
-			content_3Prefix = ">"
+		part0_2 = tui.Spaced(false, lipgloss.Left, 1, part0_2Children...)
+		part0_2 = BoxLook(Style{Gap: Measurement{Px: 4}}, true).Render(part0_2)
+		part0Children = append(part0Children, part0_2)
+		var part0_3 string
+		part0_3Focused := (m.__focusID == 3)
+		part0_3Prefix := " "
+		if part0_3Focused {
+			part0_3Prefix = ">"
 		}
-		content_3 = BoxLook(Style{AlignItems: "center"}, true).Render(content_3Prefix + " " + fmt.Sprint("Remove"))
-		contentChildren = append(contentChildren, content_3)
-		content = tui.Spaced(false, lipgloss.Left, 1, contentChildren...)
-		content = BoxLook(Style{Gap: Measurement{Px: 12}, Padding: Measurement{Px: 16}}, true).Render(content)
+		part0_3 = BoxLook(Style{AlignItems: "center"}, true).Render(part0_3Prefix + " " + fmt.Sprint("Remove"))
+		part0Children = append(part0Children, part0_3)
+		part0 = tui.Spaced(false, lipgloss.Left, 1, part0Children...)
+		part0 = BoxLook(Style{Gap: Measurement{Px: 12}, Padding: Measurement{Px: 16}}, true).Render(part0)
 	}
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v

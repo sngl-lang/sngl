@@ -2,7 +2,9 @@ package android
 
 import (
 	"fmt"
+	"io"
 	"maps"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -47,9 +49,17 @@ type Config struct {
 	// Nav is set when the program renders a sngl:ui/nav stack, which is a
 	// NavHost and wants navigation-compose and kotlinx.serialization.
 	Nav bool
+	// accent is Color as the program wrote it, before withDefaults fills in
+	// the launcher's default: the theme's primary where it is set, and the
+	// device's own colours where it is not.
+	accent    string
+	defaulted bool
 }
 
 func (c Config) withDefaults() Config {
+	if !c.defaulted {
+		c.accent, c.defaulted = c.Color, true
+	}
 	if c.Package == "" {
 		c.Package = "test.sngl.app"
 	}
@@ -130,6 +140,11 @@ func pkgToPath(pkg string) string {
 
 // CompileIR generates a Kotlin source file from IR using CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
+	src, err := compileIR(ctx, cfg)
+	return src.bytes(), err
+}
+
+func compileIR(ctx *codegen.CodegenCtx, cfg Config) (ktSource, error) {
 	cfg = cfg.withDefaults()
 	pageTypeMethods(ctx, cfg)
 	info := analyzeIR(ctx)
@@ -148,18 +163,50 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 // composition.
 func CompileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	src, _, err := compileTestIR(ctx, cfg)
-	return src, err
+	return src.bytes(), err
 }
 
 // compileTestIR also returns what MainScreen spells each state member as --
 // `state.<name>` -- so the test lowerer reaches the same members through the
 // instance a test holds.
-func compileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, map[string]string, error) {
+func compileTestIR(ctx *codegen.CodegenCtx, cfg Config) (ktSource, map[string]string, error) {
 	cfg = cfg.withDefaults()
 	pageTypeMethods(ctx, cfg)
 	info := analyzeIR(ctx)
 	src, members := emitIR(info, ctx, cfg, true)
 	return src, members, ctx.Err()
+}
+
+// ktSource is a Kotlin file before a FileEmitter assembles it: its package,
+// the imports its body requires, and the body.
+type ktSource struct {
+	pkg     string
+	imports []string
+	body    string
+}
+
+// write emits src as the file name in sink.
+func (src ktSource) write(sink codegen.Sink, name string, lang codegen.LangTranslator, opts codegen.FileOptions) error {
+	opts.Name, opts.PackageName = name, src.pkg
+	e := lang.NewFileEmitter(sink, opts)
+	for _, imp := range src.imports {
+		e.RequireImport(imp)
+	}
+	if _, err := io.WriteString(e, src.body); err != nil {
+		e.Close()
+		return err
+	}
+	return e.Close()
+}
+
+// bytes is src assembled, with no generated-by header.
+func (src ktSource) bytes() []byte {
+	const name = "MainScreen.kt"
+	mem := codegen.NewMemSink()
+	if err := src.write(mem, name, &kotlin.Translator{}, codegen.FileOptions{}); err != nil {
+		return nil
+	}
+	return mem.Files()[name]
 }
 
 // irAnalysis is the IR-based replacement for analysisResult.
@@ -180,6 +227,10 @@ type irAndroidBind struct {
 	init   string  // pre-computed literal init (used for simple values)
 	initEx ir.Expr // raw IR when init is anything but a scalar literal
 	isList bool
+	// sealed says the type is a sealed class, an enum carrying payloads,
+	// whose initializer is one variant: inferred from it, the state could
+	// hold that variant and no other.
+	sealed bool
 }
 
 // stateTypeArg returns an explicit type argument ("<String?>") for
@@ -190,7 +241,7 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 	// An option var starts from whatever its initializer is, which may be a
 	// value: Kotlin infers the state's type from it, and a later write of null
 	// does not compile. `datepicker(value=d)` keeps such a cell.
-	if strings.HasSuffix(bind.ktType, "?") {
+	if strings.HasSuffix(bind.ktType, "?") || bind.sealed {
 		return "<" + bind.ktType + ">"
 	}
 	// A lambda's parameter types are not inferred from the cell it starts.
@@ -343,6 +394,7 @@ func bindFor(name string, typ *ir.Type, init ir.Expr) irAndroidBind {
 		init:   initVal,
 		initEx: initEx,
 		isList: isList,
+		sealed: ir.PayloadEnum(typ) != nil,
 	}
 }
 
@@ -392,7 +444,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 	return info
 }
 
-func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) ([]byte, map[string]string) {
+func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) (ktSource, map[string]string) {
 	exprCtx := ctx.ScopedExprCtx()
 	kc := kotlin.NewIRContext(exprCtx)
 	nav, err := collectAndroidNav(ctx)
@@ -423,8 +475,20 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// declares -- so a func reading one has to be declared inside it; beside
 	// it, `log__inst0 = log__inst0 + "!"` names something no file-scope
 	// declaration binds.
+	// A func of a component composed on its own stays in that composable,
+	// beside the component's state, and reaches the page's as the
+	// composable does: through the file.
 	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
+	composedOwn := componentOwnedFuncs(ctx)
+	var atFileLevel map[*ir.Func]bool
+	if !testMode {
+		atFileLevel = composedCallees(ctx)
+	}
 	for fn := range stateReaching {
+		if composedOwn[fn] || atFileLevel[fn] {
+			delete(stateReaching, fn)
+			continue
+		}
 		mainOwnFuncs[fn] = true
 	}
 	// Two sets, not one: a func belongs inside exactly one composable, and the
@@ -613,7 +677,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// collision is: SNGL's own struct is `color`, so a switch over the source
 	// spelling matched nothing and the class was emitted twice.
 	hasCanvas := packageHasCanvas(ctx.Canvases)
-	if hasCanvas || namesColor(info.Structs) {
+	if hasCanvas || namesColor(info.Structs) || programNamesColor(ctx.Pkg) {
 		body.WriteString(colorKotlinDecl(declaredStructs))
 	}
 
@@ -688,7 +752,17 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// reference for assertions/mutations from outside the
 	// composition.
 	if testMode {
+		// A composable other than MainScreen that reads the page's state is
+		// handed no `state`, so the file holds the one the test made, which
+		// each new one replaces. Its reads spell `state.x` as MainScreen's do.
+		shared := len(info.shared) > 0
+		if shared {
+			body.WriteString("lateinit var state: MainScreenState\n\n")
+		}
 		body.WriteString("class MainScreenState {\n")
+		if shared {
+			body.WriteString("    init { state = this }\n")
+		}
 		if len(present) > 0 {
 			fmt.Fprintf(&body, "    init { %s.clear() }\n", kotlin.PresentRegistry)
 		}
@@ -698,8 +772,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// Init expressions inside the class body resolve sibling state vars
 		// via implicit `this`, NOT the `state` parameter (which doesn't exist
 		// here). Use a rewrite-free context so e.g. `__ctx_locale__inst1 =
-		// __ctx_locale` rather than `state.__ctx_locale`.
-		classKC := kc.Unscoped()
+		// __ctx_locale` rather than `state.__ctx_locale`, requiring its
+		// imports of the file all the same.
+		classKC := kc.Unrewritten()
 		for _, bind := range info.binds {
 			initVal := bind.init
 			if bind.initEx != nil {
@@ -724,7 +799,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// with no IdentRewrites: inside the class, `__ctx_locale`
 		// resolves via implicit `this`, not `state.__ctx_locale`.
 		if len(stateFuncs) > 0 {
-			memberKC := kc.Unscoped()
+			memberKC := kc.Unrewritten()
 			for _, fn := range stateFuncs {
 				emitIRKtMemberFunc(&body, fn, memberKC)
 			}
@@ -785,6 +860,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
+	// The stacks come before the computeds and funcs that go to a page or read
+	// one's current: Kotlin declares a local where it is written, and a local
+	// fun naming a controller declared below it does not compile.
+	emitNavState(&body, mainStacks, kc, testMode)
+
 	// Computed state. In test mode computeds live on MainScreenState (emitted
 	// above) so the test accessor can read them; here they're locals only in
 	// non-test mode.
@@ -823,6 +903,20 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
+	// The application ends with the composition, when the activity is
+	// destroyed. Remembered first, so it is forgotten last: every @unmount
+	// and timer below has gone when Teardown releases what lives as long as
+	// the application.
+	if td := ctx.Pkg.Teardown; td != nil && !cfg.GoLib {
+		fmt.Fprintf(&body, "    %s(Unit) {\n", kc.Name(ktDisposableEffect))
+		body.WriteString("        onDispose {\n")
+		for _, line := range kc.EvalStmt(&ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: td}}) {
+			fmt.Fprintf(&body, "            %s\n", line)
+		}
+		body.WriteString("        }\n")
+		body.WriteString("    }\n\n")
+	}
+
 	// Timers
 	for _, t := range info.Timers {
 		// The gate as an expression, not the bare variable name it used to be
@@ -849,8 +943,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("        }\n")
 		body.WriteString("    }\n\n")
 	}
-
-	emitNavState(&body, mainStacks, kc, testMode)
 
 	// Visual tree
 	cc := &irComposeContext{
@@ -930,16 +1022,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		emitIRKtFunc(&body, fn, kc)
 	}
 
-	// Assemble final output: package clause + imports (collected during
-	// pass 1 and dynamically during pass 2) + body.
-	var out strings.Builder
-	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
-	for _, imp := range kc.Imports() {
-		fmt.Fprintf(&out, "import %s\n", imp)
-	}
-	out.WriteString("\n")
-	out.WriteString(kotlin.PruneLibraryDataClasses(body.String(), ctx.Pkg))
-	return []byte(out.String()), testRewrites
+	// The imports were collected during pass 1 and dynamically during pass 2;
+	// the FileEmitter puts them and the package clause above the body.
+	return ktSource{
+		pkg:     cfg.Package,
+		imports: kc.Imports(),
+		body:    kotlin.PruneLibraryDataClasses(body.String(), ctx.Pkg),
+	}, testRewrites
 }
 
 func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav, present map[string]bool, reads []codegen.InstanceRead) {
@@ -996,6 +1085,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		}
 		decls++
 	}
+	// Before the computeds and funcs, which may read a stack, as MainScreen's.
+	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 	for _, fn := range cc.Computeds {
 		comp := irAndroidComputed{name: fn.Name, ktType: irFuncReturnKt(fn), fn: fn}
 		stateDelegate(kc)
@@ -1020,8 +1111,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	if decls > 0 {
 		b.WriteString("\n")
 	}
+	emitPropReports(b, cc, ctx.Pkg.PropReports, kc)
 	emitInstanceRegistration(b, own, kc)
-	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 
 	vc := &irComposeContext{
 		nav:     nav,
@@ -1071,6 +1162,12 @@ func emitInstanceRegistration(b *strings.Builder, reads []codegen.InstanceRead, 
 	fmt.Fprintf(b, "    %s(%s) {\n", kc.Name(ktDisposableEffect), key)
 	fmt.Fprintf(b, "        %s[%s] = mapOf<String, (List<Any?>) -> Any?>(\n", kotlin.InstanceRegistry, key)
 	for _, r := range reads {
+		// A computed is a derived value the composable remembers, read by
+		// name rather than called.
+		if r.Func != nil && codegen.IsComputed(r.Func) {
+			fmt.Fprintf(b, "            %q to { _ -> %s },\n", r.Member, r.Func.Name)
+			continue
+		}
 		if r.Func != nil {
 			var args []string
 			i := 0
@@ -1124,17 +1221,20 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		localKC = localKC.WithLocal(name)
+	}
 
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := localKC.EvalExpr(ret.Value)
-			fmt.Fprintf(b, "    fun %s(%s)%s = %s\n", fn.Name, paramStr, retType, body)
+			fmt.Fprintf(b, "    %sfun %s(%s)%s = %s\n", ktSuspend(fn), fn.Name, paramStr, retType, body)
 			return
 		}
 	}
 
-	if len(fn.Block) > 0 {
-		fmt.Fprintf(b, "    fun %s(%s)%s {\n", fn.Name, paramStr, retType)
+	if codegen.HasBody(fn) {
+		fmt.Fprintf(b, "    %sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {
 				fmt.Fprintf(b, "        %s\n", line)
@@ -1142,6 +1242,16 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 		}
 		b.WriteString("    }\n")
 	}
+}
+
+// ktSuspend is the modifier an async function is declared with: a call that
+// waits is a call of a suspend function, made from another or from a
+// coroutine the caller started.
+func ktSuspend(fn *ir.Func) string {
+	if fn.IsAsync {
+		return "suspend "
+	}
+	return ""
 }
 
 // isReceiverParam reports whether p is fn's receiver, which the checker marks
@@ -1209,19 +1319,22 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
 	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		localKC = localKC.WithLocal(name)
+	}
 
 	// Expression body
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := localKC.EvalExpr(ret.Value)
-			fmt.Fprintf(b, "\nfun %s(%s)%s = %s\n", fn.Name, paramStr, retType, body)
+			fmt.Fprintf(b, "\n%sfun %s(%s)%s = %s\n", ktSuspend(fn), fn.Name, paramStr, retType, body)
 			return
 		}
 	}
 
 	// Block body
-	if len(fn.Block) > 0 {
-		fmt.Fprintf(b, "\nfun %s(%s)%s {\n", fn.Name, paramStr, retType)
+	if codegen.HasBody(fn) {
+		fmt.Fprintf(b, "\n%sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {
 				fmt.Fprintf(b, "    %s\n", line)
@@ -1293,6 +1406,8 @@ func listElementTypeKt(ktType string) string {
 func literalStructLit(n *ir.StructLit) string {
 	name := ""
 	switch {
+	case ir.IsBuilder(n.Type):
+		return "StringBuilder()"
 	case n.Type != nil && ir.IsColorStruct(n.Type):
 		name = "Color"
 	case n.Def != nil:
@@ -1387,9 +1502,28 @@ func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Fun
 	if fn.OnComponent() || reaches[fn] {
 		return true
 	}
+	// State is matched by name, so what fn binds itself is no read of it: a
+	// parameter, a loop's variable or a local named like a var of the page --
+	// `display(name string)` beside a page's `name` -- put a pure function
+	// on the state class, where a composable built on its own called it
+	// through a `state` it does not have.
+	own := map[ir.Symbol]bool{}
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && lv.Sym != nil {
+			own[lv.Sym] = true
+		}
+		return nil
+	})
 	found := false
 	ir.WalkExprs(fn.Block, func(e ir.Expr) error {
 		if id, ok := e.(*ir.Ident); ok {
+			switch id.Sym.(type) {
+			case *ir.Param, *ir.LoopVar:
+				return nil
+			}
+			if own[id.Sym] {
+				return nil
+			}
 			if _, isState := state[id.Name]; isState {
 				found = true
 			}
@@ -1400,7 +1534,8 @@ func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Fun
 }
 
 // sharedPageState is the page's state a composable other than MainScreen reads
-// or writes, and what those vars' initializers read, by name.
+// or writes, itself or through a package function it calls (composedCallees),
+// and what those vars' initializers read, by name.
 func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 	page := map[ir.Symbol]bool{}
 	for _, ov := range ctx.ModelState() {
@@ -1415,13 +1550,11 @@ func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 			return nil
 		})
 	}
-	for _, cc := range ctx.NonRootComponents() {
-		visit(cc.Body)
-		for _, fn := range cc.Funcs {
-			if fn != nil {
-				visit(fn.Block)
-			}
-		}
+	for _, root := range composedRoots(ctx) {
+		visit(root)
+	}
+	for fn := range composedCallees(ctx) {
+		visit(fn.Block)
 	}
 	// A file-level declaration is initialized at file level, so what its
 	// initializer reads has to be declared there too.
@@ -1435,6 +1568,91 @@ func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 			visit(ov.Init())
 			changed = changed || len(out) > n
 		}
+	}
+	return out
+}
+
+// emitPropReports marks the reports whose key reads a prop and settles them
+// when the prop changes. Elsewhere the prop's setter does (settleOnSet); a
+// composable has none, and is called again with the new value, so the change
+// is seen when it is applied. The first value is the one the brackets began
+// with, and reports nothing, as a setter handed what the prop holds does not.
+func emitPropReports(b *strings.Builder, cc *codegen.ComponentCtx, reports map[*ir.Param][]ir.PropReport, kc *kotlin.KtIRContext) {
+	for _, p := range cc.Props {
+		rs := reports[p.Sym]
+		if len(rs) == 0 {
+			continue
+		}
+		seen := "__prop_" + p.Name + "_seen"
+		fmt.Fprintf(b, "    val %s = %s { arrayOf<Any?>(%s) }\n", seen, kc.Name(ktRemember), p.Name)
+		fmt.Fprintf(b, "    %s(%s) {\n", kc.Name(ktDisposableEffect), p.Name)
+		fmt.Fprintf(b, "        if (%s[0] != %s) {\n", seen, p.Name)
+		fmt.Fprintf(b, "            %s[0] = %s\n", seen, p.Name)
+		var settles []*ir.Func
+		for _, r := range rs {
+			fmt.Fprintf(b, "            %s = true\n", r.Dirty.Name)
+			if !slices.Contains(settles, r.Settle) {
+				settles = append(settles, r.Settle)
+			}
+		}
+		for _, settle := range settles {
+			fmt.Fprintf(b, "            %s()\n", settle.Name)
+		}
+		b.WriteString("        }\n        onDispose {}\n    }\n\n")
+	}
+}
+
+// composedRoots is what the composables other than MainScreen run: their
+// bodies, vars' initializers, computeds and funcs.
+func composedRoots(ctx *codegen.CodegenCtx) []any {
+	var roots []any
+	for _, cc := range ctx.NonRootComponents() {
+		roots = append(roots, cc.Body)
+		for _, v := range cc.Vars {
+			if v != nil && v.Init != nil {
+				roots = append(roots, v.Init)
+			}
+		}
+		for _, fns := range [][]*ir.Func{cc.Funcs, cc.Computeds} {
+			for _, fn := range fns {
+				if fn != nil {
+					roots = append(roots, fn.Block)
+				}
+			}
+		}
+	}
+	return roots
+}
+
+// composedCallees is every package function a composable other than MainScreen
+// calls, and what those call in turn. Such a composable reaches the page only
+// through the file, so these are declared there in an app, where they would
+// otherwise be local funs of MainScreen, and what they read is shared.
+func composedCallees(ctx *codegen.CodegenCtx) map[*ir.Func]bool {
+	pkgFunc := map[*ir.Func]bool{}
+	for _, fn := range ctx.Pkg.Funcs {
+		if fn != nil && !fn.OnType() && !fn.IsTest && !codegen.IsComputed(fn) {
+			pkgFunc[fn] = true
+		}
+	}
+	out := map[*ir.Func]bool{}
+	var queue []*ir.Func
+	collect := func(root any) {
+		_ = ir.Walk(root, func(nd ir.Node) error {
+			if c, ok := nd.(*ir.Call); ok && pkgFunc[c.Func] && !out[c.Func] {
+				out[c.Func] = true
+				queue = append(queue, c.Func)
+			}
+			return nil
+		})
+	}
+	for _, root := range composedRoots(ctx) {
+		collect(root)
+	}
+	for len(queue) > 0 {
+		fn := queue[0]
+		queue = queue[1:]
+		collect(fn.Block)
 	}
 	return out
 }

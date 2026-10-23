@@ -32,6 +32,15 @@ func stmtHasFuncvarAsyncCall(s Stmt, pts *PointsToInfo) bool {
 		return exprHasFuncvarAsyncCall(x.Cond, pts) ||
 			BlockHasFuncvarAsyncCall(x.Body, pts) ||
 			BlockHasFuncvarAsyncCall(x.Else, pts)
+	case *Match:
+		if exprHasFuncvarAsyncCall(x.Subject, pts) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if BlockHasFuncvarAsyncCall(arm.Body, pts) || slices.ContainsFunc(arm.Patterns, func(p Expr) bool { return exprHasFuncvarAsyncCall(p, pts) }) {
+				return true
+			}
+		}
 	case *For:
 		return exprHasFuncvarAsyncCall(x.Iter, pts) ||
 			BlockHasFuncvarAsyncCall(x.Body, pts) ||
@@ -80,12 +89,13 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 	}
 	switch x := e.(type) {
 	case *Call:
-		// Direct call to a known async func.
-		if x.Func != nil && x.Func.IsAsync {
+		// Direct call to a known async func, or through a value whose
+		// signature is coloured async.
+		if !x.Detached && (x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x)) {
 			return true
 		}
 		// Funcvar call: Func is nil, Callee carries the funcvar expression.
-		if x.Func == nil && x.Callee != nil {
+		if !x.Detached && x.Func == nil && x.Callee != nil {
 			if k, ok := CalleeSlotKey(x.Callee); ok {
 				if color, present := pts.SlotColor[k]; present {
 					if color == ColorAsync {
@@ -116,6 +126,15 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 		return exprHasFuncvarAsyncCall(x.Cond, pts) ||
 			exprHasFuncvarAsyncCall(x.Then, pts) ||
 			exprHasFuncvarAsyncCall(x.Else, pts)
+	case *MatchExpr:
+		if exprHasFuncvarAsyncCall(x.Subject, pts) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if exprHasFuncvarAsyncCall(arm.Value, pts) || slices.ContainsFunc(arm.Patterns, func(p Expr) bool { return exprHasFuncvarAsyncCall(p, pts) }) {
+				return true
+			}
+		}
 	case *Conversion:
 		return exprHasFuncvarAsyncCall(x.Operand, pts)
 	case *Select:
@@ -164,6 +183,15 @@ func StmtHasAsyncCall(s Stmt) bool {
 		return ExprHasAsyncCall(x.Value)
 	case *If:
 		return ExprHasAsyncCall(x.Cond) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
+	case *Match:
+		if ExprHasAsyncCall(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if BlockHasAsyncCall(arm.Body) || slices.ContainsFunc(arm.Patterns, ExprHasAsyncCall) {
+				return true
+			}
+		}
 	case *For:
 		return ExprHasAsyncCall(x.Iter) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
 	}
@@ -176,7 +204,7 @@ func ExprHasAsyncCall(e Expr) bool {
 	}
 	switch x := e.(type) {
 	case *Call:
-		if x.Func != nil && x.Func.IsAsync {
+		if !x.Detached && (x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x)) {
 			return true
 		}
 		for _, a := range x.Args {
@@ -193,6 +221,15 @@ func ExprHasAsyncCall(e Expr) bool {
 		return ExprHasAsyncCall(x.Operand)
 	case *Ternary:
 		return ExprHasAsyncCall(x.Cond) || ExprHasAsyncCall(x.Then) || ExprHasAsyncCall(x.Else)
+	case *MatchExpr:
+		if ExprHasAsyncCall(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if ExprHasAsyncCall(arm.Value) || slices.ContainsFunc(arm.Patterns, ExprHasAsyncCall) {
+				return true
+			}
+		}
 	case *Conversion:
 		return ExprHasAsyncCall(x.Operand)
 	case *Select:
@@ -215,4 +252,29 @@ func ExprHasAsyncCall(e Expr) bool {
 		// See exprHasFuncvarAsyncCall: a closure is handed over, not called.
 	}
 	return false
+}
+
+// CallsAsyncValue reports whether call is a call through a func value whose
+// signature the checker coloured async: an async function may flow into the
+// slot it reads (checker.colorAsyncSlots).
+//
+// A function literal called where it stands -- a func-typed prop's argument
+// substituted for the parameter its component calls -- waits where its own
+// function does.
+func CallsAsyncValue(call *Call) bool {
+	if call.Func != nil || call.Callee == nil {
+		return false
+	}
+	switch x := call.Callee.(type) {
+	case *Lambda:
+		if x.Func != nil && x.Func.IsAsync {
+			return true
+		}
+	case *Closure:
+		if x.Func != nil && x.Func.IsAsync {
+			return true
+		}
+	}
+	t := call.Callee.ExprType()
+	return t != nil && t.Sig != nil && t.Sig.Color == ColorAsync
 }

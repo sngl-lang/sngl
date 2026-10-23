@@ -1,0 +1,48 @@
+// An owned value released by hand, once, and nothing read after: the tracker
+// has nothing to say. A copy is the same value, so releasing it releases the
+// original, as it would a pointer on a target. A local `var` is the program's
+// to release; one a component holds is the compiler's (owned_state.sngl).
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) => file{fd=fd}
+
+func size(f file) => f.fd * 10
+
+func testReleasedByHand(t test.Test) {
+    var f = open(1)
+    t.assert(size(f) == 10)
+    close(f)
+    t.assert(closed == [1])
+}
+
+func testCopyIsTheSameValue(t test.Test) {
+    var f = open(2)
+    var g = f
+    close(g)
+    t.assert(closed == [2])
+}
+
+func testEachReleasedInTurn(t test.Test) {
+    for var i = [3, 4, 5] {
+        var f = open(i)
+        close(f)
+    }
+    t.assert(closed == [3, 4, 5])
+}
+
+ui.window(title="t") {
+    ui.text(value="t")
+}

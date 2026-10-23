@@ -19,7 +19,11 @@ import (
 // the same Model, and `NameStateVar` spells one `m.x` in every scope, with no
 // "outside a method" case. ModelStateFuncs is that exception, and it is the
 // one set the three platform emit loops read for this.
-func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
+//
+// Each maps to the Go name it is emitted under: exported, and clear of a type
+// the package declares, since Go capitalizes both. `func moveRow` beside
+// `struct MoveRow` was emitted as a second `MoveRow`, and the build failed.
+func ModelFreeFuncs(pkg *ir.Package) map[string]string {
 	if pkg == nil {
 		return nil
 	}
@@ -35,19 +39,49 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	// membership was standing in for -- a `press()` that writes state is a
 	// method, one that writes none has no receiver to want.
 	stateFuncs := ModelStateFuncs(pkg)
-	out := map[string]bool{}
+	types := map[string]bool{}
+	for _, sd := range pkg.Structs {
+		types[ExportName(sd.Name)] = true
+	}
+	for _, ed := range pkg.Enums {
+		types[ExportName(ed.Name)] = true
+	}
+	for _, ud := range pkg.Units {
+		types[ExportName(ud.Name)] = true
+	}
+	out := map[string]string{}
 	for _, fn := range pkg.Funcs {
 		// A promoted handler is always a Model method: it is wired to a widget
 		// by name, and nothing calls it, so it never had to be in the set.
 		if fn.IsTest || fn.IsMethod() || fn.Synthesized || componentFuncs[fn] || fn.Lowered.Event != "" {
 			continue
 		}
-		if isComputedSig(fn) || stateFuncs[fn] {
+		// A computed stays a Model method so the runtime can re-read it. The
+		// question is the one each platform's emit loop asks: a zero-arg
+		// function that writes, even a local, is no computed and is emitted
+		// free, so its call sites must say so too.
+		if codegen.IsComputed(fn) || stateFuncs[fn] {
 			continue
 		}
-		out[fn.Name] = true
+		name := ExportName(fn.Name)
+		for types[name] {
+			name += "Func"
+		}
+		out[fn.Name] = name
 	}
 	return out
+}
+
+// FreeFuncName is the name a top-level func emitted free is declared and
+// called by: what ExprCtx.FreeFuncs says, or the name exported where it says
+// nothing.
+func (gc *GoIRContext) FreeFuncName(name string) string {
+	if gc.Ctx != nil {
+		if n := gc.Ctx.FreeFuncs[name]; n != "" {
+			return n
+		}
+	}
+	return ExportName(name)
 }
 
 // ModelCallee is how a Model-receiver platform's own scaffolding names a
@@ -55,8 +89,8 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 // no state and was emitted free. The same rule a call in the program follows,
 // for a caller written as a string rather than as IR.
 func ModelCallee(pkg *ir.Package, fn *ir.Func, recv string) string {
-	if ModelFreeFuncs(pkg)[fn.Name] {
-		return ExportName(fn.Name)
+	if name := ModelFreeFuncs(pkg)[fn.Name]; name != "" {
+		return name
 	}
 	return recv + "." + fn.Name
 }
@@ -150,13 +184,6 @@ func hostDeclared(decl ir.Symbol) bool {
 		return d.Foreign.Path != "" && !d.Foreign.Marked
 	}
 	return false
-}
-
-// isComputedSig mirrors codegen.IsComputed without the import: a zero-arg
-// function with a return type is derived state, and those stay Model methods
-// so the runtime can re-read them.
-func isComputedSig(fn *ir.Func) bool {
-	return len(fn.Params) == 0 && fn.Return != nil && fn.Return.Kind != ir.TypeVoid
 }
 
 // translateIRLiteral renders an ir.Literal as its Go source form. Used by

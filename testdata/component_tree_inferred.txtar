@@ -213,13 +213,13 @@ func (m Model) __canvasTransmit() tea.Cmd {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func ApplyStyle(ctx *snglcanvas.Context, style Style__draw) {
@@ -277,85 +277,79 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCapFunc(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
 }
 
 func (m Model) On() bool {
@@ -599,19 +593,36 @@ package test.sngl.app
 import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // SnglAssets reads the pictures the program carries out of the app's assets,
-// where the build put each file at the path the program names it by. A
-// picture a URL names is not one of them: no loader ships with the app, so it
-// is no picture at all. MainActivity hands it the application's context, since
-// a drawing paints where there is none to ask.
+// where the build put each file at the path the program names it by, and
+// fetches the pictures a URL names. MainActivity hands it the application's
+// context, since a drawing paints where there is none to ask.
 object SnglAssets {
     private var context: Context? = null
     private val pictures = HashMap<String, ImageBitmap?>()
+    private val fetched = ConcurrentHashMap<String, ImageBitmap>()
+
+    // How many fetches are still running: a test waits for none before it
+    // reads what their images reported.
+    val active = AtomicInteger()
 
     fun init(c: Context) {
         context = c.applicationContext
@@ -619,21 +630,111 @@ object SnglAssets {
 
     fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
         val c = context ?: return null
-        if (path.startsWith("http://") || path.startsWith("https://")) {
+        if (isRemote(path)) {
             null
         } else {
             runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
                 .getOrNull()?.asImageBitmap()
         }
     }
+
+    // Whether there are assets to read: a composition with no activity of
+    // the app's own around it has none, and says nothing of a file.
+    fun canRead(): Boolean = context != null
+
+    fun isRemote(path: String): Boolean = path.startsWith("http://") || path.startsWith("https://")
+
+    // The picture url names, once one has arrived.
+    fun cached(url: String): ImageBitmap? = fetched[url]
+
+    // Fetches the picture url names off the main thread. A picture that
+    // arrives is kept for the life of the process; a failure is asked again
+    // the next time an image shows the url.
+    suspend fun fetch(url: String): Result<ImageBitmap> {
+        fetched[url]?.let { return Result.success(it) }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                try {
+                    conn.connectTimeout = 15_000
+                    conn.readTimeout = 30_000
+                    val status = conn.responseCode
+                    if (status !in 200..299) throw java.io.IOException("HTTP $status")
+                    val bmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
+                        ?: throw java.io.IOException("not an image")
+                    bmp.asImageBitmap()
+                } finally {
+                    conn.disconnect()
+                }
+            }
+        }.onSuccess { fetched[url] = it }
+    }
 }
 
-// SnglAssetImage is an image's source on this platform: the picture a URL
-// names, or nothing where there is none.
+// What an image reports, handed to the source it holds: the source is what
+// knows when its picture arrived.
+class SnglImageEvents(val load: () -> Unit, val error: (String) -> Unit)
+
+val LocalSnglImageEvents = staticCompositionLocalOf<SnglImageEvents?> { null }
+
+// SnglImage is an image on this platform: a box holding its source, which
+// reports to it.
+@Composable
+fun SnglImage(
+    modifier: Modifier = Modifier,
+    onLoad: () -> Unit = {},
+    onError: (String) -> Unit = {},
+    src: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(LocalSnglImageEvents provides SnglImageEvents(onLoad, onError)) {
+        Box(modifier = modifier) { src() }
+    }
+}
+
+// SnglAssetImage is the picture a file the program carries holds, or nothing
+// where the app's assets hold none.
 @Composable
 fun SnglAssetImage(url: String) {
-    val bmp = SnglAssets.bitmap(url) ?: return
+    val events by rememberUpdatedState(LocalSnglImageEvents.current)
+    val bmp = SnglAssets.bitmap(url)
+    LaunchedEffect(url, bmp != null) {
+        when {
+            bmp != null -> events?.load?.invoke()
+            SnglAssets.canRead() -> events?.error?.invoke("no picture at $url")
+        }
+    }
+    bmp ?: return
     Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
+}
+
+// SnglRemoteImage is the picture a URL names, fetched while the program runs:
+// nothing until it arrives, and nothing if it does not. produceState takes its
+// initial value once, so a new URL starts again from what the cache holds for
+// it: the last URL's picture is not this one's, and stood in its place for
+// good, since a value already there skipped the fetch.
+@Composable
+fun SnglRemoteImage(url: String) {
+    val events by rememberUpdatedState(LocalSnglImageEvents.current)
+    val bmp by produceState(SnglAssets.cached(url), url) {
+        value = SnglAssets.cached(url)
+        if (value != null) {
+            events?.load?.invoke()
+            return@produceState
+        }
+        SnglAssets.active.incrementAndGet()
+        try {
+            SnglAssets.fetch(url)
+                .onSuccess {
+                    value = it
+                    events?.load?.invoke()
+                }
+                .onFailure { events?.error?.invoke(it.message ?: "could not load $url") }
+        } finally {
+            SnglAssets.active.decrementAndGet()
+        }
+    }
+    val shown = bmp ?: return
+    Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from component_tree_inferred.sngl; DO NOT EDIT. -->
@@ -669,6 +770,8 @@ body { font-family: system-ui, sans-serif; }
     ctx.lineWidth = style.strokeWidth;
   }
   var __slot0 = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function _canvasDraw0(ctx) {
     ctx.save();
     paintStyle(ctx, { fill: { r: 255, g: 0, b: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
@@ -678,27 +781,37 @@ body { font-family: system-ui, sans-serif; }
     ctx.restore();
   }
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    if (state.on) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "on";
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        if (state.on) {
+          let __n1 = document.createElement("span");
+          __n1.textContent = "on";
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n1) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n1, __place0_i_ref0);
+          }
+          __slot0.push(__n1);
+        }
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      if (__place0_i_ref0 === __n1) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n1, __place0_i_ref0);
-      }
-      __slot0.push(__n1);
-    }
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
@@ -750,8 +863,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:36fddb1f81d11c164ed0b46a33d3a03c
+pass sha256:a710b0b7b3b53d985e236db27c579765
 -- run/kotlin/android --
-pass sha256:f8788531e28cb87558860c0de833204c
+pass sha256:f66ec160cb5252c0d7769555e3e9eeda
 -- run/none/html --
-pass sha256:809eeaec1ec0c54e2319bdff09ff02f0
+pass sha256:7f4fb7a67c4f8811b56a35374658a7d7

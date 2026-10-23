@@ -201,96 +201,90 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt4 int
+		var __lt3 int
 		if s.MaxLines == 0 {
-			__lt4 = 0
+			__lt3 = 0
 		} else {
-			__lt4 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt4))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt6 lipgloss.Position
-	if a == "center" {
-		__lt6 = lipgloss.Center
-	} else {
-		var __lt5 lipgloss.Position
-		if a == "right" {
-			__lt5 = lipgloss.Right
-		} else {
-			__lt5 = lipgloss.Left
-		}
-		__lt6 = __lt5
+	var __lt4 lipgloss.Position
+	switch a {
+	case "center":
+		__lt4 = lipgloss.Center
+	case "right":
+		__lt4 = lipgloss.Right
+	default:
+		__lt4 = lipgloss.Left
 	}
-	return __lt6
+	return __lt4
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt9 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt9 = lipgloss.DoubleBorder()
-	} else {
-		var __lt8 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt8 = tui.DashedBorder()
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt6 = lipgloss.RoundedBorder()
 		} else {
-			var __lt7 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt7 = lipgloss.RoundedBorder()
-			} else {
-				__lt7 = lipgloss.NormalBorder()
-			}
-			__lt8 = __lt7
+			__lt6 = lipgloss.NormalBorder()
 		}
-		__lt9 = __lt8
+		__lt5 = __lt6
 	}
-	return __lt9
+	return __lt5
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt11 Measurement
+	var __lt8 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt11 = own
+		__lt8 = own
 	} else {
-		var __lt10 Measurement
+		var __lt7 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt10 = axis
+			__lt7 = axis
 		} else {
-			__lt10 = all
+			__lt7 = all
 		}
-		__lt11 = __lt10
+		__lt8 = __lt7
 	}
-	return Cells(__lt11)
+	return Cells(__lt8)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt12 int
+	var __lt9 int
 	if px <= 0.0 {
-		__lt12 = 0
+		__lt9 = 0
 	} else {
-		__lt12 = max(1, (int(px) / 8))
+		__lt9 = max(1, (int(px) / 8))
 	}
-	return __lt12
+	return __lt9
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt14 int
+	var __lt11 int
 	if height__r0 == 0 {
-		__lt14 = lines
+		__lt11 = lines
 	} else {
-		var __lt13 int
+		var __lt10 int
 		if lines == 0 {
-			__lt13 = height__r0
+			__lt10 = height__r0
 		} else {
-			__lt13 = min(height__r0, lines)
+			__lt10 = min(height__r0, lines)
 		}
-		__lt14 = __lt13
+		__lt11 = __lt10
 	}
-	return __lt14
+	return __lt11
 }
 
 func (m Model) Visible__inst0() bool {
@@ -489,9 +483,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type Measurement struct {
 	Px  float64
@@ -649,12 +641,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:41b5dbf9573b461ad2f8bb868f4198e0
+pass sha256:303819132563d9fa990e35d181ccfd37
 -- run/go/fyne --
 pass sha256:a79d939b64ce247762514a9270744153
 -- run/go/gtk4 --
-pass sha256:e063396b738a0abd95cfe093183b929f
+pass sha256:562c846cfa78f8a1c5dcc2f216f68607
 -- run/kotlin/android --
-pass sha256:9cf8a636cca238ddc00b6d251344f373
+pass sha256:9ea50f38996f4043c6e3cd9bc96ee8f4
 -- run/none/html --
 pass sha256:c1eb89b2beb06ae7bd1a87647a2ffd85

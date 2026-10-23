@@ -251,6 +251,7 @@ type modelState struct {
 	__effect1_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__focusID           int
 
@@ -281,6 +282,7 @@ func New() Model {
 	m.__effect1_dirty = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	return m
@@ -382,84 +384,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
-	if a == "center" {
-		__lt2 = lipgloss.Center
-	} else {
-		var __lt1 lipgloss.Position
-		if a == "right" {
-			__lt1 = lipgloss.Right
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
 		} else {
-			__lt1 = lipgloss.Left
+			__lt3 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt1
+		__lt2 = __lt3
 	}
 	return __lt2
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt5 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
 	} else {
-		var __lt4 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt4 = tui.DashedBorder()
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
 		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt3 = lipgloss.RoundedBorder()
-			} else {
-				__lt3 = lipgloss.NormalBorder()
-			}
-			__lt4 = __lt3
+			__lt4 = all
 		}
 		__lt5 = __lt4
 	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Cells(__lt7)
+	return Cells(__lt5)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt8 int
+	var __lt6 int
 	if px <= 0.0 {
-		__lt8 = 0
+		__lt6 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt6 = max(1, (int(px) / 8))
 	}
-	return __lt8
+	return __lt6
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt8 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt8 = lines
 	} else {
-		var __lt9 int
+		var __lt7 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt7 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt7 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt8 = __lt7
 	}
-	return __lt10
+	return __lt8
 }
 
 func (m *Model) __effect0_update() {
@@ -487,57 +483,59 @@ func (m *Model) __effect1_insert() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
-				m.__effect0_at = m.__effect0_ats[__effect0_ci]
-				m.__effect0_item = m.__effect0_items[__effect0_ci]
-				if __effect0_ck == 0 {
-					m.__effect0_insert()
-				} else {
-					if __effect0_ck == 1 {
-						m.__effect0_set()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
+					m.__effect0_at = m.__effect0_ats[__effect0_ci]
+					m.__effect0_item = m.__effect0_items[__effect0_ci]
+					if __effect0_ck == 0 {
+						m.__effect0_insert()
 					} else {
-						if __effect0_ck == 2 {
-							m.__effect0_remove()
+						if __effect0_ck == 1 {
+							m.__effect0_set()
+						} else {
+							if __effect0_ck == 2 {
+								m.__effect0_remove()
+							}
 						}
 					}
 				}
-			}
-			m.__effect0_kinds = []int{}
-			m.__effect0_ats = []int{}
-			m.__effect0_items = []Todo{}
-			if m.__effect0_dirty {
-				m.__effect0_dirty = false
-				m.__effect0_key = m.todos__inst0
-				m.__effect0_update()
-			}
-			for __effect1_ci, __effect1_ck := range m.__effect1_kinds {
-				m.__effect1_at = m.__effect1_ats[__effect1_ci]
-				m.__effect1_item = m.__effect1_items[__effect1_ci]
-				if __effect1_ck == 0 {
-					m.__effect1_insert()
+				m.__effect0_kinds = []int{}
+				m.__effect0_ats = []int{}
+				m.__effect0_items = []Todo{}
+				if m.__effect0_dirty {
+					m.__effect0_dirty = false
+					m.__effect0_key = m.todos__inst0
+					m.__effect0_update()
+				}
+				for __effect1_ci, __effect1_ck := range m.__effect1_kinds {
+					m.__effect1_at = m.__effect1_ats[__effect1_ci]
+					m.__effect1_item = m.__effect1_items[__effect1_ci]
+					if __effect1_ck == 0 {
+						m.__effect1_insert()
+					}
+				}
+				m.__effect1_kinds = []int{}
+				m.__effect1_ats = []int{}
+				m.__effect1_items = []int{}
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					m.__effect1_key = m.h__inst0.Items
+					m.__effect1_update()
 				}
 			}
-			m.__effect1_kinds = []int{}
-			m.__effect1_ats = []int{}
-			m.__effect1_items = []int{}
-			if m.__effect1_dirty {
-				m.__effect1_dirty = false
-				m.__effect1_key = m.h__inst0.Items
-				m.__effect1_update()
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 			}
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
 }
@@ -897,6 +895,7 @@ type Model struct {
 	__effect1_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -936,6 +935,7 @@ func New() *Model {
 	m.__effect1_dirty = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -1002,57 +1002,59 @@ func (m *Model) __effect1_insert() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
-				m.__effect0_at = m.__effect0_ats[__effect0_ci]
-				m.__effect0_item = m.__effect0_items[__effect0_ci]
-				if __effect0_ck == 0 {
-					m.__effect0_insert()
-				} else {
-					if __effect0_ck == 1 {
-						m.__effect0_set()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
+					m.__effect0_at = m.__effect0_ats[__effect0_ci]
+					m.__effect0_item = m.__effect0_items[__effect0_ci]
+					if __effect0_ck == 0 {
+						m.__effect0_insert()
 					} else {
-						if __effect0_ck == 2 {
-							m.__effect0_remove()
+						if __effect0_ck == 1 {
+							m.__effect0_set()
+						} else {
+							if __effect0_ck == 2 {
+								m.__effect0_remove()
+							}
 						}
 					}
 				}
-			}
-			m.__effect0_kinds = []int{}
-			m.__effect0_ats = []int{}
-			m.__effect0_items = []Todo{}
-			if m.__effect0_dirty {
-				m.__effect0_dirty = false
-				m.__effect0_key = m.todos__inst0
-				m.__effect0_update()
-			}
-			for __effect1_ci, __effect1_ck := range m.__effect1_kinds {
-				m.__effect1_at = m.__effect1_ats[__effect1_ci]
-				m.__effect1_item = m.__effect1_items[__effect1_ci]
-				if __effect1_ck == 0 {
-					m.__effect1_insert()
+				m.__effect0_kinds = []int{}
+				m.__effect0_ats = []int{}
+				m.__effect0_items = []Todo{}
+				if m.__effect0_dirty {
+					m.__effect0_dirty = false
+					m.__effect0_key = m.todos__inst0
+					m.__effect0_update()
+				}
+				for __effect1_ci, __effect1_ck := range m.__effect1_kinds {
+					m.__effect1_at = m.__effect1_ats[__effect1_ci]
+					m.__effect1_item = m.__effect1_items[__effect1_ci]
+					if __effect1_ck == 0 {
+						m.__effect1_insert()
+					}
+				}
+				m.__effect1_kinds = []int{}
+				m.__effect1_ats = []int{}
+				m.__effect1_items = []int{}
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					m.__effect1_key = m.h__inst0.Items
+					m.__effect1_update()
 				}
 			}
-			m.__effect1_kinds = []int{}
-			m.__effect1_ats = []int{}
-			m.__effect1_items = []int{}
-			if m.__effect1_dirty {
-				m.__effect1_dirty = false
-				m.__effect1_key = m.h__inst0.Items
-				m.__effect1_update()
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 			}
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
 }
@@ -1282,6 +1284,7 @@ type Model struct {
 	__effect1_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__n0                gtk4rt.Handle
 	__n3                gtk4rt.Handle
@@ -1321,6 +1324,7 @@ func New() *Model {
 	m.__effect1_dirty = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
 }
@@ -1387,57 +1391,59 @@ func (m *Model) __effect1_insert() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
-				m.__effect0_at = m.__effect0_ats[__effect0_ci]
-				m.__effect0_item = m.__effect0_items[__effect0_ci]
-				if __effect0_ck == 0 {
-					m.__effect0_insert()
-				} else {
-					if __effect0_ck == 1 {
-						m.__effect0_set()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				for __effect0_ci, __effect0_ck := range m.__effect0_kinds {
+					m.__effect0_at = m.__effect0_ats[__effect0_ci]
+					m.__effect0_item = m.__effect0_items[__effect0_ci]
+					if __effect0_ck == 0 {
+						m.__effect0_insert()
 					} else {
-						if __effect0_ck == 2 {
-							m.__effect0_remove()
+						if __effect0_ck == 1 {
+							m.__effect0_set()
+						} else {
+							if __effect0_ck == 2 {
+								m.__effect0_remove()
+							}
 						}
 					}
 				}
-			}
-			m.__effect0_kinds = []int{}
-			m.__effect0_ats = []int{}
-			m.__effect0_items = []Todo{}
-			if m.__effect0_dirty {
-				m.__effect0_dirty = false
-				m.__effect0_key = m.todos__inst0
-				m.__effect0_update()
-			}
-			for __effect1_ci, __effect1_ck := range m.__effect1_kinds {
-				m.__effect1_at = m.__effect1_ats[__effect1_ci]
-				m.__effect1_item = m.__effect1_items[__effect1_ci]
-				if __effect1_ck == 0 {
-					m.__effect1_insert()
+				m.__effect0_kinds = []int{}
+				m.__effect0_ats = []int{}
+				m.__effect0_items = []Todo{}
+				if m.__effect0_dirty {
+					m.__effect0_dirty = false
+					m.__effect0_key = m.todos__inst0
+					m.__effect0_update()
+				}
+				for __effect1_ci, __effect1_ck := range m.__effect1_kinds {
+					m.__effect1_at = m.__effect1_ats[__effect1_ci]
+					m.__effect1_item = m.__effect1_items[__effect1_ci]
+					if __effect1_ck == 0 {
+						m.__effect1_insert()
+					}
+				}
+				m.__effect1_kinds = []int{}
+				m.__effect1_ats = []int{}
+				m.__effect1_items = []int{}
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					m.__effect1_key = m.h__inst0.Items
+					m.__effect1_update()
 				}
 			}
-			m.__effect1_kinds = []int{}
-			m.__effect1_ats = []int{}
-			m.__effect1_items = []int{}
-			if m.__effect1_dirty {
-				m.__effect1_dirty = false
-				m.__effect1_key = m.h__inst0.Items
-				m.__effect1_update()
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 			}
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
 }
@@ -1671,6 +1677,7 @@ fun MainScreen() {
     var __effect1_dirty by remember { mutableStateOf(false) }
     var __effects0_settling by remember { mutableStateOf(false) }
     var __effects0_pending by remember { mutableStateOf(false) }
+    var __effects0_torn by remember { mutableStateOf(false) }
     var __effects0_steps by remember { mutableStateOf(0) }
 
 
@@ -1712,57 +1719,59 @@ fun MainScreen() {
 
 
     fun __effects0_settle() {
-        if (__effects0_settling) {
-        	__effects0_pending = true
-        } else {
-        	__effects0_settling = true
-        	__effects0_pending = true
-        	__effects0_steps = 0
-        	while ((__effects0_pending && (__effects0_steps < 512))) {
-        		__effects0_pending = false
-        		__effects0_steps = (__effects0_steps + 1)
-        		for ((__effect0_ci, __effect0_ck) in __effect0_kinds.withIndex()) {
-        			__effect0_at = __effect0_ats[__effect0_ci]
-        			__effect0_item = __effect0_items[__effect0_ci]
-        			if ((__effect0_ck == 0)) {
-        				__effect0_insert()
-        			} else {
-        				if ((__effect0_ck == 1)) {
-        					__effect0_set()
+        if (!__effects0_torn) {
+        	if (__effects0_settling) {
+        		__effects0_pending = true
+        	} else {
+        		__effects0_settling = true
+        		__effects0_pending = true
+        		__effects0_steps = 0
+        		while ((__effects0_pending && (__effects0_steps < 512))) {
+        			__effects0_pending = false
+        			__effects0_steps = (__effects0_steps + 1)
+        			for ((__effect0_ci, __effect0_ck) in __effect0_kinds.withIndex()) {
+        				__effect0_at = __effect0_ats[__effect0_ci]
+        				__effect0_item = __effect0_items[__effect0_ci]
+        				if ((__effect0_ck == 0)) {
+        					__effect0_insert()
         				} else {
-        					if ((__effect0_ck == 2)) {
-        						__effect0_remove()
+        					if ((__effect0_ck == 1)) {
+        						__effect0_set()
+        					} else {
+        						if ((__effect0_ck == 2)) {
+        							__effect0_remove()
+        						}
         					}
         				}
         			}
-        		}
-        		(listOf<Int>()).let { __v -> __effect0_kinds.clear(); __effect0_kinds.addAll(__v) }
-        		(listOf<Int>()).let { __v -> __effect0_ats.clear(); __effect0_ats.addAll(__v) }
-        		(listOf<Todo>()).let { __v -> __effect0_items.clear(); __effect0_items.addAll(__v) }
-        		if (__effect0_dirty) {
-        			__effect0_dirty = false
-        			(todos__inst0).let { __v -> __effect0_key.clear(); __effect0_key.addAll(__v) }
-        			__effect0_update()
-        		}
-        		for ((__effect1_ci, __effect1_ck) in __effect1_kinds.withIndex()) {
-        			__effect1_at = __effect1_ats[__effect1_ci]
-        			__effect1_item = __effect1_items[__effect1_ci]
-        			if ((__effect1_ck == 0)) {
-        				__effect1_insert()
+        			(listOf<Int>()).let { __v -> __effect0_kinds.clear(); __effect0_kinds.addAll(__v) }
+        			(listOf<Int>()).let { __v -> __effect0_ats.clear(); __effect0_ats.addAll(__v) }
+        			(listOf<Todo>()).let { __v -> __effect0_items.clear(); __effect0_items.addAll(__v) }
+        			if (__effect0_dirty) {
+        				__effect0_dirty = false
+        				(todos__inst0).let { __v -> __effect0_key.clear(); __effect0_key.addAll(__v) }
+        				__effect0_update()
+        			}
+        			for ((__effect1_ci, __effect1_ck) in __effect1_kinds.withIndex()) {
+        				__effect1_at = __effect1_ats[__effect1_ci]
+        				__effect1_item = __effect1_items[__effect1_ci]
+        				if ((__effect1_ck == 0)) {
+        					__effect1_insert()
+        				}
+        			}
+        			(listOf<Int>()).let { __v -> __effect1_kinds.clear(); __effect1_kinds.addAll(__v) }
+        			(listOf<Int>()).let { __v -> __effect1_ats.clear(); __effect1_ats.addAll(__v) }
+        			(listOf<Int>()).let { __v -> __effect1_items.clear(); __effect1_items.addAll(__v) }
+        			if (__effect1_dirty) {
+        				__effect1_dirty = false
+        				(h__inst0.items).let { __v -> __effect1_key.clear(); __effect1_key.addAll(__v) }
+        				__effect1_update()
         			}
         		}
-        		(listOf<Int>()).let { __v -> __effect1_kinds.clear(); __effect1_kinds.addAll(__v) }
-        		(listOf<Int>()).let { __v -> __effect1_ats.clear(); __effect1_ats.addAll(__v) }
-        		(listOf<Int>()).let { __v -> __effect1_items.clear(); __effect1_items.addAll(__v) }
-        		if (__effect1_dirty) {
-        			__effect1_dirty = false
-        			(h__inst0.items).let { __v -> __effect1_key.clear(); __effect1_key.addAll(__v) }
-        			__effect1_update()
+        		__effects0_settling = false
+        		if (__effects0_pending) {
+        			throw SnglRaise(ErrorEvent("effects did not settle in 512 passes; an effect is rekeying itself", "effect"))
         		}
-        	}
-        	__effects0_settling = false
-        	if (__effects0_pending) {
-        		throw SnglRaise(ErrorEvent("effects did not settle in 512 passes; an effect is rekeying itself", "effect"))
         	}
         }
     }
@@ -1993,59 +2002,62 @@ body { font-family: system-ui, sans-serif; }
   var __effect1_dirty = false;
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        for (const [__effect0_ci, __effect0_ck] of __effect0_kinds.entries()) {
-          __effect0_at = __effect0_ats[__effect0_ci];
-          __effect0_item = __effect0_items[__effect0_ci];
-          if (__effect0_ck === 0) {
-            __effect0_insert();
-          } else {
-            if (__effect0_ck === 1) {
-              __effect0_set();
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          for (const [__effect0_ci, __effect0_ck] of __effect0_kinds.entries()) {
+            __effect0_at = __effect0_ats[__effect0_ci];
+            __effect0_item = __effect0_items[__effect0_ci];
+            if (__effect0_ck === 0) {
+              __effect0_insert();
             } else {
-              if (__effect0_ck === 2) {
-                __effect0_remove();
+              if (__effect0_ck === 1) {
+                __effect0_set();
+              } else {
+                if (__effect0_ck === 2) {
+                  __effect0_remove();
+                }
               }
             }
           }
-        }
-        __effect0_kinds = [];
-        __effect0_ats = [];
-        __effect0_items = [];
-        if (__effect0_dirty) {
-          __effect0_dirty = false;
-          __effect0_key = state.todos__inst0;
-          __effect0_update();
-        }
-        for (const [__effect1_ci, __effect1_ck] of __effect1_kinds.entries()) {
-          __effect1_at = __effect1_ats[__effect1_ci];
-          __effect1_item = __effect1_items[__effect1_ci];
-          if (__effect1_ck === 0) {
-            __effect1_insert();
+          __effect0_kinds = [];
+          __effect0_ats = [];
+          __effect0_items = [];
+          if (__effect0_dirty) {
+            __effect0_dirty = false;
+            __effect0_key = state.todos__inst0;
+            __effect0_update();
+          }
+          for (const [__effect1_ci, __effect1_ck] of __effect1_kinds.entries()) {
+            __effect1_at = __effect1_ats[__effect1_ci];
+            __effect1_item = __effect1_items[__effect1_ci];
+            if (__effect1_ck === 0) {
+              __effect1_insert();
+            }
+          }
+          __effect1_kinds = [];
+          __effect1_ats = [];
+          __effect1_items = [];
+          if (__effect1_dirty) {
+            __effect1_dirty = false;
+            __effect1_key = state.h__inst0.items;
+            __effect1_update();
           }
         }
-        __effect1_kinds = [];
-        __effect1_ats = [];
-        __effect1_items = [];
-        if (__effect1_dirty) {
-          __effect1_dirty = false;
-          __effect1_key = state.h__inst0.items;
-          __effect1_update();
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
         }
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
       }
     }
   }
@@ -2118,12 +2130,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:35b28d53fe617d72a1968ba372391622
+pass sha256:5489481b5a88bea8891c6a22c3d5f6dc
 -- run/go/fyne --
-pass sha256:ae3a6e0d1b90fad975fe80d48ffb1dd4
+pass sha256:e5b7a6d98a9dfc5956027b04fb638e5c
 -- run/go/gtk4 --
-pass sha256:03cc5614c96d70ac18eb1509764f46e4
+pass sha256:08bd7781a0ba4d921ed99b8228148d30
 -- run/kotlin/android --
-pass sha256:bb69605e49011cbce63b44d33cca198c
+pass sha256:a1232eb6596e3bd7e9e0f4d0e82ae9a6
 -- run/none/html --
-pass sha256:3ea5352d2692327874fbaa65efba0989
+pass sha256:397d4d81bea6c1c384313ac7c2a7ca46

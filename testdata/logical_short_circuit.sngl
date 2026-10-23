@@ -1,0 +1,19 @@
+// `&&` and `||` evaluate their right operand only when the left does not
+// decide the answer, which is what lets a null test guard a read of the
+// option it narrows.
+
+import test "sngl:test"
+
+struct Box {
+    size int
+}
+
+var none option[Box] = null
+
+func testAndStopsAtFalse(t test.Test) {
+    t.assert(!(none != null && none.size == 1))
+}
+
+func testOrStopsAtTrue(t test.Test) {
+    t.assert(none == null || none.size == 1)
+}

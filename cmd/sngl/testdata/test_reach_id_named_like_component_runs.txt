@@ -1,0 +1,165 @@
+# A test reaches through an #id named like a component, on every target: the
+# one it names (`card #card`), through its state (`c.card.hits`) and its node
+# (`c.card.btn.click()`), and another the body still renders by name
+# (`cell #box` beside `box()`).
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import "sngl:ui"
+import "sngl:test"
+
+component card ui.node {
+    var hits = 0
+    ui.button #btn(text="hit", @click {
+        hits = hits + 1
+    })
+}
+
+component main ui.node {
+    card #card()
+}
+
+func testReadsThroughAnIDNamedLikeItsComponent(t test.Test, c main) {
+    c.card.btn.click()
+    t.assert(c.card.hits == 1)
+}
+
+component box ui.node {
+    ui.text(value="box")
+}
+
+component cell(name string) ui.node {
+    var got = name
+}
+
+component pair ui.node {
+    cell #box(name="a")
+    cell #other(name="b")
+    box()
+}
+
+func testAnIDNamedLikeAnotherComponent(t test.Test, c pair) {
+    t.assert(c.box.got == "a")
+    t.assert(c.other.got == "b")
+}
+
+ui.window {
+    main()
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:5475d47219bc24879c36892c58901ba9
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/pair/1 --
+sha256:1961f0fbbea799e709e2fe691d4ed0de
+{
+  "results": [
+    {
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:6762abc9d53450663e96ff13e48d6502
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/pair/1 --
+sha256:7710c1bf50d3e8686733041b3dcf7333
+{
+  "results": [
+    {
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:1a3104869019eb7132343db4a73859af
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pair/1 --
+sha256:001eb5cf4a1af7bc29233a347ee64c78
+{
+  "results": [
+    {
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:a68ef318a421b1806077d7546e06377c
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pair/1 --
+sha256:fe7328a749b76d22b6cc974af2b6969f
+{
+  "results": [
+    {
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:07ada80bd10843d0e4e81084c1afaaa0
+{
+  "results": [
+    {
+      "Desc": "ReadsThroughAnIDNamedLikeItsComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pair/1 --
+sha256:e6e07ad04e11f3282d06ae8f6bd1591a
+{
+  "results": [
+    {
+      "Desc": "AnIDNamedLikeAnotherComponent",
+      "Passed": true
+    }
+  ]
+}

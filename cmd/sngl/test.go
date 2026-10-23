@@ -38,6 +38,7 @@ func init() {
 	testCmd.Flags().String("language", "", "target language (e.g. js)")
 	testCmd.Flags().StringSlice("opt", nil, "generator options (key=value)")
 	testCmd.Flags().StringSlice("skip-platform", nil, "platforms to leave out of --platform=all")
+	testCmd.Flags().String("simulate", "", "run on the interpreter with this platform's overrides, its C natives stubbed")
 }
 
 // Unlike compile, test validates nothing against the per-target option
@@ -78,6 +79,18 @@ func runTest(cmd *cobra.Command, args []string) error {
 	format, _ := cmd.Flags().GetString("format")
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
 	opts := parseTestOpts(optSlice)
+
+	if simulate, _ := cmd.Flags().GetString("simulate"); simulate != "" {
+		if platform != "none" {
+			return fmt.Errorf("--simulate runs on the interpreter; it takes no --platform")
+		}
+		lang, plat, err := build.ResolveLangPlat(language, simulate)
+		if err != nil {
+			return err
+		}
+		totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), codegen.LookupPlatform(plat), simulatedTests{plat}, codegen.LookupLang(lang), units, runFilter, opts)
+		return reportResults(allResults, totalTests, totalFail, format, verbose)
+	}
 
 	if platform == "all" {
 		skip, _ := cmd.Flags().GetStringSlice("skip-platform")
@@ -192,6 +205,15 @@ func (interpreterTests) RunTests(pkg *ir.Package, _ codegen.LangTranslator, _ *i
 	return testrunner.Run(pkg)
 }
 
+// simulatedTests runs a platform's tests on the interpreter, specialized for
+// it, rather than on the platform: what its overrides do with what they own,
+// with no toolchain.
+type simulatedTests struct{ platform string }
+
+func (s simulatedTests) RunTests(pkg *ir.Package, _ codegen.LangTranslator, _ *ir.StructLit) ([]*codegen.TestResult, error) {
+	return testrunner.Simulate(pkg, s.platform)
+}
+
 // A platform with no supported langs (`none`) is fine, and returns nil.
 func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.LangTranslator, error) {
 	if language != "" {
@@ -269,7 +291,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		// would otherwise never have its platform package merged, and every
 		// stdlib component it renders through an override would report itself
 		// unimplemented.
-		pkg, err := checkDoc(doc, u.dir, true, build.SelectedTargets(testlaunch.LangIdent(lang), plat.PlatformIdentifier())...)
+		pkg, err := checkDoc(doc, u.dir, true, nil, build.SelectedTargets(testlaunch.LangIdent(lang), plat.PlatformIdentifier())...)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			totalFail++
@@ -283,7 +305,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 
 		// runner.RunTests is the fallback for a pair with no launcher (`none`).
 		var results []*codegen.TestResult
-		if testlaunch.Launcher(plat, lang) != nil {
+		if _, simulated := runner.(simulatedTests); !simulated && testlaunch.Launcher(plat, lang) != nil {
 			results, err = testlaunch.Run(ctx, pkg, testlaunch.Config{
 				Platform: plat,
 				Lang:     lang,

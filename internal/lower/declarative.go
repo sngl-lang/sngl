@@ -67,6 +67,11 @@ type declarativeState struct {
 	// returning a widget, and asking that widget for a root reads a field it
 	// has not got.
 	instanceRecords bool
+	// nestedInstance, set while a render slot's body is lowered, builds an
+	// instance written under a node of that body: the slot keeps it in a
+	// registry, as it keeps one written at the body's top, so the next render
+	// destroys it.
+	nestedInstance func(n *ir.NodeInst) []ir.Stmt
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
@@ -146,6 +151,10 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 		case *ir.If:
 			st.scanStmts(n.Body)
 			st.scanStmts(n.Else)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				st.scanStmts(arm.Body)
+			}
 		case *ir.For:
 			st.scanStmts(n.Body)
 			st.scanStmts(n.Else)
@@ -211,6 +220,11 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 		case *ir.If:
 			n.Body = st.processStmtsForParent(n.Body, funcs, parent)
 			n.Else = st.processStmtsForParent(n.Else, funcs, parent)
+			out = append(out, n)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				arm.Body = st.processStmtsForParent(arm.Body, funcs, parent)
+			}
 			out = append(out, n)
 		case *ir.For:
 			n.Body = st.processStmtsForParent(n.Body, funcs, parent)
@@ -476,6 +490,9 @@ func (st *declarativeState) attachRef(n *ir.NodeInst) *ir.Ident {
 }
 
 func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
+	if st.instanceRecords && st.nestedInstance != nil && n.Key == nil {
+		return st.nestedInstance(n)
+	}
 	createCall := st.componentCreateCall(n)
 
 	instance := &ir.LocalVar{

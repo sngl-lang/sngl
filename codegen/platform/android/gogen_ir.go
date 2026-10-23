@@ -28,7 +28,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	if nav, _ := collectAndroidNav(ctx); nav != nil && len(nav.stacks) > 0 {
 		return fmt.Errorf("%s: android renders sngl:ui/nav through a Compose NavHost, which is Kotlin: build this program with --lang kotlin", nodeAt(nav.stacks[0].node))
 	}
-	src, err := CompileIR(ctx, cfg)
+	src, err := compileIR(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	opts := codegen.FileOptions{Source: req.Source, Platform: "android", Maps: req.Maps}
 
 	if !cfg.Main {
-		if err := writeAndroidSourceFile(sink, "MainScreen.kt", ktLang, opts, src); err != nil {
+		if err := src.write(sink, "MainScreen.kt", ktLang, opts); err != nil {
 			return err
 		}
 		if err := writeAndroidSourceFile(sink, "golib/golib.go", req.Lang, opts, goSrc); err != nil {
@@ -53,7 +53,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
-		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", ktLang, opts, src); err != nil {
+		if err := src.write(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", ktLang, opts); err != nil {
 			return err
 		}
 		if err := writeAndroidSourceFile(sink, "golib/golib.go", req.Lang, opts, goSrc); err != nil {
@@ -62,7 +62,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range scaffoldFiles(cfg, false, false, false, "", false) {
+		for _, f := range scaffoldFiles(cfg, false, false, permissions(req.Pkg), false, "", false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -75,7 +75,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 			}
 		}
 	} else {
-		if err := writeAndroidSourceFile(sink, "MainScreen.kt", ktLang, opts, src); err != nil {
+		if err := src.write(sink, "MainScreen.kt", ktLang, opts); err != nil {
 			return err
 		}
 		if err := writeAndroidSourceFile(sink, "golib/golib.go", req.Lang, opts, goSrc); err != nil {
@@ -84,7 +84,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, false, false, false) {
+		for _, f := range directBuildFiles(cfg, false, false, permissions(req.Pkg), false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -184,7 +184,7 @@ func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
 }
 
 func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	// Go-lib funcs are free, exported functions. Defer signature/body emission

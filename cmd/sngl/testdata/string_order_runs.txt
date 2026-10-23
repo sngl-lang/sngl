@@ -1,0 +1,103 @@
+# `<`, `<=`, `>` and `>=` order two strings byte by byte, on every target.
+#
+# The checker has always allowed a string on both sides, and Go, JavaScript and
+# Kotlin compare strings natively, as the constant folder does. The interpreter
+# read both operands as numbers, every string as 0, so no string came before
+# another: a sort by name left the names where they were. The words are state,
+# so nothing here is folded before it runs.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component main ui.node {
+    var words = ["pear", "apple", "fig"]
+
+    ui.text(value=words.join(", "))
+}
+
+// `words` in order, each put before the first it comes before.
+func sorted(words list[string]) list[string] {
+    var out list[string] = []
+    for var w = words {
+        var at = out.length()
+        for at > 0 && w < out[at - 1] {
+            at -= 1
+        }
+        out.insert(at, w)
+    }
+    return out
+}
+
+func testStringsAreOrdered(t test.Test, c main) {
+    t.assert(c.words[1] < c.words[0])
+    t.assert(!(c.words[0] < c.words[1]))
+    t.assert(c.words[0] > c.words[2])
+    t.assert(c.words[2] <= c.words[0] && c.words[0] <= c.words[0])
+    t.assert(c.words[0] >= c.words[0] && !(c.words[1] >= c.words[2]))
+    t.assert(c.words[0] < "pears")
+    t.assert(sorted(c.words).join(", ") == "apple, fig, pear")
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:ce080f6f33696eb8795c684a4f5b0200
+{
+  "results": [
+    {
+      "Desc": "StringsAreOrdered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:b7d26277de7d27936281d8c7ab1b8677
+{
+  "results": [
+    {
+      "Desc": "StringsAreOrdered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:a6b404706e900a7c849a00ad9e4d6e87
+{
+  "results": [
+    {
+      "Desc": "StringsAreOrdered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:b670dc98983a625f71cba42f315285f1
+{
+  "results": [
+    {
+      "Desc": "StringsAreOrdered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:e45ed2b3a78e587e5871de9c336cc964
+{
+  "results": [
+    {
+      "Desc": "StringsAreOrdered",
+      "Passed": true
+    }
+  ]
+}

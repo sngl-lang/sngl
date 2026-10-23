@@ -61,8 +61,9 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 	}
 	switch x := e.(type) {
 	case *ir.Ident:
-		// Bare-member shorthand resolved against context enum.
-		if x.Member != "" && x.Type != nil && x.Type.Kind == ir.TypeEnum && x.Type.Decl != nil {
+		// Bare-member shorthand resolved against context enum. A value of an
+		// enum carrying payloads is no ordinal.
+		if x.Member != "" && ir.PayloadEnum(x.Type) == nil && x.Type != nil && x.Type.Kind == ir.TypeEnum && x.Type.Decl != nil {
 			if decl, ok := x.Type.Decl.(*ir.EnumDef); ok {
 				if ord, ok := memberOrdinal(decl, x.Member); ok {
 					return intLiteral(ord)
@@ -88,6 +89,14 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 		x.Cond = rewriteEnumExpr(x.Cond, memberOrdinal)
 		x.Then = rewriteEnumExpr(x.Then, memberOrdinal)
 		x.Else = rewriteEnumExpr(x.Else, memberOrdinal)
+	case *ir.MatchExpr:
+		x.Subject = rewriteEnumExpr(x.Subject, memberOrdinal)
+		for _, arm := range x.Arms {
+			for i := range arm.Patterns {
+				arm.Patterns[i] = rewriteEnumExpr(arm.Patterns[i], memberOrdinal)
+			}
+			arm.Value = rewriteEnumExpr(arm.Value, memberOrdinal)
+		}
 	case *ir.Call:
 		if x.Receiver != nil {
 			x.Receiver = rewriteEnumExpr(x.Receiver, memberOrdinal)

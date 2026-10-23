@@ -45,7 +45,7 @@ ui.window {
     counter()
 }
 -- testrun/bubbletea/go/app.sngl/counter/1 --
-sha256:44ac003cf2c0ae3095cb757be993936e
+sha256:25827ab2697a0841e8d0c473a8f290e4
 {
   "results": [
     {
@@ -55,7 +55,7 @@ sha256:44ac003cf2c0ae3095cb757be993936e
   ]
 }
 -- testrun/html/none/app.sngl/counter/1 --
-sha256:02e9a9e17895b70d1f184ebb4378acce
+sha256:9e3947827f84445896abe302ebd87aea
 {
   "results": [
     {

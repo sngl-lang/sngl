@@ -176,201 +176,164 @@ func CssOf(s Style) string {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	case "baseline":
+		__lt2 = 4
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func TextAlignOf(a string) int {
+	var __lt3 int
+	switch a {
+	case "center":
+		__lt3 = 1
+	case "right":
+		__lt3 = 2
+	case "justify":
+		__lt3 = 3
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func WrapOf(w string) int {
 	var __lt4 int
-	if a == "center" {
+	switch w {
+	case "pre", "nowrap":
+		__lt4 = 1
+	case "preWrap", "preLine":
 		__lt4 = 2
-	} else {
-		var __lt3 int
-		if a == "end" {
-			__lt3 = 3
-		} else {
-			var __lt2 int
-			if a == "baseline" {
-				__lt2 = 4
-			} else {
-				__lt2 = 0
-			}
-			__lt3 = __lt2
-		}
-		__lt4 = __lt3
+	default:
+		__lt4 = 0
 	}
 	return __lt4
 }
 
-func TextAlignOf(a string) int {
-	var __lt7 int
-	if a == "center" {
-		__lt7 = 1
-	} else {
-		var __lt6 int
-		if a == "right" {
-			__lt6 = 2
-		} else {
-			var __lt5 int
-			if a == "justify" {
-				__lt5 = 3
-			} else {
-				__lt5 = 0
-			}
-			__lt6 = __lt5
-		}
-		__lt7 = __lt6
+func ClipOf(o string) bool {
+	var __lt5 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt5 = true
+	default:
+		__lt5 = false
 	}
-	return __lt7
+	return __lt5
 }
 
-func WrapOf(w string) int {
-	var __lt9 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt9 = 1
+func Decl(name string, value string) string {
+	var __lt6 string
+	if value == "" {
+		__lt6 = ""
 	} else {
-		var __lt8 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt8 = 2
+		__lt6 = (((name + ": ") + value) + "; ")
+	}
+	return __lt6
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
 		} else {
-			__lt8 = 0
+			__lt7 = all
 		}
-		__lt9 = __lt8
+		__lt8 = __lt7
+	}
+	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt9 string
+	if v == 0.0 {
+		__lt9 = ""
+	} else {
+		__lt9 = (fmt.Sprint(v) + "px")
 	}
 	return __lt9
 }
 
-func ClipOf(o string) bool {
-	var __lt10 bool
-	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
-		__lt10 = true
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt10 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt10 = ""
 	} else {
-		__lt10 = false
+		__lt10 = c__r0.Hex()
 	}
 	return __lt10
 }
 
-func Decl(name string, value string) string {
+func Points(v float64) string {
 	var __lt11 string
-	if value == "" {
+	if v == 0.0 {
 		__lt11 = ""
 	} else {
-		__lt11 = (((name + ": ") + value) + "; ")
+		__lt11 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt11
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt13 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt13 = own
-	} else {
-		var __lt12 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt12 = axis
-		} else {
-			__lt12 = all
-		}
-		__lt13 = __lt12
-	}
-	return Length(max((__lt13.Px + (11.0 * (__lt13.Em + __lt13.Rem))), 0.0))
-}
-
-func Length(v float64) string {
-	var __lt14 string
-	if v == 0.0 {
-		__lt14 = ""
-	} else {
-		__lt14 = (fmt.Sprint(v) + "px")
-	}
-	return __lt14
-}
-
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt15 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt15 = ""
-	} else {
-		__lt15 = c__r0.Hex()
-	}
-	return __lt15
-}
-
-func Points(v float64) string {
-	var __lt16 string
-	if v == 0.0 {
-		__lt16 = ""
-	} else {
-		__lt16 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt16
-}
-
 func WeightOf(w string) string {
-	var __lt19 string
-	if w == "bold" {
-		__lt19 = "bold"
-	} else {
-		var __lt18 string
-		if w == "bolder" {
-			__lt18 = "bolder"
-		} else {
-			var __lt17 string
-			if w == "lighter" {
-				__lt17 = "lighter"
-			} else {
-				__lt17 = ""
-			}
-			__lt18 = __lt17
-		}
-		__lt19 = __lt18
+	var __lt12 string
+	switch w {
+	case "bold":
+		__lt12 = "bold"
+	case "bolder":
+		__lt12 = "bolder"
+	case "lighter":
+		__lt12 = "lighter"
+	default:
+		__lt12 = ""
 	}
-	return __lt19
+	return __lt12
 }
 
 func SlantOf(s string) string {
-	var __lt21 string
-	if s == "italic" {
-		__lt21 = "italic"
-	} else {
-		var __lt20 string
-		if s == "oblique" {
-			__lt20 = "oblique"
-		} else {
-			__lt20 = ""
-		}
-		__lt21 = __lt20
+	var __lt13 string
+	switch s {
+	case "italic":
+		__lt13 = "italic"
+	case "oblique":
+		__lt13 = "oblique"
+	default:
+		__lt13 = ""
 	}
-	return __lt21
+	return __lt13
 }
 
 func LineOf(s Style) string {
-	var __lt26 string
-	if s.BorderStyle == "solid" {
-		__lt26 = "solid"
-	} else {
-		var __lt25 string
-		if s.BorderStyle == "dashed" {
-			__lt25 = "dashed"
+	var __lt14 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt14 = "solid"
+	case "dashed":
+		__lt14 = "dashed"
+	case "dotted":
+		__lt14 = "dotted"
+	case "double":
+		__lt14 = "double"
+	default:
+		var __lt15 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt15 = "solid"
 		} else {
-			var __lt24 string
-			if s.BorderStyle == "dotted" {
-				__lt24 = "dotted"
-			} else {
-				var __lt23 string
-				if s.BorderStyle == "double" {
-					__lt23 = "double"
-				} else {
-					var __lt22 string
-					if (s.BorderWidth != Measurement{Px: 0}) {
-						__lt22 = "solid"
-					} else {
-						__lt22 = ""
-					}
-					__lt23 = __lt22
-				}
-				__lt24 = __lt23
-			}
-			__lt25 = __lt24
+			__lt15 = ""
 		}
-		__lt26 = __lt25
+		__lt14 = __lt15
 	}
-	return __lt26
+	return __lt14
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -492,4 +455,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:98f587fd04543ce44e77b256f3e44b49
+pass sha256:43188202222ca3ca277182894ea4e304

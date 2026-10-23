@@ -226,6 +226,17 @@ func (w *insertionWalk) stmt(st ir.Stmt, under string) renders {
 		return r
 	case *ir.If:
 		return w.stmts(n.Body, orUnder(under, "an if")).or(w.stmts(n.Else, orUnder(under, "an if")))
+	case *ir.Match:
+		var r renders
+		for i, arm := range n.Arms {
+			a := w.stmts(arm.Body, orUnder(under, "a match"))
+			if i == 0 {
+				r = a
+			} else {
+				r = r.or(a)
+			}
+		}
+		return r
 	case *ir.For:
 		if w.perIteration {
 			body := w.stmts(n.Body, orUnder(under, "a for"))

@@ -67,7 +67,9 @@ func presenceWalk(stmts []ir.Stmt, id string, loops []*ir.For, answer func([]*ir
 		}
 		switch n := s.(type) {
 		case *ir.If:
-			body, inBody := presenceWalk(n.Body, id, loops, answer)
+			// A record's content counts the loops around where it was
+			// written, not its container's loop over the records.
+			body, inBody := presenceWalk(n.Body, id, lower.BlockLoops(n, &n.Body, loops), answer)
 			els, inElse := presenceWalk(n.Else, id, loops, answer)
 			if len(body) > 0 || len(els) > 0 {
 				cp := *n
@@ -75,8 +77,20 @@ func presenceWalk(stmts []ir.Stmt, id string, loops []*ir.For, answer func([]*ir
 				out = append(out, &cp)
 			}
 			found = found || inBody || inElse
+		case *ir.Match:
+			arms := make([][]ir.Stmt, len(n.Arms))
+			held := false
+			for i, arm := range n.Arms {
+				var in bool
+				arms[i], in = presenceWalk(arm.Body, id, loops, answer)
+				found = found || in
+				held = held || len(arms[i]) > 0
+			}
+			if held {
+				out = append(out, n.Over(func(i int, _ []ir.Stmt) []ir.Stmt { return arms[i] }))
+			}
 		case *ir.For:
-			body, inBody := presenceWalk(n.Body, id, append(loops[:len(loops):len(loops)], n), answer)
+			body, inBody := presenceWalk(n.Body, id, lower.BlockLoops(n, &n.Body, loops), answer)
 			els, inElse := presenceWalk(n.Else, id, loops, answer)
 			if len(body) > 0 || len(els) > 0 {
 				cp := *n

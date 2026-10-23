@@ -199,84 +199,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
-	if a == "center" {
-		__lt2 = lipgloss.Center
-	} else {
-		var __lt1 lipgloss.Position
-		if a == "right" {
-			__lt1 = lipgloss.Right
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
 		} else {
-			__lt1 = lipgloss.Left
+			__lt3 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt1
+		__lt2 = __lt3
 	}
 	return __lt2
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt5 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
 	} else {
-		var __lt4 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt4 = tui.DashedBorder()
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
 		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt3 = lipgloss.RoundedBorder()
-			} else {
-				__lt3 = lipgloss.NormalBorder()
-			}
-			__lt4 = __lt3
+			__lt4 = all
 		}
 		__lt5 = __lt4
 	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Cells(__lt7)
+	return Cells(__lt5)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt8 int
+	var __lt6 int
 	if px <= 0.0 {
-		__lt8 = 0
+		__lt6 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt6 = max(1, (int(px) / 8))
 	}
-	return __lt8
+	return __lt6
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt8 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt8 = lines
 	} else {
-		var __lt9 int
+		var __lt7 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt7 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt7 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt8 = __lt7
 	}
-	return __lt10
+	return __lt8
 }
 
 func (m *Model) __focusNext() {
@@ -400,8 +394,10 @@ func New() *Model {
 }
 
 func (m *Model) __n0_toggle_handler(on__p0 bool) {
-	m.on = on__p0
-	m.__n0.SetChecked(m.on)
+	if on__p0 != m.on {
+		m.on = on__p0
+		m.__n0.SetChecked(m.on)
+	}
 }
 
 func (m *Model) On() bool {
@@ -469,7 +465,6 @@ extern void sngl_gtk_idle_add(void* fn);
 extern void snglActivate(GtkApplication* app, gpointer data);
 */
 import "C"
-
 import (
 	"fmt"
 	"os"
@@ -510,11 +505,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -587,12 +584,17 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
 // Selects a day the way a click on it does, for gtk4's datepicker override
 // (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
 // 4.20 deprecates it for set_date, which the older ones lack.
+// The selection is the program's, not input, so "day-selected" is blocked;
+// a test's invoker fires it itself after selecting.
 static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
     if (dt == NULL) return;
+    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
+    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_calendar_select_day(c, dt);
     G_GNUC_END_IGNORE_DEPRECATIONS
+    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
 }
 
@@ -614,10 +616,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-
-import (
-	"unsafe"
-)
+import "unsafe"
 
 func boolToInt(b bool) int {
 	if b {
@@ -625,6 +624,10 @@ func boolToInt(b bool) int {
 	}
 	return 0
 }
+
+var (
+	__cstr0 = C.CString("notify::active")
+)
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -642,7 +645,10 @@ func New() *Model {
 }
 
 func (m *Model) __n0_notifyActive_handler() {
-	m.on = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0))) != 0)
+	if (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0))) != 0) != m.on {
+		m.on = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0))) != 0)
+		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.on)))
+	}
 }
 
 func (m *Model) On() bool {
@@ -662,7 +668,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.on)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n0_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n0), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.__n0), __cstr0, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -808,17 +814,17 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bfb43da650758da5f43856154af6c222
+pass sha256:8e2a3908826df117b66083e27d841c2f
 -- run/go/fyne --
-pass sha256:2a9a2a10cfedf1cb41348824f1bffa88
+pass sha256:378dc747678c3dece285ec5ec7cc108c
 -- run/go/gtk4 --
-pass sha256:dd7061389f331d479546227d113eb66e
+pass sha256:1d4714389bc1a1ed9866cd564d80f187
 -- run/kotlin/android --
-pass sha256:e44d13d6e505c4ff3c5da519a86e636c
+pass sha256:c386cda3e55f2b7c1654b68b5849864f
 -- run/none/html --
 pass sha256:791200c7e9aefda403d64d2d74cb56a0
 -- testrun/html/none/component_toggle.sngl/main/1 --
-sha256:dc42015468963c5bf05ced85b8c4b26c
+sha256:1ffb72cf4fe8d71ac3780cf533e522b3
 {
   "results": [
     {

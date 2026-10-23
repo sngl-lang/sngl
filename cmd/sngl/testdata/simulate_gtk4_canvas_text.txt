@@ -1,0 +1,34 @@
+# gtk4's canvasText override under --simulate, with no C toolchain: each frame
+# hands cairo the font family and the text as the `c.str`s CMarshal converts
+# them to, and ReleaseTemps frees each after the call that read it (#110), so
+# however many frames the host paints, nothing is left held.
+
+env PATH=
+
+sngl test --simulate gtk4 app.sngl
+stdout '^ok   1 tests, 0 failures$'
+! stdout 'leak'
+
+sngl test app.sngl
+stdout '^PASS$'
+
+-- app.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+import "sngl:test"
+
+component label ui.node {
+    var n = 0
+
+    draw.canvas(width=200px, height=40px) {
+        draw.canvasText(x=4.0, y=20.0, content="count: {n}", style=draw.Style{fontFamily="serif"})
+    }
+}
+
+func testDraws(t test.Test, c label) {
+    c.n = 1
+}
+
+ui.window(title="t") {
+    label
+}

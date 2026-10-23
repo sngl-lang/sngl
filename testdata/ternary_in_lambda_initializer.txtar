@@ -215,84 +215,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt3 lipgloss.Position
-	if a == "center" {
-		__lt3 = lipgloss.Center
-	} else {
-		var __lt2 lipgloss.Position
-		if a == "right" {
-			__lt2 = lipgloss.Right
+	var __lt2 lipgloss.Position
+	switch a {
+	case "center":
+		__lt2 = lipgloss.Center
+	case "right":
+		__lt2 = lipgloss.Right
+	default:
+		__lt2 = lipgloss.Left
+	}
+	return __lt2
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt3 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt3 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt3 = tui.DashedBorder()
+	default:
+		var __lt4 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt4 = lipgloss.RoundedBorder()
 		} else {
-			__lt2 = lipgloss.Left
+			__lt4 = lipgloss.NormalBorder()
 		}
-		__lt3 = __lt2
+		__lt3 = __lt4
 	}
 	return __lt3
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt6 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt6 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt6 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt6 = own
 	} else {
-		var __lt5 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt5 = tui.DashedBorder()
+		var __lt5 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt5 = axis
 		} else {
-			var __lt4 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt4 = lipgloss.RoundedBorder()
-			} else {
-				__lt4 = lipgloss.NormalBorder()
-			}
-			__lt5 = __lt4
+			__lt5 = all
 		}
 		__lt6 = __lt5
 	}
-	return __lt6
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt8 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt8 = own
-	} else {
-		var __lt7 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt7 = axis
-		} else {
-			__lt7 = all
-		}
-		__lt8 = __lt7
-	}
-	return Cells(__lt8)
+	return Cells(__lt6)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt9 int
+	var __lt7 int
 	if px <= 0.0 {
-		__lt9 = 0
+		__lt7 = 0
 	} else {
-		__lt9 = max(1, (int(px) / 8))
+		__lt7 = max(1, (int(px) / 8))
 	}
-	return __lt9
+	return __lt7
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt11 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt11 = lines
+		__lt9 = lines
 	} else {
-		var __lt10 int
+		var __lt8 int
 		if lines == 0 {
-			__lt10 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt10 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt11 = __lt10
+		__lt9 = __lt8
 	}
-	return __lt11
+	return __lt9
 }
 
 func (m Model) Flag() bool {
@@ -441,6 +435,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:98f255653b615195eccc92feef4939b5
+pass sha256:76b4857f5f46eae5b38290ba53a820f6
 -- run/none/html --
 pass sha256:23fa9738549eca441c9fafad570916ea

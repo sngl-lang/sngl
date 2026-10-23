@@ -29,6 +29,15 @@ func SlotAnchor(c *fyne.Container, a fyne.CanvasObject) fyne.CanvasObject {
 	return r
 }
 
+// Nothing is what an instance whose body renders no node -- a request, an
+// effect -- is in the box holding it: hidden, so the box gives it no room and
+// no gap.
+func Nothing() fyne.CanvasObject {
+	r := canvas.NewRectangle(color.Transparent)
+	r.Hide()
+	return r
+}
+
 // SlotBox is the box a render slot in a single-child container renders into:
 // b, or a new one.
 func SlotBox(b *fyne.Container) *fyne.Container {
@@ -45,6 +54,7 @@ func InsertBefore(c *fyne.Container, anchor, o fyne.CanvasObject) {
 		AppAttach(o)
 		return
 	}
+	Adopt(c, o)
 	i := slices.Index(c.Objects, anchor)
 	if i < 0 {
 		c.Add(o)

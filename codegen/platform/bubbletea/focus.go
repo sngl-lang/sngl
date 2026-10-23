@@ -65,10 +65,11 @@ func eachRenderedNode(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 		case *ir.For:
 			eachRenderedNode(n.Body, fn)
 			eachRenderedNode(n.Else, fn)
-		case *ir.If:
-			if !n.FromTernary {
-				eachRenderedNode(n.Body, fn)
-				eachRenderedNode(n.Else, fn)
+		case *ir.If, *ir.Match:
+			if !ir.ComputesValue(n) {
+				for _, b := range ir.TransparentBlocks(n) {
+					eachRenderedNode(*b, fn)
+				}
 			}
 		case *ir.ErrorBoundary:
 			eachRenderedNode(n.Children, fn)
@@ -159,7 +160,8 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 	// that copy has, which only a walk of the loop can say (loopCopies).
 	if invokerSink != nil {
 		eachRenderedNode([]ir.Stmt{f}, func(n *ir.NodeInst) {
-			if !isLoopFocus(n) || n.ID == "" || strings.HasPrefix(n.ID, "__n") {
+			id := info.triggerID(n)
+			if !isLoopFocus(n) || id == nil {
 				return
 			}
 			for _, ev := range extractBlueprint(n).Events {
@@ -167,8 +169,8 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 					continue
 				}
 				invokerSink(btEventInvoker{
-					IDLabel: n.ID, SnglEvent: ev.On, SlotIdx: lf.slot, KeyExpr: teaKeyMsg(ev.Key),
-					Cursor: lf.cursor, Copies: loopCopies(f, lf, n, isLoopFocus, gc), Keyed: n.Prop(ir.CopyProp) != nil,
+					IDLabel: id.ID, SnglEvent: ev.On, SlotIdx: lf.slot, KeyExpr: teaKeyMsg(ev.Key),
+					Cursor: lf.cursor, Copies: loopCopies(f, lf, n, id, isLoopFocus, gc), Keyed: id.Prop(ir.CopyProp) != nil,
 				})
 			}
 		})
@@ -203,17 +205,18 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 const copyOrdinal = "struct{ key string; pos int }"
 
 // loopCopies is a Go expression of the ordinal each copy of the node n has in
-// loop slot lf, in render order, beside the key it carries (ir.CopyProp; ""
-// where no test indexes it): the loop walked as View walks it, counting the
-// slot's focusable nodes, noting where n's copies fall.
-func loopCopies(f *ir.For, lf loopFocus, n *ir.NodeInst, isLoopFocus func(*ir.NodeInst) bool, gc *golang.GoIRContext) string {
+// loop slot lf, in render order, beside the key the node a test names it by
+// carries (named's ir.CopyProp; "" where no test indexes it): the loop walked
+// as View walks it, counting the slot's focusable nodes, noting where n's
+// copies fall. named is n itself, or the node triggerOwners found above it.
+func loopCopies(f *ir.For, lf loopFocus, n, named *ir.NodeInst, isLoopFocus func(*ir.NodeInst) bool, gc *golang.GoIRContext) string {
 	var b strings.Builder
 	b.WriteString("func() []" + copyOrdinal + " {\n")
 	w := &viewWalk{b: &b, indent: 2, wants: isLoopFocus}
 	w.visit = func(w *viewWalk, c *ir.NodeInst, gc *golang.GoIRContext) {
-		if c.ID == n.ID {
+		if c == n || (programID(n) && c.ID == n.ID) {
 			key := `""`
-			if k := c.Prop(ir.CopyProp); k != nil {
+			if k := named.Prop(ir.CopyProp); k != nil {
 				key = gc.EvalExpr(k)
 			}
 			w.line("__at = append(__at, %s{%s, %s})", copyOrdinal, key, lf.pos)
@@ -226,4 +229,49 @@ func loopCopies(f *ir.For, lf loopFocus, n *ir.NodeInst, isLoopFocus func(*ir.No
 	w.line("return __at")
 	b.WriteString("\t}()")
 	return b.String()
+}
+
+// triggerOwners maps a node that handles a key, and carries no #id of its
+// own, to the nearest node above it that does, where a test fires that event
+// through that node: an override writes the control beneath the node a call
+// site named, as a clickable card's focus handle is. Only a pairing a test in
+// the program fires is kept, so nothing else gains an invoker.
+func triggerOwners(stmts []ir.Stmt, triggered map[string]bool) map[*ir.NodeInst]*ir.NodeInst {
+	out := map[*ir.NodeInst]*ir.NodeInst{}
+	var walk func(stmts []ir.Stmt, owner *ir.NodeInst)
+	walk = func(stmts []ir.Stmt, owner *ir.NodeInst) {
+		for _, s := range stmts {
+			inner := owner
+			if n, ok := s.(*ir.NodeInst); ok {
+				if programID(n) {
+					inner = n
+				} else if owner != nil {
+					for _, ev := range extractBlueprint(n).Events {
+						if triggered[owner.ID+"."+ev.On] {
+							out[n] = owner
+						}
+					}
+				}
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				walk(*b, inner)
+			}
+		}
+	}
+	walk(stmts, nil)
+	return out
+}
+
+// programID reports whether n carries an #id the program wrote.
+func programID(n *ir.NodeInst) bool {
+	return n.ID != "" && !strings.HasPrefix(n.ID, "__n")
+}
+
+// triggerID is the node whose #id a test fires n's events through: n itself,
+// or the node triggerOwners found for it. nil where there is none.
+func (info *irAnalysis) triggerID(n *ir.NodeInst) *ir.NodeInst {
+	if programID(n) {
+		return n
+	}
+	return info.owners[n]
 }

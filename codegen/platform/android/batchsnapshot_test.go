@@ -115,7 +115,9 @@ func TestBatchCodegen(t *testing.T) {
 
 	// Activity wrappers should sit in the base package and import the
 	// per-doc MainScreen under a unique alias.
-	a1 := renderBatchActivity(batchSnapshotPackage, plans[0])
+	var ab strings.Builder
+	writeBatchActivityKt(&ab, plans[0])
+	a1 := ab.String()
 	if !strings.Contains(a1, "package "+batchSnapshotPackage+"\n") {
 		t.Errorf("activity wrong package:\n%s", a1)
 	}
@@ -171,7 +173,7 @@ func TestBatchCodegen(t *testing.T) {
 // canonical single-MainActivity manifest.
 func TestSingleActivityManifestUnchanged(t *testing.T) {
 	noGradle2 := false
-	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: &noGradle2}.withDefaults(), false, false, false)
+	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: &noGradle2}.withDefaults(), false, false, nil, false)
 	var manifest string
 	var sawMainActivity bool
 	for _, f := range files {

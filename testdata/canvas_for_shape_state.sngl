@@ -1,0 +1,66 @@
+// A shape with state of its own under a `for` in a canvas keeps that state per
+// copy: each copy's owned derived value is made once, made again when its
+// element changes, and released when the copy leaves. The drawing is spliced
+// into the canvas's draw routine, so no target can build a copy at run time;
+// the copies key the cells instead, as they do under a view `for`.
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct pic {
+    n int
+}
+
+var opened = 0
+var closed = 0
+var lastClosed = 0
+
+func close(p pic) {
+    closed += 1
+    lastClosed = p.n
+}
+
+func load(n int) pic {
+    opened += 1
+    return pic{n=n}
+}
+
+component framed(w float) draw.shape {
+    func p() => load(int(w))
+
+    draw.rect(x=0.0, y=0.0, w=float(p.n), h=w)
+}
+
+component page ui.node {
+    var ws = [1.0, 2.0]
+
+    draw.canvas(width=200px, height=40px) {
+        for var k = ws {
+            framed(w=k)
+        }
+    }
+}
+
+func testMadeOncePerCopy(t test.Test, c page) {
+    t.assert(opened == 2)
+    t.assert(closed == 0)
+}
+
+func testRekeyedCopyReleasesItsOldValue(t test.Test, c page) {
+    c.ws = [3.0, 2.0]
+    t.assert(opened == 3)
+    t.assert(closed == 1)
+    t.assert(lastClosed == 1)
+}
+
+func testLeavingCopyReleases(t test.Test, c page) {
+    c.ws = [1.0]
+    t.assert(closed == 1)
+    t.assert(lastClosed == 2)
+}
+
+ui.window(title="t") {
+    page
+}

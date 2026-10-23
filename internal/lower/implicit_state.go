@@ -36,6 +36,16 @@ import (
 // goes inside with the node: the handle is what a test reaches the widget
 // through, and it must name the widget rather than the wrapper.
 //
+// A node under a `for` whose host holds a lifetime and no var -- an override
+// pushing its value from an `effect` -- is wrapped too, with nothing unbound:
+// the inliner builds the wrapper per copy (reactiveCtx.perCopy), where
+// splicing the node gave every copy one effect and one handle. A host with a
+// var is built per copy already. So is one deriving an owned value, which
+// OwnedState makes a var and an effect of, under any branch as well as a
+// loop: spliced there, the value was made where the owner was built, for a
+// branch not yet shown and from what the branch guards (gtk4's `ui.remote`
+// in the pokedex's form card).
+//
 // After PlatformExtensionBody, so an override body the program wrote is
 // reached; before PropBindings, which lowers the binding this writes, and
 // NodePropReads, which would otherwise answer the read with the value the call
@@ -53,7 +63,11 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 	st := &implicitState{pkg: pkg, reads: map[*ir.Var]map[string]*ir.Var{}, through: map[*ir.Component]map[string]*ir.Var{}}
 	for _, o := range ir.Owners(pkg) {
 		st.owner = o.Comp
-		if err := st.stmts(*o.Body); err != nil {
+		var hosted *ir.Component
+		if o.Comp != nil {
+			hosted = o.Comp.Family
+		}
+		if err := st.stmts(*o.Body, hosted, false, false); err != nil {
 			return err
 		}
 	}
@@ -147,15 +161,27 @@ type implicitState struct {
 	reads map[*ir.Var]map[string]*ir.Var
 }
 
-func (st *implicitState) stmts(stmts []ir.Stmt) error {
+// stmts wraps each node in stmts that leaves a two-way prop unbound, holds a
+// lifetime under a `for` (inLoop), or derives an owned value under any
+// branch or loop (inBranch). hosted is the family the position accepts,
+// which a component taking the family it is placed in is a member of
+// (rendersAsType).
+func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component, inLoop, inBranch bool) error {
 	for i, s := range stmts {
+		inner := hosted
+		if n, ok := s.(*ir.NodeInst); ok {
+			inner = hostedBy(handleType(n))
+		}
+		_, isFor := s.(*ir.For)
+		_, isIf := s.(*ir.If)
+		_, isMatch := s.(*ir.Match)
 		for _, b := range ir.ViewBlocks(s) {
-			if err := st.stmts(*b); err != nil {
+			if err := st.stmts(*b, inner, inLoop || isFor, inBranch || isFor || isIf || isMatch); err != nil {
 				return err
 			}
 		}
 		if n, ok := s.(*ir.NodeInst); ok {
-			w, err := st.wrap(n)
+			w, err := st.wrap(n, hosted, inLoop, inBranch)
 			if err != nil {
 				return err
 			}
@@ -168,8 +194,9 @@ func (st *implicitState) stmts(stmts []ir.Stmt) error {
 }
 
 // wrap is the instantiation that takes n's place, or nil when n leaves no
-// two-way prop unbound.
-func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
+// two-way prop unbound, holds no lifetime under a `for` and derives no owned
+// value under a branch.
+func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBranch bool) (*ir.NodeInst, error) {
 	comp := n.Component
 	if comp == nil {
 		return nil, nil
@@ -178,22 +205,23 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	if n.Handle == nil && n.ID == "" {
 		unbound = slices.DeleteFunc(unbound, func(p *ir.Prop) bool { return !hostReports(comp, p) })
 	}
-	if len(unbound) == 0 {
+	if len(unbound) == 0 && !(inLoop && len(comp.Vars) == 0 && holdsLifetime(comp.Stmts)) && !(inBranch && len(comp.Vars) == 0 && derivesOwned(comp)) {
 		return nil, nil
-	}
-	// A gap no component in sngl:ui reaches: its two-way props are one per
-	// component.
-	if len(n.Bindings) > 0 {
-		return nil, fmt.Errorf("%s: %s binds :%s and leaves :%s unbound, which is not supported yet; bind both, or neither", nodePos(n), comp.DisplayName(), n.Bindings[0].PropName, unbound[0].Name)
 	}
 	rest := comp.RestSlot()
 	if len(n.Children) > 0 && rest == nil || slices.ContainsFunc(ir.SlotNames(n.Slots), func(name string) bool { return slotDeclOf(comp, name) == nil }) {
+		if len(unbound) == 0 {
+			return nil, fmt.Errorf("%s: %s holds a lifetime and is given content under a for, which is not supported yet", nodePos(n), comp.DisplayName())
+		}
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 
+	// The wrapper is no generic: what it declares is at the types the call
+	// site bound.
+	bound := ir.ComponentBindings(n)
 	w := &ir.Component{
 		Name:   "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
-		Family: comp.Family,
+		Family: wrapperFamily(comp, bound, hosted),
 	}
 	st.made = append(st.made, w)
 
@@ -206,26 +234,45 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		// The node is what renders, and the wrapper only holds its cells: a
 		// surface marked the document stays marked where it now stands.
 		Document: n.Document,
+		TypeArgs: n.TypeArgs,
 	}
 	cells := map[string]*ir.Var{}
 	for _, p := range unbound {
-		start := p.Default
+		typ := p.Type.Substitute(bound)
+		start := ir.InstantiateExpr(p.Default, bound)
 		if start == nil {
-			start = ir.DeclaredDefault(p.Type)
+			start = ir.DeclaredDefault(typ)
 		}
-		init := &ir.Prop{Name: cellStartProp(p.Name), Type: p.Type, Default: start}
-		init.Sym = &ir.Param{Name: init.Name, Type: p.Type}
+		init := &ir.Prop{Name: cellStartProp(p.Name), Type: typ, Default: start}
+		init.Sym = &ir.Param{Name: init.Name, Type: typ}
 		w.Props = append(w.Props, init)
 		cell := &ir.Var{
 			Name: p.Name,
-			Type: p.Type,
-			Init: &ir.Ident{Name: init.Name, Type: p.Type, Sym: init.Sym},
+			Type: typ,
+			Init: &ir.Ident{Name: init.Name, Type: typ, Sym: init.Sym},
 			Cell: true,
 		}
 		w.Vars = append(w.Vars, cell)
 		cells[p.Name] = cell
 		inner.Props = append(inner.Props, ir.Arg{Name: p.Name, Value: &ir.Ident{Name: cell.Name, Type: cell.Type, Sym: cell}})
 		inner.Bindings = append(inner.Bindings, ir.PropBinding{PropName: p.Name, Target: &ir.Ident{Name: cell.Name, Type: cell.Type, Sym: cell}})
+	}
+	// A two-way prop the call site did bind is the wrapper's own, bound to
+	// what the call site bound and bound through to the node, as an override
+	// binds a prop of its base through to the primitive it renders.
+	through := map[string]bool{}
+	for _, b := range n.Bindings {
+		decl := declaredPropOf(comp, b.PropName)
+		if decl == nil {
+			continue
+		}
+		typ := decl.Type.Substitute(bound)
+		wp := &ir.Prop{Name: decl.Name, Type: typ, Bidirectional: true}
+		wp.Sym = &ir.Param{Name: wp.Name, Type: typ}
+		w.Props = append(w.Props, wp)
+		through[decl.Name] = true
+		inner.Props = append(inner.Props, ir.Arg{Name: decl.Name, Value: &ir.Ident{Name: wp.Name, Type: typ, Sym: wp.Sym}})
+		inner.Bindings = append(inner.Bindings, ir.PropBinding{PropName: decl.Name, Target: &ir.Ident{Name: wp.Name, Type: typ, Sym: wp.Sym}})
 	}
 
 	// What the call site gave every other prop travels in as a prop of the
@@ -236,6 +283,10 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 			site = append(site, ir.Arg{Name: cellStartProp(a.Name), NamePos: a.NamePos, Value: a.Value})
 			continue
 		}
+		if through[a.Name] {
+			site = append(site, a)
+			continue
+		}
 		decl := declaredPropOf(comp, a.Name)
 		if decl == nil {
 			// A wildcard's entries, or a positional arg the checker already
@@ -243,7 +294,7 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 			inner.Props = append(inner.Props, a)
 			continue
 		}
-		p := &ir.Prop{Name: a.Name, Type: decl.Type, Construct: decl.Construct}
+		p := &ir.Prop{Name: a.Name, Type: decl.Type.Substitute(bound), Construct: decl.Construct}
 		p.Sym = &ir.Param{Name: p.Name, Type: p.Type}
 		w.Props = append(w.Props, p)
 		inner.Props = append(inner.Props, ir.Arg{Name: a.Name, Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p.Sym}})
@@ -261,8 +312,9 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		relay := &ir.Func{Synthesized: true}
 		emit := &ir.Emit{Name: decl.Name}
 		for j, p := range decl.Params {
-			fp := &ir.Param{Name: "__" + decl.Name + strconv.Itoa(j), Type: p.Type}
-			fwd.Params = append(fwd.Params, &ir.Param{Name: p.Name, Type: p.Type})
+			pt := p.Type.Substitute(bound)
+			fp := &ir.Param{Name: "__" + decl.Name + strconv.Itoa(j), Type: pt}
+			fwd.Params = append(fwd.Params, &ir.Param{Name: p.Name, Type: pt})
 			relay.Params = append(relay.Params, fp)
 			emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: fp.Name, Type: fp.Type, Sym: fp}})
 		}
@@ -317,6 +369,7 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		Name:      w.Name,
 		Component: w,
 		Props:     site,
+		Bindings:  n.Bindings,
 		Handlers:  n.Handlers,
 		Children:  n.Children,
 		Slots:     n.Slots,
@@ -331,6 +384,24 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 // name, so the handler's `visible = __visible` read the start instead of what
 // the host reported.
 func cellStartProp(prop string) string { return "__start_" + prop }
+
+// wrapperFamily is the family a wrapper of comp is a member of: comp's own,
+// or, for a comp whose family is a type parameter of its own -- async.query,
+// effect -- what the call site bound it to, or else the family of the
+// position it stands in. A wrapper with none is a root no later pass can
+// type once it is built at run time and holds a render slot of its own, as
+// a query under an `if` of a component under another `if` is.
+func wrapperFamily(comp *ir.Component, bound map[string]*ir.Type, hosted *ir.Component) *ir.Component {
+	if comp.Family != nil || comp.FamilyParam == nil {
+		return comp.Family
+	}
+	if t := comp.FamilyParam.Substitute(bound); t != nil {
+		if f, ok := t.Decl.(*ir.Component); ok {
+			return f
+		}
+	}
+	return hosted
+}
 
 func declaredPropOf(comp *ir.Component, name string) *ir.Prop {
 	for _, p := range comp.Props {
@@ -485,9 +556,12 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 // neither: left alone it came out as `m.details.open()`, a field and a method
 // no emitted type has. A handle whose node was rendered more than once cannot
 // say which copy the call means, the rule repointCellReads holds a read to.
+//
+// What no splice answered is refused by refuseUnsplicedHandleCalls, once the
+// components nothing renders are gone.
 func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func) error {
 	if len(methods) == 0 {
-		return refuseUnsplicedHandleCalls(pkg)
+		return nil
 	}
 	var bad error
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
@@ -514,17 +588,16 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 	if err != nil {
 		return err
 	}
-	if bad != nil {
-		return bad
-	}
-	return refuseUnsplicedHandleCalls(pkg)
+	return bad
 }
 
 // refuseUnsplicedHandleCalls reports a method called through a node's `#id`
 // that no splice answered: the node is built at run time, or the target
 // renders it as the builtin it is marked -- a window on html -- and in neither
 // case is there one instance's method to call. Emitted, it was
-// `details.open()` against nothing on html.
+// `details.open()` against nothing on html. Asked of what is rendered: a test
+// build rooted at one component leaves its siblings' bodies unrendered, and
+// a call in one of those is emitted nowhere.
 func refuseUnsplicedHandleCalls(pkg *ir.Package) error {
 	var bad error
 	_ = ir.Walk(pkg, func(n ir.Node) error {
@@ -584,4 +657,10 @@ func slotDeclOf(comp *ir.Component, name string) *ir.SlotDecl {
 		}
 	}
 	return nil
+}
+
+// derivesOwned reports whether comp holds an owned derived value, state of
+// the node as a `var` is (ir.IsOwnedDerived).
+func derivesOwned(comp *ir.Component) bool {
+	return slices.ContainsFunc(comp.Funcs, ir.IsOwnedDerived)
 }

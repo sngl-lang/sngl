@@ -11,8 +11,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -91,6 +93,22 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 		// root is.
 		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
 		build.IsolateRootComponent(groupPkg, group.Component)
+		if group.Component == "" && !groupPkg.IsProgram() {
+			// Tests taking no component, in a package whose body renders
+			// nothing, render nothing either. Left in, every component was
+			// an entry point of its own, and the Go targets emitted its view
+			// against a Model holding none of its state.
+			groupPkg.Components = nil
+		}
+		// The group's own tests, before lowering as well as at generation:
+		// what a test reaches decides what the lowering stamps -- the key of
+		// every copy a test indexes (passCopyKeys) -- and a stamp only another
+		// group's test asked for named a map this group's code never declared.
+		keep := map[string]bool{}
+		for _, tf := range group.Funcs {
+			keep[tf.Name] = true
+		}
+		groupPkg.Funcs = pkgWithTestSubset(groupPkg, keep).Funcs
 		assets, err := prepareForLaunch(groupPkg, cfg, group.Component)
 		if err != nil {
 			return results, err
@@ -227,7 +245,11 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 	for {
 		m, err := r.Read()
 		if err == io.EOF {
-			break
+			// The program went away before answering the run: it crashed --
+			// a stack overflow, a fatal signal -- or exited. Read as the end
+			// of a run, that was `ok 0 tests`, which a script's `stdout ok`
+			// accepted.
+			return exitedEarly(results, current)
 		}
 		if err != nil {
 			return results, err
@@ -297,6 +319,29 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 			results = append(results, cur)
 			delete(current, p.Test)
 		}
+	}
+	return results, nil
+}
+
+// exitedEarly ends the run of a test program that went away before answering
+// it. The tests it had started fail: the program's crash is its answer, as
+// deterministic as an assertion, so it is recorded like one -- an error would
+// be the launch's, which is the host's and never recorded. A program that went
+// away with no test running says nothing about any test, and nothing tells it
+// from a host that failed.
+func exitedEarly(results []*codegen.TestResult, current map[string]*codegen.TestResult) ([]*codegen.TestResult, error) {
+	if len(current) == 0 {
+		return results, errors.New("the test program exited before its run ended")
+	}
+	for _, name := range slices.Sorted(maps.Keys(current)) {
+		cur := current[name]
+		msg := "the test program exited during " + name
+		cur.Passed = false
+		cur.Failures = append(cur.Failures, codegen.TestFailure{Message: msg})
+		if cur.Error == "" {
+			cur.Error = msg
+		}
+		results = append(results, cur)
 	}
 	return results, nil
 }

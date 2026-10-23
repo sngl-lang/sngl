@@ -1,0 +1,100 @@
+# A test's trigger evaluates its argument once on every target. The
+# interpreter evaluated a one-argument trigger's arguments to ask whether the
+# event presses a copy of a loop (a tab of a strip), and again to fire it when
+# it does not, so `c.pick.change(next())` ran `next` twice there and once on
+# every compiled target. And android's test spelled the argument with no
+# receiver, so `next`, a function of the page the state class holds, was an
+# unresolved reference; it is read as an assertion reads its expression.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var asked = 0
+
+func next() string {
+    asked += 1
+    return "b"
+}
+
+component page ui.node {
+    var picked = "a"
+
+    ui.select #pick(:value=picked) {
+        ui.choice(label="a")
+        ui.choice(label="b")
+    }
+}
+
+func testATriggersArgumentRunsOnce(t test.Test, c page) {
+    c.pick.change(next())
+    t.assert(c.picked == "b")
+    t.assert(asked == 1)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:11c5c729ef0d2b2562a52efc71666fcc
+{
+  "results": [
+    {
+      "Desc": "ATriggersArgumentRunsOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:6c3a4e04f21e8c63671d4673f21a9e37
+{
+  "results": [
+    {
+      "Desc": "ATriggersArgumentRunsOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:a843bcc25e2ae30bd4c412aef15aefbc
+{
+  "results": [
+    {
+      "Desc": "ATriggersArgumentRunsOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:31b9d3cd2aacc71c24da750b47cd574f
+{
+  "results": [
+    {
+      "Desc": "ATriggersArgumentRunsOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:8df498c8496b6cbdf81dd833b1fefdda
+{
+  "results": [
+    {
+      "Desc": "ATriggersArgumentRunsOnce",
+      "Passed": true
+    }
+  ]
+}

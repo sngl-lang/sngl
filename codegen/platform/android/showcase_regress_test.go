@@ -215,11 +215,10 @@ ui.window {
 	if strings.Contains(out, "TODO") {
 		t.Errorf("widget rendered as a TODO stub:\n%s", out)
 	}
-	// select: dropdown with two-way write-back.
-	for _, want := range []string{"DropdownMenu(", "DropdownMenuItem(", "fruit = opt"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("select missing %q:\n%s", want, out)
-		}
+	// select: a read-only field showing the bound value, which a choice --
+	// picked, or set as the box's text -- writes back.
+	if !strings.Contains(out, "OutlinedTextField(value = fruit, readOnly = `true`") || !strings.Contains(out, "fruit = v") || !strings.Contains(out, ".snglChooses(") {
+		t.Errorf("select not rendered as a value-bound read-only field:\n%s", out)
 	}
 	// radio: a RadioButton per option, selected reflects the bound value.
 	if !strings.Contains(out, "RadioButton(selected = (size == opt.label)") {
@@ -264,7 +263,7 @@ ui.window {
 		"CircularProgressIndicator(modifier = ",
 		"Card(modifier = ",
 		"TabRow(selectedTabIndex = idx) {",
-		"Tab(selected = ",
+		"Tab(modifier = Modifier, selected = ",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)

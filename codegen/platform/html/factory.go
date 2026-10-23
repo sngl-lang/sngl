@@ -128,12 +128,10 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 						g.elemDecl = c
 					}
 				}
-			case *ir.If:
-				scan(n.Body)
-				scan(n.Else)
-			case *ir.For:
-				scan(n.Body)
-				scan(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					scan(*b)
+				}
 			}
 		}
 	}
@@ -281,6 +279,10 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			Name:   fn.Name,
 			Params: params,
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, tr),
+			// The colour the call sites read, as html.go's synthesized funcs
+			// keep it: a waiting query's mount in a component built at run
+			// time lost it, an await in a sync function.
+			IsAsync: fn.IsAsync,
 		}
 		for _, line := range jc.EmitFuncDef(walked) {
 			b.WriteString("\t" + line + "\n")
@@ -514,6 +516,9 @@ func (g *htmlGen) instancePropJS(v ir.Expr) string {
 	jc := g.scopedJC()
 	for _, p := range lam.Func.Params {
 		jc = jc.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(lam.Func.Block) {
+		jc = jc.WithLocal(name)
 	}
 	fn := *lam.Func
 	fn.Block = codegen.WalkLowered(context.Background(), lam.Func.Block, g.newHTMLTranslator(jc))

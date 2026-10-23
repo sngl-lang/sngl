@@ -43,6 +43,7 @@ func emitComponentInstance(
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
+	records := golang.InstanceRecordTypes(gc.Ctx.Pkg)
 	handleType := "*C.GtkWidget"
 	if wrapped {
 		handleType = gtk4rtHandleType
@@ -138,12 +139,17 @@ func emitComponentInstance(
 	}
 	// An id a test only null-tests one copy of is kept by key too, with no
 	// invoker to have exposed it.
-	for _, f := range fields {
-		if indexed[f.name] && !slices.Contains(listed, f.name) {
-			modelFieldSink(widgetField{name: copiesField(f.name), goType: copyMapType(f.goType)})
-			listed = append(listed, f.name)
+	// keepCopies keeps by key, in the Model's map, the copies of every
+	// widget a test reaches one copy of that nothing above listed.
+	keepCopies := func() {
+		for _, f := range fields {
+			if indexed[f.name] && !slices.Contains(listed, f.name) && !records[f.goType] {
+				modelFieldSink(widgetField{name: copiesField(f.name), goType: copyMapType(f.goType)})
+				listed = append(listed, f.name)
+			}
 		}
 	}
+	keepCopies()
 	// A widget a test null-tests is handed over too, and taken back when the
 	// instance goes, so the Model holds it exactly while it is rendered. One a
 	// slot of the record builds is handed over by that render
@@ -249,6 +255,11 @@ func emitComponentInstance(
 		}
 		methods.WriteByte('\n')
 	}
+
+	// A widget a render slot of the record builds -- a copy of a loop in it --
+	// is found only by walking that slot's method, above: its copies are kept
+	// in the Model's map as the body's are, under the key the slot gives each.
+	keepCopies()
 
 	fmt.Fprintf(b, "// %s is one live instance of the %s component.\ntype %s struct {\n", typeName, comp.Name, typeName)
 	fmt.Fprintf(b, "\t%s %s\n", golang.ComponentRootField, handleType)
@@ -359,9 +370,10 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 	tops := tr.topLevel
 	switch {
 	case len(tops) == 0 && wrapped:
-		return fmt.Sprintf("\t%s = gtk4rt.LabelNew(\"\")\n", root)
+		return fmt.Sprintf("\t%s = gtk4rt.Nothing()\n", root)
 	case len(tops) == 0:
-		return fmt.Sprintf("\t%s = C.gtk_label_new(nil)\n", root)
+		// Hidden, so the box holding it gives it no room (gtk4rt.Nothing).
+		return fmt.Sprintf("\t%s = C.gtk_label_new(nil)\n\tC.gtk_widget_set_visible(%s, 0)\n", root, root)
 	case len(tops) == 1 && wrapped:
 		return fmt.Sprintf("\t%s = %s\n", root, igc.EvalExpr(nodeRef(tops[0])))
 	case len(tops) == 1:

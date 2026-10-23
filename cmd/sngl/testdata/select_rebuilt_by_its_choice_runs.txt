@@ -1,0 +1,195 @@
+# A select whose choice renders afresh the page it is on, on every target.
+#
+# Choosing a kind changes the panel's rows, and the rows are a table's
+# prop, so the slot holding the whole panel -- the select with it -- renders
+# again from the select's own handler. On gtk4 that ran inside
+# gtk_drop_down_set_selected, which the test's invoker calls, and the
+# render's removal let go of the drop-down's last reference while GTK was
+# still setting it: a segfault in sngl_drop_down_select, most runs.
+# `G_DEBUG=gc-friendly` makes GLib clear what it frees, so a read of the
+# freed drop-down fails every run. The invoker now holds the drop-down until
+# the selection is done.
+#
+# It needs the page's weight to show: a picture, a request's answer, a
+# context, forty rows; a select alone in a slot survived.
+
+env G_DEBUG=gc-friendly
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import seq "sngl:seq"
+import http "sngl:http"
+import i18n "sngl:i18n"
+import json "sngl:json"
+import ui "sngl:ui"
+import test "sngl:test"
+
+const server = "http://127.0.0.1:47819"
+
+struct Book {
+    title string
+}
+
+func fetchBook(title string) async.Result[Book] {
+    match var r = http.get(url="{server}/books/{http.pathEscape(title)}") {
+        failed { return {failed=r} }
+        ok {
+            match var checked = r.checked() {
+                failed { return {failed=checked} }
+                ok { return json.decode[Book](checked.body) }
+            }
+        }
+    }
+}
+
+struct Kind {
+    label string
+    name  string
+}
+
+func kinds() list[Kind] {
+    return [Kind{label=$"Red", name="red"}, Kind{label=$"Green", name="green"}, Kind{label=$"Yellow", name="yellow"}, Kind{label=$"Blue", name="blue"}]
+}
+
+func named(label string) string {
+    for var k = kinds() {
+        if k.label == label {
+            return k.name
+        }
+    }
+    return "red"
+}
+
+component page(name string, form = "", @back(), @open(name string, form string)) ui.node {
+    var book option[Book] = null
+    var tab = 0
+    var kind = $"Red"
+
+    func rows() list[list[string]] {
+        var b = book
+        var out list[list[string]] = []
+        if b != null && named(kind) != "blue" {
+            for var i = seq.count(40) {
+                out.push(["{b.title} {i}", named(kind)])
+            }
+        }
+        return out
+    }
+
+    async.query(on=name, fetch=fetchBook, :value=book)
+
+    ui.vbox(style={gap=8px, padding=8px}) {
+        if book != null {
+            ui.hbox(style={gap=16px, alignItems=center}) {
+                ui.image(alt=book.title, style={width=192px, height=192px}) {
+                    ui.remote(url="{server}/dot.png")
+                }
+            }
+            ui.tabs #tabs(:selected=tab) {
+                ui.tab(label="One") {
+                    ui.text(value="one")
+                }
+                ui.tab(label="Kinds") {
+                    ui.vbox(style={gap=8px, padding=8px}) {
+                        ui.select #pick(:value=kind) {
+                            for var k = kinds() {
+                                ui.choice(label=k.label)
+                            }
+                        }
+                        ui.table #grid(columns=[$"Title", $"Kind"]) {
+                            for var r = rows() {
+                                ui.tableRow(cells=r)
+                            }
+                        }
+                        if book != null && rows().length() == 0 {
+                            ui.text #none(value=$"None")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+context #shelf("none")
+
+component main ui.node {
+    shelf("local") {
+        page #p(name="dune", @back {})
+    }
+}
+
+func testChoosingRebuildsThePanel(t test.Test, c main) {
+    t.wait(func() => c.p.book != null, 5000)
+    if c.p.tabs != null {
+        c.p.tabs.change(1)
+    }
+    for var k = ["Blue", "Red", "Yellow", "Blue", "Green", "Blue"] {
+        if c.p.pick != null {
+            c.p.pick.change(k)
+        }
+    }
+    t.assert(c.p.rows().length() == 0 && c.p.none != null)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:a37ddc83cbaccdb1955813a0eb67bda9
+{
+  "results": [
+    {
+      "Desc": "ChoosingRebuildsThePanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:7bb0107d5066395122d591f7d47a5037
+{
+  "results": [
+    {
+      "Desc": "ChoosingRebuildsThePanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:f70e05020b5df81aa13d2d159be9204d
+{
+  "results": [
+    {
+      "Desc": "ChoosingRebuildsThePanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:98b8b2f1407890ff5eda3e6fc54a91a4
+{
+  "results": [
+    {
+      "Desc": "ChoosingRebuildsThePanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:c6f8a97da09ce34c935a2d5ab7864b1f
+{
+  "results": [
+    {
+      "Desc": "ChoosingRebuildsThePanel",
+      "Passed": true
+    }
+  ]
+}

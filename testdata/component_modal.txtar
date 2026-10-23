@@ -200,84 +200,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
-	if a == "center" {
-		__lt2 = lipgloss.Center
-	} else {
-		var __lt1 lipgloss.Position
-		if a == "right" {
-			__lt1 = lipgloss.Right
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
 		} else {
-			__lt1 = lipgloss.Left
+			__lt3 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt1
+		__lt2 = __lt3
 	}
 	return __lt2
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt5 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
 	} else {
-		var __lt4 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt4 = tui.DashedBorder()
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
 		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt3 = lipgloss.RoundedBorder()
-			} else {
-				__lt3 = lipgloss.NormalBorder()
-			}
-			__lt4 = __lt3
+			__lt4 = all
 		}
 		__lt5 = __lt4
 	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Cells(__lt7)
+	return Cells(__lt5)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt8 int
+	var __lt6 int
 	if px <= 0.0 {
-		__lt8 = 0
+		__lt6 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt6 = max(1, (int(px) / 8))
 	}
-	return __lt8
+	return __lt6
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt8 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt8 = lines
 	} else {
-		var __lt9 int
+		var __lt7 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt7 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt7 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt8 = __lt7
 	}
-	return __lt10
+	return __lt8
 }
 
 func (m Model) Open() bool {
@@ -799,9 +793,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;justify-content:center;position:fixed;z-index:1000" class="modal-overlay">
+<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);bottom:0px;display:flex;justify-content:center;left:0px;position:fixed;right:0px;top:0px;z-index:1000" class="modal-overlay">
   <div class="modal-content" style="padding:24px;background-color:#ffffff;border-radius:8px" class="modal-content">
-    <h3 style="margin-bottom:16px">Hello</h3>
+    <h3 style="margin-left:0px;margin-right:0px;margin-bottom:16px;margin-top:0px">Hello</h3>
     <span>body</span>
   </div>
 </div>
@@ -827,19 +821,9 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function _snglStyleLength(v) {
-    if (typeof v === "number") return v + "px";
-    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
-    if (t.length === 0) return "0px";
-    return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
     __n0.hidden = state.open === false;
-    __n0.style.setProperty("top", _snglStyleLength(0));
-    __n0.style.setProperty("left", _snglStyleLength(0));
-    __n0.style.setProperty("right", _snglStyleLength(0));
-    __n0.style.setProperty("bottom", _snglStyleLength(0));
   }
   __sngl_init();
 })();
@@ -848,15 +832,15 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1f9812aa3b33bc5cddb7e99ac9049e03
+pass sha256:9a7ac090f637637ec7b78463358d30ca
 -- run/go/fyne --
 pass sha256:89b7d64c7adb5dcb7b70ee0eda18ef73
 -- run/kotlin/android --
-pass sha256:fa4e78349f4b567a142ec40e27e50d5c
+pass sha256:b3c5aa53081d8d450358f91854314f01
 -- run/none/html --
-pass sha256:ae03fec2c5736897942408f3de9041da
+pass sha256:b0686336075c3cbb2a2d2d1b2e356544
 -- testrun/html/none/component_modal.sngl/main/1 --
-sha256:75c71d1b4534bd6312cb2c601b5b731e
+sha256:31f912a1f3a12a8a6e821a1644fda22e
 {
   "results": [
     {

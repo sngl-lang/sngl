@@ -126,6 +126,8 @@ body { font-family: system-ui, sans-serif; }
     <hr/>
     <p style="margin:0px;white-space:pre-wrap"><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="a duck" role="img"><img alt="" src="duck.png"/></span></p>
   </div>
+  <sngl-reach-end>
+  </sngl-reach-end>
 </div>
 <style>
 :where(.sngl-code) { padding:12px;background-color:#f5f5f5;color:#1f2328;border-radius:4px }
@@ -147,8 +149,48 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { visible__inst0: true };
+  if (!customElements.get("sngl-reach-end")) customElements.define("sngl-reach-end", class extends HTMLElement {
+    connectedCallback() {
+      const box = this.parentElement;
+      if (!box) return;
+      this.style.display = "block";
+      const fire = () => this.dispatchEvent(new Event("reachEnd"));
+      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      this._io = new IntersectionObserver((es) => {
+        if (es[es.length - 1].isIntersecting) fire();
+      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      this._io.observe(this);
+      let last = this.offsetTop, asked = false;
+      const grew = () => {
+        const h = this.offsetTop;
+        if (h !== last && !asked) {
+          asked = true;
+          requestAnimationFrame(() => {
+            asked = false;
+            if (this.isConnected && near()) fire();
+          });
+        }
+        last = h;
+      };
+      this._ro = new ResizeObserver(grew);
+      const watch = (c) => {
+        if (c !== this && c.nodeType === 1) this._ro.observe(c);
+      };
+      for (const c of box.children) watch(c);
+      this._mo = new MutationObserver((ms) => {
+        for (const m of ms) if (m.target === box) m.addedNodes.forEach(watch);
+        grew();
+      });
+      this._mo.observe(box, { childList: true, subtree: true });
+    }
+    disconnectedCallback() {
+      if (this._io) this._io.disconnect();
+      if (this._ro) this._ro.disconnect();
+      if (this._mo) this._mo.disconnect();
+    }
+  });
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:10d30d4245515b74328d94b0b27ac23f
+pass sha256:ffa50f695268447176d07a101e4d04e6

@@ -1,0 +1,87 @@
+# A test build rooted at one component leaves its siblings unrendered, and a
+# method a sibling calls through a node's `#id` is emitted nowhere: it is no
+# call the target has to splice. It used to refuse the whole build.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component counter node {
+    var hits = 0
+    func bump() {
+        hits += 1
+    }
+    text(value="{hits}")
+}
+
+component a node {
+    counter #k()
+    button #b(text="go", @click { k.bump() })
+}
+
+component other node {
+    text(value="x")
+}
+
+func testA(t Test, c a) {
+    c.b.click()
+    t.assert(c.k.hits == 1)
+}
+
+func testOther(t Test, c other) {
+    t.assert(true)
+}
+
+window {
+    a
+    other
+}
+-- testrun/fyne/go/app.sngl/a/1 --
+sha256:3e568ba3272dee407b9fe19ebbe8fa36
+{
+  "results": [
+    {
+      "Desc": "A",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/other/1 --
+sha256:735280f5718c960532271e2e04fb2af1
+{
+  "results": [
+    {
+      "Desc": "Other",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/a/1 --
+sha256:32f9c4a0c6b7b5eb446b650f7c97ccf5
+{
+  "results": [
+    {
+      "Desc": "A",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/other/1 --
+sha256:b591f0c1ef9caf059a0a77eb7e3486e5
+{
+  "results": [
+    {
+      "Desc": "Other",
+      "Passed": true
+    }
+  ]
+}

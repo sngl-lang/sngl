@@ -1,7 +1,11 @@
 package fynelayout
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
 	"slices"
+	"syscall"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -188,7 +192,8 @@ func Remove(c *fyne.Container, o fyne.CanvasObject) {
 // RunWindows runs the loop over the toplevels attached so far and those
 // attached later. show puts the visible ones on screen at start; without it
 // the loop runs with nothing on screen, each window reporting itself hidden,
-// until one is opened or attached.
+// until one is opened or attached. SIGINT and SIGTERM end the loop, so the
+// program's main tears the application down before the process ends.
 func RunWindows(a fyne.App, show bool) {
 	app = a
 	hidden = !show
@@ -203,7 +208,18 @@ func RunWindows(a fyne.App, show bool) {
 			t.report(false)
 		}
 	}
+	// fyne's driver quits on these too, but registers from a goroutine Run
+	// starts, and misses a signal sent while the loop starts up.
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		if _, ok := <-sig; ok {
+			fyne.Do(app.Quit)
+		}
+	}()
 	app.Run()
+	signal.Stop(sig)
+	close(sig)
 }
 
 // Add puts o in the window's box, or makes it the window's icon when it is an
@@ -215,6 +231,7 @@ func (t *Toplevel) Add(o fyne.CanvasObject) {
 		t.applyIcon()
 		return
 	}
+	Adopt(t.Container, o)
 	t.Container.Add(o)
 }
 
@@ -225,4 +242,12 @@ func (t *Toplevel) applyIcon() {
 	if r := t.icon.Resource(); r != nil {
 		t.w.SetIcon(r)
 	}
+}
+
+// RefuseRunAgain ends the process when an `@run` handler calls its `run` a
+// second time: the tree run presents is built once, before the handler, and
+// the first run tore it down. pos is where the handler is written.
+func RefuseRunAgain(pos string) {
+	fmt.Fprintf(os.Stderr, "%s: run called again; an application runs once per process\n", pos)
+	os.Exit(2)
 }

@@ -1,0 +1,23 @@
+# A document that is neither YAML nor JSON is an error at the import, and so
+# is one whose top level is no mapping.
+env SNGL_GENCACHE=off
+
+! sngl check app.sngl
+stderr 'app.sngl:1:1: import "openapi:./api.yml": .*not YAML or JSON'
+
+! sngl check list.sngl
+stderr 'list.sngl:1:1: import "openapi:./list.json": .*not an OpenAPI document: the top level is no mapping'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+const x = 1
+-- list.sngl --
+import api "openapi:./list.json"
+
+const x = 1
+-- api.yml --
+openapi: 3.1.0
+info: [unclosed
+-- list.json --
+["openapi", "3.1.0"]

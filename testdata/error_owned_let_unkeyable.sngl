@@ -1,0 +1,46 @@
+// A derived value of an owned type is released and recomputed when what it
+// reads changes, which makes what it reads the key of its lifetime. A read
+// that cannot key one -- a function value, a list -- would have to be
+// recomputed and released on every render, so it is refused where it is
+// written. One that waits for an async call is refused already, owned or not. A `var`'s initializer runs once and keys
+// nothing, so a `var` may read anything.
+import ui "sngl:ui"
+import macro "sngl:macro"
+
+#[macro.owned(free)]
+struct buf {
+    n int
+}
+
+func free(b buf) {
+}
+
+func alloc(n int) => buf{n=n}
+
+struct pair {
+    a int
+    b string
+}
+
+component shows(n int, label string, format func(int) string) ui.node {
+    var count = 0
+    var tags list[string] = []
+    var both = pair{a=1, b="x"}
+
+    func plain() => alloc(n + count + label.length + both.a)
+
+    func viaFormat() => alloc(format(n).length) // ERROR(check) "format, a func(int) string"
+
+    func viaTags() => alloc(tags.length) // ERROR(check) "tags, a list[string]"
+
+    // Not owned, so not keyed: the ordinary derived value reads what it likes.
+    func size() => tags.length + format(n).length
+
+    var first = alloc(tags.length)
+
+    ui.text(value="{plain.n} {viaFormat.n} {viaTags.n} {size} {first.n}")
+}
+
+ui.window(title="t") {
+    shows(n=1, label="a", format=func(i int) => "{i}")
+}

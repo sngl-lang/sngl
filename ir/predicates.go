@@ -175,8 +175,51 @@ func StmtPos(s Stmt) ast.Pos {
 		if n.AST != nil {
 			return n.AST.Pos
 		}
+	case *Match:
+		if n.AST != nil {
+			return n.AST.Pos
+		}
 	}
 	return ast.Pos{}
+}
+
+// Keyable reports whether a value of t can key a lifetime: an effect's `on`,
+// and the inputs an owned derived value is recomputed on. The checker and the
+// ownership pass both ask this, so widening what a derived value may read is
+// a change here and nowhere else.
+func Keyable(t *Type) bool { return RebuildIncomparable(t) == "" }
+
+// IsOwnedDerived reports whether fn is an owned derived value: a function of
+// a component taking nothing but its receiver and answering an owned type,
+// which lowering makes a var of the component made once per value of what it
+// reads (lower.OwnedState). A const render may read one as it reads a prop.
+func IsOwnedDerived(fn *Func) bool {
+	if fn == nil || fn.IsTest || len(fn.Block) == 0 || ReleaseOf(fn.Return) == nil {
+		return false
+	}
+	for _, p := range fn.Params {
+		if !p.Receiver {
+			return false
+		}
+	}
+	return true
+}
+
+// ReleaseOf is the function that gives a value of t back, or nil when t is
+// not owned.
+func ReleaseOf(t *Type) *Func {
+	if t == nil || t.Kind != TypeStruct {
+		return nil
+	}
+	if sd, ok := t.Decl.(*StructDef); ok {
+		return sd.Release
+	}
+	return nil
+}
+
+// IsRelease reports whether fn is the release some owned type declares.
+func IsRelease(fn *Func) bool {
+	return fn != nil && len(fn.Params) == 1 && ReleaseOf(fn.Params[0].Type) == fn
 }
 
 // RebuildIncomparable is "" when two values of t can be asked "is this the
@@ -220,7 +263,33 @@ func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
 		return "an unknown type", nil
 	}
 	switch t.Kind {
-	case TypeBool, TypeInt, TypeFloat, TypeString, TypeEnum, TypeUnit:
+	case TypeEnum:
+		// A value compares as the member it holds and that member's payload.
+		ed := PayloadEnum(t)
+		if ed == nil {
+			return "", nil
+		}
+		for _, m := range ed.Members {
+			if m.Payload == nil {
+				continue
+			}
+			if bad, path := rebuildIncomparable(MemberPayload(t, m.Name), seen); bad != "" {
+				return bad, append(path, fmt.Sprintf("payload of member %s of enum %s", m.Name, ed.Name))
+			}
+		}
+		return "", nil
+	case TypeBool, TypeInt, TypeFloat, TypeString, TypeUnit:
+		return "", nil
+	case TypeOption:
+		// Absent against absent, and otherwise the element: emitted as a null
+		// test of each side and the element's own comparison, since an
+		// option is a pointer on Go and its == is the pointer's.
+		if len(t.Elems) != 1 {
+			return t.String(), nil
+		}
+		if bad, path := rebuildIncomparable(t.Elems[0], seen); bad != "" {
+			return bad, append(path, "element of "+t.String())
+		}
 		return "", nil
 	case TypeTypeParam:
 		// Judged where the parameter is bound to a concrete type. Answering

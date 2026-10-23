@@ -163,6 +163,7 @@ window.__sngl_boot = () => {
     clearInterval(state.handle__inst2__inst0);
   }
   function __snglTeardown() {
+    __effects0_torn = true;
     __effect2_teardown();
     __effect1_teardown();
     __effect0_teardown();
@@ -186,6 +187,7 @@ window.__sngl_boot = () => {
     let __effect3_desired = [];
     let __effects1_settling = false;
     let __effects1_pending = false;
+    let __effects1_torn = false;
     let __effects1_steps = 0;
     let __slot02 = [];
     function __effect3_mount() {
@@ -236,25 +238,28 @@ window.__sngl_boot = () => {
       __effect3_live = [];
     }
     function __effects1_settle() {
-      if (__effects1_settling) {
-        __effects1_pending = true;
-      } else {
-        __effects1_settling = true;
-        __effects1_pending = true;
-        __effects1_steps = 0;
-        while (__effects1_pending && __effects1_steps < 512) {
-          __effects1_pending = false;
-          __effects1_steps = __effects1_steps + 1;
-          __effect3_down();
-          __effect3_up();
-        }
-        __effects1_settling = false;
-        if (__effects1_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects1_torn) {
+        if (__effects1_settling) {
+          __effects1_pending = true;
+        } else {
+          __effects1_settling = true;
+          __effects1_pending = true;
+          __effects1_steps = 0;
+          while (__effects1_pending && __effects1_steps < 512) {
+            __effects1_pending = false;
+            __effects1_steps = __effects1_steps + 1;
+            __effect3_down();
+            __effect3_up();
+          }
+          __effects1_settling = false;
+          if (__effects1_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
     function __snglTeardown2() {
+      __effects1_torn = true;
       __effect3_teardown();
     }
     function __set_tick(__v) {
@@ -281,10 +286,13 @@ window.__sngl_boot = () => {
   var __effect2_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   var __slot0 = [];
   var __inst1_live = [];
   var __inst1_was_interval = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __effect0_down() {
     __effect0_desired = [];
     __effect0_desired.push(20);
@@ -399,96 +407,108 @@ window.__sngl_boot = () => {
     __effect2_live = [];
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect2_down();
-        __effect1_down();
-        __effect0_down();
-        __effect0_up();
-        __effect1_up();
-        __effect2_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect2_down();
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+          __effect2_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    let __inst1_now_interval = [];
-    for (const p of state.periods__inst0) {
-      let __n5 = null;
-      if (__inst1_live.length > __inst1_i && __inst1_was_interval[__inst1_i] === p) {
-        __n5 = __inst1_live[__inst1_i];
-        __n5.__set_tick(() => {
-          if (p === 20) {
-            ;
-            state.fast__inst0 += 1;
-            __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        let __inst1_now_interval = [];
+        for (const p of state.periods__inst0) {
+          let __n5 = null;
+          if (__inst1_live.length > __inst1_i && __inst1_was_interval[__inst1_i] === p) {
+            __n5 = __inst1_live[__inst1_i];
+            __n5.__set_tick(() => {
+              if (p === 20) {
+                ;
+                state.fast__inst0 += 1;
+                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+              } else {
+                ;
+                state.slow__inst0 += 1;
+                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+              }
+              ;
+            });
           } else {
-            ;
-            state.slow__inst0 += 1;
-            __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n5__new = __cf_timer({ interval: p, enabled: true, tick: () => {
+              if (p === 20) {
+                ;
+                state.fast__inst0 += 1;
+                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+              } else {
+                ;
+                state.slow__inst0 += 1;
+                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+              }
+              ;
+            } });
+            __n5 = __n5__new;
           }
-          ;
-        });
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+          __inst1_next.push(__n5);
+          __inst1_now_interval.push(p);
+          __inst1_i = __inst1_i + 1;
+          let __n5__el = __n5.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n5__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n5__el, __place0_i_ref0);
+          }
+          __slot0.push(__n5__el);
         }
-        let __n5__new = __cf_timer({ interval: p, enabled: true, tick: () => {
-          if (p === 20) {
-            ;
-            state.fast__inst0 += 1;
-            __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
-          } else {
-            ;
-            state.slow__inst0 += 1;
-            __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
           }
-          ;
-        } });
-        __n5 = __n5__new;
+        }
+        __inst1_live = __inst1_next;
+        __inst1_was_interval = __inst1_now_interval;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n5);
-      __inst1_now_interval.push(p);
-      __inst1_i = __inst1_i + 1;
-      let __n5__el = __n5.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n5__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n5__el, __place0_i_ref0);
-      }
-      __slot0.push(__n5__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    __inst1_was_interval = __inst1_now_interval;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -520,9 +540,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bbcce3a290d538e2a3bdd9e41519992b
+pass sha256:e8703fbd305743d541d90d213f74f93b
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
-sha256:ae301aae57a32b924908f6b9fa737e77
+sha256:a682a44c5d77341c11368eda58b3dee3
 {
   "results": [
     {
@@ -532,7 +552,7 @@ sha256:ae301aae57a32b924908f6b9fa737e77
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/nested/1 --
-sha256:ebe5be6c891b04b42aff1a9ebca10180
+sha256:045fb85e7f832ffa768a288861c1d6b1
 {
   "results": [
     {
@@ -542,7 +562,7 @@ sha256:ebe5be6c891b04b42aff1a9ebca10180
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:893032a0f00d8094bd820a364ed4d963
+sha256:73cb9c51a84549368ea24d1abbebda36
 {
   "results": [
     {

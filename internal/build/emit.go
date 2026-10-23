@@ -97,6 +97,12 @@ func (e *familyEmission) stmts(stmts []ir.Stmt, owner *ir.Component, conds []con
 			n.Else = e.stmts(n.Else, owner, append(conds[:len(conds):len(conds)], condFrame{cond: n.Cond, neg: true}))
 			kept = append(kept, st)
 			continue
+		case *ir.Match:
+			for i, arm := range n.Arms {
+				arm.Body = e.stmts(arm.Body, owner, append(conds[:len(conds):len(conds)], condFrame{cond: n.Taken(i)}))
+			}
+			kept = append(kept, st)
+			continue
 		case *ir.NodeInst:
 			if family := emittedFamilyOf(n); family != nil {
 				if repl, ok := e.host(n, family, owner, conds); ok && repl != nil {
@@ -358,6 +364,9 @@ func (w *walker) walkMembers(stmts []ir.Stmt) ([]emittedNode, error) {
 				}
 				nodes, err = w.walkMembers(branch)
 			}
+		case *ir.Match:
+			// Decided as the chain it means.
+			nodes, err = w.walkMembers(s.Chain())
 		case *ir.For:
 			nodes, err = w.walkFor(s)
 		case *ir.SlotInst:
@@ -608,6 +617,8 @@ func stmtAST(st ir.Stmt) ast.Stmt {
 	case *ir.If:
 		return s.AST
 	case *ir.For:
+		return s.AST
+	case *ir.Match:
 		return s.AST
 	}
 	return nil

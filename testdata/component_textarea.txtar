@@ -212,84 +212,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
-	if a == "center" {
-		__lt2 = lipgloss.Center
-	} else {
-		var __lt1 lipgloss.Position
-		if a == "right" {
-			__lt1 = lipgloss.Right
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
 		} else {
-			__lt1 = lipgloss.Left
+			__lt3 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt1
+		__lt2 = __lt3
 	}
 	return __lt2
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt5 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
 	} else {
-		var __lt4 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt4 = tui.DashedBorder()
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
 		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt3 = lipgloss.RoundedBorder()
-			} else {
-				__lt3 = lipgloss.NormalBorder()
-			}
-			__lt4 = __lt3
+			__lt4 = all
 		}
 		__lt5 = __lt4
 	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Cells(__lt7)
+	return Cells(__lt5)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt8 int
+	var __lt6 int
 	if px <= 0.0 {
-		__lt8 = 0
+		__lt6 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt6 = max(1, (int(px) / 8))
 	}
-	return __lt8
+	return __lt6
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt8 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt8 = lines
 	} else {
-		var __lt9 int
+		var __lt7 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt7 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt7 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt8 = __lt7
 	}
-	return __lt10
+	return __lt8
 }
 
 func (m *Model) __focusNext() {
@@ -423,8 +417,10 @@ func New() *Model {
 }
 
 func (m *Model) __n0_input_handler(v string) {
-	m.text = v
-	m.__n0.SetText(m.text)
+	if v != m.text {
+		m.text = v
+		m.__n0.SetText(m.text)
+	}
 }
 
 func (m *Model) __n0_change_handler(v string) {
@@ -504,15 +500,25 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	text   string
-	__n0   gtk4rt.Handle
-	__root gtk4rt.Handle
+	text                string
+	__effect0_key       string
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	entry               gtk4rt.Handle
+	__root              gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -520,17 +526,74 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.text = ""
+	m.__effect0_key = ""
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	return m
 }
 
-func (m *Model) __n0_changed_handler() {
-	m.text = gtk4rt.EditableGetText(m.__n0)
-	gtk4rt.EditableSetText(m.__n0, m.text)
+func (m *Model) __effect0_mount() {
+	if gtk4rt.EditableGetText(m.entry) != m.__effect0_key {
+		gtk4rt.EditableSetTextQuiet(m.entry, m.__effect0_key)
+	}
 }
 
-func (m *Model) __n0_activate_handler() {
-	m.text = gtk4rt.EditableGetText(m.__n0)
-	gtk4rt.EditableSetText(m.__n0, m.text)
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []string{}
+	m.__effect0_desired = append(m.__effect0_desired, m.text)
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
+}
+
+func (m *Model) entry_changed_handler() {
+	if gtk4rt.EditableGetText(m.entry) != m.text {
+		m.text = gtk4rt.EditableGetText(m.entry)
+	}
+	m.__effects0_settle()
+}
+
+func (m *Model) entry_activate_handler() {
+	m.text = gtk4rt.EditableGetText(m.entry)
+	m.__effects0_settle()
 }
 
 func (m *Model) Text() string {
@@ -546,11 +609,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(m.__n0, m.text)
-	gtk4rt.Connect(m.__n0, "changed", m.__n0_changed_handler)
-	gtk4rt.Connect(m.__n0, "activate", m.__n0_activate_handler)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+	m.entry = gtk4rt.EntryNew()
+	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
+	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
+	m.__effects0_settle()
+	gtk4rt.BoxAppend(m.__root, m.entry)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -560,6 +623,18 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	gtk4rt.WindowSetDefaultSize(win, 480, 640)
 	gtk4rt.WindowSetChild(win, m.__root)
 	return win
+}
+
+// entryInput fires the "changed" signal on the #entry widget; for tests.
+func (m *Model) entryInput(v string) {
+	gtk4rt.EditableSetTextQuiet(m.entry, v)
+	gtk4rt.Emit(m.entry, "changed")
+}
+
+// entryChange fires the "activate" signal on the #entry widget; for tests.
+func (m *Model) entryChange(v string) {
+	gtk4rt.EditableSetTextQuiet(m.entry, v)
+	gtk4rt.Emit(m.entry, "activate")
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from component_textarea.sngl; DO NOT EDIT.
@@ -684,17 +759,17 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a8ec66f477bb6bb64e9bdc9d32c55214
+pass sha256:0e223ab8e731862b3f95b602cb302062
 -- run/go/fyne --
-pass sha256:ea0928959261ab6c9e224df50539e4d3
+pass sha256:70ff8dcc203e63490968bb37b9878017
 -- run/go/gtk4 --
-pass sha256:f11328d7ca282f8825664d4f7c2af8dd
+pass sha256:3d55d4fb561e4b00dbde33a35c57e20c
 -- run/kotlin/android --
-pass sha256:4675735a2faa91f3b00af5adc77feeb1
+pass sha256:7c5ce4186dc025457f317dedd2594b31
 -- run/none/html --
 pass sha256:9b69b71c0efd09f934030dfb060ecba7
 -- testrun/html/none/component_textarea.sngl/main/1 --
-sha256:edf6db7af9fb3dfefaabed9c575123dc
+sha256:7b1afce2e5b20c96e3d90dd61aebd395
 {
   "results": [
     {

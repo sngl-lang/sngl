@@ -1,0 +1,35 @@
+// Reading and writing JSON as the declared types a program already has.
+//
+//	struct Book {
+//	    id        int
+//	    title     string
+//	    #[json.identifier("page_count")]
+//	    pageCount option[int]
+//	}
+//
+//	match var b = json.decode[Book](text) {
+//	    ok { … }
+//	    failed { … }   // b.kind is decode
+//	}
+//
+// `decode` answers an `async.Result`, the value or the failure that kept it
+// from arriving, as a request does: text that does not match the type is a
+// value a screen renders, not a raise. `encode` writes a value back.
+//
+// **A type is its own schema.** A struct is an object whose keys are its
+// fields, an `option` a key that may be absent or `null`, a `list` an array, a
+// `map[string, V]` an object of any keys, an enum carrying nothing a string
+// naming its member, `datetime` and `time.date` RFC 3339 strings. A key the
+// type does not name is ignored; a field that is not an option and has no key
+// is a decode failure, and so is a value of the wrong kind. Writing leaves an
+// absent option's key out. A unit, a function, a component, a payload enum and
+// a map keyed by anything but a string have no JSON, and are refused at the
+// `decode` or `encode` that reaches them.
+//
+// **A name on the wire is a fact about the format**, so it is this package's
+// mark: `#[json.identifier("page_count")]` on a struct field or an enum
+// member, and no mark means the SNGL name. The field keeps its own name
+// everywhere else, on every host.
+//
+// The type must be known where `decode` or `encode` is called: a call inside
+// a generic function whose type parameter is the type is refused.

@@ -1,0 +1,113 @@
+# A select its slot builds afresh takes a choice, on every target.
+#
+# The click renders the panel again, and on gtk4 the drop-down with it. Its
+# choices are offered by an effect keyed on the labels and the drop-down,
+# and GTK handed the new drop-down the old one's address, so the key did not
+# move and the new one was offered nothing: the second choice found no
+# choice to select. An effect whose key reads a node now mounts again
+# wherever the node is built (remountOnBuild), and a write the view reads
+# settles it, so the click's own handler offers the new drop-down its
+# choices.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component page ui.node {
+    var shown = true
+    var kind = "Red"
+    var count = 0
+
+    ui.vbox {
+        if shown {
+            ui.vbox {
+                ui.text(value="{count}")
+                ui.select #pick(:value=kind) {
+                    ui.choice(label="Red")
+                    ui.choice(label="Green")
+                    ui.choice(label="Blue")
+                }
+            }
+        }
+        ui.button #more(text="more", @click { count += 1 })
+    }
+}
+
+ui.window {
+    page()
+}
+
+func testAChoiceAfterTheSelectIsBuiltAgain(t test.Test, c page) {
+    if c.pick != null {
+        c.pick.change("Green")
+    }
+    t.assert(c.kind == "Green")
+    c.more.click()
+    if c.pick != null {
+        c.pick.change("Blue")
+    }
+    t.assert(c.kind == "Blue")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:7be803fb219586efbf849668afd07e75
+{
+  "results": [
+    {
+      "Desc": "AChoiceAfterTheSelectIsBuiltAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:f932fe14daa5925f60572cc52d871599
+{
+  "results": [
+    {
+      "Desc": "AChoiceAfterTheSelectIsBuiltAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:c878ff8c73db5e0636301f0d4d11518d
+{
+  "results": [
+    {
+      "Desc": "AChoiceAfterTheSelectIsBuiltAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:91593b6b37a1bda888b01bf80bf87a3f
+{
+  "results": [
+    {
+      "Desc": "AChoiceAfterTheSelectIsBuiltAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:8bba0a4a2a9cb0b6ce166bf22f559e50
+{
+  "results": [
+    {
+      "Desc": "AChoiceAfterTheSelectIsBuiltAgain",
+      "Passed": true
+    }
+  ]
+}

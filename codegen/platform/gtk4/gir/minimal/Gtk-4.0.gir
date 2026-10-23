@@ -153,6 +153,19 @@
       <property name="label" writable="1" setter="set_label">
         <type name="utf8" c:type="gchar*"/>
       </property>
+      <method name="set_has_frame" c:identifier="gtk_button_set_has_frame">
+        <parameters>
+          <instance-parameter name="button">
+            <type name="Button" c:type="GtkButton*"/>
+          </instance-parameter>
+          <parameter name="has_frame">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="has-frame" writable="1" setter="set_has_frame">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
       <glib:signal name="clicked">
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -669,6 +682,21 @@ and then add the viewport as its child widget.</doc>
           <type name="none" c:type="void"/>
         </return-value>
       </glib:signal>
+    </class>
+    <class name="DropDown" c:type="GtkDropDown" parent="Widget">
+      <constructor name="new" c:identifier="gtk_drop_down_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="model" transfer-ownership="full" nullable="1" allow-none="1">
+            <type name="Gio.ListModel" c:type="GListModel*"/>
+          </parameter>
+          <parameter name="expression" transfer-ownership="full" nullable="1" allow-none="1">
+            <type name="Expression" c:type="GtkExpression*"/>
+          </parameter>
+        </parameters>
+      </constructor>
     </class>
     <class name="Frame" c:type="GtkFrame" parent="Widget">
       <constructor name="new" c:identifier="gtk_frame_new">

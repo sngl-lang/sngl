@@ -60,8 +60,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -287,8 +288,16 @@ fun MainScreen() {
     val picks = remember { mutableStateListOf("", "") }
     var shown by remember { mutableStateOf(true) }
     var one by remember { mutableStateOf("") }
-    var expanded__inst0 by remember { mutableStateOf(false) }
+    var open__inst0 by remember { mutableStateOf(false) }
     var visible__inst0 by remember { mutableStateOf(true) }
+
+
+    fun choose__inst0(v: String) {
+        open__inst0 = false
+        if (((v != one) && (listOf(Choice__record(label = "x")).map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
+        	one = v
+        }
+    }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -299,19 +308,22 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Box(modifier = Modifier) {
-                OutlinedButton(onClick = {
-                    expanded__inst0 = true
-                }) {
-                    Text(text = (if ((one != "")) one else ""), modifier = Modifier)
+            Box(modifier = Modifier.snglChooses({ v: String ->
+    choose__inst0(v)
+})) {
+                OutlinedTextField(value = one, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, trailingIcon = {
+                    Text(text = "▾", modifier = Modifier)
+                })
+                Box(modifier = Modifier.matchParentSize().clickable(enabled = true, onClick = {  ->
+    open__inst0 = true
+})) {
                 }
-                DropdownMenu(expanded = expanded__inst0, onDismissRequest = {
-                    expanded__inst0 = false
+                DropdownMenu(expanded = open__inst0, onDismissRequest = {
+                    open__inst0 = false
                 }) {
                     for (opt in listOf(Choice__record(label = "x"))) {
                         DropdownMenuItem(onClick = {
-                            one = opt.label
-                            expanded__inst0 = false
+                            choose__inst0(opt.label)
                         }, text = {
                             Text(text = opt.label, modifier = Modifier)
                         })
@@ -339,22 +351,36 @@ fun MainScreen() {
 
 @Composable
 fun Select(placeholder: String = "", value: String, disabled: Boolean = false, multiple: Boolean = false, focusable: Boolean = true, style: Style = Style(), options: List<Choice__record> = listOf<Choice__record>(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, slotContent: (@Composable () -> Unit)? = null, onChange: ((String) -> Unit)? = null, onFocus: (() -> Unit)? = null, onBlur: (() -> Unit)? = null, onValue: ((String) -> Unit)? = null) {
-    var expanded by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(false) }
 
-    Box(modifier = (if ((style.flex == 0.0)) (if ((style == Style())) Modifier else styleModifier(style, true)) else (if ((style == Style())) Modifier else styleModifier(style, true)).then(__ctx_flexShare(style.flex.toFloat())))) {
-        OutlinedButton(onClick = {
-            expanded = true
-        }) {
-            Text(text = (if ((value != "")) value else placeholder), modifier = Modifier)
+    fun choose(v: String) {
+        open = false
+        if (((v != value) && (options.map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
+        	onValue?.invoke(v)
+        	onChange?.invoke(v)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = {
-            expanded = false
+    }
+
+    Box(modifier = (if ((style.flex == 0.0)) (if ((style == Style())) Modifier else styleModifier(style, true)) else (if ((style == Style())) Modifier else styleModifier(style, true)).then(__ctx_flexShare(style.flex.toFloat()))).snglChooses({ v: String ->
+    choose(v)
+})) {
+        OutlinedTextField(value = value, readOnly = true, enabled = (disabled == false), singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+            if ((placeholder != "")) {
+                Text(text = placeholder, modifier = Modifier)
+            }
+        }, trailingIcon = {
+            Text(text = "▾", modifier = Modifier)
+        })
+        Box(modifier = Modifier.matchParentSize().clickable(enabled = (disabled == false), onClick = {  ->
+    open = true
+})) {
+        }
+        DropdownMenu(expanded = open, onDismissRequest = {
+            open = false
         }) {
             for (opt in options) {
                 DropdownMenuItem(onClick = {
-                    onValue?.invoke(opt.label)
-                    onChange?.invoke(opt.label)
-                    expanded = false
+                    choose(opt.label)
                 }, text = {
                     Text(text = opt.label, modifier = Modifier)
                 })
@@ -366,22 +392,36 @@ fun Select(placeholder: String = "", value: String, disabled: Boolean = false, m
 @Composable
 fun __select_state0(__start_value: String = "", placeholder: String, options: List<Choice__record>, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onChange: ((String) -> Unit)? = null) {
     var value by remember { mutableStateOf(__start_value) }
-    var expanded__inst1 by remember { mutableStateOf(false) }
+    var open__inst1 by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier) {
-        OutlinedButton(onClick = {
-            expanded__inst1 = true
-        }) {
-            Text(text = (if ((value != "")) value else placeholder), modifier = Modifier)
+    fun choose__inst1(v: String) {
+        open__inst1 = false
+        if (((v != value) && (options.map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
+        	value = v
+        	onChange?.invoke(v)
         }
-        DropdownMenu(expanded = expanded__inst1, onDismissRequest = {
-            expanded__inst1 = false
+    }
+
+    Box(modifier = Modifier.snglChooses({ v: String ->
+    choose__inst1(v)
+})) {
+        OutlinedTextField(value = value, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+            if ((placeholder != "")) {
+                Text(text = placeholder, modifier = Modifier)
+            }
+        }, trailingIcon = {
+            Text(text = "▾", modifier = Modifier)
+        })
+        Box(modifier = Modifier.matchParentSize().clickable(enabled = true, onClick = {  ->
+    open__inst1 = true
+})) {
+        }
+        DropdownMenu(expanded = open__inst1, onDismissRequest = {
+            open__inst1 = false
         }) {
             for (opt in options) {
                 DropdownMenuItem(onClick = {
-                    value = opt.label
-                    onChange?.invoke(opt.label)
-                    expanded__inst1 = false
+                    choose__inst1(opt.label)
                 }, text = {
                     Text(text = opt.label, modifier = Modifier)
                 })
@@ -438,5 +478,24 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     }
     return m
 }
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglChooses.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setText
+
+// snglChooses makes a select's box a dropdown list to accessibility and to a
+// test: setting its text is choosing, and onText is handed the text set.
+// Compose says it in a lambda with a receiver, which SNGL has no way to write.
+fun Modifier.snglChooses(onText: (String) -> Unit): Modifier = semantics {
+    role = Role.DropdownList
+    setText { typed ->
+        onText(typed.text)
+        true
+    }
+}
 -- run/kotlin/android --
-pass sha256:822477afdfe3bb8d29fbb7c21aeda0f9
+pass sha256:7fe680356100a567cfa12d9ebecac173

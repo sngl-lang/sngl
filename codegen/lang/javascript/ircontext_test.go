@@ -305,8 +305,9 @@ func TestJsNamespaceCall_NoAwaitForSyncCallee(t *testing.T) {
 func TestJsCall_FuncvarAsyncSlot_Awaits(t *testing.T) {
 	asyncFn := &ir.Func{Name: "asyncFn", IsAsync: true}
 	v := &ir.Var{Name: "handler", Type: jsFuncTypeNoArgs()}
+	// handler is a local, bound below: a var of the package is state, which
+	// a read reaches through `state` whatever local shares its name.
 	pkg := &ir.Package{
-		Vars:  []*ir.Var{v},
 		Funcs: []*ir.Func{asyncFn},
 		PointsTo: &ir.PointsToInfo{
 			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {asyncFn}},
@@ -326,8 +327,9 @@ func TestJsCall_FuncvarAsyncSlot_Awaits(t *testing.T) {
 func TestJsCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
 	syncFn := &ir.Func{Name: "syncFn"}
 	v := &ir.Var{Name: "handler", Type: jsFuncTypeNoArgs()}
+	// handler is a local, bound below: a var of the package is state, which
+	// a read reaches through `state` whatever local shares its name.
 	pkg := &ir.Package{
-		Vars:  []*ir.Var{v},
 		Funcs: []*ir.Func{syncFn},
 		PointsTo: &ir.PointsToInfo{
 			Sites:     map[ir.PointsToKey][]*ir.Func{ir.SlotVarKey(v): {syncFn}},
@@ -383,20 +385,20 @@ func TestJsEmitI18nTr(t *testing.T) {
 }
 
 func TestJsEmitI18nPlural(t *testing.T) {
-	// Namespace call: i18n.plural(count, forms).
+	// i18n.plural(count, forms), shaped as TestJsEmitI18nTr's: no Receiver
+	// expression, which the namespace path would hand on as the count.
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")},
-		Receiver: &ir.Ident{Name: "i18n"},
+		Func: &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Value: "3", Type: ir.TypInt}},
 			{Value: &ir.MapLitIR{}},
 		},
 	}
 	got := jc.EvalExpr(call)
-	if !strings.Contains(got, "i18n.getTranslator().plural(") {
-		t.Errorf("i18n.plural: got %q, want call containing i18n.getTranslator().plural(", got)
+	if want := "i18n.getTranslator().plural(3, new Map([]))"; got != want {
+		t.Errorf("i18n.plural: got %q, want %q", got, want)
 	}
 }
 

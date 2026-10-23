@@ -138,101 +138,73 @@ func Side(all Measurement, axis Measurement, own Measurement) float32 {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
 	var __lt3 int
-	if a == "center" {
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
 		__lt3 = 2
-	} else {
-		var __lt2 int
-		if a == "end" {
-			__lt2 = 3
-		} else {
-			__lt2 = 0
-		}
-		__lt3 = __lt2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
 	}
 	return __lt3
 }
 
-func JustifyOf(j string) int {
-	var __lt8 int
-	if j == "center" {
-		__lt8 = 1
-	} else {
-		var __lt7 int
-		if j == "end" {
-			__lt7 = 2
-		} else {
-			var __lt6 int
-			if j == "spaceBetween" {
-				__lt6 = 3
-			} else {
-				var __lt5 int
-				if j == "spaceAround" {
-					__lt5 = 4
-				} else {
-					var __lt4 int
-					if j == "spaceEvenly" {
-						__lt4 = 5
-					} else {
-						__lt4 = 0
-					}
-					__lt5 = __lt4
-				}
-				__lt6 = __lt5
-			}
-			__lt7 = __lt6
-		}
-		__lt8 = __lt7
-	}
-	return __lt8
-}
-
 func Paint(c__r0 snglcolor.Color) snglcolor.Color {
-	var __lt9 snglcolor.Color
+	var __lt4 snglcolor.Color
 	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 	} else {
-		__lt9 = c__r0
+		__lt4 = c__r0
 	}
-	return __lt9
+	return __lt4
 }
 
 func TextAlignOf(a string) int {
-	var __lt12 int
-	if a == "center" {
-		__lt12 = 2
-	} else {
-		var __lt11 int
-		if a == "right" {
-			__lt11 = 3
-		} else {
-			var __lt10 int
-			if a == "justify" {
-				__lt10 = 1
-			} else {
-				__lt10 = 0
-			}
-			__lt11 = __lt10
-		}
-		__lt12 = __lt11
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
 	}
-	return __lt12
+	return __lt5
 }
 
 func WrapOf(w string) int {
-	var __lt14 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt14 = 1
-	} else {
-		var __lt13 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt13 = 2
-		} else {
-			__lt13 = 0
-		}
-		__lt14 = __lt13
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
 	}
-	return __lt14
+	return __lt6
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -245,13 +217,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_click_handler() {
 	m.on = !m.on
-	var __lt16 string
+	var __lt8 string
 	if m.on {
-		__lt16 = "bold"
+		__lt8 = "bold"
 	} else {
-		__lt16 = "normal"
+		__lt8 = "normal"
 	}
-	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt16}))
+	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt8}))
 }
 
 func (m *Model) On() bool {
@@ -280,16 +252,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	var __lt15 string
+	var __lt7 string
 	if m.on {
-		__lt15 = "bold"
+		__lt7 = "bold"
 	} else {
-		__lt15 = "normal"
+		__lt7 = "normal"
 	}
 	m.__n1 = widget.NewButton("", nil)
 	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("x")
-	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt15}))
+	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt7}))
 	m.__n1.OnTapped = m.__n1_click_handler
 	m.__n0.Add(m.__n1__box)
 	fynelayout.AppAttach(m.__n0)
@@ -428,201 +400,164 @@ func CssOf(s Style) string {
 }
 
 func CrossOf(a string) int {
+	var __lt1 int
+	switch a {
+	case "center":
+		__lt1 = 2
+	case "end":
+		__lt1 = 3
+	case "baseline":
+		__lt1 = 4
+	default:
+		__lt1 = 0
+	}
+	return __lt1
+}
+
+func TextAlignOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 1
+	case "right":
+		__lt2 = 2
+	case "justify":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func WrapOf(w string) int {
 	var __lt3 int
-	if a == "center" {
+	switch w {
+	case "pre", "nowrap":
+		__lt3 = 1
+	case "preWrap", "preLine":
 		__lt3 = 2
-	} else {
-		var __lt2 int
-		if a == "end" {
-			__lt2 = 3
-		} else {
-			var __lt1 int
-			if a == "baseline" {
-				__lt1 = 4
-			} else {
-				__lt1 = 0
-			}
-			__lt2 = __lt1
-		}
-		__lt3 = __lt2
+	default:
+		__lt3 = 0
 	}
 	return __lt3
 }
 
-func TextAlignOf(a string) int {
-	var __lt6 int
-	if a == "center" {
-		__lt6 = 1
-	} else {
-		var __lt5 int
-		if a == "right" {
-			__lt5 = 2
-		} else {
-			var __lt4 int
-			if a == "justify" {
-				__lt4 = 3
-			} else {
-				__lt4 = 0
-			}
-			__lt5 = __lt4
-		}
-		__lt6 = __lt5
+func ClipOf(o string) bool {
+	var __lt4 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt4 = true
+	default:
+		__lt4 = false
 	}
-	return __lt6
+	return __lt4
 }
 
-func WrapOf(w string) int {
-	var __lt8 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt8 = 1
+func Decl(name string, value string) string {
+	var __lt5 string
+	if value == "" {
+		__lt5 = ""
 	} else {
-		var __lt7 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt7 = 2
+		__lt5 = (((name + ": ") + value) + "; ")
+	}
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
 		} else {
-			__lt7 = 0
+			__lt6 = all
 		}
-		__lt8 = __lt7
+		__lt7 = __lt6
+	}
+	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt8 string
+	if v == 0.0 {
+		__lt8 = ""
+	} else {
+		__lt8 = (fmt.Sprint(v) + "px")
 	}
 	return __lt8
 }
 
-func ClipOf(o string) bool {
-	var __lt9 bool
-	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
-		__lt9 = true
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt9 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt9 = ""
 	} else {
-		__lt9 = false
+		__lt9 = c__r0.Hex()
 	}
 	return __lt9
 }
 
-func Decl(name string, value string) string {
+func Points(v float64) string {
 	var __lt10 string
-	if value == "" {
+	if v == 0.0 {
 		__lt10 = ""
 	} else {
-		__lt10 = (((name + ": ") + value) + "; ")
+		__lt10 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt10
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt12 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt12 = own
-	} else {
-		var __lt11 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt11 = axis
-		} else {
-			__lt11 = all
-		}
-		__lt12 = __lt11
-	}
-	return Length(max((__lt12.Px + (11.0 * (__lt12.Em + __lt12.Rem))), 0.0))
-}
-
-func Length(v float64) string {
-	var __lt13 string
-	if v == 0.0 {
-		__lt13 = ""
-	} else {
-		__lt13 = (fmt.Sprint(v) + "px")
-	}
-	return __lt13
-}
-
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt14 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt14 = ""
-	} else {
-		__lt14 = c__r0.Hex()
-	}
-	return __lt14
-}
-
-func Points(v float64) string {
-	var __lt15 string
-	if v == 0.0 {
-		__lt15 = ""
-	} else {
-		__lt15 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt15
-}
-
 func WeightOf(w string) string {
-	var __lt18 string
-	if w == "bold" {
-		__lt18 = "bold"
-	} else {
-		var __lt17 string
-		if w == "bolder" {
-			__lt17 = "bolder"
-		} else {
-			var __lt16 string
-			if w == "lighter" {
-				__lt16 = "lighter"
-			} else {
-				__lt16 = ""
-			}
-			__lt17 = __lt16
-		}
-		__lt18 = __lt17
+	var __lt11 string
+	switch w {
+	case "bold":
+		__lt11 = "bold"
+	case "bolder":
+		__lt11 = "bolder"
+	case "lighter":
+		__lt11 = "lighter"
+	default:
+		__lt11 = ""
 	}
-	return __lt18
+	return __lt11
 }
 
 func SlantOf(s string) string {
-	var __lt20 string
-	if s == "italic" {
-		__lt20 = "italic"
-	} else {
-		var __lt19 string
-		if s == "oblique" {
-			__lt19 = "oblique"
-		} else {
-			__lt19 = ""
-		}
-		__lt20 = __lt19
+	var __lt12 string
+	switch s {
+	case "italic":
+		__lt12 = "italic"
+	case "oblique":
+		__lt12 = "oblique"
+	default:
+		__lt12 = ""
 	}
-	return __lt20
+	return __lt12
 }
 
 func LineOf(s Style) string {
-	var __lt25 string
-	if s.BorderStyle == "solid" {
-		__lt25 = "solid"
-	} else {
-		var __lt24 string
-		if s.BorderStyle == "dashed" {
-			__lt24 = "dashed"
+	var __lt13 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt13 = "solid"
+	case "dashed":
+		__lt13 = "dashed"
+	case "dotted":
+		__lt13 = "dotted"
+	case "double":
+		__lt13 = "double"
+	default:
+		var __lt14 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt14 = "solid"
 		} else {
-			var __lt23 string
-			if s.BorderStyle == "dotted" {
-				__lt23 = "dotted"
-			} else {
-				var __lt22 string
-				if s.BorderStyle == "double" {
-					__lt22 = "double"
-				} else {
-					var __lt21 string
-					if (s.BorderWidth != Measurement{Px: 0}) {
-						__lt21 = "solid"
-					} else {
-						__lt21 = ""
-					}
-					__lt22 = __lt21
-				}
-				__lt23 = __lt22
-			}
-			__lt24 = __lt23
+			__lt14 = ""
 		}
-		__lt25 = __lt24
+		__lt13 = __lt14
 	}
-	return __lt25
+	return __lt13
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -635,13 +570,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.on = !m.on
-	var __lt27 string
+	var __lt16 string
 	if m.on {
-		__lt27 = "bold"
+		__lt16 = "bold"
 	} else {
-		__lt27 = "normal"
+		__lt16 = "normal"
 	}
-	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt27}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt16}))
 }
 
 func (m *Model) On() bool {
@@ -669,15 +604,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	var __lt26 string
+	var __lt15 string
 	if m.on {
-		__lt26 = "bold"
+		__lt15 = "bold"
 	} else {
-		__lt26 = "normal"
+		__lt15 = "normal"
 	}
 	m.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n1, "x")
-	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt26}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt15}))
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -690,6 +625,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:c3af5c120aafe0d1e6c1ba95f7fe8585
+pass sha256:0f9b1c8cdafd984855393000486a38e8
 -- run/go/gtk4 --
-pass sha256:608d339b158d085f7659235d9f7b86bf
+pass sha256:d98c8aa2f9fa39ce53c27cd33ac0acdf

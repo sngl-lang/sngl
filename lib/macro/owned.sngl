@@ -1,0 +1,22 @@
+// The ownership marks: a value the program allocates and must give back, and
+// what a native function does with one it is handed.
+import ir "sngl:internal/ir"
+
+// Declares that a value of the marked struct is something the program owns and
+// must give back, and names the function that does: `release` takes one value
+// of the type and returns nothing. The compiler releases each value it can
+// prove is no longer reachable, at the narrowest of four lifetimes -- the
+// statement, the node, the application, or never, once it is moved.
+//
+// Nothing is owned by its name. A C string, a pixbuf and a program's own
+// handle are owned because their declarations say so.
+func owned[T any](release func(T)) ir.Macro
+
+// Marks a parameter of a native function that keeps a pointer to its argument
+// after it returns, while the caller still owns it: the value lives as long as
+// the node that made the call, rather than the statement.
+func retains() ir.Macro
+
+// Marks a parameter of a native function that takes its argument: the callee
+// releases it, so the caller never does.
+func moves() ir.Macro

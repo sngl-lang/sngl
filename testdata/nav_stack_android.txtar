@@ -168,10 +168,10 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
 @Composable
 fun MainScreen() {
     var visible__inst0 by remember { mutableStateOf(true) }
-
     val pages__nav = rememberNavController()
     val pages__entry by pages__nav.currentBackStackEntryAsState()
     val pages__current = _page__valueOf(pages__entry) ?: _page__value(id = 0, href = "/", title = "Home", meta = Meta(label = "home"))
+
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -233,4 +233,4 @@ fun Counter(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     }
 }
 -- run/kotlin/android --
-pass sha256:f83030daf0c5e5d94e7a2379a42cbec4
+pass sha256:fc0cd96573a538d6eb261a8e5b71782d

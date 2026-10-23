@@ -148,6 +148,12 @@ func UnitLiteralValue(lit *ir.Literal, tables *UnitTables) (any, bool) {
 	return newUnitValue(tables.of(ud), lit.Suffix, amounts), true
 }
 
+// UnitZero is the zero of a multi-base unit, what the literal 0 the checker
+// lets stand for one means.
+func UnitZero(ud *ir.UnitDef, tables *UnitTables) any {
+	return newUnitValue(tables.of(ud), "", map[string]float64{})
+}
+
 // UnitTables holds the table of each unit declaration a caller has read a
 // literal of, which UnitLiteralValue would otherwise build per literal.
 type UnitTables struct {
@@ -506,6 +512,8 @@ type Env struct {
 	// wlog is the program's write log, held by the outermost scope and
 	// reached by every other through writes().
 	wlog *writeLog
+	// handles is the program's owned values, shared the same way (owned()).
+	handles *handles
 }
 
 func NewEnv() *Env {
@@ -680,6 +688,7 @@ func (env *Env) Snapshot() *Env {
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
 		wlog:       env.writes(),
+		handles:    env.owned(),
 		build:      env.build,
 	}
 	maps.Copy(cp.vals, env.vals)
@@ -738,11 +747,7 @@ func (env *Env) ContextVal(ctx *ir.Context) any {
 
 // translatorFor returns a Translator for the env's current locale.
 func (env *Env) translatorFor() *goi18n.Translator {
-	loc := env.Locale
-	if loc == "" {
-		loc = "en"
-	}
-	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
+	return env.translatorForLocale("")
 }
 
 // translatorForLocale returns a translator for the given BCP-47 locale,
@@ -754,7 +759,13 @@ func (env *Env) translatorForLocale(loc string) *goi18n.Translator {
 	if loc == "" {
 		loc = "en"
 	}
-	return goi18n.NewTranslator(goi18n.Manifest{}, loc)
+	// The package's i18n.manifest.json, what a `$"..."` is translated
+	// against, as a generated program embeds it.
+	var m goi18n.Manifest
+	if env.Pkg != nil {
+		m = manifestBeside(env.Pkg.SourcePath)
+	}
+	return goi18n.NewTranslator(m, loc)
 }
 
 // evalI18nPrimitiveCall dispatches a call to one of the unexported i18n._*
@@ -1174,6 +1185,12 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 			return env.Eval(n.Then)
 		}
 		return env.Eval(n.Else)
+	case *ir.MatchExpr:
+		i, err := env.matchArm(&n.MatchArms)
+		if err != nil || i < 0 {
+			return nil, err
+		}
+		return env.Eval(n.Arms[i].Value)
 	case *ir.Select:
 		return env.evalSelect(n)
 	case *ir.Index:
@@ -1247,6 +1264,9 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 
 func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
+		if ir.PayloadEnum(e.Type) != nil {
+			return EnumValue{Type: e.Type, Member: e.Member}, nil
+		}
 		return e.Member, nil
 	}
 	// i18n's predeclared PluralKey constants, whose value is the runtime's.
@@ -1440,7 +1460,17 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 			return intrinsics[id]([]any{obj})
 		}
 	}
+	if v, ok := enumMemberRead(obj, e.Field); ok {
+		return v, nil
+	}
 	if s, ok := obj.(*Struct); ok {
+		if s.Handle != nil && s.Handle.released {
+			var at ast.Pos
+			if e.AST != nil {
+				at = e.AST.Pos
+			}
+			return nil, env.useAfterRelease(s, "read", at)
+		}
 		v, _ := s.Get(e.Field)
 		return v, nil
 	}
@@ -1600,7 +1630,24 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 }
 
 func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
+	if member, payload, ok := ir.EnumLitMember(e); ok {
+		v, err := env.Eval(payload)
+		if err != nil {
+			return nil, err
+		}
+		return EnumValue{Type: e.Type, Member: member, Payload: copyOf(v, payload.ExprType())}, nil
+	}
+	if e.Def != nil && e.Def.Intrinsic == ir.BuilderIntrinsic {
+		return &Builder{}, nil
+	}
 	s := NewStruct(e.Def, e.Type)
+	if e.Def != nil && e.Def.Release != nil {
+		var at ast.Pos
+		if e.AST != nil {
+			at = e.AST.Pos
+		}
+		s.Handle = env.owned().alloc(e.Def, at)
+	}
 	for _, f := range e.Fields {
 		v, err := env.Eval(f.Value)
 		if err != nil {
@@ -1687,11 +1734,18 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if lb, ok := left.(bool); ok && (e.Op == ast.BinAnd && !lb || e.Op == ast.BinOr && lb) {
+		return lb, nil
+	}
 	right, err := env.Eval(e.Right)
 	if err != nil {
 		return nil, err
 	}
+	return env.binaryValues(e, left, right)
+}
 
+// binaryValues is e applied to its operands' values, left and right.
+func (env *Env) binaryValues(e *ir.Binary, left, right any) (any, error) {
 	lu, leftIsUnit := left.(unitValue)
 	ru, rightIsUnit := right.(unitValue)
 
@@ -1776,7 +1830,7 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 		if err := orderable(left, right); err != nil {
 			return nil, err
 		}
-		switch cmp := compareNum(left, right); e.Op {
+		switch cmp := compareOrdered(left, right); e.Op {
 		case ast.BinLt:
 			return cmp < 0, nil
 		case ast.BinLte:
@@ -1855,6 +1909,7 @@ func (r *listRef) get() any  { return r.list[r.idx] }
 func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
+	defer env.enterCall(call)()
 	v, err := env.evalCallSite(call)
 	if raised, ok := err.(*RaisedError); ok {
 		return nil, env.dispatchRaise(call, raised)
@@ -1866,21 +1921,32 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	if call.Func != nil && call.Func.BuildOnly {
 		return env.callBuildOnly(call)
 	}
-	// i18n by the id, before the call shape is examined: an entry point may
-	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
-	// the wrapper is inlined, so neither is reliably a namespace call by the
-	// time it gets here. The interpreter is the only implementation of these
-	// — the primitives' bodies were dropped as placeholders after checking.
+	if isCNative(call.Func) {
+		return env.callCNative(call)
+	}
+	// i18n by the id, before the call shape is examined: the `i18n._*`
+	// primitives arrive plain once the wrapper is inlined, so they are not
+	// reliably a namespace call by the time they get here. The interpreter is
+	// the only implementation of these -- the primitives' bodies were dropped
+	// as placeholders after checking. An entry point with a body runs it, as
+	// every target does: the body reads the `locale` context and hands it to
+	// the primitive, and its parameters bind their defaults. Answered by its
+	// id, `i18n.numberFloat(x)` lost the `style` it defaults and formatted for
+	// env.Locale whatever a provider or a test's t.setContext said.
 	if call.Func != nil {
-		if id := call.Func.Intrinsic; strings.HasPrefix(id, "i18n.") {
-			if strings.HasPrefix(id, "i18n._") {
-				if result, handled, err := env.evalI18nPrimitiveCall(id, call.Args); handled {
-					return result, err
-				}
-			} else if result, handled, err := env.evalI18nCall(strings.TrimPrefix(id, "i18n."), call.Args); handled {
+		if id := call.Func.Intrinsic; strings.HasPrefix(id, "i18n._") {
+			if result, handled, err := env.evalI18nPrimitiveCall(id, call.Args); handled {
+				return result, err
+			}
+		} else if strings.HasPrefix(id, "i18n.") && len(call.Func.Block) == 0 {
+			if result, handled, err := env.evalI18nCall(strings.TrimPrefix(id, "i18n."), call.Args); handled {
 				return result, err
 			}
 		}
+	}
+
+	if result, handled, err := env.evalCodecCall(call); handled {
+		return result, err
 	}
 
 	// Namespace call (ns.foo / html.div) — receiver preserved.
@@ -2528,7 +2594,7 @@ func (env *Env) evalCallArgs(args []ir.CallArg) ([]any, error) {
 		}
 		out[i] = v
 	}
-	return out, nil
+	return out, env.checkPassed(out)
 }
 
 func argExprs(args []ir.CallArg) []ir.Expr {
@@ -2645,6 +2711,16 @@ func (env *Env) boundArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any)
 }
 
 func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
+	if ir.IsRelease(fn) {
+		return env.releaseCall(fn, args, func() (any, error) { return env.runUserFunc(fn, args) })
+	}
+	if err := env.checkPassed(args); err != nil {
+		return nil, err
+	}
+	return env.runUserFunc(fn, args)
+}
+
+func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 	defer env.enterFunc(fn)()
 	env.depth++
 	if env.depth > maxCallDepth {
@@ -2836,6 +2912,12 @@ func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) 
 			return env.evalTailAware(n.Then, fn)
 		}
 		return env.evalTailAware(n.Else, fn)
+	case *ir.MatchExpr:
+		i, err := env.matchArm(&n.MatchArms)
+		if err != nil || i < 0 {
+			return nil, nil, false, err
+		}
+		return env.evalTailAware(n.Arms[i].Value, fn)
 	default:
 		result, err := env.Eval(e)
 		return result, nil, false, err
@@ -2961,6 +3043,12 @@ func Equal(a, b any) (eq, ok bool) {
 		return isUnit && au.Equal(bu), true
 	}
 	switch x := a.(type) {
+	case EnumValue:
+		y, isEnum := b.(EnumValue)
+		if !isEnum || x.Member != y.Member {
+			return false, isEnum
+		}
+		return Equal(x.Payload, y.Payload)
 	case *Struct:
 		y, isStruct := b.(*Struct)
 		if !isStruct || len(x.Fields) != len(y.Fields) {
@@ -3078,7 +3166,15 @@ func orderable(a, b any) error {
 	return nil
 }
 
-func compareNum(a, b any) int {
+// compareOrdered orders two values `<` may compare: numbers and units by
+// magnitude, strings byte by byte as Go and the constant folder do. Read as
+// numbers, every string was 0 and none came before another.
+func compareOrdered(a, b any) int {
+	if sa, ok := a.(string); ok {
+		if sb, ok := b.(string); ok {
+			return strings.Compare(sa, sb)
+		}
+	}
 	fa, fb := toFloat(a), toFloat(b)
 	if fa < fb {
 		return -1

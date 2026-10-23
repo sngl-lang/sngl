@@ -106,6 +106,7 @@ func (r *Runner) Emit(e Emit) (map[string][]byte, error) {
 		args = append(args, memberValues(e.Members, memberType))
 	}
 	_, err = env.CallUserFuncValues(fn, args)
+	out.Close()
 	inputs, ferr := rec.Finish()
 	restore()
 	if raised, ok := errors.AsType[*interp.RaisedError](err); ok {

@@ -1,0 +1,271 @@
+# Where a match is a switch and where it is the if chain, run on every
+# target: a headless match, an arm breaking out of a loop, an option subject,
+# a match expression in an initializer and in a lambda, a match on a constant,
+# and a test's own match (testdata/match_native.txtar is the code).
+
+sngl test --platform=none app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '4 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+enum Dir { up, down, left, right }
+
+const hand = Dir.left
+
+// Headless: a tagless switch in Go and a subjectless when in Kotlin.
+// JavaScript has nothing to switch on and writes the if chain.
+func grade(n int) string {
+    match {
+        n >= 90 { return "a" }
+        n >= 50 { return "b" }
+        else { return "c" }
+    }
+}
+
+// A break in an arm leaves the loop around the match, which Go's and
+// JavaScript's switch would take as their own: the if chain.
+func firstDown(ds list[Dir]) int {
+    var at = -1
+    for var i, d = ds {
+        match d {
+            down {
+                at = i
+                break
+            }
+            else {}
+        }
+    }
+    return at
+}
+
+// An option is compared as `==` compares one: the if chain.
+func name(d option[Dir]) => match d {
+    null => "none"
+    up => "up"
+    else => "other"
+}
+
+func turned(d Dir) => match d {
+    up => Dir.right
+    right => Dir.down
+    down => Dir.left
+    left => Dir.up
+}
+
+component pad ui.node {
+    var d Dir = up
+    var maybe option[Dir] = null
+    // An initializer holds no statement: a func literal called where it
+    // stands in Go, a when in Kotlin.
+    var axis = match d {
+        up, down => "vertical"
+        else => "horizontal"
+    }
+    // A lambda's body is a function's.
+    var flips = [Dir.up, Dir.left].map(func(x Dir) => match x {
+        up => Dir.down
+        else => Dir.up
+    })
+
+    // A match on a constant is the arm it takes.
+    match hand {
+        left { ui.text(value="left-handed") }
+        else { ui.text(value="unfolded") }
+    }
+    ui.text(value=axis)
+    ui.text(value=name(maybe))
+    ui.text(value=grade(firstDown(flips) * 60))
+    ui.button #turn(text="Turn", @click {
+        d = turned(d)
+    })
+}
+
+func testHeadless(t Test) {
+    t.assert(grade(95) == "a")
+    t.assert(grade(60) == "b")
+    t.assert(grade(10) == "c")
+}
+
+func testBreak(t Test) {
+    t.assert(firstDown([Dir.up, Dir.down, Dir.down]) == 1)
+    t.assert(firstDown([Dir.up]) == -1)
+}
+
+func testOption(t Test) {
+    t.assert(name(null) == "none")
+    t.assert(name(Dir.up) == "up")
+    t.assert(name(Dir.left) == "other")
+}
+
+func testComponent(t Test, c pad) {
+    t.assert(c.axis == "vertical")
+    t.assert(c.maybe == null)
+    t.assert(c.flips[0] == Dir.down)
+    c.turn.click()
+    // A test's own match.
+    match c.d {
+        right { t.assert(true) }
+        else { t.assert(false) }
+    }
+}
+
+ui.window {
+    pad
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:274fd65e15001048230c097ca54d1429
+{
+  "results": [
+    {
+      "Desc": "Break",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/pad/1 --
+sha256:41c0457d2a11b8ad8a3fd3ec24a764b2
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:95498cb154015bb11aa217c5a2166c2c
+{
+  "results": [
+    {
+      "Desc": "Break",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/pad/1 --
+sha256:4e04506a84161450fb1bab0bef88638c
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:a95c52f8715a0dc613b9da032165c974
+{
+  "results": [
+    {
+      "Desc": "Break",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pad/1 --
+sha256:3200a7075b27713d7326c064a96d110e
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:23e00fa3c70f7923c88e159a6ee3618d
+{
+  "results": [
+    {
+      "Desc": "Break",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pad/1 --
+sha256:20ec690263ff07e99000c9c501607fc1
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:ff3610443548f34888a657d430d0b7e8
+{
+  "results": [
+    {
+      "Desc": "Break",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pad/1 --
+sha256:964ecd40fa6780894dd295e5998ddce0
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}

@@ -70,28 +70,40 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { on__inst0: false, visible__inst0: true };
   var __slot0 = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    if (state.on__inst0) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "on";
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        if (state.on__inst0) {
+          let __n1 = document.createElement("span");
+          __n1.textContent = "on";
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n1) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n1, __place0_i_ref0);
+          }
+          __slot0.push(__n1);
+        }
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      if (__place0_i_ref0 === __n1) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n1, __place0_i_ref0);
-      }
-      __slot0.push(__n1);
-    }
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   var $0 = document.getElementById("$0");
@@ -128,4 +140,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7c37ffad776f1df6b227695904babda3
+pass sha256:e79780b92c6bff841ee34527d88d7412

@@ -220,6 +220,10 @@ func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk
 	case *ir.If:
 		x.Body = walk(x.Body)
 		x.Else = walk(x.Else)
+	case *ir.Match:
+		for _, arm := range x.Arms {
+			arm.Body = walk(arm.Body)
+		}
 	case *ir.For:
 		x.Body = walk(x.Body)
 		x.Else = walk(x.Else)

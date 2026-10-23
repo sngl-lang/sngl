@@ -4,19 +4,22 @@
 # diagnostic a person can act on -- the file, the line and the column of the
 # call, and the name of the platform that has to change.
 #
-# bubbletea is that platform today: its Model is a value Update returns, so a
-# goroutine holding a copy has nothing to write to. gtk4 has an idle tick and
-# takes the same program.
+# android under Go is that platform today: its Go is a library the Kotlin
+# screen calls, and nothing in it reaches the main thread. gtk4 has an idle
+# tick, and bubbletea a message Update runs, and both take the same program.
 
-! sngl generate --lang go --platform bubbletea --out out app.sngl
+! sngl generate --lang go --platform android --out out app.sngl
 stderr 'app\.sngl:13:\d+:'
 stderr 'this call blocks'
-stderr 'bubbletea has no way to run anything back on the thread it draws on'
+stderr 'android has no way to run anything back on the thread it draws on'
 ! exists out
 
 sngl generate --lang go --platform gtk4 --out out2 app.sngl
 grep 'go func\(\) \{' out2/model.go
 grep 'gtk4rt\.Post\(func\(\) \{' out2/model.go
+
+sngl generate --lang go --platform bubbletea --out out3 app.sngl
+grep '__snglPost\(func\(\) \{' out3/model.go
 
 -- app.sngl --
 import . "sngl:ui"

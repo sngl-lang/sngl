@@ -180,10 +180,13 @@ type Model struct {
 	__effect0_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__slot0             []fyne.CanvasObject
 	__slot0_at          fyne.CanvasObject
 	__inst0_live        []*Row__slot0Instance
+	__rendering0        bool
+	__renderAgain0      bool
 
 	__n2    *fynelayout.Toplevel
 	__n5    *fyne.Container
@@ -202,10 +205,13 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Row__slot0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
@@ -244,101 +250,73 @@ func Side(all Measurement, axis Measurement, own Measurement) float32 {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
 	var __lt3 int
-	if a == "center" {
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
 		__lt3 = 2
-	} else {
-		var __lt2 int
-		if a == "end" {
-			__lt2 = 3
-		} else {
-			__lt2 = 0
-		}
-		__lt3 = __lt2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
 	}
 	return __lt3
 }
 
-func JustifyOf(j string) int {
-	var __lt8 int
-	if j == "center" {
-		__lt8 = 1
-	} else {
-		var __lt7 int
-		if j == "end" {
-			__lt7 = 2
-		} else {
-			var __lt6 int
-			if j == "spaceBetween" {
-				__lt6 = 3
-			} else {
-				var __lt5 int
-				if j == "spaceAround" {
-					__lt5 = 4
-				} else {
-					var __lt4 int
-					if j == "spaceEvenly" {
-						__lt4 = 5
-					} else {
-						__lt4 = 0
-					}
-					__lt5 = __lt4
-				}
-				__lt6 = __lt5
-			}
-			__lt7 = __lt6
-		}
-		__lt8 = __lt7
-	}
-	return __lt8
-}
-
 func Paint(c__r0 snglcolor.Color) snglcolor.Color {
-	var __lt9 snglcolor.Color
+	var __lt4 snglcolor.Color
 	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 	} else {
-		__lt9 = c__r0
+		__lt4 = c__r0
 	}
-	return __lt9
+	return __lt4
 }
 
 func TextAlignOf(a string) int {
-	var __lt12 int
-	if a == "center" {
-		__lt12 = 2
-	} else {
-		var __lt11 int
-		if a == "right" {
-			__lt11 = 3
-		} else {
-			var __lt10 int
-			if a == "justify" {
-				__lt10 = 1
-			} else {
-				__lt10 = 0
-			}
-			__lt11 = __lt10
-		}
-		__lt12 = __lt11
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
 	}
-	return __lt12
+	return __lt5
 }
 
 func WrapOf(w string) int {
-	var __lt14 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt14 = 1
-	} else {
-		var __lt13 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt13 = 2
-		} else {
-			__lt13 = 0
-		}
-		__lt14 = __lt13
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
 	}
-	return __lt14
+	return __lt6
 }
 
 func (m *Model) __effect0_mount() {
@@ -364,59 +342,71 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*Row__slot0Instance{}
-	var __inst0_i int = 0
-	for _, it := range m.items__inst0 {
-		var __n4 *Row__slot0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(it)
-			__n4.Set__p0(it)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n4__new := newRow__slot0Instance(m, it, it)
-			__n4 = __n4__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*Row__slot0Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items__inst0 {
+				var __n4 *Row__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.SetLabel(it)
+					__n4.Set__p0(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := newRow__slot0Instance(m, it, it)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+				m.__slot0 = append(m.__slot0, __n4__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n4)
-		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n2_closed_handler() {
@@ -485,6 +475,7 @@ type Row__slot0Instance struct {
 	__effect1_desired   []bool
 	__effects1_settling bool
 	__effects1_pending  bool
+	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -503,6 +494,7 @@ func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 string) *R
 	c.__effect1_desired = []bool{}
 	c.__effects1_settling = false
 	c.__effects1_pending = false
+	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -551,21 +543,23 @@ func (c *Row__slot0Instance) __effect1_up() {
 }
 
 func (c *Row__slot0Instance) __effects1_settle() {
-	if c.__effects1_settling {
-		c.__effects1_pending = true
-	} else {
-		c.__effects1_settling = true
-		c.__effects1_pending = true
-		c.__effects1_steps = 0
-		for c.__effects1_pending && (c.__effects1_steps < 512) {
-			c.__effects1_pending = false
-			c.__effects1_steps = (c.__effects1_steps + 1)
-			c.__effect1_down()
-			c.__effect1_up()
-		}
-		c.__effects1_settling = false
-		if c.__effects1_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects1_torn {
+		if c.__effects1_settling {
+			c.__effects1_pending = true
+		} else {
+			c.__effects1_settling = true
+			c.__effects1_pending = true
+			c.__effects1_steps = 0
+			for c.__effects1_pending && (c.__effects1_steps < 512) {
+				c.__effects1_pending = false
+				c.__effects1_steps = (c.__effects1_steps + 1)
+				c.__effect1_down()
+				c.__effect1_up()
+			}
+			c.__effects1_settling = false
+			if c.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -687,10 +681,13 @@ type Model struct {
 	__effect0_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__slot0             []gtk4rt.Handle
 	__slot0_at          gtk4rt.Handle
 	__inst0_live        []*Row__slot0Instance
+	__rendering0        bool
+	__renderAgain0      bool
 	__n2                gtk4rt.Handle
 	__n5                gtk4rt.Handle
 	__n7                gtk4rt.Handle
@@ -709,10 +706,13 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Row__slot0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
@@ -761,201 +761,164 @@ func CssOf(s Style) string {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	case "baseline":
+		__lt2 = 4
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func TextAlignOf(a string) int {
+	var __lt3 int
+	switch a {
+	case "center":
+		__lt3 = 1
+	case "right":
+		__lt3 = 2
+	case "justify":
+		__lt3 = 3
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func WrapOf(w string) int {
 	var __lt4 int
-	if a == "center" {
+	switch w {
+	case "pre", "nowrap":
+		__lt4 = 1
+	case "preWrap", "preLine":
 		__lt4 = 2
-	} else {
-		var __lt3 int
-		if a == "end" {
-			__lt3 = 3
-		} else {
-			var __lt2 int
-			if a == "baseline" {
-				__lt2 = 4
-			} else {
-				__lt2 = 0
-			}
-			__lt3 = __lt2
-		}
-		__lt4 = __lt3
+	default:
+		__lt4 = 0
 	}
 	return __lt4
 }
 
-func TextAlignOf(a string) int {
-	var __lt7 int
-	if a == "center" {
-		__lt7 = 1
-	} else {
-		var __lt6 int
-		if a == "right" {
-			__lt6 = 2
-		} else {
-			var __lt5 int
-			if a == "justify" {
-				__lt5 = 3
-			} else {
-				__lt5 = 0
-			}
-			__lt6 = __lt5
-		}
-		__lt7 = __lt6
+func ClipOf(o string) bool {
+	var __lt5 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt5 = true
+	default:
+		__lt5 = false
 	}
-	return __lt7
+	return __lt5
 }
 
-func WrapOf(w string) int {
-	var __lt9 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt9 = 1
+func Decl(name string, value string) string {
+	var __lt6 string
+	if value == "" {
+		__lt6 = ""
 	} else {
-		var __lt8 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt8 = 2
+		__lt6 = (((name + ": ") + value) + "; ")
+	}
+	return __lt6
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
 		} else {
-			__lt8 = 0
+			__lt7 = all
 		}
-		__lt9 = __lt8
+		__lt8 = __lt7
+	}
+	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt9 string
+	if v == 0.0 {
+		__lt9 = ""
+	} else {
+		__lt9 = (fmt.Sprint(v) + "px")
 	}
 	return __lt9
 }
 
-func ClipOf(o string) bool {
-	var __lt10 bool
-	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
-		__lt10 = true
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt10 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt10 = ""
 	} else {
-		__lt10 = false
+		__lt10 = c__r0.Hex()
 	}
 	return __lt10
 }
 
-func Decl(name string, value string) string {
+func Points(v float64) string {
 	var __lt11 string
-	if value == "" {
+	if v == 0.0 {
 		__lt11 = ""
 	} else {
-		__lt11 = (((name + ": ") + value) + "; ")
+		__lt11 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt11
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt13 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt13 = own
-	} else {
-		var __lt12 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt12 = axis
-		} else {
-			__lt12 = all
-		}
-		__lt13 = __lt12
-	}
-	return Length(max((__lt13.Px + (11.0 * (__lt13.Em + __lt13.Rem))), 0.0))
-}
-
-func Length(v float64) string {
-	var __lt14 string
-	if v == 0.0 {
-		__lt14 = ""
-	} else {
-		__lt14 = (fmt.Sprint(v) + "px")
-	}
-	return __lt14
-}
-
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt15 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt15 = ""
-	} else {
-		__lt15 = c__r0.Hex()
-	}
-	return __lt15
-}
-
-func Points(v float64) string {
-	var __lt16 string
-	if v == 0.0 {
-		__lt16 = ""
-	} else {
-		__lt16 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt16
-}
-
 func WeightOf(w string) string {
-	var __lt19 string
-	if w == "bold" {
-		__lt19 = "bold"
-	} else {
-		var __lt18 string
-		if w == "bolder" {
-			__lt18 = "bolder"
-		} else {
-			var __lt17 string
-			if w == "lighter" {
-				__lt17 = "lighter"
-			} else {
-				__lt17 = ""
-			}
-			__lt18 = __lt17
-		}
-		__lt19 = __lt18
+	var __lt12 string
+	switch w {
+	case "bold":
+		__lt12 = "bold"
+	case "bolder":
+		__lt12 = "bolder"
+	case "lighter":
+		__lt12 = "lighter"
+	default:
+		__lt12 = ""
 	}
-	return __lt19
+	return __lt12
 }
 
 func SlantOf(s string) string {
-	var __lt21 string
-	if s == "italic" {
-		__lt21 = "italic"
-	} else {
-		var __lt20 string
-		if s == "oblique" {
-			__lt20 = "oblique"
-		} else {
-			__lt20 = ""
-		}
-		__lt21 = __lt20
+	var __lt13 string
+	switch s {
+	case "italic":
+		__lt13 = "italic"
+	case "oblique":
+		__lt13 = "oblique"
+	default:
+		__lt13 = ""
 	}
-	return __lt21
+	return __lt13
 }
 
 func LineOf(s Style) string {
-	var __lt26 string
-	if s.BorderStyle == "solid" {
-		__lt26 = "solid"
-	} else {
-		var __lt25 string
-		if s.BorderStyle == "dashed" {
-			__lt25 = "dashed"
+	var __lt14 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt14 = "solid"
+	case "dashed":
+		__lt14 = "dashed"
+	case "dotted":
+		__lt14 = "dotted"
+	case "double":
+		__lt14 = "double"
+	default:
+		var __lt15 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt15 = "solid"
 		} else {
-			var __lt24 string
-			if s.BorderStyle == "dotted" {
-				__lt24 = "dotted"
-			} else {
-				var __lt23 string
-				if s.BorderStyle == "double" {
-					__lt23 = "double"
-				} else {
-					var __lt22 string
-					if (s.BorderWidth != Measurement{Px: 0}) {
-						__lt22 = "solid"
-					} else {
-						__lt22 = ""
-					}
-					__lt23 = __lt22
-				}
-				__lt24 = __lt23
-			}
-			__lt25 = __lt24
+			__lt15 = ""
 		}
-		__lt26 = __lt25
+		__lt14 = __lt15
 	}
-	return __lt26
+	return __lt14
 }
 
 func (m *Model) __effect0_mount() {
@@ -981,59 +944,71 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect0_down()
-			m.__effect0_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_down()
+				m.__effect0_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*Row__slot0Instance{}
-	var __inst0_i int = 0
-	for _, it := range m.items__inst0 {
-		var __n4 *Row__slot0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(it)
-			__n4.Set__p0(it)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n4__new := newRow__slot0Instance(m, it, it)
-			__n4 = __n4__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*Row__slot0Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items__inst0 {
+				var __n4 *Row__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n4 = m.__inst0_live[__inst0_i]
+					__n4.SetLabel(it)
+					__n4.Set__p0(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := newRow__slot0Instance(m, it, it)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+				m.__slot0 = append(m.__slot0, __n4__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n4)
-		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n2_closed_handler() {
@@ -1055,6 +1030,7 @@ type Row__slot0Instance struct {
 	__effect1_desired   []bool
 	__effects1_settling bool
 	__effects1_pending  bool
+	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -1073,6 +1049,7 @@ func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 string) *R
 	c.__effect1_desired = []bool{}
 	c.__effects1_settling = false
 	c.__effects1_pending = false
+	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1124,21 +1101,23 @@ func (c *Row__slot0Instance) __effect1_up() {
 }
 
 func (c *Row__slot0Instance) __effects1_settle() {
-	if c.__effects1_settling {
-		c.__effects1_pending = true
-	} else {
-		c.__effects1_settling = true
-		c.__effects1_pending = true
-		c.__effects1_steps = 0
-		for c.__effects1_pending && (c.__effects1_steps < 512) {
-			c.__effects1_pending = false
-			c.__effects1_steps = (c.__effects1_steps + 1)
-			c.__effect1_down()
-			c.__effect1_up()
-		}
-		c.__effects1_settling = false
-		if c.__effects1_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects1_torn {
+		if c.__effects1_settling {
+			c.__effects1_pending = true
+		} else {
+			c.__effects1_settling = true
+			c.__effects1_pending = true
+			c.__effects1_steps = 0
+			for c.__effects1_pending && (c.__effects1_steps < 512) {
+				c.__effects1_pending = false
+				c.__effects1_steps = (c.__effects1_steps + 1)
+				c.__effect1_down()
+				c.__effect1_up()
+			}
+			c.__effects1_settling = false
+			if c.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1267,6 +1246,7 @@ body { font-family: system-ui, sans-serif; }
     let __effect1_desired = [];
     let __effects1_settling = false;
     let __effects1_pending = false;
+    let __effects1_torn = false;
     let __effects1_steps = 0;
     let __slot02 = [];
     function mark(n) {
@@ -1297,21 +1277,23 @@ body { font-family: system-ui, sans-serif; }
       __effect1_live = __effect1_desired;
     }
     function __effects1_settle() {
-      if (__effects1_settling) {
-        __effects1_pending = true;
-      } else {
-        __effects1_settling = true;
-        __effects1_pending = true;
-        __effects1_steps = 0;
-        while (__effects1_pending && __effects1_steps < 512) {
-          __effects1_pending = false;
-          __effects1_steps = __effects1_steps + 1;
-          __effect1_down();
-          __effect1_up();
-        }
-        __effects1_settling = false;
-        if (__effects1_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects1_torn) {
+        if (__effects1_settling) {
+          __effects1_pending = true;
+        } else {
+          __effects1_settling = true;
+          __effects1_pending = true;
+          __effects1_steps = 0;
+          while (__effects1_pending && __effects1_steps < 512) {
+            __effects1_pending = false;
+            __effects1_steps = __effects1_steps + 1;
+            __effect1_down();
+            __effect1_up();
+          }
+          __effects1_settling = false;
+          if (__effects1_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
@@ -1344,9 +1326,12 @@ body { font-family: system-ui, sans-serif; }
   var __effect0_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __effect0_down() {
     __effect0_desired = [];
     __effect0_desired.push(true);
@@ -1364,68 +1349,80 @@ body { font-family: system-ui, sans-serif; }
     __effect0_live = __effect0_desired;
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect0_down();
-        __effect0_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect0_down();
+          __effect0_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const it of state.items__inst0) {
-      let __n4 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n4 = __inst1_live[__inst1_i];
-        __n4.__set_label(it);
-        __n4.__set___p0(it);
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const it of state.items__inst0) {
+          let __n4 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n4 = __inst1_live[__inst1_i];
+            __n4.__set_label(it);
+            __n4.__set___p0(it);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n4__new = __cf_Row__slot0({ label: it, __p0: it });
+            __n4 = __n4__new;
+          }
+          __inst1_next.push(__n4);
+          __inst1_i = __inst1_i + 1;
+          let __n4__el = __n4.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n4__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n4__el, __place0_i_ref0);
+          }
+          __slot0.push(__n4__el);
         }
-        let __n4__new = __cf_Row__slot0({ label: it, __p0: it });
-        __n4 = __n4__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n4);
-      __inst1_i = __inst1_i + 1;
-      let __n4__el = __n4.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n4__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n4__el, __place0_i_ref0);
-      }
-      __slot0.push(__n4__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -1443,8 +1440,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:a196978f2c7bf7a62f5d8bacf5b5b879
+pass sha256:343045c808af0bdcd5f1643bb9027302
 -- run/go/gtk4 --
-pass sha256:6a26c40d5331d9a2fa9fb8556c4184ab
+pass sha256:69a6ee5a439f16eae4fa37af8af54598
 -- run/none/html --
-pass sha256:5dce94f04f82317c1c1a9d05c214bb1e
+pass sha256:9c09dba8646c7ea61c65085c6eae9795

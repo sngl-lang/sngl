@@ -175,101 +175,73 @@ func Side(all Measurement, axis Measurement, own Measurement) float32 {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
 	var __lt3 int
-	if a == "center" {
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
 		__lt3 = 2
-	} else {
-		var __lt2 int
-		if a == "end" {
-			__lt2 = 3
-		} else {
-			__lt2 = 0
-		}
-		__lt3 = __lt2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
 	}
 	return __lt3
 }
 
-func JustifyOf(j string) int {
-	var __lt8 int
-	if j == "center" {
-		__lt8 = 1
-	} else {
-		var __lt7 int
-		if j == "end" {
-			__lt7 = 2
-		} else {
-			var __lt6 int
-			if j == "spaceBetween" {
-				__lt6 = 3
-			} else {
-				var __lt5 int
-				if j == "spaceAround" {
-					__lt5 = 4
-				} else {
-					var __lt4 int
-					if j == "spaceEvenly" {
-						__lt4 = 5
-					} else {
-						__lt4 = 0
-					}
-					__lt5 = __lt4
-				}
-				__lt6 = __lt5
-			}
-			__lt7 = __lt6
-		}
-		__lt8 = __lt7
-	}
-	return __lt8
-}
-
 func Paint(c__r0 snglcolor.Color) snglcolor.Color {
-	var __lt9 snglcolor.Color
+	var __lt4 snglcolor.Color
 	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 	} else {
-		__lt9 = c__r0
+		__lt4 = c__r0
 	}
-	return __lt9
+	return __lt4
 }
 
 func TextAlignOf(a string) int {
-	var __lt12 int
-	if a == "center" {
-		__lt12 = 2
-	} else {
-		var __lt11 int
-		if a == "right" {
-			__lt11 = 3
-		} else {
-			var __lt10 int
-			if a == "justify" {
-				__lt10 = 1
-			} else {
-				__lt10 = 0
-			}
-			__lt11 = __lt10
-		}
-		__lt12 = __lt11
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
 	}
-	return __lt12
+	return __lt5
 }
 
 func WrapOf(w string) int {
-	var __lt14 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt14 = 1
-	} else {
-		var __lt13 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt13 = 2
-		} else {
-			__lt13 = 0
-		}
-		__lt14 = __lt13
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
 	}
-	return __lt14
+	return __lt6
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -373,4 +345,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:7df602dc1cad04978df76703cba7f381
+pass sha256:29004176570c7f46e047afb49c88d226

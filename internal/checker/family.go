@@ -332,6 +332,12 @@ func familyTransparent(st ir.Stmt) (all, binds [][]ir.Stmt, ok bool) {
 	case *ir.For:
 		b := [][]ir.Stmt{s.Body, s.Else}
 		return b, b, true
+	case *ir.Match:
+		var b [][]ir.Stmt
+		for _, arm := range s.Arms {
+			b = append(b, arm.Body)
+		}
+		return b, b, true
 	case *ir.ErrorBoundary:
 		return [][]ir.Stmt{s.Children, s.Failed}, [][]ir.Stmt{s.Children}, true
 	case *ir.ContextProvider:
@@ -480,6 +486,17 @@ func (c *checker) stmtRange(owner *ir.Component, st ir.Stmt) (lo, hi int) {
 		return 1, 1
 	case *ir.If:
 		return c.eitherRange(owner, s.Body, s.Else)
+	case *ir.Match:
+		// One arm renders, whichever is taken.
+		lo, hi := -1, 0
+		for _, arm := range s.Arms {
+			l, h := c.renderedRange(owner, arm.Body)
+			if lo < 0 || l < lo {
+				lo = l
+			}
+			hi = max(hi, h)
+		}
+		return max(lo, 0), hi
 	case *ir.ErrorBoundary:
 		return c.eitherRange(owner, s.Children, s.Failed)
 	case *ir.ContextProvider:

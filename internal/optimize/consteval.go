@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"duckfam.us/sngl/pkg/go/sngljson"
 	"fmt"
 	"log/slog"
 	"math"
@@ -61,6 +62,21 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		return isConstExpr(x.Operand, ctx)
 	case *ir.Ternary:
 		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)
+	case *ir.MatchExpr:
+		if x.Subject != nil && !isConstExpr(x.Subject, ctx) {
+			return false
+		}
+		for _, arm := range x.Arms {
+			if !isConstExpr(arm.Value, ctx) {
+				return false
+			}
+			for _, p := range arm.Patterns {
+				if !isConstExpr(p, ctx) {
+					return false
+				}
+			}
+		}
+		return true
 	case *ir.Call:
 		if x.Func != nil && x.Func.Intrinsic != "" {
 			if _, ok := ctx.answers[x.Func.Intrinsic]; ok {
@@ -199,6 +215,24 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 			return evalExpr(x.Else, ctx)
 		}
 		return nil, false
+	case *ir.MatchExpr:
+		for i, arm := range x.Arms {
+			if x.Unasked(i) {
+				return evalExpr(arm.Value, ctx)
+			}
+			test, ok := evalExpr(x.Test(i), ctx)
+			if !ok {
+				return nil, false
+			}
+			b, ok := test.(bool)
+			if !ok {
+				return nil, false
+			}
+			if b {
+				return evalExpr(arm.Value, ctx)
+			}
+		}
+		return nil, false
 	case *ir.Call:
 		return evalCall(x, ctx)
 	case *ir.Conversion:
@@ -335,7 +369,7 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 			// -- what a const the optimizer cannot evaluate already does. It
 			// is not the right answer, only a survivable one: the rule that a
 			// declaration may not read itself belongs in the checker, where it
-			// reaches a program this pass never folds. See CLAUDE.md.
+			// reaches a program this pass never folds. See design/windows.md.
 			//
 			// Survivable rests on something in another package. The standing
 			// expression reaches JavaScript as `var a = a`, which is benign
@@ -627,6 +661,11 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 	operand, ok := evalExpr(conv.Operand, ctx)
 	if !ok {
 		return nil, false
+	}
+	if ud := ir.UnitDeclOf(conv.Type); ud != nil && !ud.IsSingleBase() {
+		if src := conv.Operand.ExprType(); src != nil && src.Kind == ir.TypeInt {
+			return interp.UnitZero(ud, &ctx.evalCache().units), true
+		}
 	}
 	switch conv.Type.Kind {
 	case ir.TypeString:
@@ -974,6 +1013,10 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		x, ok := toFloat(args[0])
 		if ok {
 			return int(math.Round(x)), true
+		}
+	case "http.pathEscape":
+		if s, ok := args[0].(string); ok {
+			return sngljson.Escape(s), true
 		}
 	case "math.sqrt":
 		x, ok := toFloat(args[0])

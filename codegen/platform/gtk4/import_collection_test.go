@@ -14,7 +14,7 @@ import (
 
 // Regression: an import (here "fmt", pulled in by string interpolation) that is
 // first required while rendering a *computed* method body must still appear in
-// model.go's import block. The body is rendered inside newTemplateData after
+// model.go's import block. The body is rendered inside newScaffoldData after
 // the import set was sampled, so the sample has to happen last. Without the
 // fix the generated file uses fmt.Sprint but never imports fmt.
 func TestIntegration_ComputedBodyImportCollected(t *testing.T) {

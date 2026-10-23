@@ -88,6 +88,18 @@ func New() *Model {
 	return m
 }
 
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -110,12 +122,12 @@ func (m *Model) load_click_handler() {
 					panic(__r)
 				}
 				_ = e
-				fyne.Do(func() {
+				__snglDo(func() {
 				})
 			}()
 			time.Sleep(300000000)
 			__async_off0 := func() string { v, _ := os.Hostname(); return v }()
-			fyne.Do(func() {
+			__snglDo(func() {
 				m.greeting__inst0 = __async_off0
 				m.out.SetText(m.greeting__inst0)
 				m.busy__inst0 = false
@@ -184,4 +196,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:2406a7cb5cccc211924f5c2c2e0cb511
+pass sha256:fe88e159b4fe7951a8eca0f82e7e642b

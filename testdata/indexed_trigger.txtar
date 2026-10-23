@@ -151,6 +151,11 @@ type Style struct {
 	ListStyleType  string
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -162,6 +167,14 @@ type modelState struct {
 	log                 string
 	checked__inst0      map[string]bool
 	value__inst0        map[string]string
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effect1_live      []string
+	__effect1_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop1_cursor int
 
@@ -177,10 +190,19 @@ func New() Model {
 	m.log = ""
 	m.checked__inst0 = map[string]bool{}
 	m.value__inst0 = map[string]string{}
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effect1_live = []string{}
+	m.__effect1_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
 	m.widget0 = map[string]textinput.Model{}
 	m.resizeWidgets()
+	m.__effects0_settle()
 	return m
 }
 
@@ -201,13 +223,13 @@ func (m *Model) resizeWidgets() {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -257,85 +279,145 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, _ := range m.items {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			__cell1_checked__inst0 := func() bool {
+				if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return false
+			}()
+			__cell1_checked__inst0 = false
+			m.checked__inst0[fmt.Sprint(__copy0)] = __cell1_checked__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_enter() {
+	m.__effect1_desired = []string{}
+	for __copy0, it := range m.items {
+		__effect1_fresh := true
+		if len(m.__effect1_desired) < len(m.__effect1_live) {
+			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect1_fresh {
+			__cell1_value__inst0 := func() string {
+				if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return ""
+			}()
+			__cell1_value__inst0 = it
+			m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+		}
+		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop1_len() int {
@@ -473,6 +555,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.widget0FocusSync()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.items = []string{"c", "d", "e"}
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
 				__focusPos1 := 0
@@ -496,19 +579,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = it
 					__focusPos1++
 					if m.__focusLoop1_cursor == __focusPos1 {
-						__cell1_checked__inst0 := func() bool {
+						__cell2_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell1_checked__inst0 = !func() bool {
+						__cell2_checked__inst0 = !func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						m.checked__inst0[fmt.Sprint(__copy0)] = __cell1_checked__inst0
+						m.checked__inst0[fmt.Sprint(__copy0)] = __cell2_checked__inst0
 						m.log = ((it + " ") + fmt.Sprint(func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
@@ -538,7 +621,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 							return __v
 						}
-						return it
+						return ""
 					}())
 					w.Focus()
 					__prev := w.Value()
@@ -548,14 +631,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if __v := w.Value(); __v != __prev {
 						__value := __v
 						_ = __value
-						__cell1_value__inst0 := func() string {
+						__cell2_value__inst0 := func() string {
 							if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
-							return it
+							return ""
 						}()
-						__cell1_value__inst0 = __value
-						m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+						__cell2_value__inst0 = __value
+						m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 					}
 					if __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {
 						__change0 := w.Value()
@@ -805,20 +888,20 @@ func (m *Model) fieldInput(v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				return
 			}
 			__n++
@@ -839,20 +922,20 @@ func (m *Model) fieldInputAt(key string, v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				return
 			}
 		}
@@ -872,20 +955,20 @@ func (m *Model) fieldChange(v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				__change0 := v
 				_ = __change0
 				m.log = ((it + "=") + __change0)
@@ -909,20 +992,20 @@ func (m *Model) fieldChangeAt(key string, v string) {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}())
 				w.SetValue(v)
 				m.widget0[__key] = w
 				__value := v
 				_ = __value
-				__cell1_value__inst0 := func() string {
+				__cell2_value__inst0 := func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
-					return it
+					return ""
 				}()
-				__cell1_value__inst0 = __value
-				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__cell2_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell2_value__inst0
 				__change0 := v
 				_ = __change0
 				m.log = ((it + "=") + __change0)
@@ -933,60 +1016,63 @@ func (m *Model) fieldChangeAt(key string, v string) {
 }
 
 func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	var parts []string
+	var part0 string
+	var part0Children []string
+	var part0_0 string
+	part0_0Focused := (m.__focusID == 0)
+	part0_0Prefix := " "
+	if part0_0Focused {
+		part0_0Prefix = ">"
 	}
-	content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("swap"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
+	part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint("swap"))
+	part0Children = append(part0Children, part0_0)
+	var part0_1 string
 	__focusPos1 := 0
 	_ = __focusPos1
-	var content_1Items []string
+	var part0_1Items []string
 	for __copy0, it := range m.items {
 		_ = __copy0
 		_ = it
-		var content_1Item_0 string
-		content_1Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-		content_1Item_0Prefix := " "
-		if content_1Item_0Focused {
-			content_1Item_0Prefix = ">"
+		var part0_1Item_0 string
+		part0_1Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+		part0_1Item_0Prefix := " "
+		if part0_1Item_0Focused {
+			part0_1Item_0Prefix = ">"
 		}
-		content_1Item_0 = BoxLook(Style{}, true).Render(content_1Item_0Prefix + " " + fmt.Sprint(it))
+		part0_1Item_0 = BoxLook(Style{}, true).Render(part0_1Item_0Prefix + " " + fmt.Sprint(it))
 		__focusPos1++
-		content_1Items = append(content_1Items, content_1Item_0)
-		var content_1Item_1 string
-		content_1Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-		content_1Item_1Prefix := " "
-		if content_1Item_1Focused {
-			content_1Item_1Prefix = ">"
+		part0_1Items = append(part0_1Items, part0_1Item_0)
+		var part0_1Item_1 string
+		part0_1Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+		part0_1Item_1Prefix := " "
+		if part0_1Item_1Focused {
+			part0_1Item_1Prefix = ">"
 		}
-		content_1Item_1 = BoxLook(Style{}, true).Render(content_1Item_1Prefix + " " + fmt.Sprint(it))
+		part0_1Item_1 = BoxLook(Style{}, true).Render(part0_1Item_1Prefix + " " + fmt.Sprint(it))
 		__focusPos1++
-		content_1Items = append(content_1Items, content_1Item_1)
-		var content_1Item_2 string
-		content_1Item_2 = BoxLook(Style{}, true).Render(m.widget0Copy(fmt.Sprint(__copy0), func() string {
+		part0_1Items = append(part0_1Items, part0_1Item_1)
+		var part0_1Item_2 string
+		part0_1Item_2 = BoxLook(Style{}, true).Render(m.widget0Copy(fmt.Sprint(__copy0), func() string {
 			if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return it
+			return ""
 		}()).View())
 		__focusPos1++
-		content_1Items = append(content_1Items, content_1Item_2)
+		part0_1Items = append(part0_1Items, part0_1Item_2)
 	}
-	content_1 = strings.Join(content_1Items, "\n")
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
+	part0_1 = strings.Join(part0_1Items, "\n")
+	if part0_1 != "" {
+		part0Children = append(part0Children, part0_1)
 	}
-	var content_2 string
-	content_2 = BoxLook(Style{}, true).Render(fmt.Sprint(m.log))
-	contentChildren = append(contentChildren, content_2)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{}, true).Render(content)
+	var part0_2 string
+	part0_2 = BoxLook(Style{}, true).Render(fmt.Sprint(m.log))
+	part0Children = append(part0Children, part0_2)
+	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = BoxLook(Style{}, true).Render(part0)
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1047,13 +1133,15 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	items        []string
-	log          string
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__inst0_live []*__checkbox_state0Instance
-	__inst1_live []*__input_state1Instance
+	items          []string
+	log            string
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*__checkbox_state0Instance
+	__inst1_live   []*__input_state1Instance
+	__rendering0   bool
+	__renderAgain0 bool
 
 	__n3           *fyne.Container
 	swap           *widget.Button
@@ -1076,93 +1164,105 @@ func New() *Model {
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state0Instance{}
 	m.__inst1_live = []*__input_state1Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	m.__copies_tap = nil
-	__inst0_next := []*__checkbox_state0Instance{}
-	var __inst0_i int = 0
-	__inst1_next := []*__input_state1Instance{}
-	var __inst1_i int = 0
-	for __copy0, it := range m.items {
-		m.tap = widget.NewButton("", nil)
-		m.tap.SetText(it)
-		m.__list_tap(fmt.Sprint(__copy0), m.tap)
-		m.tap.OnTapped = func() {
-			m.log = it
-			m.__n0.SetText(m.log)
-		}
-		fynelayout.InsertBefore(__parent, m.__slot0_at, m.tap)
-		m.__slot0 = append(m.__slot0, m.tap)
-		var __n1 *__checkbox_state0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n1 = m.__inst0_live[__inst0_i]
-			__n1.SetLabel(it)
-			__n1.Set__copy(fmt.Sprint(__copy0))
-			__n1.SetChange(func(on bool) {
-				m.log = ((it + " ") + fmt.Sprint(on))
-				m.__n0.SetText(m.log)
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
-				m.log = ((it + " ") + fmt.Sprint(on))
-				m.__n0.SetText(m.log)
-			})
-			__n1 = __n1__new
-		}
-		__inst0_next = append(__inst0_next, __n1)
-		__inst0_i = (__inst0_i + 1)
-		__n1__el := __n1.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
-		m.__slot0 = append(m.__slot0, __n1__el)
-		var __n2 *__input_state1Instance
-		if len(m.__inst1_live) > __inst1_i {
-			__n2 = m.__inst1_live[__inst1_i]
-			__n2.Set__start_value(it)
-			__n2.Set__copy(fmt.Sprint(__copy0))
-			__n2.SetChange(func(v string) {
-				m.log = ((it + "=") + v)
-				m.__n0.SetText(m.log)
-			})
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			m.__copies_tap = nil
+			__inst0_next := []*__checkbox_state0Instance{}
+			var __inst0_i int = 0
+			__inst1_next := []*__input_state1Instance{}
+			var __inst1_i int = 0
+			for __copy0, it := range m.items {
+				m.tap = widget.NewButton("", nil)
+				m.tap.SetText(it)
+				m.__list_tap(fmt.Sprint(__copy0), m.tap)
+				m.tap.OnTapped = func() {
+					m.log = it
+					m.__n0.SetText(m.log)
+				}
+				fynelayout.InsertBefore(__parent, m.__slot0_at, m.tap)
+				m.__slot0 = append(m.__slot0, m.tap)
+				var __n1 *__checkbox_state0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n1 = m.__inst0_live[__inst0_i]
+					__n1.SetChange(func(on bool) {
+						m.log = ((it + " ") + fmt.Sprint(on))
+						m.__n0.SetText(m.log)
+					})
+					__n1.SetLabel(it)
+					__n1.Set__copy(fmt.Sprint(__copy0))
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
+						m.log = ((it + " ") + fmt.Sprint(on))
+						m.__n0.SetText(m.log)
+					})
+					__n1 = __n1__new
+				}
+				__inst0_next = append(__inst0_next, __n1)
+				__inst0_i = (__inst0_i + 1)
+				__n1__el := __n1.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
+				m.__slot0 = append(m.__slot0, __n1__el)
+				var __n2 *__input_state1Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n2 = m.__inst1_live[__inst1_i]
+					__n2.SetChange(func(v string) {
+						m.log = ((it + "=") + v)
+						m.__n0.SetText(m.log)
+					})
+					__n2.Set__start_value(it)
+					__n2.Set__copy(fmt.Sprint(__copy0))
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n2__new := new__input_state1Instance(m, it, fmt.Sprint(__copy0), func(v string) {
+						m.log = ((it + "=") + v)
+						m.__n0.SetText(m.log)
+					})
+					__n2 = __n2__new
+				}
+				__inst1_next = append(__inst1_next, __n2)
+				__inst1_i = (__inst1_i + 1)
+				__n2__el := __n2.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
 			}
-			__n2__new := new__input_state1Instance(m, it, fmt.Sprint(__copy0), func(v string) {
-				m.log = ((it + "=") + v)
-				m.__n0.SetText(m.log)
-			})
-			__n2 = __n2__new
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n2)
-		__inst1_i = (__inst1_i + 1)
-		__n2__el := __n2.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) swap_click_handler() {
@@ -1364,9 +1464,11 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.box.SetChecked(c.checked)
 	c.__model.__list_box(c.__prop___copy, c.box)
 	c.box.OnChanged = func(on bool) {
-		c.checked = on
-		c.box.SetChecked(c.checked)
-		c.__prop_change(on)
+		if on != c.checked {
+			c.checked = on
+			c.box.SetChecked(c.checked)
+			c.__prop_change(on)
+		}
 	}
 	c.Root = c.box
 	c.__model.__named_box = c.box
@@ -1431,8 +1533,10 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.field.SetPlaceHolder("")
 	c.__model.__list_field(c.__prop___copy, c.field)
 	c.field.OnChanged = func(v string) {
-		c.value = v
-		c.field.SetText(c.value)
+		if v != c.value {
+			c.value = v
+			c.field.SetText(c.value)
+		}
 	}
 	c.field.OnSubmitted = func(v string) {
 		c.value = v
@@ -1536,8 +1640,75 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 )
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -1548,6 +1719,8 @@ type Model struct {
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__checkbox_state0Instance
 	__inst1_live   []*__input_state1Instance
+	__rendering0   bool
+	__renderAgain0 bool
 	__n3           gtk4rt.Handle
 	swap           gtk4rt.Handle
 	__n0           gtk4rt.Handle
@@ -1570,88 +1743,287 @@ func New() *Model {
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state0Instance{}
 	m.__inst1_live = []*__input_state1Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
+}
+
+func CssOf(s Style) string {
+	var __lt1 string
+	if s.Opacity == 0.0 {
+		__lt1 = ""
+	} else {
+		__lt1 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	case "baseline":
+		__lt2 = 4
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func TextAlignOf(a string) int {
+	var __lt3 int
+	switch a {
+	case "center":
+		__lt3 = 1
+	case "right":
+		__lt3 = 2
+	case "justify":
+		__lt3 = 3
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func WrapOf(w string) int {
+	var __lt4 int
+	switch w {
+	case "pre", "nowrap":
+		__lt4 = 1
+	case "preWrap", "preLine":
+		__lt4 = 2
+	default:
+		__lt4 = 0
+	}
+	return __lt4
+}
+
+func ClipOf(o string) bool {
+	var __lt5 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt5 = true
+	default:
+		__lt5 = false
+	}
+	return __lt5
+}
+
+func Decl(name string, value string) string {
+	var __lt6 string
+	if value == "" {
+		__lt6 = ""
+	} else {
+		__lt6 = (((name + ": ") + value) + "; ")
+	}
+	return __lt6
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt9 string
+	if v == 0.0 {
+		__lt9 = ""
+	} else {
+		__lt9 = (fmt.Sprint(v) + "px")
+	}
+	return __lt9
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt10 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt10 = ""
+	} else {
+		__lt10 = c__r0.Hex()
+	}
+	return __lt10
+}
+
+func Points(v float64) string {
+	var __lt11 string
+	if v == 0.0 {
+		__lt11 = ""
+	} else {
+		__lt11 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt11
+}
+
+func WeightOf(w string) string {
+	var __lt12 string
+	switch w {
+	case "bold":
+		__lt12 = "bold"
+	case "bolder":
+		__lt12 = "bolder"
+	case "lighter":
+		__lt12 = "lighter"
+	default:
+		__lt12 = ""
+	}
+	return __lt12
+}
+
+func SlantOf(s string) string {
+	var __lt13 string
+	switch s {
+	case "italic":
+		__lt13 = "italic"
+	case "oblique":
+		__lt13 = "oblique"
+	default:
+		__lt13 = ""
+	}
+	return __lt13
+}
+
+func LineOf(s Style) string {
+	var __lt14 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt14 = "solid"
+	case "dashed":
+		__lt14 = "dashed"
+	case "dotted":
+		__lt14 = "dotted"
+	case "double":
+		__lt14 = "double"
+	default:
+		var __lt15 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt15 = "solid"
+		} else {
+			__lt15 = ""
+		}
+		__lt14 = __lt15
+	}
+	return __lt14
+}
+
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	m.__copies_tap = nil
-	__inst0_next := []*__checkbox_state0Instance{}
-	var __inst0_i int = 0
-	__inst1_next := []*__input_state1Instance{}
-	var __inst1_i int = 0
-	for __copy0, it := range m.items {
-		m.tap = gtk4rt.ButtonNew()
-		gtk4rt.ButtonSetLabel(m.tap, it)
-		m.__list_tap(fmt.Sprint(__copy0), m.tap)
-		gtk4rt.Connect(m.tap, "clicked", func() {
-			m.log = it
-		})
-		gtk4rt.InsertBefore(parent, m.__slot0_at, m.tap)
-		m.__slot0 = append(m.__slot0, m.tap)
-		var __n1 *__checkbox_state0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n1 = m.__inst0_live[__inst0_i]
-			__n1.SetLabel(it)
-			__n1.Set__copy(fmt.Sprint(__copy0))
-			__n1.SetChange(func(on bool) {
-				m.log = ((it + " ") + fmt.Sprint(on))
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
-				m.log = ((it + " ") + fmt.Sprint(on))
-			})
-			__n1 = __n1__new
-		}
-		__inst0_next = append(__inst0_next, __n1)
-		__inst0_i = (__inst0_i + 1)
-		__n1__el := __n1.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
-		m.__slot0 = append(m.__slot0, __n1__el)
-		var __n2 *__input_state1Instance
-		if len(m.__inst1_live) > __inst1_i {
-			__n2 = m.__inst1_live[__inst1_i]
-			__n2.Set__start_value(it)
-			__n2.Set__copy(fmt.Sprint(__copy0))
-			__n2.SetChange(func(v string) {
-				m.log = ((it + "=") + v)
-			})
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			m.__copies_tap = nil
+			__inst0_next := []*__checkbox_state0Instance{}
+			var __inst0_i int = 0
+			__inst1_next := []*__input_state1Instance{}
+			var __inst1_i int = 0
+			for __copy0, it := range m.items {
+				m.tap = gtk4rt.ButtonNew()
+				gtk4rt.ButtonSetLabel(m.tap, it)
+				m.__list_tap(fmt.Sprint(__copy0), m.tap)
+				gtk4rt.Connect(m.tap, "clicked", func() {
+					m.log = it
+					gtk4rt.LabelSetLabel(m.__n0, m.log)
+				})
+				gtk4rt.InsertBefore(parent, m.__slot0_at, m.tap)
+				m.__slot0 = append(m.__slot0, m.tap)
+				var __n1 *__checkbox_state0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n1 = m.__inst0_live[__inst0_i]
+					__n1.SetChange(func(on bool) {
+						m.log = ((it + " ") + fmt.Sprint(on))
+						gtk4rt.LabelSetLabel(m.__n0, m.log)
+					})
+					__n1.SetLabel(it)
+					__n1.Set__copy(fmt.Sprint(__copy0))
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
+						m.log = ((it + " ") + fmt.Sprint(on))
+						gtk4rt.LabelSetLabel(m.__n0, m.log)
+					})
+					__n1 = __n1__new
+				}
+				__inst0_next = append(__inst0_next, __n1)
+				__inst0_i = (__inst0_i + 1)
+				__n1__el := __n1.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
+				m.__slot0 = append(m.__slot0, __n1__el)
+				var __n2 *__input_state1Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n2 = m.__inst1_live[__inst1_i]
+					__n2.SetChange(func(v string) {
+						m.log = ((it + "=") + v)
+						gtk4rt.LabelSetLabel(m.__n0, m.log)
+					})
+					__n2.Set__start_value(it)
+					__n2.Set__copy(fmt.Sprint(__copy0))
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n2__new := new__input_state1Instance(m, it, fmt.Sprint(__copy0), func(v string) {
+						m.log = ((it + "=") + v)
+						gtk4rt.LabelSetLabel(m.__n0, m.log)
+					})
+					__n2 = __n2__new
+				}
+				__inst1_next = append(__inst1_next, __n2)
+				__inst1_i = (__inst1_i + 1)
+				__n2__el := __n2.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
 			}
-			__n2__new := new__input_state1Instance(m, it, fmt.Sprint(__copy0), func(v string) {
-				m.log = ((it + "=") + v)
-			})
-			__n2 = __n2__new
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n2)
-		__inst1_i = (__inst1_i + 1)
-		__n2__el := __n2.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) swap_clicked_handler() {
@@ -1689,9 +2061,11 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	gtk4rt.CheckButtonSetActive(c.box, c.checked)
 	c.__model.__list_box(c.__prop___copy, c.box)
 	gtk4rt.Connect(c.box, "toggled", func() {
-		c.checked = gtk4rt.CheckButtonGetActive(c.box)
-		gtk4rt.CheckButtonSetActive(c.box, c.checked)
-		c.__prop_change(c.checked)
+		if gtk4rt.CheckButtonGetActive(c.box) != c.checked {
+			c.checked = gtk4rt.CheckButtonGetActive(c.box)
+			gtk4rt.CheckButtonSetActive(c.box, c.checked)
+			c.__prop_change(c.checked)
+		}
 	})
 	c.Root = c.box
 	c.__model.__named_box = c.box
@@ -1740,6 +2114,13 @@ type __input_state1Instance struct {
 	__prop___copy        string
 	__prop_change        func(string)
 	value                string
+	__effect0_key        string
+	__effect0_live       []string
+	__effect0_desired    []string
+	__effects0_settling  bool
+	__effects0_pending   bool
+	__effects0_torn      bool
+	__effects0_steps     int
 	__root               gtk4rt.Handle
 	__slot0              []gtk4rt.Handle
 	__slot0_at           gtk4rt.Handle
@@ -1753,24 +2134,81 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.value = c.__prop___start_value
+	c.__effect0_key = ""
+	c.__effect0_live = []string{}
+	c.__effect0_desired = []string{}
+	c.__effects0_settling = false
+	c.__effects0_pending = false
+	c.__effects0_torn = false
+	c.__effects0_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.field = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(c.field, c.value)
 	c.__model.__list_field(c.__prop___copy, c.field)
 	gtk4rt.Connect(c.field, "changed", func() {
-		c.value = gtk4rt.EditableGetText(c.field)
-		gtk4rt.EditableSetText(c.field, c.value)
+		if gtk4rt.EditableGetText(c.field) != c.value {
+			c.value = gtk4rt.EditableGetText(c.field)
+		}
+		c.__effects0_settle()
 	})
 	gtk4rt.Connect(c.field, "activate", func() {
 		c.value = gtk4rt.EditableGetText(c.field)
-		gtk4rt.EditableSetText(c.field, c.value)
 		c.__prop_change(c.value)
+		c.__effects0_settle()
 	})
+	c.__effects0_settle()
 	c.Root = c.field
 	c.__model.__named_field = c.field
 	gtk4rt.Retain(c.Root)
 	return c
+}
+
+func (c *__input_state1Instance) __effect0_mount() {
+	if gtk4rt.EditableGetText(c.field) != c.__effect0_key {
+		gtk4rt.EditableSetTextQuiet(c.field, c.__effect0_key)
+	}
+}
+
+func (c *__input_state1Instance) __effect0_down() {
+	c.__effect0_desired = []string{}
+	c.__effect0_desired = append(c.__effect0_desired, c.value)
+}
+
+func (c *__input_state1Instance) __effect0_up() {
+	for __effect0_i, __effect0_k := range c.__effect0_desired {
+		if __effect0_i >= len(c.__effect0_live) {
+			c.__effect0_key = __effect0_k
+			c.__effect0_mount()
+		} else {
+			if c.__effect0_live[__effect0_i] != __effect0_k {
+				c.__effect0_key = __effect0_k
+				c.__effect0_mount()
+			}
+		}
+	}
+	c.__effect0_live = c.__effect0_desired
+}
+
+func (c *__input_state1Instance) __effects0_settle() {
+	if !c.__effects0_torn {
+		if c.__effects0_settling {
+			c.__effects0_pending = true
+		} else {
+			c.__effects0_settling = true
+			c.__effects0_pending = true
+			c.__effects0_steps = 0
+			for c.__effects0_pending && (c.__effects0_steps < 512) {
+				c.__effects0_pending = false
+				c.__effects0_steps = (c.__effects0_steps + 1)
+				c.__effect0_down()
+				c.__effect0_up()
+			}
+			c.__effects0_settling = false
+			if c.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (c *__input_state1Instance) Set__start_value(__v string) {
@@ -2054,7 +2492,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -2077,7 +2514,7 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
         composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"a true\")", (c.log == "a true"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performTextReplacement("x"); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("x")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b=x\")", (c.log == "b=x"))
     }
 
@@ -2090,7 +2527,7 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("(c.log == \"e\")", (c.log == "e"))
         composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"d true\")", (c.log == "d true"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).performTextReplacement("y"); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString("y")) }; composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"c=y\")", (c.log == "c=y"))
     }
 
@@ -2334,139 +2771,151 @@ window.__sngl_boot = () => {
   var __inst1_live = [];
   var __inst2_live = [];
   var __inst3_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    let __inst2_next = [];
-    let __inst2_i = 0;
-    let __inst3_next = [];
-    let __inst3_i = 0;
-    for (const [__copy0, it] of state.items.entries()) {
-      let __n4 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n4 = __inst1_live[__inst1_i];
-        __n4.__set___p0(__copy0);
-        __n4.__set___p1(it);
-        __n4.__set___on0(() => {
-          state.log = it;
-          __n0.textContent = state.log;
-        });
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        let __inst2_next = [];
+        let __inst2_i = 0;
+        let __inst3_next = [];
+        let __inst3_i = 0;
+        for (const [__copy0, it] of state.items.entries()) {
+          let __n4 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n4 = __inst1_live[__inst1_i];
+            __n4.__set___on0(() => {
+              state.log = it;
+              __n0.textContent = state.log;
+            });
+            __n4.__set___p0(__copy0);
+            __n4.__set___p1(it);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n4__new = __cf___child0({ __p0: __copy0, __p1: it, __on0: () => {
+              state.log = it;
+              __n0.textContent = state.log;
+            } });
+            __n4 = __n4__new;
+          }
+          __inst1_next.push(__n4);
+          __inst1_i = __inst1_i + 1;
+          let __n4__el = __n4.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n4__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n4__el, __place0_i_ref0);
+          }
+          __slot0.push(__n4__el);
+          let __n5 = null;
+          if (__inst2_live.length > __inst2_i) {
+            __n5 = __inst2_live[__inst2_i];
+            __n5.__set_change((on) => {
+              state.log = it + " " + String(on);
+              __n0.textContent = state.log;
+            });
+            __n5.__set_label(it);
+            __n5.__set___copy(String(__copy0));
+          } else {
+            if (__inst2_live.length > __inst2_i) {
+              __inst2_live[__inst2_i].__destroy();
+            }
+            let __n5__new = __cf___checkbox_state0({ label: it, __copy: String(__copy0), change: (on) => {
+              state.log = it + " " + String(on);
+              __n0.textContent = state.log;
+            } });
+            __n5 = __n5__new;
+          }
+          __inst2_next.push(__n5);
+          __inst2_i = __inst2_i + 1;
+          let __n5__el = __n5.__root;
+          let __place0_i_ref1 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref1 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref1 === __n5__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n5__el, __place0_i_ref1);
+          }
+          __slot0.push(__n5__el);
+          let __n6 = null;
+          if (__inst3_live.length > __inst3_i) {
+            __n6 = __inst3_live[__inst3_i];
+            __n6.__set_change((v) => {
+              state.log = it + "=" + v;
+              __n0.textContent = state.log;
+            });
+            __n6.__set___start_value(it);
+            __n6.__set___copy(String(__copy0));
+          } else {
+            if (__inst3_live.length > __inst3_i) {
+              __inst3_live[__inst3_i].__destroy();
+            }
+            let __n6__new = __cf___input_state1({ __start_value: it, __copy: String(__copy0), change: (v) => {
+              state.log = it + "=" + v;
+              __n0.textContent = state.log;
+            } });
+            __n6 = __n6__new;
+          }
+          __inst3_next.push(__n6);
+          __inst3_i = __inst3_i + 1;
+          let __n6__el = __n6.__root;
+          let __place0_i_ref2 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref2 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref2 === __n6__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n6__el, __place0_i_ref2);
+          }
+          __slot0.push(__n6__el);
         }
-        let __n4__new = __cf___child0({ __p0: __copy0, __p1: it, __on0: () => {
-          state.log = it;
-          __n0.textContent = state.log;
-        } });
-        __n4 = __n4__new;
-      }
-      __inst1_next.push(__n4);
-      __inst1_i = __inst1_i + 1;
-      let __n4__el = __n4.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n4__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n4__el, __place0_i_ref0);
-      }
-      __slot0.push(__n4__el);
-      let __n5 = null;
-      if (__inst2_live.length > __inst2_i) {
-        __n5 = __inst2_live[__inst2_i];
-        __n5.__set_label(it);
-        __n5.__set___copy(String(__copy0));
-        __n5.__set_change((on) => {
-          state.log = it + " " + String(on);
-          __n0.textContent = state.log;
-        });
-      } else {
-        if (__inst2_live.length > __inst2_i) {
-          __inst2_live[__inst2_i].__destroy();
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
         }
-        let __n5__new = __cf___checkbox_state0({ label: it, __copy: String(__copy0), change: (on) => {
-          state.log = it + " " + String(on);
-          __n0.textContent = state.log;
-        } });
-        __n5 = __n5__new;
-      }
-      __inst2_next.push(__n5);
-      __inst2_i = __inst2_i + 1;
-      let __n5__el = __n5.__root;
-      let __place0_i_ref1 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref1 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref1 === __n5__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n5__el, __place0_i_ref1);
-      }
-      __slot0.push(__n5__el);
-      let __n6 = null;
-      if (__inst3_live.length > __inst3_i) {
-        __n6 = __inst3_live[__inst3_i];
-        __n6.__set___start_value(it);
-        __n6.__set___copy(String(__copy0));
-        __n6.__set_change((v) => {
-          state.log = it + "=" + v;
-          __n0.textContent = state.log;
-        });
-      } else {
-        if (__inst3_live.length > __inst3_i) {
-          __inst3_live[__inst3_i].__destroy();
+        __inst1_live = __inst1_next;
+        for (const [__inst2_i_d, _] of __inst2_live.entries()) {
+          let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
+          if (__inst2_i_j >= __inst2_i) {
+            __inst2_live[__inst2_i_j].__destroy();
+          }
         }
-        let __n6__new = __cf___input_state1({ __start_value: it, __copy: String(__copy0), change: (v) => {
-          state.log = it + "=" + v;
-          __n0.textContent = state.log;
-        } });
-        __n6 = __n6__new;
+        __inst2_live = __inst2_next;
+        for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+          let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+          if (__inst3_i_j >= __inst3_i) {
+            __inst3_live[__inst3_i_j].__destroy();
+          }
+        }
+        __inst3_live = __inst3_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst3_next.push(__n6);
-      __inst3_i = __inst3_i + 1;
-      let __n6__el = __n6.__root;
-      let __place0_i_ref2 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref2 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref2 === __n6__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n6__el, __place0_i_ref2);
-      }
-      __slot0.push(__n6__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const [__inst2_i_d, _] of __inst2_live.entries()) {
-      let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
-      if (__inst2_i_j >= __inst2_i) {
-        __inst2_live[__inst2_i_j].__destroy();
-      }
-    }
-    __inst2_live = __inst2_next;
-    for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-      let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-      if (__inst3_i_j >= __inst3_i) {
-        __inst3_live[__inst3_i_j].__destroy();
-      }
-    }
-    __inst3_live = __inst3_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -2490,12 +2939,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:28493f0076cbefd2d929448ce5b4dc2c
+pass sha256:61ca436a31e6e195d0693bb38654d101
 -- run/go/fyne --
-pass sha256:817effa4f0572212f9921450920bcc95
+pass sha256:0a2f512a1897cf65565f2a0ca1e53d31
 -- run/go/gtk4 --
-pass sha256:e1b118fb94d830eb0d989f0d67e0c11a
+pass sha256:f42a2c27a6d7237e6bb9f9f439aa5d6c
 -- run/kotlin/android --
-pass sha256:2d63d37ad4c303e70ccb03f75826fa68
+pass sha256:3ea798abfbdd956b541293cb042fd4e1
 -- run/none/html --
-pass sha256:9255c8dd5817976f977a18de57255542
+pass sha256:6713435d38b088c64ad185973c0bcd42

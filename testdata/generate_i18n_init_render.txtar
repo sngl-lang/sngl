@@ -583,14 +583,14 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     state.count__inst0 += 1;
-    __n1.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
+    __n1.textContent = i18n.translate("es-MX", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
   });
   function __sngl_init() {
-    __n1.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
+    __n1.textContent = i18n.translate("es-MX", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:292825b964a6519203613085a760e523
+pass sha256:fd4857931906d1af0aee9859c3ba1f9b

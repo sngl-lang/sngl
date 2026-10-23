@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"fmt"
+	"strings"
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
@@ -19,6 +20,16 @@ const (
 	imageDrawingTag = "ImageDrawing"
 )
 
+// scrollTag is gtk4.sngl's `Scroll`, gtk4rt's GtkScrolledWindow that reports
+// its content's end coming into view: GTK has no signal for that, and the
+// adjustment's that answer it hand their handler nothing an event could
+// carry.
+const scrollTag = "Scroll"
+
+// imagePictureProp is `ImageUrl`'s picture, the owned value its source derives
+// from the URL (gtk4.sngl's `Picture`).
+const imagePictureProp = "picture"
+
 func imagePrimitive(tag string) bool {
 	return tag == imageTag || tag == imageURLTag || tag == imageDrawingTag
 }
@@ -31,6 +42,8 @@ func primitiveCType(tag string) string {
 		return "GtkBox"
 	case imageURLTag, imageDrawingTag:
 		return "GtkPicture"
+	case scrollTag:
+		return "GtkScrolledWindow"
 	}
 	return ""
 }
@@ -79,7 +92,11 @@ func (t *gtk4Translator) imagePropAssign(node ir.Expr, tag, prop string, value i
 	case tag == imageTag && prop == "fit":
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageFrameSetFit", ir.TypVoid, ref, value)}}
 	case tag == imageURLTag && prop == ir.ImageSourceURL:
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageSourceSetURL", ir.TypVoid, ref, value)}}
+		// The URL is what the source says it shows; the picture is what it
+		// shows.
+		return nil
+	case tag == imageURLTag && prop == imagePictureProp:
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageSourceSetPicture", ir.TypVoid, ref, value)}}
 	}
 	return nil
 }
@@ -124,4 +141,23 @@ func (t *gtk4Translator) windowIcon(parent, child ir.Expr) bool {
 		return true
 	}
 	return false
+}
+
+// isScroll reports whether bare names a Scroll primitive.
+func (t *gtk4Translator) isScroll(bare string) bool {
+	return t.shared != nil && t.shared.scrolls[bare]
+}
+
+func (t *gtk4Translator) emitScrollCreate(id string) []ir.Stmt {
+	return t.emitConstructorAssign(id, primitiveCType(scrollTag), rtCall("ScrollNew", gtk4rtHandleIRType()))
+}
+
+func (t *gtk4Translator) scrollAttachHandler(node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	if event != "reachEnd" {
+		return nil
+	}
+	if id := codegen.IdentBareName(node); t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
+		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: "GtkScrolledWindow", RtFire: "ScrollReachEnd"})
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("ScrollOnReachEnd", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), handler)}}
 }

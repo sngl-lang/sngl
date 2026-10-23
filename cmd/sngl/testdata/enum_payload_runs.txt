@@ -1,0 +1,325 @@
+# An enum whose members carry payloads, run on every target: construction,
+# the selector read and its narrowing, a match binding each payload, equality
+# and the zero value, in a function, a view and a handler.
+
+sngl test --platform=none app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '6 tests, 0 failures'
+
+-- app.sngl --
+// An enum member may carry a type, its payload: a value of the enum holds
+// exactly one member, and that member's payload with it. It is built as a
+// struct literal naming the one member, read by a selector that is present
+// only when the member is the one held, and matched by member, where
+// `match var v = s` names the payload of the member an arm names. A member
+// with no payload is written as every member is.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct Size {
+    w float
+    h float
+}
+
+struct Failure {
+    message string
+    code    int
+}
+
+enum Result[T any] {
+    ok     T
+    failed Failure
+}
+
+enum Shape {
+    empty
+    circle float
+    rect   Size
+}
+
+// The first member is the zero value, with its payload's zero.
+var held Shape
+
+func area(s Shape) float {
+    match var v = s {
+        empty { return 0.0 }
+        circle { return 3.0 * v * v }
+        rect { return v.w * v.h }
+    }
+}
+
+func label(r Result[int]) => match var v = r {
+    ok => "ok {v}"
+    failed => "failed: {v.message}"
+}
+
+func describe(s Shape) => match s {
+    circle => "round"
+    else => "not round"
+}
+
+// In an arm that names no member carrying a payload, the name is the subject.
+func kind(s Shape) => match var v = s {
+    circle => "round"
+    else => "area {area(v)}"
+}
+
+func half(n int) Result[int] {
+    if n % 2 != 0 {
+        return {failed={message="odd", code=n}}
+    }
+    return Result[int]{ok=n / 2}
+}
+
+func orZero(r Result[int]) int {
+    // The selector is an option, so the null test narrows it.
+    if r.ok != null {
+        return r.ok
+    }
+    return 0
+}
+
+component panel node {
+    var shape Shape = Shape.empty
+    var result = half(4)
+
+    text #shownArea(value="{area(shape)}")
+    text #outcome(value=label(result))
+    text #radius(value=match var r = shape {
+        circle => "{r}"
+        else => "none"
+    })
+    match var r = shape {
+        circle { text #round(value="radius {r}") }
+        else {}
+    }
+
+    button #grow(text="Grow", @click {
+        shape = match var r = shape {
+            empty => {circle=1.0}
+            circle => {circle=r + 1.0}
+            rect => Shape.empty
+        }
+    })
+    button #odd(text="Odd", @click { result = half(3) })
+}
+
+func testZero(t Test, c panel) {
+    t.assert(held == Shape.empty)
+    t.assert(held.empty)
+    t.assert(area(held) == 0.0)
+}
+
+func testConstruct(t Test, c panel) {
+    var s Shape = {circle=2.0}
+    t.assert(area(s) == 12.0)
+    t.assert(area(Shape{rect={w=2.0, h=3.0}}) == 6.0)
+    t.assert(!s.empty)
+}
+
+func testSelector(t Test, c panel) {
+    t.assert(half(4).ok == 2)
+    t.assert(half(3).ok == null)
+    t.assert(half(3).failed != null)
+    t.assert(orZero(half(10)) == 5)
+    t.assert(orZero(half(1)) == 0)
+}
+
+func testMatch(t Test, c panel) {
+    t.assert(label(half(6)) == "ok 3")
+    t.assert(label(half(5)) == "failed: odd")
+    t.assert(describe({circle=1.0}) == "round")
+    t.assert(describe(Shape.empty) == "not round")
+    t.assert(kind({rect={w=2.0, h=3.0}}) == "area 6")
+    t.assert(kind(Shape.empty) == "area 0")
+}
+
+func testEquality(t Test, c panel) {
+    t.assert(half(4) == Result[int]{ok=2})
+    t.assert(half(4) != Result[int]{ok=3})
+    t.assert(half(3) != Result[int]{ok=3})
+    var a Shape = {circle=1.0}
+    var b Shape = {circle=1.0}
+    t.assert(a == b)
+    t.assert(a != Shape.empty)
+}
+
+func testComponent(t Test, c panel) {
+    t.assert(c.shownArea.value == "0")
+    t.assert(c.outcome.value == "ok 2")
+    t.assert(c.radius.value == "none")
+    t.assert(c.round == null)
+    c.grow.click()
+    t.assert(c.shownArea.value == "3")
+    t.assert(c.radius.value == "1")
+    t.assert(c.round != null)
+    c.grow.click()
+    t.assert(c.radius.value == "2")
+    c.odd.click()
+    t.assert(c.outcome.value == "failed: odd")
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:990e035b90a3a196eb13b8112210bb35
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    },
+    {
+      "Desc": "Construct",
+      "Passed": true
+    },
+    {
+      "Desc": "Equality",
+      "Passed": true
+    },
+    {
+      "Desc": "Match",
+      "Passed": true
+    },
+    {
+      "Desc": "Selector",
+      "Passed": true
+    },
+    {
+      "Desc": "Zero",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:867a1be181e6685149d4410e99f274e8
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    },
+    {
+      "Desc": "Construct",
+      "Passed": true
+    },
+    {
+      "Desc": "Equality",
+      "Passed": true
+    },
+    {
+      "Desc": "Match",
+      "Passed": true
+    },
+    {
+      "Desc": "Selector",
+      "Passed": true
+    },
+    {
+      "Desc": "Zero",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panel/1 --
+sha256:cbc62c0472be6a4f0af8aa985c31b503
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    },
+    {
+      "Desc": "Construct",
+      "Passed": true
+    },
+    {
+      "Desc": "Equality",
+      "Passed": true
+    },
+    {
+      "Desc": "Match",
+      "Passed": true
+    },
+    {
+      "Desc": "Selector",
+      "Passed": true
+    },
+    {
+      "Desc": "Zero",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panel/1 --
+sha256:0cdde31e74dc3cc459adfc6b9b66d5c1
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    },
+    {
+      "Desc": "Construct",
+      "Passed": true
+    },
+    {
+      "Desc": "Equality",
+      "Passed": true
+    },
+    {
+      "Desc": "Match",
+      "Passed": true
+    },
+    {
+      "Desc": "Selector",
+      "Passed": true
+    },
+    {
+      "Desc": "Zero",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panel/1 --
+sha256:cdf1680a6d99e00aee1313e11cc94ce6
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    },
+    {
+      "Desc": "Construct",
+      "Passed": true
+    },
+    {
+      "Desc": "Equality",
+      "Passed": true
+    },
+    {
+      "Desc": "Match",
+      "Passed": true
+    },
+    {
+      "Desc": "Selector",
+      "Passed": true
+    },
+    {
+      "Desc": "Zero",
+      "Passed": true
+    }
+  ]
+}

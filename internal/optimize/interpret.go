@@ -213,6 +213,13 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			return
 		}
 		switch x := e.(type) {
+		case *ir.Ident:
+			// A host value -- Compose's `Alignment.Top` -- is the target's,
+			// and the interpreter reads it as nil, which folded a const func
+			// returning one to null.
+			if v, ok := x.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
+				hasNative = true
+			}
 		case *ir.Call:
 			// Whatever declared it: an unresolved scheme import (no Func), a
 			// foreign path, or a native mark. The path test alone missed the
@@ -246,6 +253,11 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			walkExpr(x.Cond)
 			walkExpr(x.Then)
 			walkExpr(x.Else)
+		case *ir.MatchExpr:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				walkExpr(arm.Value)
+			}
 		case *ir.Conversion:
 			walkExpr(x.Operand)
 		case *ir.Select:
@@ -295,6 +307,13 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			}
 			for _, s := range x.Else {
 				walkStmt(s)
+			}
+		case *ir.Match:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				for _, s := range arm.Body {
+					walkStmt(s)
+				}
 			}
 		case *ir.For:
 			walkExpr(x.Iter)
@@ -504,6 +523,12 @@ func calleeCallsNative(f *ir.Func, seen map[*ir.Func]bool) bool {
 	seen[f] = true
 	found := false
 	_ = ir.Walk(f.Block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
+				found = true
+				return ir.SkipAll
+			}
+		}
 		c, ok := n.(*ir.Call)
 		if !ok || c.Func == nil {
 			return nil

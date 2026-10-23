@@ -77,7 +77,7 @@ component App {
         (var_spec
           (identifier_list
             (identifier))
-          (false)))
+          (identifier)))
       (visual_node
         component: (identifier)
         (event_arg
@@ -332,6 +332,45 @@ func describe(n int) string {
               (string_literal))))))))
 
 ================
+Match naming its subject
+================
+
+func area(s Shape) float {
+    match var v = s {
+        circle { return v * v }
+        else { return 0.0 }
+    }
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (match_expression
+        (identifier)
+        (identifier)
+        (match_arm
+          (identifier)
+          (statement_block
+            (return_statement
+              (binary_expression
+                (identifier)
+                (identifier)))))
+        (match_arm
+          (statement_block
+            (return_statement
+              (float_literal))))))))
+
+================
 Match expression
 ================
 
@@ -371,3 +410,50 @@ var size = match {
           (string_literal))
         (match_arm
           (string_literal))))))
+
+================
+else if
+================
+
+if a {
+} else if b {
+} else {
+}
+
+---
+
+(source_file
+  (if_node
+    (identifier)
+    (statement_block)
+    (if_node
+      (identifier)
+      (statement_block)
+      (statement_block))))
+
+================
+Increment and write-through
+================
+
+func f() {
+    n++
+    m--
+    *p = 9
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier))
+    (statement_block
+      (increment_statement
+        (identifier))
+      (increment_statement
+        (identifier))
+      (assignment_statement
+        (unary_expression
+          (identifier))
+        (assignment_operator)
+        (integer_literal)))))

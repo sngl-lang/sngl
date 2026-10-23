@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -643,9 +644,16 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
 			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.shown(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))}, ir.TypVoid)}}
 	}
+	unqualified := parent
 	parent = t.qualifyParentExpr(parent)
 	child = t.shown(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
 	if sp != nil && sp.isSingleChild() {
+		// A select's operand is written as it stands, so a parent the
+		// program named -- `ui.scroll #list` -- came out a bare `list` no
+		// scope declares. It is named as a handler names its node.
+		if parent == unqualified {
+			parent = t.qualifyHandlerNode(parent, codegen.IdentBareName(parent))
+		}
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: fyneObject()},
 			Op:     ast.AssignSet,
@@ -873,7 +881,9 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if prop == specPropName {
 		return codegen.KeepLocalsRead(value)
 	}
-	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
+	// The constructor answers the write it was built from, and a copy of
+	// that write a pass made: the expression, not the pointer, is the value.
+	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) {
 		return nil
 	}
 	// A window that names no title is built with none.
@@ -983,8 +993,11 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 	}}
 }
 
+// OnIter reads a slot's list, a field the scope declares, through the
+// receiver. Any other name a pass made is a local of the code it is in: the
+// accumulator a `map` or `filter` builds, which a second one ranges over.
 func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
-	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
+	if id, ok := iter.(*ir.Ident); ok && id.Synthesized && (id.IsElementRef || ir.IsSlotVarName(id.Name)) {
 		return t.nodeFieldRef(id)
 	}
 	return iter

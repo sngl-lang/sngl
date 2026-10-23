@@ -148,6 +148,9 @@ const emitted = [
     structSpread,
     viewStatements,
     asyncSpawn,
+    matches,
+    matchValues,
+    stringBuilders,
 )]
 #[gen.name("go")]
 #[gen.native("go")]

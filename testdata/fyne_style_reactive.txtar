@@ -148,9 +148,13 @@ type Model struct {
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*RowInstance
+	__rendering0   bool
+	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*__child0Instance
+	__rendering1   bool
+	__renderAgain1 bool
 
 	__n2      *fynelayout.Toplevel
 	__n7      *widget.Button
@@ -173,9 +177,13 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*RowInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*__child0Instance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
@@ -201,172 +209,164 @@ func Side(all Measurement, axis Measurement, own Measurement) float32 {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
 	var __lt3 int
-	if a == "center" {
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
 		__lt3 = 2
-	} else {
-		var __lt2 int
-		if a == "end" {
-			__lt2 = 3
-		} else {
-			__lt2 = 0
-		}
-		__lt3 = __lt2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
 	}
 	return __lt3
 }
 
-func JustifyOf(j string) int {
-	var __lt8 int
-	if j == "center" {
-		__lt8 = 1
-	} else {
-		var __lt7 int
-		if j == "end" {
-			__lt7 = 2
-		} else {
-			var __lt6 int
-			if j == "spaceBetween" {
-				__lt6 = 3
-			} else {
-				var __lt5 int
-				if j == "spaceAround" {
-					__lt5 = 4
-				} else {
-					var __lt4 int
-					if j == "spaceEvenly" {
-						__lt4 = 5
-					} else {
-						__lt4 = 0
-					}
-					__lt5 = __lt4
-				}
-				__lt6 = __lt5
-			}
-			__lt7 = __lt6
-		}
-		__lt8 = __lt7
-	}
-	return __lt8
-}
-
 func Paint(c__r0 snglcolor.Color) snglcolor.Color {
-	var __lt9 snglcolor.Color
+	var __lt4 snglcolor.Color
 	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 	} else {
-		__lt9 = c__r0
+		__lt4 = c__r0
 	}
-	return __lt9
+	return __lt4
 }
 
 func TextAlignOf(a string) int {
-	var __lt12 int
-	if a == "center" {
-		__lt12 = 2
-	} else {
-		var __lt11 int
-		if a == "right" {
-			__lt11 = 3
-		} else {
-			var __lt10 int
-			if a == "justify" {
-				__lt10 = 1
-			} else {
-				__lt10 = 0
-			}
-			__lt11 = __lt10
-		}
-		__lt12 = __lt11
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
 	}
-	return __lt12
+	return __lt5
 }
 
 func WrapOf(w string) int {
-	var __lt14 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt14 = 1
-	} else {
-		var __lt13 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt13 = 2
-		} else {
-			__lt13 = 0
-		}
-		__lt14 = __lt13
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
 	}
-	return __lt14
+	return __lt6
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*RowInstance{}
-	var __inst0_i int = 0
-	for _, it := range []string{"a", "b"} {
-		var __n5 *RowInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n5 = m.__inst0_live[__inst0_i]
-			__n5.SetLabel(it)
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n5__new := newRowInstance(m, it)
-			__n5 = __n5__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*RowInstance{}
+			var __inst0_i int = 0
+			for _, it := range []string{"a", "b"} {
+				var __n5 *RowInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n5 = m.__inst0_live[__inst0_i]
+					__n5.SetLabel(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n5__new := newRowInstance(m, it)
+					__n5 = __n5__new
+				}
+				__inst0_next = append(__inst0_next, __n5)
+				__inst0_i = (__inst0_i + 1)
+				__n5__el := __n5.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+				m.__slot0 = append(m.__slot0, __n5__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n5)
-		__inst0_i = (__inst0_i + 1)
-		__n5__el := __n5.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
-		m.__slot0 = append(m.__slot0, __n5__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range m.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-	__inst1_next := []*__child0Instance{}
-	var __inst1_i int = 0
-	for _, t := range m.tags {
-		var __n6 *__child0Instance
-		if len(m.__inst1_live) > __inst1_i {
-			__n6 = m.__inst1_live[__inst1_i]
-			__n6.Set__p0(t)
-			__n6.Set__p1(m.active)
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n6__new := new__child0Instance(m, t, m.active)
-			__n6 = __n6__new
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			__inst1_next := []*__child0Instance{}
+			var __inst1_i int = 0
+			for _, t := range m.tags {
+				var __n6 *__child0Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n6 = m.__inst1_live[__inst1_i]
+					__n6.Set__p0(t)
+					__n6.Set__p1(m.active)
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n6__new := new__child0Instance(m, t, m.active)
+					__n6 = __n6__new
+				}
+				__inst1_next = append(__inst1_next, __n6)
+				__inst1_i = (__inst1_i + 1)
+				__n6__el := __n6.Root
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n6__el)
+				m.__slot1 = append(m.__slot1, __n6__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n6)
-		__inst1_i = (__inst1_i + 1)
-		__n6__el := __n6.Root
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n6__el)
-		m.__slot1 = append(m.__slot1, __n6__el)
+		m.__rendering1 = false
 	}
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) __n2_closed_handler() {
@@ -379,13 +379,13 @@ func (m *Model) __n2_visible_handler(__visible bool) {
 
 func (m *Model) __n7_click_handler() {
 	m.active = 1
-	var __lt21 snglcolor.Color
+	var __lt13 snglcolor.Color
 	if m.active == 0 {
-		__lt21 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
+		__lt13 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
 	} else {
-		__lt21 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
+		__lt13 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
 	}
-	m.__n3__box.SetLook(LookOf(Style{Color: __lt21, FontSize: Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}, FontStyle: "italic"}))
+	m.__n3__box.SetLook(LookOf(Style{Color: __lt13, FontSize: Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}, FontStyle: "italic"}))
 	m.__n4__box.SetLook(LookOf(Style{Background: snglcolor.Color{R: 16, G: 16, B: 16, A: 255}, BorderRadius: Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}}))
 	for __inst1_live_ui, _ := range m.__inst1_live {
 		m.__inst1_live[__inst1_live_ui].Set__p1(m.active)
@@ -439,16 +439,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n8.SetText("more")
 	m.__n8.OnTapped = m.__n8_click_handler
 	m.__n2.Add(m.__n8)
-	var __lt22 snglcolor.Color
+	var __lt14 snglcolor.Color
 	if m.active == 0 {
-		__lt22 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
+		__lt14 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
 	} else {
-		__lt22 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
+		__lt14 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
 	}
 	m.__n3 = widget.NewLabel("")
 	m.__n3__box = fynelayout.NewBox(m.__n3)
 	m.__n3.SetText("hint")
-	m.__n3__box.SetLook(LookOf(Style{Color: __lt22, FontSize: Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}, FontStyle: "italic"}))
+	m.__n3__box.SetLook(LookOf(Style{Color: __lt14, FontSize: Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}, FontStyle: "italic"}))
 	m.__n2.Add(m.__n3__box)
 	m.__n4 = fynelayout.NewVBox()
 	m.__n4__box = fynelayout.NewBox(m.__n4)
@@ -488,37 +488,37 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt15 string
+	var __lt7 string
 	if c.on {
-		__lt15 = "bold"
+		__lt7 = "bold"
 	} else {
-		__lt15 = "normal"
+		__lt7 = "normal"
 	}
-	var __lt16 snglcolor.Color
+	var __lt8 snglcolor.Color
 	if c.on {
-		__lt16 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt8 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt16 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
+		__lt8 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
 	}
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop_label)
-	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt15, Background: __lt16}))
+	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt7, Background: __lt8}))
 	c.__n0.OnTapped = func() {
 		c.on = !c.on
-		var __lt17 string
+		var __lt9 string
 		if c.on {
-			__lt17 = "bold"
+			__lt9 = "bold"
 		} else {
-			__lt17 = "normal"
+			__lt9 = "normal"
 		}
-		var __lt18 snglcolor.Color
+		var __lt10 snglcolor.Color
 		if c.on {
-			__lt18 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+			__lt10 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 		} else {
-			__lt18 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
+			__lt10 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
 		}
-		c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt17, Background: __lt18}))
+		c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt9, Background: __lt10}))
 	}
 	c.Root = c.__n0__box
 	return c
@@ -554,16 +554,16 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt20 snglcolor.Color
+	var __lt12 snglcolor.Color
 	if c.__prop___p1 == 0 {
-		__lt20 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt12 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt20 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+		__lt12 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
 	}
 	c.__n1 = widget.NewLabel("")
 	c.__n1__box = fynelayout.NewBox(c.__n1)
 	c.__n1.SetText(c.__prop___p0)
-	c.__n1__box.SetLook(LookOf(Style{Color: __lt20}))
+	c.__n1__box.SetLook(LookOf(Style{Color: __lt12}))
 	c.Root = c.__n1__box
 	return c
 }
@@ -575,13 +575,13 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt19 snglcolor.Color
+	var __lt11 snglcolor.Color
 	if c.__prop___p1 == 0 {
-		__lt19 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt11 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt19 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+		__lt11 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
 	}
-	c.__n1__box.SetLook(LookOf(Style{Color: __lt19}))
+	c.__n1__box.SetLook(LookOf(Style{Color: __lt11}))
 }
 
 func (c *__child0Instance) Destroy() {}
@@ -594,4 +594,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:b224a5c917615caab75537d6efd83cd7
+pass sha256:608049e625cbe176aaa6d69f04c80e62

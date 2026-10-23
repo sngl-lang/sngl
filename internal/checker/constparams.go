@@ -139,6 +139,12 @@ func findNonConst(e ir.Expr) string {
 		return findNonConst(x.Operand)
 	case *ir.Ternary:
 		return firstNonConst(x.Cond, x.Then, x.Else)
+	case *ir.MatchExpr:
+		parts := []ir.Expr{x.Subject}
+		for _, arm := range x.Arms {
+			parts = append(append(parts, arm.Patterns...), arm.Value)
+		}
+		return firstNonConst(parts...)
 	case *ir.Call:
 		for _, a := range x.Args {
 			if r := findNonConst(a.Value); r != "" {

@@ -117,7 +117,7 @@ window {
     main
 }
 -- testrun/fyne/go/list.sngl/main/1 --
-sha256:5fd0919a00d0db53feeb56f56cbc3e47
+sha256:25f1577cc0219e78a7063c40bb34a54c
 {
   "results": [
     {
@@ -127,7 +127,7 @@ sha256:5fd0919a00d0db53feeb56f56cbc3e47
   ]
 }
 -- testrun/fyne/go/para.sngl/main/1 --
-sha256:be47eac147bce1da3a40013421149833
+sha256:dffcde158a171a7954283731f468c6eb
 {
   "results": [
     {
@@ -137,7 +137,7 @@ sha256:be47eac147bce1da3a40013421149833
   ]
 }
 -- testrun/fyne/go/tasks.sngl/main/1 --
-sha256:1331ab7a70c99c6200a50ddaa029d489
+sha256:820df01901e3144ba309689a54fdb22f
 {
   "results": [
     {
@@ -147,7 +147,7 @@ sha256:1331ab7a70c99c6200a50ddaa029d489
   ]
 }
 -- testrun/gtk4/go/list.sngl/main/1 --
-sha256:cc463ede88f88524b53c8d8e188c2ce5
+sha256:acdb87d2df116d17e37cac192bc039a8
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:cc463ede88f88524b53c8d8e188c2ce5
   ]
 }
 -- testrun/gtk4/go/para.sngl/main/1 --
-sha256:5b7ca97b02958c1ba7c8bf3f39e2bed4
+sha256:cade2ed970f8a84cd7e07f553218fc09
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:5b7ca97b02958c1ba7c8bf3f39e2bed4
   ]
 }
 -- testrun/gtk4/go/tasks.sngl/main/1 --
-sha256:8c4ec2151ef7d6760c9a3fe74958efb3
+sha256:b1f8955d27bfc6947619dbf453e9388c
 {
   "results": [
     {

@@ -224,6 +224,7 @@ func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	savedScope, savedTab := c.scope, c.symtab
 	c.scope, c.symtab = pkg.Symbols.Root, pkg.Symbols
 	defer func() { c.scope, c.symtab = savedScope, savedTab }()
+	defer pushTypeParams(c, fn.AST.RecvTypeParams, fn.AST.TypeParams)()
 	for i, p := range fn.AST.Params.Params {
 		fn.Params[i].Type = c.resolveType(p.Type)
 	}
@@ -712,6 +713,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		BuildOnly:       fn.BuildOnly,
 		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
+		Permissions:     fn.Permissions,
 		Receiver:        fn.Receiver,
 	}
 	ir.MustWriteDecl(fn, "registering "+def.Name)
@@ -1436,7 +1438,10 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 		case nil:
 			return
 		case *ir.Call:
-			if x.Func != nil {
+			// A call writing through its receiver is judged by the receiver,
+			// where the caller's direct effects are (analyzeEffects): its own
+			// purity says only that it writes one.
+			if x.Func != nil && !x.Func.MutatesReceiver {
 				// A callee nothing says anything about -- a native not
 				// declared const, whose body is the host's -- may depend on
 				// anything, so a call to it is not a pure one. It cannot write
@@ -1465,6 +1470,11 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			walkExpr(x.Cond)
 			walkExpr(x.Then)
 			walkExpr(x.Else)
+		case *ir.MatchExpr:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				walkExpr(arm.Value)
+			}
 		case *ir.Conversion:
 			walkExpr(x.Operand)
 		case *ir.Select:
@@ -1513,6 +1523,13 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			}
 			for _, c := range x.Else {
 				walkStmt(c)
+			}
+		case *ir.Match:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				for _, c := range arm.Body {
+					walkStmt(c)
+				}
 			}
 		case *ir.For:
 			walkExpr(x.Iter)

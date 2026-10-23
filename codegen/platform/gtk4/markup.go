@@ -120,6 +120,10 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 				if len(n.Else) > 0 {
 					guarded(&ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: n.Cond}, n.Else)
 				}
+			case *ir.Match:
+				for i, arm := range n.Arms {
+					guarded(n.Taken(i), arm.Body)
+				}
 			case *ir.For:
 				loops++
 				walk(n.Body)
@@ -264,8 +268,8 @@ func (t *gtk4Translator) emitFlowMarkup(flow string) []ir.Stmt {
 	if t.wrapped {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("LabelSetMarkup", ir.TypVoid, ref, expr)}}
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_label_set_markup", ir.TypVoid,
-		cgoCast("GtkLabel", ref), cString(expr))}}
+	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_label_set_markup", ir.TypVoid,
+		cgoCast("GtkLabel", ref), cString(expr))}})
 }
 
 // markupExpr is the Pango markup one flow renders, as a Go string expression.

@@ -38,7 +38,7 @@ Both are fixed in the lowering, and the IR now carries `__canvasRedraw` in the
 mount and in the tick on all three targets -- `sngl dump --stage lowered
 --after CanvasReactivity` shows it for fyne, gtk4 and html alike. **Only fyne
 emits it.** Both of the others drop a redraw that sits inside a lambda body,
-which is the same blind spot `CLAUDE.md` records for the lowering passes, one
+which is the same blind spot `design/language.md` records for the lowering passes, one
 layer further out. html drops the one at the top of an effect's body too, for a
 reason of its own: `translateBlockWithJC` lifts a redraw out of a handler and
 resolves it against `canvasSetups`, and `emitJSFunc` -- which is what writes an
@@ -128,8 +128,10 @@ type Model struct {
 	__effect1_desired   []bool
 	__effect2_key       time.Duration
 	__effect2_dirty     bool
+	__effect2_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	__n0    *fynelayout.Toplevel
@@ -153,10 +155,24 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effect2_key = (time.Duration(0) * time.Millisecond)
 	m.__effect2_dirty = false
+	m.__effect2_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	return m
+}
+
+// __snglTestPosts is set by a test build, which runs what is posted when it waits.
+var __snglTestPosts chan func()
+
+// __snglDo hands f to the goroutine that owns the widgets.
+func __snglDo(f func()) {
+	if __snglTestPosts != nil {
+		__snglTestPosts <- f
+		return
+	}
+	fyne.Do(f)
 }
 
 func ApplyStyle(ctx *snglcanvas.Context, style Style) {
@@ -205,7 +221,7 @@ func (m *Model) __effect1_mount() {
 		for {
 			select {
 			case <-ticker.C:
-				fyne.Do(func() {
+				__snglDo(func() {
 					if m.gen__inst0 != mine {
 						return
 					}
@@ -271,33 +287,44 @@ func (m *Model) __effect2_update() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			if m.__effect2_dirty {
-				m.__effect2_dirty = false
-				m.__effect2_key = (time.Duration(100) * time.Millisecond)
-				m.__effect2_update()
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				__effect2_seen := false
+				if m.__effect2_dirty {
+					m.__effect2_dirty = false
+					if !m.__effect2_absent {
+						m.__effect2_key = (time.Duration(100) * time.Millisecond)
+						m.__effect2_update()
+					}
+				}
+				__effect2_seen = true
+				m.__effect2_absent = !__effect2_seen
+				if m.__effect2_absent {
+					m.__effect2_dirty = false
+				}
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
 			}
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
 	m.__effect1_teardown()
 }
 
@@ -432,6 +459,7 @@ body { font-family: system-ui, sans-serif; }
     clearInterval(state.handle__inst0);
   }
   function __snglTeardown() {
+    __effects0_torn = true;
     __effect1_teardown();
   }
   var __effect0_live = [];
@@ -441,6 +469,7 @@ body { font-family: system-ui, sans-serif; }
   var __effect1_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   function _canvasDraw0(ctx) {
     ctx.save();
@@ -504,23 +533,25 @@ body { font-family: system-ui, sans-serif; }
     __effect1_live = [];
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect1_down();
-        __effect0_down();
-        __effect0_up();
-        __effect1_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
@@ -573,6 +604,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:5a6ff69472149734d12c91db58b7fcfe
+pass sha256:ef14fc3ab17083f64136b3f1d0e6d174
 -- run/none/html --
-pass sha256:605647f3bf0f2589139868f92622d51d
+pass sha256:92e53af97a7246e0fa0d8ce4443aacdb

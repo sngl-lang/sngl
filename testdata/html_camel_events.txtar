@@ -46,8 +46,10 @@ body { font-family: system-ui, sans-serif; }
 <div id="$0" style="overflow:auto">
   <span id="__n1" data-sngl-id="__n1">
   </span>
+  <sngl-reach-end>
+  </sngl-reach-end>
 </div>
-<button id="$1">
+<button id="$2">
   <span>hit</span>
 </button>
 
@@ -58,18 +60,58 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
+  if (!customElements.get("sngl-reach-end")) customElements.define("sngl-reach-end", class extends HTMLElement {
+    connectedCallback() {
+      const box = this.parentElement;
+      if (!box) return;
+      this.style.display = "block";
+      const fire = () => this.dispatchEvent(new Event("reachEnd"));
+      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      this._io = new IntersectionObserver((es) => {
+        if (es[es.length - 1].isIntersecting) fire();
+      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      this._io.observe(this);
+      let last = this.offsetTop, asked = false;
+      const grew = () => {
+        const h = this.offsetTop;
+        if (h !== last && !asked) {
+          asked = true;
+          requestAnimationFrame(() => {
+            asked = false;
+            if (this.isConnected && near()) fire();
+          });
+        }
+        last = h;
+      };
+      this._ro = new ResizeObserver(grew);
+      const watch = (c) => {
+        if (c !== this && c.nodeType === 1) this._ro.observe(c);
+      };
+      for (const c of box.children) watch(c);
+      this._mo = new MutationObserver((ms) => {
+        for (const m of ms) if (m.target === box) m.addedNodes.forEach(watch);
+        grew();
+      });
+      this._mo.observe(box, { childList: true, subtree: true });
+    }
+    disconnectedCallback() {
+      if (this._io) this._io.disconnect();
+      if (this._ro) this._ro.disconnect();
+      if (this._mo) this._mo.disconnect();
+    }
+  });
   var $0 = document.getElementById("$0");
-  var $1 = document.getElementById("$1");
+  var $2 = document.getElementById("$2");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("scrollend", function() {
     state.n__inst0 = state.n__inst0 + 1;
     __n1.textContent = String(state.n__inst0);
   });
-  $1.addEventListener("click", function() {
+  $2.addEventListener("click", function() {
     state.n__inst0 = state.n__inst0 + 1;
     __n1.textContent = String(state.n__inst0);
   });
-  $1.addEventListener("contextmenu", function() {
+  $2.addEventListener("contextmenu", function() {
     state.n__inst0 = 0;
     __n1.textContent = String(state.n__inst0);
   });
@@ -81,4 +123,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4c70745b1f53f4d4a67347929534d965
+pass sha256:f834afa0e309924d2bc57319478adfb7

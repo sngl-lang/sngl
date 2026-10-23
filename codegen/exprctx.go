@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"maps"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ir"
@@ -43,7 +44,11 @@ type ExprCtx struct {
 	// application: a target that holds it in one Model reads the package's
 	// state and consts through it, as it did through the one window that used
 	// to be the scope.
-	App      bool
+	App bool
+	// FreeBody says the scope is the body of a function with no receiver and
+	// no Model handed to it, which reaches a const by its file-scope name
+	// whatever scope the function was written from.
+	FreeBody bool
 	locals   *localScope
 	EventVar string // what the handler's event parameter maps to (e.g., "e.target")
 	// EventParam is the handler parameter EventVar stands for. `event` was an
@@ -83,7 +88,9 @@ type ExprCtx struct {
 	// component state; there is nothing for a receiver to carry. Emitting one
 	// as a method anyway is what left a type method — which is free, having no
 	// receiver to be a method on — calling `m.format(…)` with no `m` in sight.
-	FreeFuncs map[string]bool
+	//
+	// Each maps to the name it is emitted under, which a call spells.
+	FreeFuncs map[string]string
 	// ModelParamFuncs names the methods on a user type that are lifted to a
 	// free function and touch package state: those take the Model as a
 	// trailing parameter. golang.ModelParamFuncs builds it and says why.
@@ -214,9 +221,12 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 		}
 	}
 
-	// Package-level funcs.
+	// Package-level funcs. A method of a struct or an enum is reached through
+	// its receiver and never by bare name, so a local named like one -- a
+	// match binding called `checked` beside http.Response's method -- stays
+	// the local.
 	for _, f := range ctx.Pkg.Funcs {
-		if f.Name == name {
+		if f.Name == name && !typeMethod(f) {
 			if IsComputed(f) {
 				return f, NameComputed
 			}
@@ -253,6 +263,15 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 	return nil, NameUnknown
 }
 
+// typeMethod reports whether f is a method declared on a struct or an enum.
+func typeMethod(f *ir.Func) bool {
+	switch f.RecvDecl().(type) {
+	case *ir.StructDef, *ir.EnumDef:
+		return true
+	}
+	return false
+}
+
 // RenamedName returns the renamed name for a local var, or the original if no rename.
 func (ctx *ExprCtx) RenamedName(name string) string {
 	if r, ok := ctx.Renamed(name); ok {
@@ -274,6 +293,39 @@ func (ctx *ExprCtx) IsLocal(name string) bool {
 		}
 	}
 	return false
+}
+
+// ShadowedStateVar reports a read of a state var -- the component's or the
+// package's -- whose name a local of the emitted scope also binds: a render
+// slot's `parent` parameter beside a program's `var parent`, or a function's
+// local named like a test build's root prop. Resolve, asking by name, answers
+// such a read as the local; the symbol says it is the state.
+func (ctx *ExprCtx) ShadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
+	v, ok := sym.(*ir.Var)
+	if !ok || v.IsConst || v.NodeHandle || !ctx.IsLocal(v.Name) {
+		return nil, false
+	}
+	if ctx.Component != nil && slices.Contains(ctx.Component.Vars, v) {
+		return v, true
+	}
+	return v, ctx.Pkg != nil && slices.Contains(ctx.Pkg.Vars, v)
+}
+
+// BodyLocals is the name of every local a function body declares, at any
+// depth, for its emitter to bind before it emits the body: one left unbound
+// read as the state var of its name where there is one -- `state.label` and
+// `m.label` in a free function of a test build rooted at a component with a
+// `label` prop (cmd/sngl/testdata/func_local_named_like_state_runs.txt). A
+// read of the state itself is told apart by its symbol (ShadowedStateVar).
+func BodyLocals(block []ir.Stmt) []string {
+	var out []string
+	_ = ir.WalkStmts(block, func(s ir.Stmt) error {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			out = append(out, lv.Name)
+		}
+		return nil
+	})
+	return out
 }
 
 // Renamed is what a local renders as where a scope renamed it. A local
@@ -305,6 +357,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Component:     ctx.Component,
 		Surface:       ctx.Surface,
 		App:           ctx.App,
+		FreeBody:      ctx.FreeBody,
 		locals:        ctx.locals,
 		EventVar:      ctx.EventVar,
 		EventParam:    ctx.EventParam,
@@ -539,4 +592,16 @@ func StateFieldNames(pkg *ir.Package) map[string]bool {
 		add(c.Vars)
 	}
 	return names
+}
+
+// HasBody reports whether fn is a function the output defines: one with
+// statements, or an owned type's release written `{}`. A native has no block
+// and nothing to emit, and an empty function the program wrote was inlined
+// away with its calls; a release is called by lowering after the inliner
+// ran, so it has to exist however little it does.
+func HasBody(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	return len(fn.Block) > 0 || ir.IsRelease(fn) && fn.Foreign.Name == "" && fn.Intrinsic == ""
 }

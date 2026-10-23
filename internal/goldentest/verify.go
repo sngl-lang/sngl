@@ -78,7 +78,10 @@ func (tg target) recordName() string { return recordPrefix + tg.lang + "/" + tg.
 func targetsOf(got map[string][]byte) []target {
 	byDir := map[string]map[string][]byte{}
 	for _, name := range sortedKeys(got) {
-		rest := strings.TrimPrefix(name, goldenPrefix)
+		rest, ok := strings.CutPrefix(name, goldenPrefix)
+		if !ok {
+			continue
+		}
 		lang, rest, ok := strings.Cut(rest, "/")
 		if !ok {
 			continue

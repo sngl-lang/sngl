@@ -146,13 +146,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -202,85 +202,79 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
 }
 
 func (m Model) X() float64 {
@@ -383,9 +377,9 @@ func newTestComponent() Model { return New() }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -395,7 +389,7 @@ type Model struct {
 	x float64
 	y float64
 
-	__n0 *container.Scroll
+	__n0 *fynelayout.ReachScroll
 	__n1 *widget.Label
 }
 
@@ -405,6 +399,9 @@ func New() *Model {
 	m.x = 0.0
 	m.y = 0.0
 	return m
+}
+
+func (m *Model) __n0_reachEnd_handler() {
 }
 
 func (m *Model) X() float64 {
@@ -425,7 +422,8 @@ func (m *Model) SetY(v float64) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVScroll(nil)
+	m.__n0 = fynelayout.NewReachScroll()
+	m.__n0.OnReachEnd = m.__n0_reachEnd_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("content")
 	m.__n0.Content = m.__n1
@@ -486,9 +484,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -504,6 +500,9 @@ func New() *Model {
 	m.x = 0.0
 	m.y = 0.0
 	return m
+}
+
+func (m *Model) __n0_reachEnd_handler() {
 }
 
 func (m *Model) X() float64 {
@@ -527,7 +526,8 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n0 := gtk4rt.ScrolledWindowNew()
+	__n0 := gtk4rt.ScrollNew()
+	gtk4rt.ScrollOnReachEnd(__n0, m.__n0_reachEnd_handler)
 	__n1 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(__n1, "content")
 	gtk4rt.ScrolledWindowSetChild(__n0, __n1)
@@ -555,9 +555,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
@@ -579,9 +576,48 @@ class MainScreenState {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    Column(modifier = Modifier.then(Modifier.verticalScroll(rememberScrollState())).safeDrawingPadding()) {
+    SnglScroll(modifier = Modifier.safeDrawingPadding(), onReachEnd = {}) {
         Text(text = "content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+
+// SnglScroll is sngl:ui's scroll: a column scrolled vertically, which calls
+// onReachEnd when the end of its content comes within half a viewport of
+// being shown -- once as it arrives, and again whenever the content changes
+// size while it is there, so a handler that adds a page is asked for another
+// while the end still shows. The content's height is measured past the
+// scroll, where it is the whole of it rather than the viewport.
+@Composable
+fun SnglScroll(
+    modifier: Modifier,
+    onReachEnd: () -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val state = rememberScrollState()
+    var height by remember { mutableIntStateOf(0) }
+    val reach by rememberUpdatedState(onReachEnd)
+    LaunchedEffect(state) {
+        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to height }
+            .collect { (atEnd, _) -> if (atEnd) reach() }
+    }
+    Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from component_scroll.sngl; DO NOT EDIT.
@@ -638,6 +674,8 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="overflow:auto">
   <span>content</span>
+  <sngl-reach-end>
+  </sngl-reach-end>
 </div>
 
 <script>
@@ -661,23 +699,63 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  if (!customElements.get("sngl-reach-end")) customElements.define("sngl-reach-end", class extends HTMLElement {
+    connectedCallback() {
+      const box = this.parentElement;
+      if (!box) return;
+      this.style.display = "block";
+      const fire = () => this.dispatchEvent(new Event("reachEnd"));
+      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      this._io = new IntersectionObserver((es) => {
+        if (es[es.length - 1].isIntersecting) fire();
+      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      this._io.observe(this);
+      let last = this.offsetTop, asked = false;
+      const grew = () => {
+        const h = this.offsetTop;
+        if (h !== last && !asked) {
+          asked = true;
+          requestAnimationFrame(() => {
+            asked = false;
+            if (this.isConnected && near()) fire();
+          });
+        }
+        last = h;
+      };
+      this._ro = new ResizeObserver(grew);
+      const watch = (c) => {
+        if (c !== this && c.nodeType === 1) this._ro.observe(c);
+      };
+      for (const c of box.children) watch(c);
+      this._mo = new MutationObserver((ms) => {
+        for (const m of ms) if (m.target === box) m.addedNodes.forEach(watch);
+        grew();
+      });
+      this._mo.observe(box, { childList: true, subtree: true });
+    }
+    disconnectedCallback() {
+      if (this._io) this._io.disconnect();
+      if (this._ro) this._ro.disconnect();
+      if (this._mo) this._mo.disconnect();
+    }
+  });
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c2a075d2881c08d3bb0d46e0bb7fa7e8
+pass sha256:145bfd180f24c5ddabaf992440e6ff13
 -- run/go/fyne --
-pass sha256:187312da50ab5fda4852a6829244b75d
+pass sha256:11c55c3d741fa8807110baebc0c01fbc
 -- run/go/gtk4 --
-pass sha256:6f25d1c275b151c007bb7899c409947d
+pass sha256:e4a348ce00bb7cfd9d4f7e8641360c02
 -- run/kotlin/android --
-pass sha256:06ad18f050ad54d3a28260366bf3a138
+pass sha256:777e33633aa02168c259cb1ab4a745a7
 -- run/none/html --
-pass sha256:454ecb483228b6c9ef7d7d96298c3160
+pass sha256:5e65749aae03c3cede2de699c91cd2e7
 -- testrun/html/none/component_scroll.sngl/main/1 --
-sha256:bef6cd02eccd0b0c4dd19d41a7f52202
+sha256:acea6264574eb5a8cdca92b958f910d9
 {
   "results": [
     {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/ir"
 )
 
@@ -189,31 +190,14 @@ func emitBuildUIApp(b *strings.Builder, buildBuf *strings.Builder, first string,
 // gtk4rt.RunWindows then creates the toplevels attached to it. `run` is what
 // puts them on screen: a program that wrote `@run` and never called it runs
 // the loop with none shown.
-func emitGTK4AppMain(b *strings.Builder, run string, hasRun bool, teardown *ir.Func) {
+func emitGTK4AppMain(b *strings.Builder, pkg *ir.Package) {
 	b.WriteString("\nfunc main() {\n")
 	b.WriteString("\tgtk4rt.Init()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.buildWidgetTree()\n")
-	switch {
-	case !hasRun:
-		b.WriteString("\tgtk4rt.RunWindows(true)\n")
-	case run == "":
-		// An empty handler is emitted as no function at all, and never calls
-		// run.
-		b.WriteString("\tgtk4rt.RunWindows(false)\n")
-	default:
-		b.WriteString("\tran := false\n")
-		fmt.Fprintf(b, "\t%s(gtk4rt.Args(), func() {\n", run)
-		b.WriteString("\t\tran = true\n")
-		b.WriteString("\t\tgtk4rt.RunWindows(true)\n")
-		b.WriteString("\t})\n")
-		b.WriteString("\tif !ran {\n")
-		b.WriteString("\t\tgtk4rt.RunWindows(false)\n")
-		b.WriteString("\t}\n")
-	}
-	if teardown != nil {
-		fmt.Fprintf(b, "\tm.%s()\n", teardown.Name)
-	}
+	golang.EmitAppStart(b, pkg, "gtk4rt.Args()", func(show bool) string {
+		return fmt.Sprintf("gtk4rt.RunWindows(%t)", show)
+	}, "gtk4rt.RefuseRunAgain")
 	b.WriteString("}\n")
 }
 

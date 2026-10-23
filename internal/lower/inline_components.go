@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -39,7 +40,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	st.reach.instanceState = feats.InstanceState
@@ -58,6 +59,9 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	if err := refuseUnsplicedHandleCalls(pkg); err != nil {
+		return err
+	}
 	for _, c := range pkg.Components {
 		if c != main {
 			contextProps(c)
@@ -382,6 +386,11 @@ type inlineCompState struct {
 	// reaching into it (repointTestReaches).
 	insts []splice
 	reach *testReach
+	// effect is sngl:builtin's `effect`, for restartOnEntry.
+	effect *ir.Component
+	// nativeEffects is Features.Effects: the platform brackets a lifetime
+	// itself, and an Enter bracket runs only in the settle passEffect writes.
+	nativeEffects bool
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -916,13 +925,20 @@ type reactiveCtx struct {
 	// loops are the view loops enclosing the position, outermost first: what a
 	// copy is a copy of, for a target that keys a copy's state by it.
 	loops []*ir.For
+	// drawn is whether the position is inside a canvas, whose shapes are
+	// spliced into its draw routine: a shape built at run time has nowhere to
+	// be built there, so one with state is spliced per copy on every target.
+	drawn bool
 }
 
 // perCopy reports whether an instantiation of c here is built at run time, one
 // per copy: every one in a reactive position, and under any `for` one whose
-// state is its own.
+// state is its own -- its vars, or a lifetime it holds, whose handle and key
+// one splice would share between the copies -- or a library component's it
+// would splice, which nothing builds at run time in its place.
 func (rc reactiveCtx) perCopy(n *ir.NodeInst) bool {
-	return rc.in || rc.repeated && ownsState(n)
+	c := n.Component
+	return rc.in || rc.repeated && c != nil && (ownsState(n) || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts))
 }
 
 // ownsState reports whether n's component keeps state of its own there. A
@@ -967,13 +983,14 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// built per showing, so a component with state there starts again.
 		// Lowered by passNavigation, it already is an `if`.
 		if n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
-			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops}
+			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
 		} else if n.Record != nil {
 			// A target's own primitive standing for a page, which it writes
 			// as a document or a route of its own (html): a rendering root,
 			// so a loop of pages is not a position its body is repeated in.
 			childRC = reactiveCtx{}
 		}
+		childRC.drawn = childRC.drawn || ir.IsShapeContainer(n)
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
 		if err != nil {
 			return nil, false, err
@@ -1006,9 +1023,13 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// position. Not under a `for` -- the body is spliced once and its state
 		// hoisted once, so the copies would share one var.
 		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
+			varStart := len(*st.hoist.vars)
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
+			}
+			if enter := st.restartOnEntry(slices.Clone((*st.hoist.vars)[varStart:]), nil); enter != nil {
+				spliced = append([]ir.Stmt{enter}, spliced...)
 			}
 			return spliced, true, nil
 		}
@@ -1055,6 +1076,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// second mount, so the first schedule can never be stopped. That a
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
+		if rc.drawn && st.captureOnly == nil && n.Component != nil && rc.perCopy(n) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+			return st.expandPerCopy(n, rc)
+		}
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n) || st.cycles[n.Component]) {
 			if err := st.instantiateRuntime(n); err != nil {
 				return nil, false, err
@@ -1088,8 +1112,15 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return spliced, true, nil
 	case *ir.If:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops}
-		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
+		// A record's content, in its container's loop over the records, is
+		// rendered by one iteration of it, so that loop keys none of its
+		// copies -- of a stateful card under a `for` in a tab's panel, the
+		// cells a test's `c.card[0].size` reads by the card's index alone
+		// (cmd/sngl/testdata/tabs_panel_cells_runs.txt).
+		withBody := inner
+		withBody.loops = BlockLoops(n, &n.Body, rc.loops)
+		body, ch1, err := st.inlineStmtsCtx(n.Body, withBody)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1100,8 +1131,25 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		n.Body = body
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
+	case *ir.Match:
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Subject, st.reactive), repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				inner.in = inner.in || dependsOnReactiveVar(p, st.reactive)
+			}
+		}
+		changed := false
+		for _, arm := range n.Arms {
+			body, ch, err := st.inlineStmtsCtx(arm.Body, inner)
+			if err != nil {
+				return nil, false, err
+			}
+			arm.Body = body
+			changed = changed || ch
+		}
+		return []ir.Stmt{n}, changed, nil
 	case *ir.For:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n)}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n), drawn: rc.drawn}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
@@ -1192,6 +1240,14 @@ func walkExprIdents(e ir.Expr, visit func(*ir.Ident)) {
 		walkExprIdents(n.Cond, visit)
 		walkExprIdents(n.Then, visit)
 		walkExprIdents(n.Else, visit)
+	case *ir.MatchExpr:
+		walkExprIdents(n.Subject, visit)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				walkExprIdents(p, visit)
+			}
+			walkExprIdents(arm.Value, visit)
+		}
 	case *ir.Conversion:
 		walkExprIdents(n.Operand, visit)
 	case *ir.Call:
@@ -1295,19 +1351,16 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Apply renames to every hoisted block.
 	for i := varStart; i < len(*hoist.vars); i++ {
 		if (*hoist.vars)[i].Init != nil {
-			(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 			(*hoist.vars)[i].Init = renameInExpr((*hoist.vars)[i].Init, renames, symRenames)
 		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
-		fn.Block = substituteVars(fn.Block, provided)
 		fn.Block = renameIdents(fn.Block, renames, symRenames)
 		fn.Reads = renameVarList(fn.Reads, symRenames)
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
-	body := substituteVars(splicedBody(comp, typeArgs), provided)
-	body = renameIdents(body, renames, symRenames)
+	body := renameIdents(splicedBody(comp, typeArgs), renames, symRenames)
 
 	bindings := map[string]ir.Expr{}
 	for _, p := range comp.Props {
@@ -1340,10 +1393,17 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := varStart; i < len(*hoist.vars); i++ {
 		(*hoist.vars)[i].Init = answerSlotEmptyIn((*hoist.vars)[i].Init, n)
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
+		(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
-		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
+		fn := (*hoist.funcs)[i]
+		fn.Block = substituteParams(fn.Block, bindings)
+		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
+		fn.Block = substituteVars(fn.Block, provided)
 	}
+	// After the props, as passInlinePure does: a provided value is the
+	// caller's expression.
+	body = substituteVars(body, provided)
 	// The caller's handlers land inside the body's own, so a parameter of the
 	// body's sharing a name they read is renamed first (freshenShadowingParams).
 	body = freshenShadowingParams(body, callsiteNames(n), st.names)
@@ -1358,6 +1418,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		(*hoist.funcs)[i].Block = substituteEvents((*hoist.funcs)[i].Block, n.Handlers)
 	}
 	body = substituteSlots(body, n)
+	body = calleeReadsInContent(body, calleeProps(comp, bindings), renames, symRenames)
 	// A library body -- a builtin node this target composes, and the
 	// override it renders -- was written in the library, and a diagnostic
 	// about what it became belongs where the program wrote the node.
@@ -1388,6 +1449,41 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 
 	return body, nil
+}
+
+// calleeReadsInContent is body, the callee's spliced around the call site's
+// slot content, with the content's reads of the callee bound as the body's
+// were. The content is the caller's, but the context lowering handed it the
+// value of a provider the callee wraps the slot in as the callee wrote it
+// (collectSlotEnv): `picked`, a var the splice renamed `picked__inst0`, or
+// `level`, a prop it bound to the call site's argument. Both by symbol, so the
+// caller's own names stand, a prop of the caller's named like the callee's
+// included.
+func calleeReadsInContent(body []ir.Stmt, props map[ir.Symbol]ir.Expr, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) []ir.Stmt {
+	body = renameIdents(body, renames, symRenames)
+	if len(props) == 0 {
+		return body
+	}
+	return newExprWalker(func(e ir.Expr) ir.Expr {
+		if id, ok := e.(*ir.Ident); ok && id.Sym != nil {
+			if v, ok := props[id.Sym]; ok {
+				return deepCloneExpr(v)
+			}
+		}
+		return e
+	}).stmts(body)
+}
+
+// calleeProps is what bindings binds each of comp's props to, keyed by the
+// param the prop is read by.
+func calleeProps(comp *ir.Component, bindings map[string]ir.Expr) map[ir.Symbol]ir.Expr {
+	props := map[ir.Symbol]ir.Expr{}
+	for _, p := range comp.Props {
+		if v, ok := bindings[p.Name]; ok && p.Sym != nil {
+			props[p.Sym] = v
+		}
+	}
+	return props
 }
 
 // carryPointsTo copies one slot's candidates and colour onto a second key, for
@@ -1443,6 +1539,40 @@ func cloneHoistedVar(v *ir.Var, name string, typeArgs map[string]*ir.Type) *ir.V
 
 // renameVarList is vs with each var its clone renames, in a list of its own:
 // the clone shares the original's slice.
+// withSubstitutedReads is reads plus the vars the props' values bring into
+// block: a method reading its component's prop reads, once spliced, whatever
+// the call site handed the prop -- the caller's `var chosen` behind
+// `rest()`'s `chosen` -- and the reactivity pass learns what a call reads
+// from Func.Reads, so a slot over `rest()` re-rendered on nothing the caller
+// wrote (cmd/sngl/testdata/slot_method_reads_prop_runs.txt).
+func withSubstitutedReads(reads []*ir.Var, block []ir.Stmt, bindings map[string]ir.Expr) []*ir.Var {
+	brought := map[*ir.Var]bool{}
+	for _, val := range bindings {
+		_ = ir.WalkExprs(val, func(e ir.Expr) error {
+			if id, ok := e.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && !v.NodeHandle {
+					brought[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	if len(brought) == 0 {
+		return reads
+	}
+	_ = ir.WalkExprs(block, func(e ir.Expr) error {
+		id, ok := e.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if v, ok := id.Sym.(*ir.Var); ok && brought[v] && !slices.Contains(reads, v) {
+			reads = append(slices.Clip(reads), v)
+		}
+		return nil
+	})
+	return reads
+}
+
 func renameVarList(vs []*ir.Var, symRenames map[ir.Symbol]ir.Symbol) []*ir.Var {
 	if len(vs) == 0 {
 		return vs
@@ -1486,20 +1616,70 @@ func clearDemotedReceivers(pkg *ir.Package, demoted map[*ir.Func]bool) {
 func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	varStart, funcStart := len(*st.hoist.vars), len(*st.hoist.funcs)
 	body, err := st.expandCall(n)
-	if err != nil || len(rc.loops) == 0 {
+	if err != nil {
 		return body, true, err
 	}
 	vars := slices.Clone((*st.hoist.vars)[varStart:])
-	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
 	inits := map[*ir.Var]ir.Expr{}
 	for _, v := range vars {
 		inits[v] = v.Init
 	}
+	if rc.in {
+		if enter := st.restartOnEntry(vars, rc.loops); enter != nil {
+			body = append([]ir.Stmt{enter}, body...)
+		}
+	}
+	if len(rc.loops) == 0 {
+		return body, true, nil
+	}
+	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
 	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
 	if err == nil {
 		st.recordCells(n, inits, rc.loops)
 	}
 	return body, true, err
+}
+
+// restartOnEntry is an Enter effect giving each of vars its initializer each
+// time the instance's position is taken, where the instance stands: spliced,
+// its vars are the owner's, and would keep what the last showing left them,
+// where a target building the instance there starts it afresh. Each is
+// declared from its type's zero instead, since the first entry initializes
+// it, and an initializer run twice makes an owned value twice. Under loops
+// the effect is keyed by the copy, which the cells already are. A platform
+// bracketing lifetimes itself keeps it as a bracket of its own, ahead of the
+// instance's, since it never runs the settle passEffect would lower it into.
+func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.NodeInst {
+	var block []ir.Stmt
+	for _, v := range vars {
+		if v.IsConst || v.NodeHandle {
+			continue
+		}
+		zero, init := ir.DeclaredDefault(v.Type), v.Init
+		if init == nil {
+			init = zero
+		}
+		if init == nil {
+			continue
+		}
+		block = append(block, &ir.Assign{Target: &ir.Ident{Name: v.Name, Type: v.Type, Sym: v}, Op: ast.AssignSet, Value: deepCloneExpr(init)})
+		if zero != nil {
+			v.Init = zero
+		}
+	}
+	if len(block) == 0 {
+		return nil
+	}
+	if st.effect == nil {
+		st.effect = effectComponent()
+	}
+	n := &ir.NodeInst{Name: "effect", Component: st.effect, Enter: true, Handlers: []ir.EventHandler{
+		{Name: ir.EffectMount, Func: &ir.Func{Pkg: st.pkg, Block: block}},
+	}}
+	if len(loops) > 0 {
+		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyKey(loops)}}
+	}
+	return n
 }
 
 // rendersFocusStop reports whether c's body, or a component it renders, holds

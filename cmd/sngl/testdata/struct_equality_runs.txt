@@ -1,0 +1,102 @@
+# `==` between two structs, colours included, compares them field by field on
+# every target, and a test reads a package const as the page does.
+#
+# JavaScript's === is an object's identity, and html wrote it for any struct
+# but a payload enum's payload, so two colours written alike were unequal. And
+# an html test runs in a module beside the page, which finds the page's names
+# on window: its funcs were published there and its consts were not, so a
+# test reading a const map -- or calling a func the optimizer inlined into a
+# read of one -- threw `pairs is not defined`, which the run reported with no
+# message at all.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Pair {
+    left  int
+    right int
+}
+
+const pairs map[string, Pair] = {"a" = Pair{left=1, right=2}}
+
+const tints map[string, color] = {"a" = #a8a77a}
+
+component page ui.node {
+    var p = Pair{left=1, right=2}
+    ui.text(value="{p.left}")
+}
+
+func testStructsCompareByValue(t test.Test, c page) {
+    t.assert(c.p == Pair{left=1, right=2})
+    t.assert(pairs["a"] == Pair{left=1, right=2})
+    t.assert(tints.get("a", #000000) == #a8a77a)
+    t.assert(tints.get("a", #000000) != #a8a77b)
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:fc26cfabcd1562d21b617e70052900e6
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:99d1630c74a68a3c65fc7a23a5665791
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:1dd42116c46dc7774105afef5da66d86
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:3b50f0efc3e132c071544060299f94bb
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:287cbc3b5b81f0c9becf75125b4f63fc
+{
+  "results": [
+    {
+      "Desc": "StructsCompareByValue",
+      "Passed": true
+    }
+  ]
+}

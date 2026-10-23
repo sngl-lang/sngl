@@ -46,6 +46,9 @@ type gtkEventInvoker struct {
 	// List says a test indexes the id, so its copies are kept by key
 	// (copiesField) and an `At` invoker fires the one it is handed the key of.
 	List bool
+	// RtFire is the gtk4rt function firing the event, for a primitive of
+	// gtk4rt's whose event no GTK signal carries; GTKSignal is then empty.
+	RtFire string
 }
 
 // --- Lookup tables (consumed by gtk4Translator) ---

@@ -30,7 +30,6 @@ ui.window(title="table") {
 package main
 
 import (
-	"charm.land/bubbles/v2/table"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"duckfam.us/sngl/pkg/go/snglcolor"
@@ -116,8 +115,8 @@ type modelState struct {
 	visible__inst0  bool
 	__focusID       int
 
-	widget0 table.Model
-	widget1 table.Model
+	widget0 tui.Table
+	widget1 tui.Table
 
 	width, height int
 }
@@ -129,20 +128,8 @@ func New() Model {
 	m.selected__inst1 = 0
 	m.visible__inst0 = true
 	m.__focusID = 0
-	m.widget0 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
-		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
-		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
-			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
-		}
-		return __out
-	}()), 10)
-	m.widget1 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
-		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
-		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
-			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
-		}
-		return __out
-	}()), 10)
+	m.widget0 = tui.NewTable(10)
+	m.widget1 = tui.NewTable(10)
 	m.resizeWidgets()
 	return m
 }
@@ -162,13 +149,13 @@ func (m *Model) resizeWidgets() {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -218,85 +205,79 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -400,14 +381,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if m.__focusID == 0 {
-		m.widget0, cmd = m.widget0.Update(msg)
+		m.widget0, cmd = m.widget0.Update(msg, []string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}())
 		cmds = append(cmds, cmd)
-		m.selected__inst0 = tui.Cursor(m.widget0)
+		m.selected__inst0 = m.widget0.Cursor()
 	}
 	if m.__focusID == 1 {
-		m.widget1, cmd = m.widget1.Update(msg)
+		m.widget1, cmd = m.widget1.Update(msg, []string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}())
 		cmds = append(cmds, cmd)
-		m.selected__inst1 = tui.Cursor(m.widget1)
+		m.selected__inst1 = m.widget1.Cursor()
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -417,10 +410,22 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		content_0 = BoxLook(Style{}, true).Render(m.widget0.View())
+		content_0 = BoxLook(Style{}, true).Render(m.widget0.View([]string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}()))
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
-		content_1 = BoxLook(Style{}, true).Render(m.widget1.View())
+		content_1 = BoxLook(Style{}, true).Render(m.widget1.View([]string{"name"}, func() [][]string {
+			__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
+			for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
+				__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+			}
+			return __out
+		}()))
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		content_2 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(m.selected__inst0)))
@@ -442,4 +447,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:45816fecbc8f0210b26318dc1b0ee161
+pass sha256:0d62ad531acdf52fc3bd91f105107b98

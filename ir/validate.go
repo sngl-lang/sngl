@@ -75,6 +75,10 @@ func Validate(pkg *Package) []error {
 			// (see optimize.foldIfStmt); accept it.
 			checkNoNilStmts(add, "if body", x.Body)
 			checkNoNilStmts(add, "if else", x.Else)
+		case *Match:
+			for _, arm := range x.Arms {
+				checkNoNilStmts(add, "match arm", arm.Body)
+			}
 		case *For:
 			// A loop with no condition legitimately carries Iter == nil:
 			// `for { }` has no head at all, which is what distinguishes it

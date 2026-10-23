@@ -62,9 +62,10 @@ func (st *forElseState) imperative(block *[]ir.Stmt) {
 	out := make([]ir.Stmt, 0, len(*block))
 	for _, s := range *block {
 		switch n := s.(type) {
-		case *ir.If:
-			st.imperative(&n.Body)
-			st.imperative(&n.Else)
+		case *ir.If, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				st.imperative(b)
+			}
 		case *ir.For:
 			st.imperative(&n.Body)
 			st.imperative(&n.Else)

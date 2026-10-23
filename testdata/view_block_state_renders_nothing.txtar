@@ -171,21 +171,28 @@ type modelState struct {
 	k__inst1            int
 	visible__inst0      bool
 	kept__inst0         map[string]int
-	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
-	__effect1_live      []bool
-	__effect1_desired   []bool
-	__effect2_key       string
-	__effect2_live      []string
-	__effect2_desired   []string
-	__effect3_live      []bool
-	__effect3_desired   []bool
+	__effect1_key       string
+	__effect1_live      []string
+	__effect1_desired   []string
+	__effect2_live      []bool
+	__effect2_desired   []bool
+	__effect3_live      []string
+	__effect3_desired   []string
 	__effect4_key       string
 	__effect4_live      []string
 	__effect4_desired   []string
+	__effect5_live      []bool
+	__effect5_desired   []bool
+	__effect6_live      []string
+	__effect6_desired   []string
+	__effect7_key       string
+	__effect7_live      []string
+	__effect7_desired   []string
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 
 	width, height int
@@ -202,21 +209,28 @@ func New() Model {
 	m.k__inst1 = 0
 	m.visible__inst0 = true
 	m.kept__inst0 = map[string]int{}
-	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
-	m.__effect1_live = []bool{}
-	m.__effect1_desired = []bool{}
-	m.__effect2_key = ""
-	m.__effect2_live = []string{}
-	m.__effect2_desired = []string{}
-	m.__effect3_live = []bool{}
-	m.__effect3_desired = []bool{}
+	m.__effect1_key = ""
+	m.__effect1_live = []string{}
+	m.__effect1_desired = []string{}
+	m.__effect2_live = []bool{}
+	m.__effect2_desired = []bool{}
+	m.__effect3_live = []string{}
+	m.__effect3_desired = []string{}
 	m.__effect4_key = ""
 	m.__effect4_live = []string{}
 	m.__effect4_desired = []string{}
+	m.__effect5_live = []bool{}
+	m.__effect5_desired = []bool{}
+	m.__effect6_live = []string{}
+	m.__effect6_desired = []string{}
+	m.__effect7_key = ""
+	m.__effect7_live = []string{}
+	m.__effect7_desired = []string{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__effects0_settle()
 	return m
@@ -230,13 +244,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -286,141 +300,136 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
 }
 
-func (m *Model) __effect0_mount() {
-	var __cell1_seen__inst0 int = func() int {
-		if __v, __ok := m.seen__inst0[m.__effect0_key]; __ok {
-			return __v
-		}
-		return 0
-	}()
-	__cell1_seen__inst0 = (func() int {
-		if __v, __ok := m.seen__inst0[m.__effect0_key]; __ok {
-			return __v
-		}
-		return 0
-	}() + 1)
-	m.seen__inst0[m.__effect0_key] = __cell1_seen__inst0
-	m.total = (m.total + 1)
-}
-
-func (m *Model) __effect0_down() {
+func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
 	for __copy0, _ := range m.items {
-		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
-	}
-}
-
-func (m *Model) __effect0_up() {
-	for __effect0_i, __effect0_k := range m.__effect0_desired {
-		if __effect0_i >= len(m.__effect0_live) {
-			m.__effect0_key = __effect0_k
-			m.__effect0_mount()
-		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
-				m.__effect0_key = __effect0_k
-				m.__effect0_mount()
-			}
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
 		}
+		if __effect0_fresh {
+			var __cell2_seen__inst0 int = func() int {
+				if __v, __ok := m.seen__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell2_seen__inst0 = 0
+			m.seen__inst0[fmt.Sprint(__copy0)] = __cell2_seen__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
 	}
 	m.__effect0_live = m.__effect0_desired
 }
 
 func (m *Model) __effect1_mount() {
-	m.k__inst0 = (m.k__inst0 + 1)
+	__copyKey := m.__effect1_key
+	var __cell1_seen__inst0 int = func() int {
+		if __v, __ok := m.seen__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return 0
+	}()
+	__cell1_seen__inst0 = (func() int {
+		if __v, __ok := m.seen__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return 0
+	}() + 1)
+	m.seen__inst0[__copyKey] = __cell1_seen__inst0
+	m.total = (m.total + 1)
 }
 
 func (m *Model) __effect1_down() {
-	m.__effect1_desired = []bool{}
-	m.__effect1_desired = append(m.__effect1_desired, true)
+	m.__effect1_desired = []string{}
+	for __copy0, _ := range m.items {
+		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+	}
 }
 
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
 		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
 			if m.__effect1_live[__effect1_i] != __effect1_k {
+				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
@@ -429,42 +438,20 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effect2_mount() {
-	var __cell1_held__inst0 int = func() int {
-		if __v, __ok := m.held__inst0[m.__effect2_key]; __ok {
-			return __v
-		}
-		return 0
-	}()
-	__cell1_held__inst0 = (func() int {
-		if __v, __ok := m.held__inst0[m.__effect2_key]; __ok {
-			return __v
-		}
-		return 0
-	}() + 1)
-	m.held__inst0[m.__effect2_key] = __cell1_held__inst0
-	m.total = (m.total + func() int {
-		if __v, __ok := m.held__inst0[m.__effect2_key]; __ok {
-			return __v
-		}
-		return 0
-	}())
+	m.k__inst0 = (m.k__inst0 + 1)
 }
 
 func (m *Model) __effect2_down() {
-	m.__effect2_desired = []string{}
-	for __copy0, _ := range m.items {
-		m.__effect2_desired = append(m.__effect2_desired, fmt.Sprint(__copy0))
-	}
+	m.__effect2_desired = []bool{}
+	m.__effect2_desired = append(m.__effect2_desired, true)
 }
 
 func (m *Model) __effect2_up() {
 	for __effect2_i, __effect2_k := range m.__effect2_desired {
 		if __effect2_i >= len(m.__effect2_live) {
-			m.__effect2_key = __effect2_k
 			m.__effect2_mount()
 		} else {
 			if m.__effect2_live[__effect2_i] != __effect2_k {
-				m.__effect2_key = __effect2_k
 				m.__effect2_mount()
 			}
 		}
@@ -472,44 +459,45 @@ func (m *Model) __effect2_up() {
 	m.__effect2_live = m.__effect2_desired
 }
 
-func (m *Model) __effect3_mount() {
-	m.k__inst1 = (m.k__inst1 + 1)
-}
-
-func (m *Model) __effect3_down() {
-	m.__effect3_desired = []bool{}
-	m.__effect3_desired = append(m.__effect3_desired, true)
-}
-
-func (m *Model) __effect3_up() {
-	for __effect3_i, __effect3_k := range m.__effect3_desired {
-		if __effect3_i >= len(m.__effect3_live) {
-			m.__effect3_mount()
-		} else {
-			if m.__effect3_live[__effect3_i] != __effect3_k {
-				m.__effect3_mount()
-			}
+func (m *Model) __effect3_enter() {
+	m.__effect3_desired = []string{}
+	for __copy0, _ := range m.items {
+		__effect3_fresh := true
+		if len(m.__effect3_desired) < len(m.__effect3_live) {
+			__effect3_fresh = (m.__effect3_live[len(m.__effect3_desired)] != fmt.Sprint(__copy0))
 		}
+		if __effect3_fresh {
+			var __cell2_held__inst0 int = func() int {
+				if __v, __ok := m.held__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell2_held__inst0 = 0
+			m.held__inst0[fmt.Sprint(__copy0)] = __cell2_held__inst0
+		}
+		m.__effect3_desired = append(m.__effect3_desired, fmt.Sprint(__copy0))
 	}
 	m.__effect3_live = m.__effect3_desired
 }
 
 func (m *Model) __effect4_mount() {
-	var __cell1_kept__inst0 int = func() int {
-		if __v, __ok := m.kept__inst0[m.__effect4_key]; __ok {
+	__copyKey := m.__effect4_key
+	var __cell1_held__inst0 int = func() int {
+		if __v, __ok := m.held__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}()
-	__cell1_kept__inst0 = (func() int {
-		if __v, __ok := m.kept__inst0[m.__effect4_key]; __ok {
+	__cell1_held__inst0 = (func() int {
+		if __v, __ok := m.held__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
 	}() + 1)
-	m.kept__inst0[m.__effect4_key] = __cell1_kept__inst0
+	m.held__inst0[__copyKey] = __cell1_held__inst0
 	m.total = (m.total + func() int {
-		if __v, __ok := m.kept__inst0[m.__effect4_key]; __ok {
+		if __v, __ok := m.held__inst0[__copyKey]; __ok {
 			return __v
 		}
 		return 0
@@ -538,30 +526,124 @@ func (m *Model) __effect4_up() {
 	m.__effect4_live = m.__effect4_desired
 }
 
-func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect4_down()
-			m.__effect3_down()
-			m.__effect2_down()
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-			m.__effect2_up()
-			m.__effect3_up()
-			m.__effect4_up()
+func (m *Model) __effect5_mount() {
+	m.k__inst1 = (m.k__inst1 + 1)
+}
+
+func (m *Model) __effect5_down() {
+	m.__effect5_desired = []bool{}
+	m.__effect5_desired = append(m.__effect5_desired, true)
+}
+
+func (m *Model) __effect5_up() {
+	for __effect5_i, __effect5_k := range m.__effect5_desired {
+		if __effect5_i >= len(m.__effect5_live) {
+			m.__effect5_mount()
+		} else {
+			if m.__effect5_live[__effect5_i] != __effect5_k {
+				m.__effect5_mount()
+			}
 		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	}
+	m.__effect5_live = m.__effect5_desired
+}
+
+func (m *Model) __effect6_enter() {
+	m.__effect6_desired = []string{}
+	for __copy0, _ := range m.items {
+		__effect6_fresh := true
+		if len(m.__effect6_desired) < len(m.__effect6_live) {
+			__effect6_fresh = (m.__effect6_live[len(m.__effect6_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect6_fresh {
+			var __cell2_kept__inst0 int = func() int {
+				if __v, __ok := m.kept__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell2_kept__inst0 = 0
+			m.kept__inst0[fmt.Sprint(__copy0)] = __cell2_kept__inst0
+		}
+		m.__effect6_desired = append(m.__effect6_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect6_live = m.__effect6_desired
+}
+
+func (m *Model) __effect7_mount() {
+	__copyKey := m.__effect7_key
+	var __cell1_kept__inst0 int = func() int {
+		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return 0
+	}()
+	__cell1_kept__inst0 = (func() int {
+		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return 0
+	}() + 1)
+	m.kept__inst0[__copyKey] = __cell1_kept__inst0
+	m.total = (m.total + func() int {
+		if __v, __ok := m.kept__inst0[__copyKey]; __ok {
+			return __v
+		}
+		return 0
+	}())
+}
+
+func (m *Model) __effect7_down() {
+	m.__effect7_desired = []string{}
+	for __copy0, _ := range m.items {
+		m.__effect7_desired = append(m.__effect7_desired, fmt.Sprint(__copy0))
+	}
+}
+
+func (m *Model) __effect7_up() {
+	for __effect7_i, __effect7_k := range m.__effect7_desired {
+		if __effect7_i >= len(m.__effect7_live) {
+			m.__effect7_key = __effect7_k
+			m.__effect7_mount()
+		} else {
+			if m.__effect7_live[__effect7_i] != __effect7_k {
+				m.__effect7_key = __effect7_k
+				m.__effect7_mount()
+			}
+		}
+	}
+	m.__effect7_live = m.__effect7_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect3_enter()
+				m.__effect6_enter()
+				m.__effect7_down()
+				m.__effect5_down()
+				m.__effect4_down()
+				m.__effect2_down()
+				m.__effect1_down()
+				m.__effect1_up()
+				m.__effect2_up()
+				m.__effect4_up()
+				m.__effect5_up()
+				m.__effect7_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -793,16 +875,23 @@ type Model struct {
 	__effect1_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__slot0             []fyne.CanvasObject
 	__slot0_at          fyne.CanvasObject
 	__inst0_live        []*__block_state0Instance
+	__rendering0        bool
+	__renderAgain0      bool
 	__slot1             []fyne.CanvasObject
 	__slot1_at          fyne.CanvasObject
 	__inst1_live        []*__block_state1Instance
+	__rendering1        bool
+	__renderAgain1      bool
 	__slot2             []fyne.CanvasObject
 	__slot2_at          fyne.CanvasObject
 	__inst2_live        []*__block_state2Instance
+	__rendering2        bool
+	__renderAgain2      bool
 
 	__n0    *fynelayout.Toplevel
 	__n5    *fyne.Container
@@ -825,16 +914,23 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__block_state0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*__block_state1Instance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst2_live = []*__block_state2Instance{}
+	m.__rendering2 = false
+	m.__renderAgain2 = false
 	return m
 }
 
@@ -883,127 +979,159 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*__block_state0Instance{}
-	var __inst0_i int = 0
-	for range m.items {
-		var __n2 *__block_state0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n2__new := new__block_state0Instance(m)
-			__n2 = __n2__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*__block_state0Instance{}
+			var __inst0_i int = 0
+			for range m.items {
+				var __n2 *__block_state0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n2 = m.__inst0_live[__inst0_i]
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n2__new := new__block_state0Instance(m)
+					__n2 = __n2__new
+				}
+				__inst0_next = append(__inst0_next, __n2)
+				__inst0_i = (__inst0_i + 1)
+				__n2__el := __n2.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n2)
-		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range m.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-	__inst1_next := []*__block_state1Instance{}
-	var __inst1_i int = 0
-	for range m.items {
-		var __n3 *__block_state1Instance
-		if len(m.__inst1_live) > __inst1_i {
-			__n3 = m.__inst1_live[__inst1_i]
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n3__new := new__block_state1Instance(m)
-			__n3 = __n3__new
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			__inst1_next := []*__block_state1Instance{}
+			var __inst1_i int = 0
+			for range m.items {
+				var __n3 *__block_state1Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n3 = m.__inst1_live[__inst1_i]
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n3__new := new__block_state1Instance(m)
+					__n3 = __n3__new
+				}
+				__inst1_next = append(__inst1_next, __n3)
+				__inst1_i = (__inst1_i + 1)
+				__n3__el := __n3.Root
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__el)
+				m.__slot1 = append(m.__slot1, __n3__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n3)
-		__inst1_i = (__inst1_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__el)
-		m.__slot1 = append(m.__slot1, __n3__el)
+		m.__rendering1 = false
 	}
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) __renderSlot2(__parent *fyne.Container) {
-	for _, __entry := range m.__slot2 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot2 = nil
-	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
-	__inst2_next := []*__block_state2Instance{}
-	var __inst2_i int = 0
-	for range m.items {
-		var __n4 *__block_state2Instance
-		if len(m.__inst2_live) > __inst2_i {
-			__n4 = m.__inst2_live[__inst2_i]
-		} else {
-			if len(m.__inst2_live) > __inst2_i {
-				m.__inst2_live[__inst2_i].Destroy()
+	if m.__rendering2 {
+		m.__renderAgain2 = true
+	} else {
+		m.__rendering2 = true
+		m.__renderAgain2 = true
+		for m.__renderAgain2 {
+			m.__renderAgain2 = false
+			for _, __entry := range m.__slot2 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n4__new := new__block_state2Instance(m)
-			__n4 = __n4__new
+			m.__slot2 = nil
+			m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
+			__inst2_next := []*__block_state2Instance{}
+			var __inst2_i int = 0
+			for range m.items {
+				var __n4 *__block_state2Instance
+				if len(m.__inst2_live) > __inst2_i {
+					__n4 = m.__inst2_live[__inst2_i]
+				} else {
+					if len(m.__inst2_live) > __inst2_i {
+						m.__inst2_live[__inst2_i].Destroy()
+					}
+					__n4__new := new__block_state2Instance(m)
+					__n4 = __n4__new
+				}
+				__inst2_next = append(__inst2_next, __n4)
+				__inst2_i = (__inst2_i + 1)
+				__n4__el := __n4.Root
+				fynelayout.InsertBefore(__parent, m.__slot2_at, __n4__el)
+				m.__slot2 = append(m.__slot2, __n4__el)
+			}
+			for __inst2_i_d, _ := range m.__inst2_live {
+				var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
+				if __inst2_i_j >= __inst2_i {
+					m.__inst2_live[__inst2_i_j].Destroy()
+				}
+			}
+			m.__inst2_live = __inst2_next
 		}
-		__inst2_next = append(__inst2_next, __n4)
-		__inst2_i = (__inst2_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot2_at, __n4__el)
-		m.__slot2 = append(m.__slot2, __n4__el)
+		m.__rendering2 = false
 	}
-	for __inst2_i_d, _ := range m.__inst2_live {
-		var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
-		if __inst2_i_j >= __inst2_i {
-			m.__inst2_live[__inst2_i_j].Destroy()
-		}
-	}
-	m.__inst2_live = __inst2_next
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -1089,6 +1217,7 @@ type __block_state0Instance struct {
 	__effect2_desired   []bool
 	__effects1_settling bool
 	__effects1_pending  bool
+	__effects1_torn     bool
 	__effects1_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -1107,13 +1236,14 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	c.__effect2_desired = []bool{}
 	c.__effects1_settling = false
 	c.__effects1_pending = false
+	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects1_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -1142,21 +1272,23 @@ func (c *__block_state0Instance) __effect2_up() {
 }
 
 func (c *__block_state0Instance) __effects1_settle() {
-	if c.__effects1_settling {
-		c.__effects1_pending = true
-	} else {
-		c.__effects1_settling = true
-		c.__effects1_pending = true
-		c.__effects1_steps = 0
-		for c.__effects1_pending && (c.__effects1_steps < 512) {
-			c.__effects1_pending = false
-			c.__effects1_steps = (c.__effects1_steps + 1)
-			c.__effect2_down()
-			c.__effect2_up()
-		}
-		c.__effects1_settling = false
-		if c.__effects1_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects1_torn {
+		if c.__effects1_settling {
+			c.__effects1_pending = true
+		} else {
+			c.__effects1_settling = true
+			c.__effects1_pending = true
+			c.__effects1_steps = 0
+			for c.__effects1_pending && (c.__effects1_steps < 512) {
+				c.__effects1_pending = false
+				c.__effects1_steps = (c.__effects1_steps + 1)
+				c.__effect2_down()
+				c.__effect2_up()
+			}
+			c.__effects1_settling = false
+			if c.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1172,6 +1304,7 @@ type __block_state1Instance struct {
 	__effect3_desired   []bool
 	__effects2_settling bool
 	__effects2_pending  bool
+	__effects2_torn     bool
 	__effects2_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -1190,13 +1323,14 @@ func new__block_state1Instance(__model *Model) *__block_state1Instance {
 	c.__effect3_desired = []bool{}
 	c.__effects2_settling = false
 	c.__effects2_pending = false
+	c.__effects2_torn = false
 	c.__effects2_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects2_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -1225,21 +1359,23 @@ func (c *__block_state1Instance) __effect3_up() {
 }
 
 func (c *__block_state1Instance) __effects2_settle() {
-	if c.__effects2_settling {
-		c.__effects2_pending = true
-	} else {
-		c.__effects2_settling = true
-		c.__effects2_pending = true
-		c.__effects2_steps = 0
-		for c.__effects2_pending && (c.__effects2_steps < 512) {
-			c.__effects2_pending = false
-			c.__effects2_steps = (c.__effects2_steps + 1)
-			c.__effect3_down()
-			c.__effect3_up()
-		}
-		c.__effects2_settling = false
-		if c.__effects2_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects2_torn {
+		if c.__effects2_settling {
+			c.__effects2_pending = true
+		} else {
+			c.__effects2_settling = true
+			c.__effects2_pending = true
+			c.__effects2_steps = 0
+			for c.__effects2_pending && (c.__effects2_steps < 512) {
+				c.__effects2_pending = false
+				c.__effects2_steps = (c.__effects2_steps + 1)
+				c.__effect3_down()
+				c.__effect3_up()
+			}
+			c.__effects2_settling = false
+			if c.__effects2_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1255,6 +1391,7 @@ type __block_state2Instance struct {
 	__effect4_desired   []bool
 	__effects3_settling bool
 	__effects3_pending  bool
+	__effects3_torn     bool
 	__effects3_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
@@ -1273,13 +1410,14 @@ func new__block_state2Instance(__model *Model) *__block_state2Instance {
 	c.__effect4_desired = []bool{}
 	c.__effects3_settling = false
 	c.__effects3_pending = false
+	c.__effects3_torn = false
 	c.__effects3_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects3_settle()
-	c.Root = widget.NewLabel("")
+	c.Root = fynelayout.Nothing()
 	return c
 }
 
@@ -1308,21 +1446,23 @@ func (c *__block_state2Instance) __effect4_up() {
 }
 
 func (c *__block_state2Instance) __effects3_settle() {
-	if c.__effects3_settling {
-		c.__effects3_pending = true
-	} else {
-		c.__effects3_settling = true
-		c.__effects3_pending = true
-		c.__effects3_steps = 0
-		for c.__effects3_pending && (c.__effects3_steps < 512) {
-			c.__effects3_pending = false
-			c.__effects3_steps = (c.__effects3_steps + 1)
-			c.__effect4_down()
-			c.__effect4_up()
-		}
-		c.__effects3_settling = false
-		if c.__effects3_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects3_torn {
+		if c.__effects3_settling {
+			c.__effects3_pending = true
+		} else {
+			c.__effects3_settling = true
+			c.__effects3_pending = true
+			c.__effects3_steps = 0
+			for c.__effects3_pending && (c.__effects3_steps < 512) {
+				c.__effects3_pending = false
+				c.__effects3_steps = (c.__effects3_steps + 1)
+				c.__effect4_down()
+				c.__effect4_up()
+			}
+			c.__effects3_settling = false
+			if c.__effects3_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1377,16 +1517,23 @@ type Model struct {
 	__effect1_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
+	__effects0_torn     bool
 	__effects0_steps    int
 	__slot0             []gtk4rt.Handle
 	__slot0_at          gtk4rt.Handle
 	__inst0_live        []*__block_state0Instance
+	__rendering0        bool
+	__renderAgain0      bool
 	__slot1             []gtk4rt.Handle
 	__slot1_at          gtk4rt.Handle
 	__inst1_live        []*__block_state1Instance
+	__rendering1        bool
+	__renderAgain1      bool
 	__slot2             []gtk4rt.Handle
 	__slot2_at          gtk4rt.Handle
 	__inst2_live        []*__block_state2Instance
+	__rendering2        bool
+	__renderAgain2      bool
 	__n0                gtk4rt.Handle
 	__n5                gtk4rt.Handle
 	__n6                gtk4rt.Handle
@@ -1409,16 +1556,23 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
+	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__block_state0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*__block_state1Instance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst2_live = []*__block_state2Instance{}
+	m.__rendering2 = false
+	m.__renderAgain2 = false
 	return m
 }
 
@@ -1467,127 +1621,159 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	if m.__effects0_settling {
-		m.__effects0_pending = true
-	} else {
-		m.__effects0_settling = true
-		m.__effects0_pending = true
-		m.__effects0_steps = 0
-		for m.__effects0_pending && (m.__effects0_steps < 512) {
-			m.__effects0_pending = false
-			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect1_down()
-			m.__effect0_down()
-			m.__effect0_up()
-			m.__effect1_up()
-		}
-		m.__effects0_settling = false
-		if m.__effects0_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect1_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect1_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*__block_state0Instance{}
-	var __inst0_i int = 0
-	for range m.items {
-		var __n2 *__block_state0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n2__new := new__block_state0Instance(m)
-			__n2 = __n2__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*__block_state0Instance{}
+			var __inst0_i int = 0
+			for range m.items {
+				var __n2 *__block_state0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n2 = m.__inst0_live[__inst0_i]
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n2__new := new__block_state0Instance(m)
+					__n2 = __n2__new
+				}
+				__inst0_next = append(__inst0_next, __n2)
+				__inst0_i = (__inst0_i + 1)
+				__n2__el := __n2.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n2)
-		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot1 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-	__inst1_next := []*__block_state1Instance{}
-	var __inst1_i int = 0
-	for range m.items {
-		var __n3 *__block_state1Instance
-		if len(m.__inst1_live) > __inst1_i {
-			__n3 = m.__inst1_live[__inst1_i]
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n3__new := new__block_state1Instance(m)
-			__n3 = __n3__new
+			m.__slot1 = nil
+			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+			__inst1_next := []*__block_state1Instance{}
+			var __inst1_i int = 0
+			for range m.items {
+				var __n3 *__block_state1Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n3 = m.__inst1_live[__inst1_i]
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n3__new := new__block_state1Instance(m)
+					__n3 = __n3__new
+				}
+				__inst1_next = append(__inst1_next, __n3)
+				__inst1_i = (__inst1_i + 1)
+				__n3__el := __n3.Root
+				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3__el)
+				m.__slot1 = append(m.__slot1, __n3__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n3)
-		__inst1_i = (__inst1_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3__el)
-		m.__slot1 = append(m.__slot1, __n3__el)
+		m.__rendering1 = false
 	}
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot2 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot2 = nil
-	m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
-	__inst2_next := []*__block_state2Instance{}
-	var __inst2_i int = 0
-	for range m.items {
-		var __n4 *__block_state2Instance
-		if len(m.__inst2_live) > __inst2_i {
-			__n4 = m.__inst2_live[__inst2_i]
-		} else {
-			if len(m.__inst2_live) > __inst2_i {
-				m.__inst2_live[__inst2_i].Destroy()
+	if m.__rendering2 {
+		m.__renderAgain2 = true
+	} else {
+		m.__rendering2 = true
+		m.__renderAgain2 = true
+		for m.__renderAgain2 {
+			m.__renderAgain2 = false
+			for _, __entry := range m.__slot2 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n4__new := new__block_state2Instance(m)
-			__n4 = __n4__new
+			m.__slot2 = nil
+			m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
+			__inst2_next := []*__block_state2Instance{}
+			var __inst2_i int = 0
+			for range m.items {
+				var __n4 *__block_state2Instance
+				if len(m.__inst2_live) > __inst2_i {
+					__n4 = m.__inst2_live[__inst2_i]
+				} else {
+					if len(m.__inst2_live) > __inst2_i {
+						m.__inst2_live[__inst2_i].Destroy()
+					}
+					__n4__new := new__block_state2Instance(m)
+					__n4 = __n4__new
+				}
+				__inst2_next = append(__inst2_next, __n4)
+				__inst2_i = (__inst2_i + 1)
+				__n4__el := __n4.Root
+				gtk4rt.InsertBefore(parent, m.__slot2_at, __n4__el)
+				m.__slot2 = append(m.__slot2, __n4__el)
+			}
+			for __inst2_i_d, _ := range m.__inst2_live {
+				var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
+				if __inst2_i_j >= __inst2_i {
+					m.__inst2_live[__inst2_i_j].Destroy()
+				}
+			}
+			m.__inst2_live = __inst2_next
 		}
-		__inst2_next = append(__inst2_next, __n4)
-		__inst2_i = (__inst2_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot2_at, __n4__el)
-		m.__slot2 = append(m.__slot2, __n4__el)
+		m.__rendering2 = false
 	}
-	for __inst2_i_d, _ := range m.__inst2_live {
-		var __inst2_i_j int = ((len(m.__inst2_live) - 1) - __inst2_i_d)
-		if __inst2_i_j >= __inst2_i {
-			m.__inst2_live[__inst2_i_j].Destroy()
-		}
-	}
-	m.__inst2_live = __inst2_next
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -1607,6 +1793,7 @@ type __block_state0Instance struct {
 	__effect2_desired   []bool
 	__effects1_settling bool
 	__effects1_pending  bool
+	__effects1_torn     bool
 	__effects1_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -1625,13 +1812,14 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	c.__effect2_desired = []bool{}
 	c.__effects1_settling = false
 	c.__effects1_pending = false
+	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects1_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -1661,21 +1849,23 @@ func (c *__block_state0Instance) __effect2_up() {
 }
 
 func (c *__block_state0Instance) __effects1_settle() {
-	if c.__effects1_settling {
-		c.__effects1_pending = true
-	} else {
-		c.__effects1_settling = true
-		c.__effects1_pending = true
-		c.__effects1_steps = 0
-		for c.__effects1_pending && (c.__effects1_steps < 512) {
-			c.__effects1_pending = false
-			c.__effects1_steps = (c.__effects1_steps + 1)
-			c.__effect2_down()
-			c.__effect2_up()
-		}
-		c.__effects1_settling = false
-		if c.__effects1_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects1_torn {
+		if c.__effects1_settling {
+			c.__effects1_pending = true
+		} else {
+			c.__effects1_settling = true
+			c.__effects1_pending = true
+			c.__effects1_steps = 0
+			for c.__effects1_pending && (c.__effects1_steps < 512) {
+				c.__effects1_pending = false
+				c.__effects1_steps = (c.__effects1_steps + 1)
+				c.__effect2_down()
+				c.__effect2_up()
+			}
+			c.__effects1_settling = false
+			if c.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1705,6 +1895,7 @@ type __block_state1Instance struct {
 	__effect3_desired   []bool
 	__effects2_settling bool
 	__effects2_pending  bool
+	__effects2_torn     bool
 	__effects2_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -1723,13 +1914,14 @@ func new__block_state1Instance(__model *Model) *__block_state1Instance {
 	c.__effect3_desired = []bool{}
 	c.__effects2_settling = false
 	c.__effects2_pending = false
+	c.__effects2_torn = false
 	c.__effects2_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects2_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -1759,21 +1951,23 @@ func (c *__block_state1Instance) __effect3_up() {
 }
 
 func (c *__block_state1Instance) __effects2_settle() {
-	if c.__effects2_settling {
-		c.__effects2_pending = true
-	} else {
-		c.__effects2_settling = true
-		c.__effects2_pending = true
-		c.__effects2_steps = 0
-		for c.__effects2_pending && (c.__effects2_steps < 512) {
-			c.__effects2_pending = false
-			c.__effects2_steps = (c.__effects2_steps + 1)
-			c.__effect3_down()
-			c.__effect3_up()
-		}
-		c.__effects2_settling = false
-		if c.__effects2_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects2_torn {
+		if c.__effects2_settling {
+			c.__effects2_pending = true
+		} else {
+			c.__effects2_settling = true
+			c.__effects2_pending = true
+			c.__effects2_steps = 0
+			for c.__effects2_pending && (c.__effects2_steps < 512) {
+				c.__effects2_pending = false
+				c.__effects2_steps = (c.__effects2_steps + 1)
+				c.__effect3_down()
+				c.__effect3_up()
+			}
+			c.__effects2_settling = false
+			if c.__effects2_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -1803,6 +1997,7 @@ type __block_state2Instance struct {
 	__effect4_desired   []bool
 	__effects3_settling bool
 	__effects3_pending  bool
+	__effects3_torn     bool
 	__effects3_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
@@ -1821,13 +2016,14 @@ func new__block_state2Instance(__model *Model) *__block_state2Instance {
 	c.__effect4_desired = []bool{}
 	c.__effects3_settling = false
 	c.__effects3_pending = false
+	c.__effects3_torn = false
 	c.__effects3_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__effects3_settle()
-	c.Root = gtk4rt.LabelNew("")
+	c.Root = gtk4rt.Nothing()
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -1857,21 +2053,23 @@ func (c *__block_state2Instance) __effect4_up() {
 }
 
 func (c *__block_state2Instance) __effects3_settle() {
-	if c.__effects3_settling {
-		c.__effects3_pending = true
-	} else {
-		c.__effects3_settling = true
-		c.__effects3_pending = true
-		c.__effects3_steps = 0
-		for c.__effects3_pending && (c.__effects3_steps < 512) {
-			c.__effects3_pending = false
-			c.__effects3_steps = (c.__effects3_steps + 1)
-			c.__effect4_down()
-			c.__effect4_up()
-		}
-		c.__effects3_settling = false
-		if c.__effects3_pending {
-			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+	if !c.__effects3_torn {
+		if c.__effects3_settling {
+			c.__effects3_pending = true
+		} else {
+			c.__effects3_settling = true
+			c.__effects3_pending = true
+			c.__effects3_steps = 0
+			for c.__effects3_pending && (c.__effects3_steps < 512) {
+				c.__effects3_pending = false
+				c.__effects3_steps = (c.__effects3_steps + 1)
+				c.__effect4_down()
+				c.__effect4_up()
+			}
+			c.__effects3_settling = false
+			if c.__effects3_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
 		}
 	}
 }
@@ -2008,6 +2206,7 @@ body { font-family: system-ui, sans-serif; }
     let __effect2_desired = [];
     let __effects1_settling = false;
     let __effects1_pending = false;
+    let __effects1_torn = false;
     let __effects1_steps = 0;
     let __slot02 = [];
     let __slot12 = [];
@@ -2034,21 +2233,23 @@ body { font-family: system-ui, sans-serif; }
       __effect2_live = __effect2_desired;
     }
     function __effects1_settle() {
-      if (__effects1_settling) {
-        __effects1_pending = true;
-      } else {
-        __effects1_settling = true;
-        __effects1_pending = true;
-        __effects1_steps = 0;
-        while (__effects1_pending && __effects1_steps < 512) {
-          __effects1_pending = false;
-          __effects1_steps = __effects1_steps + 1;
-          __effect2_down();
-          __effect2_up();
-        }
-        __effects1_settling = false;
-        if (__effects1_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects1_torn) {
+        if (__effects1_settling) {
+          __effects1_pending = true;
+        } else {
+          __effects1_settling = true;
+          __effects1_pending = true;
+          __effects1_steps = 0;
+          while (__effects1_pending && __effects1_steps < 512) {
+            __effects1_pending = false;
+            __effects1_steps = __effects1_steps + 1;
+            __effect2_down();
+            __effect2_up();
+          }
+          __effects1_settling = false;
+          if (__effects1_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
@@ -2067,6 +2268,7 @@ body { font-family: system-ui, sans-serif; }
     let __effect3_desired = [];
     let __effects2_settling = false;
     let __effects2_pending = false;
+    let __effects2_torn = false;
     let __effects2_steps = 0;
     let __slot02 = [];
     let __slot12 = [];
@@ -2093,21 +2295,23 @@ body { font-family: system-ui, sans-serif; }
       __effect3_live = __effect3_desired;
     }
     function __effects2_settle() {
-      if (__effects2_settling) {
-        __effects2_pending = true;
-      } else {
-        __effects2_settling = true;
-        __effects2_pending = true;
-        __effects2_steps = 0;
-        while (__effects2_pending && __effects2_steps < 512) {
-          __effects2_pending = false;
-          __effects2_steps = __effects2_steps + 1;
-          __effect3_down();
-          __effect3_up();
-        }
-        __effects2_settling = false;
-        if (__effects2_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects2_torn) {
+        if (__effects2_settling) {
+          __effects2_pending = true;
+        } else {
+          __effects2_settling = true;
+          __effects2_pending = true;
+          __effects2_steps = 0;
+          while (__effects2_pending && __effects2_steps < 512) {
+            __effects2_pending = false;
+            __effects2_steps = __effects2_steps + 1;
+            __effect3_down();
+            __effect3_up();
+          }
+          __effects2_settling = false;
+          if (__effects2_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
@@ -2126,6 +2330,7 @@ body { font-family: system-ui, sans-serif; }
     let __effect4_desired = [];
     let __effects3_settling = false;
     let __effects3_pending = false;
+    let __effects3_torn = false;
     let __effects3_steps = 0;
     let __slot02 = [];
     let __slot12 = [];
@@ -2152,21 +2357,23 @@ body { font-family: system-ui, sans-serif; }
       __effect4_live = __effect4_desired;
     }
     function __effects3_settle() {
-      if (__effects3_settling) {
-        __effects3_pending = true;
-      } else {
-        __effects3_settling = true;
-        __effects3_pending = true;
-        __effects3_steps = 0;
-        while (__effects3_pending && __effects3_steps < 512) {
-          __effects3_pending = false;
-          __effects3_steps = __effects3_steps + 1;
-          __effect4_down();
-          __effect4_up();
-        }
-        __effects3_settling = false;
-        if (__effects3_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      if (!__effects3_torn) {
+        if (__effects3_settling) {
+          __effects3_pending = true;
+        } else {
+          __effects3_settling = true;
+          __effects3_pending = true;
+          __effects3_steps = 0;
+          while (__effects3_pending && __effects3_steps < 512) {
+            __effects3_pending = false;
+            __effects3_steps = __effects3_steps + 1;
+            __effect4_down();
+            __effect4_up();
+          }
+          __effects3_settling = false;
+          if (__effects3_pending) {
+            throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          }
         }
       }
     }
@@ -2183,13 +2390,20 @@ body { font-family: system-ui, sans-serif; }
   var __effect1_desired = [];
   var __effects0_settling = false;
   var __effects0_pending = false;
+  var __effects0_torn = false;
   var __effects0_steps = 0;
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   var __slot1 = [];
   var __inst3_live = [];
+  var __rendering1 = false;
+  var __renderAgain1 = false;
   var __slot2 = [];
   var __inst5_live = [];
+  var __rendering2 = false;
+  var __renderAgain2 = false;
   function __effect0_down() {
     __effect0_desired = [];
     __effect0_desired.push(true);
@@ -2223,156 +2437,188 @@ body { font-family: system-ui, sans-serif; }
     __effect1_live = __effect1_desired;
   }
   function __effects0_settle() {
-    if (__effects0_settling) {
-      __effects0_pending = true;
-    } else {
-      __effects0_settling = true;
-      __effects0_pending = true;
-      __effects0_steps = 0;
-      while (__effects0_pending && __effects0_steps < 512) {
-        __effects0_pending = false;
-        __effects0_steps = __effects0_steps + 1;
-        __effect1_down();
-        __effect0_down();
-        __effect0_up();
-        __effect1_up();
-      }
-      __effects0_settling = false;
-      if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+    if (!__effects0_torn) {
+      if (__effects0_settling) {
+        __effects0_pending = true;
+      } else {
+        __effects0_settling = true;
+        __effects0_pending = true;
+        __effects0_steps = 0;
+        while (__effects0_pending && __effects0_steps < 512) {
+          __effects0_pending = false;
+          __effects0_steps = __effects0_steps + 1;
+          __effect1_down();
+          __effect0_down();
+          __effect0_up();
+          __effect1_up();
+        }
+        __effects0_settling = false;
+        if (__effects0_pending) {
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+        }
       }
     }
   }
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const i of state.items) {
-      let __n2 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const i of state.items) {
+          let __n2 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n2 = __inst1_live[__inst1_i];
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n2__new = __cf___block_state0({});
+            __n2 = __n2__new;
+          }
+          __inst1_next.push(__n2);
+          __inst1_i = __inst1_i + 1;
+          let __n2__el = __n2.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2__el, __place0_i_ref0);
+          }
+          __slot0.push(__n2__el);
         }
-        let __n2__new = __cf___block_state0({});
-        __n2 = __n2__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n2);
-      __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n2__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
-      }
-      __slot0.push(__n2__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
-    let __place2_prev = __slot1;
-    let __place2_i = 0;
-    __slot1 = [];
-    let __inst3_next = [];
-    let __inst3_i = 0;
-    for (const j of state.items) {
-      let __n3 = null;
-      if (__inst3_live.length > __inst3_i) {
-        __n3 = __inst3_live[__inst3_i];
-      } else {
-        if (__inst3_live.length > __inst3_i) {
-          __inst3_live[__inst3_i].__destroy();
+    if (__rendering1) {
+      __renderAgain1 = true;
+    } else {
+      __rendering1 = true;
+      __renderAgain1 = true;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place2_prev = __slot1;
+        let __place2_i = 0;
+        __slot1 = [];
+        let __inst3_next = [];
+        let __inst3_i = 0;
+        for (const j of state.items) {
+          let __n3 = null;
+          if (__inst3_live.length > __inst3_i) {
+            __n3 = __inst3_live[__inst3_i];
+          } else {
+            if (__inst3_live.length > __inst3_i) {
+              __inst3_live[__inst3_i].__destroy();
+            }
+            let __n3__new = __cf___block_state1({});
+            __n3 = __n3__new;
+          }
+          __inst3_next.push(__n3);
+          __inst3_i = __inst3_i + 1;
+          let __n3__el = __n3.__root;
+          let __place2_i_ref0 = null;
+          if (__place2_i < __place2_prev.length) {
+            __place2_i_ref0 = __place2_prev[__place2_i];
+          }
+          if (__place2_i_ref0 === __n3__el) {
+            __place2_i = __place2_i + 1;
+          } else {
+            parent.insertBefore(__n3__el, __place2_i_ref0);
+          }
+          __slot1.push(__n3__el);
         }
-        let __n3__new = __cf___block_state1({});
-        __n3 = __n3__new;
+        for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+          let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+          if (__inst3_i_j >= __inst3_i) {
+            __inst3_live[__inst3_i_j].__destroy();
+          }
+        }
+        __inst3_live = __inst3_next;
+        for (const __place2_prev_e of __place2_prev) {
+          if (__slot1.indexOf(__place2_prev_e) < 0) {
+            parent.removeChild(__place2_prev_e);
+          }
+        }
       }
-      __inst3_next.push(__n3);
-      __inst3_i = __inst3_i + 1;
-      let __n3__el = __n3.__root;
-      let __place2_i_ref0 = null;
-      if (__place2_i < __place2_prev.length) {
-        __place2_i_ref0 = __place2_prev[__place2_i];
-      }
-      if (__place2_i_ref0 === __n3__el) {
-        __place2_i = __place2_i + 1;
-      } else {
-        parent.insertBefore(__n3__el, __place2_i_ref0);
-      }
-      __slot1.push(__n3__el);
-    }
-    for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-      let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-      if (__inst3_i_j >= __inst3_i) {
-        __inst3_live[__inst3_i_j].__destroy();
-      }
-    }
-    __inst3_live = __inst3_next;
-    for (const __place2_prev_e of __place2_prev) {
-      if (__slot1.indexOf(__place2_prev_e) < 0) {
-        parent.removeChild(__place2_prev_e);
-      }
+      __rendering1 = false;
     }
   }
   function __renderSlot2(parent) {
-    let __place4_prev = __slot2;
-    let __place4_i = 0;
-    __slot2 = [];
-    let __inst5_next = [];
-    let __inst5_i = 0;
-    for (const q of state.items) {
-      let __n4 = null;
-      if (__inst5_live.length > __inst5_i) {
-        __n4 = __inst5_live[__inst5_i];
-      } else {
-        if (__inst5_live.length > __inst5_i) {
-          __inst5_live[__inst5_i].__destroy();
+    if (__rendering2) {
+      __renderAgain2 = true;
+    } else {
+      __rendering2 = true;
+      __renderAgain2 = true;
+      while (__renderAgain2) {
+        __renderAgain2 = false;
+        let __place4_prev = __slot2;
+        let __place4_i = 0;
+        __slot2 = [];
+        let __inst5_next = [];
+        let __inst5_i = 0;
+        for (const q of state.items) {
+          let __n4 = null;
+          if (__inst5_live.length > __inst5_i) {
+            __n4 = __inst5_live[__inst5_i];
+          } else {
+            if (__inst5_live.length > __inst5_i) {
+              __inst5_live[__inst5_i].__destroy();
+            }
+            let __n4__new = __cf___block_state2({});
+            __n4 = __n4__new;
+          }
+          __inst5_next.push(__n4);
+          __inst5_i = __inst5_i + 1;
+          let __n4__el = __n4.__root;
+          let __place4_i_ref0 = null;
+          if (__place4_i < __place4_prev.length) {
+            __place4_i_ref0 = __place4_prev[__place4_i];
+          }
+          if (__place4_i_ref0 === __n4__el) {
+            __place4_i = __place4_i + 1;
+          } else {
+            parent.insertBefore(__n4__el, __place4_i_ref0);
+          }
+          __slot2.push(__n4__el);
         }
-        let __n4__new = __cf___block_state2({});
-        __n4 = __n4__new;
+        for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+          let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+          if (__inst5_i_j >= __inst5_i) {
+            __inst5_live[__inst5_i_j].__destroy();
+          }
+        }
+        __inst5_live = __inst5_next;
+        for (const __place4_prev_e of __place4_prev) {
+          if (__slot2.indexOf(__place4_prev_e) < 0) {
+            parent.removeChild(__place4_prev_e);
+          }
+        }
       }
-      __inst5_next.push(__n4);
-      __inst5_i = __inst5_i + 1;
-      let __n4__el = __n4.__root;
-      let __place4_i_ref0 = null;
-      if (__place4_i < __place4_prev.length) {
-        __place4_i_ref0 = __place4_prev[__place4_i];
-      }
-      if (__place4_i_ref0 === __n4__el) {
-        __place4_i = __place4_i + 1;
-      } else {
-        parent.insertBefore(__n4__el, __place4_i_ref0);
-      }
-      __slot2.push(__n4__el);
-    }
-    for (const [__inst5_i_d, _] of __inst5_live.entries()) {
-      let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
-      if (__inst5_i_j >= __inst5_i) {
-        __inst5_live[__inst5_i_j].__destroy();
-      }
-    }
-    __inst5_live = __inst5_next;
-    for (const __place4_prev_e of __place4_prev) {
-      if (__slot2.indexOf(__place4_prev_e) < 0) {
-        parent.removeChild(__place4_prev_e);
-      }
+      __rendering2 = false;
     }
   }
   function String(v) {
@@ -2394,10 +2640,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ddb5be96283820657c9946ee40630aec
+pass sha256:1b2cf8d661da72bf2c1de711aca90ed7
 -- run/go/fyne --
-pass sha256:b22b8bd0712fbf6d02e951ce3ca7d20b
+pass sha256:0017bf4d56db04b830e78019c8aed7a8
 -- run/go/gtk4 --
-pass sha256:7e7d0db13ed9b6505c46b2ca2bf7dd2f
+pass sha256:24349dc16c3d7669a629d2197d101b82
 -- run/none/html --
-pass sha256:02a7c195e71a301281bb22a193e7ead2
+pass sha256:76689d8c1928dc3a7bbc72bc02b7b0cf

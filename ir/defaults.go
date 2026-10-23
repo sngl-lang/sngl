@@ -40,6 +40,14 @@ func ZeroExpr(t *Type) Expr {
 		if ed == nil || len(ed.Members) == 0 {
 			return nil
 		}
+		// A member carrying a payload is zero with its payload's zero.
+		if first := ed.Members[0]; first.Payload != nil {
+			payload := ZeroExpr(MemberPayload(t, first.Name))
+			if payload == nil {
+				return nil
+			}
+			return &StructLit{Type: t, Fields: []FieldInit{{Name: first.Name, Value: payload}}}
+		}
 		return &Ident{Type: t, Name: ed.Members[0].Name, Member: ed.Members[0].Name, Sym: ed}
 	case TypeUnit:
 		ud, _ := t.Decl.(*UnitDef)
@@ -257,6 +265,14 @@ func normalizeStmt(s Stmt) Stmt {
 		normalizeExpr(n.Iter)
 		n.Body = normalizeStmts(n.Body)
 		n.Else = normalizeStmts(n.Else)
+	case *Match:
+		normalizeExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				normalizeExpr(p)
+			}
+			arm.Body = normalizeStmts(arm.Body)
+		}
 	case *NodeInst:
 		for i := range n.Props {
 			normalizeExpr(n.Props[i].Value)
@@ -301,6 +317,14 @@ func normalizeExpr(e Expr) {
 		normalizeExpr(n.Cond)
 		normalizeExpr(n.Then)
 		normalizeExpr(n.Else)
+	case *MatchExpr:
+		normalizeExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				normalizeExpr(p)
+			}
+			normalizeExpr(arm.Value)
+		}
 	case *Call:
 		if n.Callee != nil {
 			normalizeExpr(n.Callee)

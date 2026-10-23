@@ -1,0 +1,135 @@
+# A query in a component built at run time, its fetch a named function that
+# waits, on every target.
+#
+# The query is the instance, so `fetch` stayed its prop, and a call through
+# a prop is coloured by nothing: html read the Promise the fetch returned as
+# the answer, fyne and gtk4 fetched on the drawing thread
+# (testdata/async_query_fetch_prop.txtar shows the goroutine), and android's
+# composable took `::fetchBook`, a suspend function, as a plain one and did
+# not compile. A prop a call site hands a function that waits is now typed as
+# one (passAsyncProps), and Kotlin spells that type `suspend`.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import http "sngl:http"
+import json "sngl:json"
+import test "sngl:test"
+import ui "sngl:ui"
+
+const server = "http://127.0.0.1:47819"
+
+struct Book {
+    title string
+}
+
+// A book, asked of the harness's server.
+func fetchBook(title string) async.Result[Book] {
+    match var r = http.get(url="{server}/books/{http.pathEscape(title)}") {
+        failed { return {failed=r} }
+        ok {
+            match var checked = r.checked() {
+                failed { return {failed=checked} }
+                ok { return json.decode[Book](checked.body) }
+            }
+        }
+    }
+}
+
+component page ui.node {
+    var tab = 0
+    var loads = 0
+    var kind = "Red"
+
+    ui.tabs #tabs(:selected=tab) {
+        ui.tab(label="First") {
+            ui.text(value="first")
+        }
+        ui.tab(label="Second") {
+            ui.vbox {
+                for var title = ["dune", "war and peace"] {
+                    async.query(on=title, fetch=fetchBook, @load(got) { loads += 1 })
+                }
+                ui.select #pick(:value=kind) {
+                    ui.choice(label="Red")
+                    ui.choice(label="Green")
+                }
+                ui.text #count(value="{loads}")
+            }
+        }
+    }
+}
+
+ui.window {
+    page()
+}
+
+func testEachBookIsAskedForOnce(t test.Test, c page) {
+    c.tabs.change(1)
+    t.wait(func() => c.loads >= 2, 5000)
+    t.wait(func() => c.loads > 2, 1000)
+    t.assert(c.loads == 2)
+    t.assert(c.count != null && c.count.value == "2")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:dd6d3431a8ad370b9cfcabf45bcb12d3
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:ef22d5a5b906215db4608378ecc433d5
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:f422dcb882b99cb43af2843b9b8ad2a9
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:4db5681dc21f4be65a218cb8e2b48125
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:8480860fa4e2f357bedb3215d6647b85
+{
+  "results": [
+    {
+      "Desc": "EachBookIsAskedForOnce",
+      "Passed": true
+    }
+  ]
+}

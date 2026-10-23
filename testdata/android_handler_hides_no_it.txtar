@@ -133,7 +133,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -160,4 +159,4 @@ class MainScreenTest {
 
 }
 -- run/kotlin/android --
-pass sha256:9a52695852fc73a44f8e113ec9567b0c
+pass sha256:930ed6f049452253f3ef62cd11a16744

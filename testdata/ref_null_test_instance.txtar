@@ -139,6 +139,11 @@ type Style struct {
 	ListStyleType  string
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -146,9 +151,15 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	shown       bool
-	hits__inst0 int
-	__focusID   int
+	shown               bool
+	hits__inst0         int
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__focusID           int
 
 	width, height int
 }
@@ -158,7 +169,14 @@ func New() Model {
 	m := Model{&modelState{}}
 	m.shown = true
 	m.hits__inst0 = 0
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -170,13 +188,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+	var __lt1 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt1 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 8))
 	}
-	return __lt2
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -226,85 +244,115 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(Cells(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
+		var __lt2 int
 		if s.MaxLines == 0 {
-			__lt3 = 0
+			__lt2 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
-	if a == "center" {
-		__lt5 = lipgloss.Center
-	} else {
-		var __lt4 lipgloss.Position
-		if a == "right" {
-			__lt4 = lipgloss.Right
-		} else {
-			__lt4 = lipgloss.Left
-		}
-		__lt5 = __lt4
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
 	}
-	return __lt5
+	return __lt3
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt8 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt8 = lipgloss.DoubleBorder()
-	} else {
-		var __lt7 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt7 = tui.DashedBorder()
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			var __lt6 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt6 = lipgloss.RoundedBorder()
-			} else {
-				__lt6 = lipgloss.NormalBorder()
-			}
-			__lt7 = __lt6
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt8 = __lt7
+		__lt4 = __lt5
 	}
-	return __lt8
+	return __lt4
 }
 
 func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt10 = own
+		__lt7 = own
 	} else {
-		var __lt9 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
+			__lt6 = axis
 		} else {
-			__lt9 = all
+			__lt6 = all
 		}
-		__lt10 = __lt9
+		__lt7 = __lt6
 	}
-	return Cells(__lt10)
+	return Cells(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt9 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt9 = lines
 	} else {
-		var __lt11 int
+		var __lt8 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt8 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt8 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt9 = __lt8
 	}
-	return __lt12
+	return __lt9
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []bool{}
+	if m.shown {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != true)
+		}
+		if __effect0_fresh {
+			m.hits__inst0 = 0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, true)
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusNext() {
@@ -383,6 +431,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.shown = !m.shown
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.hits__inst0 = (m.hits__inst0 + 1)
 		}
@@ -412,41 +461,45 @@ func (m *Model) labelPresent() bool {
 	if m.shown {
 		return true
 	}
+	m.__effects0_settle()
 	return false
 }
 
 func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	var parts []string
+	var part0 string
+	var part0Children []string
+	var part0_0 string
+	part0_0Focused := (m.__focusID == 0)
+	part0_0Prefix := " "
+	if part0_0Focused {
+		part0_0Prefix = ">"
 	}
-	content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("t"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
+	part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint("t"))
+	part0Children = append(part0Children, part0_0)
+	var part0_1 string
 	if m.shown {
-		var content_1Parts []string
-		var content_1Part_0 string
-		content_1Part_0Focused := (m.__focusID == 1)
-		content_1Part_0Prefix := " "
-		if content_1Part_0Focused {
-			content_1Part_0Prefix = ">"
+		var part0_1Parts []string
+		var part0_1Part_0 string
+		part0_1Part_0Focused := (m.__focusID == 1)
+		part0_1Part_0Prefix := " "
+		if part0_1Part_0Focused {
+			part0_1Part_0Prefix = ">"
 		}
-		content_1Part_0 = BoxLook(Style{}, true).Render(content_1Part_0Prefix + " " + fmt.Sprint(("hit x " + fmt.Sprint(m.hits__inst0))))
-		content_1Parts = append(content_1Parts, content_1Part_0)
-		var content_1Part_1 string
-		content_1Part_1 = BoxLook(Style{}, true).Render(fmt.Sprint("y"))
-		content_1Parts = append(content_1Parts, content_1Part_1)
-		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Parts...)
+		part0_1Part_0 = BoxLook(Style{}, true).Render(part0_1Part_0Prefix + " " + fmt.Sprint(("hit x " + fmt.Sprint(m.hits__inst0))))
+		part0_1Parts = append(part0_1Parts, part0_1Part_0)
+		var part0_1Part_1 string
+		part0_1Part_1 = BoxLook(Style{}, true).Render(fmt.Sprint("y"))
+		part0_1Parts = append(part0_1Parts, part0_1Part_1)
+		part0_1 = lipgloss.JoinVertical(lipgloss.Left, part0_1Parts...)
 	}
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
+	if part0_1 != "" {
+		part0Children = append(part0Children, part0_1)
 	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = BoxLook(Style{}, true).Render(content)
+	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = BoxLook(Style{}, true).Render(part0)
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -497,11 +550,13 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	shown        bool
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__inst0_live []*BadgeInstance
+	shown          bool
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*BadgeInstance
+	__rendering0   bool
+	__renderAgain0 bool
 
 	__n0        *fyne.Container
 	toggle      *widget.Button
@@ -517,47 +572,59 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*BadgeInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	m.label = nil
-	__inst0_next := []*BadgeInstance{}
-	var __inst0_i int = 0
-	if m.shown {
-		var b *BadgeInstance
-		if len(m.__inst0_live) > __inst0_i {
-			b = m.__inst0_live[__inst0_i]
-			b.SetLabel("x")
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			b__new := newBadgeInstance(m, "x")
-			b = b__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			m.label = nil
+			__inst0_next := []*BadgeInstance{}
+			var __inst0_i int = 0
+			if m.shown {
+				var b *BadgeInstance
+				if len(m.__inst0_live) > __inst0_i {
+					b = m.__inst0_live[__inst0_i]
+					b.SetLabel("x")
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					b__new := newBadgeInstance(m, "x")
+					b = b__new
+				}
+				__inst0_next = append(__inst0_next, b)
+				__inst0_i = (__inst0_i + 1)
+				b__el := b.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, b__el)
+				m.__slot0 = append(m.__slot0, b__el)
+				m.label = widget.NewLabel("")
+				m.label.SetText("y")
+				fynelayout.InsertBefore(__parent, m.__slot0_at, m.label)
+				m.__slot0 = append(m.__slot0, m.label)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, b)
-		__inst0_i = (__inst0_i + 1)
-		b__el := b.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, b__el)
-		m.__slot0 = append(m.__slot0, b__el)
-		m.label = widget.NewLabel("")
-		m.label.SetText("y")
-		fynelayout.InsertBefore(__parent, m.__slot0_at, m.label)
-		m.__slot0 = append(m.__slot0, m.label)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) toggle_click_handler() {
@@ -703,15 +770,17 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	shown        bool
-	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__inst0_live []*BadgeInstance
-	__n0         gtk4rt.Handle
-	toggle       gtk4rt.Handle
-	label        gtk4rt.Handle
-	__named_hit  gtk4rt.Handle
+	shown          bool
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__inst0_live   []*BadgeInstance
+	__rendering0   bool
+	__renderAgain0 bool
+	__n0           gtk4rt.Handle
+	toggle         gtk4rt.Handle
+	label          gtk4rt.Handle
+	__named_hit    gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -723,47 +792,59 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*BadgeInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	m.label = nil
-	__inst0_next := []*BadgeInstance{}
-	var __inst0_i int = 0
-	if m.shown {
-		var b *BadgeInstance
-		if len(m.__inst0_live) > __inst0_i {
-			b = m.__inst0_live[__inst0_i]
-			b.SetLabel("x")
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			b__new := newBadgeInstance(m, "x")
-			b = b__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			m.label = nil
+			__inst0_next := []*BadgeInstance{}
+			var __inst0_i int = 0
+			if m.shown {
+				var b *BadgeInstance
+				if len(m.__inst0_live) > __inst0_i {
+					b = m.__inst0_live[__inst0_i]
+					b.SetLabel("x")
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					b__new := newBadgeInstance(m, "x")
+					b = b__new
+				}
+				__inst0_next = append(__inst0_next, b)
+				__inst0_i = (__inst0_i + 1)
+				b__el := b.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, b__el)
+				m.__slot0 = append(m.__slot0, b__el)
+				m.label = gtk4rt.LabelNew("")
+				gtk4rt.LabelSetLabel(m.label, "y")
+				gtk4rt.InsertBefore(parent, m.__slot0_at, m.label)
+				m.__slot0 = append(m.__slot0, m.label)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, b)
-		__inst0_i = (__inst0_i + 1)
-		b__el := b.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, b__el)
-		m.__slot0 = append(m.__slot0, b__el)
-		m.label = gtk4rt.LabelNew("")
-		gtk4rt.LabelSetLabel(m.label, "y")
-		gtk4rt.InsertBefore(parent, m.__slot0_at, m.label)
-		m.__slot0 = append(m.__slot0, m.label)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) toggle_clicked_handler() {
@@ -939,7 +1020,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1057,63 +1137,75 @@ window.__sngl_boot = () => {
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    if (state.shown) {
-      let b = null;
-      if (__inst1_live.length > __inst1_i) {
-        b = __inst1_live[__inst1_i];
-        b.__set_label("x");
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        if (state.shown) {
+          let b = null;
+          if (__inst1_live.length > __inst1_i) {
+            b = __inst1_live[__inst1_i];
+            b.__set_label("x");
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let b__new = __cf_badge({ label: "x" });
+            b = b__new;
+          }
+          __inst1_next.push(b);
+          __inst1_i = __inst1_i + 1;
+          let b__el = b.__root;
+          b__el.setAttribute("data-sngl-instance", "b");
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === b__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(b__el, __place0_i_ref0);
+          }
+          __slot0.push(b__el);
+          let label = document.createElement("span");
+          label.setAttribute("data-sngl-id", "label");
+          label.textContent = "y";
+          let __place0_i_ref1 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref1 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref1 === label) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(label, __place0_i_ref1);
+          }
+          __slot0.push(label);
         }
-        let b__new = __cf_badge({ label: "x" });
-        b = b__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(b);
-      __inst1_i = __inst1_i + 1;
-      let b__el = b.__root;
-      b__el.setAttribute("data-sngl-instance", "b");
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === b__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(b__el, __place0_i_ref0);
-      }
-      __slot0.push(b__el);
-      let label = document.createElement("span");
-      label.setAttribute("data-sngl-id", "label");
-      label.textContent = "y";
-      let __place0_i_ref1 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref1 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref1 === label) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(label, __place0_i_ref1);
-      }
-      __slot0.push(label);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -1132,12 +1224,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:80a9d9f99709296fd24487fea392c1ad
+pass sha256:bd0eb6e1420d9bf4d0c380c82c8e2aeb
 -- run/go/fyne --
-pass sha256:701862bff85f67605cd0768aba4def70
+pass sha256:11a21b0ffc18c14e5d6eb48a0e1a8494
 -- run/go/gtk4 --
-pass sha256:e8c8641c675cfe0fdbca50bc4566859a
+pass sha256:54845d483b7b9dbff9b0733145fd1285
 -- run/kotlin/android --
-pass sha256:0985e4f94b7ece4a36ba476545690539
+pass sha256:e03b24431038275ff95159dfed3ee436
 -- run/none/html --
-pass sha256:0538af5bc1d94cf77c365c1f409bc2f9
+pass sha256:0b3bef780ffb30f269d5c7de1ada9259

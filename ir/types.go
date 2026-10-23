@@ -223,6 +223,13 @@ func (t *Type) String() string {
 		return name
 	case TypeEnum:
 		if t.Decl != nil {
+			if len(t.Elems) > 0 {
+				args := make([]string, len(t.Elems))
+				for i, e := range t.Elems {
+					args[i] = e.String()
+				}
+				return t.Decl.SymName() + "[" + strings.Join(args, ", ") + "]"
+			}
 			return t.Decl.SymName()
 		}
 		return "enum"
@@ -518,10 +525,11 @@ func (t *Type) Equal(other *Type) bool {
 			}
 		}
 		return true
-	case TypeComponent:
+	case TypeComponent, TypeEnum:
 		// `page[P]` is the instances whose call site bound the declaration's
 		// type parameters that way, and a handle carries what its call site
 		// bound. A bare `component` names no declaration and carries none.
+		// `Result[int]` is the enum whose payloads are read at those arguments.
 		if !sameDecl(t, other) {
 			return false
 		}
@@ -534,7 +542,7 @@ func (t *Type) Equal(other *Type) bool {
 			}
 		}
 		return true
-	case TypeEnum, TypeUnit, TypeInstance:
+	case TypeUnit, TypeInstance:
 		return sameDecl(t, other)
 	case TypeFunc:
 		return t.Sig.Equal(other.Sig)
@@ -845,4 +853,11 @@ func sameFields(a, b []*StructField) bool {
 		}
 	}
 	return true
+}
+
+// HasLength is whether t is a type whose `length` is its built-in measure --
+// a list, a map or a string -- rather than a member of that name. A type the
+// IR did not record is taken to have one, as every reader assumed before.
+func HasLength(t *Type) bool {
+	return t == nil || t.Kind == TypeList || t.Kind == TypeMap || t.Kind == TypeString
 }

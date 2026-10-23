@@ -78,6 +78,11 @@ func (r *renderCheck) stmt(s ir.Stmt, at ast.Pos) {
 		r.expr(n.Cond, at)
 		r.stmts(n.Body, at)
 		r.stmts(n.Else, at)
+	case *ir.Match:
+		r.expr(n.Subject, at)
+		for _, arm := range n.Arms {
+			r.stmts(arm.Body, at)
+		}
 	case *ir.For:
 		r.expr(n.Iter, at)
 		r.stmts(n.Body, at)
@@ -125,7 +130,7 @@ func (r *renderCheck) visit(e ir.Expr, at ast.Pos) error {
 			r.report(identPos(x), at, "renders var %q: a const render reads only props, consts and const funcs", v.Name)
 		}
 	case *ir.Call:
-		if x.Func == nil || x.Func.Const || x.Event != "" {
+		if x.Func == nil || x.Func.Const || x.Event != "" || ir.IsOwnedDerived(x.Func) {
 			return nil
 		}
 		name := funcDeclName(x.Func)

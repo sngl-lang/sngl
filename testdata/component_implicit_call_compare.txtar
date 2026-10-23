@@ -200,84 +200,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
-	if a == "center" {
-		__lt2 = lipgloss.Center
-	} else {
-		var __lt1 lipgloss.Position
-		if a == "right" {
-			__lt1 = lipgloss.Right
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
 		} else {
-			__lt1 = lipgloss.Left
+			__lt3 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt1
+		__lt2 = __lt3
 	}
 	return __lt2
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt5 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
 	} else {
-		var __lt4 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt4 = tui.DashedBorder()
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
 		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt3 = lipgloss.RoundedBorder()
-			} else {
-				__lt3 = lipgloss.NormalBorder()
-			}
-			__lt4 = __lt3
+			__lt4 = all
 		}
 		__lt5 = __lt4
 	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Cells(__lt7)
+	return Cells(__lt5)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt8 int
+	var __lt6 int
 	if px <= 0.0 {
-		__lt8 = 0
+		__lt6 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt6 = max(1, (int(px) / 8))
 	}
-	return __lt8
+	return __lt6
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt8 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt8 = lines
 	} else {
-		var __lt9 int
+		var __lt7 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt7 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt7 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt8 = __lt7
 	}
-	return __lt10
+	return __lt8
 }
 
 func (m Model) N() int {
@@ -320,14 +314,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var parts []string
-	var __lt11 string
+	var __lt9 string
 	if m.count() > 0 {
-		__lt11 = "some"
+		__lt9 = "some"
 	} else {
-		__lt11 = "none"
+		__lt9 = "none"
 	}
 	var part2 string
-	part2 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
+	part2 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt9))
 	parts = append(parts, part2)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -396,14 +390,14 @@ func (m *Model) SetN(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	var __lt15 string
+	var __lt7 string
 	if m.count() > 0 {
-		__lt15 = "some"
+		__lt7 = "some"
 	} else {
-		__lt15 = "none"
+		__lt7 = "none"
 	}
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(__lt15)
+	m.__n0.SetText(__lt7)
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -456,9 +450,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -491,14 +483,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	var __lt26 string
+	var __lt15 string
 	if m.count() > 0 {
-		__lt26 = "some"
+		__lt15 = "some"
 	} else {
-		__lt26 = "none"
+		__lt15 = "none"
 	}
 	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(__n0, __lt26)
+	gtk4rt.LabelSetLabel(__n0, __lt15)
 	gtk4rt.BoxAppend(m.__root, __n0)
 }
 
@@ -630,17 +622,17 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:48b5bca9b1522fdba3cb606979f1f860
+pass sha256:ecf3c2092235987555c201090e4c7ef4
 -- run/go/fyne --
-pass sha256:2c4f89d754d20137f6f6d7e039c4b3dc
+pass sha256:3922062e2878a631aad59cbdf1b5c87f
 -- run/go/gtk4 --
-pass sha256:dfd0058dd828993057d87443c899bb93
+pass sha256:1590c9f72513b0bab5d244cff3a71d41
 -- run/kotlin/android --
-pass sha256:a135b066b2eff0af106ba981c0cefd86
+pass sha256:43097577467119036a741bfd4b42ca64
 -- run/none/html --
 pass sha256:dce9f14868eb9dcc6519bb320e6b3c7e
 -- testrun/html/none/component_implicit_call_compare.sngl/main/1 --
-sha256:527f2cd477df1d4f160a64a7f0258b27
+sha256:88b5555c255a142a068d364a39630883
 {
   "results": [
     {

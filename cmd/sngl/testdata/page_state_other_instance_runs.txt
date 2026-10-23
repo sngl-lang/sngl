@@ -1,0 +1,115 @@
+# One instance built at run time writes page state another reads, on every
+# target.
+#
+# A write splices an update after it for every node, slot and instance that
+# reads what it wrote, whatever body they are in -- right where the bodies
+# are spliced into one, and wrong where an instance is a record of its own:
+# `chooser`'s click named `shower`'s `#shown` through chooser's record,
+# which has no such field, and fyne and gtk4 did not build. A write from a
+# component's body now updates only what that body and the page hold. The
+# other instance reads the state where it is built, so `shower`, built after
+# the write, shows it.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+var picked = "a"
+
+component chooser ui.node {
+    var count = 0
+
+    ui.button #pick(text="pick b", @click {
+        count += 1
+        picked = "b"
+    })
+}
+
+component shower ui.node {
+    var seen = 0
+
+    ui.text #shown(value="picked {picked}")
+}
+
+component main ui.node {
+    var away = false
+
+    ui.button #leave(text="leave", @click { away = !away })
+    if away {
+        shower #s
+    } else {
+        chooser #c
+    }
+}
+
+func testTheOtherInstanceReadsTheWrite(t test.Test, c main) {
+    if c.c != null {
+        c.c.pick.click()
+    }
+    t.assert(picked == "b")
+    c.leave.click()
+    t.assert(c.s != null && c.s.shown.value == "picked b")
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:aaea246086f45c31efabd5261028395c
+{
+  "results": [
+    {
+      "Desc": "TheOtherInstanceReadsTheWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:ff868b3e45030f4705abc78113911f41
+{
+  "results": [
+    {
+      "Desc": "TheOtherInstanceReadsTheWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:a559b996f632c746b837a3a2b7f47e58
+{
+  "results": [
+    {
+      "Desc": "TheOtherInstanceReadsTheWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:78d701ab2eed920d5384f7333d83e897
+{
+  "results": [
+    {
+      "Desc": "TheOtherInstanceReadsTheWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:ac4c31086d58d833bf767e66a7ed5405
+{
+  "results": [
+    {
+      "Desc": "TheOtherInstanceReadsTheWrite",
+      "Passed": true
+    }
+  ]
+}

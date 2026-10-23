@@ -182,7 +182,7 @@ ui.window {
     box
 }
 -- testrun/android/kotlin/app.sngl/box/1 --
-sha256:0bc3ac9f1027e34e053e751e6645eb67
+sha256:1f33e5837a34b640c7cfdd25c4244f4b
 {
   "results": [
     {
@@ -258,7 +258,7 @@ sha256:601ea586ad44132b50edb2a041d59838
   ]
 }
 -- testrun/fyne/go/app.sngl/box/1 --
-sha256:e990e2d2a053f20a6e42094324c5ff54
+sha256:8abf272dfa5827ef1b0a2604582c81ac
 {
   "results": [
     {
@@ -334,7 +334,7 @@ sha256:96ca88d880f6c459b22903a1d0d412f6
   ]
 }
 -- testrun/html/none/app.sngl/box/1 --
-sha256:f5a8b7324ba189f587cddfc5ee459297
+sha256:e8d49c81188f56d40687224c216c6ddb
 {
   "results": [
     {

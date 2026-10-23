@@ -258,6 +258,77 @@ func (c *checker) specializeHandle(id string, comp, spec *ir.Component) {
 	}
 }
 
+// preSpecializeHandles gives each generic node's handle in s the type
+// arguments its props bind, before the scope holding it is checked: a read
+// written above the node -- a page's handler going to a page written below it,
+// `pages.go(detail, Mon{…})` -- otherwise saw the bare declaration and was
+// refused (`cannot pass page as page[T, M]`), since the node's own check is
+// what completes its handle. The props are read quietly, as
+// bindComponentTypeParams reads them at the node, so one reading what is not
+// declared yet -- a loop's variable, a local written further down -- binds
+// nothing here, and its node completes the handle as before; so does what the
+// children bind (bindFromChildren). nested says whether to reach into an `if`
+// or a `for`, which a component's own hoist does and a block's does not:
+// those hoist their own ids when they are checked.
+func (c *checker) preSpecializeHandles(s ast.Stmt, nested bool) {
+	block := func(b *ast.StmtBlock) {
+		if b == nil || !b.IsDefined() {
+			return
+		}
+		for _, s := range b.Stmts {
+			c.preSpecializeHandles(s, nested)
+		}
+	}
+	switch n := s.(type) {
+	case *ast.VisualNode:
+		c.preSpecializeHandle(n)
+		block(&n.Block)
+	case *ast.CallStmt:
+		// `tagged #box(item=41)`, a node with no block, which checkStmt
+		// checks as the node it is.
+		if _, _, isElem := elementRefCallInfo(n.Call); isElem {
+			if target, ok := n.Call.Func.(ast.TargetExpr); ok {
+				c.preSpecializeHandle(&ast.VisualNode{Pos: n.Pos, Target: target, ID: n.Call.ID, Args: n.Call.Args})
+			}
+		}
+	case *ast.IfStmt:
+		if nested {
+			block(&n.Body)
+			block(&n.Else)
+		}
+	case *ast.MatchStmt:
+		if nested {
+			for _, arm := range n.Arms {
+				block(&arm.Body)
+			}
+		}
+	case *ast.ForStmt:
+		if nested {
+			block(&n.Body)
+			block(&n.Else)
+		}
+	}
+}
+
+func (c *checker) preSpecializeHandle(n *ast.VisualNode) {
+	if n.ID == "" {
+		return
+	}
+	name := visualNodeTarget(n)
+	comp := c.componentNamed(name)
+	if comp == nil || len(comp.TypeParams) == 0 {
+		return
+	}
+	var spec *ir.Component
+	c.quietly(func() {
+		written, _ := c.bindWritten(n.Pos, name, n.TypeArgs, comp.TypeParams)
+		spec = c.bindComponentTypeParams(n.Pos, comp, n.Args, written)
+	})
+	if spec != comp {
+		c.specializeHandle(n.ID, comp, spec)
+	}
+}
+
 // handleKey names a handle from outside the body declaring it, the way a
 // select `c.box` reaches one: the component and the id.
 type handleKey struct {

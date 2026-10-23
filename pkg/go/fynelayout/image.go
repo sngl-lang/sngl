@@ -132,8 +132,11 @@ func (s *ImageSource) show(url string, data []byte, err error) {
 		return
 	}
 	s.data, s.err = data, err
+	s.pic.Image = nil
+	// A URL that fails shows nothing, as gtk4's does, not the last URL's
+	// picture as if it were this one's.
+	s.pic.Resource = nil
 	if err == nil {
-		s.pic.Image = nil
 		s.pic.Resource = fyne.NewStaticResource(path.Base(url), data)
 		if w, h, ok := snglimage.Size(data); ok {
 			s.pic.SetMinSize(fyne.NewSize(float32(w), float32(h)))

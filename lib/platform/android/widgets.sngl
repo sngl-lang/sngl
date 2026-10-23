@@ -27,16 +27,24 @@ const component ui.window[platform](visible, @error, @closed, content) {
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Column(modifier=modifierOf(style, flexShare)) {
-        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
+        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxWidth() : func(w float32) => modifier.weight(w)) {
             children
         }
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Row(modifier=modifierOf(style, flexShare)) {
-        flexShare(func(w float32) => modifier.weight(w).fillMaxHeight()) {
+    Row(
+        modifier = modifierOf(style, flexShare),
+        horizontalArrangement = rowArrangement(style),
+        verticalAlignment = rowAlignment(style.alignItems),
+    ) {
+        flexShare(stretches(style) ? func(w float32) => modifier.weight(w).fillMaxHeight() : func(w float32) => modifier.weight(w)) {
             children
         }
     }
@@ -54,11 +62,8 @@ const component ui.spacer[platform](style) {
     Spacer(modifier=modifierOf(style, flexShare)) {}
 }
 
-const component ui.scroll[platform](style, content) {
-    Column(
-        modifier = modifierOf(style, flexShare),
-        then = [modifier.verticalScroll(rememberScrollState())],
-    ) {
+const component ui.scroll[platform](style, @reachEnd, content) {
+    SnglScroll(modifier=modifierOf(style, flexShare), onReachEnd=func() { reachEnd() }) {
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             content
         }
@@ -83,19 +88,35 @@ const component ui.button[platform](text, style, @click) {
 }
 
 // An image is a box holding the source it shows, or the placeholder where it
-// holds none. A file the program carries is SnglAssetImage, Kotlin the
-// platform ships with the app, which reads the picture out of the app's
-// assets; a drawing is a Canvas. Compose has no image loader in the box, so a
-// picture a URL names draws nothing.
-const component ui.image[platform](style, src) {
-    Box(modifier=modifierOf(style, flexShare)) {
-        #[family.crosses]
+// holds none, and it hands its source the two events it reports: a picture
+// arriving and one failing. A file the program carries is SnglAssetImage, and
+// a picture a URL names SnglRemoteImage, Kotlin the platform ships with the
+// app (codegen/platform/android/assets.kt) -- the first reads the app's
+// assets, the second fetches off the main thread, since Compose has no image
+// loader in the box. A drawing is a Canvas, and reports neither.
+const component ui.image[platform](style, @load, @error, src) {
+    SnglImage(modifier=modifierOf(style, flexShare), onLoad=func() { load() }, onError=func(m string) {
+        error({message=m, kind="image"})
+    }) {
         src
     }
 }
 
+#[gen.renders(identity)]
+#[intrinsic("android:SnglImage")]
+component SnglImage(
+    modifier Modifier,
+    onLoad   func(),
+    onError  func(message string),
+    src      ...component option[ui.imageSource],
+) ui.node
+
 #[intrinsic("android:SnglAssetImage")]
 component SnglAssetImage(url string) ui.imageSource
+
+#[permission("android.permission.INTERNET")]
+#[intrinsic("android:SnglRemoteImage")]
+component SnglRemoteImage(url string) ui.imageSource
 
 #[intrinsic("android:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
@@ -105,7 +126,7 @@ const component ui.file[platform](path) {
 }
 
 const component ui.remote[platform](url) {
-    SnglAssetImage(url=url)
+    SnglRemoteImage(url=url)
 }
 
 const component shapes.image[platform](width, height, shapes) {
@@ -140,7 +161,11 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
 }
 
 const component ui.checkbox[platform](label, checked, style, @change) {
-    Row(modifier=modifierOf(style, flexShare), verticalAlignment=alignCenterVertically) {
+    Row(
+        modifier = modifierOf(style, flexShare),
+        horizontalArrangement = rowArrangement(style),
+        verticalAlignment = alignCenterVertically,
+    ) {
         Checkbox(checked=checked, onCheckedChange=func(on) {
             checked = on
             change(on)
@@ -159,7 +184,11 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // option it looped over.
 const component ui.radio[platform](value, direction, style, @change, options) {
     if direction == ui.Orientation.horizontal {
-        Row(modifier=modifierOf(style, flexShare)) {
+        Row(
+            modifier = modifierOf(style, flexShare),
+            horizontalArrangement = rowArrangement(style),
+            verticalAlignment = rowAlignment(style.alignItems),
+        ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
                     RadioButton(selected=(value == opt.label), onClick=func() {
@@ -171,7 +200,11 @@ const component ui.radio[platform](value, direction, style, @change, options) {
             }
         }
     } else {
-        Column(modifier=modifierOf(style, flexShare)) {
+        Column(
+            modifier = modifierOf(style, flexShare),
+            verticalArrangement = columnArrangement(style),
+            horizontalAlignment = columnAlignment(style.alignItems),
+        ) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
                     RadioButton(selected=(value == opt.label), onClick=func() {
@@ -186,7 +219,11 @@ const component ui.radio[platform](value, direction, style, @change, options) {
 }
 
 const component ui.toggle[platform](label, checked, style, @change) {
-    Row(modifier=modifierOf(style, flexShare), verticalAlignment=alignCenterVertically) {
+    Row(
+        modifier = modifierOf(style, flexShare),
+        horizontalArrangement = rowArrangement(style),
+        verticalAlignment = alignCenterVertically,
+    ) {
         Switch(checked=checked, onCheckedChange=func(on) {
             checked = on
             change(on)
@@ -198,20 +235,42 @@ const component ui.toggle[platform](label, checked, style, @change) {
 }
 
 // Compose's DropdownMenu leaves whether it is open to its caller, so that is
-// state of each select, and why this override is not const.
-component ui.select[platform](placeholder, value, style, @change, options) {
-    var expanded = false
-    Box(modifier=modifierOf(style, flexShare)) {
-        OutlinedButton(onClick=func() { expanded = true }) {
-            Text(text=(value != "" ? value : placeholder)) {}
+// state of each select, and why this override is not const. The field is
+// read-only, since a select chooses among its choices, and still takes a tap
+// as its own to place a cursor, so the tap that opens the menu is a layer over
+// it. Setting the box's text chooses as picking does, which is how a test
+// chooses; a label that names no choice, or is the value already, reports
+// nothing.
+component ui.select[platform](placeholder, value, disabled, style, @change, options) {
+    var open = false
+    func choose(v string) {
+        open = false
+        if v != value && options.map(func(o) => o.label).contains(v) {
+            value = v
+            change(v)
         }
-        DropdownMenu(expanded=expanded, onDismissRequest=func() { expanded = false }) {
+    }
+    Box(modifier=modifierOf(style, flexShare).snglChooses(func(v string) { choose(v) })) {
+        OutlinedTextField(
+            value = value,
+            readOnly = true,
+            enabled = disabled == false,
+            singleLine = true,
+            onValueChange = func(v) {},
+        ) {
+            component label {
+                if placeholder != "" {
+                    Text(text=placeholder) {}
+                }
+            }
+            component trailingIcon {
+                Text(text="▾") {}
+            }
+        }
+        Box(modifier=modifier.matchParentSize().clickable(enabled=disabled == false, onClick=func() { open = true })) {}
+        DropdownMenu(expanded=open, onDismissRequest=func() { open = false }) {
             for var opt = options {
-                DropdownMenuItem(onClick=func() {
-                    value = opt.label
-                    change(opt.label)
-                    expanded = false
-                }) {
+                DropdownMenuItem(onClick=func() { choose(opt.label) }) {
                     component text {
                         Text(text=opt.label) {}
                     }
@@ -277,7 +336,13 @@ const component ui.spinner[platform](style) {
 }
 
 const component ui.badge[platform](value, style) {
-    Badge(modifier=modifierOf(style, flexShare)) {
+    Badge(
+        modifier = surfaceModifierOf(style, flexShare),
+        containerColor = style.background != unset.background ? composeOf(style.background) : badgeContainerColor,
+        contentColor = style.color != unset.color ? composeOf(style.color) : contentColorFor(
+            style.background != unset.background ? composeOf(style.background) : badgeContainerColor,
+        ),
+    ) {
         Text(text=value) {}
     }
 }
@@ -286,10 +351,21 @@ const component ui.divider[platform](style) {
     HorizontalDivider(modifier=modifierOf(style, flexShare)) {}
 }
 
-const component ui.card[platform](style, content) {
-    Card(modifier=modifierOf(style, flexShare)) {
-        flexShare(func(w float32) => modifier.fillMaxSize()) {
-            content
+// A clickable card is Material's clickable Card, the overload taking
+// `onClick`, which gives it the ripple and the focus stop a pressable surface
+// has; any other card is the plain one, which a press passes through.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        Card(onClick=func() { click() }, modifier=modifierOf(style, flexShare)) {
+            flexShare(func(w float32) => modifier.fillMaxSize()) {
+                content
+            }
+        }
+    } else {
+        Card(modifier=modifierOf(style, flexShare)) {
+            flexShare(func(w float32) => modifier.fillMaxSize()) {
+                content
+            }
         }
     }
 }
@@ -305,7 +381,11 @@ const component ui.link[platform](text, style) {
 
 // Material's TabRow of a Tab per tab, and the selected one's content under it.
 const component ui.tabs[platform](selected, style, @change, items) {
-    Column(modifier=modifierOf(style, flexShare)) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
         TabRow(selectedTabIndex=selected) {
             for var k, t = items {
                 Tab(selected=(k == selected), enabled=!t.disabled, onClick=func() {
@@ -346,7 +426,11 @@ const component ui.modal[platform](open, title, @close, content) {
 }
 
 const component ui.drawer[platform](style, content) {
-    Column(modifier=modifierOf(style, flexShare)) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             content
         }
@@ -354,7 +438,11 @@ const component ui.drawer[platform](style, content) {
 }
 
 const component ui.tooltip[platform](style, trigger) {
-    Column(modifier=modifierOf(style, flexShare)) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             trigger
         }
@@ -362,7 +450,11 @@ const component ui.tooltip[platform](style, trigger) {
 }
 
 const component ui.popover[platform](style, content) {
-    Column(modifier=modifierOf(style, flexShare)) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             content
         }
@@ -370,15 +462,45 @@ const component ui.popover[platform](style, content) {
 }
 
 const component ui.splitview[platform](style, panes) {
-    Column(modifier=modifierOf(style, flexShare)) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             panes
         }
     }
 }
 
-const component ui.table[platform] {
-    Text(text="") {}
+// A table is a column of rows, the headings first and then each row's cells,
+// every cell an equal share of its row so that it lines up under its heading.
+// The share is `weight` rather than a Style's `flex`, which would stretch
+// each row down the whole column too.
+const component ui.table[platform](style, columns, rows) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
+        Row {
+            for var col = columns {
+                Box(then=[modifier.weight(float32(1.0))]) {
+                    Text(text=col, style=mergeTextStyle(localTextStyle, textStyle({fontWeight=bold}))) {}
+                }
+            }
+        }
+        HorizontalDivider() {}
+        for var row = rows {
+            Row {
+                for var cell = row.cells {
+                    Box(then=[modifier.weight(float32(1.0))]) {
+                        Text(text=cell) {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 const component ui.tree[platform] {
@@ -394,7 +516,11 @@ const component ui.menubar[platform] {
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Column(modifier=modifierOf(style, flexShare)) {
+    Column(
+        modifier = modifierOf(style, flexShare),
+        verticalArrangement = columnArrangement(style),
+        horizontalAlignment = columnAlignment(style.alignItems),
+    ) {
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             controls
         }

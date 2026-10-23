@@ -507,6 +507,29 @@ enum type's namespace
 its bare name. Enums are comparable and may be used as map keys. An enum may
 also carry methods.
 
+A member may carry a type, its **payload**, and an enum may take type
+parameters; a value then holds exactly one member and that member's payload:
+
+```
+enum Result[T any] {
+    ok     T
+    failed Failure
+}
+```
+
+- A value is built as a struct literal naming one member,
+  `Result[int]{ok=2}`, or `{ok=2}` where the type is expected. A member with
+  no payload is written as any member is, `Shape.empty`.
+- `r.ok` is an `option` of the payload, present only where `r` holds `ok`,
+  so a null test narrows it; a member with no payload reads as a `bool`.
+- `match var v = r { ok { … } failed { … } }` takes the arm of the member
+  held, and in each arm `v` is that member's payload (see *The match
+  statement*). Every match is exhaustive.
+- The zero value is the first member's, with its payload's zero.
+- Two values are equal when they hold one member with equal payloads; an
+  enum whose payloads do not all compare is not comparable, and one carrying
+  payloads has no string form unless it declares `string()`.
+
 #### Unit types
 
 A unit type declares a set of suffixes. A suffix written bare is a **base**; a
@@ -1271,6 +1294,10 @@ From lowest to highest binding:
 
 <!-- END GENERATED: precedence -->
 
+The comparison operators order two numbers of one type, two values of a
+single-base unit, or two strings, which compare character by character by
+their codes: `"apple" < "fig"`, and `"pear" < "pears"`.
+
 The ternary operator `c ? a : b` evaluates `a` when `c` is true and `b`
 otherwise; `c` must be `bool`. The unary operators are `!` (logical negation,
 on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
@@ -1379,10 +1406,11 @@ ArgExprCont =
 ### Operator semantics
 
 - The logical operators `&&`, `||`, `!` require `bool` operands and yield
-  `bool`.
+  `bool`. `&&` and `||` evaluate their right operand only when the left does
+  not decide the result.
 - Equality `==` / `!=` applies when the operands have the same kind, when both
   are numeric, or when one is `null`; it yields `bool`.
-- The relational operators `<`, `<=`, `>`, `>=` apply to two numbers, to two
+- The relational operators `<`, `<=`, `>`, `>=` apply to two numbers of one type, to two
   values of one single-base unit type, or to two strings.
 - `+` is addition on numbers, concatenation when either operand is a `string`,
   and the per-base sum of two values of one unit type.
@@ -1456,7 +1484,7 @@ IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
-Match = "match" [ CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+Match = "match" [ "var" IDENT "=" CondExpr | CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
 
 MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
 
@@ -1630,7 +1658,7 @@ general `iter[T]` is an error there — and must be safe to evaluate twice.
 ### The match statement
 
 ```
-Match    = "match" [ CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+Match    = "match" [ "var" identifier "=" CondExpr | CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
 MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
 ```
 
@@ -1692,6 +1720,40 @@ it is evaluated again for each arm tested, and a subject there that writes
 state is an error. Like an `if` head, a subject may not begin with `{`, and a
 match in the head of an `if` or `for` is written parenthesized.
 
+`match var v = subject` names the subject for the arms, as `for var x = xs`
+names the element. What the name holds is what the arm knows the subject to
+be: in an arm whose one pattern is an enum member carrying a payload, it is
+that payload; in every other arm it is the subject, and where the subject is
+an `option[T]` and the arm cannot be taken on `null` -- its patterns are not
+`null`, or it is an `else` after the `null` arm -- it is the `T`.
+
+<!-- SNGL-component
+struct Size {
+    w float
+    h float
+}
+
+enum Shape {
+    empty
+    circle float
+    rect Size
+}
+-->
+
+```sngl
+var shape Shape = Shape.empty
+
+ui.text(value=match var v = shape {
+    circle => "radius {v}"
+    rect => "{v.w} by {v.h}"
+    else => "nothing"
+})
+```
+
+In a block run imperatively the name is a local the arm may write; anywhere
+else -- a view, a match expression -- it is read off the subject where it is
+read, and may not be written.
+
 ### The emit statement
 
 An **emit** fires an event declared on the enclosing component, invoking the
@@ -1748,10 +1810,11 @@ makes to one of them is a write to the enclosing component's own state.
 every expression the view body evaluates — a node's props and bindings, an `if`
 or `for` head, a slot insertion's arguments, a context override's value — and
 not a handler's or an effect's body. It may read props, constants, const
-function results, loop variables, a slot's invocation arguments and contexts; a
-variable read there, or a call to a function that is not const, is an error. A
-variable only handlers touch is allowed, and so is a child with state of its
-own, which is its own instance.
+function results, loop variables, a slot's invocation arguments, contexts and
+an [owned derived value](#owned-values) of its own; a variable read there, or
+a call to any other function that is not const, is an error. A variable only
+handlers touch is allowed, and so is a child with state of its own, which is
+its own instance.
 
 `const` on a declaration an override implements is part of its contract, so
 every override of it is held to the rule. An override of a non-const
@@ -1771,7 +1834,11 @@ A component parameter is one of four kinds:
 
 - a **regular parameter** — `name Type = default` — an input supplied by the
   caller, with an optional default, and constant at every call site when
-  written `const name Type` (see [the const prefix](#the-const-prefix));
+  written `const name Type` (see [the const prefix](#the-const-prefix)). One
+  written `name = default` takes its default's type, and is typed exactly as
+  if that type were written: a call site gives an argument the same context,
+  so `style={fontWeight=bold}` is a `ui.Style` for `style = ui.Style{}`,
+  wherever the component is declared, and an override may restate the type;
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
   passes an lvalue with `:name = target`, and an assignment the component makes
   to `name` is written back to that lvalue, so parent and child stay in sync.
@@ -1784,7 +1851,9 @@ A component parameter is one of four kinds:
   component fires by calling its name (`name(x, y)`) and the caller handles
   with `@name(a, b) { … }`. The list is a function's, each parameter named
   and typed, and as with a function the parens may be left off when there is
-  none: `@name` and `@name()` both pass nothing;
+  none: `@name` and `@name()` both pass nothing. A control's event reports what
+  the user, or a test's trigger, did: a write the program makes to a binding
+  parameter fires none of its events;
 - a **slot** — `name component …` — a region of UI the caller supplies,
   described next.
 
@@ -1920,8 +1989,16 @@ labeled with an element reference, `Name #id(args)`, naming it for later use.
 ### Element references
 
 Attaching `#id` to a node (`ui.button #id(…)`) names it within the component and
-introduces `id` as a component-scoped binding: an opaque, immutable handle to
-that node (it does not shadow an existing name). The node is reached either by
+declares `id` in the component's scope: an opaque, immutable handle to that
+node. The declaration is hoisted there from wherever the node is written, and
+binds the name as any declaration does: it shadows a name an enclosing scope
+declares (`card #card` beside a package's `component card` makes `card` the
+node throughout the component), and another declaration of the name in the
+component's scope -- a var, a prop, a method -- is a redeclaration. A node
+position names a component whatever the scope binds, so `card #card()` still
+renders `card`. Read from outside an `if` or a `for` the node is written in,
+the handle is an `option` or a `list` of the node, and the program reads it
+inside instead. The node is reached either by
 that bare name or, from a handle to its container, by ordinary field
 selection — `c.id.value` reads the node's state and `c.id.click()` drives its
 events (event invocation through a reference is an ordinary call on the event
@@ -2135,6 +2212,102 @@ content stood. A window's `@error` is its outermost boundary, and it catches
 whether or not the program handles it: a raise under a window whose call site
 wrote no `@error` is caught and dropped. An error no boundary catches goes to
 the platform's default handler.
+
+### Owned values
+
+A struct marked `#[macro.owned(release)]` is **owned**: a value of it is
+something the program allocated and must give back, and `release` is the
+function that does. The release takes exactly one value of the type and
+returns nothing; anything else is an error at the mark. Only a struct may be
+owned, and nothing is owned by its name.
+
+```sngl
+import macro "sngl:macro"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+func close(f file) {
+}
+```
+
+Copying an owned value copies a reference to the one value: releasing any copy
+releases it, and every copy is released from then on. Releasing a value twice,
+or reading or passing one after its release, is a runtime error.
+
+A value is **made** by a literal of the type or by a call of a function
+answering it. A function taking an owned value and answering the same type is
+taken to answer a new value: one that answers its argument leaves the compiler
+releasing the one value twice.
+
+The compiler releases every owned value the program makes, at the narrowest of
+four lifetimes that holds it:
+
+- **Statement** -- a value a statement makes and only reads -- passed to a
+  parameter that only reads or copies it, used as a receiver, read a field or
+  an element of, or discarded -- is released once the statement completes,
+  including when it returns or raises.
+- **Node** -- a value held in a `var` of a component or of a view block,
+  computed by an owned derived value, or handed to a `#[macro.retains]`
+  parameter by an effect's handler lives as long as the node: it is released
+  when the var is overwritten, when what the derived value reads is written,
+  when the native is handed the next value, and when the node unmounts. The
+  compiler releases these itself, so a program that releases one by hand as
+  well releases it twice. The value such a var holds is one its initializer
+  or the assignment made: a var initialized or assigned from another var's
+  value is released twice, once by each.
+- **Application** -- a value built only from constants, which is a literal of
+  the type, or a call of a `const func`, whose arguments are literals or
+  package constants, is made once and released when the application tears
+  down. The value is made when the application starts. A package-level `var`
+  of an owned type holds its value the same way: it is released when the var
+  is overwritten and, last of all, at teardown.
+- **Moved** -- a value handed to a `#[macro.moves]` parameter belongs to the
+  callee, and the program never releases it.
+
+`#[macro.retains]` and `#[macro.moves]` mark a parameter of a function with no
+body: a native that keeps a pointer to its argument while the caller still
+owns it, and one that takes the argument. A function with a body says what it
+does with its arguments itself, so the marks are an error there.
+
+A derived value of an owned type -- an **owned derived value**, a function of
+a component taking nothing and answering an owned type -- is computed when
+the node is created, before any var whose initializer reads it, and computed
+again once a write to what it reads has settled, the old value released after
+the new one is made; a prop counts as written when its value changes. What it
+reads is the key of its lifetime and must be comparable as an effect's `on`
+is: a derived value that reads a function value, a list or a map is an error.
+A `var`'s initializer runs once and is not keyed. The value is state the
+component holds, so a const component's render may read one as it reads a
+prop.
+
+**What the compiler does not release is held**, never released wrongly, and
+the interpreter reports it as a leak:
+
+- A value the statement may not make: the right operand of `&&` or `||`, an
+  arm of a ternary or of a `match` expression, or the head of a `for`. Make
+  such a value in a statement of its own, and bind it to a `var` to release by
+  hand where it must be conditional.
+- A value made earlier in a statement whose later value raises while being
+  made.
+- A value held in a list, a map, a struct field or an `option`, rather than in
+  a var of the owned type itself.
+- A value handed to a `#[macro.retains]` parameter outside an effect's
+  handler, from an event handler or a function.
+
+A program that must release one of these releases it by hand.
+
+**An application tears down before its process ends.** When the event loop
+exits, the root tree unmounts, so every `@unmount` runs and every node-lifetime
+value is released; timers stop; and every application-lifetime value is
+released, package vars last. Only then does a platform's `@run` handler's
+`run` return, so a program that goes on after the windows close holds nothing
+they allocated. A process runs one application: a second call of `run` ends
+the process with an error naming the handler. A test is an application: it
+tears down when the test function returns, and an owned value still held
+after that is a leak the test fails with.
 
 ## Trees and families
 
@@ -2397,6 +2570,15 @@ every value in the tree must be constant, since the directive is read before
 the program runs. A build that names its targets on the command line ignores
 the directive.
 
+A platform node that declares the event may take `@run(args, run)`, which
+wraps the process start: the handler is called with the command line and a
+`run` that presents the windows and runs the event loop, and the process ends
+when the handler returns. The tree is built before the handler runs, so a
+write it makes is state the windows show. A handler that never calls `run`
+runs the loop with no window presented. The application tears down before
+`run` returns (see *Owned values*), and a second call of `run` is an error.
+gtk4 and fyne declare the event.
+
 ## Modules
 
 A program is organized into **packages**. A package is the set of `.sngl` files
@@ -2604,7 +2786,7 @@ IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
-Match = "match" [ CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+Match = "match" [ "var" IDENT "=" CondExpr | CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
 
 MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
 
@@ -2624,7 +2806,7 @@ StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructBodyItem [ ";" ] }
 
 StructField = IdentList Type [ "=" Expr ]
 
-EnumDecl = "enum" [ IDENT ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
+EnumDecl = "enum" [ IDENT ] [ TypeParamList ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
 
 UnitDecl = "unit" [ IDENT ] "{" [ ArgList ] "}"
 

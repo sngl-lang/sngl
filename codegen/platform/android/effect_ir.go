@@ -79,10 +79,22 @@ func (cc *irComposeContext) emitEffectBody(h *ir.EventHandler) {
 		cc.indent++
 		cc.line("val %s = %s", h.Func.Params[0].Name, effectKeyLocal)
 	}
-	for _, stmt := range h.Func.Block {
-		for _, line := range cc.kc.EvalStmt(stmt) {
-			cc.line("%s", line)
+	// A mount that waits is started, as html starts it without waiting
+	// (ir.Call.Detached): Compose runs the bracket on the thread it draws on,
+	// with nowhere to wait. One that returns leaves its own body.
+	var lines []string
+	switch {
+	case ir.BlockHasAsyncCall(h.Func.Block):
+		lines = cc.kc.Coroutine(h.Func.Block)
+	case ir.BlockReturns(h.Func.Block):
+		lines = cc.kc.Labeled(h.Func.Block)
+	default:
+		for _, stmt := range h.Func.Block {
+			lines = append(lines, cc.kc.EvalStmt(stmt)...)
 		}
+	}
+	for _, line := range lines {
+		cc.line("%s", line)
 	}
 	if block {
 		cc.indent--

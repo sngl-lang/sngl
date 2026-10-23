@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -152,7 +153,17 @@ type Host struct {
 	rec *Recorder
 	// out is what a scheme handler writes; nil outside one.
 	out *Output
+	// fsys is the project a handler reads a relative path through: an
+	// os.Root on disk, so a symlink out of the project is refused, or an
+	// in-memory FS.
+	fsys fs.FS
 }
+
+// ReadThrough makes fsys where a handler's relative read inside the project
+// goes. Where there is an import root on disk the file is recorded at its
+// place there; where there is none -- an in-memory FS -- nothing is, and the
+// producer reading it is not stored.
+func (h *Host) ReadThrough(fsys fs.FS) { h.fsys = fsys }
 
 // New indexes which package declares each function reachable from root,
 // which is who a host call written in it is asked of. dir is the import root,
@@ -214,7 +225,7 @@ func (h *Host) Recording(rec *Recorder) func() {
 // Recorder is the producer recording now, or nil.
 func (h *Host) Recorder() *Recorder { return h.rec }
 
-// Writing makes out what a handler's out.write calls write.
+// Writing makes out what a handler's out.file calls open.
 func (h *Host) Writing(out *Output) { h.out = out }
 
 // OwnerOf is pkg as the host sees it, by its origin.
@@ -297,6 +308,9 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 	}
 	switch id {
 	case "gen.lines":
+		if name, ok := h.inFS(str(0)); ok {
+			return rec.linesFS(h.fsys, name, h.root)
+		}
 		p, err := h.readable(ow, str(0), trust.File)
 		if err != nil {
 			return nil, err
@@ -326,12 +340,31 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 		return nil, nil
 	case "gen.exec":
 		return h.exec(rec, ow, call, strs(0), strs(1), strs(2), str(3), str(4))
-	case "gen.Out.write":
+	case "gen.Out.file":
 		if h.out == nil {
-			return nil, errors.New("out.write answers only in a gen.scheme's or a gen.emit's @generate handler")
+			return nil, errors.New("out.file answers only in a gen.scheme's or a gen.emit's @generate handler")
 		}
 		// args[0] is the receiver.
-		return nil, h.out.write(str(1), str(2))
+		return h.out.open(str(1))
+	case "gen.File.add", "gen.File.line":
+		f, ok := args[0].(*File)
+		if !ok {
+			return nil, fmt.Errorf("%s: not a file out.file opened", id)
+		}
+		if f.out != h.out {
+			return nil, fmt.Errorf("%s: %s was opened by a handler that has returned", id, f.name)
+		}
+		f.buf.WriteString(str(1))
+		if id == "gen.File.line" {
+			f.buf.WriteByte('\n')
+		}
+		return nil, nil
+	case "gen.Out.note":
+		if h.out == nil {
+			return nil, errors.New("out.note answers only in a gen.scheme's @generate handler")
+		}
+		h.out.Notes = append(h.out.Notes, str(1))
+		return nil, nil
 	case "gen.Process.code":
 		p, _ := args[0].(*interp.Struct)
 		st, _ := p.Get("stdout")
@@ -590,28 +623,53 @@ type Output struct {
 	// package, whose files are .sngl names with no directory.
 	Paths bool
 	Names []string
+	// Files is each file's text, once Close has written what the handler
+	// added to it.
 	Files map[string]string
+	// Notes are what the handler said about its output, in the order it said
+	// them: each a warning at the import.
+	Notes  []string
+	opened []*File
 }
 
-func (o *Output) write(name, src string) error {
+// File is a file a handler opened with out.file: the text added to it, which
+// Close writes into the Output. The handler holds it as a gen.File.
+type File struct {
+	out  *Output
+	name string
+	buf  strings.Builder
+}
+
+func (o *Output) open(name string) (*File, error) {
 	if o.Paths {
 		clean := path.Clean(name)
 		if name == "" || path.IsAbs(name) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
-			return fmt.Errorf("out.write: %q is not a path inside the output directory", name)
+			return nil, fmt.Errorf("out.file: %q is not a path inside the output directory", name)
 		}
 		name = clean
 	} else if name == "" || path.Base(name) != name || !strings.HasSuffix(name, ".sngl") {
-		return fmt.Errorf("out.write: %q is not a file name: want a .sngl name with no directory", name)
+		return nil, fmt.Errorf("out.file: %q is not a file name: want a .sngl name with no directory", name)
 	}
+	if slices.Contains(o.Names, name) {
+		return nil, fmt.Errorf("out.file: %s opened twice", name)
+	}
+	o.Names = append(o.Names, name)
+	f := &File{out: o, name: name}
+	o.opened = append(o.opened, f)
+	return f, nil
+}
+
+// Close writes each file the handler opened, once it has returned. A handle
+// it kept somewhere writes nothing after.
+func (o *Output) Close() {
 	if o.Files == nil {
 		o.Files = map[string]string{}
 	}
-	if _, dup := o.Files[name]; dup {
-		return fmt.Errorf("out.write: %s written twice", name)
+	for _, f := range o.opened {
+		o.Files[f.name] = f.buf.String()
+		f.out = nil
 	}
-	o.Names = append(o.Names, name)
-	o.Files[name] = src
-	return nil
+	o.opened = nil
 }
 
 // NewRecorder is a recorder with nothing recorded.
@@ -628,6 +686,51 @@ type Recorder struct {
 }
 
 func (r *Recorder) Add(ins ...gencache.Input) { r.inputs = append(r.inputs, ins...) }
+
+// Unrecordable reports a read nothing could record, which keeps the value
+// from being stored.
+func (r *Recorder) Unrecordable() bool { return r.unrecordable }
+
+// inFS is p as a name in the project FS, where there is one and p names a
+// file inside it.
+func (h *Host) inFS(p string) (string, bool) {
+	if h.fsys == nil || path.IsAbs(p) {
+		return "", false
+	}
+	name := path.Clean(p)
+	return name, fs.ValidPath(name)
+}
+
+// linesFS reads name out of fsys a line at a time. It is recorded at its
+// place under root, or, with no root on disk, not at all: the FS is in
+// memory, and no store could read it again.
+func (r *Recorder) linesFS(fsys fs.FS, name, root string) (any, error) {
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, fmt.Errorf("gen.lines: %w", err)
+	}
+	if root == "" {
+		r.unrecordable = true
+	} else {
+		sum := sha256.Sum256(data)
+		r.Add(gencache.Input{Kind: "file", Props: []gencache.Prop{{Name: "path", Value: filepath.Join(root, filepath.FromSlash(name))}, {Name: "sha256", Value: hex.EncodeToString(sum[:])}}})
+	}
+	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	if len(data) == 0 {
+		lines = nil
+	}
+	i := 0
+	return &interp.Stream{
+		Next: func() (any, bool, error) {
+			if i >= len(lines) {
+				return nil, false, nil
+			}
+			i++
+			return strings.TrimSuffix(lines[i-1], "\r"), true, nil
+		},
+		Stop: func() error { return nil },
+	}, nil
+}
 
 func (r *Recorder) lines(p string) (any, error) {
 	f, err := os.Open(p)

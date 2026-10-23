@@ -3,6 +3,7 @@ package kotlin
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -82,7 +83,7 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerTestAssert(n, surf, compRecvs, mode); ok {
 			return []string{line}
 		}
-		if line, ok := lowerEventTrigger(n); ok {
+		if line, ok := lowerEventTrigger(n, surf, compRecvs); ok {
 			return []string{line}
 		}
 		if line, ok := lowerInstanceRead(n.Call, surf, compRecvs); ok {
@@ -155,6 +156,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 			init = lowerTestExpr(n.Init, surf, compRecvs)
 		} else {
 			init = "null"
+		}
+		if ir.PayloadEnum(n.Type) != nil {
+			return []string{fmt.Sprintf("var %s: %s = %s", n.Name, IRTypeToKt(n.Type), init)}
 		}
 		return []string{fmt.Sprintf("var %s = %s", n.Name, init)}
 	case *ir.Assign, *ir.Toggle:
@@ -274,12 +278,12 @@ func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]b
 	// failures land in the JSON-RPC test report; native (Robolectric
 	// @Test) mode falls back to junit's bundled assertTrue.
 	if mode == TestEmitAgent {
-		return fmt.Sprintf("t.assertTrue(%s, %q)", expr, expr), true
+		return fmt.Sprintf("t.assertTrue(%s, %s)", expr, Quote(expr)), true
 	}
-	return fmt.Sprintf("org.junit.Assert.assertTrue(%q, %s)", expr, expr), true
+	return fmt.Sprintf("org.junit.Assert.assertTrue(%s, %s)", Quote(expr), expr), true
 }
 
-func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
+func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string]bool) (string, bool) {
 	c := call.Call
 	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
@@ -295,7 +299,9 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s)))%s; composeTestRule.waitForIdle()", tag, tag, clickAction), true
 	}
 	finder := "composeTestRule.onNode(" + tag + ")"
-	action := composeAction(event, c.Args)
+	// The argument is the test's own expression, read as an assertion reads
+	// one: a function of the page it calls is a member of the state object.
+	action := composeAction(event, c.Args, func(e ir.Expr) string { return lowerTestExpr(e, surf, compRecvs) })
 	if action == "" {
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true
 	}
@@ -313,23 +319,29 @@ const clickAction = ".performSemanticsAction(androidx.compose.ui.semantics.Seman
 // them. Written only into a file that triggers an event, at the marker.
 const (
 	composeActionImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
-		"import androidx.compose.ui.test.performSemanticsAction\n" +
-		"import androidx.compose.ui.test.performTextReplacement\n"
+		"import androidx.compose.ui.test.performSemanticsAction\n"
 	composeActionMarker = "\x00composeActions\x00"
 )
 
 // composeAction maps a SNGL event name + invocation args to its
 // Compose-UI-test equivalent. Input/change events take the text the field
-// now holds, which performTextReplacement puts there: it clears the field
-// first and then inserts, matching the "test sets the value" semantic
-// regardless of prior content.
-func composeAction(event string, args []ir.CallArg) string {
+// now holds, which the node's SetText action puts there in place of what it
+// held, as clickAction runs its OnClick: performTextReplacement asks first
+// that the node be an editable text field, and a select is a read-only one
+// that answers SetText with the choice it names.
+func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) string {
 	switch event {
 	case "click":
 		return strings.TrimPrefix(clickAction, ".")
 	case "input", "change", "changed":
-		text := extractEventValue(args)
-		return fmt.Sprintf("performTextReplacement(%s)", text)
+		text := extractEventValue(args, lower)
+		return fmt.Sprintf("performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) { it(androidx.compose.ui.text.AnnotatedString(%s)) }", text)
+	case "reachEnd":
+		// A scroll's end is reached by scrolling to it, which SnglScroll's
+		// effect reports as it would a finger's: the scroll's own semantics
+		// action, as far as it goes. Content too short to scroll reported its
+		// end as it arrived.
+		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, Float.MAX_VALUE) }"
 	}
 	return ""
 }
@@ -347,11 +359,11 @@ func carriesState(args []ir.CallArg) bool {
 // extractEventValue is the Kotlin source for the value a trigger hands an
 // input or change event, its one argument, or an empty literal when it hands
 // none.
-func extractEventValue(args []ir.CallArg) string {
+func extractEventValue(args []ir.CallArg, lower func(ir.Expr) string) string {
 	if len(args) != 1 {
 		return "\"\""
 	}
-	return lowerTestExpr(args[0].Value, TestSurface{}, nil)
+	return lower(args[0].Value)
 }
 
 // lowerTestExpr translates a SNGL test expression to Kotlin source.
@@ -402,11 +414,11 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		return "-" + lowerTestExpr(n.Operand, surf, compRecvs)
 	case *ir.Literal:
 		if ir.StringReprStruct(n.Type) {
-			return fmt.Sprintf("%q", n.Value)
+			return Quote(n.Value)
 		}
 		switch n.Type.Kind {
 		case ir.TypeString:
-			return fmt.Sprintf("%q", n.Value)
+			return Quote(n.Value)
 		case ir.TypeNull:
 			return "null"
 		case ir.TypeFloat:
@@ -445,6 +457,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		}
 		if id, ok := n.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 			return id.Name + "." + SafeIdent(n.Field)
+		}
+		if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {
+			return "(" + lowerTestExpr(n.Operand, surf, compRecvs) + " as? " + enumVariant(t, n.Field) + ")?.value"
 		}
 		return lowerTestExpr(n.Operand, surf, compRecvs) + "." + selectField(n)
 	case *ir.Index:
@@ -566,6 +581,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		b.WriteString("lateinit var composeTestRule: ComposeContentTestRule\n\n")
 	}
 
+	// What a body's translation requires -- the i18n runtime a context's
+	// default spells -- written at the marker with the actions' imports.
+	var required []string
 	for i, fn := range fns {
 		suffix := suffixes[i]
 		compRecvs := compReceiverSet(fn)
@@ -597,6 +615,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitNative) {
 				fmt.Fprintf(&b, "        %s\n", line)
 			}
+			required = append(required, isurf.required()...)
 			b.WriteString("    }\n\n")
 		case TestEmitAgent:
 			fmt.Fprintf(&b, "fun test%s(t: T) {\n", suffix)
@@ -608,8 +627,19 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
 			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(testInstanceVar, fn), compRecvs)
+			// A test that waits waits where it calls, in a coroutine of its
+			// own the harness's thread blocks on.
+			indent := "    "
+			if fn.IsAsync {
+				b.WriteString("    kotlinx.coroutines.runBlocking {\n")
+				indent = "        "
+			}
 			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitAgent) {
-				fmt.Fprintf(&b, "    %s\n", line)
+				fmt.Fprintf(&b, "%s%s\n", indent, line)
+			}
+			required = append(required, isurf.required()...)
+			if fn.IsAsync {
+				b.WriteString("    }\n")
 			}
 			b.WriteString("}\n\n")
 		}
@@ -640,10 +670,22 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	if strings.Contains(src, ".onAllNodesWithTag(") {
 		imports = "import androidx.compose.ui.test.onAllNodesWithTag\n"
 	}
-	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") || strings.Contains(src, ".performTextReplacement(") {
+	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") {
 		imports += composeActionImports
 	}
+	for _, path := range slices.Compact(slices.Sorted(slices.Values(required))) {
+		imports += "import " + path + "\n"
+	}
 	return strings.Replace(src, composeActionMarker, imports, 1)
+}
+
+// required is what the surface's own translator was asked to import. The
+// shared fallback is no file's, so it answers nothing.
+func (surf TestSurface) required() []string {
+	if surf.kt == nil {
+		return nil
+	}
+	return surf.kt.Imports()
 }
 
 // lowerInstanceRead spells a codegen.InstanceReadMethod call through the

@@ -224,9 +224,7 @@ func main() {
 
 package main
 
-import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
-)
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 type ErrorEvent struct {
 	Message string
@@ -474,6 +472,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:e74eb2d084201287c095c3bae46977c5
 -- run/go/gtk4 --
-pass sha256:1f8e32532b7142aa6c453a07e2b94cb1
+pass sha256:fef2880af88041af2e033f2e0be5a1f5
 -- run/none/html --
 pass sha256:e04fcd221a40373b10f1e666820f601e

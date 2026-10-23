@@ -50,6 +50,9 @@ func (c *ktCopier) copy(t *ir.Type, v string) string {
 	if !ir.HoldsValue(t) || ir.StringReprStruct(t) {
 		return v
 	}
+	if ir.IsBuilder(t) {
+		return "StringBuilder(" + v + ")"
+	}
 	switch t.Kind {
 	case ir.TypeList:
 		e := t.Elems[0]

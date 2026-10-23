@@ -1,0 +1,108 @@
+# An instance built at run time under a node of a render slot's body is the
+# slot's to keep, on every target.
+#
+# The tabs sit under `if ready`, a slot, and each panel is an instance of its
+# own; gtk4 lifts no panel holding a select, so the tabs stay a node of the
+# slot's body and the panels instances under it. The slot kept a registry of
+# the instances at its body's top and none of these, so a render that dropped
+# the About panel built the next and never destroyed the last: its effects
+# ran on, and a test still found its `#flavor`. Each is now held, and
+# destroyed by the render that builds its replacement.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component main ui.node {
+    var ready = false
+    var tab = 0
+    var note = "hello"
+    var kind = "Red"
+
+    ui.button #load(text="load", @click { ready = true })
+    if ready {
+        ui.tabs #tabs(:selected=tab) {
+            ui.tab(label="About") {
+                ui.text #flavor(value=note)
+            }
+            ui.tab(label="Kinds") {
+                ui.select(:value=kind) {
+                    ui.choice(label="Red")
+                    ui.choice(label="Green")
+                }
+            }
+        }
+    }
+}
+
+func testSwitchingDropsTheFirstPanel(t test.Test, c main) {
+    c.load.click()
+    t.assert(c.flavor != null)
+    if c.tabs != null {
+        c.tabs.change(1)
+    }
+    t.assert(c.flavor == null)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:68e99fb43193a338aa9e6fcd5ecfb59e
+{
+  "results": [
+    {
+      "Desc": "SwitchingDropsTheFirstPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:338260e24a0b55c1cb7c829b1a8b45ac
+{
+  "results": [
+    {
+      "Desc": "SwitchingDropsTheFirstPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:8717cef6fe4aaeeedd11cdfb70e8128c
+{
+  "results": [
+    {
+      "Desc": "SwitchingDropsTheFirstPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:1ea4ab03ed546f229403206a56639889
+{
+  "results": [
+    {
+      "Desc": "SwitchingDropsTheFirstPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:1bec07f26900256ec2456abc66d0d9b1
+{
+  "results": [
+    {
+      "Desc": "SwitchingDropsTheFirstPanel",
+      "Passed": true
+    }
+  ]
+}

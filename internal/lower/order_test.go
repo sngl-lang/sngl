@@ -62,9 +62,14 @@ var alwaysOn = []string{
 	// A program naming sngl:async is refused on a target with no answer for
 	// it, and every target is asked -- what differs is the answer.
 	"AsyncCapable",
+	// A function a call site hands a component's prop waits as it does,
+	// wherever the component is built.
+	"AsyncProps",
 	"BoundaryFailed",
 	// Once every raise is resolved a boundary holds nothing, on any target.
 	"BoundaryPassthrough",
+	// A C call's argument crosses the one way C takes it, on every target.
+	"CMarshal",
 	"CSE",
 	// Every emitted function takes every parameter it declares.
 	"CallDefaults",
@@ -75,6 +80,9 @@ var alwaysOn = []string{
 	// An effect's reports are lowered on every target; one that brackets a
 	// lifetime itself keeps the node with its @mount and @unmount.
 	"Effect",
+	// A payload enum's selector read is the member test or the payload on
+	// every target.
+	"EnumReads",
 	// A raise is a raise on every target, and the catch it unwinds to is a block
 	// every language renders.
 	"ErrorCatch",
@@ -96,6 +104,10 @@ var alwaysOn = []string{
 	// in pkg.Funcs for any target, because that is what every backend emits
 	// from.
 	"LibFuncs",
+	// A match a target cannot emit as one is the if chain on every target;
+	// which matches those are is what Matches and ViewMatches decide.
+	"Match",
+	"MatchLate",
 	// Which bindings are written is a fact about the finished bodies, and
 	// every target has a backend that may care -- Kotlin copies on binding
 	// unless this says the binding is never written.
@@ -112,6 +124,8 @@ var alwaysOn = []string{
 	// primitive keeps, so every target runs the pass and the declaration
 	// decides what it does.
 	"NodePropReads",
+	// An owned value a component holds is released on every target.
+	"OwnedState",
 	"PlatformExtensionBody",
 	"PropBindings",
 	// No target reaches a receiver no parameter names.
@@ -123,6 +137,8 @@ var alwaysOn = []string{
 	"RefLoop",
 	// A by-reference parameter is copy-in, copy-out on every target.
 	"RefParams",
+	// An owned value a statement borrows is released on every target.
+	"ReleaseTemps",
 	// What a target reserves is read off its marks, and a target reserving
 	// nothing renames nothing; there is no capability to hold.
 	"ReservedNames",
@@ -201,7 +217,7 @@ var soleGate = map[string][]string{
 	"InlineComponents": {"NoInlineComponents"},
 	"ImplicitRecv":     {"NoImplicitRecv"},
 	"StructSpread":     {"NoStructSpread"},
-	"GenericFuncs":     {"Monomorphize"},
+	"GenericFuncs":     {"Monomorphize", "MonomorphizeEnums"},
 	"FocusOrder":       {"FocusOrder"},
 	"Canvas":           {"Canvas"},
 
@@ -218,6 +234,15 @@ var soleGate = map[string][]string{
 	// component built at run time is emitted once or copied per
 	// instantiation where it is elected.
 	"GenericComponents": nil,
+
+	// Read by passMatch rather than gating it: each says which matches the
+	// target emits as one, and the pass writes the rest as the chain.
+	"Match":       nil,
+	"MatchValue":  nil,
+	"ViewMatch":   nil,
+	"OptionMatch": nil,
+
+	"StringBuilders": {"StringBuilders"},
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

@@ -135,9 +135,10 @@ func collectAndroidNav(ctx *codegen.CodegenCtx) (*androidNav, error) {
 				case *ir.For:
 					add(n.Body, append(loops[:len(loops):len(loops)], n))
 					continue
-				case *ir.If:
-					add(n.Body, loops)
-					add(n.Else, loops)
+				case *ir.If, *ir.Match:
+					for _, b := range ir.TransparentBlocks(n) {
+						add(*b, loops)
+					}
 					continue
 				}
 				p, ok := s.(*ir.NodeInst)
@@ -448,12 +449,10 @@ func (nav *androidNav) stacksIn(stmts []ir.Stmt) []*navStackK {
 				for _, name := range ir.SlotNames(n.Slots) {
 					walk(n.Slots[name].Body)
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 				walk(n.Failed)
@@ -490,13 +489,17 @@ func emitNavState(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtIRContex
 }
 
 // emitNavStateMembers is the test-mode state class's half: the controller a
-// composition hands it, and `current` read off it.
+// composition hands it, and `current` read off it. The controller is
+// `lateinit` rather than nullable, since a func of the class that goes to a
+// page calls it as MainScreen's own does
+// (cmd/sngl/testdata/nav_page_named_above_runs.txt); only `current` is read
+// before the composition hands it over.
 func emitNavStateMembers(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtIRContext) {
 	for _, st := range stacks {
-		fmt.Fprintf(b, "    var %s__nav: androidx.navigation.NavHostController? = null\n", st.name)
+		fmt.Fprintf(b, "    lateinit var %s__nav: androidx.navigation.NavHostController\n", st.name)
 		if st.start != nil {
 			rec := exportName(st.start.record.Def.Name)
-			fmt.Fprintf(b, "    val %s__current: %s get() = %s(%s__nav?.currentBackStackEntry) ?: %s\n", st.name, rec, recordFunc(st.start.record.Def), st.name, st.startValueKt(kc))
+			fmt.Fprintf(b, "    val %s__current: %s get() = %s(if (::%s__nav.isInitialized) %s__nav.currentBackStackEntry else null) ?: %s\n", st.name, rec, recordFunc(st.start.record.Def), st.name, st.name, st.startValueKt(kc))
 		}
 	}
 }

@@ -1,0 +1,46 @@
+# android asks for the INTERNET permission only for a program that reaches the
+# network: a request through sngl:http, or a picture a URL names. Robolectric
+# grants nothing and checks nothing, so a run cannot say it; the manifest does.
+
+sngl generate --platform=android --lang=kotlin --opt=main=true --out=req request.sngl
+grep 'android.permission.INTERNET' req/app/src/main/AndroidManifest.xml
+
+sngl generate --platform=android --lang=kotlin --opt=main=true --out=img remote.sngl
+grep 'android.permission.INTERNET' img/app/src/main/AndroidManifest.xml
+
+sngl generate --platform=android --lang=kotlin --opt=main=true --out=none offline.sngl
+! grep 'android.permission.INTERNET' none/app/src/main/AndroidManifest.xml
+
+-- request.sngl --
+import http "sngl:http"
+import . "sngl:ui"
+
+component asker node {
+    var status = 0
+    button(text="ask", @click {
+        match var r = http.get(url="https://example.com/") {
+            ok { status = r.status }
+            failed { status = -1 }
+        }
+    })
+    text(value="{status}")
+}
+
+window {
+    asker
+}
+-- remote.sngl --
+import . "sngl:ui"
+
+window {
+    image {
+        remote(url="https://example.com/a.png")
+    }
+}
+-- offline.sngl --
+import json "sngl:json"
+import . "sngl:ui"
+
+window {
+    text(value=json.encode([1, 2]))
+}

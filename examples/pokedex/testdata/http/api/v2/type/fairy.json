@@ -1,0 +1,237 @@
+{
+ "damage_relations": {
+  "double_damage_from": [
+   {
+    "name": "poison",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/4/"
+   },
+   {
+    "name": "steel",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/9/"
+   }
+  ],
+  "double_damage_to": [
+   {
+    "name": "fighting",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/2/"
+   },
+   {
+    "name": "dragon",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/16/"
+   }
+  ],
+  "half_damage_from": [
+   {
+    "name": "fighting",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/2/"
+   },
+   {
+    "name": "bug",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/7/"
+   }
+  ],
+  "half_damage_to": [
+   {
+    "name": "poison",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/4/"
+   },
+   {
+    "name": "steel",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/9/"
+   }
+  ],
+  "no_damage_from": [
+   {
+    "name": "dragon",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/type/16/"
+   }
+  ],
+  "no_damage_to": []
+ },
+ "game_indices": [
+  {
+   "game_index": 17,
+   "generation": {
+    "name": "generation-vi",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/6/"
+   }
+  },
+  {
+   "game_index": 17,
+   "generation": {
+    "name": "generation-vii",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/7/"
+   }
+  }
+ ],
+ "generation": {
+  "name": "generation-vi",
+  "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/generation/6/"
+ },
+ "id": 18,
+ "move_damage_class": null,
+ "moves": [
+  {
+   "name": "sweet-kiss",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/186/"
+  },
+  {
+   "name": "charm",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/move/204/"
+  }
+ ],
+ "name": "fairy",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "フェアリー"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Fée"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Fee"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Hada"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Fairy"
+  },
+  {
+   "language": {
+    "name": "ja",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/11/"
+   },
+   "name": "フェアリー"
+  }
+ ],
+ "past_damage_relations": [],
+ "pokemon": [
+  {
+   "pokemon": {
+    "name": "clefairy",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/35/"
+   },
+   "slot": 1
+  },
+  {
+   "pokemon": {
+    "name": "clefable",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon/36/"
+   },
+   "slot": 1
+  }
+ ],
+ "sprites": {
+  "generation-iii": {
+   "colosseum": {
+    "name_icon": null,
+    "symbol_icon": null
+   },
+   "emerald": {
+    "name_icon": null,
+    "symbol_icon": null
+   },
+   "firered-leafgreen": {
+    "name_icon": null,
+    "symbol_icon": null
+   },
+   "ruby-sapphire": {
+    "name_icon": null,
+    "symbol_icon": null
+   },
+   "xd": {
+    "name_icon": null,
+    "symbol_icon": null
+   }
+  },
+  "generation-iv": {
+   "diamond-pearl": {
+    "name_icon": null,
+    "symbol_icon": null
+   },
+   "heartgold-soulsilver": {
+    "name_icon": null,
+    "symbol_icon": null
+   },
+   "platinum": {
+    "name_icon": null,
+    "symbol_icon": null
+   }
+  },
+  "generation-ix": {
+   "scarlet-violet": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   }
+  },
+  "generation-v": {
+   "black-2-white-2": {
+    "name_icon": null,
+    "symbol_icon": null
+   },
+   "black-white": {
+    "name_icon": null,
+    "symbol_icon": null
+   }
+  },
+  "generation-vi": {
+   "omega-ruby-alpha-sapphire": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "x-y": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   }
+  },
+  "generation-vii": {
+   "lets-go-pikachu-lets-go-eevee": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   },
+   "sun-moon": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   },
+   "ultra-sun-ultra-moon": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": null
+   }
+  },
+  "generation-viii": {
+   "brilliant-diamond-shining-pearl": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   },
+   "legends-arceus": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   },
+   "sword-shield": {
+    "name_icon": "http://127.0.0.1:47819/dot.png",
+    "symbol_icon": "http://127.0.0.1:47819/dot.png"
+   }
+  }
+ }
+}

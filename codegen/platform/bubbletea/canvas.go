@@ -169,11 +169,10 @@ func loopCanvases(ctx *codegen.CodegenCtx) map[*ir.NodeInst]bool {
 			case *ir.For:
 				walk(n.Body, true)
 				walk(n.Else, true)
-			case *ir.If:
-				walk(n.Body, inLoop)
-				walk(n.Else, inLoop)
-			case *ir.ErrorBoundary:
-				walk(n.Children, inLoop)
+			case *ir.If, *ir.Match, *ir.ErrorBoundary:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b, inLoop)
+				}
 			}
 		}
 	}
@@ -340,6 +339,9 @@ func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 			cp.Body = translateCanvasBody(n.Body)
 			cp.Else = translateCanvasBody(n.Else)
 			out = append(out, &cp)
+			continue
+		case *ir.Match:
+			out = append(out, n.Over(func(_ int, arm []ir.Stmt) []ir.Stmt { return translateCanvasBody(arm) }))
 			continue
 		}
 		out = append(out, stmt)

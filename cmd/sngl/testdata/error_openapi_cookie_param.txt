@@ -1,0 +1,26 @@
+# A cookie parameter is not sent: the operation is left out.
+env SNGL_GENCACHE=off
+
+! sngl check app.sngl
+stderr 'import "openapi:./api.yml": GET /thing is left out: parameter session is in the cookie, and only a path.s and a query.s are sent'
+stderr 'app.sngl:4:16: unknown component'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+func ask() {
+    var r = api.getThingCall()
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+servers:
+- url: https://api.example
+paths:
+  /thing:
+    get:
+      operationId: getThing
+      parameters:
+      - {name: session, in: cookie, schema: {type: string}}
+      responses:
+        '200': {description: '', content: {application/json: {schema: {type: string}}}}

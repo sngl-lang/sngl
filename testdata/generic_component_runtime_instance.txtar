@@ -156,9 +156,13 @@ type Model struct {
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*Show__intInstance
+	__rendering0   bool
+	__renderAgain0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Show__stringInstance
+	__rendering1   bool
+	__renderAgain1 bool
 
 	__n2    *fynelayout.Toplevel
 	__built bool
@@ -175,9 +179,13 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Show__intInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*Show__stringInstance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
@@ -203,183 +211,175 @@ func Side(all Measurement, axis Measurement, own Measurement) float32 {
 }
 
 func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
 	var __lt3 int
-	if a == "center" {
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
 		__lt3 = 2
-	} else {
-		var __lt2 int
-		if a == "end" {
-			__lt2 = 3
-		} else {
-			__lt2 = 0
-		}
-		__lt3 = __lt2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
 	}
 	return __lt3
 }
 
-func JustifyOf(j string) int {
-	var __lt8 int
-	if j == "center" {
-		__lt8 = 1
-	} else {
-		var __lt7 int
-		if j == "end" {
-			__lt7 = 2
-		} else {
-			var __lt6 int
-			if j == "spaceBetween" {
-				__lt6 = 3
-			} else {
-				var __lt5 int
-				if j == "spaceAround" {
-					__lt5 = 4
-				} else {
-					var __lt4 int
-					if j == "spaceEvenly" {
-						__lt4 = 5
-					} else {
-						__lt4 = 0
-					}
-					__lt5 = __lt4
-				}
-				__lt6 = __lt5
-			}
-			__lt7 = __lt6
-		}
-		__lt8 = __lt7
-	}
-	return __lt8
-}
-
 func Paint(c__r0 snglcolor.Color) snglcolor.Color {
-	var __lt9 snglcolor.Color
+	var __lt4 snglcolor.Color
 	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 	} else {
-		__lt9 = c__r0
+		__lt4 = c__r0
 	}
-	return __lt9
+	return __lt4
 }
 
 func TextAlignOf(a string) int {
-	var __lt12 int
-	if a == "center" {
-		__lt12 = 2
-	} else {
-		var __lt11 int
-		if a == "right" {
-			__lt11 = 3
-		} else {
-			var __lt10 int
-			if a == "justify" {
-				__lt10 = 1
-			} else {
-				__lt10 = 0
-			}
-			__lt11 = __lt10
-		}
-		__lt12 = __lt11
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
 	}
-	return __lt12
+	return __lt5
 }
 
 func WrapOf(w string) int {
-	var __lt14 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt14 = 1
-	} else {
-		var __lt13 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt13 = 2
-		} else {
-			__lt13 = 0
-		}
-		__lt14 = __lt13
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
 	}
-	return __lt14
+	return __lt6
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*Show__intInstance{}
-	var __inst0_i int = 0
-	for _, i := range m.items {
-		var __n3 *Show__intInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetXs([]int{i})
-			__n3.SetW(__anon_v_853006{V: i})
-			__n3.SetChose(func(w __anon_v_853006) {
-				m.got = w.V
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n3__new := newShow__intInstance(m, []int{i}, __anon_v_853006{V: i}, func(w __anon_v_853006) {
-				m.got = w.V
-			})
-			__n3 = __n3__new
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*Show__intInstance{}
+			var __inst0_i int = 0
+			for _, i := range m.items {
+				var __n3 *Show__intInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n3 = m.__inst0_live[__inst0_i]
+					__n3.SetChose(func(w __anon_v_853006) {
+						m.got = w.V
+					})
+					__n3.SetXs([]int{i})
+					__n3.SetW(__anon_v_853006{V: i})
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := newShow__intInstance(m, []int{i}, __anon_v_853006{V: i}, func(w __anon_v_853006) {
+						m.got = w.V
+					})
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
+				m.__slot0 = append(m.__slot0, __n3__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range m.__slot1 {
-		fynelayout.Remove(__parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-	__inst1_next := []*Show__stringInstance{}
-	var __inst1_i int = 0
-	for _, s := range m.names {
-		var __n4 *Show__stringInstance
-		if len(m.__inst1_live) > __inst1_i {
-			__n4 = m.__inst1_live[__inst1_i]
-			__n4.SetXs([]string{s})
-			__n4.SetW(__anon_v_ba918a{V: s})
-			__n4.SetChose(func(w __anon_v_ba918a) {
-				m.said = w.V
-			})
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
 			}
-			__n4__new := newShow__stringInstance(m, []string{s}, __anon_v_ba918a{V: s}, func(w __anon_v_ba918a) {
-				m.said = w.V
-			})
-			__n4 = __n4__new
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			__inst1_next := []*Show__stringInstance{}
+			var __inst1_i int = 0
+			for _, s := range m.names {
+				var __n4 *Show__stringInstance
+				if len(m.__inst1_live) > __inst1_i {
+					__n4 = m.__inst1_live[__inst1_i]
+					__n4.SetChose(func(w __anon_v_ba918a) {
+						m.said = w.V
+					})
+					__n4.SetXs([]string{s})
+					__n4.SetW(__anon_v_ba918a{V: s})
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n4__new := newShow__stringInstance(m, []string{s}, __anon_v_ba918a{V: s}, func(w __anon_v_ba918a) {
+						m.said = w.V
+					})
+					__n4 = __n4__new
+				}
+				__inst1_next = append(__inst1_next, __n4)
+				__inst1_i = (__inst1_i + 1)
+				__n4__el := __n4.Root
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__el)
+				m.__slot1 = append(m.__slot1, __n4__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n4)
-		__inst1_i = (__inst1_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__el)
-		m.__slot1 = append(m.__slot1, __n4__el)
+		m.__rendering1 = false
 	}
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) __n2_closed_handler() {
@@ -675,9 +675,13 @@ type Model struct {
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*Show__intInstance
+	__rendering0   bool
+	__renderAgain0 bool
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Show__stringInstance
+	__rendering1   bool
+	__renderAgain1 bool
 	__n2           gtk4rt.Handle
 	__built        bool
 }
@@ -694,9 +698,13 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Show__intInstance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*Show__stringInstance{}
+	m.__rendering1 = false
+	m.__renderAgain1 = false
 	return m
 }
 
@@ -722,283 +730,266 @@ func CssOf(s Style) string {
 }
 
 func CrossOf(a string) int {
+	var __lt1 int
+	switch a {
+	case "center":
+		__lt1 = 2
+	case "end":
+		__lt1 = 3
+	case "baseline":
+		__lt1 = 4
+	default:
+		__lt1 = 0
+	}
+	return __lt1
+}
+
+func TextAlignOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 1
+	case "right":
+		__lt2 = 2
+	case "justify":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func WrapOf(w string) int {
 	var __lt3 int
-	if a == "center" {
+	switch w {
+	case "pre", "nowrap":
+		__lt3 = 1
+	case "preWrap", "preLine":
 		__lt3 = 2
-	} else {
-		var __lt2 int
-		if a == "end" {
-			__lt2 = 3
-		} else {
-			var __lt1 int
-			if a == "baseline" {
-				__lt1 = 4
-			} else {
-				__lt1 = 0
-			}
-			__lt2 = __lt1
-		}
-		__lt3 = __lt2
+	default:
+		__lt3 = 0
 	}
 	return __lt3
 }
 
-func TextAlignOf(a string) int {
-	var __lt6 int
-	if a == "center" {
-		__lt6 = 1
-	} else {
-		var __lt5 int
-		if a == "right" {
-			__lt5 = 2
-		} else {
-			var __lt4 int
-			if a == "justify" {
-				__lt4 = 3
-			} else {
-				__lt4 = 0
-			}
-			__lt5 = __lt4
-		}
-		__lt6 = __lt5
+func ClipOf(o string) bool {
+	var __lt4 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt4 = true
+	default:
+		__lt4 = false
 	}
-	return __lt6
+	return __lt4
 }
 
-func WrapOf(w string) int {
-	var __lt8 int
-	if (w == "pre") || (w == "nowrap") {
-		__lt8 = 1
+func Decl(name string, value string) string {
+	var __lt5 string
+	if value == "" {
+		__lt5 = ""
 	} else {
-		var __lt7 int
-		if (w == "preWrap") || (w == "preLine") {
-			__lt7 = 2
+		__lt5 = (((name + ": ") + value) + "; ")
+	}
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
 		} else {
-			__lt7 = 0
+			__lt6 = all
 		}
-		__lt8 = __lt7
+		__lt7 = __lt6
+	}
+	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt8 string
+	if v == 0.0 {
+		__lt8 = ""
+	} else {
+		__lt8 = (fmt.Sprint(v) + "px")
 	}
 	return __lt8
 }
 
-func ClipOf(o string) bool {
-	var __lt9 bool
-	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
-		__lt9 = true
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt9 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt9 = ""
 	} else {
-		__lt9 = false
+		__lt9 = c__r0.Hex()
 	}
 	return __lt9
 }
 
-func Decl(name string, value string) string {
+func Points(v float64) string {
 	var __lt10 string
-	if value == "" {
+	if v == 0.0 {
 		__lt10 = ""
 	} else {
-		__lt10 = (((name + ": ") + value) + "; ")
+		__lt10 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt10
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt12 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt12 = own
-	} else {
-		var __lt11 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt11 = axis
-		} else {
-			__lt11 = all
-		}
-		__lt12 = __lt11
+func WeightOf(w string) string {
+	var __lt11 string
+	switch w {
+	case "bold":
+		__lt11 = "bold"
+	case "bolder":
+		__lt11 = "bolder"
+	case "lighter":
+		__lt11 = "lighter"
+	default:
+		__lt11 = ""
 	}
-	return Length(max((__lt12.Px + (11.0 * (__lt12.Em + __lt12.Rem))), 0.0))
+	return __lt11
 }
 
-func Length(v float64) string {
+func SlantOf(s string) string {
+	var __lt12 string
+	switch s {
+	case "italic":
+		__lt12 = "italic"
+	case "oblique":
+		__lt12 = "oblique"
+	default:
+		__lt12 = ""
+	}
+	return __lt12
+}
+
+func LineOf(s Style) string {
 	var __lt13 string
-	if v == 0.0 {
-		__lt13 = ""
-	} else {
-		__lt13 = (fmt.Sprint(v) + "px")
+	switch s.BorderStyle {
+	case "solid":
+		__lt13 = "solid"
+	case "dashed":
+		__lt13 = "dashed"
+	case "dotted":
+		__lt13 = "dotted"
+	case "double":
+		__lt13 = "double"
+	default:
+		var __lt14 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt14 = "solid"
+		} else {
+			__lt14 = ""
+		}
+		__lt13 = __lt14
 	}
 	return __lt13
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt14 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt14 = ""
-	} else {
-		__lt14 = c__r0.Hex()
-	}
-	return __lt14
-}
-
-func Points(v float64) string {
-	var __lt15 string
-	if v == 0.0 {
-		__lt15 = ""
-	} else {
-		__lt15 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt15
-}
-
-func WeightOf(w string) string {
-	var __lt18 string
-	if w == "bold" {
-		__lt18 = "bold"
-	} else {
-		var __lt17 string
-		if w == "bolder" {
-			__lt17 = "bolder"
-		} else {
-			var __lt16 string
-			if w == "lighter" {
-				__lt16 = "lighter"
-			} else {
-				__lt16 = ""
-			}
-			__lt17 = __lt16
-		}
-		__lt18 = __lt17
-	}
-	return __lt18
-}
-
-func SlantOf(s string) string {
-	var __lt20 string
-	if s == "italic" {
-		__lt20 = "italic"
-	} else {
-		var __lt19 string
-		if s == "oblique" {
-			__lt19 = "oblique"
-		} else {
-			__lt19 = ""
-		}
-		__lt20 = __lt19
-	}
-	return __lt20
-}
-
-func LineOf(s Style) string {
-	var __lt25 string
-	if s.BorderStyle == "solid" {
-		__lt25 = "solid"
-	} else {
-		var __lt24 string
-		if s.BorderStyle == "dashed" {
-			__lt24 = "dashed"
-		} else {
-			var __lt23 string
-			if s.BorderStyle == "dotted" {
-				__lt23 = "dotted"
-			} else {
-				var __lt22 string
-				if s.BorderStyle == "double" {
-					__lt22 = "double"
-				} else {
-					var __lt21 string
-					if (s.BorderWidth != Measurement{Px: 0}) {
-						__lt21 = "solid"
-					} else {
-						__lt21 = ""
-					}
-					__lt22 = __lt21
-				}
-				__lt23 = __lt22
-			}
-			__lt24 = __lt23
-		}
-		__lt25 = __lt24
-	}
-	return __lt25
-}
-
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*Show__intInstance{}
-	var __inst0_i int = 0
-	for _, i := range m.items {
-		var __n3 *Show__intInstance
-		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetXs([]int{i})
-			__n3.SetW(__anon_v_853006{V: i})
-			__n3.SetChose(func(w __anon_v_853006) {
-				m.got = w.V
-			})
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
+	if m.__rendering0 {
+		m.__renderAgain0 = true
+	} else {
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n3__new := newShow__intInstance(m, []int{i}, __anon_v_853006{V: i}, func(w __anon_v_853006) {
-				m.got = w.V
-			})
-			__n3 = __n3__new
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*Show__intInstance{}
+			var __inst0_i int = 0
+			for _, i := range m.items {
+				var __n3 *Show__intInstance
+				if len(m.__inst0_live) > __inst0_i {
+					__n3 = m.__inst0_live[__inst0_i]
+					__n3.SetChose(func(w __anon_v_853006) {
+						m.got = w.V
+					})
+					__n3.SetXs([]int{i})
+					__n3.SetW(__anon_v_853006{V: i})
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n3__new := newShow__intInstance(m, []int{i}, __anon_v_853006{V: i}, func(w __anon_v_853006) {
+						m.got = w.V
+					})
+					__n3 = __n3__new
+				}
+				__inst0_next = append(__inst0_next, __n3)
+				__inst0_i = (__inst0_i + 1)
+				__n3__el := __n3.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
+				m.__slot0 = append(m.__slot0, __n3__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
-		__inst0_next = append(__inst0_next, __n3)
-		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		m.__rendering0 = false
 	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
-		}
-	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot1 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot1 = nil
-	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-	__inst1_next := []*Show__stringInstance{}
-	var __inst1_i int = 0
-	for _, s := range m.names {
-		var __n4 *Show__stringInstance
-		if len(m.__inst1_live) > __inst1_i {
-			__n4 = m.__inst1_live[__inst1_i]
-			__n4.SetXs([]string{s})
-			__n4.SetW(__anon_v_ba918a{V: s})
-			__n4.SetChose(func(w __anon_v_ba918a) {
-				m.said = w.V
-			})
-		} else {
-			if len(m.__inst1_live) > __inst1_i {
-				m.__inst1_live[__inst1_i].Destroy()
+	if m.__rendering1 {
+		m.__renderAgain1 = true
+	} else {
+		m.__rendering1 = true
+		m.__renderAgain1 = true
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-			__n4__new := newShow__stringInstance(m, []string{s}, __anon_v_ba918a{V: s}, func(w __anon_v_ba918a) {
-				m.said = w.V
-			})
-			__n4 = __n4__new
+			m.__slot1 = nil
+			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+			__inst1_next := []*Show__stringInstance{}
+			var __inst1_i int = 0
+			for _, s := range m.names {
+				var __n4 *Show__stringInstance
+				if len(m.__inst1_live) > __inst1_i {
+					__n4 = m.__inst1_live[__inst1_i]
+					__n4.SetChose(func(w __anon_v_ba918a) {
+						m.said = w.V
+					})
+					__n4.SetXs([]string{s})
+					__n4.SetW(__anon_v_ba918a{V: s})
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n4__new := newShow__stringInstance(m, []string{s}, __anon_v_ba918a{V: s}, func(w __anon_v_ba918a) {
+						m.said = w.V
+					})
+					__n4 = __n4__new
+				}
+				__inst1_next = append(__inst1_next, __n4)
+				__inst1_i = (__inst1_i + 1)
+				__n4__el := __n4.Root
+				gtk4rt.InsertBefore(parent, m.__slot1_at, __n4__el)
+				m.__slot1 = append(m.__slot1, __n4__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
 		}
-		__inst1_next = append(__inst1_next, __n4)
-		__inst1_i = (__inst1_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n4__el)
-		m.__slot1 = append(m.__slot1, __n4__el)
+		m.__rendering1 = false
 	}
-	for __inst1_i_d, _ := range m.__inst1_live {
-		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			m.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	m.__inst1_live = __inst1_next
 }
 
 func (m *Model) __n2_closed_handler() {
@@ -1640,108 +1631,132 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   var __slot1 = [];
   var __inst3_live = [];
+  var __rendering1 = false;
+  var __renderAgain1 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    for (const i of state.items) {
-      let __n2 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set_xs([i]);
-        __n2.__set_w({ v: i });
-        __n2.__set_chose((w) => {
-          state.got = w.v;
-        });
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
+    if (__rendering0) {
+      __renderAgain0 = true;
+    } else {
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const i of state.items) {
+          let __n2 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n2 = __inst1_live[__inst1_i];
+            __n2.__set_chose((w) => {
+              state.got = w.v;
+            });
+            __n2.__set_xs([i]);
+            __n2.__set_w({ v: i });
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n2__new = __cf_show({ xs: [i], w: { v: i }, chose: (w) => {
+              state.got = w.v;
+            } });
+            __n2 = __n2__new;
+          }
+          __inst1_next.push(__n2);
+          __inst1_i = __inst1_i + 1;
+          let __n2__el = __n2.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2__el, __place0_i_ref0);
+          }
+          __slot0.push(__n2__el);
         }
-        let __n2__new = __cf_show({ xs: [i], w: { v: i }, chose: (w) => {
-          state.got = w.v;
-        } });
-        __n2 = __n2__new;
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      __inst1_next.push(__n2);
-      __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n2__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
-      }
-      __slot0.push(__n2__el);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
-    let __place2_prev = __slot1;
-    let __place2_i = 0;
-    __slot1 = [];
-    let __inst3_next = [];
-    let __inst3_i = 0;
-    for (const s of state.names) {
-      let __n3 = null;
-      if (__inst3_live.length > __inst3_i) {
-        __n3 = __inst3_live[__inst3_i];
-        __n3.__set_xs([s]);
-        __n3.__set_w({ v: s });
-        __n3.__set_chose((w) => {
-          state.said = w.v;
-        });
-      } else {
-        if (__inst3_live.length > __inst3_i) {
-          __inst3_live[__inst3_i].__destroy();
+    if (__rendering1) {
+      __renderAgain1 = true;
+    } else {
+      __rendering1 = true;
+      __renderAgain1 = true;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place2_prev = __slot1;
+        let __place2_i = 0;
+        __slot1 = [];
+        let __inst3_next = [];
+        let __inst3_i = 0;
+        for (const s of state.names) {
+          let __n3 = null;
+          if (__inst3_live.length > __inst3_i) {
+            __n3 = __inst3_live[__inst3_i];
+            __n3.__set_chose((w) => {
+              state.said = w.v;
+            });
+            __n3.__set_xs([s]);
+            __n3.__set_w({ v: s });
+          } else {
+            if (__inst3_live.length > __inst3_i) {
+              __inst3_live[__inst3_i].__destroy();
+            }
+            let __n3__new = __cf_show({ xs: [s], w: { v: s }, chose: (w) => {
+              state.said = w.v;
+            } });
+            __n3 = __n3__new;
+          }
+          __inst3_next.push(__n3);
+          __inst3_i = __inst3_i + 1;
+          let __n3__el = __n3.__root;
+          let __place2_i_ref0 = null;
+          if (__place2_i < __place2_prev.length) {
+            __place2_i_ref0 = __place2_prev[__place2_i];
+          }
+          if (__place2_i_ref0 === __n3__el) {
+            __place2_i = __place2_i + 1;
+          } else {
+            parent.insertBefore(__n3__el, __place2_i_ref0);
+          }
+          __slot1.push(__n3__el);
         }
-        let __n3__new = __cf_show({ xs: [s], w: { v: s }, chose: (w) => {
-          state.said = w.v;
-        } });
-        __n3 = __n3__new;
+        for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+          let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+          if (__inst3_i_j >= __inst3_i) {
+            __inst3_live[__inst3_i_j].__destroy();
+          }
+        }
+        __inst3_live = __inst3_next;
+        for (const __place2_prev_e of __place2_prev) {
+          if (__slot1.indexOf(__place2_prev_e) < 0) {
+            parent.removeChild(__place2_prev_e);
+          }
+        }
       }
-      __inst3_next.push(__n3);
-      __inst3_i = __inst3_i + 1;
-      let __n3__el = __n3.__root;
-      let __place2_i_ref0 = null;
-      if (__place2_i < __place2_prev.length) {
-        __place2_i_ref0 = __place2_prev[__place2_i];
-      }
-      if (__place2_i_ref0 === __n3__el) {
-        __place2_i = __place2_i + 1;
-      } else {
-        parent.insertBefore(__n3__el, __place2_i_ref0);
-      }
-      __slot1.push(__n3__el);
-    }
-    for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-      let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-      if (__inst3_i_j >= __inst3_i) {
-        __inst3_live[__inst3_i_j].__destroy();
-      }
-    }
-    __inst3_live = __inst3_next;
-    for (const __place2_prev_e of __place2_prev) {
-      if (__slot1.indexOf(__place2_prev_e) < 0) {
-        parent.removeChild(__place2_prev_e);
-      }
+      __rendering1 = false;
     }
   }
   function String(v) {
@@ -1755,10 +1770,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:082543836f7badfc3d918a8d2f26059d
+pass sha256:3d59d2f2c3dd0bac2268799ba1c118cd
 -- run/go/gtk4 --
-pass sha256:2684b5ac07f9779742cbbd0fdf4fff32
+pass sha256:baa60bbad7bc040fdf2a635bfdedcc05
 -- run/kotlin/android --
-pass sha256:c7f4d37406b53742f2149bf9d5ae944c
+pass sha256:cee8096ed4890c58c37b53ef6a7da94d
 -- run/none/html --
-pass sha256:ae87f5f31612c7d8013ef138c48e57dd
+pass sha256:1b0e67ef41dd49deeadc26ba05b6e183

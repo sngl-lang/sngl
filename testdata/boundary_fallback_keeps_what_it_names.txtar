@@ -208,84 +208,78 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
-	if a == "center" {
-		__lt2 = lipgloss.Center
-	} else {
-		var __lt1 lipgloss.Position
-		if a == "right" {
-			__lt1 = lipgloss.Right
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
 		} else {
-			__lt1 = lipgloss.Left
+			__lt3 = lipgloss.NormalBorder()
 		}
-		__lt2 = __lt1
+		__lt2 = __lt3
 	}
 	return __lt2
 }
 
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	if s.BorderStyle == "double" {
-		__lt5 = lipgloss.DoubleBorder()
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
 	} else {
-		var __lt4 lipgloss.Border
-		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
-			__lt4 = tui.DashedBorder()
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
 		} else {
-			var __lt3 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt3 = lipgloss.RoundedBorder()
-			} else {
-				__lt3 = lipgloss.NormalBorder()
-			}
-			__lt4 = __lt3
+			__lt4 = all
 		}
 		__lt5 = __lt4
 	}
-	return __lt5
-}
-
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
-	}
-	return Cells(__lt7)
+	return Cells(__lt5)
 }
 
 func Cells(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt8 int
+	var __lt6 int
 	if px <= 0.0 {
-		__lt8 = 0
+		__lt6 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 8))
+		__lt6 = max(1, (int(px) / 8))
 	}
-	return __lt8
+	return __lt6
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
+	var __lt8 int
 	if height__r0 == 0 {
-		__lt10 = lines
+		__lt8 = lines
 	} else {
-		var __lt9 int
+		var __lt7 int
 		if lines == 0 {
-			__lt9 = height__r0
+			__lt7 = height__r0
 		} else {
-			__lt9 = min(height__r0, lines)
+			__lt7 = min(height__r0, lines)
 		}
-		__lt10 = __lt9
+		__lt8 = __lt7
 	}
-	return __lt10
+	return __lt8
 }
 
 func (m *Model) __focusNext() {
@@ -444,6 +438,8 @@ type Model struct {
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__child0Instance
+	__rendering0   bool
+	__renderAgain0 bool
 	__n1           gtk4rt.Handle
 	__built        bool
 }
@@ -458,6 +454,8 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__child0Instance{}
+	m.__rendering0 = false
+	m.__renderAgain0 = false
 	return m
 }
 
@@ -466,64 +464,74 @@ func (m *Model) sorry() string {
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot0 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot0 = nil
-	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*__child0Instance{}
-	var __inst0_i int = 0
-	if m.__failed0 {
-		var __n2 *__child0Instance
-		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.Set__p0(m.sorry())
-		} else {
-			if len(m.__inst0_live) > __inst0_i {
-				m.__inst0_live[__inst0_i].Destroy()
-			}
-			__n2__new := new__child0Instance(m, m.sorry())
-			__n2 = __n2__new
-		}
-		__inst0_next = append(__inst0_next, __n2)
-		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+	if m.__rendering0 {
+		m.__renderAgain0 = true
 	} else {
-		__n3 := gtk4rt.ButtonNew()
-		gtk4rt.ButtonSetLabel(__n3, "boom")
-		gtk4rt.Connect(__n3, "clicked", func() {
-			func() {
-				defer func() {
-					__r := recover()
-					if __r == nil {
-						return
+		m.__rendering0 = true
+		m.__renderAgain0 = true
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
+			}
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*__child0Instance{}
+			var __inst0_i int = 0
+			if m.__failed0 {
+				var __n2 *__child0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n2 = m.__inst0_live[__inst0_i]
+					__n2.Set__p0(m.sorry())
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
 					}
-					_, __ok := __r.(ErrorEvent)
-					if !__ok {
-						panic(__r)
-					}
-					m.__failed0 = true
-					m.__renderSlot0(m.__n1)
-				}()
-				m.tries += 1
-				for __inst0_live_ui, _ := range m.__inst0_live {
-					m.__inst0_live[__inst0_live_ui].Set__p0(m.sorry())
+					__n2__new := new__child0Instance(m, m.sorry())
+					__n2 = __n2__new
 				}
-				panic(ErrorEvent{Message: "x", Kind: "boom"})
-			}()
-		})
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3)
-		m.__slot0 = append(m.__slot0, __n3)
-	}
-	for __inst0_i_d, _ := range m.__inst0_live {
-		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-		if __inst0_i_j >= __inst0_i {
-			m.__inst0_live[__inst0_i_j].Destroy()
+				__inst0_next = append(__inst0_next, __n2)
+				__inst0_i = (__inst0_i + 1)
+				__n2__el := __n2.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+				m.__slot0 = append(m.__slot0, __n2__el)
+			} else {
+				__n3 := gtk4rt.ButtonNew()
+				gtk4rt.ButtonSetLabel(__n3, "boom")
+				gtk4rt.Connect(__n3, "clicked", func() {
+					func() {
+						defer func() {
+							__r := recover()
+							if __r == nil {
+								return
+							}
+							_, __ok := __r.(ErrorEvent)
+							if !__ok {
+								panic(__r)
+							}
+							m.__failed0 = true
+							m.__renderSlot0(m.__n1)
+						}()
+						m.tries += 1
+						for __inst0_live_ui, _ := range m.__inst0_live {
+							m.__inst0_live[__inst0_live_ui].Set__p0(m.sorry())
+						}
+						panic(ErrorEvent{Message: "x", Kind: "boom"})
+					}()
+				})
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n3)
+				m.__slot0 = append(m.__slot0, __n3)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
 		}
+		m.__rendering0 = false
 	}
-	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -655,86 +663,98 @@ body { font-family: system-ui, sans-serif; }
   var __failed0 = false;
   var __slot0 = [];
   var __inst1_live = [];
+  var __rendering0 = false;
+  var __renderAgain0 = false;
   function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    if (__failed0) {
-      let __n2 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set___p0(sorry());
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
-        }
-        let __n2__new = __cf___child0({ __p0: sorry() });
-        __n2 = __n2__new;
-      }
-      __inst1_next.push(__n2);
-      __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n2__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
-      }
-      __slot0.push(__n2__el);
+    if (__rendering0) {
+      __renderAgain0 = true;
     } else {
-      let __n3 = document.createElement("button");
-      __n3.disabled = false;
-      __n3.addEventListener("click", () => {
-        try {
-          ;
-          state.tries += 1;
-          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-            ;
-            __inst1_live[__inst1_live_ui].__set___p0(sorry());
+      __rendering0 = true;
+      __renderAgain0 = true;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        if (__failed0) {
+          let __n2 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n2 = __inst1_live[__inst1_i];
+            __n2.__set___p0(sorry());
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n2__new = __cf___child0({ __p0: sorry() });
+            __n2 = __n2__new;
           }
-          ;
-          throw Object.assign(new Error("x"), { kind: "boom" });
-        } catch (__e) {
-          ;
-          if (__e?.kind === void 0) throw __e;
-          ;
-          __failed0 = true;
-          __renderSlot0(__slotAnchor_0);
+          __inst1_next.push(__n2);
+          __inst1_i = __inst1_i + 1;
+          let __n2__el = __n2.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2__el, __place0_i_ref0);
+          }
+          __slot0.push(__n2__el);
+        } else {
+          let __n3 = document.createElement("button");
+          __n3.disabled = false;
+          __n3.addEventListener("click", () => {
+            try {
+              ;
+              state.tries += 1;
+              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                ;
+                __inst1_live[__inst1_live_ui].__set___p0(sorry());
+              }
+              ;
+              throw Object.assign(new Error("x"), { kind: "boom" });
+            } catch (__e) {
+              ;
+              if (__e?.kind === void 0) throw __e;
+              ;
+              __failed0 = true;
+              __renderSlot0(__slotAnchor_0);
+            }
+            ;
+          });
+          __n3.addEventListener("contextmenu", () => {
+          });
+          let __n4 = document.createElement("span");
+          __n4.textContent = "boom";
+          __n3.appendChild(__n4);
+          let __place0_i_ref1 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref1 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref1 === __n3) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n3, __place0_i_ref1);
+          }
+          __slot0.push(__n3);
         }
-        ;
-      });
-      __n3.addEventListener("contextmenu", () => {
-      });
-      let __n4 = document.createElement("span");
-      __n4.textContent = "boom";
-      __n3.appendChild(__n4);
-      let __place0_i_ref1 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref1 = __place0_prev[__place0_i];
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
+          }
+        }
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
-      if (__place0_i_ref1 === __n3) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n3, __place0_i_ref1);
-      }
-      __slot0.push(__n3);
-    }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -746,8 +766,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:59065bed56d0a549a06031bf7fe6946c
+pass sha256:15e1bcb4a34bcdd6814d76a94da7ec2f
 -- run/go/gtk4 --
-pass sha256:8e065cbef2ba4821bfdedccaa8af4a02
+pass sha256:05943697c9081957a544b318e8c6e5b0
 -- run/none/html --
-pass sha256:bd475fdef0eb7b62b5b1d05e519e5565
+pass sha256:a1a8ef52ca10d86df3803a309aca98e9

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/buildhost"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/internal/plugin"
@@ -37,6 +39,9 @@ type CheckConfig struct {
 	// though the document had imported it, so its overrides are checked here
 	// and its failures belong to this build.
 	Targets []ir.StaticTarget
+	// Opts are the command line's `--opt` values, which win over what an
+	// `output` block declares.
+	Opts map[string]string
 	// Warn receives each warning the check reports. Nil drops them.
 	Warn func(ir.Diagnostic)
 }
@@ -57,6 +62,9 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 	resolver := cfg.Resolver
 	if resolver == nil {
 		resolver = &Resolver{FS: fsys}
+	}
+	if err := configurePlatforms(doc, cfg.Opts); err != nil {
+		return nil, err
 	}
 	// A selected platform that cannot be used here -- gtk4 with no
 	// introspection data -- is refused before anything is checked against it:
@@ -86,6 +94,16 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 	if pkg != nil {
 		pkg.Origin = &ir.PackageOrigin{Dir: ".", Docs: []*ast.Document{doc}}
 	}
+	// Warnings first, and whether or not the check failed: one may say why
+	// it did -- a field an import left out, and the read of it that is then
+	// an error.
+	if cfg.Warn != nil {
+		for _, d := range diags {
+			if d.Severity == ir.Warning {
+				cfg.Warn(d)
+			}
+		}
+	}
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			if os.Getenv("SNGL_DEBUG_CHECK") != "" {
@@ -96,14 +114,63 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 			return pkg, d
 		}
 	}
-	if cfg.Warn != nil {
-		for _, d := range diags {
-			if d.Severity == ir.Warning {
-				cfg.Warn(d)
+	return pkg, nil
+}
+
+// configurePlatforms hands each platform the options it will be built with
+// before the check, since some decide what the check reads: gtk4's `gir`
+// picks the introspection data a `gir:` import declares its widgets from. A
+// platform configured only from the command line checked a program against
+// one GIR and built it against the one its `output` block named.
+func configurePlatforms(doc *ast.Document, cliOpts map[string]string) error {
+	for _, name := range codegen.Platforms() {
+		cfg, ok := codegen.LookupPlatform(name).(codegen.OptionConfigurable)
+		if !ok {
+			continue
+		}
+		opts := declaredPlatformOptions(doc, name)
+		maps.Copy(opts, cliOpts)
+		if err := cfg.Configure(opts); err != nil {
+			return fmt.Errorf("configure platform %s: %w", name, err)
+		}
+	}
+	return nil
+}
+
+// declaredPlatformOptions is the literal options the first `output` block
+// naming platform gives it, read from the AST because the check has not run.
+func declaredPlatformOptions(doc *ast.Document, platform string) map[string]string {
+	opts := map[string]string{}
+	for _, stmt := range doc.Stmts {
+		out, ok := stmt.(*ast.VisualNode)
+		if !ok || out.TargetName() != "output" {
+			continue
+		}
+		for _, lang := range out.Block.Stmts {
+			langNode, ok := lang.(*ast.VisualNode)
+			if !ok {
+				continue
+			}
+			for _, plat := range langNode.Block.Stmts {
+				call, ok := plat.(*ast.CallStmt)
+				if !ok {
+					continue
+				}
+				if id, ok := call.Call.Func.(*ast.IdentExpr); !ok || id.Name != platform {
+					continue
+				}
+				for _, a := range call.Call.Args.Args {
+					if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
+						if v, ok := literalOption(arg.Value); ok {
+							opts[arg.Name] = v
+						}
+					}
+				}
+				return opts
 			}
 		}
 	}
-	return pkg, nil
+	return opts
 }
 
 // RegisteredTargets is every language and platform the binary registered.
@@ -211,6 +278,9 @@ type Resolver struct {
 	// import of a package its cache does not hold asks it for the host. Nil
 	// refuses, so a resolver nobody thought about fetches nothing.
 	Trust *trust.Policy
+	// Wrote, where set, is told what each plugin's handler answered for an
+	// import -- what the golden harness shows of a scheme's package.
+	Wrote func(scheme, uri string, out *buildhost.Output)
 
 	mu       sync.Mutex
 	sessions map[string]codegen.SchemeImporter
@@ -324,8 +394,8 @@ func (r *Resolver) HasScheme(name string) bool {
 
 // GenerateScheme runs a plugin's handler for uri, gated by r.Trust and stored
 // in the default store, and returns the files it wrote.
-func (r *Resolver) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error) {
-	run := &plugin.Runner{Trust: r.Trust, Root: r.RootDir}
+func (r *Resolver) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, []string, error) {
+	run := &plugin.Runner{Trust: r.Trust, Root: r.RootDir, FS: r.FS, Wrote: r.Wrote}
 	return run.Generate(s, uri)
 }
 
@@ -379,4 +449,17 @@ func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs
 		docs = append(docs, doc)
 	}
 	return docs, fsys, nil
+}
+
+// literalOption is an option value as the command line would spell it, and
+// false for anything but a literal.
+func literalOption(e ast.Expr) (string, bool) {
+	lit, ok := e.(*ast.LiteralExpr)
+	if !ok {
+		return "", false
+	}
+	if s, ok := lit.StringValue(); ok {
+		return s, true
+	}
+	return lit.Raw, true
 }

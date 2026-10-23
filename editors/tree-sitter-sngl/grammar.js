@@ -1,5 +1,5 @@
-// AUTO-GENERATED from internal/v2/parser/sngl.ebnf — do not edit manually.
-// Regenerate: go run ./internal/cmd/ebnf2ts internal/v2/parser/sngl.ebnf > editors/tree-sitter-sngl/grammar.js
+// The compiler's grammar is internal/parser/sngl.ebnf; this one follows it by
+// hand, and sources_test.go holds it to every .sngl file in the repository.
 /// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
 
@@ -23,6 +23,7 @@ module.exports = grammar({
     $._string_content,
     $._string_interpolation_start, // {
     $._string_interpolation_end, // }
+    $._i18n_string_content,
   ],
 
   extras: ($) => [/\s/, $.line_comment, $.block_comment],
@@ -39,6 +40,10 @@ module.exports = grammar({
     // `func(` in a bracket opens a func literal or a func type, and only the
     // body after the list tells them apart.
     [$.func_param, $.type_identifier],
+    // A func literal with no body is a func type, `apply[func(int) bool](fs)`.
+    [$.anon_func_expression, $.func_type],
+    [$._func_body_tail, $.func_type],
+    [$.func_param, $._func_type_param],
     [$.statement_block, $.struct_literal],
     [$.statement_block, $.anon_struct_literal],
     [$.method_expression, $.field_expression],
@@ -56,6 +61,8 @@ module.exports = grammar({
     // the subject; the headless alternative's dynamic precedence picks the
     // arms, as the compiler's grammar does by keeping a brace out of a head.
     [$._match_arms, $.anon_struct_literal],
+    // A map literal's key, `{"a"=1}`, against an assignment in a block.
+    [$.assignment_operator, $.anon_struct_field],
   ],
 
   supertypes: ($) => [$._stmt, $._expression],
@@ -64,27 +71,77 @@ module.exports = grammar({
     // ─── Generated from EBNF ──────────────────────────────────
 
     source_file: ($) =>
-      repeat(seq(optional("/-"), $._stmt, optional($._terminator))),
+      repeat(seq(optional("/-"), repeat($.attribute), $._stmt, optional($._terminator))),
 
     statement_block: ($) =>
-      seq("{", repeat(seq(optional("/-"), $._stmt, optional($._terminator))), "}"),
+      seq("{", repeat(seq(optional("/-"), repeat($.attribute), $._stmt, optional($._terminator))), "}"),
 
+    // `#[builtin("kind")]`, `#[marks.intrinsic]`: a mark on what follows.
+    attribute: ($) =>
+      seq(
+        "#[",
+        field("name", choice($.qualified_name, $.identifier)),
+        optional(seq("(", optional($._arg_list), ")")),
+        "]",
+      ),
+
+    // `import ui "sngl:ui"`, `import . "sngl:ui"`; a second path after `=>`
+    // replaces the first.
     import_declaration: ($) =>
-      seq("import", optional(seq(field("alias", $.identifier), "=>")), $.string_literal),
+      seq(
+        "import",
+        optional(field("alias", choice($.identifier, "."))),
+        field("path", $.string_literal),
+        optional(seq("=>", field("replacement", $.string_literal))),
+      ),
+
+    // `import("c:stdio.h").FILE{}`: a foreign declaration named in a value.
+    import_expression: ($) =>
+      seq("import", "(", $.string_literal, ")", ".", field("name", $.identifier)),
 
     struct_declaration: ($) =>
-      seq("struct", optional(field("name", $.identifier)), optional($.type_param_list), "{", repeat($.struct_field), "}"),
+      seq(
+        "struct",
+        optional(field("name", $.identifier)),
+        optional($.type_param_list),
+        "{",
+        repeat(seq(repeat($.attribute), choice($.struct_field, $.func_declaration), optional($._terminator))),
+        "}",
+      ),
 
     struct_field: ($) =>
       seq(
       field("name", $.identifier),
+      repeat(seq(",", field("name", $.identifier))),
       field("type", $.type_identifier),
       optional(seq("=", field("default", $._expression))),
-      $._terminator
     ),
 
+    // Members, which may carry a payload type or a value, and methods,
+    // separated by a comma or a line break.
     enum_declaration: ($) =>
-      seq("enum", optional(field("name", $.identifier)), "{", optional($._arg_list), "}"),
+      seq(
+        "enum",
+        optional(field("name", $.identifier)),
+        optional($.type_param_list),
+        "{",
+        optional(seq(
+          $._enum_item,
+          repeat(seq(choice(",", $._terminator), $._enum_item)),
+          optional(choice(",", $._terminator)),
+        )),
+        "}",
+      ),
+
+    _enum_item: ($) =>
+      seq(repeat($.attribute), choice($.enum_member, $.func_declaration)),
+
+    enum_member: ($) =>
+      prec.right(seq(
+        field("name", $.identifier),
+        optional(field("payload", $.type_identifier)),
+        optional(seq("=", field("value", $._expression))),
+      )),
 
     unit_declaration: ($) =>
       seq("unit", optional(field("name", $.identifier)), "{", optional($._arg_list), "}"),
@@ -104,10 +161,10 @@ module.exports = grammar({
     ),
 
     const_spec: ($) =>
-      prec.right(seq($.identifier_list, optional($.type_identifier), "=", $._expression)),
+      prec.right(seq($.identifier_list, optional($.type_identifier), optional(seq("=", $._expression)))),
 
     identifier_list: ($) =>
-      prec.right(seq($.identifier, repeat(seq(",", $.identifier)))),
+      prec.right(1, seq($.identifier, repeat(seq(",", $.identifier)))),
 
     var_declaration: ($) =>
       choice(
@@ -143,16 +200,19 @@ module.exports = grammar({
       seq(optional("const"), "func", $.func_name, optional($.type_param_list), optional($.override_target), $._func_tail),
 
     _func_tail: ($) =>
-      choice(
-      seq("(", optional($._param_list), ")", $._func_body_tail),
+      prec.right(choice(
+      seq("(", optional($._param_list), ")", optional($._func_body_tail)),
       $._func_body_tail
-    ),
+    )),
 
+    // A declaration with no body is a signature whose body comes from
+    // elsewhere: an intrinsic, a foreign declaration or a target's override.
     _func_body_tail: ($) =>
-      choice(
+      prec.right(choice(
       seq("=>", $._expression),
-      seq(optional($.type_identifier), $.statement_block)
-    ),
+      seq($.type_identifier, optional($.statement_block)),
+      $.statement_block
+    )),
 
     func_name: ($) =>
       choice(
@@ -191,7 +251,7 @@ module.exports = grammar({
       seq($.func_param, repeat(seq(",", $.func_param)), optional(",")),
 
     func_param: ($) =>
-      prec.right(choice(
+      prec.right(seq(repeat($.attribute), choice(
       seq(
         optional(choice(":", "const")),
         field("name", $.identifier),
@@ -205,8 +265,11 @@ module.exports = grammar({
         "@",
         field("name", $.identifier),
         optional(field("params", $.event_params))
-      )
-    )),
+      ),
+      // A parameter that is a type and no name: a func type's, written as a
+      // func literal with no body.
+      field("type", choice($.func_type, $.component_type, $.variadic_type, $.struct_declaration, $.enum_declaration)),
+    ))),
 
     event_params: ($) =>
       seq("(", optional($._param_list), ")"),
@@ -232,7 +295,7 @@ module.exports = grammar({
       "if",
       $._expression,
       $.statement_block,
-      optional(seq("else", $.statement_block))
+      optional(seq("else", choice($.if_node, $.statement_block)))
     ),
 
     // The declaration is optional: without `var` the loop binds nothing and
@@ -273,10 +336,17 @@ module.exports = grammar({
     // and an arm is a block or `=> value` in either position. The headless
     // form takes a dynamic precedence over a subject for the reason the
     // headless `for` does: a `{` right after `match` opens the arms.
+    // `match var v = subject` names the subject for the arms, as a `for`
+    // head names its element.
     match_expression: ($) =>
       choice(
       prec.dynamic(1, seq("match", $._match_arms)),
-      seq("match", field("subject", $._expression), $._match_arms)
+      seq(
+        "match",
+        optional(seq("var", field("name", $.identifier), "=")),
+        field("subject", $._expression),
+        $._match_arms
+      )
     ),
 
     // Never two terminators in a row: the automatic one is zero-width, and a
@@ -348,10 +418,11 @@ module.exports = grammar({
     ),
 
     // A bare name is the property shorthand `{a, b}`, which means `{a = a}`.
+    // A key that is not a name makes the literal a map's, `{"a"=1}`.
     anon_struct_field: ($) =>
       choice(
       seq("...", $._expression),
-      seq(field("name", $.identifier), "=", field("value", $._expression)),
+      seq(field("name", $._expression), "=", field("value", $._expression)),
       field("name", $.identifier)
     ),
 
@@ -366,7 +437,10 @@ module.exports = grammar({
       )),
 
     anon_func_expression: ($) =>
-      seq("func", optional(seq("(", optional($._param_list), ")")), $._func_body_tail),
+      prec.right(choice(
+        seq("func", "(", optional($._param_list), ")", optional($._func_body_tail)),
+        seq("func", choice(seq("=>", $._expression), seq(optional($.type_identifier), $.statement_block))),
+      )),
 
     type_identifier: ($) =>
       choice(
@@ -384,19 +458,17 @@ module.exports = grammar({
       // both keyword forms, which is unambiguous because "(" cannot begin a
       // type.
       $.component_type,
-      prec.right(seq(
-        "func",
-        optional(seq("(", optional($._type_list), ")")),
-        optional($.type_identifier)
-      )),
+      $.func_type,
       $.variadic_type,
-      $.enum_declaration
+      $.struct_declaration,
+      $.enum_declaration,
+      $.unit_declaration
     ),
 
     component_type: ($) =>
       prec.right(seq(
       "component",
-      optional(seq("(", optional($._type_list), ")")),
+      optional(seq("(", optional($._func_type_params), ")")),
       optional(field("tree", $.type_identifier))
     )),
 
@@ -409,6 +481,13 @@ module.exports = grammar({
 
     _type_list: ($) =>
       seq($.type_identifier, repeat(seq(",", $.type_identifier))),
+
+    // A func or component type may name its parameters, `func(s string)`.
+    _func_type_params: ($) =>
+      seq($._func_type_param, repeat(seq(",", $._func_type_param))),
+
+    _func_type_param: ($) =>
+      choice($.type_identifier, seq(field("name", $.identifier), $.type_identifier)),
 
     // ─── Statements (hand-crafted for named nodes) ────────────
 
@@ -431,9 +510,13 @@ module.exports = grammar({
         $.for_node,
         $.assignment_statement,
         $.toggle_statement,
+        $.increment_statement,
         $.visual_node,
         $._expression,
       ),
+
+    increment_statement: ($) =>
+      seq(field("target", $._expression), field("operator", choice("++", "--"))),
 
     return_statement: ($) =>
       prec.right(seq("return", optional($._expression))),
@@ -534,18 +617,18 @@ module.exports = grammar({
         $.anon_struct_type_literal,
         $.list_literal,
         $.anon_func_expression,
+        $.import_expression,
         $.identifier,
         $.integer_literal,
         $.float_literal,
         $.string_literal,
         $.triple_string_literal,
+        $.i18n_string_literal,
+        $.i18n_triple_string_literal,
         $.raw_string_literal,
         $.element_ref,
         $.color_literal,
         $.unit_literal,
-        $.true,
-        $.false,
-        $.null,
       ),
 
     ternary_expression: ($) =>
@@ -593,7 +676,7 @@ module.exports = grammar({
       prec(
         PREC.UNARY,
         seq(
-          field("operator", choice("!", "-")),
+          field("operator", choice("!", "-", "&", "*", "const")),
           field("operand", $._expression),
         ),
       ),
@@ -661,12 +744,13 @@ module.exports = grammar({
         $.enum_declaration,
       ),
 
+    // A func literal with no body is this, which dynamic precedence says.
     func_type: ($) =>
-      prec.right(seq(
+      prec.dynamic(1, prec.right(seq(
         "func",
-        optional(seq("(", optional($._type_list), ")")),
+        optional(seq("(", optional($._func_type_params), ")")),
         optional($.type_identifier)
-      )),
+      ))),
 
     struct_literal: ($) =>
       seq(
@@ -713,6 +797,38 @@ module.exports = grammar({
         $._string_interpolation_end,
       ),
 
+    // `$"You have {n, plural, one{# item} other{# items}}"`: a translatable
+    // string, whose placeholders take an ICU format and its cases.
+    i18n_string_literal: ($) =>
+      seq(
+        '$"',
+        repeat(choice($._i18n_string_content, $.i18n_placeholder)),
+        '"',
+      ),
+
+    i18n_placeholder: ($) =>
+      seq(
+        $._string_interpolation_start,
+        field("value", $._expression),
+        optional(seq(
+          ",",
+          field("format", $.identifier),
+          optional(seq(",", choice(field("style", $.identifier), repeat1($.i18n_case)))),
+        )),
+        $._string_interpolation_end,
+      ),
+
+    i18n_case: ($) =>
+      seq(
+        field("selector", choice($.identifier, seq("=", $.integer_literal))),
+        field("body", $.i18n_case_body),
+      ),
+
+    // A case's text, whose placeholders nest one level deep.
+    i18n_case_body: (_$) => token(/\{([^{}]|\{[^{}]*\})*\}/),
+
+    i18n_triple_string_literal: (_$) => token(seq('$"""', /("?"?([^"\\]|\\.))*/, '"""')),
+
     triple_string_literal: (_$) => /"""("?"?([^"\\]|\\.))*"""/,
 
     raw_string_literal: (_$) => token(seq('`', /[^`]*/, '`')),
@@ -727,10 +843,6 @@ module.exports = grammar({
     color_literal: (_$) => token(prec(1, /#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?/)),
 
     unit_literal: (_$) => /[0-9][0-9_]*(\.[0-9][0-9_]*)?[a-zA-Z]+/,
-
-    true: (_$) => "true",
-    false: (_$) => "false",
-    null: (_$) => "null",
 
     // ─── Comments ──────────────────────────────────────────────
 

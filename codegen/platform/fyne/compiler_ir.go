@@ -402,6 +402,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	if ctx.Pkg.UsesErrorHandling {
 		td.LangHelpers += golang.ErrorEventDecl
 	}
+	td.LangHelpers += golang.PackageConstDecls(ctx.Pkg, gc)
 	if err != nil {
 		return "", nil, nil, "", err
 	}
@@ -437,6 +438,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			gc.RequireImport(fyneLayoutImportPath)
 			emitIRAppMain(&b, ctx.Pkg)
 		} else {
+			if ctx.Pkg.Run != nil {
+				gc.RequireImport(fyneLayoutImportPath)
+			}
 			emitIRMain(&b, cfg, info, ctx.Pkg)
 		}
 	}
@@ -473,7 +477,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	}
 
 	// `duration` is special-cased to time.Duration.
-	td.UnitDecls = golang.EmitUnitTypeDecls(info.Units)
+	td.UnitDecls = golang.EmitUnitTypeDecls(info.Units) + golang.EmitEnumTypeDecls(info.Enums)
 
 	helpers := golang.HelpersNeeded(ctx.Pkg)
 	for _, imp := range helpers.Imports() {
@@ -585,7 +589,7 @@ func fyneComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // emitIRFyneTypeMethod emits a method on a user type as the free function its
 // call sites name: `func GlyphRow(gl Glyph, row int) string`.
 func emitIRFyneTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	for _, line := range gc.EmitTypeMethodDef(fn) {
@@ -598,11 +602,11 @@ func emitIRFyneTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContex
 // emitIRFyneFreeFunc emits a top-level func under its exported name, which is
 // what ExprCtx.FreeFuncs told the call sites to expect.
 func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Name)
+	fnCopy.Name = gc.FreeFuncName(fn.Name)
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
@@ -627,7 +631,7 @@ func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 // component's -- and a window owning nothing widened the gap to every effect
 // entry point, since those are the package's funcs now.
 func emitIRFyneModelMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error)) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
@@ -752,7 +756,9 @@ func renderIRComponentMethod(
 	var trailer string
 	switch len(tops) {
 	case 0:
-		trailer = "\treturn widget.NewLabel(\"\")\n"
+		// Hidden, so the box holding it gives it no room (fynelayout.Nothing).
+		importSink(fyneLayoutImportPath)
+		trailer = "\treturn " + compGC.AliasFor(fyneLayoutImportPath) + ".Nothing()\n"
 	case 1:
 		trailer = fmt.Sprintf("\treturn %s\n", compGC.EvalExpr(topRef(tr, tops[0])))
 	default:
@@ -829,20 +835,12 @@ func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
-	b.WriteString("\tran := false\n")
-	// An empty handler is emitted as no function at all, and never calls run.
-	if len(pkg.Run.Block) > 0 {
-		fmt.Fprintf(b, "\t%s(os.Args[1:], func() {\n", golang.ModelCallee(pkg, pkg.Run, "m"))
-		b.WriteString("\t\tran = true\n")
-		b.WriteString("\t\tw.ShowAndRun()\n")
-		b.WriteString("\t})\n")
-	}
-	b.WriteString("\tif !ran {\n")
-	b.WriteString("\t\ta.Run()\n")
-	b.WriteString("\t}\n")
-	if pkg.Teardown != nil {
-		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
-	}
+	golang.EmitAppStart(b, pkg, "os.Args[1:]", func(show bool) string {
+		if show {
+			return "w.ShowAndRun()"
+		}
+		return "a.Run()"
+	}, "fynelayout.RefuseRunAgain")
 	b.WriteString("\t_ = os.Stderr\n")
 	b.WriteString("}\n")
 }
@@ -983,12 +981,10 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 						}
 					}
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.NodeInst:
 				walk(n.Children)
 			case *ir.CallStmt, *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
@@ -1096,9 +1092,9 @@ func valueTemp(s ir.Stmt) bool {
 	switch n := s.(type) {
 	case *ir.LocalVar:
 		return n.Init == nil && (n.Type == nil || n.Type.Kind != ir.TypeComponent)
-	case *ir.If:
-		for _, b := range [][]ir.Stmt{n.Body, n.Else} {
-			for _, st := range b {
+	case *ir.If, *ir.Match:
+		for _, b := range ir.TransparentBlocks(n) {
+			for _, st := range *b {
 				if asn, ok := st.(*ir.Assign); ok {
 					if _, plain := asn.Target.(*ir.Ident); plain {
 						continue

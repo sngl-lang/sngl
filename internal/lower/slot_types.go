@@ -58,6 +58,10 @@ func (st *reactivityState) typeSlotsIn(stmts []ir.Stmt, parent func() *ir.Type) 
 			}
 			st.typeSlotsIn(n.Body, parent)
 			st.typeSlotsIn(n.Else, parent)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				st.typeSlotsIn(arm.Body, parent)
+			}
 		case *ir.For:
 			if n.LoweredSlotID != "" {
 				st.recordSlotTypes(n.LoweredSlotID, parent(), n.Body, n.Else)
@@ -102,12 +106,10 @@ func (st *reactivityState) eachAttached(stmts []ir.Stmt, hosted *ir.Component, f
 			} else {
 				f(handleType(n))
 			}
-		case *ir.If:
-			st.eachAttached(n.Body, hosted, f)
-			st.eachAttached(n.Else, hosted, f)
-		case *ir.For:
-			st.eachAttached(n.Body, hosted, f)
-			st.eachAttached(n.Else, hosted, f)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				st.eachAttached(*b, hosted, f)
+			}
 		case *ir.ErrorBoundary:
 			st.eachAttached(n.Children, hosted, f)
 		}

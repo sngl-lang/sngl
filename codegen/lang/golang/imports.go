@@ -5,21 +5,20 @@ import (
 )
 
 // BaseImports is the Go imports a generated file needs that no emitted
-// expression registers where it is written: the sngl-i18n runtime, and the
-// package of every `#[go.native]` type a value is declared as.
+// expression registers where it is written: the package of every
+// `#[go.native]` type a value is declared as.
 //
 // A source import is not among them. A native call registers its own
 // package through AliasFor as it is spelled, so an import reaches the file
 // exactly where something names it -- and a `file:` import's path is a
 // directory rather than a Go package, and a `go:` import whose every call
-// folded at build time is named by nothing, which Go refuses as unused.
+// folded at build time is named by nothing, which Go refuses as unused. Nor
+// is the sngl-i18n runtime: every i18n spelling registers it, and the
+// package's UsesI18n also counts a method of a component the build renders
+// nowhere, which a test build rooted elsewhere never emits.
 func BaseImports(pkg *ir.Package) []string {
 	if pkg == nil {
 		return nil
-	}
-	var out []string
-	if PackageUsesI18n(pkg) {
-		out = append(out, SnglI18nImportPath)
 	}
 	// A `#[go.native]` *type* is spelled by IRTypeToGo, which is a free
 	// function with no context to register an import from -- and unlike a
@@ -28,8 +27,7 @@ func BaseImports(pkg *ir.Package) []string {
 	// constructor beside them, which is what fyne's `*time.Timer` schedule is.
 	// Collected here so all three Go platforms get it from the one place
 	// each already asks.
-	out = append(out, foreignTypeImports(pkg)...)
-	return out
+	return foreignTypeImports(pkg)
 }
 
 // foreignTypeImports is the import path of every `#[go.native]` type a value in

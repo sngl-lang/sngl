@@ -1,0 +1,136 @@
+# A query in a tab whose fetch answers at once, and whose @load writes what
+# the tab renders, on every target.
+#
+# The render builds the query's instance, the instance's mount answers, and
+# the @load asked for the same render while it was running. Re-entered, the
+# render built the instance afresh -- the list it reuses from is set only at
+# its end -- whose mount answered again, until gtk4's stack overflowed. A
+# render asked for while it runs now runs after it (renderOnce).
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A word as a lookup answers it, at once: itself, marked.
+func lookUp(word string) async.Result[string] {
+    return {ok="{word}!"}
+}
+
+func kinds() list[string] {
+    return ["Red", "Green", "Yellow"]
+}
+
+component page ui.node {
+    var tab = 0
+    var kind = "Red"
+    var seen map[string, string] = {}
+
+    // The words the kind chosen shows, each as the lookup answered it.
+    func words() list[string] {
+        return ["{kind}-a", "{kind}-b"].map(func(w string) => seen.get(w, w))
+    }
+
+    ui.tabs #tabs(:selected=tab) {
+        ui.tab(label="First") {
+            ui.text(value="first")
+        }
+        ui.tab(label="Second") {
+            ui.vbox {
+                for var w = ["{kind}-a", "{kind}-b"] {
+                    async.query(on=w, fetch=lookUp, @load(got) { seen[string.replace(got, "!", "")] = got })
+                }
+                ui.select #pick(:value=kind) {
+                    for var k = kinds() {
+                        ui.choice(label=k)
+                    }
+                }
+                for var w = words() {
+                    ui.text #word(value=w)
+                }
+            }
+        }
+    }
+}
+
+ui.window {
+    page()
+}
+
+func testEachChoiceTakes(t test.Test, c page) {
+    c.tabs.change(1)
+    t.assert(c.pick != null)
+    if c.pick != null {
+        c.pick.change("Green")
+    }
+    t.assert(c.kind == "Green")
+    t.assert(c.words().join(",") == "Green-a!,Green-b!")
+    if c.pick != null {
+        c.pick.change("Yellow")
+    }
+    t.assert(c.kind == "Yellow")
+    t.assert(c.words().join(",") == "Yellow-a!,Yellow-b!")
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:c1cbba2cd49dda5add9436d86d2935b1
+{
+  "results": [
+    {
+      "Desc": "EachChoiceTakes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:ced73ba81f8fd286977c96372856054e
+{
+  "results": [
+    {
+      "Desc": "EachChoiceTakes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:6bb9783f04da40a6711a7819f7e8efea
+{
+  "results": [
+    {
+      "Desc": "EachChoiceTakes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:a4c8f9deb3138982fe05fdd265dd9052
+{
+  "results": [
+    {
+      "Desc": "EachChoiceTakes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:620c23f4fbade50c1e6c724d72e47166
+{
+  "results": [
+    {
+      "Desc": "EachChoiceTakes",
+      "Passed": true
+    }
+  ]
+}

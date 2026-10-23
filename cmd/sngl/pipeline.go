@@ -94,7 +94,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		slog.Info("parse", "unit", u.name, "duration", time.Since(start))
 
 		start = time.Now()
-		pkg, err := checkDoc(doc, u.dir, true, build.SelectedTargets(cliLang, cliPlat)...)
+		pkg, err := checkDoc(doc, u.dir, true, p.cliOpts, build.SelectedTargets(cliLang, cliPlat)...)
 		if err != nil {
 			return fmt.Errorf("%s: %w", u.name, err)
 		}

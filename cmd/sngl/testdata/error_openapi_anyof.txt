@@ -1,0 +1,37 @@
+# An anyOf has no declaration to spell it, and an `any` is not one: the
+# field is left out, the import says so, and the rest of the struct is written.
+env SNGL_GENCACHE=off
+
+! sngl check app.sngl
+stderr 'import "openapi:./api.yml": field either of Thing is left out: an anyOf, which no declaration spells'
+stderr 'app.sngl:8:14: no field'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+func idOf(c api.Thing) int {
+    return c.id
+}
+
+func gone(c api.Thing) {
+    var x = c.either
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+servers:
+- url: https://api.example
+paths:
+  /thing:
+    get:
+      operationId: getThing
+      responses:
+        '200': {description: '', content: {application/json: {schema: {$ref: '#/components/schemas/Thing'}}}}
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id: {type: integer}
+        either: {anyOf: [{type: string}, {type: integer}]}

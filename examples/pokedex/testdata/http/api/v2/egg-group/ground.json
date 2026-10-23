@@ -1,0 +1,51 @@
+{
+ "id": 5,
+ "name": "ground",
+ "names": [
+  {
+   "language": {
+    "name": "ja-hrkt",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/1/"
+   },
+   "name": "りくじょう"
+  },
+  {
+   "language": {
+    "name": "fr",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/5/"
+   },
+   "name": "Terrestre"
+  },
+  {
+   "language": {
+    "name": "de",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/6/"
+   },
+   "name": "Feld"
+  },
+  {
+   "language": {
+    "name": "es",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/7/"
+   },
+   "name": "Campo"
+  },
+  {
+   "language": {
+    "name": "en",
+    "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/language/9/"
+   },
+   "name": "Field"
+  }
+ ],
+ "pokemon_species": [
+  {
+   "name": "rattata",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/19/"
+  },
+  {
+   "name": "raticate",
+   "url": "http://127.0.0.1:47819/examples/pokedex/api/v2/pokemon-species/20/"
+  }
+ ]
+}

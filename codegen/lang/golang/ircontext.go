@@ -72,6 +72,11 @@ type GoIRContext struct {
 	// event loop owns it.
 	OffLoop *OffLoopSnapshots
 
+	// LiveModel, inside an off-loop literal's body, names the Model the
+	// literal was made from -- the one the event loop owns -- where `m` is
+	// the snapshot. An async.do there posts a closure that runs against it.
+	LiveModel string
+
 	// ExtraParam is appended verbatim to the signature EmitFuncDef writes, for
 	// a parameter whose Go type no ir.Type spells -- today the `m *Model` a
 	// lifted type method takes. Cleared for the body, which is a scope of its
@@ -324,8 +329,11 @@ func (gc *GoIRContext) Ternary(_ *ir.Ternary, _, _, _ string) string {
 }
 
 func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
-	if n.Field == "length" {
+	if n.Field == "length" && ir.HasLength(n.Operand.ExprType()) {
 		return "len(" + operand + ")"
+	}
+	if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {
+		return enumSelectGo(t, n.Field, operand)
 	}
 	// A Select on a RawFieldAccess ident reads the unexported field directly,
 	// so a generated `_test.go` in the same package can touch Model fields.
@@ -417,6 +425,9 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 }
 
 func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	if member, _, ok := ir.EnumLitMember(n); ok {
+		return enumLitGo(n.Type, member, fieldStrs[0])
+	}
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
@@ -426,6 +437,11 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	// `make` is what produces a usable one, which is go.makechan.
 	if isChanLit(n) {
 		return "nil"
+	}
+	// A builder is Go's []byte, and its zero the empty one, typed so that
+	// `b := …` declares a []byte.
+	if ir.IsBuilder(n.Type) {
+		return "[]byte(nil)"
 	}
 	gc.requireForeignStructImport(n)
 	name := structLitTypeName(n)
@@ -542,6 +558,22 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
+	if n.Label != "" {
+		return n.Label + ": " + gc.forHead(n, iter)
+	}
+	return gc.forHead(n, iter)
+}
+
+// BreakText names the loop a labelled break leaves: Go's switch takes a bare
+// break as its own.
+func (gc *GoIRContext) BreakText(n *ir.Break) string {
+	if n.Label != "" {
+		return "break " + n.Label
+	}
+	return "break"
+}
+
+func (gc *GoIRContext) forHead(n *ir.For, iter string) string {
 	// A loop that declared no variable still needs a counter where Go has no
 	// discard for one: `for range xs` covers the element and map forms, but a
 	// counted loop counts, so it names a variable the condition reads -- which
@@ -647,23 +679,6 @@ func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + con
 func (gc *GoIRContext) ElseHead() string                    { return "} else {" }
 func (gc *GoIRContext) BlockEnd() string                    { return "}" }
 func (gc *GoIRContext) Indent() string                      { return "\t" }
-
-// shadowedStateVar reports a read of a state var whose name a local of the
-// emitted scope also binds -- a render slot's `parent` parameter beside a
-// program's `var parent` -- which Resolve, asking by name, answers as the local.
-func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
-	v, ok := sym.(*ir.Var)
-	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
-		return nil, false
-	}
-	if !gc.Ctx.IsLocal(v.Name) {
-		return nil, false
-	}
-	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {
-		return v, true
-	}
-	return v, gc.Ctx.Pkg != nil && slices.Contains(gc.Ctx.Pkg.Vars, v)
-}
 
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
@@ -816,12 +831,16 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 
 func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
+		if ir.PayloadEnum(n.Type) != nil {
+			return enumLitGo(n.Type, n.Member, "")
+		}
 		return fmt.Sprintf("%q", n.Member)
 	}
 	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
 	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
 	if ir.IsI18nPluralKey(n) {
 		if goName := i18nPluralKeyGoName(n.Name); goName != "" {
+			gc.RequireImport(SnglI18nImportPath)
 			return "i18n." + goName
 		}
 	}
@@ -874,7 +893,8 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// package body's as much as a component's. Asking about the component
 		// alone left a package const read as a bare name against the `m.blank`
 		// field the same build declared, once the package body was the scope.
-		if gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App {
+		// A free function is written from that scope too, and has no `m`.
+		if !gc.Ctx.FreeBody && (gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App) {
 			return gc.recvFor(sym) + "." + name
 		}
 		return name
@@ -896,8 +916,8 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// A func emitted free is named the way a call to it is, exported and
 		// with no receiver: handed as a value to a component's func-typed
 		// prop, `render=encode` came out `m.encode` beside `func Encode`.
-		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] {
-			return ExportName(name)
+		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] != "" {
+			return gc.FreeFuncName(name)
 		}
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
@@ -938,7 +958,56 @@ const (
 	SnapshotRefMethod = "snapshotRef"
 )
 
+// liveModelVar is the local an off-loop literal keeps the Model it was made
+// from in, beside the snapshot it reads (OffLoopSnapshots).
+const liveModelVar = "__live"
+
+// withLiveModel translates an off-loop literal's body with LiveModel naming
+// the Model it was made from, and returns that name and the body.
+func (gc *GoIRContext) withLiveModel(n *ir.Lambda) (string, string) {
+	prev := gc.LiveModel
+	gc.LiveModel = liveModelVar
+	defer func() { gc.LiveModel = prev }()
+	return liveModelVar, gc.evalLambda(n)
+}
+
+// PostFunc is what a platform whose event loop owns the Model
+// (OffLoopSnapshots) declares to answer async.do: it hands a closure to the
+// loop, which runs it there.
+const PostFunc = "__snglPost"
+
+// RunPostsFunc is what such a platform declares for a test waiting on what
+// was posted: it runs the posts that arrive within a duration.
+const RunPostsFunc = "__snglRunPosts"
+
+// evalPost spells async.do inside an off-loop literal where the event loop
+// owns the Model: the closure runs against the Model the literal was made
+// from rather than the snapshot the literal reads, since what it writes is
+// what the loop shows. Anywhere else the platform's registered emitter
+// spells the post.
+func (gc *GoIRContext) evalPost(n *ir.Call) (string, bool) {
+	if gc.OffLoop == nil || gc.LiveModel == "" || n.Func == nil || n.Func.Intrinsic != lower.AsyncDoIntrinsic || len(n.Args) != 1 {
+		return "", false
+	}
+	l, ok := n.Args[0].Value.(*ir.Lambda)
+	if !ok {
+		return "", false
+	}
+	inner := *gc
+	inner.LiveModel = ""
+	body := inner.evalLambda(l)
+	m := codegen.ModelReceiver
+	head, rest, ok := strings.Cut(body, "{")
+	if !ok || head != "func() " {
+		return PostFunc + "(" + body + ")", true
+	}
+	return PostFunc + "(func() {\n\t\t" + m + " := " + gc.LiveModel + "\n\t\t_ = " + m + rest + ")", true
+}
+
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
+	if out, ok := gc.evalPost(n); ok {
+		return out
+	}
 	if gc.OffLoop != nil && lower.LeavesTheLoop(n.Func) {
 		if gc.OffLoop.lambdas == nil {
 			gc.OffLoop.lambdas = map[*ir.Lambda]bool{}
@@ -952,6 +1021,11 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	// Ahead of the registry, because make's spelling comes from the call's
 	// return type and an emitter is handed only its arguments.
 	if out, ok := gc.MakeChanText(n); ok {
+		return out
+	}
+	// Ahead of the registry too: a codec call reads the type it reads or
+	// writes, which is the call's and not its arguments'.
+	if out, ok := gc.codecCall(n); ok {
 		return out
 	}
 	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
@@ -996,12 +1070,6 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		fname := n.Func.Name
 		args := gc.evalCallArgs(n.Args)
 
-		// size(x) is a length builtin, not a type conversion; the primitive
-		// casts arrive as ir.Conversion instead.
-		if fname == "size" && len(args) == 1 {
-			return "len(" + args[0] + ")"
-		}
-
 		// A component-scope func is a method on Model, so it must be called
 		// through the receiver or it references an undefined identifier.
 		fsym, kind := gc.Ctx.Resolve(fname)
@@ -1009,8 +1077,8 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			// A free-function scope has no Model receiver, so the call uses
 			// the exported name. A func not emitted into the lib then yields
 			// a clean "undefined" Go error rather than silent bad code.
-			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname]) {
-				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
+			if gc.FreeFuncScope || (gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] != "") {
+				return gc.FreeFuncName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
 			// Route mode emits these as State methods under their exported
 			// name, which is also what a reference to one as a value renders
@@ -1049,15 +1117,16 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	}
 	args := gc.evalCallArgs(n.Args)
 	name := n.Func.Foreign.Name
-	// The renderer adds the "C." prefix to a bare C identifier; a caller that
-	// already prefixed it keeps what it wrote.
-	if n.Func.Foreign.Path == "C" && !strings.HasPrefix(name, "C.") {
-		name = "C." + name
-	} else if n.Func.Foreign.Path != "C" {
+	// The renderer adds the "C." prefix to a bare C identifier; a qualified
+	// name is spelled as written, which is how sngl:x/c reaches cgo's
+	// `unsafe.Pointer` for a `void *`.
+	switch {
+	case n.Func.Foreign.Path != "C":
 		gc.RequireImport(n.Func.Foreign.Path)
-	}
-	if n.Func.Foreign.Path == "C" {
-		args = wrapCArgs(n.Func.Params, args)
+	case strings.HasPrefix(name, "unsafe."):
+		gc.RequireImport("unsafe")
+	case !strings.Contains(name, "."):
+		name = "C." + name
 	}
 	// Context-taking native call: inject the context expression as the first
 	// argument. When the importer flagged HasContextArg, supply
@@ -1082,8 +1151,9 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
 	}
 	call := name + "(" + strings.Join(args, ", ") + ")"
-	// The other direction of wrapCArgs: a C function's number comes back as
-	// cgo's type for it, which a Go int or float64 is not assignable from.
+	// The arguments went the other way in lower.CMarshal: a C function's
+	// number comes back as cgo's type for it, which a Go int or float64 is
+	// not assignable from.
 	if n.Func.Foreign.Path == "C" && n.Func.Return != nil {
 		switch n.Func.Return.Kind {
 		case ir.TypeInt:
@@ -1093,77 +1163,6 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 		}
 	}
 	return call, true
-}
-
-// wrapCArgs converts each argument to the C type of the parameter it fills.
-//
-// cgo gives every C numeric type a defined Go type, so a `float64` is not
-// assignable to a `C.double` and a call to a C function needs the conversion
-// written out. A hand-written emitter does this itself -- gtk4's `dbl` helper
-// wraps every cairo coordinate -- and a native declaration has no way to say
-// it, so the backend that knows cgo does it from the declared parameter types.
-//
-// Aligned from the end: a native written in the receiver-first shape is called
-// with the receiver as argument zero and no parameter declares it.
-//
-// A type with no C counterpart here is left alone, which makes the mismatch a
-// Go compile error rather than a silent conversion -- `string` in particular,
-// where the C type is a `char*` somebody has to allocate and free.
-func wrapCArgs(params []*ir.Param, args []string) []string {
-	off := len(args) - len(params)
-	if off < 0 {
-		return args
-	}
-	out := make([]string, len(args))
-	copy(out, args)
-	for i, p := range params {
-		ct := cTypeFor(p.Type)
-		if ct == "" {
-			continue
-		}
-		out[off+i] = ct + "(" + out[off+i] + ")"
-	}
-	return out
-}
-
-// cTypeFor is the cgo type a SNGL type crosses as, or "" for one that has no
-// single answer.
-func cTypeFor(t *ir.Type) string {
-	if t == nil {
-		return ""
-	}
-	switch t.Kind {
-	case ir.TypeFloat:
-		return "C.double"
-	case ir.TypeInt:
-		return "C.int"
-	case ir.TypeString:
-		// C.CString allocates and the caller owns the result. Nothing here
-		// frees it, which is the same trade every hand-written call in the
-		// gtk4 emitter already makes (`C.CString("label")`): a widget label
-		// and a text run outlive the call, and the alternative is a defer this
-		// has no statement to put one in.
-		return "C.CString"
-	case ir.TypeBool:
-		// C spells a boolean as 1 or 0 and Go will not convert one to the
-		// other: `C.int(true)` does not compile, and passing the bool through
-		// unconverted does not either. There is no inline Go expression for it
-		// -- it needs a helper or an `if` -- so the declaration has to say what
-		// it means, `#[cnative]` on a parameter typed `int` with the override
-		// choosing the value. Loud, because silently returning "" here emitted
-		// a call that failed in the user's own `go build` with no hint of
-		// where it came from.
-		panic(fmt.Sprintf("cnative: a bool parameter has no C spelling; declare it as int and convert in the override (parameter type %s)", t))
-	default:
-		// Everything else passes through, which is what an opaque handle
-		// wants: a `#[cnative("*C.cairo_t")]` struct, a nullable pointer, an
-		// enum already converted by a native of its own. A conversion is only
-		// written where it is a representation detail and nothing else --
-		// `C.double(x)` says how a float64 crosses and loses nothing, whereas
-		// a float reaching an int parameter is a decision about rounding and
-		// so is the override's to write in SNGL.
-		return ""
-	}
 }
 
 // methodTail is the last segment of a qualified native name, which is the
@@ -1225,6 +1224,7 @@ func (gc *GoIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	// An i18n.* entry point is the runtime package's.
 	if ir.IsI18nCall(n) {
 		if result := goBuiltinMethodFromArgs("i18n."+n.Func.Name, gc.evalCallArgs(n.Args)); result != "" {
+			gc.RequireImport(SnglI18nImportPath)
 			return result, true
 		}
 	}
@@ -1932,7 +1932,14 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		}
 		ft := "func(" + strings.Join(params, ", ") + ")" + goReturnType(n.Func.Return)
 		m := codegen.ModelReceiver
-		return "func() " + ft + " {\n\t\t" + m + " := " + m + "." + snap + "()\n\t\treturn " + gc.evalLambda(n) + "\n\t}()"
+		live, body := gc.withLiveModel(n)
+		snapshot := m + " := " + m + "." + snap + "()\n\t\t"
+		// Only a body that posts reads the Model it was made from, and its
+		// post may be all that names the Model, which it shadows.
+		if strings.Contains(body, live) {
+			snapshot = live + " := " + m + "\n\t\t" + snapshot + "_ = " + m + "\n\t\t"
+		}
+		return "func() " + ft + " {\n\t\t" + snapshot + "return " + body + "\n\t}()"
 	}
 	params := make([]string, len(n.Func.Params))
 	for i, p := range n.Func.Params {
@@ -1953,6 +1960,9 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	// component with a `var on` -- read the field.
 	for _, p := range n.Func.Params {
 		gc = gc.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(n.Func.Block) {
+		gc = gc.WithLocal(name)
 	}
 
 	if len(n.Func.Block) == 1 {
@@ -1992,6 +2002,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
 		OffLoop:            gc.OffLoop,
+		LiveModel:          gc.LiveModel,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -2015,6 +2026,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
 		OffLoop:            gc.OffLoop,
+		LiveModel:          gc.LiveModel,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -2067,6 +2079,9 @@ func IRTypeToGo(t *ir.Type) string {
 		// channel that is receive-only reaches a program as a field read and
 		// is selected on rather than bound, so no Go type is written for it;
 		// binding one to a var would spell this and not compile.
+		if ir.IsBuilder(t) {
+			return "[]byte"
+		}
 		if isChanType(t) {
 			if len(t.Elems) == 1 {
 				return "chan " + IRTypeToGo(t.Elems[0])
@@ -2108,6 +2123,9 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "any"
 	case ir.TypeEnum:
+		if ed := ir.PayloadEnum(t); ed != nil {
+			return ExportName(ed.Name)
+		}
 		return "string"
 	case ir.TypeUnit:
 		if ud := ir.UnitDeclOf(t); ud != nil {
@@ -2480,10 +2498,17 @@ func (gc *GoIRContext) emitFuncBody(lines []string, fn *ir.Func, _ []string) []s
 	// from the pointer answer rather than inheriting the caller's.
 	inner := *gc
 	inner.ModelIsValue = false
+	if gc.Ctx != nil {
+		inner.Ctx = gc.Ctx.Clone()
+		inner.Ctx.FreeBody = !fn.IsMethod() && gc.MethodRecvType == "" && gc.ExtraParam == ""
+	}
 	inner.ExtraParam = ""
 	bodyGC := &inner
 	for _, p := range fn.Params {
 		bodyGC = bodyGC.WithLocal(p.Name)
+	}
+	for _, name := range codegen.BodyLocals(fn.Block) {
+		bodyGC = bodyGC.WithLocal(name)
 	}
 	for _, stmt := range fn.Block {
 		for _, line := range bodyGC.EvalStmt(stmt) {
@@ -2532,6 +2557,9 @@ func loopReadNames(n *ir.For) map[string]bool {
 // the outer loop's. Asked by name, so anything that might read it keeps it.
 func WithUnreadVarsDropped(n *ir.For) *ir.For {
 	read := loopReadNames(n)
+	if n.KeyRead {
+		read[n.Key] = true
+	}
 	// A counted loop's variable is read by its own condition, which ForHead
 	// names __i when the body does not name one.
 	if n.IterKind == ir.IterCounted {
@@ -2579,4 +2607,64 @@ func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
 		return false, true, true
 	}
 	return false, false, false
+}
+
+// Match writes a match statement as a switch: a tagless one for a headless
+// match, and the arm taken unasked as the default.
+func (gc *GoIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
+	lines := []string{switchHead(&n.MatchArms, subject)}
+	for i := range n.Arms {
+		lines = append(lines, switchCase(&n.MatchArms, i, patterns[i]))
+		lines = append(lines, irwalk.IndentLines(gc.Indent(), bodies[i])...)
+	}
+	return append(lines, "}")
+}
+
+// SwitchHead opens a switch over m, for a platform writing a match's arms
+// itself -- bubbletea's view and the walks that follow it. Each arm opens
+// with SwitchCase, and the switch closes with BlockEnd.
+func (gc *GoIRContext) SwitchHead(m *ir.MatchArms) string {
+	subject := ""
+	if m.Subject != nil {
+		subject = gc.EvalExpr(m.Subject)
+	}
+	return switchHead(m, subject)
+}
+
+// SwitchCase opens arm i of a switch SwitchHead opened.
+func (gc *GoIRContext) SwitchCase(m *ir.MatchArms, i int) string {
+	var pats []string
+	for _, p := range m.Arms[i].Patterns {
+		pats = append(pats, gc.EvalExpr(p))
+	}
+	return switchCase(m, i, pats)
+}
+
+func switchHead(m *ir.MatchArms, subject string) string {
+	if m.Subject == nil {
+		return "switch {"
+	}
+	return "switch " + subject + " {"
+}
+
+func switchCase(m *ir.MatchArms, i int, patterns []string) string {
+	if m.Unasked(i) {
+		return "default:"
+	}
+	return "case " + strings.Join(patterns, ", ") + ":"
+}
+
+// MatchExpr is never reached: Go has no switch expression, and passTernary
+// writes a match expression as a switch assigning a temp.
+func (gc *GoIRContext) MatchExpr(*ir.MatchExpr) string {
+	panic("ir.MatchExpr reached Go codegen — NoTernary lifts it into a switch for every Go platform")
+}
+
+// shadowedStateVar is ExprCtx.ShadowedStateVar, for a context that may have
+// none.
+func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
+	if gc.Ctx == nil {
+		return nil, false
+	}
+	return gc.Ctx.ShadowedStateVar(sym)
 }
