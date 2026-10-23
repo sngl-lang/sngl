@@ -154,6 +154,9 @@ type Picture struct {
 	sw, sh  C.int
 	// watching is each source showing the picture, told when it arrives.
 	watching map[*source]bool
+	// refs is how many hold the picture: the source that loaded it, and
+	// each var the program retained it into. Given back at the last unref.
+	refs     int
 	released bool
 }
 
@@ -247,7 +250,7 @@ func ImageSourceNew() Handle {
 // a file the program carries, and from the main loop for one fetched, since
 // the fetch may answer from its own goroutine before this returns.
 func LoadPicture(url string) *Picture {
-	pic := &Picture{url: url, watching: map[*source]bool{}}
+	pic := &Picture{url: url, watching: map[*source]bool{}, refs: 1}
 	remote := snglimage.IsRemote(url)
 	snglimage.Fetch(url, func(data []byte, err error) {
 		if !remote {
@@ -279,10 +282,22 @@ func (pic *Picture) arrive(data []byte, err error) {
 	}
 }
 
-// UnrefPicture gives a picture back; the sources showing it keep what they
-// show. One not yet arrived is dropped when it does.
+// RefPicture counts one more holder of pic, which UnrefPicture takes back.
+func RefPicture(pic *Picture) *Picture {
+	if pic != nil && !pic.released {
+		pic.refs++
+	}
+	return pic
+}
+
+// UnrefPicture gives a picture back once its last holder has; the sources
+// showing it keep what they show. One not yet arrived is dropped when it
+// does.
 func UnrefPicture(pic *Picture) {
 	if pic == nil || pic.released {
+		return
+	}
+	if pic.refs--; pic.refs > 0 {
 		return
 	}
 	pic.released = true

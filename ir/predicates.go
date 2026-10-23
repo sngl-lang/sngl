@@ -223,6 +223,23 @@ func IsRelease(fn *Func) bool {
 	return fn != nil && (fn.Releases != nil || len(fn.Params) == 1 && ReleaseOf(fn.Params[0].Type) == fn)
 }
 
+// RetainOf is the retain an owned struct declares beside its release, nil
+// for a type that declares none or is not a struct.
+func RetainOf(t *Type) *Func {
+	if t == nil || t.Kind != TypeStruct {
+		return nil
+	}
+	if sd, ok := t.Decl.(*StructDef); ok {
+		return sd.Retain
+	}
+	return nil
+}
+
+// IsRetain reports whether fn is the retain some owned type declares.
+func IsRetain(fn *Func) bool {
+	return fn != nil && len(fn.Params) == 1 && RetainOf(fn.Params[0].Type) == fn
+}
+
 // RebuildIncomparable is "" when two values of t can be asked "is this the
 // same one" and get the same answer on every target, and otherwise the type
 // that is not, with the field path that reaches it in parentheses.

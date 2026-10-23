@@ -1,6 +1,7 @@
 // #[owned(release)] says a value of a struct must be given back, and names
 // the function that does. The release takes one value of the type and returns
-// nothing; anything else is not a way to give one back. #[retains] and
+// nothing; anything else is not a way to give one back, and a retain, named
+// beside it, takes one value and answers it. #[retains] and
 // #[moves] say what a native does with an argument past the call, so they mark
 // a parameter of a function with no body, where nothing else could say so.
 import ui "sngl:ui"
@@ -37,6 +38,17 @@ func answers(x c2) => x.n
 #[macro.owned(close)] // ERROR(check) "release close must be func(d)"
 struct d {
     n int
+}
+
+#[macro.owned(closeF2, retain=keeps)] // ERROR(check) "retain keeps must be func(f2) f2"
+struct f2 {
+    n int
+}
+
+func closeF2(x f2) {
+}
+
+func keeps(x f2) {
 }
 
 const limit = 3

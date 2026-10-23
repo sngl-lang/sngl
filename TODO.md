@@ -26,9 +26,11 @@ Change those, not this file.
   `--simulate gtk4` where a native is involved.
 - `go tool verify` passes at the end of each part, in a clean worktree
   (`git worktree add --detach`; the main checkout's `tmp/sharecost` breaks
-  it; `export ANDROID_HOME=$HOME/Android/Sdk`). After any codegen change,
-  `go tool verify -update` rerecords goldens and recorded runs; read each
-  golden diff for behavior, not only hashes.
+  it; `export ANDROID_HOME=$HOME/Android/Sdk`). After any codegen or
+  runtime change, `go test . -run TestGolden -update` rerecords the goldens
+  and `go test ./codegen/platform/gtk4/ -update` gtk4's recorded runs
+  (`verify` itself takes no `-update`); read each golden diff for behavior,
+  not only hashes.
 - Change the spec with the meaning, and the `design/` note with the
   mechanism, in the part that makes the change. Each part shortens the
   spec's held list; the list is empty when the MR is done.
@@ -117,18 +119,19 @@ GObject already counts references, so an owned GObject's release is an
 `unref` and a copy stored in two places is a `ref`. This is the one place a
 count earns its keep, and it is the host's, not SNGL's.
 
-- [ ] A `#[owned]` struct may name a `retain` beside its release
+- [X] A `#[owned]` struct may name a `retain` beside its release
   (`#[macro.owned(unref, retain=ref)]`): a value of such a type stored in a
   second var, field or collection is retained there, and each holder
   releases its own. A type without one keeps today's rule: a value stored
   twice is released twice, and the tracker says so.
-- [ ] gtk4's pictures and any `gir:` type marked owned use it, so a picture
-  shown in two places is one decode and two references. A `gir:` struct
-  whose class is a `GObject` is declared with `g_object_ref`/`g_object_unref`
-  by `declgen`.
-- [ ] The interpreter counts: a handle carries how many holders retained it,
+- [X] gtk4's pictures use it, so a picture shown in two places is one decode
+  and two references. A `gir:` struct whose class is a `GObject` would be
+  declared with `g_object_ref`/`g_object_unref` by `declgen`, which declares
+  no struct for any class today; the rule is in `design/ownership.md` for
+  the first that does.
+- [X] The interpreter counts: a handle carries how many holders retained it,
   and a leak is a handle with a holder left at teardown.
-- [ ] Spec and Effective SNGL: say when to give a type a retain and when
+- [X] Spec and Effective SNGL: say when to give a type a retain and when
   not to.
 
 ## Part 5: strings and the statement arena (design only)

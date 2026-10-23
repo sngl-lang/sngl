@@ -34,6 +34,20 @@ func markOwned(m *mark) error {
 		return fmt.Errorf("#[owned]: %s is not a function; the release is the function that gives a %s back", name, sd.Name)
 	}
 	sd.Release = fn
+	if m.args.Has("retain") {
+		sym, name, ok := m.c.lookupMarkRef(m.args.Expr("retain"))
+		switch {
+		case !ok && name == "":
+			return fmt.Errorf("#[owned] names its retain, a function, by name")
+		case !ok:
+			return fmt.Errorf("undefined: %s", name)
+		}
+		fn, ok := sym.(*ir.Func)
+		if !ok {
+			return fmt.Errorf("#[owned]: %s is not a function; the retain is the function that gives a second holder its own %s", name, sd.Name)
+		}
+		sd.Retain = fn
+	}
 	m.c.ownedMarks = append(m.c.ownedMarks, ownedMark{pos: m.attr.Pos, def: sd})
 	return nil
 }
@@ -63,7 +77,7 @@ func (c *checker) lookupMarkRef(e ast.Expr) (ir.Symbol, string, bool) {
 }
 
 // checkOwnedReleases refuses a release that is not a func(T) of its own type
-// returning nothing.
+// returning nothing, and a retain that is not a func(T) T.
 func (c *checker) checkOwnedReleases() {
 	for _, om := range c.ownedMarks {
 		fn := om.def.Release
@@ -71,6 +85,13 @@ func (c *checker) checkOwnedReleases() {
 			(fn.Return == nil || fn.Return.Kind == ir.TypeVoid)
 		if !ok {
 			c.error(om.pos, "#[owned]: release %s must be func(%s), taking the value it gives back and answering nothing; it is %s", fn.Name, om.def.Name, fn.SymType())
+		}
+		if rt := om.def.Retain; rt != nil {
+			ok := len(rt.Params) == 1 && rt.Params[0].Type != nil && rt.Params[0].Type.Decl == om.def &&
+				rt.Return != nil && rt.Return.Decl == om.def
+			if !ok {
+				c.error(om.pos, "#[owned]: retain %s must be func(%s) %s, taking the value a second holder stores and answering it; it is %s", rt.Name, om.def.Name, om.def.Name, rt.SymType())
+			}
 		}
 	}
 	c.ownedMarks = nil

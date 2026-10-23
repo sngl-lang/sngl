@@ -94,6 +94,11 @@ type ownedStateRun struct {
 	// cells is every `__retN` cell: an option of an owned type, which is
 	// owned by what it holds, but released by retain's own statements.
 	cells map[*ir.Var]bool
+	// locals is each var a block declares, which names a value rather than
+	// holding it, and aliases those among them initialized from what a holder
+	// holds, which a store of retains as a store of the holder's own would.
+	locals  map[*ir.Var]bool
+	aliases map[*ir.Var]bool
 }
 
 func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
@@ -104,6 +109,8 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 		taken:    map[*ir.CallStmt]bool{},
 		retained: map[*ir.Component][]*ir.Var{},
 		cells:    map[*ir.Var]bool{},
+		locals:   map[*ir.Var]bool{},
+		aliases:  map[*ir.Var]bool{},
 	}
 	derived := map[*ir.Func]*ir.Var{}
 	for _, c := range comps {
@@ -140,6 +147,18 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 		}
 	}
 	st.blockVars(&pkg.Body)
+	for _, root := range roots {
+		st.findAliases(root)
+	}
+	for _, c := range comps {
+		st.storedInits(c.Vars)
+	}
+	st.storedInits(pkg.Vars)
+	for _, p := range importedPackages(pkg) {
+		if !p.Library {
+			st.storedInits(p.Vars)
+		}
+	}
 	for _, root := range roots {
 		ir.RewriteBlocks(root, st.overwrites)
 	}
@@ -462,6 +481,7 @@ func (st *ownedStateRun) blockVars(body *[]ir.Stmt) {
 			continue
 		}
 		st.owned[lv.Sym] = true
+		lv.Init = st.stored(lv.Init)
 		release := ir.EventHandler{Name: ir.EffectUnmount, Func: &ir.Func{Pkg: st.pkg, Block: []ir.Stmt{st.release(identOf(lv.Sym))}}}
 		out = append(out, st.effectNode(nil, release))
 	}
@@ -484,6 +504,7 @@ func (st *ownedStateRun) overwrites(stmts []ir.Stmt) []ir.Stmt {
 				}
 			}
 		case *ir.CallStmt:
+			st.putIn(n)
 			if !st.taken[n] {
 				if rewritten := st.takeOut(n); rewritten != nil {
 					st.taken[n] = true
@@ -495,6 +516,23 @@ func (st *ownedStateRun) overwrites(stmts []ir.Stmt) []ir.Stmt {
 		out = append(out, s)
 	}
 	return out
+}
+
+// putIn retains what a `push` or an `insert` hands the list, where it is
+// another holder's: the list holds its own from here, as a var assigned one
+// does.
+func (st *ownedStateRun) putIn(s *ir.CallStmt) {
+	call := s.Call
+	if call == nil || call.Func == nil {
+		return
+	}
+	switch call.Func.Intrinsic {
+	case "list.push", "list.insert":
+		last := len(call.Args) - 1
+		if last > 0 {
+			call.Args[last].Value = st.stored(call.Args[last].Value)
+		}
+	}
 }
 
 func (st *ownedStateRun) overwrite(a *ir.Assign) []ir.Stmt {
@@ -556,7 +594,7 @@ func (st *ownedStateRun) replacing(a *ir.Assign, t *ir.Type, read ir.Expr) []ir.
 func (st *ownedStateRun) bindNew(a *ir.Assign) ir.Stmt {
 	t := a.Target.ExprType()
 	val := &ir.Var{Name: st.name("__new"), Type: t, Synthesized: true}
-	decl := &ir.LocalVar{Name: val.Name, Type: t, Init: a.Value, Sym: val}
+	decl := &ir.LocalVar{Name: val.Name, Type: t, Init: st.stored(a.Value), Sym: val}
 	a.Value = identOf(val)
 	st.written[a] = true
 	return decl
@@ -688,6 +726,105 @@ func (st *ownedStateRun) initTemps(vars *[]*ir.Var, pkg *ir.Package) {
 		out = append(out, v)
 	}
 	*vars = out
+}
+
+// storedInits passes each var's initializer through stored.
+func (st *ownedStateRun) storedInits(vars []*ir.Var) {
+	for _, v := range vars {
+		if st.owned[v] {
+			v.Init = st.stored(v.Init)
+		}
+	}
+}
+
+// findAliases records every var a block under root declares, and which of
+// them alias what a holder holds. A walk meets a declaration before any
+// read of it, so an alias of an alias is one too.
+func (st *ownedStateRun) findAliases(root any) {
+	_ = ir.Walk(root, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && lv.Sym != nil && !st.owned[lv.Sym] {
+			st.locals[lv.Sym] = true
+			if ir.RetainOf(lv.Type) != nil && st.holderRead(lv.Init) {
+				st.aliases[lv.Sym] = true
+			}
+		}
+		return nil
+	})
+}
+
+// stored is e as a holder stores it: a read of what another holder holds, of
+// a type that declares a retain, is passed through the retain, so the holder
+// has its own to release; an allocation is the holder's already, and a local
+// made one by a store moves it in. The literals and conversions a holder
+// stores hold what is in them, so each is reached inside; a ternary's or a
+// match's arm is stored by the arm taken.
+func (st *ownedStateRun) stored(e ir.Expr) ir.Expr {
+	switch x := e.(type) {
+	case nil:
+		return nil
+	case *ir.Ternary:
+		x.Then, x.Else = st.stored(x.Then), st.stored(x.Else)
+		return x
+	case *ir.MatchExpr:
+		for _, arm := range x.Arms {
+			arm.Value = st.stored(arm.Value)
+		}
+		return x
+	case *ir.ListLit:
+		for i := range x.Elems {
+			x.Elems[i] = st.stored(x.Elems[i])
+		}
+		return x
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			x.Entries[i].Value = st.stored(x.Entries[i].Value)
+		}
+		return x
+	case *ir.StructLit:
+		for i := range x.Fields {
+			x.Fields[i].Value = st.stored(x.Fields[i].Value)
+		}
+		return x
+	case *ir.Conversion:
+		if ir.RetainOf(x.Type) == nil {
+			x.Operand = st.stored(x.Operand)
+			return x
+		}
+	}
+	rt := ir.RetainOf(e.ExprType())
+	if rt == nil || !st.holderRead(e) {
+		return e
+	}
+	return &ir.Call{Type: e.ExprType(), Func: rt, Args: []ir.CallArg{{Value: e}}}
+}
+
+// holderRead reports whether e reads a value some holder holds: a var other
+// than a local, a local aliasing one, a parameter -- the caller's -- a loop
+// variable, a field, an element, or what an intrinsic reads out of a
+// collection, through the copy the checker wraps a struct read in. An
+// allocation is nobody's yet, and a local made one names it.
+func (st *ownedStateRun) holderRead(e ir.Expr) bool {
+	switch x := e.(type) {
+	case *ir.Ident:
+		switch s := x.Sym.(type) {
+		case *ir.Var:
+			return !st.locals[s] || st.aliases[s]
+		case *ir.Param, *ir.LoopVar:
+			return true
+		}
+	case *ir.Select, *ir.Index:
+		return true
+	case *ir.Call:
+		if ir.IsValueCopy(x) {
+			return st.holderRead(x.Args[0].Value)
+		}
+		return x.Func != nil && x.Func.Intrinsic != ""
+	case *ir.Conversion:
+		return st.holderRead(x.Operand)
+	case *ir.Ternary:
+		return st.holderRead(x.Then) && st.holderRead(x.Else)
+	}
+	return false
 }
 
 // retain gives each allocation a component hands a `#[retains]` parameter a

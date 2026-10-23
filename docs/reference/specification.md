@@ -2218,7 +2218,9 @@ A struct marked `#[macro.owned(release)]` is **owned**: a value of it is
 something the program allocated and must give back, and `release` is the
 function that does. The release takes exactly one value of the type and
 returns nothing; anything else is an error at the mark. Only a struct may be
-owned, and nothing is owned by its name.
+owned, and nothing is owned by its name. A type whose host counts references
+names its **retain** beside the release, `#[macro.owned(unref, retain=ref)]`:
+a function taking one value of the type and answering it.
 
 A type that holds an owned value is owned by what it holds: a struct with an
 owned field, and a `list`, a `map` or an `option` of an owned type. Releasing
@@ -2245,7 +2247,7 @@ or reading or passing one after its release, is a runtime error.
 A value is **made** by a literal of the type or by a call of a function
 answering it. A function taking an owned value and answering the same type is
 taken to answer a new value: one that answers its argument leaves the compiler
-releasing the one value twice.
+releasing the one value twice, unless it is the type's retain.
 
 The compiler releases every owned value the program makes, at the narrowest of
 four lifetimes that holds it:
@@ -2270,7 +2272,8 @@ four lifetimes that holds it:
   compiler releases these itself, so a program that releases one by hand as
   well releases it twice. The value such a var holds is one its initializer
   or the assignment made: a var initialized or assigned from another var's
-  value is released twice, once by each. What a var's initializer makes and
+  value is released twice, once by each, unless the type names a retain
+  (below). What a var's initializer makes and
   only borrows -- `open(fd)` in `var n = size(open(fd))` -- is held with
   the var and released with it, since an initializer has no statement to
   release it after: with the node for a component's var, at teardown for a
@@ -2290,7 +2293,20 @@ an element of a list, to a map entry or to a field releases what stood there
 once the new value is in place; `remove` releases what it took out, and
 `clear` what the list held. A value stored in two places -- pushed from a var,
 or assigned to an element from another -- is released by each, as a var
-assigned another var's value is.
+assigned another var's value is, unless the type names a retain.
+
+**A type with a retain is stored by reference.** Where a value of such a type
+is stored from what another holder holds -- a component's, a view block's or
+a package's `var`, a field, an element, a parameter, which is the caller's --
+into a second var, a field or a collection, the stored value is passed through
+the retain, and each holder releases its own: the host counts, and the
+program's copies are its references. A local names a value rather than
+holding it: one initialized by a value made there moves that value into the
+holder it is stored in, and one initialized from what a holder holds is
+stored as the holder's own would be. A function that answers a holder's value
+retains it itself, since its caller takes the answer for a new value. The
+retain is the type's alone: a list, a map, an option or a struct holding one
+is still released by each var that holds it.
 
 `#[macro.retains]` and `#[macro.moves]` mark a parameter of a function with no
 body: a native that keeps a pointer to its argument while the caller still

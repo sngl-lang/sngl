@@ -517,6 +517,9 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 			if s.Release != nil {
 				walk(s.Release)
 			}
+			if s.Retain != nil {
+				walk(s.Retain)
+			}
 		case *ir.EnumDef:
 			for _, m := range s.Members {
 				// A payload enum's declaration names what each member

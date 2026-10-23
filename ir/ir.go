@@ -1421,6 +1421,10 @@ type StructDef struct {
 	// Release is the function `#[owned(release)]` names: a value of this type
 	// is something the program must give back, and this is how.
 	Release *Func `json:"-"`
+	// Retain is the function `#[owned(release, retain=…)]` names, nil for a
+	// type nothing counts: a value stored from another holder is passed
+	// through it, and each holder then releases its own.
+	Retain *Func `json:"-"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }

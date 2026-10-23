@@ -24,6 +24,10 @@ type Handle struct {
 	// moved says a native took the value at ReleasedAt rather than the
 	// program releasing it there.
 	moved bool
+	// holders is how many hold the value now -- one from the allocation,
+	// one more per retain -- and Holders how many ever did: the value is
+	// given back when the last releases it.
+	holders, Holders int
 }
 
 // handles is every owned value a program allocated and has not given back,
@@ -61,7 +65,7 @@ func (env *Env) owned() *handles {
 
 func (h *handles) alloc(def *ir.StructDef, at ast.Pos) *Handle {
 	h.next++
-	hd := &Handle{ID: h.next, Def: def, At: at}
+	hd := &Handle{ID: h.next, Def: def, At: at, holders: 1, Holders: 1}
 	h.live[hd] = true
 	return hd
 }
@@ -119,11 +123,15 @@ func (env *Env) checkPassed(args []any) error {
 }
 
 // releaseCall runs fn, the release of its argument's type, and gives the
-// value back once fn returns: the release reads what it is releasing.
+// value back once fn returns: the release reads what it is releasing. A
+// synthesized release gives back what its argument holds, by calling each
+// held value's own, so it counts nothing itself: an option of an owned value
+// is that value on the interpreter, and counted here as well it was released
+// twice.
 func (env *Env) releaseCall(fn *ir.Func, args []any, run func() (any, error)) (any, error) {
 	h := env.owned()
 	var hd *Handle
-	if len(args) == 1 {
+	if len(args) == 1 && fn.Releases == nil {
 		hd = handleOf(args[0])
 	}
 	if hd != nil && hd.moved {
@@ -142,8 +150,30 @@ func (env *Env) releaseCall(fn *ir.Func, args []any, run func() (any, error)) (a
 	if err != nil || hd == nil {
 		return v, err
 	}
+	if hd.holders > 1 {
+		hd.holders--
+		return v, nil
+	}
 	hd.released, hd.ReleasedAt = true, h.site()
 	delete(h.live, hd)
+	return v, nil
+}
+
+// retainCall runs fn, the retain of its argument's type, and counts the
+// holder it gives the value: the host counts a reference, and the tracker
+// counts with it.
+func (env *Env) retainCall(fn *ir.Func, args []any, run func() (any, error)) (any, error) {
+	if err := env.checkPassed(args); err != nil {
+		return nil, err
+	}
+	v, err := run()
+	if err != nil {
+		return nil, err
+	}
+	if hd := handleOf(args[0]); hd != nil {
+		hd.holders++
+		hd.Holders++
+	}
 	return v, nil
 }
 
@@ -268,11 +298,17 @@ func (env *Env) Leaks() []string {
 	type site struct {
 		name string
 		at   ast.Pos
+		// left and of say a value retained more than once was released by
+		// some of its holders and not the rest.
+		left, of int
 	}
 	var order []site
 	count := map[site]int{}
 	for _, hd := range live {
-		s := site{hd.Def.Name, hd.At}
+		s := site{name: hd.Def.Name, at: hd.At}
+		if hd.holders < hd.Holders {
+			s.left, s.of = hd.holders, hd.Holders
+		}
 		if count[s] == 0 {
 			order = append(order, s)
 		}
@@ -280,7 +316,11 @@ func (env *Env) Leaks() []string {
 	}
 	out := make([]string, len(order))
 	for i, s := range order {
-		out[i] = fmt.Sprintf("leak: the %s allocated at %s was never released", s.name, s.at)
+		if s.of > 0 {
+			out[i] = fmt.Sprintf("leak: the %s allocated at %s has %d of its %d holders left", s.name, s.at, s.left, s.of)
+		} else {
+			out[i] = fmt.Sprintf("leak: the %s allocated at %s was never released", s.name, s.at)
+		}
 		if n := count[s]; n > 1 {
 			out[i] += fmt.Sprintf(", %d times", n)
 		}

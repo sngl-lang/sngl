@@ -33,6 +33,47 @@ after every body is checked, since a `=>` release has no return type until
 then (`testdata/error_mark_owned.sngl`). `owned` is the one generic macro, so
 `resolveMacroSig` pushes a macro's type parameters.
 
+**A type the host counts names a retain** (`StructDef.Retain`, `ir.RetainOf`,
+`ir.IsRetain`): `#[owned(unref, retain=ref)]` names a `func(T) T`, judged in
+`checkOwnedReleases` beside the release (`testdata/error_mark_owned.sngl`).
+The macro's parameter defaults to a lambda, as `gen.sngl`'s function-typed
+parameters do, since a mark's optional parameter is one with a default. The
+retain is written by `OwnedState` (`stored`), once the derived values are
+cells and the holder vars are collected: every initializer of a holder var --
+a component's, a view block's, a package's -- and, through `bindNew`, the
+value of every assignment `overwrite` rewrites, and what `push` and `insert`
+hand a list (`putIn`), is passed through the retain where it reads what some
+other holder holds (`holderRead`): a var other than a local, a parameter, a
+loop variable, a field, an element, what an intrinsic reads out of a
+collection, through the `copy` the checker wraps a struct read in; a literal
+or a conversion in that position is entered, and a ternary's or a match's
+arms are each stored. A local names a value rather than holding it: one
+initialized by an allocation moves it into the holder it is stored in, and
+one initialized from a holder's value is an alias (`findAliases`, a walk
+that meets each declaration before its reads), stored as the holder's own
+would be. The retain call is an allocation like any other to every later
+pass, so a `__new` bound to one is the var's, and `ReleaseTemps` holds one
+handed to `push` with the list. The shake keeps a struct's retain with its
+release, and `LibFuncs`, which runs after `OwnedState`, promotes a library's
+-- gtk4's `refPicture` -- as it promotes any library call the program's
+lowered body makes (`testdata/owned_retain.sngl`,
+`testdata/gtk4_picture_retained.txtar`,
+`cmd/sngl/testdata/simulate_gtk4_picture_retained.txt`). What the retain
+does not reach: a composed type -- `list[T]` for a `T` with a retain --
+copied var to var is still released by each, as before; and a local's
+reassignment, which releases nothing today, retains nothing either.
+
+gtk4's `Picture` is the first use: `gtk4rt.Picture.refs` counts its holders,
+`RefPicture` adds one and `UnrefPicture` gives the decode back at the last,
+so a program keeping the picture a source derived -- the last one shown while
+the URL moves on -- holds a reference, not a second decode. A `gir:` class
+whose chain reaches `GObject.Object` would be declared
+`#[owned(g_object_unref, retain=g_object_ref)]` by `declgen` if it declared a
+struct for one; it declares none today (every GIR class is a widget
+component, and a GObject-typed property or action parameter is left out as
+having no SNGL spelling), so the rule waits on the first struct a `gir:`
+import declares.
+
 **A type that holds an owned value is owned by what it holds** (`ir.Owned`):
 a struct with an owned field, a `list`, a `map` or an `option` of an owned
 type, through any depth. Its release is synthesized by `Package.ReleaseFor`
@@ -429,7 +470,9 @@ call no component encloses. Two shapes release twice rather than hold, and
 the spec rules them out: a temp passed to a function returning the
 same owned type that returns its argument, since the pass releases the
 argument and the result alike; and a component's or package's var assigned
-another var's value, which both then release.
+another var's value, which both then release. A type with a retain is the
+exception to the second: the store is a reference, and each holder releases
+its own.
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`
@@ -518,7 +561,15 @@ an id, its type and the position that allocated it. `evalStructLit` allocates
 one for a literal of an owned type, and every copy -- `CopyValue`, `copyOf`,
 `DeepCopy`, `Clone` -- carries the same pointer, so releasing a copy releases
 the original, as it would a pointer on a target. The program's handles are
-shared by every scope the way its write log is.
+shared by every scope the way its write log is. A handle counts its holders:
+one from the allocation, one more per call of the type's retain
+(`retainCall`, and the stub answers the argument itself), and the declared
+release gives the value back only when the last holder's runs. Only the
+declared release counts: a synthesized one -- `__release_option_file` --
+calls the held value's own, and on the interpreter an option of an owned
+value is that value, so counting it too released the value twice. A handle
+some holders released and the rest did not is a leak of its own wording at
+teardown (`has 1 of its 2 holders left`).
 
 **Releasing twice, and reading or passing after a release, are errors where
 they happen**, naming where the value was allocated, where it was released and
