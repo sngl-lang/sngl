@@ -74,23 +74,27 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				for _, it := range m.items {
+					__n1 := container.NewHBox()
+					__n2 := widget.NewLabel("")
+					__n2.SetText(("row " + it))
+					__n1.Add(__n2)
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
+					m.__slot0 = append(m.__slot0, __n1)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			for _, it := range m.items {
-				__n1 := container.NewHBox()
-				__n2 := widget.NewLabel("")
-				__n2.SetText(("row " + it))
-				__n1.Add(__n2)
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
-				m.__slot0 = append(m.__slot0, __n1)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -152,4 +156,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:df3168a9e5b06e439b13646f1d555569
+pass sha256:488e8cfd288bb47f92fee93775d23d11

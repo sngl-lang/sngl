@@ -397,53 +397,56 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        if (state.on__inst0) {
-          let __n5 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n5 = __inst1_live[__inst1_i];
-            __n5.__set_label("x");
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          if (state.on__inst0) {
+            let __n5 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n5 = __inst1_live[__inst1_i];
+              __n5.__set_label("x");
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n5__new = __cf_row({ label: "x" });
+              __n5 = __n5__new;
             }
-            let __n5__new = __cf_row({ label: "x" });
-            __n5 = __n5__new;
+            __inst1_next.push(__n5);
+            __inst1_i = __inst1_i + 1;
+            let __n5__el = __n5.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n5__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n5__el, __place0_i_ref0);
+            }
+            __slot0.push(__n5__el);
           }
-          __inst1_next.push(__n5);
-          __inst1_i = __inst1_i + 1;
-          let __n5__el = __n5.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n5__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n5__el, __place0_i_ref0);
-          }
-          __slot0.push(__n5__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -452,54 +455,57 @@ window.__sngl_boot = () => {
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place2_prev = __slot1;
-        let __place2_i = 0;
-        __slot1 = [];
-        let __inst3_next = [];
-        let __inst3_i = 0;
-        for (const it of state.items__inst0) {
-          let __n6 = null;
-          if (__inst3_live.length > __inst3_i) {
-            __n6 = __inst3_live[__inst3_i];
-            __n6.__set___p0(it);
-            __n6.__set___p1(decorate__inst0());
-          } else {
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place2_prev = __slot1;
+          let __place2_i = 0;
+          __slot1 = [];
+          let __inst3_next = [];
+          let __inst3_i = 0;
+          for (const it of state.items__inst0) {
+            let __n6 = null;
             if (__inst3_live.length > __inst3_i) {
-              __inst3_live[__inst3_i].__destroy();
+              __n6 = __inst3_live[__inst3_i];
+              __n6.__set___p0(it);
+              __n6.__set___p1(decorate__inst0());
+            } else {
+              if (__inst3_live.length > __inst3_i) {
+                __inst3_live[__inst3_i].__destroy();
+              }
+              let __n6__new = __cf___child0({ __p0: it, __p1: decorate__inst0() });
+              __n6 = __n6__new;
             }
-            let __n6__new = __cf___child0({ __p0: it, __p1: decorate__inst0() });
-            __n6 = __n6__new;
+            __inst3_next.push(__n6);
+            __inst3_i = __inst3_i + 1;
+            let __n6__el = __n6.__root;
+            let __place2_i_ref0 = null;
+            if (__place2_i < __place2_prev.length) {
+              __place2_i_ref0 = __place2_prev[__place2_i];
+            }
+            if (__place2_i_ref0 === __n6__el) {
+              __place2_i = __place2_i + 1;
+            } else {
+              parent.insertBefore(__n6__el, __place2_i_ref0);
+            }
+            __slot1.push(__n6__el);
           }
-          __inst3_next.push(__n6);
-          __inst3_i = __inst3_i + 1;
-          let __n6__el = __n6.__root;
-          let __place2_i_ref0 = null;
-          if (__place2_i < __place2_prev.length) {
-            __place2_i_ref0 = __place2_prev[__place2_i];
+          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+            if (__inst3_i_j >= __inst3_i) {
+              __inst3_live[__inst3_i_j].__destroy();
+            }
           }
-          if (__place2_i_ref0 === __n6__el) {
-            __place2_i = __place2_i + 1;
-          } else {
-            parent.insertBefore(__n6__el, __place2_i_ref0);
-          }
-          __slot1.push(__n6__el);
-        }
-        for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-          let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-          if (__inst3_i_j >= __inst3_i) {
-            __inst3_live[__inst3_i_j].__destroy();
-          }
-        }
-        __inst3_live = __inst3_next;
-        for (const __place2_prev_e of __place2_prev) {
-          if (__slot1.indexOf(__place2_prev_e) < 0) {
-            parent.removeChild(__place2_prev_e);
+          __inst3_live = __inst3_next;
+          for (const __place2_prev_e of __place2_prev) {
+            if (__slot1.indexOf(__place2_prev_e) < 0) {
+              parent.removeChild(__place2_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function __renderSlot2(parent) {
@@ -508,60 +514,63 @@ window.__sngl_boot = () => {
     } else {
       __rendering2 = true;
       __renderAgain2 = true;
-      while (__renderAgain2) {
-        __renderAgain2 = false;
-        let __place4_prev = __slot2;
-        let __place4_i = 0;
-        __slot2 = [];
-        let __inst5_next = [];
-        let __inst5_i = 0;
-        for (const item of state.items__inst1) {
-          let __n7 = null;
-          if (__inst5_live.length > __inst5_i) {
-            __n7 = __inst5_live[__inst5_i];
-            __n7.__set_onpick((s) => {
-              state.picked__inst0 = s;
-              __n4.textContent = "picked=" + state.picked__inst0;
-            });
-            __n7.__set_label(item);
-          } else {
+      try {
+        while (__renderAgain2) {
+          __renderAgain2 = false;
+          let __place4_prev = __slot2;
+          let __place4_i = 0;
+          __slot2 = [];
+          let __inst5_next = [];
+          let __inst5_i = 0;
+          for (const item of state.items__inst1) {
+            let __n7 = null;
             if (__inst5_live.length > __inst5_i) {
-              __inst5_live[__inst5_i].__destroy();
+              __n7 = __inst5_live[__inst5_i];
+              __n7.__set_onpick((s) => {
+                state.picked__inst0 = s;
+                __n4.textContent = "picked=" + state.picked__inst0;
+              });
+              __n7.__set_label(item);
+            } else {
+              if (__inst5_live.length > __inst5_i) {
+                __inst5_live[__inst5_i].__destroy();
+              }
+              let __n7__new = __cf_pick({ label: item, onpick: (s) => {
+                state.picked__inst0 = s;
+                __n4.textContent = "picked=" + state.picked__inst0;
+              } });
+              __n7 = __n7__new;
             }
-            let __n7__new = __cf_pick({ label: item, onpick: (s) => {
-              state.picked__inst0 = s;
-              __n4.textContent = "picked=" + state.picked__inst0;
-            } });
-            __n7 = __n7__new;
+            __inst5_next.push(__n7);
+            __inst5_i = __inst5_i + 1;
+            let __n7__el = __n7.__root;
+            let __place4_i_ref0 = null;
+            if (__place4_i < __place4_prev.length) {
+              __place4_i_ref0 = __place4_prev[__place4_i];
+            }
+            if (__place4_i_ref0 === __n7__el) {
+              __place4_i = __place4_i + 1;
+            } else {
+              parent.insertBefore(__n7__el, __place4_i_ref0);
+            }
+            __slot2.push(__n7__el);
           }
-          __inst5_next.push(__n7);
-          __inst5_i = __inst5_i + 1;
-          let __n7__el = __n7.__root;
-          let __place4_i_ref0 = null;
-          if (__place4_i < __place4_prev.length) {
-            __place4_i_ref0 = __place4_prev[__place4_i];
+          for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+            let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+            if (__inst5_i_j >= __inst5_i) {
+              __inst5_live[__inst5_i_j].__destroy();
+            }
           }
-          if (__place4_i_ref0 === __n7__el) {
-            __place4_i = __place4_i + 1;
-          } else {
-            parent.insertBefore(__n7__el, __place4_i_ref0);
-          }
-          __slot2.push(__n7__el);
-        }
-        for (const [__inst5_i_d, _] of __inst5_live.entries()) {
-          let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
-          if (__inst5_i_j >= __inst5_i) {
-            __inst5_live[__inst5_i_j].__destroy();
-          }
-        }
-        __inst5_live = __inst5_next;
-        for (const __place4_prev_e of __place4_prev) {
-          if (__slot2.indexOf(__place4_prev_e) < 0) {
-            parent.removeChild(__place4_prev_e);
+          __inst5_live = __inst5_next;
+          for (const __place4_prev_e of __place4_prev) {
+            if (__slot2.indexOf(__place4_prev_e) < 0) {
+              parent.removeChild(__place4_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering2 = false;
       }
-      __rendering2 = false;
     }
   }
   function String(v) {
@@ -605,9 +614,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b58509befbd07da2e28df44054a0f091
+pass sha256:3ebfce54c47e76f3ee2db12d1383d06e
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:8c84427b56b6d4f7ca0a32100ce65da3
+sha256:bba601754c32dd8cf467a3b5f2b4644b
 {
   "results": [
     {
@@ -617,7 +626,7 @@ sha256:8c84427b56b6d4f7ca0a32100ce65da3
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:9e1db2527b4e27437a2798fdb8e944f5
+sha256:40efe93fa36ad32fc9ac75b1066d6cd8
 {
   "results": [
     {
@@ -627,7 +636,7 @@ sha256:9e1db2527b4e27437a2798fdb8e944f5
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:9feb02f6c27e209e8a315c67d23c7683
+sha256:e9186b9e0738e732423990da69319445
 {
   "results": [
     {

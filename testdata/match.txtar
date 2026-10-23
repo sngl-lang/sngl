@@ -491,33 +491,37 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			if m.status__inst0 == "active" {
-				__n4 := widget.NewLabel("")
-				__n4.SetText("on")
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n4)
-				m.__slot0 = append(m.__slot0, __n4)
-			} else {
-				if m.status__inst0 == "inactive" {
-					__n5 := widget.NewLabel("")
-					__n5.SetText("off")
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n5)
-					m.__slot0 = append(m.__slot0, __n5)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				if m.status__inst0 == "active" {
+					__n4 := widget.NewLabel("")
+					__n4.SetText("on")
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n4)
+					m.__slot0 = append(m.__slot0, __n4)
 				} else {
-					__n6 := widget.NewLabel("")
-					__n6.SetText("waiting")
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n6)
-					m.__slot0 = append(m.__slot0, __n6)
+					if m.status__inst0 == "inactive" {
+						__n5 := widget.NewLabel("")
+						__n5.SetText("off")
+						fynelayout.InsertBefore(__parent, m.__slot0_at, __n5)
+						m.__slot0 = append(m.__slot0, __n5)
+					} else {
+						__n6 := widget.NewLabel("")
+						__n6.SetText("waiting")
+						fynelayout.InsertBefore(__parent, m.__slot0_at, __n6)
+						m.__slot0 = append(m.__slot0, __n6)
+					}
 				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -773,33 +777,37 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			if m.status__inst0 == "active" {
-				__n4 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n4, "on")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
-				m.__slot0 = append(m.__slot0, __n4)
-			} else {
-				if m.status__inst0 == "inactive" {
-					__n5 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n5, "off")
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
-					m.__slot0 = append(m.__slot0, __n5)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				if m.status__inst0 == "active" {
+					__n4 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetText(__n4, "on")
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
+					m.__slot0 = append(m.__slot0, __n4)
 				} else {
-					__n6 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n6, "waiting")
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
-					m.__slot0 = append(m.__slot0, __n6)
+					if m.status__inst0 == "inactive" {
+						__n5 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetText(__n5, "off")
+						gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
+						m.__slot0 = append(m.__slot0, __n5)
+					} else {
+						__n6 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetText(__n6, "waiting")
+						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
+						m.__slot0 = append(m.__slot0, __n6)
+					}
 				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1137,60 +1145,63 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.status__inst0 === "active") {
-          let __n4 = document.createElement("span");
-          __n4.textContent = "on";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref0 === __n4) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n4, __place0_i_ref0);
-          }
-          __slot0.push(__n4);
-        } else {
-          if (state.status__inst0 === "inactive") {
-            let __n5 = document.createElement("span");
-            __n5.textContent = "off";
-            let __place0_i_ref1 = null;
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.status__inst0 === "active") {
+            let __n4 = document.createElement("span");
+            __n4.textContent = "on";
+            let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
-              __place0_i_ref1 = __place0_prev[__place0_i];
+              __place0_i_ref0 = __place0_prev[__place0_i];
             }
-            if (__place0_i_ref1 === __n5) {
+            if (__place0_i_ref0 === __n4) {
               __place0_i = __place0_i + 1;
             } else {
-              parent.insertBefore(__n5, __place0_i_ref1);
+              parent.insertBefore(__n4, __place0_i_ref0);
             }
-            __slot0.push(__n5);
+            __slot0.push(__n4);
           } else {
-            let __n6 = document.createElement("span");
-            __n6.textContent = "waiting";
-            let __place0_i_ref2 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref2 = __place0_prev[__place0_i];
-            }
-            if (__place0_i_ref2 === __n6) {
-              __place0_i = __place0_i + 1;
+            if (state.status__inst0 === "inactive") {
+              let __n5 = document.createElement("span");
+              __n5.textContent = "off";
+              let __place0_i_ref1 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref1 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref1 === __n5) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n5, __place0_i_ref1);
+              }
+              __slot0.push(__n5);
             } else {
-              parent.insertBefore(__n6, __place0_i_ref2);
+              let __n6 = document.createElement("span");
+              __n6.textContent = "waiting";
+              let __place0_i_ref2 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref2 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref2 === __n6) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n6, __place0_i_ref2);
+              }
+              __slot0.push(__n6);
             }
-            __slot0.push(__n6);
+          }
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var $0 = document.getElementById("$0");
@@ -1245,10 +1256,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:77571e3b79583570d39a0e2da73c2982
 -- run/go/fyne --
-pass sha256:6fb05b6488dd74f9be4c505f07feba03
+pass sha256:620ef3a9f415a02614963326ec85224a
 -- run/go/gtk4 --
-pass sha256:8ecbc78a4500f3919db1375f7d83225f
+pass sha256:0ec21a101612b953cfad6fe2d94194ca
 -- run/kotlin/android --
 pass sha256:be1b0e75d071643981b9c61ddd539b52
 -- run/none/html --
-pass sha256:cc22de39aea23c35392d97dddefedd49
+pass sha256:0434191529fcc3a69d6b0b3117219823

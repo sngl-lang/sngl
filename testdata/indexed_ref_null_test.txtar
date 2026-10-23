@@ -643,62 +643,66 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			m.__copies_only = nil
-			__inst0_next := []*__checkbox_state0Instance{}
-			var __inst0_i int = 0
-			for __copy0, it := range m.items {
-				if it != m.skip {
-					m.only = widget.NewButton("", nil)
-					m.only.SetText(it)
-					m.__list_only(fmt.Sprint(__copy0), m.only)
-					m.only.OnTapped = func() {
-						m.log = it
-						m.__n0.SetText(m.log)
-					}
-					fynelayout.InsertBefore(__parent, m.__slot0_at, m.only)
-					m.__slot0 = append(m.__slot0, m.only)
-					var __n1 *__checkbox_state0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n1 = m.__inst0_live[__inst0_i]
-						__n1.SetChange(func(on bool) {
-							m.log = ((it + " ") + fmt.Sprint(on))
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				m.__copies_only = nil
+				__inst0_next := []*__checkbox_state0Instance{}
+				var __inst0_i int = 0
+				for __copy0, it := range m.items {
+					if it != m.skip {
+						m.only = widget.NewButton("", nil)
+						m.only.SetText(it)
+						m.__list_only(fmt.Sprint(__copy0), m.only)
+						m.only.OnTapped = func() {
+							m.log = it
 							m.__n0.SetText(m.log)
-						})
-						__n1.SetLabel(it)
-						__n1.Set__copy(fmt.Sprint(__copy0))
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
-							m.log = ((it + " ") + fmt.Sprint(on))
-							m.__n0.SetText(m.log)
-						})
-						__n1 = __n1__new
+						fynelayout.InsertBefore(__parent, m.__slot0_at, m.only)
+						m.__slot0 = append(m.__slot0, m.only)
+						var __n1 *__checkbox_state0Instance
+						if len(m.__inst0_live) > __inst0_i {
+							__n1 = m.__inst0_live[__inst0_i]
+							__n1.SetChange(func(on bool) {
+								m.log = ((it + " ") + fmt.Sprint(on))
+								m.__n0.SetText(m.log)
+							})
+							__n1.SetLabel(it)
+							__n1.Set__copy(fmt.Sprint(__copy0))
+						} else {
+							if len(m.__inst0_live) > __inst0_i {
+								m.__inst0_live[__inst0_i].Destroy()
+							}
+							__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
+								m.log = ((it + " ") + fmt.Sprint(on))
+								m.__n0.SetText(m.log)
+							})
+							__n1 = __n1__new
+						}
+						__inst0_next = append(__inst0_next, __n1)
+						__inst0_i = (__inst0_i + 1)
+						__n1__el := __n1.Root
+						fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
+						m.__slot0 = append(m.__slot0, __n1__el)
 					}
-					__inst0_next = append(__inst0_next, __n1)
-					__inst0_i = (__inst0_i + 1)
-					__n1__el := __n1.Root
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
-					m.__slot0 = append(m.__slot0, __n1__el)
 				}
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1009,62 +1013,66 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			m.__copies_only = nil
-			__inst0_next := []*__checkbox_state0Instance{}
-			var __inst0_i int = 0
-			for __copy0, it := range m.items {
-				if it != m.skip {
-					m.only = gtk4rt.ButtonNew()
-					gtk4rt.ButtonSetLabel(m.only, it)
-					m.__list_only(fmt.Sprint(__copy0), m.only)
-					gtk4rt.Connect(m.only, "clicked", func() {
-						m.log = it
-						gtk4rt.LabelSetText(m.__n0, m.log)
-					})
-					gtk4rt.InsertBefore(parent, m.__slot0_at, m.only)
-					m.__slot0 = append(m.__slot0, m.only)
-					var __n1 *__checkbox_state0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n1 = m.__inst0_live[__inst0_i]
-						__n1.SetChange(func(on bool) {
-							m.log = ((it + " ") + fmt.Sprint(on))
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				m.__copies_only = nil
+				__inst0_next := []*__checkbox_state0Instance{}
+				var __inst0_i int = 0
+				for __copy0, it := range m.items {
+					if it != m.skip {
+						m.only = gtk4rt.ButtonNew()
+						gtk4rt.ButtonSetLabel(m.only, it)
+						m.__list_only(fmt.Sprint(__copy0), m.only)
+						gtk4rt.Connect(m.only, "clicked", func() {
+							m.log = it
 							gtk4rt.LabelSetText(m.__n0, m.log)
 						})
-						__n1.SetLabel(it)
-						__n1.Set__copy(fmt.Sprint(__copy0))
-					} else {
+						gtk4rt.InsertBefore(parent, m.__slot0_at, m.only)
+						m.__slot0 = append(m.__slot0, m.only)
+						var __n1 *__checkbox_state0Instance
 						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
+							__n1 = m.__inst0_live[__inst0_i]
+							__n1.SetChange(func(on bool) {
+								m.log = ((it + " ") + fmt.Sprint(on))
+								gtk4rt.LabelSetText(m.__n0, m.log)
+							})
+							__n1.SetLabel(it)
+							__n1.Set__copy(fmt.Sprint(__copy0))
+						} else {
+							if len(m.__inst0_live) > __inst0_i {
+								m.__inst0_live[__inst0_i].Destroy()
+							}
+							__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
+								m.log = ((it + " ") + fmt.Sprint(on))
+								gtk4rt.LabelSetText(m.__n0, m.log)
+							})
+							__n1 = __n1__new
 						}
-						__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
-							m.log = ((it + " ") + fmt.Sprint(on))
-							gtk4rt.LabelSetText(m.__n0, m.log)
-						})
-						__n1 = __n1__new
+						__inst0_next = append(__inst0_next, __n1)
+						__inst0_i = (__inst0_i + 1)
+						__n1__el := __n1.Root
+						gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
+						m.__slot0 = append(m.__slot0, __n1__el)
 					}
-					__inst0_next = append(__inst0_next, __n1)
-					__inst0_i = (__inst0_i + 1)
-					__n1__el := __n1.Root
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
-					m.__slot0 = append(m.__slot0, __n1__el)
 				}
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1535,86 +1543,89 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const [__copy0, it] of state.items.entries()) {
-          if (it !== state.skip) {
-            let only = document.createElement("button");
-            only.setAttribute("data-sngl-id", "only");
-            only.disabled = false;
-            only.setAttribute("data-sngl-copy", String(__copy0));
-            only.addEventListener("click", () => {
-              state.log = it;
-              __n0.textContent = state.log;
-            });
-            only.addEventListener("contextmenu", () => {
-            });
-            let __n3 = document.createElement("span");
-            __n3.textContent = it;
-            only.appendChild(__n3);
-            let __place0_i_ref0 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref0 = __place0_prev[__place0_i];
-            }
-            if (__place0_i_ref0 === only) {
-              __place0_i = __place0_i + 1;
-            } else {
-              parent.insertBefore(only, __place0_i_ref0);
-            }
-            __slot0.push(only);
-            let __n4 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n4 = __inst1_live[__inst1_i];
-              __n4.__set_change((on) => {
-                state.log = it + " " + String(on);
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const [__copy0, it] of state.items.entries()) {
+            if (it !== state.skip) {
+              let only = document.createElement("button");
+              only.setAttribute("data-sngl-id", "only");
+              only.disabled = false;
+              only.setAttribute("data-sngl-copy", String(__copy0));
+              only.addEventListener("click", () => {
+                state.log = it;
                 __n0.textContent = state.log;
               });
-              __n4.__set_label(it);
-              __n4.__set___copy(String(__copy0));
-            } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
+              only.addEventListener("contextmenu", () => {
+              });
+              let __n3 = document.createElement("span");
+              __n3.textContent = it;
+              only.appendChild(__n3);
+              let __place0_i_ref0 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref0 = __place0_prev[__place0_i];
               }
-              let __n4__new = __cf___checkbox_state0({ label: it, __copy: String(__copy0), change: (on) => {
-                state.log = it + " " + String(on);
-                __n0.textContent = state.log;
-              } });
-              __n4 = __n4__new;
+              if (__place0_i_ref0 === only) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(only, __place0_i_ref0);
+              }
+              __slot0.push(only);
+              let __n4 = null;
+              if (__inst1_live.length > __inst1_i) {
+                __n4 = __inst1_live[__inst1_i];
+                __n4.__set_change((on) => {
+                  state.log = it + " " + String(on);
+                  __n0.textContent = state.log;
+                });
+                __n4.__set_label(it);
+                __n4.__set___copy(String(__copy0));
+              } else {
+                if (__inst1_live.length > __inst1_i) {
+                  __inst1_live[__inst1_i].__destroy();
+                }
+                let __n4__new = __cf___checkbox_state0({ label: it, __copy: String(__copy0), change: (on) => {
+                  state.log = it + " " + String(on);
+                  __n0.textContent = state.log;
+                } });
+                __n4 = __n4__new;
+              }
+              __inst1_next.push(__n4);
+              __inst1_i = __inst1_i + 1;
+              let __n4__el = __n4.__root;
+              let __place0_i_ref1 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref1 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref1 === __n4__el) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n4__el, __place0_i_ref1);
+              }
+              __slot0.push(__n4__el);
             }
-            __inst1_next.push(__n4);
-            __inst1_i = __inst1_i + 1;
-            let __n4__el = __n4.__root;
-            let __place0_i_ref1 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref1 = __place0_prev[__place0_i];
+          }
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
             }
-            if (__place0_i_ref1 === __n4__el) {
-              __place0_i = __place0_i + 1;
-            } else {
-              parent.insertBefore(__n4__el, __place0_i_ref1);
+          }
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
             }
-            __slot0.push(__n4__el);
           }
         }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -1640,10 +1651,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:b55f61a9d03b5c37656ae64238585b00
 -- run/go/fyne --
-pass sha256:fb7163a1f6494a9e8a359626ea060db0
+pass sha256:292fda03715dd78cf1a414fd758359f7
 -- run/go/gtk4 --
-pass sha256:0473c6c2775ff95b7b428f97fcba6d36
+pass sha256:de3216b3ebae00e588c6cb90347f151e
 -- run/kotlin/android --
 pass sha256:0af104ef86bff695f51fa203b434cebd
 -- run/none/html --
-pass sha256:9568c3da18bf6df9c0bb596e92854d00
+pass sha256:e45865b9f9aead8dcba6511aeff586fe

@@ -104,42 +104,46 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__inst0_next := []*RowInstance{}
-			var __inst0_i int = 0
-			for _, it := range m.items {
-				var __n4 *RowInstance
-				if len(m.__inst0_live) > __inst0_i {
-					__n4 = m.__inst0_live[__inst0_i]
-					__n4.SetLabel(it)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*RowInstance{}
+				var __inst0_i int = 0
+				for _, it := range m.items {
+					var __n4 *RowInstance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n4 = m.__inst0_live[__inst0_i]
+						__n4.SetLabel(it)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n4__new := newRowInstance(m, it)
+						__n4 = __n4__new
 					}
-					__n4__new := newRowInstance(m, it)
-					__n4 = __n4__new
+					__inst0_next = append(__inst0_next, __n4)
+					__inst0_i = (__inst0_i + 1)
+					__n4__el := __n4.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+					m.__slot0 = append(m.__slot0, __n4__el)
 				}
-				__inst0_next = append(__inst0_next, __n4)
-				__inst0_i = (__inst0_i + 1)
-				__n4__el := __n4.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
-				m.__slot0 = append(m.__slot0, __n4__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -332,42 +336,46 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*RowInstance{}
-			var __inst0_i int = 0
-			for _, it := range m.items {
-				var __n3 *RowInstance
-				if len(m.__inst0_live) > __inst0_i {
-					__n3 = m.__inst0_live[__inst0_i]
-					__n3.SetLabel(it)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*RowInstance{}
+				var __inst0_i int = 0
+				for _, it := range m.items {
+					var __n3 *RowInstance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n3 = m.__inst0_live[__inst0_i]
+						__n3.SetLabel(it)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n3__new := newRowInstance(m, it)
+						__n3 = __n3__new
 					}
-					__n3__new := newRowInstance(m, it)
-					__n3 = __n3__new
+					__inst0_next = append(__inst0_next, __n3)
+					__inst0_i = (__inst0_i + 1)
+					__n3__el := __n3.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
+					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				__inst0_next = append(__inst0_next, __n3)
-				__inst0_i = (__inst0_i + 1)
-				__n3__el := __n3.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-				m.__slot0 = append(m.__slot0, __n3__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -568,6 +576,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:dfeb46897406f435a50ef1d805c91e2c
+pass sha256:8e5a7ada0f477c06138d55e3e86516e4
 -- run/go/gtk4 --
-pass sha256:3c1d24c316914f9291becf802fca06e2
+pass sha256:b3047007a0ffeccf92c661822ab26194

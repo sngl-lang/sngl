@@ -201,6 +201,7 @@ func newTestComponent() Model { return New() }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"duckfam.us/sngl/pkg/go/fynetheme"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -247,6 +248,7 @@ func (m *Model) SetIdx(v int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = container.NewGridWithColumns(2)
+	fynelayout.SetGridColumns(m.__n0, 2)
 	for _, col := range []string{"Name", "Role"} {
 		m.__n1 = widget.NewLabel("")
 		m.__n1.TextStyle = fyne.TextStyle{Bold: true, Italic: false}
@@ -530,59 +532,63 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
-			}
-			m.__slot0 = nil
-			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
-			for k, row := range []TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}} {
-				var __n1 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n1 = m.__inst0_live[__inst0_i]
-					__n1.Set__on0(func(b any) {
-						if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(b.(*C.GtkCheckButton)))) != 0) && (m.idx != k) {
-							m.idx = k
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].Set__p1(m.idx)
-							}
-						}
-					})
-					__n1.Set__p0(k)
-					__n1.Set__p1(m.idx)
-					__n1.Set__p2(row)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				}
+				m.__slot0 = nil
+				m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				for k, row := range []TableRow__record{TableRow__record{Cells: []string{"Ada", "Engineer"}}, TableRow__record{Cells: []string{"Grace", "Admiral"}}} {
+					var __n1 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
-					}
-					__n1__new := new__child0Instance(m, k, m.idx, row, func(b any) {
-						if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(b.(*C.GtkCheckButton)))) != 0) && (m.idx != k) {
-							m.idx = k
-							for __inst0_live_ui, _ := range m.__inst0_live {
-								m.__inst0_live[__inst0_live_ui].Set__p1(m.idx)
+						__n1 = m.__inst0_live[__inst0_i]
+						__n1.Set__on0(func(b any) {
+							if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(b.(*C.GtkCheckButton)))) != 0) && (m.idx != k) {
+								m.idx = k
+								for __inst0_live_ui, _ := range m.__inst0_live {
+									m.__inst0_live[__inst0_live_ui].Set__p1(m.idx)
+								}
 							}
+						})
+						__n1.Set__p0(k)
+						__n1.Set__p1(m.idx)
+						__n1.Set__p2(row)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
 						}
-					})
-					__n1 = __n1__new
+						__n1__new := new__child0Instance(m, k, m.idx, row, func(b any) {
+							if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(b.(*C.GtkCheckButton)))) != 0) && (m.idx != k) {
+								m.idx = k
+								for __inst0_live_ui, _ := range m.__inst0_live {
+									m.__inst0_live[__inst0_live_ui].Set__p1(m.idx)
+								}
+							}
+						})
+						__n1 = __n1__new
+					}
+					__inst0_next = append(__inst0_next, __n1)
+					__inst0_i = (__inst0_i + 1)
+					__n1__el := __n1.Root
+					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
+					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
 				}
-				__inst0_next = append(__inst0_next, __n1)
-				__inst0_i = (__inst0_i + 1)
-				__n1__el := __n1.Root
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
-				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -658,22 +664,26 @@ func (c *__child0Instance) __renderSlot1(parent *C.GtkBox) {
 	} else {
 		c.__rendering1 = true
 		c.__renderAgain1 = true
-		for c.__renderAgain1 {
-			c.__renderAgain1 = false
-			for _, __entry := range c.__slot1 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+		func() {
+			defer func() {
+				c.__rendering1 = false
+			}()
+			for c.__renderAgain1 {
+				c.__renderAgain1 = false
+				for _, __entry := range c.__slot1 {
+					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				}
+				c.__slot1 = nil
+				c.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at)
+				for _, cell := range c.__prop___p2.Cells {
+					__n3 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+					C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n3)), C.CString(cell))
+					C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n3)), C.float(0.0))
+					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n3)))
+					c.__slot1 = append(c.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n3)))
+				}
 			}
-			c.__slot1 = nil
-			c.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at)
-			for _, cell := range c.__prop___p2.Cells {
-				__n3 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n3)), C.CString(cell))
-				C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n3)), C.float(0.0))
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n3)))
-				c.__slot1 = append(c.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n3)))
-			}
-		}
-		c.__rendering1 = false
+		}()
 	}
 }
 
@@ -892,9 +902,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:e75b892c72c7c83a4dd911f3d2646f5f
 -- run/go/fyne --
-pass sha256:221a58215fa84e1a529cfe11eb4244a8
+pass sha256:c1727546b95138001c1bbe7d246c2736
 -- run/go/gtk4 --
-pass sha256:9f7ccd3cf0e6ef99e4887e07d2757001
+pass sha256:9e0a1f3aa5c865613c86809e2efb767c
 -- run/kotlin/android --
 pass sha256:c7c1f7ee5995768bf87ba91b77d3788c
 -- run/none/html --

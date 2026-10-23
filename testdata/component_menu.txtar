@@ -434,48 +434,51 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.open) {
-          let __n0 = document.createElement("div");
-          __n0.setAttribute("style", "background-color:#fff;border-radius:4px;border:1px solid #ddd;display:flex;flex-direction:column;padding:4px;position:absolute;z-index:100");
-          __n0.setAttribute("role", "menu");
-          for (const it of [{ label: "Cut", disabled: false, children: [], select: () => {
-            state.last = "cut";
-          } }, { label: "Copy", disabled: false, children: [], select: () => {
-            state.last = "copy";
-          } }, { label: "Paste", disabled: true, children: [], select: () => {
-          } }]) {
-            let __n1 = document.createElement("button");
-            __n1.setAttribute("disabled", it.disabled);
-            __n1.textContent = it.label;
-            __n1.setAttribute("role", "menuitem");
-            __n1.addEventListener("click", () => {
-              it.select();
-            });
-            __n0.appendChild(__n1);
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.open) {
+            let __n0 = document.createElement("div");
+            __n0.setAttribute("style", "background-color:#fff;border-radius:4px;border:1px solid #ddd;display:flex;flex-direction:column;padding:4px;position:absolute;z-index:100");
+            __n0.setAttribute("role", "menu");
+            for (const it of [{ label: "Cut", disabled: false, children: [], select: () => {
+              state.last = "cut";
+            } }, { label: "Copy", disabled: false, children: [], select: () => {
+              state.last = "copy";
+            } }, { label: "Paste", disabled: true, children: [], select: () => {
+            } }]) {
+              let __n1 = document.createElement("button");
+              __n1.setAttribute("disabled", it.disabled);
+              __n1.textContent = it.label;
+              __n1.setAttribute("role", "menuitem");
+              __n1.addEventListener("click", () => {
+                it.select();
+              });
+              __n0.appendChild(__n1);
+            }
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n0) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n0, __place0_i_ref0);
+            }
+            __slot0.push(__n0);
           }
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          if (__place0_i_ref0 === __n0) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n0, __place0_i_ref0);
-          }
-          __slot0.push(__n0);
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
@@ -492,9 +495,9 @@ pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --
 pass sha256:3be1eb95ef8aa807d5712450917af6f4
 -- run/none/html --
-pass sha256:61c4d54d0983dc48742f24d8b312abbb
+pass sha256:08e4d960559c81f6233041dd2b37a524
 -- testrun/html/none/component_menu.sngl/main/1 --
-sha256:317905ce5494c5881a04b17ae3ad3a1c
+sha256:3e0f7ad83a0532a190bc7e65259f230f
 {
   "results": [
     {

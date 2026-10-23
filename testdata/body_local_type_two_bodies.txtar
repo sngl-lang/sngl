@@ -594,32 +594,35 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.p__inst0 === "done") {
-          let __n7 = document.createElement("span");
-          __n7.textContent = "first done";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.p__inst0 === "done") {
+            let __n7 = document.createElement("span");
+            __n7.textContent = "first done";
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n7) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n7, __place0_i_ref0);
+            }
+            __slot0.push(__n7);
           }
-          if (__place0_i_ref0 === __n7) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n7, __place0_i_ref0);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot0.push(__n7);
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -628,32 +631,35 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place1_prev = __slot1;
-        let __place1_i = 0;
-        __slot1 = [];
-        if (state.p__inst1 === "ready") {
-          let __n8 = document.createElement("span");
-          __n8.textContent = "second ready";
-          let __place1_i_ref0 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref0 = __place1_prev[__place1_i];
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place1_prev = __slot1;
+          let __place1_i = 0;
+          __slot1 = [];
+          if (state.p__inst1 === "ready") {
+            let __n8 = document.createElement("span");
+            __n8.textContent = "second ready";
+            let __place1_i_ref0 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref0 = __place1_prev[__place1_i];
+            }
+            if (__place1_i_ref0 === __n8) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n8, __place1_i_ref0);
+            }
+            __slot1.push(__n8);
           }
-          if (__place1_i_ref0 === __n8) {
-            __place1_i = __place1_i + 1;
-          } else {
-            parent.insertBefore(__n8, __place1_i_ref0);
+          for (const __place1_prev_e of __place1_prev) {
+            if (__slot1.indexOf(__place1_prev_e) < 0) {
+              parent.removeChild(__place1_prev_e);
+            }
           }
-          __slot1.push(__n8);
         }
-        for (const __place1_prev_e of __place1_prev) {
-          if (__slot1.indexOf(__place1_prev_e) < 0) {
-            parent.removeChild(__place1_prev_e);
-          }
-        }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function String(v) {
@@ -686,4 +692,4 @@ pass sha256:68bed93f2042bec6233ec3b684776f0a
 -- run/kotlin/android --
 pass sha256:e957039b8be5e6442c062b4de1add107
 -- run/none/html --
-pass sha256:265a454cb2a86e1609eba30a5a4a09af
+pass sha256:9663d6438e08ddba107f5ec97285185a

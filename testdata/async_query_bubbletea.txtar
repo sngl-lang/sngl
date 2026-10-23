@@ -412,6 +412,39 @@ func __snglRunPosts(d time.Duration) {
 	case <-time.After(d):
 	}
 }
+
+// __snglSettle runs, for a waiting test, what the Model it holds asks of
+// the event loop no program runs under a test.
+var __snglSettle = func() {}
+
+// __snglSettleModel is Update after whatever the test did, whose commands --
+// each schedule's tick, armed after every Update -- run off the test's
+// goroutine, each message they answer posted back to be delivered on it.
+func (m *Model) __snglSettleModel() { m.__snglDeliver(struct{}{}) }
+
+func (m *Model) __snglDeliver(msg tea.Msg) {
+	nm, cmd := m.Update(msg)
+	*m = nm.(Model)
+	__snglRunCmd(m, cmd)
+}
+
+func __snglRunCmd(m *Model, cmd tea.Cmd) {
+	if cmd == nil {
+		return
+	}
+	go func() {
+		msg := cmd()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			for _, c := range batch {
+				__snglRunCmd(m, c)
+			}
+			return
+		}
+		if msg != nil {
+			__snglPost(func() { m.__snglDeliver(msg) })
+		}
+	}()
+}
 func (m Model) Init() tea.Cmd {
 	return __snglAwaitPost
 }
@@ -549,4 +582,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:ae923dc902ad463410f25803297b1167
+pass sha256:7552188c1ee617b642493ef0d8627110

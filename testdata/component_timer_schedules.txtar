@@ -437,78 +437,81 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        let __inst1_now_interval = [];
-        for (const p of state.periods__inst0) {
-          let __n5 = null;
-          if (__inst1_live.length > __inst1_i && __inst1_was_interval[__inst1_i] === p) {
-            __n5 = __inst1_live[__inst1_i];
-            __n5.__set_tick(() => {
-              if (p === 20) {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          let __inst1_now_interval = [];
+          for (const p of state.periods__inst0) {
+            let __n5 = null;
+            if (__inst1_live.length > __inst1_i && __inst1_was_interval[__inst1_i] === p) {
+              __n5 = __inst1_live[__inst1_i];
+              __n5.__set_tick(() => {
+                if (p === 20) {
+                  ;
+                  state.fast__inst0 += 1;
+                  __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+                } else {
+                  ;
+                  state.slow__inst0 += 1;
+                  __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+                }
                 ;
-                state.fast__inst0 += 1;
-                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
-              } else {
-                ;
-                state.slow__inst0 += 1;
-                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+              });
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
               }
-              ;
-            });
-          } else {
-            if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              let __n5__new = __cf_timer({ interval: p, enabled: true, tick: () => {
+                if (p === 20) {
+                  ;
+                  state.fast__inst0 += 1;
+                  __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+                } else {
+                  ;
+                  state.slow__inst0 += 1;
+                  __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
+                }
+                ;
+              } });
+              __n5 = __n5__new;
             }
-            let __n5__new = __cf_timer({ interval: p, enabled: true, tick: () => {
-              if (p === 20) {
-                ;
-                state.fast__inst0 += 1;
-                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
-              } else {
-                ;
-                state.slow__inst0 += 1;
-                __n4.textContent = "fast=" + String(state.fast__inst0) + " slow=" + String(state.slow__inst0);
-              }
-              ;
-            } });
-            __n5 = __n5__new;
+            __inst1_next.push(__n5);
+            __inst1_now_interval.push(p);
+            __inst1_i = __inst1_i + 1;
+            let __n5__el = __n5.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n5__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n5__el, __place0_i_ref0);
+            }
+            __slot0.push(__n5__el);
           }
-          __inst1_next.push(__n5);
-          __inst1_now_interval.push(p);
-          __inst1_i = __inst1_i + 1;
-          let __n5__el = __n5.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n5__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n5__el, __place0_i_ref0);
-          }
-          __slot0.push(__n5__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
+          __inst1_live = __inst1_next;
+          __inst1_was_interval = __inst1_now_interval;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
-        __inst1_live = __inst1_next;
-        __inst1_was_interval = __inst1_now_interval;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -540,7 +543,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:e8703fbd305743d541d90d213f74f93b
+pass sha256:e38196fe3fa052a6c4c944948d4e5382
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
 sha256:07b94d87dc1790b809b468043582016f
 {
@@ -562,7 +565,7 @@ sha256:a6df3ac3b193f778f382ea5602703e37
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:70a20f3165d9d6073e9fcd8cbcab4b81
+sha256:64779c5b7c4aabf6f7202ad104b9dc59
 {
   "results": [
     {

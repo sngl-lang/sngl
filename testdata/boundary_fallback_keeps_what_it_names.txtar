@@ -273,68 +273,72 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
-			if m.__failed0 {
-				var __n2 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n2 = m.__inst0_live[__inst0_i]
-					__n2.Set__p0(m.sorry())
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				if m.__failed0 {
+					var __n2 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
-					}
-					__n2__new := new__child0Instance(m, m.sorry())
-					__n2 = __n2__new
-				}
-				__inst0_next = append(__inst0_next, __n2)
-				__inst0_i = (__inst0_i + 1)
-				__n2__el := __n2.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-				m.__slot0 = append(m.__slot0, __n2__el)
-			} else {
-				__n3 := gtk4rt.ButtonNew()
-				gtk4rt.ButtonSetLabel(__n3, "boom")
-				gtk4rt.Connect(__n3, "clicked", func() {
-					func() {
-						defer func() {
-							__r := recover()
-							if __r == nil {
-								return
-							}
-							_, __ok := __r.(ErrorEvent)
-							if !__ok {
-								panic(__r)
-							}
-							m.__failed0 = true
-							m.__renderSlot0(m.__n1)
-						}()
-						m.tries += 1
-						for __inst0_live_ui, _ := range m.__inst0_live {
-							m.__inst0_live[__inst0_live_ui].Set__p0(m.sorry())
+						__n2 = m.__inst0_live[__inst0_i]
+						__n2.Set__p0(m.sorry())
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
 						}
-						panic(ErrorEvent{Message: "x", Kind: "boom"})
-					}()
-				})
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n3)
-				m.__slot0 = append(m.__slot0, __n3)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+						__n2__new := new__child0Instance(m, m.sorry())
+						__n2 = __n2__new
+					}
+					__inst0_next = append(__inst0_next, __n2)
+					__inst0_i = (__inst0_i + 1)
+					__n2__el := __n2.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+					m.__slot0 = append(m.__slot0, __n2__el)
+				} else {
+					__n3 := gtk4rt.ButtonNew()
+					gtk4rt.ButtonSetLabel(__n3, "boom")
+					gtk4rt.Connect(__n3, "clicked", func() {
+						func() {
+							defer func() {
+								__r := recover()
+								if __r == nil {
+									return
+								}
+								_, __ok := __r.(ErrorEvent)
+								if !__ok {
+									panic(__r)
+								}
+								m.__failed0 = true
+								m.__renderSlot0(m.__n1)
+							}()
+							m.tries += 1
+							for __inst0_live_ui, _ := range m.__inst0_live {
+								m.__inst0_live[__inst0_live_ui].Set__p0(m.sorry())
+							}
+							panic(ErrorEvent{Message: "x", Kind: "boom"})
+						}()
+					})
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n3)
+					m.__slot0 = append(m.__slot0, __n3)
 				}
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
+				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -475,90 +479,93 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        if (__failed0) {
-          let __n2 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n2 = __inst1_live[__inst1_i];
-            __n2.__set___p0(sorry());
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          if (__failed0) {
+            let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n2 = __inst1_live[__inst1_i];
+              __n2.__set___p0(sorry());
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n2__new = __cf___child0({ __p0: sorry() });
+              __n2 = __n2__new;
             }
-            let __n2__new = __cf___child0({ __p0: sorry() });
-            __n2 = __n2__new;
-          }
-          __inst1_next.push(__n2);
-          __inst1_i = __inst1_i + 1;
-          let __n2__el = __n2.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref0 === __n2__el) {
-            __place0_i = __place0_i + 1;
+            __inst1_next.push(__n2);
+            __inst1_i = __inst1_i + 1;
+            let __n2__el = __n2.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n2__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n2__el, __place0_i_ref0);
+            }
+            __slot0.push(__n2__el);
           } else {
-            parent.insertBefore(__n2__el, __place0_i_ref0);
-          }
-          __slot0.push(__n2__el);
-        } else {
-          let __n3 = document.createElement("button");
-          __n3.disabled = false;
-          __n3.addEventListener("click", () => {
-            try {
-              ;
-              state.tries += 1;
-              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            let __n3 = document.createElement("button");
+            __n3.disabled = false;
+            __n3.addEventListener("click", () => {
+              try {
                 ;
-                __inst1_live[__inst1_live_ui].__set___p0(sorry());
+                state.tries += 1;
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                  ;
+                  __inst1_live[__inst1_live_ui].__set___p0(sorry());
+                }
+                ;
+                throw Object.assign(new Error("x"), { kind: "boom" });
+              } catch (__e) {
+                ;
+                if (__e?.kind === void 0) throw __e;
+                ;
+                __failed0 = true;
+                __renderSlot0(__slotAnchor_0);
               }
               ;
-              throw Object.assign(new Error("x"), { kind: "boom" });
-            } catch (__e) {
-              ;
-              if (__e?.kind === void 0) throw __e;
-              ;
-              __failed0 = true;
-              __renderSlot0(__slotAnchor_0);
+            });
+            __n3.addEventListener("contextmenu", () => {
+            });
+            let __n4 = document.createElement("span");
+            __n4.textContent = "boom";
+            __n3.appendChild(__n4);
+            let __place0_i_ref1 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref1 = __place0_prev[__place0_i];
             }
-            ;
-          });
-          __n3.addEventListener("contextmenu", () => {
-          });
-          let __n4 = document.createElement("span");
-          __n4.textContent = "boom";
-          __n3.appendChild(__n4);
-          let __place0_i_ref1 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref1 = __place0_prev[__place0_i];
+            if (__place0_i_ref1 === __n3) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n3, __place0_i_ref1);
+            }
+            __slot0.push(__n3);
           }
-          if (__place0_i_ref1 === __n3) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n3, __place0_i_ref1);
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          __slot0.push(__n3);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -572,6 +579,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d7704b15a02ddd3d61115b72ef3c63e7
 -- run/go/gtk4 --
-pass sha256:a92d242cea7d8d8b70aa9e0017606363
+pass sha256:acba03a511b678175abdf48c24f68982
 -- run/none/html --
-pass sha256:a1a8ef52ca10d86df3803a309aca98e9
+pass sha256:7f20870c4d2c599e2343af09cbd60277

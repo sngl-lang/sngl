@@ -344,7 +344,7 @@ sha256:b3397c3c345bf33c13ad7b0381dd337d
   ]
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
-sha256:92f2bec3a4e8d7d8289ec3d9262e0a98
+sha256:27e86925fe2963f6e9276262c46b9732
 {
   "results": [
     {
@@ -354,7 +354,7 @@ sha256:92f2bec3a4e8d7d8289ec3d9262e0a98
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:69251869651d101b436a6c07409890e8
+sha256:fbebc86a5d2a06b211facd815b364e01
 {
   "results": [
     {
@@ -372,7 +372,7 @@ sha256:69251869651d101b436a6c07409890e8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pager/1 --
-sha256:2ce9b2769f0714413b4c9217df643f08
+sha256:e3a4ae4327b175efa8dfc6a825e7fb42
 {
   "results": [
     {

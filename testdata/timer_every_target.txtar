@@ -1072,18 +1072,18 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import kotlinx.coroutines.delay
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -1102,20 +1102,6 @@ fun MainScreen() {
     var visible__inst0 by remember { mutableStateOf(true) }
     var beats__inst0 by remember { mutableStateOf(0) }
 
-    LaunchedEffect(running__inst0) {
-        while (running__inst0) {
-            delay(1000L)
-            seconds__inst0 += 1
-        }
-    }
-
-    LaunchedEffect(true) {
-        while (true) {
-            delay(250L)
-            beats__inst0 += 1
-        }
-    }
-
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
@@ -1125,6 +1111,18 @@ fun MainScreen() {
             }
         }
         Column {
+            LaunchedEffect(running__inst0) {
+                while (running__inst0) {
+                    delay(1000L)
+                    seconds__inst0 += 1
+                }
+            }
+            LaunchedEffect(true) {
+                while (true) {
+                    delay(250L)
+                    beats__inst0 += 1
+                }
+            }
             Text(text = ("beats " + beats__inst0.toString()), modifier = Modifier.safeDrawingPadding())
             Text(text = seconds__inst0.toString(), modifier = Modifier.safeDrawingPadding())
         }
@@ -1306,6 +1304,6 @@ pass sha256:ff343c6dea911a4064ffa60e67750ade
 -- run/go/gtk4 --
 pass sha256:ca4b6ea75a87f330e602b011d16e6c32
 -- run/kotlin/android --
-pass sha256:b88c73a364e3e8c43861bf8393eb94a2
+pass sha256:5b6099700982248ebf9cd381f34ea71c
 -- run/none/html --
 pass sha256:d025af28f86be9d78be32734b7995fa6

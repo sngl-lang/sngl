@@ -552,55 +552,59 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
-			if m.failed__inst0 || !m.hasPhoto__inst0 {
-				__n4 := widget.NewLabel("")
-				__n4.SetText("JD")
-				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n4), _snglTheme1), 0, 0, 40, 40))
-				m.__slot1 = append(m.__slot1, __n4)
-			} else {
-				var __n5 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n5 = m.__inst0_live[__inst0_i]
-					__n5.Set__on0(func(m__r0 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
-					})
-					__n5.Set__p0(m.hasPhoto__inst0)
-					__n5.Set__p1(m.url__inst0)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				if m.failed__inst0 || !m.hasPhoto__inst0 {
+					__n4 := widget.NewLabel("")
+					__n4.SetText("JD")
+					fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n4), _snglTheme1), 0, 0, 40, 40))
+					m.__slot1 = append(m.__slot1, __n4)
 				} else {
+					var __n5 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n5 = m.__inst0_live[__inst0_i]
+						__n5.Set__on0(func(m__r0 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n6)
+						})
+						__n5.Set__p0(m.hasPhoto__inst0)
+						__n5.Set__p1(m.url__inst0)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n6)
+						})
+						__n5 = __n5__new
 					}
-					__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
-					})
-					__n5 = __n5__new
+					__inst0_next = append(__inst0_next, __n5)
+					__inst0_i = (__inst0_i + 1)
+					__n5__el := __n5.Root
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n5__el)
+					m.__slot1 = append(m.__slot1, __n5__el)
 				}
-				__inst0_next = append(__inst0_next, __n5)
-				__inst0_i = (__inst0_i + 1)
-				__n5__el := __n5.Root
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n5__el)
-				m.__slot1 = append(m.__slot1, __n5__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -849,21 +853,25 @@ func (c *__child0Instance) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		c.__rendering0 = true
 		c.__renderAgain0 = true
-		for c.__renderAgain0 {
-			c.__renderAgain0 = false
-			for _, __entry := range c.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				c.__rendering0 = false
+			}()
+			for c.__renderAgain0 {
+				c.__renderAgain0 = false
+				for _, __entry := range c.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				c.__slot0 = nil
+				c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
+				if c.__prop___p0 {
+					__n2 := fynelayout.NewImageSource()
+					__n2.SetURL(c.__prop___p1)
+					fynelayout.InsertBefore(__parent, c.__slot0_at, __n2)
+					c.__slot0 = append(c.__slot0, __n2)
+				}
 			}
-			c.__slot0 = nil
-			c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
-			if c.__prop___p0 {
-				__n2 := fynelayout.NewImageSource()
-				__n2.SetURL(c.__prop___p1)
-				fynelayout.InsertBefore(__parent, c.__slot0_at, __n2)
-				c.__slot0 = append(c.__slot0, __n2)
-			}
-		}
-		c.__rendering0 = false
+		}()
 	}
 }
 
@@ -1254,56 +1262,60 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
-			}
-			m.__slot1 = nil
-			m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
-			if m.failed__inst0 || !m.hasPhoto__inst0 {
-				__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
-				gtk4rt.SetStyle(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Style{Width: 40.0, Height: 40.0, Background: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, BorderRadius: 20.0})
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
-				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n4)))
-			} else {
-				var __n5 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n5 = m.__inst0_live[__inst0_i]
-					__n5.Set__on0(func(m__r0 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
-					})
-					__n5.Set__p0(m.hasPhoto__inst0)
-					__n5.Set__p1(m.url__inst0)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				}
+				m.__slot1 = nil
+				m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				if m.failed__inst0 || !m.hasPhoto__inst0 {
+					__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+					C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
+					gtk4rt.SetStyle(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Style{Width: 40.0, Height: 40.0, Background: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, BorderRadius: 20.0})
+					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
+					m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 				} else {
+					var __n5 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n5 = m.__inst0_live[__inst0_i]
+						__n5.Set__on0(func(m__r0 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n6)
+						})
+						__n5.Set__p0(m.hasPhoto__inst0)
+						__n5.Set__p1(m.url__inst0)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n6)
+						})
+						__n5 = __n5__new
 					}
-					__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
-					})
-					__n5 = __n5__new
+					__inst0_next = append(__inst0_next, __n5)
+					__inst0_i = (__inst0_i + 1)
+					__n5__el := __n5.Root
+					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
+					m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
 				}
-				__inst0_next = append(__inst0_next, __n5)
-				__inst0_i = (__inst0_i + 1)
-				__n5__el := __n5.Root
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
-				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -1444,21 +1456,25 @@ func (c *__child0Instance) __renderSlot0(parent *C.GtkBox) {
 	} else {
 		c.__rendering0 = true
 		c.__renderAgain0 = true
-		for c.__renderAgain0 {
-			c.__renderAgain0 = false
-			for _, __entry := range c.__slot0 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+		func() {
+			defer func() {
+				c.__rendering0 = false
+			}()
+			for c.__renderAgain0 {
+				c.__renderAgain0 = false
+				for _, __entry := range c.__slot0 {
+					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				}
+				c.__slot0 = nil
+				c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
+				if c.__prop___p0 {
+					__n2 := (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+					gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(__n2)), c.__prop___p1)
+					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n2)))
+					c.__slot0 = append(c.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n2)))
+				}
 			}
-			c.__slot0 = nil
-			c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
-			if c.__prop___p0 {
-				__n2 := (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-				gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(__n2)), c.__prop___p1)
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n2)))
-				c.__slot0 = append(c.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n2)))
-			}
-		}
-		c.__rendering0 = false
+		}()
 	}
 }
 
@@ -1987,33 +2003,36 @@ body { font-family: system-ui, sans-serif; }
       } else {
         __rendering0 = true;
         __renderAgain0 = true;
-        while (__renderAgain0) {
-          __renderAgain0 = false;
-          let __place0_prev = __slot0;
-          let __place0_i = 0;
-          __slot0 = [];
-          if (__prop___p0) {
-            let __n2 = document.createElement("img");
-            __n2.setAttribute("alt", "");
-            __n2.src = __prop___p1;
-            let __place0_i_ref0 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref0 = __place0_prev[__place0_i];
+        try {
+          while (__renderAgain0) {
+            __renderAgain0 = false;
+            let __place0_prev = __slot0;
+            let __place0_i = 0;
+            __slot0 = [];
+            if (__prop___p0) {
+              let __n2 = document.createElement("img");
+              __n2.setAttribute("alt", "");
+              __n2.src = __prop___p1;
+              let __place0_i_ref0 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref0 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref0 === __n2) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n2, __place0_i_ref0);
+              }
+              __slot0.push(__n2);
             }
-            if (__place0_i_ref0 === __n2) {
-              __place0_i = __place0_i + 1;
-            } else {
-              parent.insertBefore(__n2, __place0_i_ref0);
+            for (const __place0_prev_e of __place0_prev) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
+                parent.removeChild(__place0_prev_e);
+              }
             }
-            __slot0.push(__n2);
           }
-          for (const __place0_prev_e of __place0_prev) {
-            if (__slot0.indexOf(__place0_prev_e) < 0) {
-              parent.removeChild(__place0_prev_e);
-            }
-          }
+        } finally {
+          __rendering0 = false;
         }
-        __rendering0 = false;
       }
     }
     let __n3 = document.createElement("span");
@@ -2080,77 +2099,80 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place1_prev = __slot1;
-        let __place1_i = 0;
-        __slot1 = [];
-        let __inst2_next = [];
-        let __inst2_i = 0;
-        if (state.failed__inst0 || !state.hasPhoto__inst0) {
-          let __n4 = document.createElement("span");
-          __n4.textContent = "JD";
-          __n4.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
-          __n4.addEventListener("click", () => {
-          });
-          let __place1_i_ref0 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref0 = __place1_prev[__place1_i];
-          }
-          if (__place1_i_ref0 === __n4) {
-            __place1_i = __place1_i + 1;
-          } else {
-            parent.insertBefore(__n4, __place1_i_ref0);
-          }
-          __slot1.push(__n4);
-        } else {
-          let __n5 = null;
-          if (__inst2_live.length > __inst2_i) {
-            __n5 = __inst2_live[__inst2_i];
-            __n5.__set___on0((e) => {
-              state.failed__inst0 = true;
-              __renderSlot1(__slotAnchor_1);
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place1_prev = __slot1;
+          let __place1_i = 0;
+          __slot1 = [];
+          let __inst2_next = [];
+          let __inst2_i = 0;
+          if (state.failed__inst0 || !state.hasPhoto__inst0) {
+            let __n4 = document.createElement("span");
+            __n4.textContent = "JD";
+            __n4.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+            __n4.addEventListener("click", () => {
             });
-            __n5.__set___p0(state.hasPhoto__inst0);
-            __n5.__set___p1(state.url__inst0);
-          } else {
-            if (__inst2_live.length > __inst2_i) {
-              __inst2_live[__inst2_i].__destroy();
+            let __place1_i_ref0 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref0 = __place1_prev[__place1_i];
             }
-            let __n5__new = __cf___child0({ __p0: state.hasPhoto__inst0, __p1: state.url__inst0, __on0: (e) => {
-              state.failed__inst0 = true;
-              __renderSlot1(__slotAnchor_1);
-            } });
-            __n5 = __n5__new;
-          }
-          __inst2_next.push(__n5);
-          __inst2_i = __inst2_i + 1;
-          let __n5__el = __n5.__root;
-          let __place1_i_ref1 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref1 = __place1_prev[__place1_i];
-          }
-          if (__place1_i_ref1 === __n5__el) {
-            __place1_i = __place1_i + 1;
+            if (__place1_i_ref0 === __n4) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n4, __place1_i_ref0);
+            }
+            __slot1.push(__n4);
           } else {
-            parent.insertBefore(__n5__el, __place1_i_ref1);
+            let __n5 = null;
+            if (__inst2_live.length > __inst2_i) {
+              __n5 = __inst2_live[__inst2_i];
+              __n5.__set___on0((e) => {
+                state.failed__inst0 = true;
+                __renderSlot1(__slotAnchor_1);
+              });
+              __n5.__set___p0(state.hasPhoto__inst0);
+              __n5.__set___p1(state.url__inst0);
+            } else {
+              if (__inst2_live.length > __inst2_i) {
+                __inst2_live[__inst2_i].__destroy();
+              }
+              let __n5__new = __cf___child0({ __p0: state.hasPhoto__inst0, __p1: state.url__inst0, __on0: (e) => {
+                state.failed__inst0 = true;
+                __renderSlot1(__slotAnchor_1);
+              } });
+              __n5 = __n5__new;
+            }
+            __inst2_next.push(__n5);
+            __inst2_i = __inst2_i + 1;
+            let __n5__el = __n5.__root;
+            let __place1_i_ref1 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref1 = __place1_prev[__place1_i];
+            }
+            if (__place1_i_ref1 === __n5__el) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n5__el, __place1_i_ref1);
+            }
+            __slot1.push(__n5__el);
           }
-          __slot1.push(__n5__el);
-        }
-        for (const [__inst2_i_d, _] of __inst2_live.entries()) {
-          let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
-          if (__inst2_i_j >= __inst2_i) {
-            __inst2_live[__inst2_i_j].__destroy();
+          for (const [__inst2_i_d, _] of __inst2_live.entries()) {
+            let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
+            if (__inst2_i_j >= __inst2_i) {
+              __inst2_live[__inst2_i_j].__destroy();
+            }
+          }
+          __inst2_live = __inst2_next;
+          for (const __place1_prev_e of __place1_prev) {
+            if (__slot1.indexOf(__place1_prev_e) < 0) {
+              parent.removeChild(__place1_prev_e);
+            }
           }
         }
-        __inst2_live = __inst2_next;
-        for (const __place1_prev_e of __place1_prev) {
-          if (__slot1.indexOf(__place1_prev_e) < 0) {
-            parent.removeChild(__place1_prev_e);
-          }
-        }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function _snglDrawImage(ctx, src, x, y, w, h) {
@@ -2245,10 +2267,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:af71ea7991e3a8a1d3afe419d6d2b2c3
 -- run/go/fyne --
-pass sha256:bbc4c6821a5edb4c47af0e3d3b7fafc0
+pass sha256:39cb0722c74a86edbcf386a8f777e0a7
 -- run/go/gtk4 --
-pass sha256:8cd27948d0ad9339439a3b85b0c2c197
+pass sha256:69bceb7d90349e2692b3c541c4326dc7
 -- run/kotlin/android --
 pass sha256:b42b419cf3fd88c15d167bd6b7c70df3
 -- run/none/html --
-pass sha256:be2871069b01397ec779079475086ec5
+pass sha256:4ac6a2c8b6eb4412dda312909e8196da

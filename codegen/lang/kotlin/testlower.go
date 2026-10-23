@@ -899,9 +899,18 @@ func PresentCopyEntry(id, key string) string {
 // LaunchedEffect's delay -- a timer's -- elapses as it does on a device. It
 // was a TODO, so a test waiting on a timer saw it never tick.
 func lowerTestWait(c *ir.Call, surf TestSurface, compRecvs map[string]bool) []string {
+	// A predicate written `func() => …` is its expression, read as an
+	// assertion reads one -- a node's presence included, which a lambda's own
+	// rendering spells as a member of the instance it has none of.
+	pred := lowerTestExpr(c.Args[1].Value, surf, compRecvs)
+	if l, ok := c.Args[1].Value.(*ir.Lambda); ok && l.Func != nil && len(l.Func.Params) == 0 && len(l.Func.Block) == 1 {
+		if ret, ok := l.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
+			pred = "{ " + lowerTestExpr(ret.Value, surf, compRecvs) + " }"
+		}
+	}
 	return []string{
 		"run {",
-		"    val __snglWait = " + lowerTestExpr(c.Args[1].Value, surf, compRecvs),
+		"    val __snglWait = " + pred,
 		"    val __snglEnd = System.currentTimeMillis() + (" + lowerTestExpr(c.Args[2].Value, surf, compRecvs) + ")",
 		"    while (!__snglWait() && System.currentTimeMillis() < __snglEnd) {",
 		"        composeTestRule.mainClock.advanceTimeBy(5)",

@@ -257,22 +257,26 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				for i := range m.shown {
+					__n0 := widget.NewLabel("")
+					fynelayout.ShareSized(__n0, 0, 0, 0, 48)
+					__n0.SetText(("row " + fmt.Sprint(i)))
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
+					m.__slot0 = append(m.__slot0, __n0)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			for i := range m.shown {
-				__n0 := widget.NewLabel("")
-				fynelayout.ShareSized(__n0, 0, 0, 0, 48)
-				__n0.SetText(("row " + fmt.Sprint(i)))
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
-				m.__slot0 = append(m.__slot0, __n0)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -402,22 +406,26 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				for i := range m.shown {
+					__n0 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetText(__n0, ("row " + fmt.Sprint(i)))
+					gtk4rt.SetStyle(__n0, gtk4rt.Style{Height: 48.0})
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
+					m.__slot0 = append(m.__slot0, __n0)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			for i := range m.shown {
-				__n0 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n0, ("row " + fmt.Sprint(i)))
-				gtk4rt.SetStyle(__n0, gtk4rt.Style{Height: 48.0})
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
-				m.__slot0 = append(m.__slot0, __n0)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -669,53 +677,56 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (let i = 0, __end = state.shown; i < __end; i++) {
-          let __n1 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n1 = __inst1_live[__inst1_i];
-            __n1.__set___p0(i);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (let i = 0, __end = state.shown; i < __end; i++) {
+            let __n1 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n1 = __inst1_live[__inst1_i];
+              __n1.__set___p0(i);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n1__new = __cf___child0({ __p0: i });
+              __n1 = __n1__new;
             }
-            let __n1__new = __cf___child0({ __p0: i });
-            __n1 = __n1__new;
+            __inst1_next.push(__n1);
+            __inst1_i = __inst1_i + 1;
+            let __n1__el = __n1.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n1__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n1__el, __place0_i_ref0);
+            }
+            __slot0.push(__n1__el);
           }
-          __inst1_next.push(__n1);
-          __inst1_i = __inst1_i + 1;
-          let __n1__el = __n1.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n1__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n1__el, __place0_i_ref0);
-          }
-          __slot0.push(__n1__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -780,10 +791,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:cf071cdf93cbae0be708fe04040acf1c
 -- run/go/fyne --
-pass sha256:adb8af89db4de5349d16571fba42f380
+pass sha256:8bac32440ea6653c208f109e466c6d81
 -- run/go/gtk4 --
-pass sha256:b48e9e521dabea13421b382b78423ed6
+pass sha256:da1d1208782d4236ecd38a79a518489e
 -- run/kotlin/android --
 pass sha256:06327f885c94aa79d792967ae480cbb9
 -- run/none/html --
-pass sha256:cac8baade34f278dcf1871d147dfb894
+pass sha256:9dbbb089f2368984002d294125ec642b

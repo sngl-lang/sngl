@@ -279,49 +279,53 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__inst0_next := []*__window_state1__slot0Instance{}
-			var __inst0_i int = 0
-			if m.details {
-				var __n3 *__window_state1__slot0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n3 = m.__inst0_live[__inst0_i]
-					__n3.SetClosed(func() {
-						m.details = false
-						m.__renderSlot0(fynelayout.App)
-					})
-					__n3.SetTitle("Load")
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*__window_state1__slot0Instance{}
+				var __inst0_i int = 0
+				if m.details {
+					var __n3 *__window_state1__slot0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n3 = m.__inst0_live[__inst0_i]
+						__n3.SetClosed(func() {
+							m.details = false
+							m.__renderSlot0(fynelayout.App)
+						})
+						__n3.SetTitle("Load")
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n3__new := new__window_state1__slot0Instance(m, true, "Load", func() {
+							m.details = false
+							m.__renderSlot0(fynelayout.App)
+						})
+						__n3 = __n3__new
 					}
-					__n3__new := new__window_state1__slot0Instance(m, true, "Load", func() {
-						m.details = false
-						m.__renderSlot0(fynelayout.App)
-					})
-					__n3 = __n3__new
+					__inst0_next = append(__inst0_next, __n3)
+					__inst0_i = (__inst0_i + 1)
+					__n3__el := __n3.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
+					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				__inst0_next = append(__inst0_next, __n3)
-				__inst0_i = (__inst0_i + 1)
-				__n3__el := __n3.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-				m.__slot0 = append(m.__slot0, __n3__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -770,49 +774,53 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*__window_state1__slot0Instance{}
-			var __inst0_i int = 0
-			if m.details {
-				var __n3 *__window_state1__slot0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n3 = m.__inst0_live[__inst0_i]
-					__n3.SetClosed(func() {
-						m.details = false
-						m.__renderSlot0(gtk4rt.App)
-					})
-					__n3.SetTitle("Load")
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*__window_state1__slot0Instance{}
+				var __inst0_i int = 0
+				if m.details {
+					var __n3 *__window_state1__slot0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n3 = m.__inst0_live[__inst0_i]
+						__n3.SetClosed(func() {
+							m.details = false
+							m.__renderSlot0(gtk4rt.App)
+						})
+						__n3.SetTitle("Load")
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n3__new := new__window_state1__slot0Instance(m, true, "Load", func() {
+							m.details = false
+							m.__renderSlot0(gtk4rt.App)
+						})
+						__n3 = __n3__new
 					}
-					__n3__new := new__window_state1__slot0Instance(m, true, "Load", func() {
-						m.details = false
-						m.__renderSlot0(gtk4rt.App)
-					})
-					__n3 = __n3__new
+					__inst0_next = append(__inst0_next, __n3)
+					__inst0_i = (__inst0_i + 1)
+					__n3__el := __n3.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
+					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				__inst0_next = append(__inst0_next, __n3)
-				__inst0_i = (__inst0_i + 1)
-				__n3__el := __n3.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-				m.__slot0 = append(m.__slot0, __n3__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1074,6 +1082,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:e4dac19c123d8096a14ecf4ee3da6183
+pass sha256:a2b82e5b85be07b14992dda2f96816b0
 -- run/go/gtk4 --
-pass sha256:c80365bfd482cb7fef491140c8e1b029
+pass sha256:3cb93c4d6fdcab6f0ee35c1d862047aa

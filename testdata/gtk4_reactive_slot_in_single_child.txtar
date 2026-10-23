@@ -102,21 +102,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				if m.on {
+					__n0 := widget.NewLabel("")
+					__n0.SetText("carded")
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
+					m.__slot0 = append(m.__slot0, __n0)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			if m.on {
-				__n0 := widget.NewLabel("")
-				__n0.SetText("carded")
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
-				m.__slot0 = append(m.__slot0, __n0)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -126,21 +130,25 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				if m.on {
+					__n1 := widget.NewLabel("")
+					__n1.SetText("scrolled")
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n1)
+					m.__slot1 = append(m.__slot1, __n1)
+				}
 			}
-			m.__slot1 = nil
-			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-			if m.on {
-				__n1 := widget.NewLabel("")
-				__n1.SetText("scrolled")
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n1)
-				m.__slot1 = append(m.__slot1, __n1)
-			}
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -284,21 +292,25 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				if m.on {
+					__n0 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetText(__n0, "carded")
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
+					m.__slot0 = append(m.__slot0, __n0)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			if m.on {
-				__n0 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n0, "carded")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
-				m.__slot0 = append(m.__slot0, __n0)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -308,21 +320,25 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+				if m.on {
+					__n1 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetText(__n1, "scrolled")
+					gtk4rt.InsertBefore(parent, m.__slot1_at, __n1)
+					m.__slot1 = append(m.__slot1, __n1)
+				}
 			}
-			m.__slot1 = nil
-			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-			if m.on {
-				__n1 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n1, "scrolled")
-				gtk4rt.InsertBefore(parent, m.__slot1_at, __n1)
-				m.__slot1 = append(m.__slot1, __n1)
-			}
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -395,6 +411,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:9fdf2abc7edc44c063e4a9c425c7aa85
+pass sha256:a20d31a4cff15190e0291d62a87db3d5
 -- run/go/gtk4 --
-pass sha256:41aacbf3ae18b95d9a7b359e5d74529e
+pass sha256:70346cff99f160d59a82bc6f81dcf934

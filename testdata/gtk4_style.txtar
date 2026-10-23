@@ -340,22 +340,26 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				for _, s := range m.names {
+					__n4 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetText(__n4, s)
+					gtk4rt.SetStyle(__n4, gtk4rt.Style{Width: 80.0, FontStyle: "italic", Background: snglcolor.Color{R: 221, G: 221, B: 0, A: 255}})
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
+					m.__slot0 = append(m.__slot0, __n4)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			for _, s := range m.names {
-				__n4 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n4, s)
-				gtk4rt.SetStyle(__n4, gtk4rt.Style{Width: 80.0, FontStyle: "italic", Background: snglcolor.Color{R: 221, G: 221, B: 0, A: 255}})
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
-				m.__slot0 = append(m.__slot0, __n4)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -496,4 +500,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:62052144c557498f08cdb3b4f998aace
+pass sha256:347f60e529fe48ef43bfca2028fb4279

@@ -144,53 +144,57 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__inst0_next := []*__query_state1Instance{}
-			var __inst0_i int = 0
-			for _, n := range m.names__inst0 {
-				var __n2 *__query_state1Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n2 = m.__inst0_live[__inst0_i]
-					__n2.SetFetch(Lookup)
-					__n2.SetLoad(func(got int) {
-						m.total__inst0 += got
-						m.__n1.SetText(fmt.Sprint(m.total__inst0))
-					})
-					__n2.SetOn(n)
-					__n2.Set__start_value(nil)
-					__n2.Set__start_pending(false)
-					__n2.Set__start_failure(nil)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*__query_state1Instance{}
+				var __inst0_i int = 0
+				for _, n := range m.names__inst0 {
+					var __n2 *__query_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n2 = m.__inst0_live[__inst0_i]
+						__n2.SetFetch(Lookup)
+						__n2.SetLoad(func(got int) {
+							m.total__inst0 += got
+							m.__n1.SetText(fmt.Sprint(m.total__inst0))
+						})
+						__n2.SetOn(n)
+						__n2.Set__start_value(nil)
+						__n2.Set__start_pending(false)
+						__n2.Set__start_failure(nil)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
+							m.total__inst0 += got
+							m.__n1.SetText(fmt.Sprint(m.total__inst0))
+						})
+						__n2 = __n2__new
 					}
-					__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
-						m.total__inst0 += got
-						m.__n1.SetText(fmt.Sprint(m.total__inst0))
-					})
-					__n2 = __n2__new
+					__inst0_next = append(__inst0_next, __n2)
+					__inst0_i = (__inst0_i + 1)
+					__n2__el := __n2.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				__inst0_next = append(__inst0_next, __n2)
-				__inst0_i = (__inst0_i + 1)
-				__n2__el := __n2.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-				m.__slot0 = append(m.__slot0, __n2__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -547,53 +551,57 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*__query_state1Instance{}
-			var __inst0_i int = 0
-			for _, n := range m.names__inst0 {
-				var __n2 *__query_state1Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n2 = m.__inst0_live[__inst0_i]
-					__n2.SetFetch(Lookup)
-					__n2.SetLoad(func(got int) {
-						m.total__inst0 += got
-						gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total__inst0))
-					})
-					__n2.SetOn(n)
-					__n2.Set__start_value(nil)
-					__n2.Set__start_pending(false)
-					__n2.Set__start_failure(nil)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*__query_state1Instance{}
+				var __inst0_i int = 0
+				for _, n := range m.names__inst0 {
+					var __n2 *__query_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n2 = m.__inst0_live[__inst0_i]
+						__n2.SetFetch(Lookup)
+						__n2.SetLoad(func(got int) {
+							m.total__inst0 += got
+							gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total__inst0))
+						})
+						__n2.SetOn(n)
+						__n2.Set__start_value(nil)
+						__n2.Set__start_pending(false)
+						__n2.Set__start_failure(nil)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
+							m.total__inst0 += got
+							gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total__inst0))
+						})
+						__n2 = __n2__new
 					}
-					__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
-						m.total__inst0 += got
-						gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total__inst0))
-					})
-					__n2 = __n2__new
+					__inst0_next = append(__inst0_next, __n2)
+					__inst0_i = (__inst0_i + 1)
+					__n2__el := __n2.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				__inst0_next = append(__inst0_next, __n2)
-				__inst0_i = (__inst0_i + 1)
-				__n2__el := __n2.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-				m.__slot0 = append(m.__slot0, __n2__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -868,6 +876,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:72ae1f8da6fbb168e34a1d08b711aa15
+pass sha256:6384b39cf3e7501f5d5bb3f088833b40
 -- run/go/gtk4 --
-pass sha256:e9b1b3591df95cb716c849f8e71b83cc
+pass sha256:9544b0d3ced756c3f14be0e19901e47c

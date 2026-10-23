@@ -190,33 +190,36 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __n2 = document.createElement("span");
-        __n2.textContent = "JD";
-        __n2.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
-        __n2.addEventListener("click", () => {
-        });
-        let __place0_i_ref0 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref0 = __place0_prev[__place0_i];
-        }
-        if (__place0_i_ref0 === __n2) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n2, __place0_i_ref0);
-        }
-        __slot0.push(__n2);
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __n2 = document.createElement("span");
+          __n2.textContent = "JD";
+          __n2.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+          __n2.addEventListener("click", () => {
+          });
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n2) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2, __place0_i_ref0);
+          }
+          __slot0.push(__n2);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function _snglImageDraw(el, w, h, draw) {
@@ -288,7 +291,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1f0c5f615dc59044f8a10be6ee3bd1e0
+pass sha256:da146921cfcdd2b9aa20dcc979c8fc3d
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
 sha256:6166b5a512403272ec880b2875c163b2
 {
@@ -300,7 +303,7 @@ sha256:6166b5a512403272ec880b2875c163b2
   ]
 }
 -- testrun/html/none/component_browser_paint.sngl/sources/1 --
-sha256:b69fa567195c8d3801ed1ae026cd62dd
+sha256:579e3f77547895b7c6a4bf8917534981
 {
   "results": [
     {

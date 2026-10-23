@@ -262,43 +262,47 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			if m.__failed0 {
-				__n1 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n1, "sorry it broke")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
-				m.__slot0 = append(m.__slot0, __n1)
-			} else {
-				__n2 := gtk4rt.ButtonNew()
-				gtk4rt.ButtonSetLabel(__n2, "boom")
-				gtk4rt.Connect(__n2, "clicked", func() {
-					func() {
-						defer func() {
-							__r := recover()
-							if __r == nil {
-								return
-							}
-							_, __ok := __r.(ErrorEvent)
-							if !__ok {
-								panic(__r)
-							}
-							m.__failed0 = true
-							m.__renderSlot0(m.__n3)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				if m.__failed0 {
+					__n1 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetText(__n1, "sorry it broke")
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
+					m.__slot0 = append(m.__slot0, __n1)
+				} else {
+					__n2 := gtk4rt.ButtonNew()
+					gtk4rt.ButtonSetLabel(__n2, "boom")
+					gtk4rt.Connect(__n2, "clicked", func() {
+						func() {
+							defer func() {
+								__r := recover()
+								if __r == nil {
+									return
+								}
+								_, __ok := __r.(ErrorEvent)
+								if !__ok {
+									panic(__r)
+								}
+								m.__failed0 = true
+								m.__renderSlot0(m.__n3)
+							}()
+							panic(ErrorEvent{Message: "x", Kind: "boom"})
 						}()
-						panic(ErrorEvent{Message: "x", Kind: "boom"})
-					}()
-				})
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
-				m.__slot0 = append(m.__slot0, __n2)
+					})
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
+					m.__slot0 = append(m.__slot0, __n2)
+				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -381,63 +385,66 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (__failed0) {
-          let __n1 = document.createElement("span");
-          __n1.textContent = "sorry it broke";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref0 === __n1) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n1, __place0_i_ref0);
-          }
-          __slot0.push(__n1);
-        } else {
-          let __n2 = document.createElement("button");
-          __n2.disabled = false;
-          __n2.addEventListener("click", () => {
-            try {
-              ;
-              throw Object.assign(new Error("x"), { kind: "boom" });
-            } catch (__e) {
-              ;
-              if (__e?.kind === void 0) throw __e;
-              ;
-              __failed0 = true;
-              __renderSlot0(__slotAnchor_0);
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (__failed0) {
+            let __n1 = document.createElement("span");
+            __n1.textContent = "sorry it broke";
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
             }
-            ;
-          });
-          __n2.addEventListener("contextmenu", () => {
-          });
-          let __n3 = document.createElement("span");
-          __n3.textContent = "boom";
-          __n2.appendChild(__n3);
-          let __place0_i_ref1 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref1 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref1 === __n2) {
-            __place0_i = __place0_i + 1;
+            if (__place0_i_ref0 === __n1) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n1, __place0_i_ref0);
+            }
+            __slot0.push(__n1);
           } else {
-            parent.insertBefore(__n2, __place0_i_ref1);
+            let __n2 = document.createElement("button");
+            __n2.disabled = false;
+            __n2.addEventListener("click", () => {
+              try {
+                ;
+                throw Object.assign(new Error("x"), { kind: "boom" });
+              } catch (__e) {
+                ;
+                if (__e?.kind === void 0) throw __e;
+                ;
+                __failed0 = true;
+                __renderSlot0(__slotAnchor_0);
+              }
+              ;
+            });
+            __n2.addEventListener("contextmenu", () => {
+            });
+            let __n3 = document.createElement("span");
+            __n3.textContent = "boom";
+            __n2.appendChild(__n3);
+            let __place0_i_ref1 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref1 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref1 === __n2) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n2, __place0_i_ref1);
+            }
+            __slot0.push(__n2);
           }
-          __slot0.push(__n2);
-        }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
@@ -448,6 +455,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f6000089554d33ec497ccfee887bdade
 -- run/go/gtk4 --
-pass sha256:c2b60b1ce1a505f474ec7958e6002f3f
+pass sha256:ca4f54db30c27a162f0f170e1f9e2f37
 -- run/none/html --
-pass sha256:580b6e37ec7c19d8180c0a1eb1faa1d1
+pass sha256:acc91ef1047a11ffc9ea506a1cf7ba04

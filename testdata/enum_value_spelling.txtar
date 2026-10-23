@@ -628,52 +628,55 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        if (state.open) {
-          let __n3 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n3 = __inst1_live[__inst1_i];
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          if (state.open) {
+            let __n3 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n3 = __inst1_live[__inst1_i];
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n3__new = __cf_row__slot0({});
+              __n3 = __n3__new;
             }
-            let __n3__new = __cf_row__slot0({});
-            __n3 = __n3__new;
+            __inst1_next.push(__n3);
+            __inst1_i = __inst1_i + 1;
+            let __n3__el = __n3.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n3__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n3__el, __place0_i_ref0);
+            }
+            __slot0.push(__n3__el);
           }
-          __inst1_next.push(__n3);
-          __inst1_i = __inst1_i + 1;
-          let __n3__el = __n3.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n3__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n3__el, __place0_i_ref0);
-          }
-          __slot0.push(__n3__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -703,4 +706,4 @@ pass sha256:5aed967f3b8a02c80e24fe86fc1f3c1c
 -- run/kotlin/android --
 pass sha256:b068d326e55c52036385dfbcf0617aec
 -- run/none/html --
-pass sha256:5a09015a5de14556db9c18ca3cec06c6
+pass sha256:b0ee84c5008ea6f7c01e4540367d7c43
