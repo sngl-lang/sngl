@@ -143,8 +143,10 @@ func TestGtk4Translator_OnAppendChild_Box(t *testing.T) {
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	child := &ir.Ident{Name: "__n1", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnAppendChild(context.Background(), parent, child))
-	if !strings.Contains(got, "C.gtk_box_append") {
-		t.Errorf("expected C.gtk_box_append; got: %s", got)
+	// Through gtk4rt, which reads the box's alignItems as it places the
+	// child; GTK's own call left it unread.
+	if !strings.Contains(got, "gtk4rt.BoxAppend") {
+		t.Errorf("expected gtk4rt.BoxAppend; got: %s", got)
 	}
 }
 
