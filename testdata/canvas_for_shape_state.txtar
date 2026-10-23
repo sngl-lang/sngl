@@ -306,7 +306,8 @@ func (m *Model) __effect2_update() {
 			k__at0 = __copyElemAt0
 		}
 	}
-	__old0 := func() Pic {
+	__new0 := m.load(int(k__at0))
+	__old1 := func() Pic {
 		if __v, __ok := m.p__inst0[__copyKey]; __ok {
 			return __v
 		}
@@ -318,9 +319,9 @@ func (m *Model) __effect2_update() {
 		}
 		return Pic{}
 	}()
-	__cell1_p__inst0 = m.load(int(k__at0))
+	__cell1_p__inst0 = __new0
 	m.p__inst0[__copyKey] = __cell1_p__inst0
-	m.close__r0(__old0)
+	m.close__r0(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -709,7 +710,8 @@ func (m *Model) __effect2_update() {
 			k__at0 = __copyElemAt0
 		}
 	}
-	__old0 := func() Pic {
+	__new0 := m.load(int(k__at0))
+	__old1 := func() Pic {
 		if __v, __ok := m.p__inst0[__copyKey]; __ok {
 			return __v
 		}
@@ -721,9 +723,9 @@ func (m *Model) __effect2_update() {
 		}
 		return Pic{}
 	}()
-	__cell1_p__inst0 = m.load(int(k__at0))
+	__cell1_p__inst0 = __new0
 	m.p__inst0[__copyKey] = __cell1_p__inst0
-	m.close__r0(__old0)
+	m.close__r0(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -1354,7 +1356,8 @@ func (m *Model) __effect2_update() {
 			k__at0 = __copyElemAt0
 		}
 	}
-	__old0 := func() Pic {
+	__new0 := m.load(int(k__at0))
+	__old1 := func() Pic {
 		if __v, __ok := m.p__inst0[__copyKey]; __ok {
 			return __v
 		}
@@ -1366,9 +1369,9 @@ func (m *Model) __effect2_update() {
 		}
 		return Pic{}
 	}()
-	__cell1_p__inst0 = m.load(int(k__at0))
+	__cell1_p__inst0 = __new0
 	m.p__inst0[__copyKey] = __cell1_p__inst0
-	m.close__r0(__old0)
+	m.close__r0(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -1563,11 +1566,12 @@ window.__sngl_boot = () => {
       ;
     }
     ;
-    let __old0 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : {};
+    let __new0 = load(Math.trunc(k__at0));
+    let __old1 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : {};
     let __cell1_p__inst0 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : {};
-    __cell1_p__inst0 = load(Math.trunc(k__at0));
+    __cell1_p__inst0 = __new0;
     state.p__inst0.set(__copyKey, __cell1_p__inst0);
-    close(__old0);
+    close(__old1);
   }
   function __snglTeardown() {
     __effects0_torn = true;
@@ -1739,10 +1743,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d1a7c1fe0d61d4f9e7cee46a94931fe0
+pass sha256:4b6b51a12805619d5b0f8a60e3cf5337
 -- run/go/fyne --
-pass sha256:199361118316549126437e39a9b2b865
+pass sha256:1575f2ca1bfbf3c14adc6b5ee0dc88a2
 -- run/go/gtk4 --
-pass sha256:ccc4db485a34f5d07f4c5151019e4aed
+pass sha256:1783369c9cc34073294f62c74f4fb6bf
 -- run/none/html --
-pass sha256:2d6a01ff448c918b0e4f6a0b78acf0c4
+pass sha256:79a49d3f3ec2b45f6a4885cca3e5d1cd

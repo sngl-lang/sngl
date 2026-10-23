@@ -437,10 +437,11 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_update() {
-	__old0 := m.picture__inst0__inst0
-	m.picture__inst0__inst0 = gtk4rt.LoadPicture(m.src__inst0)
+	__new0 := gtk4rt.LoadPicture(m.src__inst0)
+	__old1 := m.picture__inst0__inst0
+	m.picture__inst0__inst0 = __new0
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.picture__inst0__inst0)
-	gtk4rt.UnrefPicture(__old0)
+	gtk4rt.UnrefPicture(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -640,10 +641,11 @@ func (c *__remote_state1Instance) __effect2_teardown() {
 }
 
 func (c *__remote_state1Instance) __effect3_update() {
-	__old1 := c.picture__inst2
-	c.picture__inst2 = gtk4rt.LoadPicture(c.__prop_url)
+	__new2 := gtk4rt.LoadPicture(c.__prop_url)
+	__old3 := c.picture__inst2
+	c.picture__inst2 = __new2
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst2)
-	gtk4rt.UnrefPicture(__old1)
+	gtk4rt.UnrefPicture(__old3)
 }
 
 func (c *__remote_state1Instance) __effects1_settle() {
@@ -793,4 +795,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:22fe2711560642a2e3629b3bdb24436b
+pass sha256:13129f17d99f5d1237d89288b4798999

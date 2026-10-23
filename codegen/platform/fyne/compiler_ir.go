@@ -602,7 +602,7 @@ func fyneComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // emitIRFyneTypeMethod emits a method on a user type as the free function its
 // call sites name: `func GlyphRow(gl Glyph, row int) string`.
 func emitIRFyneTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	for _, line := range gc.EmitTypeMethodDef(fn) {
@@ -615,7 +615,7 @@ func emitIRFyneTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContex
 // emitIRFyneFreeFunc emits a top-level func under its exported name, which is
 // what ExprCtx.FreeFuncs told the call sites to expect.
 func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fnCopy := *fn
@@ -644,7 +644,7 @@ func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 // component's -- and a window owning nothing widened the gap to every effect
 // entry point, since those are the package's funcs now.
 func emitIRFyneModelMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error)) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {

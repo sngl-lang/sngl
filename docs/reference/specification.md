@@ -2286,9 +2286,9 @@ prop.
 the interpreter reports it as a leak:
 
 - A value the statement may not make: the right operand of `&&` or `||`, an
-  arm of a ternary, or the head of a `for`. Make such a value in a statement
-  of its own, and bind it to a `var` to release by hand where it must be
-  conditional.
+  arm of a ternary or of a `match` expression, or the head of a `for`. Make
+  such a value in a statement of its own, and bind it to a `var` to release by
+  hand where it must be conditional.
 - A value made earlier in a statement whose later value raises while being
   made.
 - A value held in a list, a map, a struct field or an `option`, rather than in

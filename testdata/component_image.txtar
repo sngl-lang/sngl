@@ -335,10 +335,11 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_update() {
-	__old0 := m.picture__inst0
-	m.picture__inst0 = gtk4rt.LoadPicture(m.src)
+	__new0 := gtk4rt.LoadPicture(m.src)
+	__old1 := m.picture__inst0
+	m.picture__inst0 = __new0
 	gtk4rt.ImageSourceSetPicture(m.__n0, m.picture__inst0)
-	gtk4rt.UnrefPicture(__old0)
+	gtk4rt.UnrefPicture(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -702,7 +703,7 @@ pass sha256:5f09c359ebca6160f87f48eb3411f4a3
 -- run/go/fyne --
 pass sha256:fea3ccd72fab6dc7be3834a9156a43d4
 -- run/go/gtk4 --
-pass sha256:578b2c12961f734c38202bdf56b16a62
+pass sha256:95c15c28831203894c9a37da7e948018
 -- run/kotlin/android --
 pass sha256:a807db60f6fb374bb6b1916b0a1c1d45
 -- run/none/html --

@@ -1330,10 +1330,11 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_update() {
-	__old0 := m.picture__inst0__inst0
-	m.picture__inst0__inst0 = gtk4rt.LoadPicture("logo.svg")
+	__new0 := gtk4rt.LoadPicture("logo.svg")
+	__old1 := m.picture__inst0__inst0
+	m.picture__inst0__inst0 = __new0
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.picture__inst0__inst0)
-	gtk4rt.UnrefPicture(__old0)
+	gtk4rt.UnrefPicture(__old1)
 }
 
 func (m *Model) __effect2_unmount() {
@@ -1367,10 +1368,11 @@ func (m *Model) __effect2_teardown() {
 }
 
 func (m *Model) __effect3_update() {
-	__old1 := m.picture__inst1__inst0
-	m.picture__inst1__inst0 = gtk4rt.LoadPicture(m.url__inst0)
+	__new2 := gtk4rt.LoadPicture(m.url__inst0)
+	__old3 := m.picture__inst1__inst0
+	m.picture__inst1__inst0 = __new2
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.picture__inst1__inst0)
-	gtk4rt.UnrefPicture(__old1)
+	gtk4rt.UnrefPicture(__old3)
 }
 
 func (m *Model) __effects0_settle() {
@@ -1621,10 +1623,11 @@ func (c *__remote_state1Instance) __effect4_teardown() {
 }
 
 func (c *__remote_state1Instance) __effect5_update() {
-	__old1 := c.picture__inst4
-	c.picture__inst4 = gtk4rt.LoadPicture(c.__prop_url)
+	__new2 := gtk4rt.LoadPicture(c.__prop_url)
+	__old3 := c.picture__inst4
+	c.picture__inst4 = __new2
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst4)
-	gtk4rt.UnrefPicture(__old1)
+	gtk4rt.UnrefPicture(__old3)
 }
 
 func (c *__remote_state1Instance) __effects1_settle() {
@@ -2606,7 +2609,7 @@ pass sha256:4e1e85f17b4a2065817399c5fe88588a
 -- run/go/fyne --
 pass sha256:08060448a4ef95dda9c3550abb8b9828
 -- run/go/gtk4 --
-pass sha256:1be062d8579adfd82e91b1d56e21c75b
+pass sha256:73208f6333d90ff7b60b34f9ab930ef7
 -- run/kotlin/android --
 pass sha256:b42b419cf3fd88c15d167bd6b7c70df3
 -- run/none/html --

@@ -1,8 +1,10 @@
 package lower
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -67,11 +69,21 @@ func (st *releaseTemps) packageVars() {
 		}
 		return nil
 	})
-	for _, v := range st.pkg.Vars {
+	// An imported package's vars after the program's own: its initializers
+	// ran first. A build has already merged them into the program's, so the
+	// walk reaches each var once whichever list it is still in.
+	vars := slices.Clone(st.pkg.Vars)
+	for _, p := range importedPackages(st.pkg) {
+		if !p.Library {
+			vars = append(vars, p.Vars...)
+		}
+	}
+	for _, v := range vars {
 		if v.IsConst || v.NodeHandle || v.Synthesized || released[v] || ir.ReleaseOf(v.Type) == nil {
 			continue
 		}
-		st.teardown().Block = append(st.teardown().Block, st.releaseCall(ir.ReleaseOf(v.Type), &ir.Ident{Name: v.Name, Sym: v, Type: v.Type}))
+		released[v] = true
+		st.teardown().Block = append(st.teardown().Block, st.releaseCall(ir.ReleaseOf(v.Type), identOf(v)))
 	}
 }
 
@@ -152,13 +164,16 @@ type releaseTemps struct {
 	// app is each application-lifetime value by what it computes, so two
 	// writings of one constant share a declaration.
 	app map[string]*ir.Var
+	// released is each bound argument already given a release, since a
+	// lambda's body is reached again as part of the block it is written in.
+	released map[*ir.Var]bool
 	// promote says a library release was called after LibFuncs ran.
 	promote bool
 	event   *ir.Type
 }
 
 func newReleaseTemps(pkg *ir.Package) *releaseTemps {
-	return &releaseTemps{pkg: pkg, app: map[string]*ir.Var{}}
+	return &releaseTemps{pkg: pkg, app: map[string]*ir.Var{}, released: map[*ir.Var]bool{}}
 }
 
 type temp struct {
@@ -167,36 +182,64 @@ type temp struct {
 }
 
 func (st *releaseTemps) block(block *[]ir.Stmt) {
-	out := make([]ir.Stmt, 0, len(*block))
-	// pending is the temps ErrorCatch bound as `__argN` for the call after
-	// them, released once that call has been made.
-	var pending []temp
-	for _, s := range *block {
-		switch n := s.(type) {
-		case *ir.If, *ir.For, *ir.Match:
-			for _, b := range ir.TransparentBlocks(n) {
-				st.block(b)
-			}
-		}
-		if t, ok := st.boundArg(s); ok {
-			pending = append(pending, t)
-			out = append(out, s)
-			continue
-		}
-		out = append(out, st.stmt(s)...)
-		out = append(out, st.releases(pending)...)
-		pending = nil
-	}
-	*block = out
+	*block = ir.RewriteBlocks(*block, st.flat)
 }
 
-// boundArg is the temp a `__argN` ErrorCatch bound an allocation to.
-func (st *releaseTemps) boundArg(s ir.Stmt) (temp, bool) {
-	lv, ok := s.(*ir.LocalVar)
-	if !ok || lv.Sym == nil || !lv.Sym.Synthesized || !isAllocation(lv.Init) {
-		return temp{}, false
+// flat is one statement list with each statement's temps bound before it and
+// released after it; the lists it holds have already been done.
+func (st *releaseTemps) flat(stmts []ir.Stmt) []ir.Stmt {
+	out := make([]ir.Stmt, 0, len(stmts))
+	for i := 0; i < len(stmts); i++ {
+		bound, n := st.boundArgs(stmts[i:])
+		out = append(out, stmts[i:i+n]...)
+		i += n
+		out = append(out, st.stmt(stmts[i])...)
+		out = append(out, st.releases(bound)...)
 	}
-	return temp{sym: lv.Sym, release: ir.ReleaseOf(lv.Init.ExprType())}, true
+	return out
+}
+
+// boundArgs is the temps among the `__argN` ErrorCatch bound ahead of a call
+// with a per-call handler, released once that call has been made, and how
+// many statements the bindings are. The shape is what says so -- a run of
+// synthesized locals the call after them reads -- since HandleParams and
+// AsyncOffload bind a synthesized local the statements after it read too.
+func (st *releaseTemps) boundArgs(stmts []ir.Stmt) ([]temp, int) {
+	n := 0
+	for n < len(stmts) {
+		lv, ok := stmts[n].(*ir.LocalVar)
+		if !ok || lv.Sym == nil || !lv.Sym.Synthesized || lv.Init == nil {
+			break
+		}
+		n++
+	}
+	if n == 0 || n == len(stmts) {
+		return nil, 0
+	}
+	cs, ok := stmts[n].(*ir.CallStmt)
+	if !ok || cs.Call == nil || cs.Call.ErrorMode != ir.ErrorPerCall {
+		return nil, 0
+	}
+	reads := map[*ir.Var]bool{}
+	for _, a := range cs.Call.Args {
+		if id, ok := a.Value.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok {
+				reads[v] = true
+			}
+		}
+	}
+	var out []temp
+	for _, s := range stmts[:n] {
+		lv := s.(*ir.LocalVar)
+		if !reads[lv.Sym] {
+			return nil, 0
+		}
+		if isAllocation(lv.Init) && !st.released[lv.Sym] {
+			st.released[lv.Sym] = true
+			out = append(out, temp{sym: lv.Sym, release: ir.ReleaseOf(lv.Init.ExprType())})
+		}
+	}
+	return out, n
 }
 
 // stmt is s with its temps bound before it and released after it.
@@ -293,7 +336,7 @@ func (st *releaseTemps) split(s ir.Stmt) (body, after []ir.Stmt) {
 func (st *releaseTemps) releases(temps []temp) []ir.Stmt {
 	out := make([]ir.Stmt, 0, len(temps))
 	for _, t := range slices.Backward(temps) {
-		out = append(out, st.releaseCall(t.release, &ir.Ident{Name: t.sym.Name, Sym: t.sym, Type: t.sym.Type}))
+		out = append(out, st.releaseCall(t.release, identOf(t.sym)))
 	}
 	return out
 }
@@ -302,7 +345,7 @@ func (st *releaseTemps) releaseCall(release *ir.Func, arg ir.Expr) ir.Stmt {
 	if release.PkgPath() != "" {
 		st.promote = true
 	}
-	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: release, Args: []ir.CallArg{{Value: arg}}}}
+	return releaseWith(release, arg)
 }
 
 // constant reports whether e is built from constants: a literal of an owned
@@ -350,7 +393,7 @@ func constantArg(e ir.Expr) bool {
 // released when the application tears down.
 func (st *releaseTemps) application(e ir.Expr) ir.Expr {
 	typ := e.ExprType()
-	key, ok := exprKey(e)
+	key, ok := applicationKey(e)
 	v := st.app[key]
 	if !ok || v == nil {
 		v = &ir.Var{Name: "__rel" + strconv.Itoa(st.counter), Type: typ, Init: e, Synthesized: true}
@@ -359,9 +402,28 @@ func (st *releaseTemps) application(e ir.Expr) ir.Expr {
 		if ok {
 			st.app[key] = v
 		}
-		st.teardown().Block = append(st.teardown().Block, st.releaseCall(ir.ReleaseOf(typ), &ir.Ident{Name: v.Name, Sym: v, Type: typ}))
+		st.teardown().Block = append(st.teardown().Block, st.releaseCall(ir.ReleaseOf(typ), identOf(v)))
 	}
-	return &ir.Ident{Name: v.Name, Sym: v, Type: typ}
+	return identOf(v)
+}
+
+// applicationKey is exprKey with a struct literal, which CSE's key leaves out
+// since two writings of one are two values: here they are one, made once.
+func applicationKey(e ir.Expr) (string, bool) {
+	lit, ok := e.(*ir.StructLit)
+	if !ok {
+		return exprKey(e)
+	}
+	var key strings.Builder
+	key.WriteString("struct(" + identityOf(lit.Def))
+	for _, f := range lit.Fields {
+		fk, ok := exprKey(f.Value)
+		if !ok {
+			return "", false
+		}
+		key.WriteString("," + f.Name + "=" + fk)
+	}
+	return key.String() + ")", true
 }
 
 func (st *releaseTemps) teardown() *ir.Func {
@@ -481,11 +543,22 @@ type tempCollector struct {
 
 // visit looks for temps under *slot, and takes *slot itself when borrowed
 // says its value is only read where it stands.
+//
+// Every expression kind ir.Rewrite walks is named, and an unknown one panics
+// as that walk does: each kind says what its operands are to it -- read, so a
+// temp; stored, so held; or not evaluated here -- and a kind left out was a
+// temp nothing released (a conversion, which is what an interpolated string
+// is made of).
 func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 	switch x := (*slot).(type) {
+	case nil:
+		return
 	case *ir.Call:
 		if x.Receiver != nil {
 			c.visit(&x.Receiver, true)
+		}
+		if x.Callee != nil {
+			c.visit(&x.Callee, true)
 		}
 		off := len(x.Args)
 		if x.Func != nil {
@@ -494,6 +567,8 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 		for i := range x.Args {
 			c.visit(&x.Args[i].Value, borrows(x, paramIndex(x, i, off)))
 		}
+	case *ir.Conversion:
+		c.visit(&x.Operand, true)
 	case *ir.Select:
 		c.visit(&x.Operand, true)
 	case *ir.Index:
@@ -508,6 +583,8 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 		c.visit(&x.Operand, true)
 	case *ir.Ternary:
 		c.visit(&x.Cond, false)
+	case *ir.MatchExpr:
+		c.visit(&x.Subject, true)
 	case *ir.StructLit:
 		for i := range x.Fields {
 			c.visit(&x.Fields[i].Value, false)
@@ -516,6 +593,18 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 		for i := range x.Elems {
 			c.visit(&x.Elems[i], false)
 		}
+	case *ir.MapLitIR:
+		for i := range x.Entries {
+			c.visit(&x.Entries[i].Key, false)
+			c.visit(&x.Entries[i].Value, false)
+		}
+	case *ir.Spread:
+		c.visit(&x.Operand, false)
+	case *ir.Lambda, *ir.Closure, *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
+		// A lambda's body runs when it is called, and a closure's state is
+		// stored; the rest are leaves.
+	default:
+		panic(fmt.Sprintf("lower.ReleaseTemps: unhandled ir.Expr %T", x))
 	}
 	if borrowed && isAllocation(*slot) {
 		c.found = append(c.found, foundTemp{slot: slot, expr: *slot})
@@ -526,10 +615,16 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 // from the end, as CMarshal aligns: a native in the receiver-first shape is
 // called with the receiver as argument zero, which no parameter declares. An
 // intrinsic's parameter says nothing: `push` stores what it is handed, and
-// released after the statement the list held a freed value.
+// released after the statement the list held a freed value. A call through a
+// function value names no declaration, and a parameter of one is a plain
+// borrow: only a bodiless native can say otherwise, and a mark is a
+// declaration's, which a value does not carry.
 func borrows(call *ir.Call, i int) bool {
 	fn := call.Func
-	if fn == nil || fn.Intrinsic != "" || ir.IsRelease(fn) {
+	if fn == nil {
+		return call.Callee != nil
+	}
+	if fn.Intrinsic != "" || ir.IsRelease(fn) {
 		return false
 	}
 	if i < 0 || i >= len(fn.Params) {

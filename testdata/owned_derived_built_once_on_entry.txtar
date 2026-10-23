@@ -236,9 +236,10 @@ func (m *Model) __effect1_teardown() {
 }
 
 func (m *Model) __effect2_update() {
-	__old0 := m.label__inst0
-	m.label__inst0 = m.open(m.n)
-	m.close__r0(__old0)
+	__new0 := m.open(m.n)
+	__old1 := m.label__inst0
+	m.label__inst0 = __new0
+	m.close__r0(__old1)
 }
 
 func (m *Model) __effect3_update() {
@@ -910,10 +911,11 @@ func (c *HolderInstance) __effect0_teardown() {
 }
 
 func (c *HolderInstance) __effect1_update() {
-	__old0 := c.label
-	c.label = c.__model.open(c.__prop_n)
+	__new0 := c.__model.open(c.__prop_n)
+	__old1 := c.label
+	c.label = __new0
 	c.__n0.SetText(fmt.Sprint(c.label.Fd))
-	c.__model.close__r0(__old0)
+	c.__model.close__r0(__old1)
 }
 
 func (c *HolderInstance) __effects0_settle() {
@@ -1275,10 +1277,11 @@ func (c *HolderInstance) __effect0_teardown() {
 }
 
 func (c *HolderInstance) __effect1_update() {
-	__old0 := c.label
-	c.label = c.__model.open(c.__prop_n)
+	__new0 := c.__model.open(c.__prop_n)
+	__old1 := c.label
+	c.label = __new0
 	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.label.Fd))
-	c.__model.close__r0(__old0)
+	c.__model.close__r0(__old1)
 }
 
 func (c *HolderInstance) __effects0_settle() {
@@ -1558,9 +1561,10 @@ fun Holder(n: Int = 0) {
     var __effects0_steps by remember { mutableStateOf(0) }
 
     fun __effect1_update() {
-        var __old0 = label
-        label = state.open(n)
-        state.close(__old0)
+        var __new0 = state.open(n)
+        var __old1 = label
+        label = __new0
+        state.close(__old1)
     }
 
     fun __effects0_settle() {
@@ -1755,10 +1759,11 @@ window.__sngl_boot = () => {
       __effect0_live = [];
     }
     function __effect1_update() {
-      let __old0 = label;
-      label = open(__prop_n);
+      let __new0 = open(__prop_n);
+      let __old1 = label;
+      label = __new0;
       __n0.textContent = String(label.fd);
-      close(__old0);
+      close(__old1);
     }
     function __effects0_settle() {
       if (!__effects0_torn) {
@@ -1950,12 +1955,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2cbac252d701333f78f6cccdefecc0f7
+pass sha256:caee29528ade26abd6e158ca7f2f0a52
 -- run/go/fyne --
-pass sha256:1867c05b9816063d2c052470c3261d6a
+pass sha256:b4da724bc50d139452c3164360fe6495
 -- run/go/gtk4 --
-pass sha256:727f05f90f6d468b0a1efac582d5e154
+pass sha256:1dbd8e89f453fab3296807b09c44e4d1
 -- run/kotlin/android --
-pass sha256:58fd10d7c1c543522afd3bcef6923079
+pass sha256:cb4abf5d06b8fa68eca6f3cfd218e19d
 -- run/none/html --
-pass sha256:d8d27e16edc4f1deae3e50ed0de79261
+pass sha256:2ba14959289bcc891f46f9375ddd5757

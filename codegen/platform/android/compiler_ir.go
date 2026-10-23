@@ -1231,7 +1231,7 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 		}
 	}
 
-	if len(fn.Block) > 0 {
+	if codegen.HasBody(fn) {
 		fmt.Fprintf(b, "    %sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {
@@ -1331,7 +1331,7 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	}
 
 	// Block body
-	if len(fn.Block) > 0 {
+	if codegen.HasBody(fn) {
 		fmt.Fprintf(b, "\n%sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {

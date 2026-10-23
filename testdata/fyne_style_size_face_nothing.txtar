@@ -446,10 +446,11 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_update() {
-	__old0 := m.picture__inst0__inst0
-	m.picture__inst0__inst0 = gtk4rt.LoadPicture("https://example.com/dot.png")
+	__new0 := gtk4rt.LoadPicture("https://example.com/dot.png")
+	__old1 := m.picture__inst0__inst0
+	m.picture__inst0__inst0 = __new0
 	gtk4rt.ImageSourceSetPicture(m.__n1, m.picture__inst0__inst0)
-	gtk4rt.UnrefPicture(__old0)
+	gtk4rt.UnrefPicture(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -721,4 +722,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:fb5068101573fb282f137c1bfa178a66
 -- run/go/gtk4 --
-pass sha256:ff5a303a56311ac773bbd19376314e8c
+pass sha256:df7c1a5fcd66354a95a56ef3242435a3

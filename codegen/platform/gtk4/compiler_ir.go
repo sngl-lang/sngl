@@ -1170,7 +1170,7 @@ func gtk4ComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // emitGTK4FreeFunc emits a top-level func under its exported name, which is
 // what ExprCtx.FreeFuncs told the call sites to expect.
 func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fnCopy := *fn
@@ -1187,7 +1187,7 @@ func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 // body touches no widget, so it goes through the plain renderer rather than
 // the gtk4 translator.
 func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	for _, line := range gc.EmitTypeMethodDef(fn) {
@@ -1200,7 +1200,7 @@ func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 // emitGTK4Func emits a top-level user function as a method on *Model, routing
 // the body through WalkLowered so a CanvasRedrawStmt becomes queue_draw.
 func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withRegistry(reg).withShared(shared).withWrapped(wrapped)

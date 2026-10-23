@@ -115,6 +115,11 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 		st.blockVars(&c.Stmts)
 	}
 	st.collect(pkg.Vars)
+	for _, p := range importedPackages(pkg) {
+		if !p.Library {
+			st.collect(p.Vars)
+		}
+	}
 	st.blockVars(&pkg.Body)
 	if len(st.owned) > 0 {
 		for _, root := range roots {
@@ -458,13 +463,20 @@ func (st *ownedStateRun) overwrites(stmts []ir.Stmt) []ir.Stmt {
 			out = append(out, s)
 			continue
 		}
+		// The new value is bound first, then the old: an assignment whose
+		// value waits is split by AsyncOffload at the wait, and the old
+		// value read ahead of it was the one before the wait, not the one
+		// at the write -- two clicks in flight released it twice.
+		val := &ir.Var{Name: st.name("__new"), Type: v.Type, Synthesized: true}
 		old := &ir.Var{Name: st.name("__old"), Type: v.Type, Synthesized: true}
 		st.written[a] = true
 		out = append(out,
+			&ir.LocalVar{Name: val.Name, Type: v.Type, Init: a.Value, Sym: val},
 			&ir.LocalVar{Name: old.Name, Type: v.Type, Init: ir.CloneExprSharingDecls(a.Target), Sym: old},
 			a,
-			releaseStmt(&ir.Ident{Name: old.Name, Sym: old, Type: v.Type}),
+			releaseStmt(identOf(old)),
 		)
+		a.Value = identOf(val)
 	}
 	return out
 }
@@ -499,7 +511,7 @@ func (st *ownedStateRun) unmount(c *ir.Component) {
 	}
 	for _, v := range slices.Backward(c.Vars) {
 		if st.owned[v] {
-			block = append(block, releaseStmt(&ir.Ident{Name: v.Name, Sym: v, Type: v.Type}))
+			block = append(block, releaseStmt(identOf(v)))
 		}
 	}
 	if len(block) == 0 {
@@ -510,7 +522,11 @@ func (st *ownedStateRun) unmount(c *ir.Component) {
 }
 
 func releaseStmt(v ir.Expr) ir.Stmt {
-	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: ir.ReleaseOf(v.ExprType()), Args: []ir.CallArg{{Value: v}}}}
+	return releaseWith(ir.ReleaseOf(v.ExprType()), v)
+}
+
+func releaseWith(release *ir.Func, v ir.Expr) ir.Stmt {
+	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: release, Args: []ir.CallArg{{Value: v}}}}
 }
 
 // retain gives each allocation an effect's handler hands a `#[retains]`

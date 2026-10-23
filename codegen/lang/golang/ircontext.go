@@ -1070,12 +1070,6 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		fname := n.Func.Name
 		args := gc.evalCallArgs(n.Args)
 
-		// size(x) is a length builtin, not a type conversion; the primitive
-		// casts arrive as ir.Conversion instead.
-		if fname == "size" && len(args) == 1 {
-			return "len(" + args[0] + ")"
-		}
-
 		// A component-scope func is a method on Model, so it must be called
 		// through the receiver or it references an undefined identifier.
 		fsym, kind := gc.Ctx.Resolve(fname)

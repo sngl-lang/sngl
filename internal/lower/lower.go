@@ -452,7 +452,7 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		}).stmts(stmts)
 	}
 	visit = func(fn *ir.Func) {
-		if fn == nil || have[fn] || !mine[fn] || fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 {
+		if fn == nil || have[fn] || !mine[fn] || fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 && !ir.IsRelease(fn) {
 			return
 		}
 		have[fn] = true

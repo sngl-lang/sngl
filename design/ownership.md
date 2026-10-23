@@ -75,9 +75,13 @@ brackets them. Three things become node lifetime:
 
 - **An owned `var` of a component** is released when it is overwritten and
   when the node unmounts. Each assignment to it, in the component or through
-  an instance (a test's `c.f = …`), binds the old value to an `__oldN`,
-  assigns, then releases the old one, since the new value may be computed
-  from it. One effect written ahead of everything else in the body releases
+  an instance (a test's `c.f = …`), binds the new value to a `__newN`, then
+  the old to an `__oldN`, assigns, and releases the old one: the new value may
+  be computed from the old, so the old is read after it is made; and it is
+  read beside the write, because AsyncOffload splits an assignment whose
+  value waits at the wait, and an old value bound ahead of the goroutine was
+  the one before the wait, which two clicks in flight released twice
+  (`testdata/owned_async_overwrite.txtar`). One effect written ahead of everything else in the body releases
   every owned var at `@unmount`, newest first: the first lifetime to begin is
   the last to end, so every other `@unmount` may still read them. The
   compiler owns the release, so a program releasing one by hand as well
@@ -185,9 +189,36 @@ A `return` binds its result to a `__retN`, releases, then returns; an `if` or
 The reach is CSE's (`imperativeBlocks`), statement-local and never hoisting out
 of a lambda, plus each canvas's children (`drawBlocks`): `ShapeDraw` made those
 the statements that paint it, a block a host runs per frame that no view walk
-treats as one, and #110's leak is in it. On the interpreter, `ReleaseTemps`
-reaches every body the program does, library ones included, the way
-`CMarshal` does, since nothing there is spliced.
+treats as one, and #110's leak is in it. A per-call `@error` body is among
+them now: hanging off a call rather than a node, no view descent found it, so
+no pass lowered it at all -- the optimizer folds one with the call it belongs
+to (`foldExpr`), and the Go printer, handed a call of `size` the inliner never
+saw, spelled it as the `len` builtin by name, a hack now gone
+(`testdata/owned_error_handler_temps.txtar`). Each block is walked with
+`ir.RewriteBlocks`, which hands the pass every list it holds innermost first,
+so a lambda written in a block is reached twice, once as its own block: a
+temp already bound is an identifier, and `released` remembers an argument
+already given a release. On the interpreter, `ReleaseTemps` reaches every
+body the program does, library ones included, the way `CMarshal` does, since
+nothing there is spliced.
+
+**What a statement owns is enumerated by expression kind** (`tempCollector`),
+every kind `ir.Rewrite` walks, and an unknown one panics as that walk does:
+each kind says what its operands are to it -- read, so a temp; stored in a
+literal, so held; or not evaluated here, a ternary's arms. A kind left out
+was a temp nothing released: a conversion, which is what an interpolated
+string is made of, and a map literal's values
+(`testReleasedUnderAConversion`, `testReleasedInAnInterpolation` in
+`testdata/owned_release_temps.sngl`). A call through a function value names
+no declaration, and `borrows` takes its parameters for plain borrows: only a
+bodiless native can say otherwise, and a mark is a declaration's
+(`testReleasedWhenALambdaBorrows`). The `__argN` temps ErrorCatch bound
+ahead of a call with a per-call handler are known by that shape, a run of
+synthesized locals the call after them reads (`boundArgs`), not by being
+synthesized locals holding an allocation: HandleParams binds one the inlined
+body's statements read, and taken for ErrorCatch's it was released after the
+first of them (`testdata/owned_handle_param.txtar`). HandleParams releases
+its own, after the body, where the call it inlined would have ended.
 
 **A raise releases too.** A statement that may raise while a temp is live runs
 in a catch block of its own (`ir.If.Catch`, nested inside ErrorCatch's), whose
@@ -206,7 +237,9 @@ a per-call `@error` are released after the call they were bound for.
 allocation built from constants -- a literal of an owned type whose fields are
 literals or package consts, or a call of a `const func` or of `c.cstring` with
 such arguments -- is declared once as a package `var` (`__relN`, shared by every
-writing of the same value), and its release is appended to
+writing of the same value: `applicationKey`, which is CSE's `exprKey` plus a
+struct literal, which that key leaves out since two writings of one are two
+values, `testdata/owned_application_shared.txtar`), and its release is appended to
 `ir.Package.Teardown`, which the effect lowering already makes the page's exit
 handler and the pass creates where no `@unmount` did. Every Go target then sets
 it in `New` and frees it in `__snglTeardown`. A const parameter is not constant
@@ -217,10 +250,14 @@ stop and before the leak check.
 A package `var` of an owned type the program declares is released the same
 way, last of all (`packageVars`, `testdata/owned_package_var.sngl`,
 `testdata/application_teardown.txtar`): its initializer ran before any
-`__relN` was made, so its release follows theirs. `OwnedState` collects it as
-it collects a component's vars, so an assignment to it anywhere releases the
+`__relN` was made, so its release follows theirs, and a package it imports
+declares one the same way, released after the program's own
+(`testdata/owned_imported_var.txtar`). `OwnedState` collects both as it
+collects a component's vars, so an assignment to one anywhere releases the
 old value, but it cannot release the last one, since the effect lowering
-writes `Teardown` afresh between the two passes. By the time `ReleaseTemps`
+writes `Teardown` afresh between the two passes. The interpreter refuses an
+assignment to an imported package's var altogether ("cannot assign to
+undefined variable"), which is older than ownership and not its concern. By the time `ReleaseTemps`
 runs, an inlined instance's var is a package var too, released by its node's
 `@unmount`; a var the package already releases somewhere is left to that
 (`testdata/owned_state.txtar`'s bubbletea output released `f__inst0` twice
@@ -232,7 +269,12 @@ struct; a user package's is taken with the function that made the value
 (`reachableForeignFuncs`, `testdata/owned_derived_in_imported_component.txtar`,
 whose `close` was otherwise emitted against Go's builtin); and a library one
 -- `c.free` -- is promoted by running `LibFuncs` again once the pass has
-called it. `c.free` calls cgo's `C.free`, which `<stdlib.h>`
+called it. A release written `{}`, the spec's own example, is emitted too:
+every emitter took an empty block for a native with nothing to emit, since an
+empty function the program wrote is inlined away with its calls, and a
+release is called after the inliner ran. `codegen.HasBody` is the test, on
+Go, Kotlin and JavaScript alike (`testdata/owned_release_empty_body.txtar`).
+`c.free` calls cgo's `C.free`, which `<stdlib.h>`
 declares: gtk4's preamble includes it, and fyne's and bubbletea's
 (`EmitCHeader`) include it beside the program's links, since every `c.str`
 those targets make is freed.
@@ -260,8 +302,9 @@ what it touches.
 
 **What it does not release is held**, never released wrongly, and the spec's
 *Owned values* lists it so a program knows to release by hand: an allocation
-the statement may not evaluate -- the right of `&&` or `||`, a ternary's arm,
-a `for` head, which may be evaluated per iteration -- where a target without
+the statement may not evaluate -- the right of `&&` or `||`, a ternary's or a
+`match` expression's arm, a `for` head, which may be evaluated per iteration
+-- where a target without
 ternaries lowers the arm to a statement before the pass and so does release
 it, which is why the spec says to write such a value in a statement of its
 own; a temp bound before a later temp of the same statement raises while

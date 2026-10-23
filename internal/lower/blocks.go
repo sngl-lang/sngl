@@ -70,9 +70,20 @@ func collectBlocks(pkg *ir.Package, imperative, views bool) []*[]ir.Stmt {
 		c.owner(o)
 	}
 	if imperative {
+		// A per-call `@error(e) { … }` is a handler body like a node's, held
+		// by the call rather than a node, so no view descent finds it. Left
+		// out, no pass lowered its statements: a release never reached one,
+		// and the Go printer was handed a call the inliner never saw.
 		_ = ir.Walk(pkg, func(n ir.Node) error {
-			if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
-				c.add(&l.Func.Block)
+			switch x := n.(type) {
+			case *ir.Lambda:
+				if x.Func != nil {
+					c.add(&x.Func.Block)
+				}
+			case *ir.Call:
+				if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
+					c.add(&x.ErrorHandler.Func.Block)
+				}
 			}
 			return nil
 		})

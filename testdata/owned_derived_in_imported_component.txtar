@@ -188,9 +188,10 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_update() {
-	__old0 := m.picture__inst0
-	m.picture__inst0 = m.load(m.n)
-	m.close__r0(__old0)
+	__new0 := m.load(m.n)
+	__old1 := m.picture__inst0
+	m.picture__inst0 = __new0
+	m.close__r0(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -472,10 +473,11 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_update() {
-	__old0 := m.picture__inst0
-	m.picture__inst0 = m.load(m.n)
+	__new0 := m.load(m.n)
+	__old1 := m.picture__inst0
+	m.picture__inst0 = __new0
 	m.__n0.SetText(fmt.Sprint(m.picture__inst0.N))
-	m.close__r0(__old0)
+	m.close__r0(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -725,10 +727,11 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_update() {
-	__old0 := m.picture__inst0
-	m.picture__inst0 = m.load(m.n)
+	__new0 := m.load(m.n)
+	__old1 := m.picture__inst0
+	m.picture__inst0 = __new0
 	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.picture__inst0.N))
-	m.close__r0(__old0)
+	m.close__r0(__old1)
 }
 
 func (m *Model) __effects0_settle() {
@@ -881,10 +884,11 @@ window.__sngl_boot = () => {
     close(state.picture__inst0);
   }
   function __effect1_update() {
-    let __old0 = state.picture__inst0;
-    state.picture__inst0 = load(state.n);
+    let __new0 = load(state.n);
+    let __old1 = state.picture__inst0;
+    state.picture__inst0 = __new0;
     __n0.textContent = String(state.picture__inst0.n);
-    close(__old0);
+    close(__old1);
   }
   function __snglTeardown() {
     __effects0_torn = true;
@@ -972,10 +976,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:86fa6c3a1ac6c0256b05d1e11c90c28b
+pass sha256:31a46f30750ac2ec9ec18111c344135b
 -- run/go/fyne --
-pass sha256:7e31290b01a3b2e48792ca1293c0d963
+pass sha256:325b6632e89bc1f55fd7ca9d054dade6
 -- run/go/gtk4 --
-pass sha256:931500037dca1d0cf6f7bce48e9ec6bb
+pass sha256:65f9138f7f6c67c9410b31aa30df6682
 -- run/none/html --
-pass sha256:735553250a8ad7fc1abb5db3e06b3821
+pass sha256:12bdc33331f92c48aca749df1fd30381
