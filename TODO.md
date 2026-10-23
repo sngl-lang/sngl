@@ -162,9 +162,10 @@ under it. Delete this file before the MR leaves draft.
 
 ## Part 5: the example on every target again
 
-- [ ] Screenshots of html, fyne, gtk4 and bubbletea after parts 2-3, in the
+- [X] Screenshots of html, fyne, gtk4 and bubbletea after parts 2-4, in the
   MR description, and the README's "Where each target stands" brought up to
-  date.
+  date. A bubbletea test draws its view only when it snapshots, so a picture
+  starts fetching there: the screenshots take a snapshot first to start them.
 - [ ] The user checks android on the device.
 - [ ] A review agent over the branch; fix what it finds.
 - [ ] Delete this file; take the MR out of draft -- ask the user first.
