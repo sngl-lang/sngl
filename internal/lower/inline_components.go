@@ -1080,7 +1080,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// cells a test's `c.card[0].size` reads by the card's index alone
 		// (cmd/sngl/testdata/tabs_panel_cells_runs.txt).
 		withBody := inner
-		withBody.loops = BlockLoops(n, &n.Body, rc.loops)
+		withBody.loops = ir.BlockLoops(n, &n.Body, rc.loops)
 		body, ch1, err := st.inlineStmtsCtx(n.Body, withBody)
 		if err != nil {
 			return nil, false, err

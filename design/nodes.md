@@ -472,14 +472,24 @@ click does. `lower.NamePresses` gives the node the id `<id>__<event>` and
 turns the trigger into `c.strip__change[1].click()`, the invoker each target
 already has for one copy of a node loops render; both inliners call it,
 before the emits are substituted, since the optimizer splices a body no
-target overrides. Only a node under exactly one loop of the body is pressed,
-since one index names one copy, and the optimizer rewrites a trigger only
-once it keeps the splice. A trigger an earlier splice rewrote names the node
-too, so two components each holding a `#strip` are each pressed through
-their own. The interpreter finds the copy by evaluating the index in each
-node's scope (`interp.View.Choosing`), among the nodes the component's own
-body wrote and before any node that reports the event: a select in a panel
-is the panel's writer's, and the press chooses the tab all the same. Android's `Tab` takes a
+target overrides. Which node a trigger presses is one rule, `ir.PressedNode`,
+that both sides ask: none where the body's first node, the one the id lands
+on, reports the event itself; otherwise the first node under exactly one loop
+of the body whose handler, or callback taking nothing, hands on that loop's
+index -- the first variable of a two-variable loop over a list, since one
+index names one copy, and an element, a map's key or a count names a value.
+The optimizer rewrites a trigger only once it keeps the splice. A trigger an
+earlier splice rewrote names the node too, so two components each holding a
+`#strip` are each pressed through their own. The interpreter finds that
+node's copy by evaluating the index in each copy's scope
+(`interp.View.Choosing`), among the nodes the instance's own body wrote and
+before any node that reports the event: a select in a panel is the panel's
+writer's, and the press chooses the tab all the same. It had a rule of its
+own -- any loop variable, compared by value, pressed even where the first
+node reported the event, and no callback -- which no program could tell from
+the targets', since only a library body is pressed (a program component's
+trigger runs its call site's handler) and `ui.tabs` met both;
+`internal/interp`'s `TestChoosingPressesByTheRuleTheTargetsDo` pins it. Android's `Tab` takes a
 `modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
 runs it on all six, through an instance as well.
 
@@ -490,7 +500,7 @@ spliced that branch sits in the container's loop over its records -- a tab's
 panel in the strip's `for var k, t = items`. One iteration renders it, so a
 `for` in the panel makes the only copies a test indexes, as the checker types
 `c.cell` and the interpreter mounts it. `ir.RecordBranchOf` names the loop a
-`t.__id == N` branch picks one record of, and `lower.BlockLoops` leaves it out
+`t.__id == N` branch picks one record of, and `ir.BlockLoops` leaves it out
 of a copy's key (`passCopyKeys`) and of the loops a copy's prop read binds
 (`nodeUnderLoops`), of the loops whose index keys a stateful component's cells
 where bubbletea splices one under a `for` in a panel

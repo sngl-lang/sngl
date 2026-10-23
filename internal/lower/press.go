@@ -8,7 +8,7 @@ import (
 
 // NamePresses answers a test's trigger of an event through callsite's `#id`
 // where body, the component's body being spliced in its place, emits the event
-// from a node one loop renders, handing on the loop's index (ir.EmittedIndex):
+// from a node one loop renders, handing on the loop's index (ir.PressedNode):
 // ui.tabs' strip, whose tab at k emits `change(k)` when clicked. The id lands
 // on the body's first node, which reports none of it, so the trigger is a
 // press: the node is given an `#id` of its own, `<id>__<event>`, and each such
@@ -39,10 +39,7 @@ func NamePresses(pkg *ir.Package, body []ir.Stmt, callsite *ir.NodeInst) (commit
 	}
 	fires := map[string]string{}
 	for event := range events {
-		if reportsAtRoot(body, event) {
-			continue
-		}
-		n, press := pressedNode(body, event)
+		n, _, press := ir.PressedNode(body, event)
 		if n == nil {
 			continue
 		}
@@ -128,61 +125,6 @@ func sameComponent(t *ir.Type, comp *ir.Component) bool {
 	}
 	c, ok := t.Decl.(*ir.Component)
 	return ok && c.Name == comp.Name && c.PkgPath() == comp.PkgPath()
-}
-
-// reportsAtRoot reports whether the node a call site's `#id` lands on, the
-// body's first, handles event itself: a select's control, which a trigger
-// reaches directly.
-func reportsAtRoot(body []ir.Stmt, event string) bool {
-	for _, s := range body {
-		if n, ok := s.(*ir.NodeInst); ok {
-			for _, h := range n.Handlers {
-				if h.Name == event {
-					return true
-				}
-			}
-			return false
-		}
-	}
-	return false
-}
-
-// pressedNode is the first node of stmts under exactly one loop whose handler,
-// or callback taking nothing, emits event with that loop's index, and what
-// pressing it fires: the handler's event, or a click for a callback, which is
-// what calls one. A node under two loops has a copy per pair of indexes, which
-// one index cannot name.
-func pressedNode(stmts []ir.Stmt, event string) (*ir.NodeInst, string) {
-	var found *ir.NodeInst
-	fires := ""
-	var walk func(stmts []ir.Stmt, loops []*ir.For)
-	walk = func(stmts []ir.Stmt, loops []*ir.For) {
-		for _, s := range stmts {
-			if found != nil {
-				return
-			}
-			if x, ok := s.(*ir.NodeInst); ok && len(loops) == 1 && loops[0].KeySym != nil && x.Component != nil {
-				key := loops[0].KeySym
-				for _, h := range x.Handlers {
-					if h.Func != nil && ir.EmittedIndex(h.Func.Block, event) == key {
-						found, fires = x, h.Name
-						return
-					}
-				}
-				for _, p := range x.Props {
-					if l, ok := p.Value.(*ir.Lambda); ok && l.Func != nil && len(l.Func.Params) == 0 && ir.EmittedIndex(l.Func.Block, event) == key {
-						found, fires = x, "click"
-						return
-					}
-				}
-			}
-			for _, b := range ir.ViewBlocks(s) {
-				walk(*b, BlockLoops(s, b, loops))
-			}
-		}
-	}
-	walk(stmts, nil)
-	return found, fires
 }
 
 // renamedRef is the ref r, a trigger's receiver, naming the copy at idx of the

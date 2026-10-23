@@ -85,7 +85,9 @@ type Node struct {
 	// mount did.
 	Env *Env
 	// Inst is the IR this node was mounted from, or nil for the
-	// children-less call form. Repointed by a reload; never used as identity.
+	// children-less call form. Repointed by a reload, so it is compared only
+	// with the body the same mount read (View.Choosing), never kept as an
+	// identity across one.
 	Inst *ir.NodeInst
 	// CompEnv is the component's own scope; Node.Env is the caller's, where the
 	// arguments were evaluated.
@@ -341,45 +343,44 @@ func forwardingDescendant(n *Node, event string) (*Node, string) {
 	return find(n.Children)
 }
 
-// Choosing is the node the view rendered, in mount order, whose handler emits
-// event with the index of the loop copy it is, at the index arg names, and that
-// handler's name: what a trigger of event presses where no node reports it
-// itself (ir.EmittedIndex) -- `c.strip.change(1)` on a tab strip presses the
-// tab at 1, whose click writes `selected` and emits the change, as a user's
-// press would.
+// Choosing is the copy the view rendered of the node a trigger of event
+// presses, at the index arg names, and what pressing it fires: the node
+// ir.PressedNode names in the body of the instance the view was mounted for,
+// the rule the compiled targets press by (lower.NamePresses) --
+// `c.strip.change(1)` on a tab strip presses the tab at 1, whose click writes
+// `selected` and emits the change, as a user's press would. Only the nodes
+// that body wrote are asked: a panel's nodes are the writer's. Nil where the
+// trigger presses nothing: the body's first node reports the event itself, or
+// no node under one loop hands on that loop's index.
 func (v *View) Choosing(event string, arg any) (*Node, string) {
-	if v == nil {
+	if v == nil || v.owner == nil {
 		return nil, ""
 	}
-	var find func(ns []*Node) (*Node, string)
-	find = func(ns []*Node) (*Node, string) {
+	inst, loop, fires := ir.PressedNode(v.owner.BodyStmts, event)
+	if inst == nil {
+		return nil, ""
+	}
+	index := &ir.Ident{Name: loop.KeySym.Name, Type: loop.KeySym.Type, Sym: loop.KeySym}
+	var find func(ns []*Node) *Node
+	find = func(ns []*Node) *Node {
 		for _, k := range ns {
-			for _, h := range k.Handlers {
-				fn, ok := h.Body.(*ir.Func)
-				// Only what the component's own body wrote emits its events: a
-				// panel's nodes are the writer's.
-				if !ok || k.Env == nil || k.Owner != v.owner {
-					continue
-				}
-				lv := ir.EmittedIndex(fn.Block, event)
-				if lv == nil {
-					continue
-				}
-				at, err := k.Env.Eval(&ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv})
-				if err != nil {
-					continue
-				}
-				if eq, ok := Equal(at, arg); ok && eq {
-					return k, h.Name
+			if k.Inst == inst && k.Owner == v.owner && k.Env != nil {
+				if at, err := k.Env.Eval(index); err == nil {
+					if eq, ok := Equal(at, arg); ok && eq {
+						return k
+					}
 				}
 			}
-			if d, name := find(k.Children); d != nil {
-				return d, name
+			if d := find(k.Children); d != nil {
+				return d
 			}
 		}
-		return nil, ""
+		return nil
 	}
-	return find(v.Roots)
+	if n := find(v.Roots); n != nil {
+		return n, fires
+	}
+	return nil, ""
 }
 
 // instanceBody is what the component instance a handle map names rendered: n
