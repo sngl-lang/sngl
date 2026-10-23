@@ -459,20 +459,24 @@ translator -- and is #293, split out of the ownership work with the count of
 what it touches.
 
 **Nothing it reaches is held.** The review of the ownership work left a list
-of values the compiler held, and the spec's *Owned values* carried it so a
-program knew to release by hand. A value in a collection or a struct was on
-it until `ReleaseOf` composed; a conditional arm and a temp bound before a
-later one raises until `ConditionalTemps` and `releaseTemps.bind`; an
-allocation handed to a `#[retains]` parameter outside an effect's handler
-until `retain` reached every block a component encloses, all above. What is
-left is what no lifetime can hold, and the checker refuses it: a `#[retains]`
-call no component encloses. Two shapes release twice rather than hold, and
-the spec rules them out: a temp passed to a function returning the
-same owned type that returns its argument, since the pass releases the
-argument and the result alike; and a component's or package's var assigned
-another var's value, which both then release. A type with a retain is the
-exception to the second: the store is a reference, and each holder releases
-its own.
+of values the compiler held, and the spec's *Owned values* and Effective
+SNGL's carried it so a program knew to release by hand. A value in a
+collection or a struct was on it until `ir.Owned` and `ReleaseFor` composed;
+a conditional arm and a temp bound before a later one raises until
+`ConditionalTemps` and `releaseTemps.bind`; an allocation handed to a
+`#[retains]` parameter outside an effect's handler until `retain` reached
+every block a component encloses; what a var's initializer borrows until
+`initTemps`, all above. The list is empty and both documents are without it:
+in its place the spec states what a collection write does with an owned
+value and where a retained value lives, and Effective SNGL which shapes are
+released twice. What is left is what no lifetime can hold, and the checker
+refuses it: a `#[retains]` call no component encloses. Two shapes release
+twice rather than hold, and the spec rules them out: a temp passed to a
+function returning the same owned type that returns its argument, since the
+pass releases the argument and the result alike; and a component's or
+package's var assigned another var's value, which both then release. A type
+with a retain is the exception to the second: the store is a reference, and
+each holder releases its own.
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`
