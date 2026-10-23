@@ -48,3 +48,24 @@ func WalkView(stmts []Stmt, visit func(Stmt) bool) {
 		}
 	}
 }
+
+// RenderCalls calls f with each call s's own expressions make -- a prop's
+// value, a loop's list, a condition: what rendering s evaluates. It reaches
+// no statement s holds, which ViewBlocks hands a walk of its own, and no
+// lambda or handler, which runs where it is called rather than where it
+// renders.
+func RenderCalls(s Stmt, f func(*Call)) {
+	_ = Walk(s, func(n Node) error {
+		switch x := n.(type) {
+		case *Lambda:
+			return SkipDir
+		case Stmt:
+			if x != s {
+				return SkipDir
+			}
+		case *Call:
+			f(x)
+		}
+		return nil
+	})
+}

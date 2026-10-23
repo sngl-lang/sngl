@@ -1,0 +1,221 @@
+# Where a render's raise lands, at the edges render_raise_reaches_its_boundary
+# leaves out, on every target:
+#
+# - rows: a loop's row renders a fallible prop. The interpreter ran the
+#   boundary's handler in the row's snapshot, so its write was lost.
+# - across: a component with no boundary of its own renders under one. The
+#   interpreter runs the checked program, which no lowering resolved.
+# - slotted: slot content handed to a component built at run time. The copy
+#   the content lands in held none of the handler's state: fyne and gtk4
+#   did not build, and a page wrote the instance's own state.
+# - kinds: what stands where the value was is the type's zero. A map's was
+#   null, which a page read through and Kotlin refused, and the interpreter
+#   had none for an enum or a payload enum.
+# - again: a handler that raises again is heard outside it, and the render
+#   still goes on.
+#
+# Confirmed against the codegen before: each failed on a target it names.
+
+sngl test --platform=none app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+enum shade {
+    light
+    dark
+}
+
+enum result {
+    ok  int
+    bad string
+}
+
+func label(n int) string {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return "n{n}"
+}
+
+func pick(n int) shade {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return dark
+}
+
+func maybe(n int) option[string] {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return "m{n}"
+}
+
+func res(n int) result {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return result{ok=n}
+}
+
+func scores(n int) map[string, int] {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return {a=n}
+}
+
+func orNone(s option[string]) string {
+    if s != null {
+        return s
+    }
+    return "none"
+}
+
+func show(r result) => match var v = r {
+    ok => "ok{v}"
+    bad => v
+}
+
+component shows(n int) ui.node {
+    ui.text(value=label(n))
+}
+
+component box(content ...component ui.node) ui.node {
+    var opened = false
+    ui.vbox {
+        content
+        ui.button(text="o", @click {
+            opened = !opened
+        })
+    }
+}
+
+// A loop's row renders a fallible prop.
+component rows ui.node {
+    var ns = [0, 1, 2]
+    var err = ""
+    boundary(@error(e) {
+        err = e.message
+    }) {
+        for var i = ns {
+            ui.text(value=label(i))
+        }
+    }
+}
+
+// A component with no boundary of its own, under one.
+component across ui.node {
+    var err = ""
+    boundary(@error(e) {
+        err = e.message
+    }) {
+        shows(n=1)
+    }
+}
+
+// Slot content handed to a component built at run time, under a loop.
+component slotted ui.node {
+    var ns = [0, 2]
+    var err = ""
+    boundary(@error(e) {
+        err = e.message
+    }) {
+        for var i = ns {
+            box {
+                ui.text(value=label(i))
+            }
+        }
+    }
+    ui.button #step(text="step", @click {
+        ns = [0, 1, 2]
+    })
+}
+
+// What stands where the value was is the type's zero.
+component kinds ui.node {
+    var n = 0
+    var err = ""
+    boundary(@error(e) {
+        err = e.message
+    }) {
+        ui.text #a(value="{pick(n)}")
+        ui.text #b(value=orNone(maybe(n)))
+        ui.text #r(value=show(res(n)))
+        ui.text #m(value="{scores(n).length}")
+    }
+    ui.button #step(text="step", @click {
+        n += 1
+    })
+}
+
+// A handler that raises again is heard by the boundary outside it.
+component again ui.node {
+    var n = 0
+    var outer = ""
+    var after = false
+    boundary(@error(e) {
+        outer = e.message
+    }) {
+        boundary(@error(e) {
+            error.raise("again: {e.message}", "bad")
+            after = true
+        }) {
+            ui.text #t(value=label(n))
+        }
+    }
+    ui.button #step(text="step", @click {
+        n += 1
+    })
+}
+
+func testARowsRaise(t Test, c rows) {
+    t.assert(c.err == "one is refused")
+}
+
+func testAcrossAComponent(t Test, c across) {
+    t.assert(c.err == "one is refused")
+}
+
+func testSlotContent(t Test, c slotted) {
+    c.step.click()
+    t.assert(c.err == "one is refused")
+}
+
+func testZeros(t Test, c kinds) {
+    c.step.click()
+    t.assert(c.err == "one is refused")
+    t.assert(c.a.value == "light")
+    t.assert(c.b.value == "none")
+    t.assert(c.r.value == "ok0")
+    t.assert(c.m.value == "0")
+}
+
+func testRaisedAgain(t Test, c again) {
+    c.step.click()
+    t.assert(c.outer == "again: one is refused")
+    t.assert(!c.after)
+    t.assert(c.t.value == "")
+}
+
+ui.window {
+    rows
+}

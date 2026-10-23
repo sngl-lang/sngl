@@ -247,35 +247,25 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 // make -- a prop's value, a loop's list, a condition -- against the handlers
 // around it. A raise there is the render's: it reaches the boundary around
 // what rendered, whatever write asked for the render, and the render goes on
-// (ErrorRender). With no handler in this component it is left native, for
-// lower's passErrorScope to resolve against the tree the instance lands in.
+// (ErrorRender). With no handler in this component it names none, for lower's
+// passErrorScope or the interpreter to resolve against the tree the instance
+// renders in.
 // The statements it holds are walkVisualErrors' to visit, and a lambda or a
 // handler runs where it is called, not where it renders.
 //
 // Unresolved, such a raise was caught by no target: it panicked a Go build,
 // went uncaught on a page, and the interpreter dropped it.
 func resolveRenderExprs(s ir.Stmt, scope []*ir.EventHandler) {
-	_ = ir.Walk(s, func(n ir.Node) error {
-		switch x := n.(type) {
-		case *ir.Lambda:
-			return ir.SkipDir
-		case ir.Stmt:
-			if x != s {
-				return ir.SkipDir
-			}
-		case *ir.Call:
-			// A `fails` native's error result is its own story: a view reads
-			// one through the result it declares.
-			if x.ErrorMode != ir.ErrorNone || x.ErrorHandler != nil || x.Func == nil || x.Func.HasErrorReturn || !callIsFallible(x) {
-				return nil
-			}
-			if len(scope) > 0 {
-				x.ErrorMode, x.ResolvedHandler = ir.ErrorRender, scope[0]
-			} else {
-				x.ErrorMode = ir.ErrorPropagateNative
-			}
+	ir.RenderCalls(s, func(c *ir.Call) {
+		// A `fails` native's error result is its own story: a view reads one
+		// through the result it declares.
+		if c.ErrorMode != ir.ErrorNone || c.ErrorHandler != nil || c.Func == nil || c.Func.HasErrorReturn || !callIsFallible(c) {
+			return
 		}
-		return nil
+		c.ErrorMode = ir.ErrorRender
+		if len(scope) > 0 {
+			c.ResolvedHandler = scope[0]
+		}
 	})
 }
 

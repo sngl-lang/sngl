@@ -409,7 +409,10 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 		switch x := node.(type) {
 		case *ir.Call:
 			typ := x.ExprType()
-			if typ == nil || typ.Kind == ir.TypeVoid || !st.readsReactiveState(x) || readsAny(x, local) {
+			// A render's raise travels whole too: the boundary that hears it
+			// is the site's, whose state the lifted body does not hold.
+			lifts := st.readsReactiveState(x) || x.ErrorMode == ir.ErrorRender
+			if typ == nil || typ.Kind == ir.TypeVoid || !lifts || readsAny(x, local) {
 				return node, nil
 			}
 			key, ok := exprKey(x)

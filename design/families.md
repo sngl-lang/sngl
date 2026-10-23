@@ -539,24 +539,37 @@ boundaries, so where the caller has one it wins over a nearer boundary the
 callee wraps the slot in; only where the caller has none does the render tree
 answer.
 
-**A raise from a render is the render's.** The checker resolves the calls a
-view statement's own expressions make -- a prop's value, a loop's list, a
-condition -- against the boundaries around them as `ir.ErrorRender`
-(`resolveRenderExprs`; `passErrorScope` does it for one an instance's tree
-answers). It resolved none, so no target caught one: a Go build panicked, a
-page raised it uncaught, Compose threw, and the interpreter and bubbletea
-dropped it. `passRenderCatch` turns each such call into a closure called in
-place, `func() T { var v T; v = zero; if true { v = call } catch H; return v }()`, so the boundary around the expression hears it wherever the render runs
--- inside the handler whose write asked for it (html, fyne, gtk4), after it
-(bubbletea, the interpreter's `evalCall`), or while Compose composes -- and the
-render goes on with the call's zero value. A raise belongs to no handler there:
-the write may sit under another boundary, or under none, as a timer's does. It
-runs after `passReactivity`, to which a closure is opaque, and a subtree that
-renders one is not lifted into a `__child` component (`rendersARaise`), where
-the handler's state is not in scope
+**A raise from a render is the render's.** The checker marks the calls a view
+statement's own expressions make -- a prop's value, a loop's list, a condition
+(`ir.RenderCalls`) -- `ir.ErrorRender`, resolved to the boundary around them
+(`resolveRenderExprs`), or to none where the component holds none; then
+`passErrorScope` names the boundary the instance renders under. It resolved
+none, so no target caught one: a Go build panicked, a page raised it uncaught,
+Compose threw, and the interpreter and bubbletea dropped it.
+`passRenderCatch` turns each such call into a closure called in place,
+`func() T { var v T; v = zero; if true { v = call } catch H; return v }()`,
+so the boundary around the expression hears it wherever the render runs --
+inside the handler whose write asked for it (html, fyne, gtk4), after it
+(bubbletea), or while Compose composes -- and the render goes on with the
+call's zero value (`ir.ZeroExpr`, an empty map among them; a kind with none
+is refused, since null was no value of the type on Kotlin). A raise belongs to
+no handler there: the write may sit under another boundary, or under none, as
+a timer's does. It runs after `passReactivity`, to which a closure is opaque.
+The handler has to run where its state is: a subtree that renders one is not
+lifted into a `__child` component (`rendersARaise`), and slot content copied
+into a component built at run time takes the call with it whole, as a prop the
+site computes (`liftValues`) -- copied, the handler wrote state the copy does
+not hold, which on Go did not build. One that component's own body renders
+answers no boundary, its body being shared by every instance: it is left the
+host's throw, as before, rather than refused (`componentEscapes`). The
+interpreter catches in `caughtRender`: the handler runs in the frame mounting
+pushed for its boundary -- a loop's row renders in a snapshot, where the
+write was lost -- one the checker named no handler for is the nearest
+frame's, and a handler raising again is offered outward
 (`cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt`,
-`testdata/error_raise_in_render.sngl`). The value is assigned rather than
-returned inside the catch: Go's catch body is a function of its own.
+`render_raise_edges_runs.txt`, `testdata/error_raise_in_render.sngl`). The
+value is assigned rather than returned inside the catch: Go's catch body is a
+function of its own.
 
 A call in **expression position** that carries its own `@error`
 (`v = risky(7, @error(e) { … })`) is refused (`refuseExprErrorHandler`): the

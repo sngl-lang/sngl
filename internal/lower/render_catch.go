@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -32,11 +34,29 @@ var passRenderCatch = pass{
 func lowerRenderCatch(pkg *ir.Package, _ Features, _ Options) error {
 	return ir.RewriteExprs(pkg, func(e ir.Expr) (ir.Expr, error) {
 		c, ok := e.(*ir.Call)
-		if !ok || c.ErrorMode != ir.ErrorRender || c.ResolvedHandler == nil {
+		if !ok || c.ErrorMode != ir.ErrorRender {
 			return e, nil
+		}
+		if c.ResolvedHandler == nil {
+			// No boundary and no window @error around it: the host's throw.
+			c.ErrorMode = ir.ErrorPropagateNative
+			return e, nil
+		}
+		if ir.ZeroExpr(c.ExprType()) == nil {
+			// A native handle, an instance or an iterator has no value to
+			// stand in for it: null was no value of the type on Kotlin and
+			// a page read through it.
+			return e, fmt.Errorf("%s: %s may raise where it renders, and a %s has no zero value to render in its place; compute it in a handler, or under a boundary of its own inside a function returning something with one", callPos(c, nil), callName(c), c.ExprType())
 		}
 		return caughtRender(c), nil
 	})
+}
+
+func callName(c *ir.Call) string {
+	if c.Func != nil {
+		return c.Func.Name
+	}
+	return "a call"
 }
 
 // caughtRender is c called inside a closure catching its raise.

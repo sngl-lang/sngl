@@ -164,8 +164,11 @@ const (
 	// ErrorRender means a call a view's own expression makes -- a prop's
 	// value, a loop's list, a condition -- whose raise the boundary or
 	// window around it resolves: that handler runs, the call is its type's
-	// zero value, and the render goes on. lower's passRenderCatch turns each
-	// into a caught call no language sees this mode on.
+	// zero value, and the render goes on. With no ResolvedHandler, its
+	// component has no boundary, and the tree it renders in answers:
+	// lower's passErrorScope, or the interpreter's raise frames. lower's
+	// passRenderCatch turns each into a caught call, or a native one where
+	// nothing answers, so no language sees this mode.
 	ErrorRender
 )
 

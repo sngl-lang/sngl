@@ -1888,17 +1888,59 @@ func (r *listRef) set(v any) { r.list[r.idx] = v }
 func (env *Env) evalCall(call *ir.Call) (any, error) {
 	v, err := env.evalCallSite(call)
 	if raised, ok := err.(*RaisedError); ok {
-		// A view's own expression: the boundary around what rendered hears
-		// it, and the render goes on with nothing where the value was.
-		if call.ErrorMode == ir.ErrorRender && call.ResolvedHandler != nil {
-			if err := env.invokeHandler(call.ResolvedHandler, raised.Event); err != nil {
-				return nil, err
-			}
-			return zeroValueFor(call.Type), nil
+		if call.ErrorMode == ir.ErrorRender {
+			return env.caughtRender(call, raised)
 		}
 		return nil, env.dispatchRaise(call, raised)
 	}
 	return v, err
+}
+
+// caughtRender is what a view's own expression is when its call raised: the
+// boundary around what rendered hears it, and the render goes on with the
+// call's zero value. The handler runs in the scope that rendered its
+// boundary, the frame mounting pushed -- a loop's row renders in a snapshot,
+// where its write was lost -- and one the checker named none for, its
+// component holding no boundary, is the nearest frame's. A handler raising
+// again is offered outward, as catchEscaped offers an event handler's.
+func (env *Env) caughtRender(call *ir.Call, raised *RaisedError) (any, error) {
+	frames, _ := env.ContextVals[raiseScope].([]raiseFrame)
+	i := 0
+	if h := call.ResolvedHandler; h != nil {
+		i = -1
+		for j, f := range frames {
+			if f.handler == h {
+				i = j
+				break
+			}
+		}
+		if i < 0 {
+			if err := env.invokeHandler(h, raised.Event); err != nil && !IsReturn(err) {
+				if again, ok := err.(*RaisedError); ok {
+					raised, i = again, len(frames)
+				} else {
+					return nil, err
+				}
+			} else {
+				return env.zeroOf(call.Type)
+			}
+		}
+	}
+	if i >= len(frames) {
+		return nil, raised
+	}
+	if err := catchEscaped(map[*ir.Context]any{raiseScope: frames[i:]}, raised); err != nil {
+		return nil, err
+	}
+	return env.zeroOf(call.Type)
+}
+
+// zeroOf is t's zero value, as the lowering spells it (ir.ZeroExpr).
+func (env *Env) zeroOf(t *ir.Type) (any, error) {
+	if z := ir.ZeroExpr(t); z != nil {
+		return env.Eval(z)
+	}
+	return zeroValueFor(t), nil
 }
 
 func (env *Env) evalCallSite(call *ir.Call) (any, error) {

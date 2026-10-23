@@ -36,6 +36,30 @@ component split node {
     }
 }
 
+component shows(n int) node {
+    text(value=label(n))
+}
+
+// A row's raise is heard: its handler runs where the boundary rendered, not
+// in the row's own scope, where its write was lost.
+component rows node {
+    var ns = [0, 1, 2]
+    var listError = ""
+    boundary(@error(e) { listError = e.message }) {
+        for var i = ns {
+            text(value=label(i))
+        }
+    }
+}
+
+// So is one from a component with no boundary of its own.
+component across node {
+    var listError = ""
+    boundary(@error(e) { listError = e.message }) {
+        shows(n=1)
+    }
+}
+
 component first node {
     var listError = ""
     boundary(@error(e) { listError = e.message }) {
@@ -53,5 +77,13 @@ func testTheRenderNotTheClickHearsIt(t Test, c split) {
 }
 
 func testTheFirstDrawIsHeard(t Test, c first) {
+    t.assert(c.listError == "one is refused")
+}
+
+func testARowIsHeard(t Test, c rows) {
+    t.assert(c.listError == "one is refused")
+}
+
+func testAComponentWithNoBoundaryIsHeard(t Test, c across) {
     t.assert(c.listError == "one is refused")
 }

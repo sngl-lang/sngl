@@ -107,29 +107,20 @@ func resolveEscapes(root any, scope []*ir.EventHandler) {
 	})
 }
 
-// resolveRenderEscapes points every raise the checker left native in s's own
-// expressions -- a prop's value, a loop's list, a condition -- at the nearest
-// handler in scope as a render's (ir.ErrorRender), as the checker does with
-// one that has a boundary in its component. A lambda among them is a handler,
-// which resolveEscapes answers.
+// resolveRenderEscapes points every render's raise in s's own expressions --
+// a prop's value, a loop's list, a condition -- that its component's checker
+// pass found no boundary for at the nearest handler in scope. A lambda among
+// them is a handler, which resolveEscapes answers. One a component built at
+// run time renders answers nothing here, its body being shared; it is left
+// native rather than refused, as it was before render raises were caught.
 func resolveRenderEscapes(s ir.Stmt, scope []*ir.EventHandler) {
 	if len(scope) == 0 {
 		return
 	}
-	_ = ir.Walk(s, func(n ir.Node) error {
-		switch x := n.(type) {
-		case *ir.Lambda:
-			return ir.SkipDir
-		case ir.Stmt:
-			if x != s {
-				return ir.SkipDir
-			}
-		case *ir.Call:
-			if x.ErrorMode == ir.ErrorPropagateNative {
-				x.ErrorMode, x.ResolvedHandler = ir.ErrorRender, scope[0]
-			}
+	ir.RenderCalls(s, func(c *ir.Call) {
+		if c.ErrorMode == ir.ErrorRender && c.ResolvedHandler == nil {
+			c.ResolvedHandler = scope[0]
 		}
-		return nil
 	})
 }
 
