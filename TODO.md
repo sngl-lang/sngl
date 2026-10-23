@@ -46,15 +46,19 @@ a constant `$"..."` message (#292) are issues of their own and not here.
 !275's review agent ran out of budget before these. Read each for
 correctness, with its `design/` file, and fix what is wrong.
 
-- [ ] Part 1 of !275: the checker's `addNodeOverride` (a platform's override
+- [X] Part 1 of !275: the checker's `addNodeOverride` (a platform's override
   of its node for a language, `const component platform[static.language]`)
   and `sngl run --platform html --lang go` (Go's route `main()`, `listen`).
-- [ ] fyne: `fynetheme.Backdrop`, `fynelayout.New`/`NewAligned`/`Adopt`,
+- [X] fyne: `fynetheme.Backdrop`, `fynelayout.New`/`NewAligned`/`Adopt`,
   `InsertBefore` laying out without refreshing, and `@reachEnd`'s probe and
   `fynelayout.Post`.
-- [ ] gtk4: `pkg/go/gtk4rt`'s scroll (the probe between viewport and
+- [X] gtk4: `pkg/go/gtk4rt`'s scroll (the probe between viewport and
   content), image (a picture exactly its style's size, `setTexture` asking
   for its own source) and reach-end code.
+
+  Found and fixed: fyne's spacer in a `Weighted` box, a margin-only child,
+  a backdrop rounded with no radius; gtk4's cgo scroll set again on each
+  render, a gone fetch's texture kept; reach-end firing on a shrink.
 
 ## Part 2: a raise in a render
 
@@ -66,8 +70,9 @@ raise while Compose composes reaches no catch block at all -- the test ends
 there. `cmd/sngl/testdata/slot_render_raise_draws_again_runs.txt` asserts
 only the redraw, and leaves android out, for these reasons.
 
-- [ ] The spec says a boundary catches what the expressions of its content
-  raise (*Error boundaries*). Decide with the user what a render's raise
+- [X] The spec says a boundary catches what the expressions of its content
+  raise (*Error boundaries*). Decided with the user: the boundary around what
+  rendered, on every target. Decide with the user what a render's raise
   reaches on every target -- the boundary around what rendered, or the
   handler that asked for it -- before changing any; a language change wants
   asking.
@@ -77,12 +82,12 @@ only the redraw, and leaves android out, for these reasons.
 
 ## Part 3: alignment on gtk4 and bubbletea
 
-- [ ] gtk4 centers a label's text in its box: it reads no `alignItems` or
+- [X] gtk4 centers a label's text in its box: it reads no `alignItems` or
   `textAlign`, where html starts a line at the left. A width is also only
   the least a label is (a size request), not its width.
-- [ ] bubbletea centers nothing (`alignItems`), so the example's evolution
+- [X] bubbletea centers nothing (`alignItems`), so the example's evolution
   cards' names sit left.
-- [ ] Each with a golden and a recorded-run or snapshot fixture, as Part 2
+- [X] Each with a golden and a recorded-run or snapshot fixture, as Part 2
   and 3 of !275 pinned gtk4's style and fyne's layout
   (`cmd/sngl/testdata/style_gtk4_rendered_runs.txt`,
   `layout_bubbletea_rendered_runs.txt`).
