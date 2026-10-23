@@ -227,8 +227,11 @@ Every C function the translator calls copies what it is handed, so no string
 outlives its statement. The activate signal name in `callbacks.go` is a package
 `var` for the same reason, and the event invokers already freed theirs
 (`testdata/gtk4_translator_strings.txtar`, whose `deny` lines refuse a
-`C.CString` inside another call or on a line of its own). Part 10 moves these
-calls into lowering, which retires this.
+`C.CString` inside another call or on a line of its own). Resolving these
+calls in lowering would retire this, since `CMarshal` and `ReleaseTemps` would
+see them; that is a re-platforming of gtk4's inline-cgo mode -- the widget
+protocol declared as native-calling bodies rather than answered by the
+translator -- and is split out of the ownership work.
 
 **What it does not release yet**, each left held rather than released wrongly:
 an allocation the statement may not evaluate -- the right of `&&` or `||`, a

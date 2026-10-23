@@ -273,8 +273,40 @@ lowering makes those calls IR, so `CMarshal`, the release passes and the
 tracker cover them and Part 9's hand-written frees go. A C target needs the
 same move.
 
-- [ ] Scope it first. If it is larger than Parts 1 to 9 together, stop and
+- [X] Scope it first. If it is larger than Parts 1 to 9 together, stop and
   raise splitting it out before starting.
+- [ ] Split out: it is larger. What the move touches, counted on 2026-10-23:
+  - Lowering has no way to resolve a widget: `internal/lower` imports
+    `ast`, `ir`, `checker` and `parser` and nothing of a platform, and the
+    GIR registry reaches gtk4 as store data (`gtk4.registry`) that only
+    `codegen/platform/gtk4` decodes. The move needs either a resolver a
+    platform registers with lowering -- a new dependency direction -- or
+    `declgen` writing each widget's build, setters, child adder and signal
+    connection as SNGL bodies calling `c.gtk_*` natives, which
+    `InlinePure` substitutes. The second is the design the repository
+    wants (built-ins are declared), and it replaces the whole of the
+    node protocol the translator answers today: `CreateNode` (typed
+    constructor and its zero arguments), `AppendChild` (the GIR child
+    adder), `AttachHandler` (the `snglCallbacks` index and `sngl_connect`,
+    and the test invokers `recordInvoker` keeps), `PropAssign`
+    (`gtkSetterTable`, `g_object_set_property` helpers, the coercions),
+    and every tag with no GIR class behind it: toplevel, image, scroll,
+    flow and span markup, canvas, drop-down. The Model field or local a
+    node lives in (`passNodeEscape`, `fieldSink`) stays a codegen question
+    either way, as does the wrapped `gtk4rt` mode, which shares the
+    translator and would have to keep working through it or move too.
+  - Code: the inline-cgo resolution is about 6,500 of the 8,500 non-test
+    lines in `codegen/platform/gtk4` (the translator, `compiler_ir.go`,
+    `instance.go`, `markup.go`, `canvas.go`, `toplevel.go`, `image.go`,
+    `dropdown.go`, `flex.go`, `scaffold_files.go`, `wrapped.go`), and
+    `ownCStrings` has twelve call sites across three of them.
+  - Tests: 247 goldens in `testdata/` and 152 scripts in
+    `cmd/sngl/testdata/` name gtk4, and every gtk4 output and recorded run
+    re-records.
+  - Parts 1 to 9 together: 307 files, 29,593 insertions, 25 commits. The
+    move is a re-platforming of gtk4, not an ownership change, and the leak
+    it would retire is already closed by Part 9's `ownCStrings`. It belongs
+    in an issue of its own, with a C target's resolution as the same work.
 
 ## Part 11: docs
 
