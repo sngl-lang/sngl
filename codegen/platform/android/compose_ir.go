@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/irwalk"
 	"duckfam.us/sngl/codegen/lang/kotlin"
 	"duckfam.us/sngl/internal/androidtc"
 	"duckfam.us/sngl/ir"
@@ -59,11 +60,8 @@ func (cc *irComposeContext) line(format string, args ...any) {
 func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		// A schedule is not a composable. The timer primitive stays in the
-		// tree so the branch around it is answered there; AnalyzeCommon reads
-		// it and the LaunchedEffect it becomes is emitted with the model,
-		// not here.
 		if ir.IsTimerPrimitive(s.Component) {
+			cc.renderTimer(s)
 			return
 		}
 		if cc.screen != nil && s == cc.screen.Node {
@@ -98,6 +96,54 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	default:
 		panic(fmt.Sprintf("android.renderStmt: unhandled ir.Stmt %T", s))
 	}
+}
+
+// renderTimer renders a timer where it was written, as the LaunchedEffect it
+// is: restarted when its gate changes, and cancelled when the branch it is in
+// or the copy of the loop it is under leaves the composition. Its handler
+// reads the loop's variables where it stands. Each schedule used to be hoisted
+// to the top of the screen with the branches around it folded into its gate,
+// which had none of a loop's variables to read, so a timer under a loop was
+// dropped -- and one an instance's own composable renders was hoisted into
+// the screen, naming the instance's state from outside it
+// (cmd/sngl/testdata/timer_tab_loop_wait_runs.txt).
+func (cc *irComposeContext) renderTimer(n *ir.NodeInst) {
+	var interval, enabled ir.Expr
+	for _, p := range n.Props {
+		switch p.Name {
+		case ir.TimerIntervalProp:
+			interval = p.Value
+		case ir.TimerEnabledProp:
+			enabled = p.Value
+		}
+	}
+	var tick *ir.Func
+	for i := range n.Handlers {
+		if n.Handlers[i].Name == ir.TimerTickEvent {
+			tick = n.Handlers[i].Func
+		}
+	}
+	// A primitive with no @tick describes no schedule (codegen.CollectTimers).
+	if tick == nil {
+		return
+	}
+	gate := "true"
+	if enabled != nil {
+		gate = cc.kc.EvalExpr(enabled)
+	}
+	cc.kc.RequireImport("kotlinx.coroutines.delay")
+	kc := cc.kc
+	for _, name := range codegen.BodyLocals(tick.Block) {
+		kc = kc.WithLocal(name)
+	}
+	cc.line("%s(%s) {", cc.kc.Name(ktLaunchedEffect), gate)
+	cc.line("    while (%s) {", gate)
+	cc.line("        delay(%dL)", codegen.IntervalToMs(interval))
+	for _, l := range irwalk.EvalBlock(kc, tick.Block) {
+		cc.line("        %s", l)
+	}
+	cc.line("    }")
+	cc.line("}")
 }
 
 func (cc *irComposeContext) renderIf(s *ir.If) {

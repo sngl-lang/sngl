@@ -19,6 +19,11 @@ const (
 	postsVar    = "__snglPosts"
 	postMsgType = "__snglPostMsg"
 	awaitPost   = "__snglAwaitPost"
+	// settleVar is what a waiting test calls each turn to run the commands
+	// the Model it holds asks for (settleModel): a no-op until a test build
+	// points it at that Model (emitSettleHook).
+	settleVar   = "__snglSettle"
+	settleModel = "__snglSettleModel"
 )
 
 // A test waiting for a request's answer runs on the goroutine that owns the
@@ -37,7 +42,7 @@ func init() {
 		if len(args) != 3 {
 			return "", nil
 		}
-		return "for __snglWait, __snglEnd := " + tr(args[1]) + ", time.Now().Add(time.Duration(" + tr(args[2]) + ")*time.Millisecond); !__snglWait() && time.Now().Before(__snglEnd); { " + golang.RunPostsFunc + "(5 * time.Millisecond) }", []string{"time"}
+		return "for __snglWait, __snglEnd := " + tr(args[1]) + ", time.Now().Add(time.Duration(" + tr(args[2]) + ")*time.Millisecond); !__snglWait() && time.Now().Before(__snglEnd); { " + settleVar + "(); " + golang.RunPostsFunc + "(5 * time.Millisecond) }", []string{"time"}
 	})
 }
 
@@ -83,5 +88,51 @@ func ` + golang.RunPostsFunc + `(d time.Duration) {
 	case <-time.After(d):
 	}
 }
+
+// ` + settleVar + ` runs, for a waiting test, what the Model it holds asks of
+// the event loop no program runs under a test.
+var ` + settleVar + ` = func() {}
+
+// ` + settleModel + ` is Update after whatever the test did, whose commands --
+// each schedule's tick, armed after every Update -- run off the test's
+// goroutine, each message they answer posted back to be delivered on it.
+func (m *Model) ` + settleModel + `() { m.__snglDeliver(struct{}{}) }
+
+func (m *Model) __snglDeliver(msg tea.Msg) {
+	nm, cmd := m.Update(msg)
+	*m = nm.(Model)
+	__snglRunCmd(m, cmd)
+}
+
+func __snglRunCmd(m *Model, cmd tea.Cmd) {
+	if cmd == nil {
+		return
+	}
+	go func() {
+		msg := cmd()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			for _, c := range batch {
+				__snglRunCmd(m, c)
+			}
+			return
+		}
+		if msg != nil {
+			` + golang.PostFunc + `(func() { m.__snglDeliver(msg) })
+		}
+	}()
+}
 `)
 }
+
+// settleHookSrc is the body of the test build's file pointing a waiting
+// test's settle at the Model the test holds.
+const settleHookSrc = `
+
+func init() {
+	` + settleVar + ` = func() {
+		if m := currentTestModel(); m != nil {
+			m.` + settleModel + `()
+		}
+	}
+}
+`

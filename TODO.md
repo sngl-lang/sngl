@@ -131,12 +131,15 @@ under it. Delete this file before the MR leaves draft.
   catch block, so the test ends there; and the interpreter and bubbletea
   render after the handler, so a render's raise never reaches the boundary's
   `@error` that html, fyne and gtk4 report it to.
-- [ ] A timer in a tab's loop never ticks on bubbletea. `collectLoopTimers`
-  (`codegen/timers.go`), `widgetLoops` (`bubbletea/loopwidget.go`) and
-  `callSiteWraps` (`internal/lower/test_reach_flatten.go`) count a
-  container's loop over its records, which `lower.BlockLoops` drops; doing
-  the same there left the record branch's condition reading the loop's
-  variables. Reproducer: a `time.timer` in a `for` in a `ui.tab`'s panel.
+- [X] A timer in a tab's loop never ticked on bubbletea -- under a test.
+  The emitted program ticks, in a tab's loop or out; bubbletea's test build
+  ran no command the Model returned, so no timer ticked under any test. A
+  waiting test settles the Model each turn. Found on the way: android lowered
+  no `t.wait`, and hoisted every timer to the top of the screen, dropping one
+  under a loop and putting an instance's in the screen; each is rendered where
+  it was written. `cmd/sngl/testdata/timer_tab_loop_wait_runs.txt`, all six.
+  `collectLoopTimers`, `widgetLoops` and `callSiteWraps` count the record's
+  loop consistently with each other, which is all bubbletea's schedules need.
 - [ ] html's clickable card takes no Enter or Space: an element's handlers
   read no key.
 - [ ] gtk4's drop-down C helpers are written twice, in `pkg/go/gtk4rt` and

@@ -196,6 +196,15 @@ These rules keep them agreeing:
   statement as well as on each read through the instance, since a read of
   package state goes through none -- a click that unmounted and remounted a
   branch left `asked.length()` unsettled (`testdata/async_query_loop.sngl`).
+- **A test waiting lets time pass as the program's loop would**: `t.wait`
+  asks its predicate between turns of whatever runs the target's schedules.
+  bubbletea's test build runs no program, so each turn settles the Model the
+  test holds -- Update after what the test did, the commands it returns run
+  off the test's goroutine and their messages posted back to it -- or its
+  timers, tea.Tick commands, never ticked; android's moves Compose's test
+  clock, where it lowered no wait at all
+  (`cmd/sngl/testdata/timer_tab_loop_wait_runs.txt`). `t.tick` is the
+  interpreter's alone.
 - **A member named `length` is a list's, a map's or a string's measure only
   on one of those** (`ir.HasLength`): read off an instance it is the
   program's var, which Go wrote as `len(c)`

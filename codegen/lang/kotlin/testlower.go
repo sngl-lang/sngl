@@ -101,6 +101,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 				name := lowerTestExpr(c.Args[1].Value, TestSurface{}, nil)
 				return []string{fmt.Sprintf("t.snapshot(%s)", name)}
 			}
+			if ir.IsTestCall(c, ir.TestWaitID) && len(c.Args) == 3 {
+				return lowerTestWait(c, surf, compRecvs)
+			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
 		if c := n.Call; c != nil && c.Func != nil && c.Func.IsMethod() && len(c.Args) > 0 {
@@ -889,4 +892,21 @@ func InstanceMemberCall(entry, member, args string) string {
 // the Kotlin string naming the id and the key the copy stands in.
 func PresentCopyEntry(id, key string) string {
 	return fmt.Sprintf("%q + %s + \"]\"", id+"[", key)
+}
+
+// lowerTestWait renders `t.wait(predicate, ms)`: the predicate asked until it
+// holds or the timeout passes, Compose's test clock moved on between, so a
+// LaunchedEffect's delay -- a timer's -- elapses as it does on a device. It
+// was a TODO, so a test waiting on a timer saw it never tick.
+func lowerTestWait(c *ir.Call, surf TestSurface, compRecvs map[string]bool) []string {
+	return []string{
+		"run {",
+		"    val __snglWait = " + lowerTestExpr(c.Args[1].Value, surf, compRecvs),
+		"    val __snglEnd = System.currentTimeMillis() + (" + lowerTestExpr(c.Args[2].Value, surf, compRecvs) + ")",
+		"    while (!__snglWait() && System.currentTimeMillis() < __snglEnd) {",
+		"        composeTestRule.mainClock.advanceTimeBy(5)",
+		"        " + testIdleLine,
+		"    }",
+		"}",
+	}
 }

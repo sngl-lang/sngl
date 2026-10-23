@@ -97,6 +97,12 @@ func init() {
 				if err := writeRawFile(sink, "snapshot.go", snapshotSrc); err != nil {
 					return err
 				}
+				// A test waiting runs the Model's schedules meanwhile.
+				if usesPosts(req.Pkg) {
+					if err := writeRawFile(sink, "settle.go", []byte("package "+c.cfg.Package+settleHookSrc)); err != nil {
+						return err
+					}
+				}
 			} else {
 				src := golang.LowerTestFile(c.cfg.Package, "bubbletea", req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
 				// newTestComponent helper: bubbletea's Model is a value
