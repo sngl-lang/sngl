@@ -110,7 +110,7 @@ under it. Delete this file before the MR leaves draft.
   screenshots were taken again. Left: bubbletea centers nothing
   (`alignItems`), so the evolution cards' names sit left.
 
-## Part 4: what the review found and left
+## Part 4: what the review found and left (done)
 
 - [X] The interpreter's tab press (`View.Choosing`) did not follow
   `lower.NamePresses`. Both ask `ir.PressedNode` now, which presses by the
