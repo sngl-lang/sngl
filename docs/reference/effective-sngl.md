@@ -1358,13 +1358,13 @@ ui.window {
 
 **Which lifetime a value gets is decided by where it is written.** The compiler picks the narrowest of four that holds it:
 
-| Written as                                                                                          | Lifetime     | Released                                                |
-|-----------------------------------------------------------------------------------------------------|--------------|---------------------------------------------------------|
-| an argument a function only reads, a receiver, a field read, a discarded result                     | statement    | after the statement, before a `return`, when it raises  |
-| a component's or view block's `var`, an owned derived value, a `#[retains]` argument in a component | node         | on overwrite, when what it reads changes, at `@unmount` |
-| an element of a list or a map, a struct's field, an option's value                                  | its holder's | when replaced or removed, and with the holder           |
-| a literal or `const func` call over constants, a package `var`                                      | application  | at teardown                                             |
-| an argument to a `#[moves]` parameter                                                               | moved        | never -- the callee owns it now                         |
+| Written as                                                                                                                        | Lifetime     | Released                                                |
+|-----------------------------------------------------------------------------------------------------------------------------------|--------------|---------------------------------------------------------|
+| an argument a function only reads, a receiver, a field read, a discarded result                                                   | statement    | after the statement, before a `return`, when it raises  |
+| a component's or view block's `var`, what its initializer borrows, an owned derived value, a `#[retains]` argument in a component | node         | on overwrite, when what it reads changes, at `@unmount` |
+| an element of a list or a map, a struct's field, an option's value                                                                | its holder's | when replaced or removed, and with the holder           |
+| a literal or `const func` call over constants, a package `var`                                                                    | application  | at teardown                                             |
+| an argument to a `#[moves]` parameter                                                                                             | moved        | never -- the callee owns it now                         |
 
 Aim for the statement lifetime. A value made and spent inside one statement is the easiest to see is right, and a canvas drawing text per frame is nothing but such statements. A value the next event needs goes in a `var` of the component, where overwriting it releases what it held and leaving the tree releases the last:
 

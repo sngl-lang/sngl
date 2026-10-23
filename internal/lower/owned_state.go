@@ -117,6 +117,18 @@ func ownedState(pkg *ir.Package, comps []*ir.Component, roots []any) error {
 			}
 		}
 	}
+	// After the derived values are reads of their cells: a call of one in an
+	// initializer is not a temp, and bound to a var of its own was released
+	// twice (`reads` in testdata/owned_state.sngl).
+	for _, c := range comps {
+		st.initTemps(&c.Vars, c.Pkg)
+	}
+	st.initTemps(&pkg.Vars, pkg)
+	for _, p := range importedPackages(pkg) {
+		if !p.Library {
+			st.initTemps(&p.Vars, p)
+		}
+	}
 	for _, c := range comps {
 		st.collect(c.Vars)
 		st.blockVars(&c.Stmts)
@@ -649,6 +661,33 @@ func (st *ownedStateRun) release(v ir.Expr) ir.Stmt {
 
 func releaseWith(release *ir.Func, v ir.Expr) ir.Stmt {
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: release, Args: []ir.CallArg{{Value: v}}}}
+}
+
+// initTemps gives each allocation a var's initializer borrows -- `open(fd)`
+// in `var n = size(open(fd))` -- a var of its own declared ahead of it, so
+// it is held with what holds the var and released with it: a component's
+// when the node unmounts, as every owned var of the component is; a
+// package's at teardown (ReleaseTemps' packageVars). An initializer has no
+// statement around it to release a temp after. A method of the component
+// computing the initializer in place would make the temp a statement's, and
+// is the shape to move to once two backends emit it: Go drops a synthesized
+// method's result type, and Kotlin declares a component's functions after
+// the vars, where an initializer cannot reach one.
+func (st *ownedStateRun) initTemps(vars *[]*ir.Var, pkg *ir.Package) {
+	var out []*ir.Var
+	for _, v := range *vars {
+		if !v.IsConst && v.Init != nil {
+			var c tempCollector
+			c.visit(&v.Init, false)
+			for _, f := range c.found {
+				held := &ir.Var{Name: st.name("__init"), Pkg: pkg, Type: f.expr.ExprType(), Init: f.expr}
+				*f.slot = identOf(held)
+				out = append(out, held)
+			}
+		}
+		out = append(out, v)
+	}
+	*vars = out
 }
 
 // retain gives each allocation a component hands a `#[retains]` parameter a

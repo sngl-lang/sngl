@@ -2270,7 +2270,11 @@ four lifetimes that holds it:
   compiler releases these itself, so a program that releases one by hand as
   well releases it twice. The value such a var holds is one its initializer
   or the assignment made: a var initialized or assigned from another var's
-  value is released twice, once by each.
+  value is released twice, once by each. What a var's initializer makes and
+  only borrows -- `open(fd)` in `var n = size(open(fd))` -- is held with
+  the var and released with it, since an initializer has no statement to
+  release it after: with the node for a component's var, at teardown for a
+  package's.
 - **Application** -- a value built only from constants, which is a literal of
   the type, or a call of a `const func`, whose arguments are literals or
   package constants, is made once and released when the application tears

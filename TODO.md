@@ -89,6 +89,10 @@ statement before `ReleaseTemps` and so releases it; do that for every target.
   being bound: the catch `catchReleasing` writes wraps the bindings too, so
   the temps bound so far are released on the way out.
 - [X] Spec: strike the first two held entries.
+- [X] Found on the way, fixed in Part 3: a var initializer's temp
+  (`var n = size(open(1))`) was held, since no pass reaches an initializer.
+  It is a var of its own now, held with the var's holder; the
+  statement-exact shape waits on two backends (`design/ownership.md`).
 
 ## Part 3: `#[retains]` outside an effect
 

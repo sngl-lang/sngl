@@ -119,7 +119,7 @@ forbids; nothing calls it, and gtk4rt's `Post` passes an index instead.
 **Node lifetime lowers onto `effect`** (`internal/lower/owned_state.go`). A
 branch leaving, a list row removed, a window closing are already `@unmount`,
 so `OwnedState` writes ordinary `effect`s and every target's `Effect` lowering
-brackets them. Three things become node lifetime:
+brackets them. Four things become node lifetime:
 
 - **An owned `var` of a component** is released when it is overwritten and
   when the node unmounts. Each assignment to it, in the component or through
@@ -184,6 +184,23 @@ brackets them. Three things become node lifetime:
   where the argument allocates; one handing over a value another holder owns
   is left to that holder's lifetime. A `#[moves]` argument is left where it
   is.
+- **What a var's initializer borrows** -- `open(fd)` in
+  `var n = size(open(fd))` -- becomes a var of its own declared ahead of the
+  var (`__initN`, `initTemps`), and so an owned var of the component,
+  released when the node unmounts; a package var's the same, released at
+  teardown by `ReleaseTemps`' `packageVars`. An initializer has no statement
+  around it to release a temp after, which is why no pass reached one and
+  the temp was held (`testdata/owned_init_temps.sngl`,
+  `testdata/owned_init_temps.txtar`). The statement-exact shape -- a method
+  of the component computing the initializer, whose `return` ReleaseTemps
+  would bind and release around, as it does for `derive`'s `__own_` helper
+  -- is the one to move to once two backends emit it: Go drops a synthesized
+  method's result type, and Kotlin declares a component's functions after
+  its vars, where no initializer can reach one, which a hand-written
+  `var n = helper()` on android trips today. A view block's var keeps its
+  temp held: on a target passHoistState has made it a component's var by
+  the time the pass runs, and the interpreter's block state is reached by no
+  pass.
 
 The pass runs before `NoComputed`, which would inline a derived value at
 every read and so allocate it per read; before the inliners, which give each
