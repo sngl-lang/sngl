@@ -47,6 +47,7 @@ const (
 	ktMutableStateListOf = ktRT + "mutableStateListOf"
 	ktMutableStateOf     = ktRT + "mutableStateOf"
 	ktRemember           = ktRT + "remember"
+	ktRememberUpdated    = ktRT + "rememberUpdatedState"
 	ktToMutableStateList = ktRT + "toMutableStateList"
 
 	ktModifier      = ktUI + "Modifier"

@@ -1,0 +1,113 @@
+# A timer under a loop reads the element its copy holds now, after the list
+# changed: `rows` drops its first element, so the copy at 0 holds 2, and no
+# tick after the click may push 1.
+#
+# android rendered each timer where it was written as a LaunchedEffect, which
+# outlives the composition that started it, so its handler kept the loop
+# variable of its first composition and went on pushing 1. It runs the latest
+# composition's handler (rememberUpdatedState) now.
+#
+# bubbletea's test invokers ran the key's Update and dropped the commands it
+# returned, so the click -- its Update armed each copy's tick -- left every
+# schedule marked live with nothing to tick it, and none ever ticked. An
+# invoker runs them as a waiting test runs the Model's; and a message for a
+# Model another test held is dropped rather than delivered to it.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import . "sngl:test"
+import time "sngl:time"
+import ui "sngl:ui"
+
+component main ui.node {
+    var rows = [1, 2, 3]
+    var seen list[int] = []
+    for var r = rows {
+        time.timer(interval=20ms, @tick {
+            seen.push(r)
+        })
+        ui.text(value="{r}")
+    }
+    ui.button #drop(text="drop", @click {
+        rows = [2, 3]
+        seen = []
+    })
+}
+
+func testATimerReadsItsCopysVariableAfterTheListChanges(t Test, c main) {
+    c.drop.click()
+    t.wait(func() => c.seen.length() >= 6, 3000)
+    t.assert(c.seen.length() >= 6)
+    t.assert(!c.seen.contains(1))
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:cfa63c3ca03bb6accbbac345f5294148
+{
+  "results": [
+    {
+      "Desc": "ATimerReadsItsCopysVariableAfterTheListChanges",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:cd1fd5de52cbea513bfedf640595b452
+{
+  "results": [
+    {
+      "Desc": "ATimerReadsItsCopysVariableAfterTheListChanges",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:186ecba68535d0da438dad313eea2022
+{
+  "results": [
+    {
+      "Desc": "ATimerReadsItsCopysVariableAfterTheListChanges",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:86ede8fa4a988a94d621bbb87e80803b
+{
+  "results": [
+    {
+      "Desc": "ATimerReadsItsCopysVariableAfterTheListChanges",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:d52134f43d6e1c8f44f2fd3fc6261063
+{
+  "results": [
+    {
+      "Desc": "ATimerReadsItsCopysVariableAfterTheListChanges",
+      "Passed": true
+    }
+  ]
+}

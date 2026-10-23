@@ -127,12 +127,23 @@ func (cc *irComposeContext) renderSchedule(t codegen.ScheduledTimer) {
 	for _, name := range codegen.BodyLocals(tick.Block) {
 		kc = kc.WithLocal(name)
 	}
+	// The effect outlives the composition that started it -- it restarts
+	// only when its gate changes -- so the handler it runs is the latest
+	// composition's: under a loop, the copy at that position is handed
+	// another element when the list changes, and the tick reads the one it
+	// holds now rather than the one the effect began with
+	// (cmd/sngl/testdata/timer_loop_reads_current_copy_runs.txt).
+	cc.widgetSeq++
+	handler := fmt.Sprintf("__tick%d", cc.widgetSeq)
+	cc.line("val %s = %s({", handler, cc.kc.Name(ktRememberUpdated))
+	for _, l := range irwalk.EvalBlock(kc, tick.Block) {
+		cc.line("    %s", l)
+	}
+	cc.line("})")
 	cc.line("%s(%s) {", cc.kc.Name(ktLaunchedEffect), gate)
 	cc.line("    while (%s) {", gate)
 	cc.line("        delay(%dL)", codegen.IntervalToMs(t.Interval))
-	for _, l := range irwalk.EvalBlock(kc, tick.Block) {
-		cc.line("        %s", l)
-	}
+	cc.line("        %s.value()", handler)
 	cc.line("    }")
 	cc.line("}")
 }

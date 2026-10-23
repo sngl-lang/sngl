@@ -96,7 +96,16 @@ var ` + settleVar + ` = func() {}
 // ` + settleModel + ` is Update after whatever the test did, whose commands --
 // each schedule's tick, armed after every Update -- run off the test's
 // goroutine, each message they answer posted back to be delivered on it.
-func (m *Model) ` + settleModel + `() { m.__snglDeliver(struct{}{}) }
+func (m *Model) ` + settleModel + `() {
+	__snglLive = m
+	m.__snglDeliver(struct{}{})
+}
+
+// __snglLive is the Model the running test settles. A message answering a
+// command another Model's Update returned -- a test that has ended, its tick
+// still on the way -- is dropped rather than delivered to it, so it neither
+// runs that test's handlers during this one nor arms its tick again.
+var __snglLive *Model
 
 func (m *Model) __snglDeliver(msg tea.Msg) {
 	nm, cmd := m.Update(msg)
@@ -117,11 +126,26 @@ func __snglRunCmd(m *Model, cmd tea.Cmd) {
 			return
 		}
 		if msg != nil {
-			` + golang.PostFunc + `(func() { m.__snglDeliver(msg) })
+			` + golang.PostFunc + `(func() {
+				if __snglLive == m {
+					m.__snglDeliver(msg)
+				}
+			})
 		}
 	}()
 }
 `)
+}
+
+// keepCmd ends an invoker: the commands its Update returned run as a waiting
+// test runs the Model's, where the program can post back to its loop, and are
+// dropped otherwise.
+func keepCmd(b *strings.Builder, posts bool) {
+	if posts {
+		b.WriteString("\t__snglRunCmd(m, cmd)\n")
+		return
+	}
+	b.WriteString("\t_ = cmd\n")
 }
 
 // settleHookSrc is the body of the test build's file pointing a waiting
