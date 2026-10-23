@@ -32,6 +32,7 @@ var styleFields = []string{
 	"width", "minWidth", "height", "gap",
 	"padding", "paddingX", "paddingY", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
 	"margin", "marginX", "marginY", "marginTop", "marginRight", "marginBottom", "marginLeft",
+	"alignItems", "textAlign",
 	"fontSize", "fontWeight", "fontStyle", "color",
 	"background", "borderRadius",
 }

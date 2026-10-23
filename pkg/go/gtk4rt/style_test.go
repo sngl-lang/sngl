@@ -157,3 +157,98 @@ func gapAlong(img goimage.Image, is func(color.NRGBA) bool) int {
 	}
 	return widest
 }
+
+// A label's text starts at its left, as html's does, unless its textAlign says
+// otherwise; a box's alignItems sits each child at its own width across the
+// box rather than stretching it; and a label's width is its width, its words
+// wrapping inside it, where a size request let a long line widen it.
+func TestSetStyleAligns(t *testing.T) {
+	if r := testutil.GUIRenderSkipReason(); r != "" {
+		t.Skip(r)
+	}
+	red := snglcolor.Color{R: 255, A: 255}
+	green := snglcolor.Color{G: 255, A: 255}
+	blue := snglcolor.Color{B: 255, A: 255}
+	yellow := snglcolor.Color{R: 255, G: 255, A: 255}
+	black := snglcolor.Color{A: 255}
+	// ui.text's label starts at the left, as gtk4.sngl builds it.
+	label := func(text string) Handle {
+		l := LabelNew(text)
+		LabelSetXAlign(l, 0)
+		return l
+	}
+	build := func(app Handle) Handle {
+		col := BoxNew(OrientationVertical, 0)
+		left := label("left")
+		SetStyle(left, Style{Background: red, Color: black})
+		centered := label("centered")
+		SetStyle(centered, Style{Background: green, Color: black, TextAlign: "center"})
+		inner := BoxNew(OrientationVertical, 0)
+		SetStyle(inner, Style{AlignItems: "center"})
+		narrow := label("narrow")
+		SetStyle(narrow, Style{Background: blue, Color: black})
+		BoxAppend(inner, narrow)
+		row := BoxNew(OrientationHorizontal, 0)
+		wrapped := label("a line much longer than the width it is given")
+		SetStyle(wrapped, Style{Width: 100, Background: yellow, Color: black})
+		BoxAppend(row, wrapped)
+		for _, w := range []Handle{left, centered, inner, row} {
+			BoxAppend(col, w)
+		}
+		win := ApplicationWindowNew(app)
+		WindowSetChild(win, col)
+		return win
+	}
+	data, err := SnapshotModelBytes(build, 1280, 720)
+	if err != nil {
+		if strings.Contains(err.Error(), "sngl_snapshot rc=") {
+			t.Skipf("headless render backend unavailable: %v", err)
+		}
+		t.Fatalf("SnapshotModelBytes: %v", err)
+	}
+	shot, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	is := func(r, g, b uint8) func(color.NRGBA) bool {
+		near := func(a, b uint8) bool { return math.Abs(float64(a)-float64(b)) < 40 }
+		return func(c color.NRGBA) bool { return near(c.R, r) && near(c.G, g) && near(c.B, b) }
+	}
+	dark := func(c color.NRGBA) bool { return c.R < 100 && c.G < 100 && c.B < 100 }
+	// The text drawn over a background is the dark pixels inside its extent.
+	text := func(bg goimage.Rectangle) goimage.Rectangle {
+		sub, ok := shot.(interface {
+			SubImage(goimage.Rectangle) goimage.Image
+		})
+		if !ok {
+			t.Fatalf("%T has no SubImage", shot)
+		}
+		return extent(sub.SubImage(bg), dark)
+	}
+	redBox, greenBox := extent(shot, is(255, 0, 0)), extent(shot, is(0, 255, 0))
+	blueBox, yellowBox := extent(shot, is(0, 0, 255)), extent(shot, is(255, 255, 0))
+	for name, r := range map[string]goimage.Rectangle{"red": redBox, "green": greenBox, "blue": blueBox, "yellow": yellowBox} {
+		if r.Empty() {
+			t.Fatalf("the %s label drew nothing", name)
+		}
+	}
+	unit := float64(shot.Bounds().Dx()) / 1280
+	if l := text(redBox); l.Min.X-redBox.Min.X > redBox.Dx()/10 {
+		t.Errorf("a label's text starts %d pixels into its %d: it is not at the left", l.Min.X-redBox.Min.X, redBox.Dx())
+	}
+	if c := text(greenBox); math.Abs(float64(c.Min.X+c.Max.X)/2-float64(greenBox.Min.X+greenBox.Max.X)/2) > 4*unit+2 {
+		t.Errorf("a centered label's text spans %v of its %v: it is not centered", c, greenBox)
+	}
+	if blueBox.Dx() > redBox.Dx()/2 {
+		t.Errorf("a label in a centering box is %d pixels of %d: it stretched", blueBox.Dx(), redBox.Dx())
+	}
+	if mid := (blueBox.Min.X + blueBox.Max.X) / 2; math.Abs(float64(mid-(redBox.Min.X+redBox.Max.X)/2)) > 4*unit+2 {
+		t.Errorf("a label in a centering box is at %v of %v: it is not centered", blueBox, redBox)
+	}
+	if math.Abs(float64(yellowBox.Dx())-100*unit) > 3*unit+2 {
+		t.Errorf("a label 100 wide is %d pixels, want about %.0f", yellowBox.Dx(), 100*unit)
+	}
+	if yellowBox.Dy() < 2*redBox.Dy() {
+		t.Errorf("a long label 100 wide is %d pixels high to a line's %d: it did not wrap", yellowBox.Dy(), redBox.Dy())
+	}
+}

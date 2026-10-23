@@ -69,6 +69,76 @@ static void sngl_sized_set(GtkWidget *w, int width, int height) {
     }
     gtk_widget_queue_resize(w);
 }
+
+// A label sized by its style is that size too, its words wrapping inside the
+// width as html's do: a size request let a long line widen it. It is measured
+// and allocated by GtkLabel's own code, given the width it is.
+static GtkWidgetClass *sngl_label_class(void) {
+    return GTK_WIDGET_CLASS(g_type_class_peek(GTK_TYPE_LABEL));
+}
+static void sngl_label_measure(GtkWidget *w, GtkOrientation o, int for_size,
+        int *min, int *nat, int *min_base, int *nat_base) {
+    int width = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "sngl-width"));
+    int height = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "sngl-height"));
+    if (o == GTK_ORIENTATION_VERTICAL && width > 0) for_size = width;
+    sngl_label_class()->measure(w, o, for_size, min, nat, min_base, nat_base);
+    int want = o == GTK_ORIENTATION_HORIZONTAL ? width : height;
+    if (want > 0) *min = *nat = want;
+}
+static void sngl_label_allocate(GtkWidget *w, int width, int height, int baseline) {
+    sngl_label_class()->size_allocate(w, width, height, baseline);
+}
+static void sngl_label_sized_set(GtkWidget *w, int width, int height, gboolean wrap) {
+    g_object_set_data(G_OBJECT(w), "sngl-width", GINT_TO_POINTER(width));
+    g_object_set_data(G_OBJECT(w), "sngl-height", GINT_TO_POINTER(height));
+    if (!GTK_IS_CUSTOM_LAYOUT(gtk_widget_get_layout_manager(w))) {
+        gtk_widget_set_layout_manager(w,
+            gtk_custom_layout_new(sngl_sized_mode, sngl_label_measure, sngl_label_allocate));
+    }
+    gtk_label_set_wrap(GTK_LABEL(w), wrap);
+    gtk_widget_queue_resize(w);
+}
+static int sngl_style_is_label(GtkWidget *w) { return GTK_IS_LABEL(w); }
+static gboolean sngl_label_wraps(GtkWidget *w) { return gtk_label_get_wrap(GTK_LABEL(w)); }
+static float sngl_label_xalign(GtkWidget *w) { return gtk_label_get_xalign(GTK_LABEL(w)); }
+static GtkJustification sngl_label_justify(GtkWidget *w) { return gtk_label_get_justify(GTK_LABEL(w)); }
+static void sngl_label_align(GtkWidget *w, float x, GtkJustification j) {
+    gtk_label_set_xalign(GTK_LABEL(w), x);
+    gtk_label_set_justify(GTK_LABEL(w), j);
+}
+
+// A box's alignItems is where each of its children sits across it, kept on
+// the box so that a child inserted later -- a render slot's -- sits there too.
+// 0 is no alignment the style named, which leaves the child as it was built.
+static void sngl_align_put(GtkWidget *box, GtkWidget *c, GtkAlign a) {
+    if (gtk_orientable_get_orientation(GTK_ORIENTABLE(box)) == GTK_ORIENTATION_VERTICAL) {
+        // A baseline across a column is its start, as in CSS.
+        if (a != GTK_ALIGN_START && a != GTK_ALIGN_CENTER && a != GTK_ALIGN_END && a != GTK_ALIGN_FILL) {
+            a = GTK_ALIGN_START;
+        }
+        gtk_widget_set_halign(c, a);
+    } else {
+        gtk_widget_set_valign(c, a);
+    }
+}
+static void sngl_align_child(GtkWidget *box, GtkWidget *c) {
+    int a = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(box), "sngl-align"));
+    if (a != 0) sngl_align_put(box, c, a - 1);
+}
+// A box that stops naming an alignment stretches its children again.
+static void sngl_align_set(GtkWidget *box, int a) {
+    g_object_set_data(G_OBJECT(box), "sngl-align", GINT_TO_POINTER(a));
+    for (GtkWidget *c = gtk_widget_get_first_child(box); c != NULL; c = gtk_widget_get_next_sibling(c)) {
+        sngl_align_put(box, c, a == 0 ? GTK_ALIGN_FILL : a - 1);
+    }
+}
+static int sngl_align_baseline(void) {
+#if GTK_CHECK_VERSION(4, 12, 0)
+    return GTK_ALIGN_BASELINE_FILL;
+#else
+    return GTK_ALIGN_BASELINE;
+#endif
+}
 */
 import "C"
 
@@ -93,6 +163,11 @@ type Style struct {
 	Margin, MarginX, MarginY                             float64
 	MarginTop, MarginRight, MarginBottom, MarginLeft     float64
 
+	// AlignItems is where a box's children sit across it, TextAlign where a
+	// label's lines sit in it: each a member's name, "" for none.
+	AlignItems string
+	TextAlign  string
+
 	FontSize   float64
 	FontWeight string
 	FontStyle  string
@@ -109,6 +184,14 @@ type styled struct {
 	sized   bool
 	spacing C.int
 	spaced  bool
+	aligned bool
+	// A label's own wrap and alignment, read the first time it is styled,
+	// which a style that stops sizing or aligning it gives back.
+	own         bool
+	wrap        C.gboolean
+	xalign      C.float
+	justify     C.GtkJustification
+	textAligned bool
 }
 
 var (
@@ -120,9 +203,10 @@ var (
 )
 
 // SetStyle applies s to w, a constant style once and a run-time one each time
-// it changes. A width and a height are a size request, except on an image,
-// which is that size; a gap is a box's spacing; the rest is CSS, a class per
-// distinct style on a provider for the whole display.
+// it changes. A width and a height are a size request, except on an image and
+// a label, which are that size; a gap is a box's spacing and alignItems where
+// it puts its children; textAlign is a label's alignment; the rest is CSS, a
+// class per distinct style on a provider for the whole display.
 func SetStyle(w Handle, s Style) {
 	st := styledWidgets[w]
 	if st == nil {
@@ -131,10 +215,25 @@ func SetStyle(w Handle, s Style) {
 		gone := cbind.Register(func() { delete(styledWidgets, w) })
 		C.sngl_style_watch((*C.GObject)(p(w)), C.int(gone))
 	}
+	label := C.sngl_style_is_label(widget(w)) != 0
+	if label && !st.own {
+		st.own = true
+		st.wrap = C.sngl_label_wraps(widget(w))
+		st.xalign, st.justify = C.sngl_label_xalign(widget(w)), C.sngl_label_justify(widget(w))
+	}
 	width, height := max(s.Width, s.MinWidth), s.Height
 	switch {
 	case images[w] != nil && (s.Width > 0 || s.Height > 0 || st.sized):
 		C.sngl_sized_set(widget(w), C.int(s.Width), C.int(s.Height))
+		st.sized = s.Width > 0 || s.Height > 0
+	case label && (s.Width > 0 || s.Height > 0 || st.sized):
+		wrap := st.wrap
+		if s.Width > 0 {
+			wrap = 1
+		}
+		C.sngl_label_sized_set(widget(w), C.int(s.Width), C.int(s.Height), wrap)
+		// A minWidth is still only the least a label is.
+		C.gtk_widget_set_size_request(widget(w), sizeRequest(s.MinWidth), -1)
 		st.sized = s.Width > 0 || s.Height > 0
 	case width > 0 || height > 0 || st.sized:
 		C.gtk_widget_set_size_request(widget(w), sizeRequest(width), sizeRequest(height))
@@ -150,6 +249,25 @@ func SetStyle(w Handle, s Style) {
 			spacing = C.int(s.Gap)
 		}
 		C.gtk_box_set_spacing(box, spacing)
+		if a := alignment(s.AlignItems); a != 0 || st.aligned {
+			C.sngl_align_set(widget(w), a)
+			st.aligned = a != 0
+		}
+	}
+	if label && (s.TextAlign != "" || st.textAligned) {
+		x, j := st.xalign, st.justify
+		switch s.TextAlign {
+		case "left":
+			x, j = 0, C.GTK_JUSTIFY_LEFT
+		case "center":
+			x, j = 0.5, C.GTK_JUSTIFY_CENTER
+		case "right":
+			x, j = 1, C.GTK_JUSTIFY_RIGHT
+		case "justify":
+			x, j = 0, C.GTK_JUSTIFY_FILL
+		}
+		C.sngl_label_align(widget(w), x, j)
+		st.textAligned = s.TextAlign != ""
 	}
 	class := styleClass(s.CSS())
 	if class == st.class {
@@ -166,6 +284,32 @@ func SetStyle(w Handle, s Style) {
 		free()
 	}
 	st.class = class
+}
+
+// alignment is the GtkAlign an `alignItems` member puts a child at, plus one,
+// so that 0 is none named. A stretched child fills the box, as it does when a
+// style names none.
+func alignment(member string) C.int {
+	switch member {
+	case "start":
+		return C.GTK_ALIGN_START + 1
+	case "center":
+		return C.GTK_ALIGN_CENTER + 1
+	case "end":
+		return C.GTK_ALIGN_END + 1
+	case "stretch":
+		return C.GTK_ALIGN_FILL + 1
+	case "baseline":
+		return C.sngl_align_baseline() + 1
+	}
+	return 0
+}
+
+// aligned puts child where box's alignItems says, as it is inserted.
+func aligned(box, child Handle) {
+	if C.sngl_style_is_box(widget(box)) != 0 {
+		C.sngl_align_child(widget(box), widget(child))
+	}
 }
 
 func sizeRequest(px float64) C.int {

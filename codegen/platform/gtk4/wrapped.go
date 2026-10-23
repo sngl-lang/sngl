@@ -143,6 +143,7 @@ const (
 	rtStr rtSetterKind = iota
 	rtBool
 	rtInt
+	rtFloat
 	rtOrient
 )
 
@@ -153,6 +154,7 @@ var rtSetterTable = map[string]struct {
 	kind rtSetterKind
 }{
 	"gtk_label_set_text":             {"LabelSetText", rtStr},
+	"gtk_label_set_xalign":           {"LabelSetXAlign", rtFloat},
 	"gtk_button_set_label":           {"ButtonSetLabel", rtStr},
 	"gtk_check_button_set_label":     {"CheckButtonSetLabel", rtStr},
 	"gtk_check_button_set_active":    {"CheckButtonSetActive", rtBool},
@@ -163,12 +165,12 @@ var rtSetterTable = map[string]struct {
 }
 
 // rtSetterValue adapts an OnPropAssign value expression to the wrapped setter's
-// Go-native argument. String/bool/int values pass through unchanged (the golang
-// IR context renders them as Go string/bool/int); orientation maps a string
+// Go-native argument. String/bool/int/float values pass through unchanged (the
+// golang IR context renders them as Go string/bool/int/float64); orientation maps a string
 // literal to the gtk4rt constant. ok=false → not adaptable, fall back.
 func rtSetterValue(kind rtSetterKind, value ir.Expr) (ir.Expr, bool) {
 	switch kind {
-	case rtStr, rtBool, rtInt:
+	case rtStr, rtBool, rtInt, rtFloat:
 		return value, true
 	case rtOrient:
 		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {

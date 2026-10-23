@@ -115,8 +115,10 @@ func setEntryText(e gtk.GtkEntry, text string)
 #[marks.intrinsic("gtk4.calendarDate")]
 func calendarDate(c gtk.GtkCalendar) option[time.date]
 
+// A text starts at the left of its box, as html's does: a GtkLabel centers
+// its words in whatever room it is given.
 const component ui.text[platform](value, style) {
-    gtk.GtkLabel(label=value, style={...style}) {}
+    gtk.GtkLabel(label=value, xalign=0.0, style={...style}) {}
 }
 
 const component ui.button[platform](text, style, @click) {

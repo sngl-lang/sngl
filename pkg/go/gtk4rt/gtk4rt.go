@@ -368,6 +368,7 @@ func BoxAppend(box, child Handle) {
 		return
 	}
 	C.gtk_box_append((*C.GtkBox)(p(box)), widget(child))
+	aligned(box, child)
 }
 
 func BoxRemove(box, child Handle) {
@@ -428,6 +429,7 @@ func InsertBefore(box, anchor, child Handle) {
 	}
 	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
 	C.gtk_box_insert_child_after((*C.GtkBox)(p(box)), widget(child), prev)
+	aligned(box, child)
 }
 
 func children(parent Handle) []Handle {
