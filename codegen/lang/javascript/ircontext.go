@@ -395,6 +395,9 @@ func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
 	if n.Synthesized {
 		return n.Name
 	}
+	if field, ok := jc.shadowedState(n); ok {
+		return field
+	}
 	_, kind := jc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
 		return jc.stateRecv() + "." + n.Name
@@ -404,6 +407,21 @@ func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	return n.Name
 }
+
+// shadowedState is the state field n names where a local of the function
+// spelled the same hides it by name (codegen.ExprCtx.ShadowedStateVar), for a
+// read and a write alike -- except in an html instance factory, whose
+// component's vars are the factory's own closure locals.
+func (jc *JsIRContext) shadowedState(n *ir.Ident) (string, bool) {
+	if jc.Ctx.ClosureMethods {
+		return "", false
+	}
+	if _, ok := jc.Ctx.ShadowedStateVar(n.Sym); !ok {
+		return "", false
+	}
+	return jc.stateRecv() + "." + n.Name, true
+}
+
 func (jc *JsIRContext) MutTargetField(n *ir.Select) string { return jc.fieldKey(n) }
 
 func (jc *JsIRContext) StmtPrefix(s ir.Stmt) []string {
@@ -552,13 +570,8 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if jc.EventVar != "" && jc.EventParam != nil && n.Sym == jc.EventParam {
 		return jc.EventVar
 	}
-	// A read of the state a local of the function shadows -- except in an
-	// html instance factory, whose component's vars are the factory's own
-	// closure locals.
-	if !jc.Ctx.ClosureMethods {
-		if _, ok := jc.Ctx.ShadowedStateVar(n.Sym); ok {
-			return jc.stateRecv() + "." + name
-		}
+	if field, ok := jc.shadowedState(n); ok {
+		return field
 	}
 	sym, kind := jc.Ctx.Resolve(name)
 	switch kind {

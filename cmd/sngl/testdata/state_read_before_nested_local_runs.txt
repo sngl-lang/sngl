@@ -1,0 +1,101 @@
+# A page's var read before a nested local of its name: `seen = count` reads
+# the page's `count`, and the `var count` the `if` declares after it is that
+# block's own. Kotlin bound every local a body declares for the whole body
+# (codegen.BodyLocals), and told a write of the state from the local by its
+# symbol but a read by its name, so the read came out a bare `count` the test
+# build's state class had no such name for, and android did not build.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var count = 1
+    var seen = 0
+    ui.button #bump(text="bump", @click {
+        seen = count
+        if seen > 0 {
+            var count = 100
+            seen = seen + count
+        }
+        count = count + 1
+    })
+}
+
+func testAStateReadBeforeANestedLocalOfItsName(t Test, c main) {
+    c.bump.click()
+    t.assert(c.seen == 101)
+    t.assert(c.count == 2)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:1dc1ff722116b86f3bd27ba60e78f5f9
+{
+  "results": [
+    {
+      "Desc": "AStateReadBeforeANestedLocalOfItsName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:fd771e9363646a781a2e070bcfa27170
+{
+  "results": [
+    {
+      "Desc": "AStateReadBeforeANestedLocalOfItsName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:c83a75f8ff8cafcc78cc4fcb2d5743fa
+{
+  "results": [
+    {
+      "Desc": "AStateReadBeforeANestedLocalOfItsName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:e2df32cf782d464db9df348a9a3775cd
+{
+  "results": [
+    {
+      "Desc": "AStateReadBeforeANestedLocalOfItsName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:605d6f134b55a1917efbda76808e82b5
+{
+  "results": [
+    {
+      "Desc": "AStateReadBeforeANestedLocalOfItsName",
+      "Passed": true
+    }
+  ]
+}

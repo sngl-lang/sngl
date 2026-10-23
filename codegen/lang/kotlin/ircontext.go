@@ -756,19 +756,30 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 		}
 		return n.Name
 	}
-	// A write names the var it writes, so a same-named lambda parameter in
-	// scope (android's checkbox hands its lambda `on`) does not shadow it --
-	// and a function's own local is not the page's var of its name:
-	// sngl:http's `checked()` wrote its `kind` as `state.kind`.
-	if v, isVar := n.Sym.(*ir.Var); isVar && kc.declared(v) {
-		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
-			return rewritten
-		}
+	if rewritten, ok := kc.stateRewrite(n); ok {
+		return rewritten
 	}
 	if rewritten, ok := kc.identRewrite(n.Name); ok {
 		return rewritten
 	}
 	return n.Name
+}
+
+// stateRewrite is the rewrite of an identifier naming a var the page's state
+// declares, by its symbol rather than its name: a same-named lambda parameter
+// in scope (android's checkbox hands its lambda `on`) does not shadow it, nor
+// does a local of the function -- which codegen.BodyLocals binds for the
+// whole body, so `seen = count` before a nested `var count` read the local
+// that was not yet there, and sngl:http's `checked()` wrote its own `kind`
+// as `state.kind` until a write asked the symbol. A read and a write ask the
+// same.
+func (kc *KtIRContext) stateRewrite(n *ir.Ident) (string, bool) {
+	v, isVar := n.Sym.(*ir.Var)
+	if !isVar || !kc.declared(v) {
+		return "", false
+	}
+	rewritten, ok := kc.IdentRewrites[n.Name]
+	return rewritten, ok
 }
 
 // declared reports whether v is a var the package or one of its components
@@ -877,6 +888,9 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	name := n.Name
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
+	}
+	if rewritten, ok := kc.stateRewrite(n); ok {
+		return rewritten
 	}
 	if rewritten, ok := kc.identRewrite(name); ok && !isParamRef(n) {
 		return funcReference(n.Sym, rewritten)
