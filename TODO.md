@@ -249,14 +249,20 @@ every frame.
 
 What lowering cannot see: calls the inline-cgo translator builds after it.
 
-- [ ] Constants application-lifetime, the rest freed after the call:
+- [X] Constants application-lifetime, the rest freed after the call:
   `cString` in `codegen/platform/gtk4/intrinsic_translator.go`
   (`coerceSetterValue`, ctor zero values), the window title and the
   `sngl_connect` signal names in `compiler_ir.go`, and the `setEntryText`
-  setter if `fix/program-writes-fire-no-events` has landed.
-- [ ] Goldens: `ui.button(text=n)` beside a `draw.canvas` (#110's repro)
+  setter (`fix/program-writes-fire-no-events` had landed). One rewrite,
+  `emitShared.ownCStrings`, over what each site returns.
+- [X] Goldens: `ui.button(text=n)` beside a `draw.canvas` (#110's repro)
   frees per update; `deny` a bare `C.CString(` outside an
-  application-lifetime declaration.
+  application-lifetime declaration (`testdata/gtk4_translator_strings.txtar`).
+- [ ] Found on the way, not fixed: `dropSelfSetterCalls` drops every
+  `C.gtk_*_set_*` on a handler's own node, so on inline-cgo gtk4 a
+  `ui.button(text="{n}", @click { n = n + 1 })` never shows the new count.
+  It was written against the entry echo, which the override's effect now
+  avoids (`testdata/gtk4_entry_two_way_no_echo.txtar`).
 
 ## Part 10: inline-cgo resolution in lowering
 

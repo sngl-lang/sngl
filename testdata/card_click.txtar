@@ -617,11 +617,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -762,6 +764,10 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+var (
+	__cstr0 = C.CString("clicked")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	opened         string
@@ -854,7 +860,9 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("opened " + c.__prop___p0)))
+	__ctmp1 := C.CString(("opened " + c.__prop___p0))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp1)
+	C.free(unsafe.Pointer(__ctmp1))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -862,7 +870,9 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.CString(("opened " + c.__prop___p0)))
+	__ctmp2 := C.CString(("opened " + c.__prop___p0))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp2)
+	C.free(unsafe.Pointer(__ctmp2))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -903,10 +913,12 @@ func (m *Model) buildWidgetTree() {
 			}
 			m.__renderSlot0(m.__n2_box)
 		})
-		C.sngl_connect(unsafe.Pointer(m.row), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+		C.sngl_connect(unsafe.Pointer(m.row), __cstr0, C.int((len(snglCallbacks) - 1)))
 		__n4 := (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
 		__n5 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n5)), C.CString(name))
+		__ctmp0 := C.CString(name)
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n5)), __ctmp0)
+		C.free(unsafe.Pointer(__ctmp0))
 		C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(__n5)))
 		C.gtk_button_set_child((*C.GtkButton)(unsafe.Pointer(m.row)), (*C.GtkWidget)(unsafe.Pointer(__n4)))
 		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(m.row)))
@@ -1193,7 +1205,7 @@ pass sha256:29162fdbf02a46e99d69661d245e1c2a
 -- run/go/fyne --
 pass sha256:8a9727a7d1f88a5a1c6df4bd6c8149be
 -- run/go/gtk4 --
-pass sha256:3ec8747a2f961eb69fb43708584bd5a4
+pass sha256:c535bd5bd53f428cb26bfe30011f94e6
 -- run/kotlin/android --
 pass sha256:233a133f02e271f09d9db56fd5b49627
 -- run/none/html --

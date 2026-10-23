@@ -89,11 +89,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -266,6 +268,13 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+var (
+	__cstr0 = C.CString("day-selected")
+	__cstr1 = C.CString("t")
+	__cstr2 = C.CString("clicked")
+	__cstr3 = C.CString("c")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown               bool
@@ -382,7 +391,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			m.cal = nil
 			if m.shown {
 				m.cal = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.cal)), C.CString("c"))
+				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.cal)), __cstr3)
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(m.cal)))
 				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(m.cal)))
 			}
@@ -428,12 +437,12 @@ func (m *Model) buildWidgetTree() {
 	m.cal__own0 = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.cal__own0)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.cal__own0_daySelected_handler)
-	C.sngl_connect(unsafe.Pointer(m.cal__own0), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.cal__own0), __cstr0, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.cal__own0)))
 	m.t = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.t)), C.CString("t"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.t)), __cstr1)
 	snglCallbacks = append(snglCallbacks, m.t_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.t), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.t), __cstr2, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.t)))
 	m.__renderSlot0(m.__n0)
 	m.__effects0_settle()
@@ -469,4 +478,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:765c6a5189210275f33e23b7c26f8b9c
+pass sha256:62102a8358ea555908b31ccd6f74ed05

@@ -213,6 +213,24 @@ declares: gtk4's preamble includes it, and fyne's and bubbletea's
 (`EmitCHeader`) include it beside the program's links, since every `c.str`
 those targets make is freed.
 
+**A call the gtk4 translator builds releases its own strings.** The
+inline-cgo translator writes `C.CString` into a setter, a `sngl_connect`, a
+`g_object_set_property` helper, a constructor's non-nullable zero, a flow's
+markup, the window title and the entry-text write after lowering, so no pass
+sees the allocation. `emitShared.ownCStrings` (`intrinsic_translator.go`) is
+run over the statements each of those sites returns and writes the release
+`ReleaseTemps` would have: a literal's copy becomes a package-level `var`
+(`__cstrN`, one per distinct text, `scaffoldData.CStrings`) kept for the
+application's lifetime and never freed, and any other is bound to a `__ctmpN`
+before the statement that hands it to C and freed with `C.free` after it.
+Every C function the translator calls copies what it is handed, so no string
+outlives its statement. `dropSelfSetterCalls` drops the temps bound for a
+setter it drops. The activate signal name in `callbacks.go` is a package
+`var` for the same reason, and the event invokers already freed theirs
+(`testdata/gtk4_translator_strings.txtar`, whose `deny` lines refuse a
+`C.CString` inside another call or on a line of its own). Part 10 moves these
+calls into lowering, which retires this.
+
 **What it does not release yet**, each left held rather than released wrongly:
 an allocation the statement may not evaluate -- the right of `&&` or `||`, a
 ternary's arm (lowered to statements before the pass on a target without
@@ -388,8 +406,9 @@ zero payload, `canvasImage`'s `@enter` divided by the drawing's size. Leaks from
 line with a count, because a frame repeats them. `sngl run` takes no
 `--simulate`: a run ends with no leak check until application teardown exists
 on targets. What the tracker cannot see is a call the gtk4 translator builds
-after lowering; moving inline-cgo resolution into lowering is what brings
-those under it (`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
+after lowering, which releases its own strings (`ownCStrings`); moving
+inline-cgo resolution into lowering is what brings those under it
+(`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
 
 **Out of scope: a C language target.** It adds `#[owned]` to `string`, and
 decides between per-statement release and a per-frame or per-event arena for
