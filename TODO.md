@@ -125,5 +125,5 @@ only the redraw, and leaves android out, for these reasons.
   stands" brought up to date, and the user checks android on the device.
 - [X] A review agent over the branch (`git diff origin/main...target-gaps-left`);
   fix what it finds, each with a fixture.
-- [ ] Combine !277 into !275, as above.
+- [X] Combine !277 into !275, as above.
 - [ ] Delete this file; take !275 out of draft -- ask the user first.
