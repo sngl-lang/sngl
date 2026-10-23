@@ -721,6 +721,7 @@ func (c *stmtCloner) stmt(s ir.Stmt) ir.Stmt {
 		cp.Cond = cloneExpr(n.Cond)
 		cp.Body = c.stmts(n.Body)
 		cp.Else = c.stmts(n.Else)
+		cp.Finally = c.stmts(n.Finally)
 		return &cp
 	case *ir.Match:
 		cp := *n
