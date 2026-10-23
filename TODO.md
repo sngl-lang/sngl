@@ -119,6 +119,6 @@ only the redraw, and leaves android out, for these reasons.
 - [ ] The example on every target again: screenshots of html, fyne, gtk4 and
   bubbletea in the MR description, the example README's "Where each target
   stands" brought up to date, and the user checks android on the device.
-- [ ] A review agent over the branch (`git diff origin/main...target-gaps-left`);
+- [X] A review agent over the branch (`git diff origin/main...target-gaps-left`);
   fix what it finds, each with a fixture.
 - [ ] Delete this file; take the MR out of draft -- ask the user first.
