@@ -324,6 +324,12 @@ matched. Each target reads its host its own way, in its own `.sngl`:
 - **html**'s element declares the DOM's event as an external struct,
   `#[js.native("Event")] struct Event { currentTarget Target }`, so a handler
   on an element is handed the DOM event and reads `e.currentTarget.value`.
+  `@click` hands a `ClickEvent`, whose `target.closest(controls)` is how a
+  clickable card hears only the clicks no control inside it handled: the DOM
+  bubbles a button's click -- a mouse's, and the one Enter makes -- up to the
+  card, which clicked it as well; the other targets hand a click to the
+  innermost control already
+  (`cmd/sngl/testdata/card_click_stays_with_its_control_runs.txt`).
 - **fyne**'s primitives declare an event vocabulary by type, as their props
   are -- `@change(text string)`, `@toggle(flag bool)`, `@adjust(number int)`,
   `@pick(date option[time.date])` -- and a `Handler` names the Go callback

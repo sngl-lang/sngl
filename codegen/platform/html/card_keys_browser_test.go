@@ -16,7 +16,8 @@ import (
 // card and could not open it. A card that is not clickable takes neither, and
 // a key pressed in something inside a clickable card is that thing's: the
 // card's listener hears it bubble, and taking it there swallowed a space typed
-// in a field and stood in for a button's own Enter.
+// in a field and stood in for a button's own Enter. Nor does the card hear
+// the click a button inside it made, by mouse or by Enter, bubble up.
 func TestACardTakesEnterAndSpaceAsAClick(t *testing.T) {
 	src := `
 import ui "sngl:ui"
@@ -56,13 +57,19 @@ ui.window(title="C") { App() }
 		if got := page.MustElement("body").MustText(); !strings.Contains(got, "hits 2") {
 			t.Errorf("keys typed in a field inside the card should not click the card; the page reads %q", got)
 		}
-		// The button's own Enter clicks it; that click bubbling to the card
-		// is the DOM's, as a mouse's is.
+		// The button's own Enter clicks it, and the card does not hear that
+		// click bubble up, nor a mouse's: a click a control inside the card
+		// handled is the control's.
 		page.MustElementR("button", "inner").MustFocus()
 		page.Keyboard.MustType(input.Enter)
 		page.MustWaitStable()
 		if got := page.MustElement("body").MustText(); !strings.Contains(got, "inner 1") {
 			t.Errorf("Enter on a button inside the card should click the button; the page reads %q", got)
+		}
+		page.MustElementR("button", "inner").MustClick()
+		page.MustWaitStable()
+		if got := page.MustElement("body").MustText(); !strings.Contains(got, "inner 2") || !strings.Contains(got, "hits 2") {
+			t.Errorf("Enter and a click on a button inside the card should click the button and not the card; the page reads %q", got)
 		}
 
 		plain := page.MustElementR("div", "plain 0")
