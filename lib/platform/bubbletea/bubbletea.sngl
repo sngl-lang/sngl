@@ -10,7 +10,7 @@ import gen "sngl:x/gen"
 // The `bubbletea` node of a build directive: `output { go { bubbletea() } }`.
 // focusOrder: a TUI draws its own widgets, so nothing else tracks which one has
 // the keyboard. No reactiveCanvas: View() re-runs on every update and
-// re-rasterises with it, so an explicit redraw would be the second of two.
+// re-rasterizes with it, so an explicit redraw would be the second of two.
 // viewMatches: View() is Go statements, so a match there is a switch.
 // asyncPost: a closure posted back to the loop is a message Update runs.
 #[gen.can(viewMatches, asyncPost)]
@@ -108,7 +108,7 @@ struct Event {
 // declared here, so a rename here is a rename in blueprint.go.
 //
 // #[intrinsic] is what says these are the primitives rather than wrappers over
-// one: they carry no body, and the id is what the view renderer recognises them
+// one: they carry no body, and the id is what the view renderer recognizes them
 // by instead of their names.
 
 #[gen.renders(identity)]

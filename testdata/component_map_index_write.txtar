@@ -619,7 +619,7 @@ pass sha256:46206c69ab409c6748613df98dae303d
 -- run/none/html --
 pass sha256:89f41f967128f3fce1d5987ae63fc7c9
 -- testrun/html/none/component_map_index_write.sngl/main/1 --
-sha256:6afbd8be9f88dfc4be888ac4ff0d83fb
+sha256:a0cc99bdff8820534d8312da7dbda6ff
 {
   "results": [
     {

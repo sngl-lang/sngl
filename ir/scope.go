@@ -270,7 +270,7 @@ func NewBaseScope() *Scope {
 	// absent — they are provided exclusively as stdlib StructDefs
 	// (lib/types.sngl). The stdlib scope sits between this base scope and user
 	// code, so resolution finds the StructDef. Pre-stdlib lookups for these
-	// names will fail, which is the correct behaviour.
+	// names will fail, which is the correct behavior.
 	for _, entry := range []struct {
 		name string
 		typ  *Type

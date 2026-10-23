@@ -19,7 +19,7 @@ func LexerForFile(name string) string {
 	return l.Config().Name
 }
 
-// Terminal applies chroma syntax highlighting for terminal (true-colour)
+// Terminal applies chroma syntax highlighting for terminal (true-color)
 // output. Returns the original text unchanged on any error.
 //
 // The special lexer name "spew" maps to the Go lexer (spew output is

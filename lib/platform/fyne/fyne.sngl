@@ -179,7 +179,7 @@ struct Spec {
 //
 // #[intrinsic] is what makes these primitives rather than wrappers over one:
 // they carry no body, so the inliner leaves them in place, and the emitter
-// recognises them by the id rather than by their names.
+// recognizes them by the id rather than by their names.
 
 #[gen.renders(identity)]
 #[intrinsic("fyne:Widget")]

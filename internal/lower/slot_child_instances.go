@@ -14,7 +14,7 @@ import (
 // whether the node already at the cursor *is* this node, so it can only ever
 // match something the render hands back the same handle for. A component
 // instance is that, because the registry holds it. A plain node is built fresh
-// every render, so the comparison never matches one and the whole optimisation
+// every render, so the comparison never matches one and the whole optimization
 // degrades to remove-all-append-all: focus, selection and scroll go with the
 // nodes, and appending one row to a list of a hundred touches a hundred and
 // one.

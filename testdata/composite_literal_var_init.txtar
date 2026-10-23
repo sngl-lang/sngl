@@ -1,8 +1,8 @@
-A composite literal initializing a state var reads its neighbours, and every
+A composite literal initializing a state var reads its neighbors, and every
 element of it has to be lowered with the same context the var's own scope has.
 
 A struct, list or map literal looks like a constant, and both the Go and the
-Kotlin backends took that shape as a licence to lower it without a context --
+Kotlin backends took that shape as a license to lower it without a context --
 `golang.IRLiteralToGo` and `kotlin.IRLiteralToKt`, whose whole vocabulary is
 literals nested in literals. A field initialized from a model var is an
 `ir.Ident`, which neither walk has a case for, and the case-less answer is the

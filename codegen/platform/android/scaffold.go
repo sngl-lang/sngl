@@ -13,7 +13,7 @@ type scaffoldData struct {
 	HasIcon         bool
 	HasAdaptiveIcon bool   // true when icon is SVG (produces VectorDrawable foreground)
 	Color           string // e.g. "#6750A4" (empty if not set)
-	Accent          string // the theme's primary as the program set it; "" for the device's colours
+	Accent          string // the theme's primary as the program set it; "" for the device's colors
 	Gradle          bool   // true for Gradle scaffold
 	HasGoLib        bool   // true when Go module (golib.aar) is included
 	// Activities, when non-empty, replaces the default MainActivity
@@ -22,7 +22,7 @@ type scaffoldData struct {
 	Activities []ManifestActivity
 	// HasI18n is true when the source package uses i18n intrinsics. When set,
 	// MainActivity.kt emits I18n.init(this) in onCreate so the runtime
-	// is initialised before Compose content is set.
+	// is initialized before Compose content is set.
 	HasI18n bool
 	// HasAssets is true when the program reads pictures out of the app's
 	// assets, and MainActivity hands SnglAssets the context to read them with.

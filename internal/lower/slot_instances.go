@@ -406,7 +406,7 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 //	list.push(<now_p>, <expr>)                          // one per #[construct] prop
 //	<idx> = <idx> + 1
 //
-// The create stays a LocalVar initialised by the call, because that is the
+// The create stays a LocalVar initialized by the call, because that is the
 // shape codegen.WalkLowered matches on: an assignment carrying the same call
 // reaches no arm and is emitted as a call to a function nothing declares. It
 // also stays the *only* create site, which is why a stale instance falls
@@ -623,7 +623,7 @@ func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr
 // the shape ComponentRoot is matched in, and the old one is bound before the
 // reassignment that loses the instance it belongs to.
 //
-// The create stays a LocalVar initialised by the call for the reason
+// The create stays a LocalVar initialized by the call for the reason
 // reuseOrCreate's does: that is the shape codegen.WalkLowered matches on. Its
 // name carries a counter because two mutations of one var in one handler body
 // splice two updaters into the same scope, and one name for both is a

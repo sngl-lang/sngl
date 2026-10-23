@@ -16,7 +16,7 @@ override that did not rewrite it.
 
 What this pins is the ir.Body half again. Component.Funcs and Component.Methods
 are restored to the base's when checkPendingExtensions finishes, so the
-override's helper survives to lowering only by travelling in the override's own
+override's helper survives to lowering only by traveling in the override's own
 ir.Body and being swapped back by specializeComp. Without that swap the call
 reaches each backend with no declaration emitted for it.
 

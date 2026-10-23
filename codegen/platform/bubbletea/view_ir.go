@@ -538,7 +538,7 @@ func (vc *irViewContext) renderSiblings(stmts []ir.Stmt, partVar, list string) {
 }
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
-	// Canvas2D node — rasterise inline each frame into a terminal string.
+	// Canvas2D node — rasterize inline each frame into a terminal string.
 	if c := vc.ctx.Canvases.ForNode(n); c != nil {
 		vc.renderCanvas(n, c, resultVar)
 		return

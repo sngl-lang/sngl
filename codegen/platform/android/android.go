@@ -312,7 +312,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 }
 
 // emitKotlinTestSources emits the Kotlin test files for an android
-// build. Behaviour splits on testMode:
+// build. Behavior splits on testMode:
 //
 //   - native (default): one JUnit-style MainScreenTest.kt under
 //     app/src/test/kotlin (robolectric) or app/src/androidTest/kotlin
@@ -445,7 +445,7 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // one @Test method. The method:
 //  1. Touches SnglTestRegistration so its init {} block fires, wiring
 //     every generated test function into the testagent Registry.
-//  2. Registers a Snapshots capture closure that rasterises the
+//  2. Registers a Snapshots capture closure that rasterizes the
 //     ComposeContentTestRule's root into a PNG (used by t.snapshot()).
 //  3. Reads -Dsngl.agent.port=<N> and dials back to the driver-side
 //     listener, then runs the same RPC loop as the device path.
@@ -585,7 +585,7 @@ class MainScreenAgentTest {
 // TestAgentBootstrap.start(this) when the launching intent carries a
 // non-zero SNGL_AGENT_PORT extra; the bootstrap binds startTcp on that
 // port in a background daemon thread and attaches the activity to
-// DeviceSnapshotCapture so the snapshot RPC can rasterise its view.
+// DeviceSnapshotCapture so the snapshot RPC can rasterize its view.
 func deviceAgentBootstrapKotlin(pkg string) []byte {
 	return []byte("package " + pkg + `
 

@@ -36,7 +36,7 @@ so `os.Hostname()` ran on the thread the toolkit draws on -- fyne's own
 goroutine, gtk4's main loop. A poll of anything slower than a hostname lookup
 freezes the window, and the generated code compiles and runs.
 
-The third thing this pins is what the lambda does *not* make async. Colouring
+The third thing this pins is what the lambda does *not* make async. Coloring
 once read through a closure, so `handle = every(d, func(){ ...blocking... })`
 was itself an async statement -- and passAsyncOffload refuses one inside the
 `if` its caller wraps it in, for a mount that hands work over and blocks on

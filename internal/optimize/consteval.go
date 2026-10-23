@@ -361,7 +361,7 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 			// because `var` hoists; spelled `let` or `const` it is a TDZ
 			// ReferenceError and the page breaks on load rather than rendering
 			// one value short. cmd/sngl/testdata/const_reads_itself.txt denies
-			// both spellings so that modernising the emitter is caught here.
+			// both spellings so that modernizing the emitter is caught here.
 			if ctx.evaluatingConst[v] {
 				return nil, false
 			}
@@ -528,7 +528,7 @@ func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
 // the call's value, and for a native it cannot: the declaration *is* the host
 // identifier, and its SNGL signature describes it rather than implementing it.
 // Treating one as constant and then failing to evaluate it yields the return
-// type's zero -- which is how every constant-coloured Compose shape became
+// type's zero -- which is how every constant-colored Compose shape became
 // `drawRect(color = null, ...)`, `null` being no `Color` at all and no Kotlin
 // that compiles.
 //
@@ -792,7 +792,7 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 
 // unitLiteral spells a magnitude back as a literal of the unit type it came
 // from, in that unit's base: 1s evaluates to 1000 and returns as `1000ms`.
-// Normalising to the base rather than the written suffix is what a unit value
+// Normalizing to the base rather than the written suffix is what a unit value
 // already is -- its magnitude per base, not its own spelling.
 func unitLiteral(val any, typ *ir.Type) *ir.Literal {
 	ud := ir.UnitDeclOf(typ)

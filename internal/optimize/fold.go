@@ -365,7 +365,7 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 		// The statements that paint a flattened canvas, which are ordinary
 		// statements with ordinary constants in them: a shape's style test
-		// against a colour nobody set folds away here or the target draws it.
+		// against a color nobody set folds away here or the target draws it.
 		if n.CanvasNode != nil {
 			n.CanvasNode.Children = foldStmts(n.CanvasNode.Children, ctx)
 		}

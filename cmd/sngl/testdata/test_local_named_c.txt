@@ -53,7 +53,7 @@ func testALocalNamedC(t Test) {
     t.assert(c.n == 2)
 }
 
-// So is `t`'s neighbour in a test that never asks for a component at all.
+// So is `t`'s neighbor in a test that never asks for a component at all.
 func testNoComponentParam(t Test) {
     t.assert(Counter{}.bump().n == 1)
 }

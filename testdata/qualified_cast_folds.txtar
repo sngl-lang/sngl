@@ -11,12 +11,12 @@ The qualified spelling used to build an `ir.Call` with no `Func` instead,
 because the bare path matched on the written identifier while the namespace
 path had a special case only for units (`time.duration(1m)`). `isConstExpr`
 answers false for such a call, so nothing folded: android emitted a runtime
-constructor and html initialised the field to null and assigned at startup,
+constructor and html initialized the field to null and assigned at startup,
 where the identical program written with a dot import got a literal. A
 qualified import silently cost the program its constant folding.
 
 The two components here are that program written both ways, so the golden shows
-the two initialisers side by side on every target: `dotted` and `qualified`
+the two initializers side by side on every target: `dotted` and `qualified`
 must fold alike, field for field.
 
 `color` is the fourth struct-backed cast and has no qualified spelling at all:
@@ -24,7 +24,7 @@ it lives in `sngl:builtin`, which is ambient and may not be imported, so there
 is nothing to alias it as.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `mutableStateOf\(time\.` -- the unfolded cast reached Compose as `mutableStateOf(time.date("2026-05-09"))`, a call to nothing Kotlin declares
-deny out/none/html/index.html `__inst1: null` -- an unfoldable field is initialised to null and assigned at startup; a folded one is a literal in `state`
+deny out/none/html/index.html `__inst1: null` -- an unfoldable field is initialized to null and assigned at startup; a folded one is a literal in `state`
 deny out/go/bubbletea/model.go `= time\(` -- the call kept only its receiver's alias, so Go got `m.d__inst1 = time("2026-05-09")` -- JS got the same, and crashed on load
 -- app.sngl --
 import . "sngl:ui"

@@ -50,7 +50,7 @@ hold `if`s, `for`s and components that compose records. Its name in a value
 position is its record (`Component.Record`, a struct `<name>__record` declared
 beside it, which `promoteForeignStructs` declares in a program that builds
 one), and in a family position (a return position, a slot's content) it is the
-component: `checker.dataRecord` asks `familyPosition`. `bindFamily` recognises
+component: `checker.dataRecord` asks `familyPosition`. `bindFamily` recognizes
 the self-reference, and refuses another *bodyless* component naming a data
 component as its family; `checkDataComponent` refuses a block and a slot of anything but
 records or content (below), since a record holds its props and nothing else. A slot
@@ -463,7 +463,7 @@ children (`cmd/sngl/testdata/boundary_in_render_slot_runs.txt`).
 
 **The interpreter answers it itself**, in `Env.caught`. `sngl test` on the
 `none` platform runs the *checked* IR with no lowering at all — the same reason
-the interpreter honours `For.Else` itself — so the pass is not in that path.
+the interpreter honors `For.Else` itself — so the pass is not in that path.
 The map is keyed by the boundary's `@error` handler, which is what a raise
 reaches through `Call.ResolvedHandler`, and held per scope so two
 instantiations of one component catch separately.

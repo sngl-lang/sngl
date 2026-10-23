@@ -17,7 +17,7 @@ four, because the optimizer folded a unit to the bare float64 its magnitude is
 and spelled that back with `%v`.
 
 Go's apparent agreement with the interpreter was a coincidence of the value
-1100ms prints as `1.1s` there, because time.Duration's String normalises
+1100ms prints as `1.1s` there, because time.Duration's String normalizes
 across units while the declared base is ms. So the one cell of the table that
 looked right was right for 500 and wrong for 1100, which is why the fixture
 carries both.

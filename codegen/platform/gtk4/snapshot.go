@@ -72,7 +72,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 
 // BatchSnapshot generates code for multiple documents into sub-packages
 // of a single Go module, compiles once, then invokes the binary per
-// document. Amortises go mod tidy + cgo build across all docs (the
+// document. Amortizes go mod tidy + cgo build across all docs (the
 // big cost for gtk4).
 func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (map[string][]byte, error) {
 	if len(docs) == 0 {

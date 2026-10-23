@@ -153,7 +153,7 @@ func addVarHandlerScopes(v *ir.Var, scopes *[]*scopeRefInfo) {
 func isSynthNodeID(id string) bool { return strings.HasPrefix(id, "__n") }
 
 // createdNodeID returns the widget ref id a LocalVar declares, else "": any
-// synthesized `__nN`, whatever initialises it -- a reactive slot's reconcile
+// synthesized `__nN`, whatever initializes it -- a reactive slot's reconcile
 // opens each position with `var __nN <Comp> = null` -- and a reconcile's
 // locals under the id the program gave the instance (reconcileLocal).
 func createdNodeID(lv *ir.LocalVar) string {

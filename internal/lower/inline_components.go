@@ -475,7 +475,7 @@ func (st *inlineCompState) run() error {
 		// its body wrote, and `sngl:ui/markup`'s `list` written there emitted a
 		// node no backend has heard of.
 		//
-		// A cycle is excluded, and that is the pre-existing behaviour kept
+		// A cycle is excluded, and that is the pre-existing behavior kept
 		// rather than a case answered: a recursive component is on the keep
 		// list whether or not anything renders it, so walking one elects a
 		// runtime instance for a recursion the optimizer may already have
@@ -1280,7 +1280,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			st.reactive[clone] = true
 		}
 		// And it holds what the original held: the points-to result is keyed
-		// by declaration, so a clone is a slot nothing has analysed.
+		// by declaration, so a clone is a slot nothing has analyzed.
 		carryPointsTo(st.pkg, ir.SlotVarKey(v), ir.SlotVarKey(clone))
 		*hoist.vars = append(*hoist.vars, clone)
 	}
@@ -1437,7 +1437,7 @@ func calleeProps(comp *ir.Component, bindings map[string]ir.Expr) map[ir.Symbol]
 	return props
 }
 
-// carryPointsTo copies one slot's candidates and colour onto a second key, for
+// carryPointsTo copies one slot's candidates and color onto a second key, for
 // a declaration a pass has cloned. A key with nothing recorded is left absent,
 // so "no candidates" and "not a funcvar slot" stay distinguishable.
 func carryPointsTo(pkg *ir.Package, from, to ir.PointsToKey) {

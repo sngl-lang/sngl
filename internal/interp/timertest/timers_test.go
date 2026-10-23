@@ -107,10 +107,10 @@ func varVal(t *testing.T, env *interp.Env, name string) float64 {
 	return 0
 }
 
-// TestTickHonoursEachTimersInterval: a tick is one timer deadline, not one fire
+// TestTickHonorsEachTimersInterval: a tick is one timer deadline, not one fire
 // of everything, so a 100ms timer and a 500ms timer advance at their declared
 // rates.
-func TestTickHonoursEachTimersInterval(t *testing.T) {
+func TestTickHonorsEachTimersInterval(t *testing.T) {
 	env := envFor(t, twoTimersSrc, "main")
 	clock := interp.NewVirtual()
 	ts := schedFor(t, clock, env)
@@ -183,7 +183,7 @@ func TestRetargetReschedulesAChangedInterval(t *testing.T) {
 		t.Fatalf("tick: %v", err)
 	}
 	clock.Advance(30 * time.Millisecond)
-	// The neighbour's own deadline, not the earliest of the two: the fast timer
+	// The neighbor's own deadline, not the earliest of the two: the fast timer
 	// is the earliest, and it is the one being retimed.
 	before := ts.Keys()
 	if len(before) != 2 {
@@ -210,7 +210,7 @@ component main node {
 	if len(keys) != 2 {
 		t.Fatalf("the reloaded schedule holds %d timers, want 2", len(keys))
 	}
-	// The retimed one starts fresh at now+2s; its untouched neighbour carries.
+	// The retimed one starts fresh at now+2s; its untouched neighbor carries.
 	if got, _ := ts.NextFor(keys[0]); !got.After(clock.Now().Add(time.Second)) {
 		t.Errorf("retimed timer fires at %v, which is not a fresh 2s deadline", got)
 	}

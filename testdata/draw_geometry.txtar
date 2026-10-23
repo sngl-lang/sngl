@@ -5,7 +5,7 @@ writable -- the alternative is trigonometry spelled out at every call site.
 Being plain SNGL over `sngl:builtin`'s trig is what lets it cost nothing: the
 six tick marks below are laid out by angle and each arrives as a pair of
 literals, and the hand's own `radius * cos(angle)` folds to a constant with
-only the runtime centre left.
+only the runtime center left.
 
 `math.tau` is here for the same reason. Every override that sweeps a full
 circle was writing 6.283185307179586 out by hand.

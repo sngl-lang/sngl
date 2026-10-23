@@ -12,7 +12,7 @@ import (
 )
 
 // The JS forms of the list intrinsics whose edges the backends disagreed on
-// (GitLab #100). JS was the closest to the documented behaviour, but both
+// (GitLab #100). JS was the closest to the documented behavior, but both
 // Array.prototype.slice and .splice read a negative index as an offset from
 // the end, where lib/builtin/methods.sngl clamps to [0, length] and treats an
 // out-of-range remove as a no-op.
@@ -29,8 +29,8 @@ func runJS(t *testing.T, body string) string {
 	}
 	cmd := exec.Command("node", "main.mjs")
 	cmd.Dir = dir
-	// These tests read what the program printed, so node must not colour it.
-	// It colours a number whenever FORCE_COLOR is set -- to any value, empty
+	// These tests read what the program printed, so node must not color it.
+	// It colors a number whenever FORCE_COLOR is set -- to any value, empty
 	// included, and it ignores NO_COLOR while it is -- so the only way to say
 	// no is to say 0. Some terminals and CLI harnesses export FORCE_COLOR for
 	// everything they run, and under one of those `console.log(1)` arrives as

@@ -2,7 +2,7 @@
 on the Go targets. The query is built per copy, so `fetch` is a prop of the
 instance it is, and the call through the prop runs on a goroutine with the
 rest of the mount posted back, as a fetch the query is spliced with does
-(async_query_go.txtar). Coloured by nothing, it ran on the drawing thread.
+(async_query_go.txtar). Colored by nothing, it ran on the drawing thread.
 The fetch is read off the instance before the goroutine starts, as the key
 is: a setter on the drawing thread writes it.
 

@@ -35,7 +35,7 @@ live state: bubbletea is Elm, so a tick has to arrive as a message and its body
 has to be a case Update runs, which is a period and a body together rather than
 a closure; and android's LaunchedEffect is the schedule rather than something a
 schedule is built from. none is the third and is a different case -- the
-interpreter honours `effect` itself and owns the clock, so an override would
+interpreter honors `effect` itself and owns the clock, so an override would
 bracket correctly and schedule nothing.
 
 So this asserts three things at once: that a timer is emitted at all, that a

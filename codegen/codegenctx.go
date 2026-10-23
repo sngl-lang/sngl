@@ -98,7 +98,7 @@ func (o OwnedVar) Var() *ir.Var { v, _ := o.Sym.(*ir.Var); return v }
 // Init is what the cell holds before anything writes it.
 //
 // For a parameter that is its type's zero, written out. Nothing in the program
-// initialises one -- whatever serves the page does, and a target with no
+// initializes one -- whatever serves the page does, and a target with no
 // request never does -- so left nil the cell renders as whatever that backend
 // calls nothing, and the page read `state.v.pkg` off an empty string. A
 // declaration keeps its own answer, including none: a `var` with no

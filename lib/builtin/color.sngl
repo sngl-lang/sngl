@@ -29,8 +29,8 @@ const func color.rgba(r uint8, g uint8, b uint8, a uint8) color { return color{r
 // hue stable.
 const func color.opacity(c color, a uint8) color { return color{r=c.r, g=c.g, b=c.b, a=a} }
 
-// Renders c as `#RRGGBB`, or `#RRGGBBAA` when it is not opaque: a colour is
-// its complete value, and dropping alpha would print two different colours
+// Renders c as `#RRGGBB`, or `#RRGGBBAA` when it is not opaque: a color is
+// its complete value, and dropping alpha would print two different colors
 // the same.
 #[_intrinsic("color.hex")]
 const func color.hex(c color) string

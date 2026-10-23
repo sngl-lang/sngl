@@ -3,7 +3,7 @@ calls the else "a tidy way to show an empty-state message", and before
 passViewForElse only bubbletea emitted it: fyne, gtk4, android and html on
 --lang none each emitted the loop and nothing at all for the else, so an empty
 list rendered an empty region. Silently -- the interpreter walks the IR and
-honours Else itself, so `sngl test` passed everywhere.
+honors Else itself, so `sngl test` passed everywhere.
 
 The rewrite is a conditional on the iterable's emptiness, placed before
 reactivity so the `if` reaches it as an ordinary view conditional: on a

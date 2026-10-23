@@ -542,7 +542,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:e8703fbd305743d541d90d213f74f93b
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
-sha256:a682a44c5d77341c11368eda58b3dee3
+sha256:07b94d87dc1790b809b468043582016f
 {
   "results": [
     {
@@ -552,7 +552,7 @@ sha256:a682a44c5d77341c11368eda58b3dee3
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/nested/1 --
-sha256:045fb85e7f832ffa768a288861c1d6b1
+sha256:a6df3ac3b193f778f382ea5602703e37
 {
   "results": [
     {
@@ -562,7 +562,7 @@ sha256:045fb85e7f832ffa768a288861c1d6b1
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:73cb9c51a84549368ea24d1abbebda36
+sha256:70a20f3165d9d6073e9fcd8cbcab4b81
 {
   "results": [
     {

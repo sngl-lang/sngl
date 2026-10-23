@@ -139,7 +139,7 @@ sha256:a1ba580046ea6437173841992ff68734
   ]
 }
 -- testrun/html/none/click.sngl/counter/1 --
-sha256:64389c7862d17ee7fead699bd13fcce3
+sha256:e025039e6f8621a80dba5a2290556eb9
 {
   "results": [
     {

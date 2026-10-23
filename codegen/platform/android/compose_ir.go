@@ -539,7 +539,7 @@ func (cc *irComposeContext) cornerShapeExpr(n *ir.NodeInst, styleProp string) st
 	return ""
 }
 
-// buttonColorsExpr renders a Style's background and foreground as the colour
+// buttonColorsExpr renders a Style's background and foreground as the color
 // set a Material button takes, or "" when it asked for neither.
 func (cc *irComposeContext) buttonColorsExpr(n *ir.NodeInst, styleProp string) string {
 	var args []string
@@ -746,7 +746,7 @@ func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
 //
 // Four prop names are this emitter's own — `modifier` builds the Modifier
 // chain from a Style, `then` appends further Modifier values to it, and
-// `colors` and `shape`, given a Style, are rendered as the widget's own colour
+// `colors` and `shape`, given a Style, are rendered as the widget's own color
 // set and outline — because none of the four is a value Compose takes as
 // written. Every other prop, a host value a `#[kt.native]` const names
 // included, is written as the expression it is.
@@ -771,14 +771,14 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			}
 		case p.Name == "colors" && isStyleType(p.Type):
 			// A Button paints its own surface, so Modifier.background draws a
-			// rectangle *behind* the pill rather than colouring it -- which is
+			// rectangle *behind* the pill rather than coloring it -- which is
 			// the orange square that showed around every operator key. The
-			// colour belongs in the widget's own colour set.
+			// color belongs in the widget's own color set.
 			if c := cc.buttonColorsExpr(n, p.Name); c != "" {
 				args = append(args, p.Name+" = "+c)
 			}
 		case (p.Name == "containerColor" || p.Name == "contentColor") && isStyleType(p.Type):
-			// A Badge paints its own pill, as a Button does, so its colours
+			// A Badge paints its own pill, as a Button does, so its colors
 			// are arguments: the Style's background the pill's, its color the
 			// text's. A Modifier's background drew a rectangle behind the pill.
 			field := map[string]string{"containerColor": "background", "contentColor": "color"}[p.Name]
@@ -884,7 +884,7 @@ func (cc *irComposeContext) renderNested(stmts []ir.Stmt) string {
 // has no field that names one.
 func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component) string {
 	var mod strings.Builder
-	// A widget that takes its own colours takes the background with them, so
+	// A widget that takes its own colors takes the background with them, so
 	// the Modifier must not draw one too.
 	skip := map[string]bool{}
 	if declaresProp(comp, "colors") || declaresProp(comp, "containerColor") {
@@ -895,7 +895,7 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component
 	if cc.atRoot {
 		// A phone's window is not a rectangle: a status bar sits over the top
 		// of it and a cutout over part of that. Last in the chain, so it
-		// insets the content and not the background -- the colour still
+		// insets the content and not the background -- the color still
 		// reaches the edges and only what is drawn inside is kept clear.
 		mod.WriteString("." + cc.kc.Name(ktSafeDrawingPadding) + "()")
 	}

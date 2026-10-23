@@ -1,5 +1,5 @@
 A two-way prop the caller does not bind is state of the instance: a cell
-initialised from the value the call gave the prop, or its default, and written
+initialized from the value the call gave the prop, or its default, and written
 by the host's reports, as if the component declared a `var` for it.
 
 `checkbox #box(label="alone")` binds nothing, so its cell starts at the

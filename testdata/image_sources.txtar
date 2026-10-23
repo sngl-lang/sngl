@@ -14,7 +14,7 @@ What each target does with them:
   data URL, again on every write of what it reads. The document's drawn
   favicon is a `<link rel="icon">` in the head, written the same way.
 - fyne: a runtime Image widget whose box shows the source, fitted by the
-  frame; a drawing's picture is rasterised and handed to it on each repaint.
+  frame; a drawing's picture is rasterized and handed to it on each repaint.
   The window's icon is the source's picture.
 - gtk4: a gtk4rt image box and a GtkPicture per source, which fits itself to
   the image it lands in; the program draws, so the build is inline cgo and

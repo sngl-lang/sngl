@@ -30,7 +30,7 @@ func jsStructDef(t *testing.T, src, name string) *ir.StructDef {
 
 // A struct read out of a JavaScript module is written with the property names
 // that module declared: the importer lowered the leading capital to reach a
-// SNGL field name, and the module still reads the capitalised one.
+// SNGL field name, and the module still reads the capitalized one.
 func TestStructLitUsesTypeScriptPropertyNames(t *testing.T) {
 	sd := jsStructDef(t, "export interface Point { X: number; Y: number }\n", "Point")
 	jc := NewIRContext(codegen.NewExprCtx(nil))

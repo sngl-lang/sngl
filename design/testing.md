@@ -153,7 +153,7 @@ timer, a `fmt.Println`, an `os.Exit` -- so it is a fixture of its own,
 
 Neither harness fixes a fixture whose input never reaches the branch it means
 to exercise: generated output is identical either way. Confirm a new fixture
-*fails* when the behaviour is reverted.
+*fails* when the behavior is reverted.
 
 **Know which harness sees platforms.** `TestFixtures` (root package, `internal/fixtures`) is the one walk over `testdata/*.sngl`: each fixture is read, parsed, formatted, checked, folded and LSP-marked once, as its own directives ask. It checks against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. No fixture gets the real import resolver — directory imports resolve through the stub in `internal/fixtures/resolver.go`. For that, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
 
@@ -361,7 +361,7 @@ annotation infers its type from its body on demand, as a program's does
 declarations bound again for every body in their scope -- reports once, the
 other read resolving quietly (`resolveTypeQuietly`, `declareBodyDecls`).
 
-When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
+When adding a fixture or directive, confirm it *fails* when the behavior is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
 Two ways that check passes for the wrong reason. `go test ./internal/checker/`
 does not evaluate a new `// ERROR(check)` fixture; the root package's

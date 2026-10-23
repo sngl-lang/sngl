@@ -433,7 +433,7 @@ pass sha256:8bc08c2579ed7ee272c45cbfaba6f768
 -- run/none/html --
 pass sha256:dce9f14868eb9dcc6519bb320e6b3c7e
 -- testrun/html/none/component_implicit_call_compare.sngl/main/1 --
-sha256:88b5555c255a142a068d364a39630883
+sha256:ffd1d5b487226c118c95e2745e4099e3
 {
   "results": [
     {

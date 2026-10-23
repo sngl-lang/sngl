@@ -17,7 +17,7 @@ follows, so a resize redraws.
 
 Fyne asks a Raster's generator for a picture at the pixel size it is about to
 upload, which is the one thing an Image cannot know -- so a scaled canvas is a
-Raster and the shapes are rasterised at the size they are shown. The surface
+Raster and the shapes are rasterized at the size they are shown. The surface
 outlives the drawing: Fyne calls back on every redraw, and a buffer allocated
 per call is the whole image thrown away per keypress. The minimum size is a
 floor rather than a size: without one the box gives a canvas nothing to scale

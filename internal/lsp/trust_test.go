@@ -15,7 +15,7 @@ import (
 // A plugin's handler runs while the server checks a file, under the grants it
 // was started with and never a prompt: a refused call is a diagnostic at the
 // import that reached the plugin, naming the flag that would allow it, and a
-// grant in the config file is honoured.
+// grant in the config file is honored.
 func TestPluginRefusalIsDiagnosticAtImport(t *testing.T) {
 	t.Setenv(gencache.OffEnv, "off")
 	gencache.ResetDefault()

@@ -232,7 +232,7 @@ func (s Style) CSS() string {
 		decl("color", s.Color.String())
 	}
 	if s.Background.A > 0 {
-		// A theme draws a button's face as an image over its colour.
+		// A theme draws a button's face as an image over its color.
 		decl("background", "none")
 		decl("background-color", s.Background.String())
 	}

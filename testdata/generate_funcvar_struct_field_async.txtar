@@ -1,5 +1,5 @@
 A struct field of funcvar type initialized with an async candidate. The field
-is a slot like any other, so it colours Async: the click handler calling
+is a slot like any other, so it colors Async: the click handler calling
 h.run() is emitted as an async wrapper and the field call is awaited.
 
 -- app.sngl --

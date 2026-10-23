@@ -1,8 +1,8 @@
-# `==` between two structs, colours included, compares them field by field on
+# `==` between two structs, colors included, compares them field by field on
 # every target, and a test reads a package const as the page does.
 #
 # JavaScript's === is an object's identity, and html wrote it for any struct
-# but a payload enum's payload, so two colours written alike were unequal. And
+# but a payload enum's payload, so two colors written alike were unequal. And
 # an html test runs in a module beside the page, which finds the page's names
 # on window: its funcs were published there and its consts were not, so a
 # test reading a const map -- or calling a func the optimizer inlined into a
@@ -51,7 +51,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:4dce825254788e6d6f8da9553c0aeae2
+sha256:a0d994c9fb9b98608131b6e33dd7493f
 {
   "results": [
     {
@@ -91,7 +91,7 @@ sha256:c3850ae64b82b702704a9efcaca2f27d
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:519bf49ac96d1c83c709eb1910135a16
+sha256:b590ea7c31842490702e86207c96c519
 {
   "results": [
     {

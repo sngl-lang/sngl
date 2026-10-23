@@ -1,6 +1,6 @@
 // The graphical readout: seven rectangles per cell on a 2D canvas.
 //
-// Unlit segments are painted too, in the colour a dark LCD segment has. That
+// Unlit segments are painted too, in the color a dark LCD segment has. That
 // is what makes it read as a seven-segment display rather than as a font --
 // the shape of the digit is the part that is *not* showing.
 
@@ -16,7 +16,7 @@ const CELL_GAP = 8.0
 const THICK = 6.0
 const PAD = 12.0
 
-// A lit segment, an unlit one, and the glass behind both. The unlit colour is
+// A lit segment, an unlit one, and the glass behind both. The unlit color is
 // what makes the panel read as a display rather than as a font.
 const LIT = color{r=45, g=255, b=170, a=255}
 const DARK = color{r=24, g=60, b=52, a=255}

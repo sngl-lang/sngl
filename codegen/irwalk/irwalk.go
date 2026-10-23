@@ -56,7 +56,7 @@ type Renderer interface {
 	BreakText(n *ir.Break) string
 
 	// — Stmt blocks (walker controls body recursion, indent, close)
-	// ForHead opens a loop, labelled with n.Label where the language's
+	// ForHead opens a loop, labeled with n.Label where the language's
 	// BreakText names one.
 	ForHead(n *ir.For, iterStr string) string
 	IfHead(n *ir.If, condStr string) string

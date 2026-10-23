@@ -1,7 +1,7 @@
 #!/bin/sh
 # Refuse a commit that `go tool verify` would reject for a mechanical reason.
 #
-# Three of verify's seven steps fail on changes that are never a judgement call
+# Three of verify's seven steps fail on changes that are never a judgment call
 # -- gofmt realigning a struct, `go fix` rewriting a loop into a slices helper,
 # `mdox fmt` rewrapping a paragraph -- and all three are invisible until CI says
 # so. They are the ones that fail most often, which is the whole reason this

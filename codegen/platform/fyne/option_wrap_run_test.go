@@ -42,7 +42,7 @@ window {
 `
 
 // A SNGL struct is a value: `h = Holder{inner=b}` stores what b was, and a
-// later write to b is not a write to h. Go's option[T] is *T, so honouring
+// later write to b is not a write to h. Go's option[T] is *T, so honoring
 // that means the promotion boxes a COPY -- `&b` would hand the option a
 // window onto b and the read below would come back 99.
 const optionWrapCopyDriver = `package ui

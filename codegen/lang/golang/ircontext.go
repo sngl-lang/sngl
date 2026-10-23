@@ -433,7 +433,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	}
 	// A channel has no composite literal either, and for the same reason: the
 	// only one that reaches here is the zero the checker synthesizes for an
-	// uninitialised `var done go.chan[bool]`, and a channel's zero is nil.
+	// uninitialized `var done go.chan[bool]`, and a channel's zero is nil.
 	// `make` is what produces a usable one, which is go.makechan.
 	if isChanLit(n) {
 		return "nil"
@@ -528,7 +528,7 @@ func (gc *GoIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 //
 // Every other kind is left inferred, and not out of caution: a string, a bool,
 // a struct, a slice each have exactly one Go type that `:=` reads off a
-// correctly typed initialiser, so an annotation would restate it. It would
+// correctly typed initializer, so an annotation would restate it. It would
 // also do harm -- gtk4 emits twice and keeps the run that mentions no `C.`
 // symbol, so spelling a widget handle's type is what tips a program out of its
 // cgo-free mode.
@@ -564,7 +564,7 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	return gc.forHead(n, iter)
 }
 
-// BreakText names the loop a labelled break leaves: Go's switch takes a bare
+// BreakText names the loop a labeled break leaves: Go's switch takes a bare
 // break as its own.
 func (gc *GoIRContext) BreakText(n *ir.Break) string {
 	if n.Label != "" {
@@ -1331,7 +1331,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 // isStructExpr reports whether an expression reads a plain struct — a value a
 // component holds, as opposed to an element ref, which reads as a component.
 // An untyped expression is not one: hand-built IR carries no types, and the
-// getter form is the older behaviour to fall back on.
+// getter form is the older behavior to fall back on.
 func isStructExpr(e ir.Expr) bool {
 	t := e.ExprType()
 	if t == nil || t.Kind != ir.TypeStruct {
@@ -1471,7 +1471,7 @@ func isPrimitiveTypeName(name string) bool {
 }
 
 // evalErrorAwareCall emits Go statements for a fallible call whose error
-// handler effect analysis resolved. Only error.raise is recognised; anything
+// handler effect analysis resolved. Only error.raise is recognized; anything
 // else returns nil and the caller falls back to the expression path.
 func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
@@ -1726,7 +1726,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	// A narrowed option: Go's option[T] is *T, so reading it as the T a null
 	// test proved it to be is the star.
-	// The whole deref is parenthesised, not just its operand: `*` binds looser
+	// The whole deref is parenthesized, not just its operand: `*` binds looser
 	// than a selector, so `*(m.h.Inner).Value` is a deref OF the field and Go
 	// rejects it. The branch's own fixture read a narrowed path as a call
 	// argument, where nothing follows the unwrap and either spelling compiles.
@@ -2197,7 +2197,7 @@ func IRTypeToGo(t *ir.Type) string {
 		// `func name(params)`.
 		return ""
 	case ir.TypeIter:
-		// An iter[T] is a pull sequence, never a materialised one: the shape
+		// An iter[T] is a pull sequence, never a materialized one: the shape
 		// `range` accepts over a function (Go 1.23), spelled structurally so
 		// nothing has to import "iter" to name it. A list reaching an iter[T]
 		// position is wrapped by evalConversion, and the wrapper yields the

@@ -2,7 +2,7 @@
 // declaration can name that stand for something in the compiler rather than
 // for a value in the program.
 //
-// `Macro` is the centre of it. A function whose return type is `Macro` is a
+// `Macro` is the center of it. A function whose return type is `Macro` is a
 // macro — a name that may be written as a `#[...]` mark and nowhere else. The
 // declaration is not what runs; a Go handler registered under the same package
 // and name transforms the declaration the mark annotates. It exists so that a

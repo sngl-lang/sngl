@@ -115,7 +115,7 @@ func TestNoLoweringRunsOnlyTheUngatedPasses(t *testing.T) {
 // At least, not exactly: order_test.go's soleGate is where the count is
 // pinned, and two of these ask for more than one. Withdrawing Reactivity buys
 // the whole instance runtime, and Declarative buys the escape analysis that
-// only has something to analyse once the tree is flat.
+// only has something to analyze once the tree is flat.
 func TestWithoutTurnsOnItsPass(t *testing.T) {
 	base := EnabledPasses(NoLowering())
 	for _, name := range []string{"ternary", "lambda", "unitType", "enumType", "reactivity", "declarative"} {

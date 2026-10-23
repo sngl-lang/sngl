@@ -14,7 +14,7 @@ import (
 
 // The paint half of sngl.Style, in Fyne.
 //
-// Fyne has no per-widget colour or type: a widget asks the theme, and the
+// Fyne has no per-widget color or type: a widget asks the theme, and the
 // theme is the app's. What it does have is container.NewThemeOverride, which
 // gives one subtree a theme of its own -- so a set of style properties becomes
 // a theme, and a node carrying that set is wrapped in an override naming it.
@@ -22,9 +22,9 @@ import (
 // declared once, and referenced by name.
 //
 // A theme reaches only what a widget asks it for. `background` becomes the
-// button colour and the input background, and a plain container paints no
+// button color and the input background, and a plain container paints no
 // background at all, so a box asking for one gets nothing -- Fyne draws
-// nothing behind a container to colour.
+// nothing behind a container to color.
 
 // ThemeImportPath is the runtime package the generated themes are instances
 // of. The type used to be emitted here as a string constant, which meant the
@@ -151,10 +151,10 @@ const themeAlias = "fynetheme"
 
 // themeImports are what the emitted theme declarations reference. The type
 // itself now comes from a runtime package rather than being written into every
-// generated program, so image/color is only needed for the colour literals --
+// generated program, so image/color is only needed for the color literals --
 // and only when one of these themes actually writes one. A program whose
-// themes name a size, a radius or a face and no colour emitted the import
-// anyway, which Go refuses outright; every fixture happened to have a colour
+// themes name a size, a radius or a face and no color emitted the import
+// anyway, which Go refuses outright; every fixture happened to have a color
 // somewhere until one asked for a slant alone.
 func themeImports(themes []themeValue) []string {
 	out := []string{"fyne.io/fyne/v2/theme", ThemeImportPath}

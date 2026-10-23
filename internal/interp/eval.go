@@ -114,7 +114,7 @@ func (lv *LambdaValue) params(args []any) []*ir.Param {
 type unitValue struct {
 	Amounts map[string]float64
 	// Suffix is the spelling the value was written with. It says which base a
-	// multi-base value's cast reads and nothing else -- display normalises to
+	// multi-base value's cast reads and nothing else -- display normalizes to
 	// the bases, since no compiled target carries a spelling to prefer.
 	Suffix string
 	Table  *unitTable
@@ -468,7 +468,7 @@ type Env struct {
 	// The compiled targets get this from passBoundaryFailed, which desugars
 	// the pair into a flag and a conditional. `sngl test` on the `none`
 	// platform runs the checked IR without lowering, the same reason the
-	// interpreter honours For.Else itself, so it answers the question here.
+	// interpreter honors For.Else itself, so it answers the question here.
 	caught map[*ir.EventHandler]bool
 	// inst is the instantiation this component scope was entered through, or
 	// nil at the root and for the children-less call form. It is what an emit
@@ -939,7 +939,7 @@ func (env *Env) evalI18nPrimitiveCall(method string, args []ir.CallArg) (any, bo
 
 // evalI18nCall dispatches a call to an i18n.* function using the env's locale.
 // Returns (result, handled, error). handled is false when the function name is
-// not a recognised i18n intrinsic, allowing the caller to fall through.
+// not a recognized i18n intrinsic, allowing the caller to fall through.
 func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, error) {
 	tr := env.translatorFor()
 	switch funcName {
@@ -1962,7 +1962,7 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 		// Bare named-function / component-method call, e.g. `bump()`. The
 		// checker leaves Func nil for component methods (they aren't in plain
 		// scope) and sets Callee to the bare ident. Resolve and invoke directly,
-		// honouring the call's args. This must precede Eval(callee): lookup()
+		// honoring the call's args. This must precede Eval(callee): lookup()
 		// auto-invokes a zero-arg function when its name is *read*, which would
 		// fire the body as a side effect here and then discard the result.
 		if id, ok := call.Callee.(*ir.Ident); ok && !env.varInScope(id.Sym) {
@@ -3200,7 +3200,7 @@ func zeroValueFor(t *ir.Type) any {
 // The value is evaluated in the scope *enclosing* the provider, which is what
 // lets `depth(depth + 1)` read the value it is overriding and accumulate
 // across nesting -- the same rule internal/lower/context.go applies on a
-// target that lowers contexts away. The interpreter honours providers itself,
+// target that lowers contexts away. The interpreter honors providers itself,
 // since passContext does not run for a target with no host language, so
 // without this a provider's value was never evaluated at all and every read
 // beneath one answered the context's default.

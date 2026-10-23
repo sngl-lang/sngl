@@ -2,7 +2,7 @@ package fyne
 
 import "testing"
 
-// propInitComponentSrc is a component whose own `var` is initialised from a
+// propInitComponentSrc is a component whose own `var` is initialized from a
 // prop -- the one ordering a promoted prop can get wrong.
 const propInitComponentSrc = `
 import . "sngl:ui"
@@ -20,7 +20,7 @@ window {
 }
 `
 
-// propInitDriver reads what each row's own var was initialised to.
+// propInitDriver reads what each row's own var was initialized to.
 //
 // A `var` that reads a prop is the assertion, and it is one only the running
 // program can make: an initializer placed before the prop's cell is assigned
@@ -34,7 +34,7 @@ import (
 	"fyne.io/fyne/v2/test"
 )
 
-func TestAVarReadsThePropItWasInitialisedFrom(t *testing.T) {
+func TestAVarReadsThePropItWasInitializedFrom(t *testing.T) {
 	test.NewApp()
 	m := New()
 	m.BuildUI()

@@ -110,14 +110,14 @@ if about != null {
 The header needs only the species -- its artwork through `artwork`, its name
 and genus, its national number as `#001` -- but for its types, which wait for
 the Pokémon and are asked for by name (see [Languages](#languages)). A type
-is a `typeBadge`, a `ui.badge` in the type's own colour (`typeColors` in
+is a `typeBadge`, a `ui.badge` in the type's own color (`typeColors` in
 `names.sngl`), its name dark over the light types and white over the rest.
 Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves.
 
 **About** is the species' newest description in the reader's language on one
 line (the games
 break a description with newlines and form feeds where their text box did),
-the Pokémon's height and weight in metres and kilograms -- `unit length { m }`
+the Pokémon's height and weight in meters and kilograms -- `unit length { m }`
 and `unit mass { kg }`, since PokéAPI gives tenths of each -- its abilities with
 a hidden one marked, the species' habitat (which may be `null`), egg groups,
 gender ratio (from `gender_rate`, eighths female or -1 for none) and capture
@@ -192,7 +192,7 @@ if form != "" && mon != null && mon.forms.length() > 0 {
 }
 ```
 
-**Sprites** is a labelled gallery of the Pokémon's pictures, four to a row:
+**Sprites** is a labeled gallery of the Pokémon's pictures, four to a row:
 front and back, normal and shiny, female where it looks different (Pikachu
 does, Bulbasaur not, whose female pictures PokéAPI gives as `null`), its
 official artwork normal and shiny, and its Home picture, normal, shiny and
@@ -255,7 +255,7 @@ ui.select #languagePick(:value=language) {
         ui.choice(label=l.label)
     }
 }
-i18n.locale(localeLabelled(language)) {
+i18n.locale(localeLabeled(language)) {
     nav.stack #pages { … }
 }
 ```
@@ -338,7 +338,7 @@ The Moves select's labels are the app's own words, and the way chosen is
 PokéAPI's name for it: choosing a label maps it back by comparing it with the
 same `$"..."` labels (`methodNamed`), and an `effect` keyed on `i18n.locale`
 writes the label of the way shown again as the language changes
-(`methodLabelled`), so a language chosen while the tab shows the machine's
+(`methodLabeled`), so a language chosen while the tab shows the machine's
 moves still shows them, under "CT". Learn methods are therefore never asked
 for.
 
@@ -355,8 +355,8 @@ page's title off its route's declaration, so it is a constant.
 | `none`      | the interpreter, all of it                                                                                                                    |
 | `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages                                                                      |
 | `bubbletea` | all of it, a sprite as half-block cells; a row's columns and badges are written with no space between them, and the artwork leaves blank rows |
-| `fyne`      | all of it; a badge is its text alone, since Fyne paints no label's background, and a card's lines are not centred                             |
-| `gtk4`      | all of it; a line's text is centred in its box, where html starts it at the left                                                              |
+| `fyne`      | all of it; a badge is its text alone, since Fyne paints no label's background, and a card's lines are not centered                            |
+| `gtk4`      | all of it; a line's text is centered in its box, where html starts it at the left                                                             |
 | `android`   | all of it; the manifest asks for `INTERNET` because the program fetches                                                                       |
 
 `--lang none` on html is refused where the detail page is written: a static

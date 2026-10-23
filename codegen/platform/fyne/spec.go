@@ -157,7 +157,7 @@ type fyneStyle struct {
 	Italic       bool
 }
 
-// fyneColor is an RGBA colour, comparable so a set of styles dedupes to a set
+// fyneColor is an RGBA color, comparable so a set of styles dedupes to a set
 // of themes.
 type fyneColor struct{ R, G, B, A uint8 }
 
@@ -400,8 +400,8 @@ func enumOrString(e ir.Expr) string {
 	return v
 }
 
-// colorFromExpr reads a `color{r=.., g=.., b=.., a=..}` literal. A colour that
-// is not a literal is no colour: the theme is built once with the widget tree.
+// colorFromExpr reads a `color{r=.., g=.., b=.., a=..}` literal. A color that
+// is not a literal is no color: the theme is built once with the widget tree.
 func colorFromExpr(e ir.Expr) *fyneColor {
 	sl, ok := e.(*ir.StructLit)
 	if !ok {
@@ -428,7 +428,7 @@ func colorFromExpr(e ir.Expr) *fyneColor {
 	return &c
 }
 
-// literalNumber reads a numeric literal: a colour's channel. A measurement is
+// literalNumber reads a numeric literal: a color's channel. A measurement is
 // codegen.MeasurementPx's.
 func literalNumber(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)

@@ -126,7 +126,7 @@ func main() {
 
 // BatchSnapshot generates code for multiple documents into sub-packages of a
 // single Go module, compiles once, then runs the binary per document to capture
-// each screenshot. This amortises go mod tidy + compilation across all docs.
+// each screenshot. This amortizes go mod tidy + compilation across all docs.
 func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (map[string][]byte, error) {
 	if len(docs) == 0 {
 		return nil, nil

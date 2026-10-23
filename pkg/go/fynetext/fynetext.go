@@ -248,7 +248,7 @@ func (s *Span) SetColor(c snglcolor.Color) {
 // SetSpanStyle replaces what this run says about its words with a style the
 // program computed while it runs -- a `markup.SpanStyle` handed over a field at
 // a time, the generated code having no type the runtime knows. Weight, slant
-// and family are the names SNGL gives their values, an unrecognised one
+// and family are the names SNGL gives their values, an unrecognized one
 // (`inherit`) leaving the run to its parent, and a zero size or a transparent
 // color is the run naming none. The token a run was built with is kept: it is
 // what the run is, not how it looks.

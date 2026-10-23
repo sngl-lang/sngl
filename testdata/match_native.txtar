@@ -14,8 +14,8 @@ bubbletea's View, and in every walk Update and the test surface make of the
 view, as it is a when in android's composable. An initializer is no statement:
 Go calls a func literal holding the switch where it stands.
 
-deny out/go/bubbletea/model.go `if d == "down"` -- an arm that breaks out of the loop is a switch, the loop labelled
-deny out/none/html/index.html `if \(d === "down"\)` -- an arm that breaks out of the loop is a switch, the loop labelled
+deny out/go/bubbletea/model.go `if d == "down"` -- an arm that breaks out of the loop is a switch, the loop labeled
+deny out/none/html/index.html `if \(d === "down"\)` -- an arm that breaks out of the loop is a switch, the loop labeled
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `__loop|break@` -- Kotlin's when takes no break of its own, so the loop needs no label
 deny out/go/bubbletea/model.go `if n >= 90` -- a headless match is a tagless switch
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `if \(\(n >= 90\)\)` -- a headless match is a subjectless when
@@ -61,7 +61,7 @@ func grade(n int) string {
 }
 
 // A break in an arm leaves the loop around the match, which Go's and
-// JavaScript's switch would take as their own: the loop is labelled and the
+// JavaScript's switch would take as their own: the loop is labeled and the
 // break names it.
 func firstDown(ds list[Dir]) int {
     var at = -1

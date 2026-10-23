@@ -815,7 +815,7 @@ const component shapes.line[platform](x1, y1, x2, y2, style) {
 }
 
 // The corner is solved by `sngl:ui/draw`, which two targets need and neither
-// host has: cairo takes a centre and two angles where the command gives three
+// host has: cairo takes a center and two angles where the command gives three
 // points and a radius. What is left here is the cairo half -- the line in, the
 // arc, and the point the path is left at.
 func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.Point, r float) shapes.Point {
@@ -871,7 +871,7 @@ const component shapes.canvasText[platform](x, y, content, style) {
         e.ctx.save()
         // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
         // fontFamily nowhere before this, so a program's font choice was
-        // honoured on three targets and dropped here (#223).
+        // honored on three targets and dropped here (#223).
         e.ctx.selectFontFace(style.fontFamily, toFontSlant(0), toFontWeight(0))
         e.ctx.setFontSize(style.fontSize)
         source(e.ctx, style.fill)

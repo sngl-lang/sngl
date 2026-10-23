@@ -14,7 +14,7 @@ component first() node {
         text(value="row " + label)
     }
 
-    component labelled(label = "") node {
+    component labeled(label = "") node {
         vbox {
             row(label=label)
         }
@@ -22,7 +22,7 @@ component first() node {
 
     vbox {
         row(label="a")
-        labelled(label="b")
+        labeled(label="b")
     }
 }
 

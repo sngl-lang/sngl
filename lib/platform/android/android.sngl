@@ -100,7 +100,7 @@ func install(dir string)
 // shape, is a `#[kt.native]` const declared below. Four names are the
 // emitter's own: `modifier` takes a Style and becomes the `Modifier` chain
 // built from it, `then` appends further Modifier values to that chain, and
-// `colors` and `shape`, given a Style, are rendered as the widget's own colour
+// `colors` and `shape`, given a Style, are rendered as the widget's own color
 // set and outline.
 //
 // Nothing here is Kotlin written as text. Every name the screen writes is
@@ -243,7 +243,7 @@ component Text(
     text     string,
     modifier ui.Style,
     // Typography, as Compose's own `style` argument: a TextStyle built from
-    // the Style's font and colour fields.
+    // the Style's font and color fields.
     style    ui.Style,
     color    ComposeColor,
 ) ui.node
@@ -274,7 +274,7 @@ component LinearProgressIndicator(
 
 // `colors` is the same Style the modifier gets. A Button paints its own
 // surface, so a background in the modifier lands behind the pill rather than
-// on it -- the colour has to go through the widget's own colour set.
+// on it -- the color has to go through the widget's own color set.
 #[gen.renders(identity)]
 #[kt.native("Button", "androidx.compose.material3.Button")]
 component Button(
@@ -347,7 +347,7 @@ component RadioButton(
 // `label` is the floating caption, and it is a slot rather than a prop
 // because Compose takes content there, not text. An override that leaves it
 // empty gets no `label` argument at all, which is not the same widget as one
-// labelled with nothing.
+// labeled with nothing.
 #[gen.renders(identity)]
 #[kt.native("OutlinedTextField", "androidx.compose.material3.OutlinedTextField")]
 component OutlinedTextField(

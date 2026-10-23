@@ -132,7 +132,7 @@ func lowerTestStmts(stmts []ir.Stmt, jc *JsIRContext) []string {
 }
 
 // lowerTestStmt keeps a test's own statements -- an assertion, a snapshot, a
-// trigger -- recognised inside an `if`, which is where a trigger on a node
+// trigger -- recognized inside an `if`, which is where a trigger on a node
 // that may not be rendered is written.
 func lowerTestStmt(s ir.Stmt, jc *JsIRContext) []string {
 	if line, ok := lowerTestAssert(s, jc); ok {
@@ -252,7 +252,7 @@ func lowerTestWait(s ir.Stmt, jc *JsIRContext) (string, bool) {
 // than erroring, which is the worst way for this to be missing.
 //
 // The invoker it names is attached to the state object by the html platform,
-// where the element behind `#inc` is known. Both halves capitalise the event
+// where the element behind `#inc` is known. Both halves capitalize the event
 // the same way, which is the only thing making them meet.
 func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	call, ok := s.(*ir.CallStmt)

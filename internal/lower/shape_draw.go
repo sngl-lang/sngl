@@ -191,7 +191,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// Spliced here with that parameter rebound to the draw function's own ctx,
 	// which is the whole of what makes an override's `@draw` reach the output.
 	//
-	// Recognised by the marks rather than by a name: an #[intrinsic]
+	// Recognized by the marks rather than by a name: an #[intrinsic]
 	// declaration that is a member of a segmented tree is a rendered
 	// primitive, and any handler it declares is the render. The same shape
 	// serves a markup or menu tree with no change here.
@@ -221,7 +221,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// A shape with no body and no override for this target draws nothing, and
 	// says so where it is declared: that is what the bodyless-component rule
 	// reports. What used to stand here was a switch over the seven stdlib
-	// shape names, which rendered any shape it did not recognise as nothing at
+	// shape names, which rendered any shape it did not recognize as nothing at
 	// all, silently.
 	if ni.Component != nil && len(ni.Component.Stmts) > 0 {
 		// A shape that renders itself has no finite drawing: expanding its body

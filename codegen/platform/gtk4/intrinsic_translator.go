@@ -551,7 +551,7 @@ func nativeCall(nativeName string, ret *ir.Type, args ...ir.Expr) *ir.Call {
 }
 
 // cgoCast wraps an expression in `(*C.<typeName>)(unsafe.Pointer(expr))`, as
-// an ir.Conversion to a NativePointer type that evalConversion recognises.
+// an ir.Conversion to a NativePointer type that evalConversion recognizes.
 func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	return &ir.Conversion{
 		Type:    ir.NativePointerOf(typeName),

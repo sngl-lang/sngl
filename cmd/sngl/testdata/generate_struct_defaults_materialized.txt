@@ -1,7 +1,7 @@
 # A field a literal omits carries its declared default into every target, not
 # just the interpreter. The defaults were materialized in the interpreter only,
 # so `color{r=255}` reached Go with no alpha and an opaque red rendered as
-# #ff000000 once hex() started honouring alpha.
+# #ff000000 once hex() started honoring alpha.
 
 sngl generate --lang=none --platform=html --out=outjs app.sngl
 grep 'x: 7' outjs/index.html

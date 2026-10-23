@@ -204,7 +204,7 @@ declaration itself. Two things about the name that are easy to get wrong:
 
   What such a type may *not* do is be constructed: a program holds one and
   calls methods on it. So the only literal of one that reaches a backend is the
-  empty zero the checker synthesizes for an uninitialised `var t Ticker`, and
+  empty zero the checker synthesizes for an uninitialized `var t Ticker`, and
   where the host spelling is a pointer that zero is `nil` rather than a
   composite literal — `*time.Ticker{}` does not parse
   (`testdata/native_pointer_zero.txtar`).
@@ -507,7 +507,7 @@ declared. `cmd/sngl/testdata/tabs_runs.txt` runs it on all six.
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
 Model on the Go targets — rather than as a local, so a read of it has to be
-qualified. There are two ways a reference can be recognised as one and only one
+qualified. There are two ways a reference can be recognized as one and only one
 of them is a fact about the *declaration*: `ir.Ident.IsElementRef` is set on the
 `__nN` references a lowering pass synthesizes, while a read of a program's own
 `#id` resolves to the var the checker bound and carries nothing. Neither kind

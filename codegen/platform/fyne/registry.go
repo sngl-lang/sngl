@@ -46,7 +46,7 @@ func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 // A #[builtin] kind is not one of them. `context`, `effect` and `output` are declared
 // as components because that is the form their call site takes, but a visual
 // tree dispatches them to a compiler construct rather than to a widget, so
-// there is no body for a platform to write. They are recognised by their kind
+// there is no body for a platform to write. They are recognized by their kind
 // and not by their names, for the reason every built-in is: the name is
 // shadowable and carries no meaning, and a list of names can only fail when
 // someone edits one copy of it.

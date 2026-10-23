@@ -12,7 +12,7 @@
 //   - android.icu.text.PluralRules.select() returns CLDR keyword strings directly.
 //
 // select() returns the matched case body raw — no ICU formatting applied
-// (matches Go and JS behaviour for the direct Translator.select() method).
+// (matches Go and JS behavior for the direct Translator.select() method).
 
 package us.duckfam.git.jonathan.sngl.i18n
 
@@ -68,7 +68,7 @@ class Translator(val manifest: Manifest, val locale: Locale) {
         ).format(dt)
 
     // select returns the matched case body raw — no ICU format applied.
-    // Matches Go and JS Translator.select() behaviour.
+    // Matches Go and JS Translator.select() behavior.
     fun select(value: String, cases: Map<String, String>): String =
         cases[value] ?: cases["other"] ?: ""
 

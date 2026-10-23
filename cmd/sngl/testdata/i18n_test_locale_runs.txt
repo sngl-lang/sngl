@@ -96,7 +96,7 @@ func testAWordOfAnInstanceInFrench(t test.Test, c plain) {
   "{count, plural, one{# book} other{# books}}": {"translations": {"fr": "{count, plural, one{# livre} other{# livres}}"}}
 }
 -- testrun/android/kotlin/app.sngl/greeting/1 --
-sha256:a6f5b45ea55bab532e9cd4c7adfa882a
+sha256:b8d75b8466233faddaaaa47d929e1aa0
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:a6f5b45ea55bab532e9cd4c7adfa882a
   ]
 }
 -- testrun/android/kotlin/app.sngl/outer/1 --
-sha256:6bd1a6c3eb1007cd9cd747c2ced61a3a
+sha256:ad6e9a440a027947283bc8b7080f2101
 {
   "results": [
     {
@@ -116,7 +116,7 @@ sha256:6bd1a6c3eb1007cd9cd747c2ced61a3a
   ]
 }
 -- testrun/android/kotlin/app.sngl/plain/1 --
-sha256:e66250e42fe3bbdb2e7233f73582146a
+sha256:0e3a5e9a90e68dca1fb9a5283cb05789
 {
   "results": [
     {
@@ -216,7 +216,7 @@ sha256:4cf82f61116bf7875ac2ecc541ba1916
   ]
 }
 -- testrun/html/none/app.sngl/greeting/1 --
-sha256:f6c662e048954052850fb12457e8d07f
+sha256:fe2460ba0ba447929ee2c563caafe2d1
 {
   "results": [
     {
@@ -226,7 +226,7 @@ sha256:f6c662e048954052850fb12457e8d07f
   ]
 }
 -- testrun/html/none/app.sngl/outer/1 --
-sha256:6ee3734b5717431208fc06fd74c845bc
+sha256:7dbb3429f475d9cea3d82c502b1471ff
 {
   "results": [
     {
@@ -236,7 +236,7 @@ sha256:6ee3734b5717431208fc06fd74c845bc
   ]
 }
 -- testrun/html/none/app.sngl/plain/1 --
-sha256:2e70ca9304f2a445ca451135957c4809
+sha256:9d054cf6cfba5ae13ad0467a13c72a96
 {
   "results": [
     {

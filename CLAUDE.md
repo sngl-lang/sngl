@@ -137,7 +137,7 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
   change, `go tool verify -update` rerecords all of them (scripts' android runs
   want `ANDROID_HOME` set); `-verify` on one package reruns it whatever its
   records say.
-- **Confirm a new fixture fails when the behaviour is reverted.** The `sngl`
+- **Confirm a new fixture fails when the behavior is reverted.** The `sngl`
   on `PATH` resolves `./cmd/sngl` against the current directory, so run an
   out-of-tree binary out of tree.
 

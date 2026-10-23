@@ -1,5 +1,5 @@
 # A test drives a select on every target: `c.pick.change("Banana")` chooses
-# the choice labelled Banana, which the `:value` binding writes back and the
+# the choice labeled Banana, which the `:value` binding writes back and the
 # program's @change hears, once -- including where the choices are state that
 # arrives after the select is built, and through an instance.
 #
@@ -68,7 +68,7 @@ func testChangeReachesThroughAnInstance(t test.Test, c wrapped) {
     t.assert(c.inner.chosen == "Cherry")
 }
 -- testrun/android/kotlin/app.sngl/chooser/1 --
-sha256:9b48758d5a11b749e80c3ac9e8c1d155
+sha256:ac810774f94505496ed60b66fe769dc6
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:9b48758d5a11b749e80c3ac9e8c1d155
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:77b34c98dc838d18a50cad2ce3f4bc20
+sha256:7464d4f1a187920b1ba86d49a45137e0
 {
   "results": [
     {
@@ -128,7 +128,7 @@ sha256:95ed9c94cdb6d7ee156f0063841c9726
   ]
 }
 -- testrun/gtk4/go/app.sngl/chooser/1 --
-sha256:7fc9499b749c61d3fd3c8c3886867b9b
+sha256:112c5ce66b6ac3053afabe990c3c1777
 {
   "results": [
     {
@@ -138,7 +138,7 @@ sha256:7fc9499b749c61d3fd3c8c3886867b9b
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:9be073155c2515e935802b236a3398e6
+sha256:bc579eb90da5a8c30e2d739f5677b540
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:9be073155c2515e935802b236a3398e6
   ]
 }
 -- testrun/html/none/app.sngl/chooser/1 --
-sha256:9bd5cc507eb426e0d90a00a959640c4d
+sha256:85221a4e71bdd9a7382c8515664788cc
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:9bd5cc507eb426e0d90a00a959640c4d
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:27629390cf3f60737dbaeb5bd8c142c7
+sha256:3807ca941bcce4030f01d633a67e7d40
 {
   "results": [
     {

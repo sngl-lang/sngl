@@ -48,7 +48,7 @@ func TestBinaryName(t *testing.T) {
 		{"default when name unset", mkOpts(""), "bubbletea", false, false, "app"},
 		{"single target uses bare name", mkOpts("myapp"), "bubbletea", false, false, "myapp"},
 		{"multi target appends platform", mkOpts("myapp"), "bubbletea", true, false, "myapp-bubbletea"},
-		{"sanitises name", mkOpts("My App!"), "fyne", false, false, "my-app"},
+		{"sanitizes name", mkOpts("My App!"), "fyne", false, false, "my-app"},
 		{"windows extension", mkOpts("myapp"), "bubbletea", false, true, "myapp.exe"},
 		{"multi target windows", mkOpts("myapp"), "fyne", true, true, "myapp-fyne.exe"},
 	}

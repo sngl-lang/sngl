@@ -9,14 +9,14 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// ColorNameBox is the colour a node's own style paints behind it: its
+// ColorNameBox is the color a node's own style paints behind it: its
 // `background`, and transparent where the style gave none. It is a name of
 // its own rather than the theme's background, which every theme answers.
 const ColorNameBox fyne.ThemeColorName = "snglBox"
 
-// Backdrop is a node drawn on its style's background. Fyne's theme colours no
+// Backdrop is a node drawn on its style's background. Fyne's theme colors no
 // label's box, so a `ui.badge` was plain text: a rectangle behind the node is
-// its box, painted in the colour the theme around it answers for
+// its box, painted in the color the theme around it answers for
 // ColorNameBox and rounded by its radius. The theme is read where the
 // backdrop draws, so a theme override given a new theme and refreshed -- a
 // background that is a run-time value -- repaints it.

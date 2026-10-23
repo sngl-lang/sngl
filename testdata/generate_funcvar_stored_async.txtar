@@ -1,5 +1,5 @@
 A top-level var of funcvar type initialized with an async native function.
-Its slot colour is Async, so a click handler that calls the var is emitted as
+Its slot color is Async, so a click handler that calls the var is emitted as
 an async wrapper and the call site is awaited.
 
 -- app.sngl --

@@ -353,7 +353,7 @@ static const char *sngl_drop_down_label(GtkDropDown *d) {
     return gtk_string_object_get_string(GTK_STRING_OBJECT(item));
 }
 
-// Selects the choice labelled label, as a click on it does; one no choice
+// Selects the choice labeled label, as a click on it does; one no choice
 // carries selects nothing. The selection's handler may render the page the
 // drop-down is on afresh, which drops the drop-down while GTK is still
 // setting it, so it is held until the selection is done.

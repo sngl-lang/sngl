@@ -5,7 +5,7 @@ that has no override for it.
 satisfies the checker -- it cannot know which target a build picks, the same
 rule a bodyless func gets -- so this builds two targets to show what that
 costs: html carries the override and renders the text, bubbletea has none and
-renders nothing at all. That second half is the behaviour no other fixture
+renders nothing at all. That second half is the behavior no other fixture
 states, and the one that changes if the rule is ever made per-target.
 
 The `.sngl` fixture of the same name carries the checker-level assertion and a

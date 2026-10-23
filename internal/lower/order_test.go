@@ -205,7 +205,7 @@ var soleGate = map[string][]string{
 	"Reactivity": {"CanvasInstances", "ComponentProps", "InstanceBodies", "InstanceEvents", "InstanceSlots", "NoReactivity", "SlotChildInstances"},
 
 	// NodeEscape has no flag of its own: the escape analysis only has
-	// something to analyse once the tree is flat.
+	// something to analyze once the tree is flat.
 	"Declarative": {"NoDeclarative", "NodeEscape"},
 
 	"InlineComponents": {"NoInlineComponents"},

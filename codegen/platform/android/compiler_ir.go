@@ -50,7 +50,7 @@ type Config struct {
 	Nav bool
 	// accent is Color as the program wrote it, before withDefaults fills in
 	// the launcher's default: the theme's primary where it is set, and the
-	// device's own colours where it is not.
+	// device's own colors where it is not.
 	accent    string
 	defaulted bool
 }
@@ -560,7 +560,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 
 	// Under --lang go the user's functions are emitted into the gomobile
-	// module, exported and capitalised, so a Kotlin call site has to name them
+	// module, exported and capitalized, so a Kotlin call site has to name them
 	// there. Without this the module held `func Fib(n int) int` and the Kotlin
 	// called a bare `fib(k)` that existed in neither file.
 	//
@@ -684,7 +684,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// ErrorEvent is emitted when any error-handling construct is present
 	// (see bubbletea comment). The stdlib struct is not flowed through
-	// user output, so materialise it here.
+	// user output, so materialize it here.
 	if ctx.Pkg.UsesErrorHandling {
 		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
 		body.WriteString("class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)\n\n")

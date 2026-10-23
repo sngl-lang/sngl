@@ -361,7 +361,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	savedTopLevel := c.topLevel
 	c.topLevel = nil
 	defer func() { c.topLevel = savedTopLevel }()
-	// Deferred const initialisers are per declaration set for the same reason:
+	// Deferred const initializers are per declaration set for the same reason:
 	// this package's are checked before it finishes loading, and the enclosing
 	// set is put back untouched.
 	savedConstInits := c.pendingConstInits
@@ -498,7 +498,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 	// The same pass1 a program's package gets. Registration order -- every
 	// type name before any field that could refer to one, components before
-	// struct bodies, const initialisers last -- is a property of a package and
+	// struct bodies, const initializers last -- is a property of a package and
 	// not of the tier it came from, and this loader used to state it a second
 	// time in a different order.
 	//

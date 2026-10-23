@@ -318,7 +318,7 @@ func construct(sp *fyneSpec) (w any, err error) {
 // business and arrives as the type's zero here. A Raw arg is Go source spliced
 // verbatim by the emitter; reflection cannot evaluate Go, so only the literal
 // forms the Specs actually use are accepted -- anything else is a Spec the
-// interpreter cannot honour, and saying so is the point.
+// interpreter cannot honor, and saying so is the point.
 func argValue(a fyneArg, want reflect.Type) (reflect.Value, error) {
 	if a.Prop != "" || a.Raw == "" || a.Raw == "nil" {
 		return reflect.Zero(want), nil

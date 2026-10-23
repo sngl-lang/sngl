@@ -1,6 +1,6 @@
 // Package fynetheme is SNGL's paint styling as a Fyne theme.
 //
-// Fyne has no per-widget styling: a colour or a text size belongs to the app's
+// Fyne has no per-widget styling: a color or a text size belongs to the app's
 // theme. What it does have is container.NewThemeOverride, which gives one
 // subtree a theme of its own -- so a set of style properties becomes a theme
 // and the node it came from becomes the subtree it applies to.

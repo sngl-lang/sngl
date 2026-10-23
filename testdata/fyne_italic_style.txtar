@@ -12,13 +12,13 @@ style every lookup in its subtree passes it, which is exactly what an italic
 face needs done to it.
 
 A second defect was in the way and is fixed with it: the theme declarations
-always imported `image/color`, which Go refuses when nothing writes a colour
-literal. Every fixture until this one had a colour somewhere in its themes, so
+always imported `image/color`, which Go refuses when nothing writes a color
+literal. Every fixture until this one had a color somewhere in its themes, so
 a program styling a slant and nothing else was the first to emit Go that does
 not compile. The `run/go/fyne` record below is what says it does now.
 
 deny out/go/fyne/model.go `Bold: true` -- a run that asked for a slant is not also given a weight
-deny out/go/fyne/model.go `image/color` -- nothing here writes a colour literal, and Go refuses an import nothing uses
+deny out/go/fyne/model.go `image/color` -- nothing here writes a color literal, and Go refuses an import nothing uses
 -- doc.sngl --
 import ui "sngl:ui"
 

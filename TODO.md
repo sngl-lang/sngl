@@ -18,7 +18,7 @@ under it. Delete this file before the MR leaves draft.
 
 - `go tool verify` passes at the end of each part; after any codegen change
   `ANDROID_HOME=$HOME/Android/Sdk go tool verify -update` rerecords every
-  package's goldens and recorded runs. Read each golden diff for behaviour,
+  package's goldens and recorded runs. Read each golden diff for behavior,
   not only hashes.
 - Edit nothing -- source, `lib/`, `examples/` -- while a suite runs, and stop
   any browser, server or harness of your own first: port 47819 must be free,
@@ -53,7 +53,7 @@ under it. Delete this file before the MR leaves draft.
 
 - [X] Width and height as a size request; gap as a box's spacing; padding
   and margin.
-- [X] Font size, weight and style; foreground and background colours and
+- [X] Font size, weight and style; foreground and background colors and
   border radius, through CSS: `gtk4rt.SetStyle` takes a `gtk4rt.Style` of
   the fields gtk4 draws, in pixels, and keeps one class per distinct style on
   one provider for the display. A literal is read field by field, so a field
@@ -73,15 +73,15 @@ under it. Delete this file before the MR leaves draft.
   (`t.snapshot`s); `pkg/go/gtk4rt` `style_test.go`, `scroll_test.go` and
   `image_test.go`, each failing with its fix taken out. The example's gtk4
   screenshots were taken again: artwork at 96 and 192, badges in their
-  colours, bold headings, columns at their widths. Left: a label's text is
-  centred in its box (gtk4 reads no `alignItems` or `textAlign`), and a
+  colors, bold headings, columns at their widths. Left: a label's text is
+  centered in its box (gtk4 reads no `alignItems` or `textAlign`), and a
   width is only the least a label is.
 
 ## Part 3: fyne's and bubbletea's layout gaps (done)
 
 - [X] A fyne label with a background is drawn on a `fynetheme.Backdrop`,
-  painting the colour its theme override answers, so a badge is no longer
-  plain text and a colour read from state repaints with its override.
+  painting the color its theme override answers, so a badge is no longer
+  plain text and a color read from state repaints with its override.
 - [X] A fyne box whose style names a gap, padding or alignment is
   `fynelayout.New`'s from the start, so `Adopt` only ever adopts a box whose
   style said nothing; `alignItems` places each child at its own minimum
@@ -107,7 +107,7 @@ under it. Delete this file before the MR leaves draft.
   `cmd/sngl/testdata/layout_bubbletea_rendered_runs.txt`, and runtime tests in
   `pkg/go/fynetheme`, `pkg/go/fynelayout`, `pkg/go/gtk4rt` and `pkg/go/tui`,
   each failing with its fix taken out. The example's fyne and bubbletea
-  screenshots were taken again. Left: bubbletea centres nothing
+  screenshots were taken again. Left: bubbletea centers nothing
   (`alignItems`), so the evolution cards' names sit left.
 
 ## Part 4: what the review found and left

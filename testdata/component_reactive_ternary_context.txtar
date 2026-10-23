@@ -575,7 +575,7 @@ pass sha256:a2df5db7a4b32a67b6b83543a1cd59d1
 -- run/none/html --
 pass sha256:bfc0b38133928f496a44abb96be06620
 -- testrun/html/none/component_reactive_ternary_context.sngl/main/1 --
-sha256:08591feb4e8da135c74528095dab742f
+sha256:9404f3510e747d07550768929db39c80
 {
   "results": [
     {

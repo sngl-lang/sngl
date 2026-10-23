@@ -33,7 +33,7 @@ func same(a, b color.Color) bool {
 	return ar == br && ag == bg && ab == bb && aa == ba
 }
 
-// A label with a background is drawn on a box of that colour, rounded by the
+// A label with a background is drawn on a box of that color, rounded by the
 // theme's radius, and the box is the label's size.
 func TestBackdropPaintsTheBackground(t *testing.T) {
 	fynetest.NewTempApp(t)

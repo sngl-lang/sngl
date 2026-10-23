@@ -14,7 +14,7 @@ import (
 // option[T] as a T, since option declares no methods and every reader in the
 // library is a total function taking a default.
 //
-// The judgement is not purely type-level: option[T] is a nullable
+// The judgment is not purely type-level: option[T] is a nullable
 // representation on Kotlin (T?) and JavaScript (a value or null) but a pointer
 // on Go (*T), so a narrowed read carries an ir.Conversion from option[T] to T
 // and each language emits its own unwrap. Conversion rather than

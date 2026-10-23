@@ -26,7 +26,7 @@ component block build.family
 
 component text(full string, color string = "", @click(button int)) block
 
-component labelled(label string, n int) block {
+component labeled(label string, n int) block {
     text(full="{label}={n}")
 }
 
@@ -122,7 +122,7 @@ bar {
         })
     }
     if n > 0 {
-        labelled(label="n", n=n)
+        labeled(label="n", n=n)
     }
 }
 
@@ -663,4 +663,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:fd074127353c441e764797a85fd8d3b5
 -- run/go/gtk4 --
-pass sha256:f02b4ed7de93c2c1d986a275ab3a5019
+pass sha256:72e456bb9dabfbb264c497ccceaae6f6

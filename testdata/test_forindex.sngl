@@ -13,7 +13,7 @@ component indexed node {
     }
 }
 
-// `idx * 10` is what stops the two mistakes cancelling: interpolating both
+// `idx * 10` is what stops the two mistakes canceling: interpolating both
 // names type-checks under either binding, so a swap would still compile.
 // Multiplication takes the int alone.
 func testForWithIndexVariable(t Test, c indexed) {

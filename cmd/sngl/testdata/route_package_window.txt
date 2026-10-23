@@ -16,7 +16,7 @@
 sngl generate --lang go --platform html -o out app.sngl
 
 # The conditional is a branch in the handler, not both arms concatenated.
-# Unparenthesised: the server is written through format.Source, which drops the
+# Unparenthesized: the server is written through format.Source, which drops the
 # parentheses a condition is emitted with.
 grep 'if v.Pkg != ""' out/server.go
 grep 'named' out/server.go

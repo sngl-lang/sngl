@@ -1,4 +1,4 @@
-# html DOM-string snapshot round-trip. Browser-side capture serialises
+# html DOM-string snapshot round-trip. Browser-side capture serializes
 # document.documentElement.outerHTML as text/html. Golden at
 # <fixture>.snapshots/initial.html.
 
@@ -31,7 +31,7 @@ window {
     main
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:5132c6cd4bab3f935a4536fa452a1a8f
+sha256:ca2e3cf5a427a8b7c633b420b090b7ee
 {
   "results": [
     {
@@ -44,7 +44,7 @@ sha256:5132c6cd4bab3f935a4536fa452a1a8f
   }
 }
 -- testrun/html/none/app.sngl/main/2 --
-sha256:45cdbcf17a8c0f949b2ecb226c6f255e
+sha256:b2b5ad14644f4519171bad1fd854dd4b
 {
   "results": [
     {

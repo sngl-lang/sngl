@@ -1534,7 +1534,7 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		}
 		seen[methodName] = true
 		if inv.WidgetType == "GtkDropDown" {
-			fmt.Fprintf(b, "// %s selects the choice labelled v on the #%s widget; for tests.\n",
+			fmt.Fprintf(b, "// %s selects the choice labeled v on the #%s widget; for tests.\n",
 				methodName, inv.IDLabel)
 		} else if inv.RtFire != "" {
 			fmt.Fprintf(b, "// %s fires %q on the #%s widget; for tests.\n",

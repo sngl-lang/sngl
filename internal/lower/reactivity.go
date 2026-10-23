@@ -32,7 +32,7 @@ type reactiveProp struct {
 	Node *ir.NodeInst
 	// Instance says the node is a component instance rather than a widget, so
 	// the prop is written through the instance's setter instead of assigned to
-	// the node. Assigning it was the old behaviour and it reached nothing: on
+	// the node. Assigning it was the old behavior and it reached nothing: on
 	// html it emitted `__n1.setAttribute("label", ...)` against a node that is
 	// not the instance, and the page did not change.
 	Instance bool

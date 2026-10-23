@@ -90,7 +90,7 @@ type Call struct {
 	Args      []CallArg  // resolved arguments (for type-methods, Args[0] is the receiver)
 	// Detached says the call starts its callee and does not wait for it: the
 	// caller goes on while an async callee waits, and reads no answer. So the
-	// call colours nothing async, and a language that awaits writes it
+	// call colors nothing async, and a language that awaits writes it
 	// without. The effect lowering makes its calls of a bracket's handlers
 	// detached, since a lifetime begins when its mount starts, and a settle
 	// waiting on one request would hold every other bracket with it.

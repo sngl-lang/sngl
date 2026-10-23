@@ -95,7 +95,7 @@ func TestCanvasComposeEmission(t *testing.T) {
 		t.Errorf("style call left unresolved\n---\n%s", code)
 	}
 	// The style reaches the draw call, and the paint is alpha-gated. `circle`
-	// draws from this platform's override now, which sets the colour inline
+	// draws from this platform's override now, which sets the color inline
 	// from the style it was given -- the `_style1` local and the
 	// `_snglComposeColor` helper both belonged to the CanvasApplyStyle
 	// expansion the override replaces.

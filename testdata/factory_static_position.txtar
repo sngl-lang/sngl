@@ -19,7 +19,7 @@ Before renderStaticInstance the static renderer met the node and inlined the
 component's body as markup. The body had already been flattened into imperative
 statements for the factory, so the markup came out empty; the props and vars the
 renderer mirrored into `state` on the way past were read before their own `var`
-declarations, so each initialised from undefined; and the handler reached for
+declarations, so each initialized from undefined; and the handler reached for
 the instance by `querySelector('[data-sngl-id="__n1"]')`, an attribute nothing
 carried, and got null.
 

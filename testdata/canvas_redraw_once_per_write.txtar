@@ -4,7 +4,7 @@ passCanvasReactivity appends a redraw to every handler that writes a var the
 draw function reads, and gatherBlockMutations credits a call to its callee's
 Writes -- so `@click { bump() }` already redraws for whatever `bump` writes.
 Injecting into the owner's funcs as well, which is what an effect's `@mount`
-and a timer's `@tick` need, gave `bump` one of its own: two full rasterisations
+and a timer's `@tick` need, gave `bump` one of its own: two full rasterizations
 per click, the first against half-applied state.
 
 `Writes` is what tells the two apart. The checker fills it in, so a body that
@@ -17,7 +17,7 @@ The canvas here is drawn from a package-level var, which is the second half of
 the same fix: the pass counted the owner's vars alone, so a canvas reading one
 had an empty dep set and was collected as reactive by nothing at all.
 
-deny out/go/fyne/model.go `(?m)^func \(m \*Model\) bump\(\) \{\n\tm\.frame = \(m\.frame \+ 1\)\n\tm\.__n1Ctx` -- the helper must not rasterise; its caller already does, and two per click means the first runs against state the handler has not finished writing
+deny out/go/fyne/model.go `(?m)^func \(m \*Model\) bump\(\) \{\n\tm\.frame = \(m\.frame \+ 1\)\n\tm\.__n1Ctx` -- the helper must not rasterize; its caller already does, and two per click means the first runs against state the handler has not finished writing
 
 deny out/go/fyne/model.go `(?m)^\tstep := func\(\) \{\n\t\ttotal = \(total \+ 1\)\n\t\tm\.__n1Ctx` -- a lambda inside a declared func is credited to that func's Writes too, so the caller already redraws for it; the checker's effect walk descends into a lambda where gatherBlockMutations does not
 

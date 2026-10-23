@@ -226,7 +226,7 @@ window {
     main
 }
 -- testrun/android/kotlin/buttons.sngl/main/1 --
-sha256:3eea8e0a0f5c259c2f6cd929d73f1688
+sha256:47b4fafdd13613130cc55edb317b92bc
 {
   "results": [
     {
@@ -236,7 +236,7 @@ sha256:3eea8e0a0f5c259c2f6cd929d73f1688
   ]
 }
 -- testrun/android/kotlin/counters.sngl/main/1 --
-sha256:ae135df854672aed2370ed1322ca5f8e
+sha256:0884491962b9e62f630af707543da99a
 {
   "results": [
     {
@@ -246,7 +246,7 @@ sha256:ae135df854672aed2370ed1322ca5f8e
   ]
 }
 -- testrun/android/kotlin/recursion.sngl/main/1 --
-sha256:170e5afb6f2ecb80fd6bba6f6380e4c7
+sha256:14a6949c3d4f8485ab4870c52e4f5224
 {
   "results": [
     {
@@ -326,7 +326,7 @@ sha256:dd65ab6fb69547262b2a8599191bb0d8
   ]
 }
 -- testrun/html/none/buttons.sngl/main/1 --
-sha256:1ab05838f3a61b14f1716169cc3ea702
+sha256:9b9d0a3af41a4bc52fb33ed293d4aed6
 {
   "results": [
     {
@@ -336,7 +336,7 @@ sha256:1ab05838f3a61b14f1716169cc3ea702
   ]
 }
 -- testrun/html/none/counters.sngl/main/1 --
-sha256:eae642a437e3f774f0c414e45cef1a07
+sha256:48640daa1dbc10437a8ec07cecb556fe
 {
   "results": [
     {
@@ -346,7 +346,7 @@ sha256:eae642a437e3f774f0c414e45cef1a07
   ]
 }
 -- testrun/html/none/recursion.sngl/main/1 --
-sha256:315d122bfce275ee52613562d1fda1fc
+sha256:6eb1162ca0ad4a994b8cb9ece90e50f0
 {
   "results": [
     {

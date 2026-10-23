@@ -1,5 +1,5 @@
 Go codegen for `map[K, V]`: literal, index and method dispatch. The field is
-declared on the Model as map[string]int, New() initialises it from the map
+declared on the Model as map[string]int, New() initializes it from the map
 literal, and `scores.length()` dispatches to len(m.scores).
 
 `scores.get(key, default)` dispatches to an inline if-ok idiom wrapped in a

@@ -1,7 +1,7 @@
 An app's theme. `color` set the launcher's background and nothing else: the
-theme took the device's own colours, so an app that asked for red drew
+theme took the device's own colors, so an app that asked for red drew
 its buttons in the wallpaper's. A `color` the program sets is the theme's
-primary; with none, the device's colours stand.
+primary; with none, the device's colors stand.
 
 The theme is always light, and the bars' icons are dark to match. Edge to
 edge by default follows the device's dark mode, which on a dark device drew

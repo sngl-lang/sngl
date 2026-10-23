@@ -58,7 +58,7 @@ window(title="H") { App() }
 					return
 				}
 			}
-			t.Fatalf("no button labelled %q; body = %q", label, body())
+			t.Fatalf("no button labeled %q; body = %q", label, body())
 		}
 
 		if got := body(); !strings.Contains(got, "s:10") {

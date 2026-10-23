@@ -6,10 +6,10 @@ A box's style and a label's background reach fyne.
   (`fynelayout.Adopt`) cannot know its style's gap.
 - `alignItems` places each child at its own minimum across the box
   (`fynelayout.NewAligned`), where Fyne's box stretched every one, so a card's
-  lines were never centred.
+  lines were never centered.
 - A label whose style gives it a background is drawn on a
-  `fynetheme.Backdrop`, which paints the colour its theme answers: Fyne
-  colours no label's box, so a badge was plain text. A colour read from state
+  `fynetheme.Backdrop`, which paints the color its theme answers: Fyne
+  colors no label's box, so a badge was plain text. A color read from state
   is a new theme on the override, which repaints the backdrop.
 
 deny out/go/fyne/model.go `__n2 = container\.NewVBox\(\)` -- the gapped column is no Fyne box

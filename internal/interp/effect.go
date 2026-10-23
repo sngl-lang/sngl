@@ -97,7 +97,7 @@ func NewEffects() *Effects {
 // rekeys itself. A bound on handlers run said the same words about a different
 // thing -- one settle legitimately runs a handler per bracket it has to move,
 // so 512 brackets in one scope tripped it, and a program was told an effect was
-// rekeying itself for the offence of existing 512 times. Two effects rekeying
+// rekeying itself for the offense of existing 512 times. Two effects rekeying
 // each other are still caught, since each of their keys restarts every round.
 const maxEffectRestarts = 512
 
@@ -335,7 +335,7 @@ func Settle(fx *Effects, env *Env) (*View, error) {
 }
 
 // effectOf reads an effect declaration off a node instantiation, or reports
-// false when the node is not one. Recognised by the kind its declaration
+// false when the node is not one. Recognized by the kind its declaration
 // carries, never by its name.
 func effectOf(inst *ir.NodeInst, env *Env, key Key) (MountedEffect, bool) {
 	if inst == nil || inst.Component == nil || inst.Component.Builtin != ir.BuiltinEffect {

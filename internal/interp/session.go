@@ -186,9 +186,9 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 // State is carried across by VarKey -- the declaring scope's name and the
 // variable's -- because the new package shares no symbol with the old. A
 // binding whose name and type both survive keeps its value; one whose type
-// changed is reinitialised, since carrying a value across a type change is how
+// changed is reinitialized, since carrying a value across a type change is how
 // a session ends up holding something no expression in the program could have
-// produced. A variable that appeared runs its initialiser, and one that is gone
+// produced. A variable that appeared runs its initializer, and one that is gone
 // is simply not carried.
 //
 // Timer phase is rebased rather than reset, so saving a file does not restart

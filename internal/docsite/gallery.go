@@ -4,7 +4,7 @@ import "duckfam.us/sngl/ir"
 
 // Starter is the components the /components page leads with, in reading order:
 // what a first application reaches for. Everything else is a click away in the
-// package tree, so this is a front door and not a catalogue.
+// package tree, so this is a front door and not a catalog.
 //
 // Hand-picked, which is why TestStarterComponentsExist holds it to sngl:ui.
 // The tier table this replaced was hand-picked too and nothing checked it: it

@@ -111,7 +111,7 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	subs := make(map[*ir.Param]ir.Expr, len(f.Params)+1)
 	// A method on a generic built-in says `this` in its body and declares no
 	// parameter for it. The receiver reaches the call either beside it or, once
-	// the checker has normalised `box.failed()` to `Value.failed(box)`, as the
+	// the checker has normalized `box.failed()` to `Value.failed(box)`, as the
 	// argument in front of the declared ones. Binding it is what makes such a
 	// body inlinable at all: without it `xs.contains(2)` spliced in a `this`
 	// naming nothing, and `box.failed()` did the same.

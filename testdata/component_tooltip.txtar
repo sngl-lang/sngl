@@ -603,7 +603,7 @@ pass sha256:ee23cedbec76377068253f1b69fd9506
 -- run/none/html --
 pass sha256:69a9b96d7a56ebe55e635ee0c5f6633a
 -- testrun/html/none/component_tooltip.sngl/main/1 --
-sha256:0bacdda5836aba39c23acb1d83dcb753
+sha256:b6baac40822b7793e3f5581e3fd70566
 {
   "results": [
     {

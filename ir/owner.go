@@ -122,7 +122,7 @@ func Owners(pkg *Package) []Owner {
 // says of each of its nodes, and what attaching to the application means is
 // each platform's answer -- a toplevel created and put on screen on gtk4 and
 // fyne. It is sngl:builtin's `_application` (Builtins.ApplicationType), which
-// no program writes: a translator recognises the name, as it recognises a
+// no program writes: a translator recognizes the name, as it recognizes a
 // slot's parent, and a platform that has no application to attach to treats
 // the node as an unparented root.
 const AppParent = "__app"

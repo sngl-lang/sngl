@@ -8,7 +8,7 @@ import (
 
 // sngl:ui/nav on the interpreter. `sngl:platform/none` overrides `nav.stack`
 // with a Stack primitive and `nav.page` with a Page primitive, and these are
-// the whole of what the interpreter knows about navigation, recognised by the
+// the whole of what the interpreter knows about navigation, recognized by the
 // intrinsic ids their declarations carry.
 //
 // A stack mounts every page it holds, so each page's `#id` is bound to its

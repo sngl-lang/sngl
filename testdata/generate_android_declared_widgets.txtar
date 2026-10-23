@@ -9,7 +9,7 @@ is a Text of `text`. The label goes through the declared Text intrinsic, so it
 is a named `text =` argument and not a positional one, and an unwired button
 still gets a lambda because Compose's onClick is not optional. badge wraps its
 `value` in Badge, and the style reaches Badge's modifier. link is a Text
-carrying the theme's primary colour, which Style has no field for and the
+carrying the theme's primary color, which Style has no field for and the
 override therefore spells in Kotlin via `args`.
 
 The rest state what android does today rather than what it might: image is a

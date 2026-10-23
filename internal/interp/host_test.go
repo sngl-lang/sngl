@@ -172,7 +172,7 @@ func TestAnEmptyDiffTouchesTheHostNotAtAll(t *testing.T) {
 }
 
 // TestNoIRReachesTheHost is the contract the out-of-process host depends on.
-// A NodeDesc must be serialisable, which means it must not carry a pointer
+// A NodeDesc must be serializable, which means it must not carry a pointer
 // into the program.
 func TestNoIRReachesTheHost(t *testing.T) {
 	s := sessionFor(t, hostSrc, "main")

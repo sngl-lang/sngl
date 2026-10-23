@@ -17,7 +17,7 @@ Those two produce RFC3339 and read something wider, and both halves are
 deliberate. `toISOString` and `Instant.toString` write the offset; a SNGL
 datetime *literal* may be written without one, and an offsetless date-time is
 read as **local** time by `Date.parse` and refused outright by `Instant.parse`.
-So the parse normalises first, and normalises by supplying Z *only when no
+So the parse normalizes first, and normalizes by supplying Z *only when no
 offset is there* -- which is what `offsetGap` is here to hold. Appending one
 unconditionally is the shorter spelling and turns `...+05:00` into a string
 `Date.parse` answers `NaN` for, propagating into rendered output with nothing
@@ -33,7 +33,7 @@ second is `NaN` there, a panic on Go and an error in the interpreter. Anchoring
 that pattern means settling what a datetime literal's grammar actually is,
 which is a language decision and not this change's to make.
 
-Each normaliser evaluates its operand once -- a replacement function in
+Each normalizer evaluates its operand once -- a replacement function in
 JavaScript, index tests in Kotlin, both inside a `let`/callback -- because the
 operand is an arbitrary expression. Kotlin avoids a `Regex` because these land
 inside `derivedStateOf`, which re-runs on recomposition.

@@ -886,7 +886,7 @@ pass sha256:9cdaf99dcadc2d6c3feffb8ba1c9f1db
 -- run/none/html --
 pass sha256:6b658df74fddb5b955d97face1817518
 -- testrun/html/none/component_datepicker.sngl/main/1 --
-sha256:2d30cd48be375a7e4bddc835731b9b45
+sha256:8c83e5f463d4eda63f022ec35ddfce25
 {
   "results": [
     {

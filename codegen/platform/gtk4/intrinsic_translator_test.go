@@ -282,7 +282,7 @@ func TestGtk4Translator_OnAttachHandler_RefusesWrongArity(t *testing.T) {
 // TestGtk4Translator_OnPropAssign_RefusesConstructOnly pins the emitter half
 // of the construct-only rule: GObject answers a post-construction write with a
 // g_critical and no change, so emitting the generic set would compile and do
-// nothing. declgen withholds these, making this the same defence-in-depth as
+// nothing. declgen withholds these, making this the same defense-in-depth as
 // the signal case.
 func TestGtk4Translator_OnPropAssign_RefusesConstructOnly(t *testing.T) {
 	gc := stubGC()

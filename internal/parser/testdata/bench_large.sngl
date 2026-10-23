@@ -3238,7 +3238,7 @@ component GtkGestureLongPress(
     propagationLimit string,
     propagationPhase string,
     style string,
-    @cancelled,
+    @canceled,
     children ...component,
 ) ui.node {}
 

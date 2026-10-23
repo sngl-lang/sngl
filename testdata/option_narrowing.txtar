@@ -3,7 +3,7 @@ cannot be null it is a `T`, which before this was not expressible at all --
 `option` declares no methods and every reader in the library is a total
 function taking a default.
 
-The judgement is not purely type-level, which is the whole reason this is a
+The judgment is not purely type-level, which is the whole reason this is a
 golden rather than a checker test. `option[T]` is a nullable representation on
 two targets and a pointer on the third, so the read a null test earns is spelled
 three ways: Go's `*(m.maybe)`, Kotlin's `maybe!!`, and JavaScript's bare read of

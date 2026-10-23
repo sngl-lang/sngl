@@ -13,7 +13,7 @@ import (
 // Returns a single element map, a list of maps (for-loops), or nil.
 //
 // It mounts a tree and reads it, rather than walking the IR itself. A fresh
-// mount per call is what preserves the old behaviour exactly -- every lookup
+// mount per call is what preserves the old behavior exactly -- every lookup
 // re-evaluates against current state -- and the mount becomes a retained one,
 // invalidated by a patch, when there is a session loop to own it.
 func (env *Env) ResolveElementRef(id string) (any, error) {

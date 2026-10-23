@@ -7,7 +7,7 @@ spliced component's cell is read through -- which no method can see, so the Go
 did not compile (`undefined: s`, `undefined: __copy0`).
 
 A loop canvas's drawing is written inline where the iteration binds them, as
-the rasteriser closure handed to tui. Each copy gets a surface of its own and a
+the rasterizer closure handed to tui. Each copy gets a surface of its own and a
 kitty image ID of its own, the canvas's in the low bits and the copy's ordinal
 above them; the transmit walks the view the way View does to reach every copy.
 codegen/platform/bubbletea/canvas_loop_run_test.go runs it.

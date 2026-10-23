@@ -181,7 +181,7 @@ func writeActivityKt(w io.Writer, d scaffoldData, class, screenImport string) {
 
 // writeThemeKt writes AppTheme: Material's light scheme with the program's
 // accent as its primary where `color` sets one, and otherwise the device's
-// own colours where it has them (Android 12 on), Material's baseline before.
+// own colors where it has them (Android 12 on), Material's baseline before.
 func writeThemeKt(w io.Writer, d scaffoldData) {
 	e := kotlinFile(w, d.Package+".ui.theme")
 	e.RequireImport("androidx.compose.material3.MaterialTheme")

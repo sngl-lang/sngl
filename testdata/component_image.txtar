@@ -596,7 +596,7 @@ pass sha256:a807db60f6fb374bb6b1916b0a1c1d45
 -- run/none/html --
 pass sha256:39cb31e49e0e1d5d71c35443be794f5f
 -- testrun/html/none/component_image.sngl/main/1 --
-sha256:22e6be76bfb3926fdb1e83f6e593223a
+sha256:a3d0e2c73dc3d4fc1892136ad532bde0
 {
   "results": [
     {

@@ -233,7 +233,7 @@ context #artwork(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprit
 // it is. A dex entry names its species by URL, whose last segment is the id.
 func artworkOf(template string, id string) => string.replace(template, `{id}`, id)
 
-// The colour each type is drawn in, as the games' own type labels have it.
+// The color each type is drawn in, as the games' own type labels have it.
 const typeColors map[string, color] = {
     "normal" = #a8a77a,
     "fire" = #ee8130,
@@ -255,10 +255,10 @@ const typeColors map[string, color] = {
     "fairy" = #d685ad,
 }
 
-// The colour of the type PokéAPI names `kind`, grey for one it adds later.
+// The color of the type PokéAPI names `kind`, gray for one it adds later.
 func typeColor(kind string) => typeColors.get(kind, #68a090)
 
-// The colour a type's name is written in over its own: dark over the light
+// The color a type's name is written in over its own: dark over the light
 // ones, white over the rest.
 func typeInk(kind string) color {
     if kind == "electric" || kind == "ice" || kind == "ground" || kind == "steel" {
@@ -404,7 +404,7 @@ struct Sprite {
     url   string
 }
 
-// A Pokémon's pictures, each labelled: front and back, normal and shiny,
+// A Pokémon's pictures, each labeled: front and back, normal and shiny,
 // female where it looks different, and its official artwork and Home
 // picture. A picture PokéAPI has none of -- a female one, for a Pokémon that
 // looks the same either way -- is left out.
@@ -463,15 +463,15 @@ func oneLine(s string) string {
     return out.string()
 }
 
-// A length in metres.
+// A length in meters.
 unit length { m }
 
 // A mass in kilograms.
 unit mass { kg }
 
-// A Pokémon's height, which PokéAPI gives in tenths of a metre.
-func heightOf(decimetres int) length {
-    return 1m * (float(decimetres) / 10.0)
+// A Pokémon's height, which PokéAPI gives in tenths of a meter.
+func heightOf(decimeters int) length {
+    return 1m * (float(decimeters) / 10.0)
 }
 
 // A Pokémon's weight, which PokéAPI gives in tenths of a kilogram.
@@ -480,7 +480,7 @@ func weightOf(hectograms int) mass {
 }
 
 // A height as the reader writes a number: "0.7 m", "0,7 m".
-func metres(l length) string {
+func meters(l length) string {
     var n = i18n.numberFloat(float(l))
     return $"{n} m"
 }
@@ -625,7 +625,7 @@ func learnMethods() list[LearnMethod] {
     ]
 }
 
-// PokéAPI's name for the way labelled `label`, by level where none is.
+// PokéAPI's name for the way labeled `label`, by level where none is.
 func methodNamed(label string) string {
     for var m = learnMethods() {
         if m.label == label {
@@ -637,7 +637,7 @@ func methodNamed(label string) string {
 
 // The label of the way PokéAPI names `name`, by level's where it is none of
 // them.
-func methodLabelled(name string) string {
+func methodLabeled(name string) string {
     for var m = learnMethods() {
         if m.name == name {
             return m.label

@@ -882,7 +882,7 @@ var (
 	defaultTranslator *Translator
 )
 
-// GetTranslator returns the process-wide Translator, lazily initialised
+// GetTranslator returns the process-wide Translator, lazily initialized
 // from i18n.manifest.json (working directory) and the LC_ALL/LC_MESSAGES/LANG
 // env vars. The first call may incur file I/O; subsequent calls are cheap.
 func GetTranslator() *Translator {
@@ -914,7 +914,7 @@ func pickLocale() string {
 	return "en"
 }
 
-// translatorCache memoises Translators by BCP-47 locale string. Each
+// translatorCache memoizes Translators by BCP-47 locale string. Each
 // entry shares the same Manifest (the process-wide one loaded lazily on
 // first access) but binds the language.Tag / currency.Unit per locale.
 var translatorCache sync.Map // map[string]*Translator
@@ -993,10 +993,10 @@ func Selectordinal(locale string, count int, forms map[PluralKey]string) string 
 }
 
 // DefaultLocale resolves the process-startup locale from environment variables,
-// with BCP-47 normalisation and "en-US" fallback.
+// with BCP-47 normalization and "en-US" fallback.
 //
 // Read order: LC_ALL, LC_MESSAGES, LANG. Strips encoding suffix (".UTF-8") and
-// modifier suffix ("@euro"); normalises POSIX underscore separators to BCP-47
+// modifier suffix ("@euro"); normalizes POSIX underscore separators to BCP-47
 // hyphens (e.g. "en_US.UTF-8" → "en-US"). Falls back to "en-US" when no
 // locale variable is set.
 //

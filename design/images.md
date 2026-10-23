@@ -31,7 +31,7 @@ does with it is each target's:
   of `src` with its `href`.
 - fyne: `fynelayout.Image`, a widget whose `Box` holds the source -- an
   `ImageSource` showing the picture itself and reporting `@load`/`@error` to
-  the image it lands in. A drawn source is rasterised
+  the image it lands in. A drawn source is rasterized
   and handed over (`SetImage`). A window takes a source as its icon
   (`Toplevel.Add`). The specs are written in Go as `Toplevel`'s are
   (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot

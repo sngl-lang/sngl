@@ -235,7 +235,7 @@ func appendEdge(cs *ir.CallStmt) (parent, child string, ok bool) {
 // --- Emission ---
 
 // emitFlowCreate builds the GtkLabel one flow is, and sets it up as a
-// paragraph: wrapped, and starting at the left rather than centred, which is
+// paragraph: wrapped, and starting at the left rather than centered, which is
 // what every other target does with a run of prose.
 func (t *gtk4Translator) emitFlowCreate(id string) []ir.Stmt {
 	var ctor ir.Expr = nativeCall("gtk_label_new", ir.NativePointerOf("GtkWidget"), &ir.Literal{Type: ir.TypNull})
@@ -479,7 +479,7 @@ func pangoSize(px float64) string {
 const emPx = 11
 
 // markupColor is an RGBA read off a SNGL color literal. Its own reader rather
-// than the layout one's, because a colour that is not a literal is no colour
+// than the layout one's, because a color that is not a literal is no color
 // here: the markup is assembled once with the widget tree.
 type markupColor struct{ R, G, B, A uint8 }
 
@@ -509,7 +509,7 @@ func colorFromExpr(e ir.Expr) *markupColor {
 	return &c
 }
 
-// literalNumberOf reads a numeric literal: a colour's channel. A measurement is
+// literalNumberOf reads a numeric literal: a color's channel. A measurement is
 // codegen.MeasurementPx's.
 func literalNumberOf(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)

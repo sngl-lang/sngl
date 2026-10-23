@@ -1104,13 +1104,13 @@ component drawSource(
 
 // `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
 // page's `_snglColor` helper, because being pure is what lets a constant style
-// fold: a literal colour becomes the string `"rgba(51,102,204,1)"` at build
+// fold: a literal color becomes the string `"rgba(51,102,204,1)"` at build
 // time, where a native call stays a call forever. The alpha channel is 0-255
 // in SNGL and 0-1 here, which is the whole reason it is a function.
 const func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
 
 // Fill and stroke are gated on alpha, which every other backend does and this
-// one did not: the old translation tested the colour *object* for truthiness,
+// one did not: the old translation tested the color *object* for truthiness,
 // and a JS object is always truthy, so a fill-only shape also painted an
 // invisible stroke (#225).
 // The style a shape shares, as a helper rather than repeated per shape. A
@@ -1151,7 +1151,7 @@ const component shapes.rect[platform](x, y, w, h, style) {
         if style.stroke.a > 0 {
             e.ctx.strokeStyle = cssColor(style.stroke)
             e.ctx.lineWidth = style.strokeWidth
-            // A rectangle has corners, so lineJoin is its to honour. No
+            // A rectangle has corners, so lineJoin is its to honor. No
             // lineCap: the path closes, so there are no ends for one to shape
             // -- which is also why circle and ellipse set neither.
             e.ctx.lineJoin = string(style.lineJoin)
@@ -1178,7 +1178,7 @@ const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
 }
 
 // A line has no interior, so `fill` is not read here at all rather than being
-// set and ignored. That is the declaration's documented behaviour, stated once
+// set and ignored. That is the declaration's documented behavior, stated once
 // in the override instead of as a special case in five emitters.
 const component shapes.line[platform](x1, y1, x2, y2, style) {
     html.draw(@draw(e) {

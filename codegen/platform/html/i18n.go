@@ -84,7 +84,7 @@ var (
 	i18nSnippetErr  error
 )
 
-// i18nManifestJS returns the JS statement that initialises
+// i18nManifestJS returns the JS statement that initializes
 // globalThis.__SNGL_I18N_MANIFEST__, or "" if no manifest is present.
 // The returned string includes a trailing newline. Reads via the
 // shared codegen/i18n loader so html and the Go-desktop platforms

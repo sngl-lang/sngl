@@ -188,7 +188,7 @@ var orderConstraints = []orderConstraint{
 		"the __ctx_<name> var it synthesizes is state, and reactivity has to see it as a dep"},
 
 	{"InlinePure", "NoReactivity",
-		"reactivity flattens a NodeInst into CreateNode + Assigns, past the point a wrapper call can be recognised and substituted"},
+		"reactivity flattens a NodeInst into CreateNode + Assigns, past the point a wrapper call can be recognized and substituted"},
 	{"InlinePure", "StampUsage",
 		"inlining can collapse an i18n wrapper into a direct intrinsic, and the usage flags have to count the call as it finally reads"},
 
@@ -238,7 +238,7 @@ var orderConstraints = []orderConstraint{
 	{"InstanceBodies", "NoDeclarative",
 		"both flatten a body, and they disagree about handlers: an instance's are kept inline because a factory's handler closes over the call that built it, and the declarative pass would lift them -- swapped, fyne and gtk4 emit `OnTapped = c.__n0_click_handler` for testdata/factory_reactive_slot"},
 	{"NoDeclarative", "NodeEscape",
-		"the escape analysis runs over the flat `var __nN = CreateNode(...)` + `#__nN` sequence NoDeclarative emits, and there is nothing to analyse before it"},
+		"the escape analysis runs over the flat `var __nN = CreateNode(...)` + `#__nN` sequence NoDeclarative emits, and there is nothing to analyze before it"},
 	{"NoDeclarative", "NoRef",
 		"NoDeclarative's handler lifter emits fresh ref[T] shapes, and NoRef is what boxes them"},
 	{"NoLambda", "NoRef",

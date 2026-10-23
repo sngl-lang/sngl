@@ -32,7 +32,7 @@ func TestStyleCSS(t *testing.T) {
 		{"margin", Style{MarginY: 5}, "margin: 5px 0px 5px 0px;"},
 		{"face", Style{FontSize: 28, FontWeight: "bold", FontStyle: "italic"}, "font-size: 28px; font-weight: bold; font-style: italic;"},
 		{"normal is the theme's", Style{FontWeight: "normal", FontStyle: "normal"}, ""},
-		{"colours", Style{Color: snglcolor.Color{R: 255, A: 255}, Background: snglcolor.Color{G: 255, A: 128}},
+		{"colors", Style{Color: snglcolor.Color{R: 255, A: 255}, Background: snglcolor.Color{G: 255, A: 128}},
 			"color: #ff0000; background: none; background-color: rgba(0,255,0,0.5019607843137255);"},
 		{"radius", Style{BorderRadius: 12.5}, "border-radius: 12.5px;"},
 	} {

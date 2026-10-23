@@ -1131,7 +1131,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 	// `receiver(args)`.
 	if n.AST != nil {
 		if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
-			// Nothing above recognised it, so this is the generic emission
+			// Nothing above recognized it, so this is the generic emission
 			// and the same guard the other paths carry applies.
 			codegen.RequireIntrinsicFallback(langKt, n.Func)
 			return receiver + "." + sel.Field + "(" + strings.Join(args, ", ") + ")"
@@ -1142,7 +1142,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 
 // evalErrorAwareCall emits Kotlin statements for a fallible call whose
 // error handler was resolved by effect analysis. Only error.raise is
-// recognised in MVP; returns nil otherwise (callers fall back to normal
+// recognized in MVP; returns nil otherwise (callers fall back to normal
 // expression emission).
 func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
@@ -2025,7 +2025,7 @@ const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
 // without a conversion per channel.
 const colorKtType = "Color"
 
-// toString mirrors snglcolor.Color.String: a colour is its complete value, so
+// toString mirrors snglcolor.Color.String: a color is its complete value, so
 // a translucent one keeps its alpha rather than printing as an opaque one.
 const ColorDecl = `data class ` + colorKtType + `(
     var r: Int = 0,

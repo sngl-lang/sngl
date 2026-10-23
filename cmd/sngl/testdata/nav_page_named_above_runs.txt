@@ -92,7 +92,7 @@ ui.window(title="Library") {
     library()
 }
 -- testrun/android/kotlin/app.sngl/library/1 --
-sha256:ef6460506e16264586a1705172fdf5d0
+sha256:34fb6a1592313636e53a1f6ed0c24c0c
 {
   "results": [
     {

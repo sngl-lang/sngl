@@ -8,7 +8,7 @@
 #
 # The fetch waits on a request to the script harness's server, and html's
 # factory for a component built at run time wrote each of its functions
-# without its colour: the query's mount, which awaits, was a sync function
+# without its color: the query's mount, which awaits, was a sync function
 # holding an `await`, which esbuild refused.
 
 sngl test --platform=none app.sngl
@@ -74,7 +74,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:2b67a2500c4e7c63b80a99bdedafdbef
+sha256:e2f299b7985cdbdaa074c466f6406867
 {
   "results": [
     {
@@ -114,7 +114,7 @@ sha256:064be8878f726a9c202bcdd847f3b812
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:ded6be4722bd41b93d8cac4e300e9c34
+sha256:913aba75d2cc00c45c6aea1f865cc24b
 {
   "results": [
     {

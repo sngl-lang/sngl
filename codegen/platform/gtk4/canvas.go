@@ -164,7 +164,7 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	drawFunc := &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Params: []*ir.Param{{Type: cairo}, {Type: ir.TypInt}, {Type: ir.TypInt}}, Return: ir.TypVoid}}
 	cbList := &ir.Ident{Name: "snglDrawFuncs", Type: ir.ListOf(drawFunc)}
 	// The drawing's own coordinate space is scaled onto the size GTK is
-	// drawing at, so the shapes are rasterised where they land rather than
+	// drawing at, so the shapes are rasterized where they land rather than
 	// drawn at one size and stretched from it. cairo is a vector context, so
 	// this costs a transform and nothing else.
 	// The draw func is a method of whatever scope owns the canvas -- the Model,

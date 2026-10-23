@@ -119,7 +119,7 @@ func optionString(opts *ir.StructLit, name string) string {
 	}
 	// Source-parsed string literals store Raw with surrounding quotes; CLI
 	// --opt values store Raw verbatim. Trim a single pair of leading/
-	// trailing quotes to normalise both.
+	// trailing quotes to normalize both.
 	raw := lit.Value
 	if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
 		raw = raw[1 : len(raw)-1]

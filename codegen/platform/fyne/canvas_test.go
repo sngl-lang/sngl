@@ -18,7 +18,7 @@ import (
 
 // TestCanvas_EmitsGGDrawAndRedraw verifies the fyne platform renders a
 // `canvas` subtree to a gg-based software-raster draw function, creates a
-// *canvas.Image widget sized to the canvas dimensions, and re-rasterises +
+// *canvas.Image widget sized to the canvas dimensions, and re-rasterizes +
 // Refreshes on a state-mutating handler.
 func TestCanvas_EmitsGGDrawAndRedraw(t *testing.T) {
 	src := `

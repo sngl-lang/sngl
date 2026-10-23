@@ -5,7 +5,7 @@ language grows a case for the construct.
 
 Before that pass the generic per-language statement path read a loop's head
 and body and nothing else, and this else block was silently dropped from the
-generated code in all three languages while the interpreter honoured it.
+generated code in all three languages while the interpreter honored it.
 
 This fixture is why the harness exists. Its predecessor asserted the flag with
 `grep -count=1 '__ran0 = true'`, and that count is satisfied wherever in the

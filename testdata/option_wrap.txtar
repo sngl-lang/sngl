@@ -10,11 +10,11 @@ operand, so `&nextBox()` does not compile, and where it does compile it aliases
 reach what the holder kept.
 
 The read back out is the narrowing unwrap, here through a field: `*` binds
-looser than a selector in Go, so the deref parenthesises itself.
+looser than a selector in Go, so the deref parenthesizes itself.
 
 deny out/go/bubbletea/model.go `Inner: &` -- the promotion boxes a copy, and & would hand the option a window onto the operand
 deny out/go/bubbletea/model.go `\(\*Box\)\(` -- a cast is what the generic conversion path emits and it does not compile
-deny out/go/bubbletea/model.go `\*\(m\.h\.Inner\)\.Value` -- an unparenthesised deref of a narrowed path reads the field, not the pointer
+deny out/go/bubbletea/model.go `\*\(m\.h\.Inner\)\.Value` -- an unparenthesized deref of a narrowed path reads the field, not the pointer
 
 -- app.sngl --
 import . "sngl:ui"

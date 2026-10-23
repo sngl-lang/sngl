@@ -325,7 +325,7 @@ func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
 	return jc.forHead(n, iter)
 }
 
-// BreakText names the loop a labelled break leaves: JavaScript's switch takes
+// BreakText names the loop a labeled break leaves: JavaScript's switch takes
 // a bare break as its own.
 func (jc *JsIRContext) BreakText(n *ir.Break) string {
 	if n.Label != "" {
@@ -420,7 +420,7 @@ func (jc *JsIRContext) StmtPrefix(s ir.Stmt) []string {
 func (jc *JsIRContext) Scoped(name string) irwalk.Renderer { return jc.WithLocal(name) }
 
 // evalErrorAwareCall emits JS statements for a fallible call whose error
-// handler effect analysis resolved. Only error.raise is recognised; anything
+// handler effect analysis resolved. Only error.raise is recognized; anything
 // else returns nil and falls back to the normal call path.
 func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
@@ -857,7 +857,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// receiver expression plus the call args. Here the equivalent is a
 		// scan of Pkg.Funcs for a matching Receiver+Name (same source the
 		// type-method path uses).
-		// Nothing above recognised it, so this is the generic emission and
+		// Nothing above recognized it, so this is the generic emission and
 		// the same guard the other paths carry applies.
 		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		var call string
@@ -1039,7 +1039,7 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 		params[i] = p.Name
 	}
 	asyncPrefix := ""
-	// A handler a lowering made a lambda of was coloured nowhere: what it
+	// A handler a lowering made a lambda of was colored nowhere: what it
 	// awaits says so.
 	if n.Func.IsAsync || ir.BlockHasAsyncCall(n.Func.Block) {
 		asyncPrefix = "async "
@@ -1218,7 +1218,7 @@ func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
 	for i, p := range fn.Params {
 		params[i] = p.Name
 	}
-	// The same colour the call sites read: EvalStmt writes `await` in front of a
+	// The same color the call sites read: EvalStmt writes `await` in front of a
 	// call to an async func, so a definition that dropped the keyword produced
 	// an await in a sync function -- text no bundler parses.
 	keyword := "function "
@@ -1294,7 +1294,7 @@ func (jc *JsIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]s
 }
 
 // endsInJump reports whether the last statement of a block leaves it -- a
-// return, a labelled break, a continue -- after which a break is unreachable.
+// return, a labeled break, a continue -- after which a break is unreachable.
 func endsInJump(stmts []ir.Stmt) bool {
 	if len(stmts) == 0 {
 		return false

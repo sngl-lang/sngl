@@ -56,9 +56,9 @@ func wrapIfNeeded(expr ir.Expr, target *ir.Type) ir.Expr {
 	}
 	// Promoting into an option is two conversions, not one: `option[float](1)`
 	// says nothing about which of the two steps a backend is looking at, and
-	// ir.IsOptionWrap can only recognise the promotion when the operand is
+	// ir.IsOptionWrap can only recognize the promotion when the operand is
 	// already the element type. So the element conversion goes on the inside
-	// and the wrap stays a single, recognisable node.
+	// and the wrap stays a single, recognizable node.
 	if target.Kind == ir.TypeOption && len(target.Elems) == 1 && target.Elems[0] != nil &&
 		actual.Kind != ir.TypeOption && actual.Kind != ir.TypeNull {
 		expr = wrapIfNeeded(expr, target.Elems[0])

@@ -68,7 +68,7 @@ func applyAsyncOffload(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
-	recolourAsync(pkg)
+	recolorAsync(pkg)
 	st := &offloadState{pts: pkg.PointsTo}
 	if !caps.AsyncPost {
 		return refuseAsyncOffload(pkg, opts, st)
@@ -126,16 +126,16 @@ func platformOrThis(name string) string {
 	return name
 }
 
-// recolourAsync runs the checker's fixpoint again over the functions lowering
+// recolorAsync runs the checker's fixpoint again over the functions lowering
 // has since created.
 //
 // An event handler reaches the checker as an ir.EventHandler and becomes an
-// ir.Func only in passInstanceEvents and passDeclarative, so the colouring that
+// ir.Func only in passInstanceEvents and passDeclarative, so the coloring that
 // ran over the program's declarations never saw it -- the same gap that let a
 // JS effect's @mount emit an `await` inside a function nobody wrote `async` on.
-// A pass that synthesizes a body has to colour what it synthesized, and this is
+// A pass that synthesizes a body has to color what it synthesized, and this is
 // the last pass that could.
-func recolourAsync(pkg *ir.Package) {
+func recolorAsync(pkg *ir.Package) {
 	funcs := offloadableFuncs(pkg)
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
@@ -545,14 +545,14 @@ func (st *offloadState) callWaits(x *ir.Call) bool {
 	}
 	// A call through a funcvar names no ir.Func at all -- the callee is
 	// the variable -- so the flag is not there to read, and the answer is
-	// the slot colour the checker's points-to analysis left behind. Asking
+	// the slot color the checker's points-to analysis left behind. Asking
 	// only for the flag left `greeting = handler()` on the drawing thread
 	// with no goroutine and no diagnostic, which is the exact failure the
 	// mark exists to prevent.
 	if x.Func == nil && x.Callee != nil && st.pts != nil {
 		if k, ok := ir.CalleeSlotKey(x.Callee); ok {
-			if colour, present := st.pts.SlotColor[k]; present {
-				if colour == ir.ColorAsync {
+			if color, present := st.pts.SlotColor[k]; present {
+				if color == ir.ColorAsync {
 					return true
 				}
 			} else {

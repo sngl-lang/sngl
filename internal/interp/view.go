@@ -773,7 +773,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		if !node.Expanded {
 			// Nothing of its own to render, so it stands in the tree as the
 			// element does -- children included, which is what the element
-			// branch below did for it before it was recognised as a component.
+			// branch below did for it before it was recognized as a component.
 			kids, err := m.stmts(env, inst.Children, path)
 			if err != nil {
 				return nil, err
@@ -1049,7 +1049,7 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 		return m.stmts(env, f.Else, path+":else")
 	}
 	// A list or a computed sequence; asIterable is what keeps a view loop
-	// over sngl:seq from materialising one to walk the other.
+	// over sngl:seq from materializing one to walk the other.
 	n, at, ok := asIterable(iterVal)
 	if !ok || n == 0 {
 		return m.stmts(env, f.Else, path+":else")

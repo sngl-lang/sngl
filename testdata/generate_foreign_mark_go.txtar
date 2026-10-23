@@ -1,6 +1,6 @@
 A mark names a declaration the program still declares itself, so a backend
 that emits that declaration keeps spelling it its own way. Go emits the
-struct type under its SNGL name, declared and used: honouring the mark's name
+struct type under its SNGL name, declared and used: honoring the mark's name
 here would leave two names for one type — `api.Item` used, `Entry` declared —
 and no import of the package the mark named, which nothing resolved.
 

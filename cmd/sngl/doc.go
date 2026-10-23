@@ -984,7 +984,7 @@ func renderToTerminal(md string) error {
 	}
 	// Downsamples the colors to what the terminal shows, and drops them when
 	// stdout is not one. Fprint rather than Print: Print's writer wraps the
-	// os.Stdout of when lipgloss initialised, which a caller that swaps it
+	// os.Stdout of when lipgloss initialized, which a caller that swaps it
 	// (the script tests) never sees.
 	lipgloss.Fprint(os.Stdout, out)
 	return nil

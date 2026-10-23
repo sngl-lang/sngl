@@ -1,6 +1,6 @@
 A root component's state, mounted on two windows, on every target that renders
 them. This is the fixture that pins the per-platform difference, because the
-difference is the documented behaviour rather than an accident.
+difference is the documented behavior rather than an accident.
 
 `main()` at the root of the file renders the component, and the inliner
 substitutes its body into the package body -- so the one `hits__inst0` the

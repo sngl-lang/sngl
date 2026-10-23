@@ -147,9 +147,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		// `var name T [= expr]` inside a test body. `var`, as the ordinary
 		// translator spells it: a SNGL local is mutable, and a test that
 		// assigns to one -- `s = s.digit(d)` in a loop -- is Kotlin refusing
-		// to reassign a val. The case exists at all so the initialiser goes
+		// to reassign a val. The case exists at all so the initializer goes
 		// through lowerTestExpr, which is what lets it read `c.<id>.<prop>`.
-		// Initialiser is the IR-provided Init when present (ir.Normalize
+		// Initializer is the IR-provided Init when present (ir.Normalize
 		// injects the zero value otherwise).
 		var init string
 		if n.Init != nil {
@@ -237,7 +237,7 @@ func writesState(s ir.Stmt, surf TestSurface, compRecvs map[string]bool) bool {
 	}
 }
 
-// lowerTestSetContext recognises a `t.setContext(ctxName, value)` call and
+// lowerTestSetContext recognizes a `t.setContext(ctxName, value)` call and
 // emits a placeholder val for the context override. The emitted val
 // `__test_ctx_<name>` records the intended value so it is visible in the
 // generated source, but does NOT yet wire the override into the composable
@@ -576,7 +576,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		// are package-level (not members of the JUnit wrapper class
 		// MainScreenAgentTest), so they can't see the @Rule field
 		// directly. Expose the rule as a package-scope lateinit var
-		// initialised by MainScreenAgentTest before its @Test body
+		// initialized by MainScreenAgentTest before its @Test body
 		// touches anything that calls into the test functions.
 		b.WriteString("lateinit var composeTestRule: ComposeContentTestRule\n\n")
 	}
@@ -651,8 +651,8 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	case TestEmitAgent:
 		// SnglTestRegistration is a singleton with an init {} block so
 		// callers can force-load registration by referencing the class
-		// (Kotlin top-level `val` initialisers only run when something
-		// touches the file's facade class, which can be optimised away
+		// (Kotlin top-level `val` initializers only run when something
+		// touches the file's facade class, which can be optimized away
 		// on Android).
 		b.WriteString("object SnglTestRegistration {\n")
 		b.WriteString("    init {\n")
@@ -753,7 +753,7 @@ func spellInstanceReads(block []ir.Stmt, surf TestSurface, compRecvs map[string]
 }
 
 // compReceiverSet returns the names of fn's component-typed params. It is what
-// lowerTestStmt takes as compRecvs, so `<recv>.<field>` reads are recognised
+// lowerTestStmt takes as compRecvs, so `<recv>.<field>` reads are recognized
 // whatever the param is called.
 func compReceiverSet(fn *ir.Func) map[string]bool {
 	out := map[string]bool{}

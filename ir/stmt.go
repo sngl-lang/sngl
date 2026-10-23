@@ -562,7 +562,7 @@ func DeriveIterKind(n *For) IterKind {
 // The step is a constant because nothing else can pick the comparison: `i <
 // end` and `i > end` are different loop heads, and a step whose sign is only
 // known at run time chooses between them at run time. Such a loop keeps the
-// materialising form instead, which is correct for either sign.
+// materializing form instead, which is correct for either sign.
 type Counted struct {
 	Start Expr
 	End   Expr
@@ -576,7 +576,7 @@ type Counted struct {
 // Dispatch is on the #[intrinsic] id, not the function's name: `seq.range` is
 // an ordinary package function, so a program's own `range` reaches here too.
 // The arguments are read positionally, which the checker has already made
-// safe -- it normalises a named-argument call into declaration order.
+// safe -- it normalizes a named-argument call into declaration order.
 //
 // The two-variable form counts too: the ordinal beside each number is another
 // counter, not a reason to build the numbers.

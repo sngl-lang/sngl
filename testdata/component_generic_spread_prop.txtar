@@ -17,7 +17,7 @@ struct pageArgs {
 component main node {
     var page = 3
     // A literal field rather than `on=page`: bubbletea emits a struct-literal
-    // var initialised from another var as `PageArgs{On: ""}`, which is a defect
+    // var initialized from another var as `PageArgs{On: ""}`, which is a defect
     // of its own and not this fixture's subject.
     var a = pageArgs{on=1}
 

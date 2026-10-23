@@ -368,7 +368,7 @@ func (c *checker) unitDeclaring(want *ir.UnitDef, suffix string) *ir.UnitDef {
 // function, by building the lambda that emits it.
 //
 // An event is not a value: `tick` alone names nothing, and `tick()` is an emit
-// recognised in call position. So handing one to a function that takes a
+// recognized in call position. So handing one to a function that takes a
 // callback had to be written `func() { tick() }`, which says the same thing
 // twice -- and says it in a form the reader has to decode before seeing that
 // the callback *is* the event. html's timer override, whose whole body is
@@ -605,7 +605,7 @@ func (c *checker) resolvedInPackage(name string) bool {
 }
 
 // reportUnusable emits a diagnostic if sym is a scheme-imported declaration
-// that cannot be modelled precisely in SNGL.
+// that cannot be modeled precisely in SNGL.
 func (c *checker) reportUnusable(pos ast.Pos, name string, sym ir.Symbol) {
 	var reason string
 	switch s := sym.(type) {
@@ -1294,7 +1294,7 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 //
 // Both spellings, because a type reached through a package is the same type:
 // `Point.polar(…)` under a dot import, and `draw.Point.polar(…)` under an
-// alias. Only the first was recognised, so the second was evaluated as a
+// alias. Only the first was recognized, so the second was evaluated as a
 // *value* and every argument bound one parameter late -- `Point.polar(c, r, a)`
 // reported "cannot pass Point as float", which names the symptom and not the
 // cause.
@@ -1693,7 +1693,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 
 // elementEvent returns the event named event declared on the component recv
 // reads by `#id` -- `c.inc`, `c.lbl[0]`, or an option of one narrowed to its
-// node -- or nil. This is how a sigil-free `c.inc.click()` is recognised as an
+// node -- or nil. This is how a sigil-free `c.inc.click()` is recognized as an
 // event trigger rather than an ordinary method call.
 func (c *checker) elementEvent(recv ir.Expr, event string) *ir.EventDecl {
 	if !isElementRefRead(recv) {
@@ -2513,7 +2513,7 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 			// expression written where a field name would go, and it has to
 			// resolve to the key type. `{true = "yes"}` for a
 			// map[bool, string] is the case that matters, now that true is a
-			// declaration rather than something the parser recognises.
+			// declaration rather than something the parser recognizes.
 			key := c.checkExprExpecting(&ast.IdentExpr{Pos: x.Pos, Name: f.Name}, keyT)
 			if kt := exprType(key); !kt.IsAssignableTo(keyT) {
 				c.error(x.Pos, "map key %q is %s, not the key type %s", f.Name, kt, keyT)
@@ -3639,7 +3639,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" {
 			// A named slot's insertion is written as an ordinary node, so a
 			// bodyless one (`cell(r)`) parses as a call like any other and has
-			// to come back through the node path to be recognised.
+			// to come back through the node path to be recognized.
 			// Inside a build directive every bare call is a target node:
 			// `bubbletea()` is the node, not a call to a function of that
 			// name, and nothing else may be written there.
@@ -6029,7 +6029,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 //
 // A node reports its family or it reports none, and only a *different* family
 // is the error. Belonging to none is a claim a declaration makes with
-// #[tree.none], and it is honoured everywhere: an effect goes in a canvas as
+// #[tree.none], and it is honored everywhere: an effect goes in a canvas as
 // readily as in a layout. The compiler's own constructs -- an error boundary,
 // a context override -- say the same thing by not being a node instance at
 // all, and each holds its own children to a family of their own.

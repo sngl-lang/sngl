@@ -17,7 +17,7 @@ plugins {
 }
 
 // Coordinates for gradle composite-build (includeBuild) consumers.
-// The android device-test launcher synthesises a generated app project
+// The android device-test launcher synthesizes a generated app project
 // that depends on "us.duckfam.git.jonathan.sngl:testagent"; declaring
 // these here lets composite-build substitute the dep against this module.
 group = "us.duckfam.git.jonathan.sngl"

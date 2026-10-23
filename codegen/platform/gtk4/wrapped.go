@@ -211,7 +211,7 @@ func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool
 	return nil, false
 }
 
-// rtEventGetterExpr is the wrapped-mode analogue of cgoEventGetterExpr: it
+// rtEventGetterExpr is the wrapped-mode analog of cgoEventGetterExpr: it
 // reads a widget's bound value through gtk4rt rather than cgo. Returns nil when
 // the widget's read-back isn't wrapped (→ fallback).
 func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
@@ -239,7 +239,7 @@ func rtEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
 }
 
 // rtOrientationConst maps a SNGL orientation string literal to the gtk4rt
-// constant ident, and ok=false for anything unrecognised.
+// constant ident, and ok=false for anything unrecognized.
 func rtOrientationConst(value string) (ir.Expr, bool) {
 	switch value {
 	case "vertical":
@@ -250,7 +250,7 @@ func rtOrientationConst(value string) (ir.Expr, bool) {
 	return nil, false
 }
 
-// emitBuildUIWrapped is the wrapped-mode analogue of emitBuildUI: it emits the
+// emitBuildUIWrapped is the wrapped-mode analog of emitBuildUI: it emits the
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
 // widget-tree body (buildBuf) was already emitted in wrapped mode by the
 // translator, so only the surrounding scaffolding is produced here.

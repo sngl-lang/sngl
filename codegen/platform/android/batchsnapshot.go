@@ -23,7 +23,7 @@ var _ codegen.BatchSnapshotter = (*Generator)(nil)
 
 // BatchSnapshot implements codegen.BatchSnapshotter. It bundles every doc into
 // a single APK with one Activity per doc, builds and installs once, then
-// launches each Activity in turn to capture its screenshot. This amortises
+// launches each Activity in turn to capture its screenshot. This amortizes
 // the dominant kotlinc + install cost across all docs in the batch.
 func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (map[string][]byte, error) {
 	if len(docs) == 0 {

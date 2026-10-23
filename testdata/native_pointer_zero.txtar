@@ -7,7 +7,7 @@ hold the schedule `Every` handed back instead of an integer index into a
 registry the runtime kept, which was the whole reason those registries existed.
 
 A program cannot build a value of such a type, so the only literal that reaches
-the emitter is the empty one the checker synthesizes for an uninitialised
+the emitter is the empty one the checker synthesizes for an uninitialized
 `var t Ticker`. Rendered as a composite literal it came out `*time.Ticker{}`,
 which does not parse: a pointer type has no `{}` form. The zero of a pointer is
 nil.

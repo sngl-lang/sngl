@@ -2,7 +2,7 @@
 #
 # gtk4 read no field of a style but `flex`, so a styled label drew as a plain
 # one. `plain` and `styled` write the same text, the second with a size, a
-# face, colours and padding; `flips` writes no style, then the same one held
+# face, colors and padding; `flips` writes no style, then the same one held
 # in a var. testdata/gtk4_style.txtar shows the calls, and
 # pkg/go/gtk4rt/style_test.go measures what GTK lays out of them.
 #

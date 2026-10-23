@@ -72,13 +72,13 @@ func lowerComponentProps(pkg *ir.Package, _ Features, opts Options) error {
 // a function that waits wherever a call site hands it one.
 //
 // Such a component calls the prop through itself, and the checker's points-to
-// binds no library component's prop, so nothing coloured that call:
+// binds no library component's prop, so nothing colored that call:
 // `async.query(fetch=…)` written straight into a component built at run time
 // fetched on the drawing thread on fyne and gtk4, and on html read the Promise
 // its fetch returned as the answer. A splice substitutes the function itself,
-// which is coloured, and so did an adapter's query, which splices into the
+// which is colored, and so did an adapter's query, which splices into the
 // adapter; on android a fetch handed `::fetchBook` was no suspend function.
-// Before passEffect, which colours the mount that makes the call. Every
+// Before passEffect, which colors the mount that makes the call. Every
 // target: android builds such a component as a composable of its own.
 var passAsyncProps = pass{
 	name:    "AsyncProps",
@@ -269,7 +269,7 @@ func contextProps(c *ir.Component) {
 	}
 }
 
-// promoteProps turns each of c's props into a var initialised from the
+// promoteProps turns each of c's props into a var initialized from the
 // parameter, rewrites the body to read the var, and gives each one a setter.
 func promoteProps(c *ir.Component) []*ir.Func {
 	if c == nil || len(c.Props) == 0 {
@@ -319,7 +319,7 @@ func promoteProps(c *ir.Component) []*ir.Func {
 	}
 
 	// Ahead of the component's own vars, because a var initializer may read a
-	// prop and every backend initialises a record's cells in this order. A
+	// prop and every backend initializes a record's cells in this order. A
 	// promoted prop reads only its parameter, so nothing of the component's
 	// can precede it.
 	c.Vars = append(vars, c.Vars...)

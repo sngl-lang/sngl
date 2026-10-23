@@ -444,8 +444,8 @@ func ZeroValueGo(hint string) string {
 // evalErrorAwareCall names at every raise site.
 //
 // The stdlib declares the struct, but codegen does not flow stdlib types into
-// user output, so each Model-receiver platform materialises it. Shared here
-// because it was materialised by exactly one of the three: `error.raise` on
+// user output, so each Model-receiver platform materializes it. Shared here
+// because it was materialized by exactly one of the three: `error.raise` on
 // fyne or gtk4 emitted a panic naming a type nothing declared, and the program
 // did not build. Emit it when Package.UsesErrorHandling.
 const ErrorEventDecl = "type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n"

@@ -1313,7 +1313,7 @@ type btEventInvoker struct {
 }
 
 // teaKeyMsg is the message a press of key arrives as. It pairs with
-// teaKeyGuard: one says how Update recognises the key, the other how a test
+// teaKeyGuard: one says how Update recognizes the key, the other how a test
 // produces it, and they name the same constant.
 func teaKeyMsg(key string) string {
 	guard := teaKeyGuard(key)

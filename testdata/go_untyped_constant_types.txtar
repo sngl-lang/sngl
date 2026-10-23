@@ -3,14 +3,14 @@ Go gives an untyped constant a *default type* -- `int` for a whole number,
 declared.
 
 **A local takes the declared type.** `:=` reads the default type off the
-initialiser, so a `float32` became a float64 and a whole `float` became an int:
+initializer, so a `float32` became a float64 and a whole `float` became an int:
 
     var acc float32 = 1.0   ->  acc := 1.0   // float64; `acc + scale` does not compile
     var acc float  = 2.0    ->  acc := 2     // int; same
 
 `mix` below is the first of those. LocalVarText writes the type out for a
 numeric local, and only for a numeric one: a string, a bool, a struct or a
-slice each have exactly one Go type that `:=` reads off a correct initialiser,
+slice each have exactly one Go type that `:=` reads off a correct initializer,
 and spelling a widget handle's type is what tips gtk4 out of the cgo-free mode
 it emits twice to reach.
 

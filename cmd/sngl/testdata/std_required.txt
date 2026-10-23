@@ -33,7 +33,7 @@ stdout 'aliased.sngl: ok'
 
 # Lowercase stdlib components stay reachable through the alias in expression
 # position too. The private-component filter that rejects lowercase names in an
-# imported package must recognise the stdlib by package identity — keying it on
+# imported package must recognize the stdlib by package identity — keying it on
 # the name "sngl" rejects every other alias here.
 sngl check aliased_expr.sngl
 stdout 'aliased_expr.sngl: ok'

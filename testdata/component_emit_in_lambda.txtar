@@ -559,7 +559,7 @@ pass sha256:9e48473e7761e1754f1464e8657f30e6
 -- run/none/html --
 pass sha256:c60a1ac759017faeea8d07292a75046f
 -- testrun/html/none/component_emit_in_lambda.sngl/main/1 --
-sha256:06529e63c158e9935f100a9fecdfb17d
+sha256:63a9c52039cdde1b89179a8d7ecdc73b
 {
   "results": [
     {

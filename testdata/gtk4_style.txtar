@@ -2,7 +2,7 @@ What a node's style says reaches gtk4, which read no field of it but `flex`.
 
 - Every field gtk4rt draws is handed to `gtk4rt.SetStyle` in a `gtk4rt.Style`,
   each length in pixels: a width and a height are a size request, a gap a
-  box's spacing, and padding, margin, the face, the colours and the border
+  box's spacing, and padding, margin, the face, the colors and the border
   radius are CSS, a class per distinct style on one provider for the display.
 - A field reading state is read where the state is written, so the click
   restyles the label and the badge.

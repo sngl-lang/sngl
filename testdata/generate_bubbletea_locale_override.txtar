@@ -5,7 +5,7 @@ runtime, and the Go runtime package is imported for it.
 
 A var declared inside the provider block is still component state -- `price`
 gets a Model field and a setter, the same as one declared at the top level.
-This locks the end-to-end behaviour demonstrated by hand in 932834d.
+This locks the end-to-end behavior demonstrated by hand in 932834d.
 
 -- app.sngl --
 import . "sngl:ui"

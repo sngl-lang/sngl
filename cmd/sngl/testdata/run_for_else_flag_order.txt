@@ -6,7 +6,7 @@
 #
 # This runs the generated Go rather than reading it, because the invariant is
 # about order and a grep over the output is position-blind. The interpreter
-# cannot see it either -- it honours For.Else natively and never runs the pass
+# cannot see it either -- it honors For.Else natively and never runs the pass
 # -- so the assertion has to come from a compiled target.
 #
 # The state has to be a component var. A plain function over a literal list

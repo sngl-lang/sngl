@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestStylesDedupeToThemes: Fyne has no per-widget colour, only a theme, and
+// TestStylesDedupeToThemes: Fyne has no per-widget color, only a theme, and
 // container.ThemeOverride to scope one to a subtree. So the paint half of
 // style becomes a table of themes -- two widgets styled alike share one
 // declaration, and each styled widget is wrapped in the override naming it.

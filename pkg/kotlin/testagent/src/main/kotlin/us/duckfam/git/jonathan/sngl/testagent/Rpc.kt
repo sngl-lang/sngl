@@ -6,7 +6,7 @@
 //   - requests: numeric `id`, expect a paired response
 //   - responses: same `id`, exactly one of `result` or `error`
 //
-// Writes are synchronised so concurrent T handles can safely emit
+// Writes are synchronized so concurrent T handles can safely emit
 // notifications + requests against a shared writer.
 
 package us.duckfam.git.jonathan.sngl.testagent
@@ -61,7 +61,7 @@ class RpcReader(input: InputStream) {
     }
 }
 
-/** Line-by-line JSON-RPC writer. notify/request/respond all serialise as a single JSON line. */
+/** Line-by-line JSON-RPC writer. notify/request/respond all serialize as a single JSON line. */
 class RpcWriter(output: OutputStream) {
     private val writer: Writer = OutputStreamWriter(output, Charsets.UTF_8)
     private val lock = Any()

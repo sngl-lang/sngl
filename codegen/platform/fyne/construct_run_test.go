@@ -13,7 +13,7 @@ import (
 )
 
 // constructComponentSrc is loopComponentSrc with a #[construct] prop the row's
-// own `var` is initialised from -- the shape where a setter would reach
+// own `var` is initialized from -- the shape where a setter would reach
 // nothing, because the initializer has already run.
 const constructComponentSrc = `
 import . "sngl:ui"

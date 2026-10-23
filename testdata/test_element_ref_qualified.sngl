@@ -28,14 +28,14 @@ component counter ui.node {
     }
 }
 
-component labelled(label string) ui.node {
+component labeled(label string) ui.node {
     ui.text #lbl(value=label)
 }
 
 component pair ui.node {
     ui.vbox {
-        labelled #first(label="a")
-        labelled #second(label="b")
+        labeled #first(label="a")
+        labeled #second(label="b")
     }
 }
 

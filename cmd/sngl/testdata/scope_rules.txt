@@ -106,7 +106,7 @@ stdout 'private_same_package.sngl: ok'
 
 # true, false and null are declarations in sngl:builtin, not names the parser
 # knows, so a declaration of your own shadows them like any other name. While
-# the parser recognised them they could not be shadowed at all.
+# the parser recognized them they could not be shadowed at all.
 sngl check shadows_true.sngl
 stdout 'shadows_true.sngl: ok'
 

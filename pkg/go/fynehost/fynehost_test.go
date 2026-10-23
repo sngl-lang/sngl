@@ -391,9 +391,9 @@ component main node {
 	}
 }
 
-// TestPaintStylesReachATheme: Fyne has no per-widget styling, so a colour or a
+// TestPaintStylesReachATheme: Fyne has no per-widget styling, so a color or a
 // text size is a theme over the subtree it applies to. Without this the
-// calculator's keys were all one colour.
+// calculator's keys were all one color.
 func TestPaintStylesReachATheme(t *testing.T) {
 	app := fynetest.NewApp()
 	t.Cleanup(app.Quit)

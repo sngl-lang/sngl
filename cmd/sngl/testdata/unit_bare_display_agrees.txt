@@ -9,7 +9,7 @@
 # different answer on each of five paths and every one of them exited 0.
 #
 # `over` is the case that needs both runners the most. Go carried a duration
-# as a time.Duration and handed its String out, which normalises across units
+# as a time.Duration and handed its String out, which normalizes across units
 # -- so 500ms printed `500ms` and agreed with the interpreter by coincidence,
 # while 1100ms printed `1.1s` and did not. A fixture with one round value
 # would have passed on the unfixed compiler.

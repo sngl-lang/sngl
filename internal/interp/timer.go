@@ -47,7 +47,7 @@ type MountedTimer struct {
 }
 
 // timerOf reads a recurring deadline off a node instantiation, or reports false
-// when the node is not one. Recognised by the intrinsic id its declaration
+// when the node is not one. Recognized by the intrinsic id its declaration
 // carries, never by its name -- `Tick` is shadowable like anything else.
 //
 // An interval that will not evaluate, or that is not positive, yields no timer

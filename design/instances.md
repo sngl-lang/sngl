@@ -184,7 +184,7 @@ checked in its load and never reach pass2.
 
 **A helper needs the base reachable by its bare name**, which an override
 written through a qualified alias does not have: a component-body func is a
-method, and the synthesised receiver type, `AttachMethod` and `lookupBodyMethod`
+method, and the synthesized receiver type, `AttachMethod` and `lookupBodyMethod`
 all resolve the receiver as a bare name. So `component draw.circle[…]` may
 declare vars and types but not funcs, and `reportOverrideFuncUnreachableReceiver`
 says so where the helper is written. Binding the bare name for the body's
@@ -483,7 +483,7 @@ branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
 `bubbletea/focus_recursion_run_test.go`,
 `cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
-rasteriser View hands tui rather than as a `_canvasDrawN` method, with a
+rasterizer View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy
 through the same walk (`bubbletea/viewwalk.go`,
 `testdata/bubbletea_canvas_in_loop.txtar`).

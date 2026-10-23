@@ -227,7 +227,7 @@ window builds (`cmd/sngl/testdata/program_without_window.txt`). Which is why
 `CodegenCtx.RootDecl()` now answers only for a harness that has cleared the
 package body on purpose (the test launcher isolating a component), and a `main` in
 an ordinary program is an ordinary component. Nothing else asks for the name
-either, and each place that did was a behaviour: `sngl run --lang none` mounted
+either, and each place that did was a behavior: `sngl run --lang none` mounted
 a `main` instead of the windows (`BuildProgramEnv` mounts the program now), a
 directory of files each declaring one was read as a corpus of programs rather
 than a package, a library declaring one could not be imported, and route mode
@@ -245,7 +245,7 @@ would be two incompatible types (the checker rejects a duplicated node mark).
 And `output` is a *directive* kind rather than a node one: it parses as a
 visual node and is marked on a component declaration like `context` is, but the
 compiler reads the tree into `ir.Output` instead of rendering it. The mark is
-what recognises it — a package declaring its own `component output` gets that
+what recognizes it — a package declaring its own `component output` gets that
 component and no build directive — and what the mark permits is the root of a
 file, once per package: any file may carry it, a second one anywhere names the
 first, and a `sngl:` library package may not carry one at all

@@ -1,6 +1,6 @@
-Async colouring reaches through a lambda. The async native is called from a
+Async coloring reaches through a lambda. The async native is called from a
 lambda body, not from `outer` directly, and `outer` is still emitted as
-`async function` -- the colour propagates out of the lambda into the function
+`async function` -- the color propagates out of the lambda into the function
 that holds it, and the call inside the lambda is awaited.
 
 -- app.sngl --

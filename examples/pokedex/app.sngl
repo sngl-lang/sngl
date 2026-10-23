@@ -55,8 +55,8 @@ func languageLabel(locale string) string {
     return languages[0].label
 }
 
-// The locale of the language labelled `label`, English's where none is.
-func localeLabelled(label string) string {
+// The locale of the language labeled `label`, English's where none is.
+func localeLabeled(label string) string {
     for var l = languages {
         if l.label == label {
             return l.locale
@@ -91,7 +91,7 @@ component Pokedex ui.node {
                 }
             }
         }
-        i18n.locale(localeLabelled(language)) {
+        i18n.locale(localeLabeled(language)) {
             nav.stack #pages {
                 nav.page #variety(href=`/pokemon/{name}/{form}`, title="Pokémon", params=Form{name="vulpix", form="vulpix-alola"}) {
                     component content(p) {

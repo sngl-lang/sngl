@@ -109,7 +109,7 @@ func truncForLog(b []byte) string {
 	return string(b)
 }
 
-// Writer serialises messages. Safe for concurrent use.
+// Writer serializes messages. Safe for concurrent use.
 type Writer struct {
 	mu  sync.Mutex
 	w   io.Writer

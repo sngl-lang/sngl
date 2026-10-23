@@ -474,7 +474,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 //   - android.icu.text.PluralRules.select() returns CLDR keyword strings directly.
 //
 // select() returns the matched case body raw — no ICU formatting applied
-// (matches Go and JS behaviour for the direct Translator.select() method).
+// (matches Go and JS behavior for the direct Translator.select() method).
 
 package us.duckfam.git.jonathan.sngl.i18n
 
@@ -530,7 +530,7 @@ class Translator(val manifest: Manifest, val locale: Locale) {
         ).format(dt)
 
     // select returns the matched case body raw — no ICU format applied.
-    // Matches Go and JS Translator.select() behaviour.
+    // Matches Go and JS Translator.select() behavior.
     fun select(value: String, cases: Map<String, String>): String =
         cases[value] ?: cases["other"] ?: ""
 
@@ -1564,11 +1564,11 @@ pass sha256:02c29a19d8e168acdd196a917cf1ae21
 -- run/go/gtk4 --
 pass sha256:ac4f1f2e69efe6b96163c2f50b961f60
 -- run/kotlin/android --
-pass sha256:b54f421a1c596c3c0c9547974c26636e
+pass sha256:797dd5dca80deddfbd5ec2c8fce0d968
 -- run/none/html --
 pass sha256:2903c323df14d80d717cd6e173e9c041
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --
-sha256:b5129df83b212d0e185956a29465ca64
+sha256:b44ae8f5c1265d22dad8c6864e64600b
 {
   "results": [
     {

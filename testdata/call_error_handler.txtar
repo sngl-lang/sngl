@@ -1,7 +1,7 @@
 A call's own @error catches a raise that leaves the call: the handler runs with
 the error, and execution carries on with the statement after the call. That is
 what the interpreter does (dispatchRaise, on the CallStmt), and every compiled
-target used to emit the call bare -- evalErrorAwareCall recognised a direct
+target used to emit the call bare -- evalErrorAwareCall recognized a direct
 error.raise and nothing else, so a raise inside a called function escaped the
 handler written for it and reached the host uncaught.
 

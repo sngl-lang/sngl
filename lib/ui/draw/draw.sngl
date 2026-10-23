@@ -78,10 +78,10 @@ component canvas(
 // Axis-aligned rectangle with its top-left corner at x, y.
 component rect(x float, y float, w float, h float, style Style = Style{}) shape
 
-// Circle of radius r centred at cx, cy.
+// Circle of radius r centered at cx, cy.
 component circle(cx float, cy float, r float, style Style = Style{}) shape
 
-// Ellipse centred at cx, cy with radii rx and ry.
+// Ellipse centered at cx, cy with radii rx and ry.
 component ellipse(cx float, cy float, rx float, ry float, style Style = Style{}) shape
 
 // Straight segment from x1, y1 to x2, y2. Uses `stroke`; a `fill` is
@@ -139,7 +139,7 @@ component canvasText(x float, y float, content string, style Style = Style{}) sh
 
 // Image drawn into the box at x, y sized w by h, from any source a `ui.image`
 // takes: a file, a fetched URL, or another drawing, which is painted in place
-// scaled to the box rather than rasterised first.
+// scaled to the box rather than rasterized first.
 component canvasImage(
     x   float,
     y   float,
@@ -234,7 +234,7 @@ const func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inn
 //
 // Here rather than in a platform package because two targets need it and
 // neither host has the primitive. Canvas2D and `pkg/go/canvas` take the
-// tangent form directly; cairo takes a centre and two angles, and Compose's
+// tangent form directly; cairo takes a center and two angles, and Compose's
 // `Path.arcTo` takes a bounding box and two degrees. Both are the same three
 // numbers this carries, so the trigonometry is written once.
 struct Arc {
@@ -278,7 +278,7 @@ const func tangentArc(from Point, corner Point, to Point, r float) Arc {
     }
 
     // Tangent points sit `r / tan(half)` along each ray from the corner, and
-    // the centre `r / sin(half)` along the bisector. The arc between them
+    // the center `r / sin(half)` along the bisector. The arc between them
     // subtends `pi - |turn|`, turning against the corner's own bend.
     var reach = r / math.tan(half)
     var t1 = Point.polar(corner, reach, a1)

@@ -102,7 +102,7 @@ ui.window {
     pickAgain()
 }
 -- testrun/android/kotlin/app.sngl/pick/1 --
-sha256:d733461e6cfc5280d62118db2de09db4
+sha256:821977135c47c845bac83f10b439b4c9
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:d733461e6cfc5280d62118db2de09db4
   ]
 }
 -- testrun/android/kotlin/app.sngl/pickAgain/1 --
-sha256:c6d25a8ed8abc10ef3e3ba0f07b4c6b4
+sha256:8e47900e77057d7722825547a151aa09
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:d21371194350078992d88de515f97860
   ]
 }
 -- testrun/html/none/app.sngl/pick/1 --
-sha256:ddb0553db7a1007626caa5de6a53742d
+sha256:866ca5f9e928b5b196f2b3bf27b3339a
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:ddb0553db7a1007626caa5de6a53742d
   ]
 }
 -- testrun/html/none/app.sngl/pickAgain/1 --
-sha256:65a68fdfb5ac2657b83e576e8fb54686
+sha256:2c82fd754ddbb1924c0f22a30472ad5b
 {
   "results": [
     {

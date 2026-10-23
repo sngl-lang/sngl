@@ -12,7 +12,7 @@ borderLeft). internal/htmlutil's TestStyleFieldsAllReachCSS now enumerates
 
 The looped span covers the lowered path, where the element is built by JS: a
 style struct is not a value any DOM sink accepts, and passed through it
-stringified to "[object Object]", so it has to be serialised to a declaration
+stringified to "[object Object]", so it has to be serialized to a declaration
 list before it is written.
 
 deny out/none/html/index.html `inlineBlock` -- the identifier spelling never reaches the stylesheet; only `display:inline-block` does

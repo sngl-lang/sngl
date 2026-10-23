@@ -34,7 +34,7 @@ type canvasMeta = canvasutil.Meta
 //
 // fyne renders via the shared pkg/go/canvas runtime (software raster over
 // github.com/fogleman/gg): ctx is a *snglcanvas.Context, the canvas widget is a
-// *canvas.Image built from ctx.Result(). Reactive redraws re-rasterise and call
+// *canvas.Image built from ctx.Result(). Reactive redraws re-rasterize and call
 // Refresh().
 //
 // There are no canvas intrinsics left to translate. The shared
@@ -169,7 +169,7 @@ func newCanvasContextCall(w, h int) *ir.Call {
 
 // emitCanvasCreate emits the OnCreateNode result for a `canvas` tag: register
 // the *canvas.Image and *snglcanvas.Context Model fields, build the context
-// sized to the canvas, rasterise once, and create the image widget.
+// sized to the canvas, rasterize once, and create the image widget.
 func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	m := t.canvasByID[id]
 	if m == nil {
@@ -189,7 +189,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 
 	// A scaled canvas is a Raster, because Fyne hands a Raster's generator the
 	// pixel size it is about to be drawn at -- which is the one thing an Image
-	// cannot know. The shapes are then rasterised at the size they are shown
+	// cannot know. The shapes are then rasterized at the size they are shown
 	// instead of drawn small and resampled up, which is the difference between
 	// a seven-segment display with edges and one without.
 	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {
