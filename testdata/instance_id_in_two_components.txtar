@@ -279,45 +279,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) tsClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // toClick activates the #to widget the way a keypress does; for tests.
 func (m *Model) toClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hitClick activates the #hit widget the way a keypress does; for tests.
 func (m *Model) hitClick() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // flipClick activates the #flip widget the way a keypress does; for tests.
 func (m *Model) flipClick() {
 	prev := m.__focusID
 	m.__focusID = 3
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hit__1Click activates the #hit__1 widget the way a keypress does; for tests.
 func (m *Model) hit__1Click() {
 	prev := m.__focusID
 	m.__focusID = 4
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -1701,7 +1706,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:603a50ec16cee24cbc4be2143167de31
+pass sha256:93aa37411f26c04626427c1c7c0a68ac
 -- run/go/fyne --
 pass sha256:f2317d819da685d4a7cea61d438e3b98
 -- run/go/gtk4 --

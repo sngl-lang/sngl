@@ -567,9 +567,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) swapClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // cellClick activates the last copy of #cell the way a keypress does; for tests.
@@ -608,9 +609,10 @@ func (m *Model) cellClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // cellClickAt activates the copy of #cell with the key the way a keypress does; for tests.
@@ -651,9 +653,10 @@ func (m *Model) cellClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // markChange activates the last copy of #mark the way a keypress does; for tests.
@@ -692,9 +695,10 @@ func (m *Model) markChange(_ bool) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // markChangeAt activates the copy of #mark with the key the way a keypress does; for tests.
@@ -735,9 +739,10 @@ func (m *Model) markChangeAt(key string, _ bool) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // pinClick activates the last copy of #pin the way a keypress does; for tests.
@@ -775,9 +780,10 @@ func (m *Model) pinClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+	_ = cmd
 }
 
 // pinClickAt activates the copy of #pin with the key the way a keypress does; for tests.
@@ -817,9 +823,10 @@ func (m *Model) pinClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+	_ = cmd
 }
 
 // tickClick activates the last copy of #tick the way a keypress does; for tests.
@@ -857,9 +864,10 @@ func (m *Model) tickClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop3_cursor
 	m.__focusID, m.__focusLoop3_cursor = 3, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop3_cursor = prev, prevAt
+	_ = cmd
 }
 
 // tickClickAt activates the copy of #tick with the key the way a keypress does; for tests.
@@ -899,9 +907,10 @@ func (m *Model) tickClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop3_cursor
 	m.__focusID, m.__focusLoop3_cursor = 3, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop3_cursor = prev, prevAt
+	_ = cmd
 }
 
 // evenClick activates the last copy of #even the way a keypress does; for tests.
@@ -937,9 +946,10 @@ func (m *Model) evenClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop4_cursor
 	m.__focusID, m.__focusLoop4_cursor = 4, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop4_cursor = prev, prevAt
+	_ = cmd
 }
 
 // evenClickAt activates the copy of #even with the key the way a keypress does; for tests.
@@ -977,9 +987,10 @@ func (m *Model) evenClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop4_cursor
 	m.__focusID, m.__focusLoop4_cursor = 4, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop4_cursor = prev, prevAt
+	_ = cmd
 }
 
 // dotClick activates the last copy of #dot the way a keypress does; for tests.
@@ -1013,9 +1024,10 @@ func (m *Model) dotClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop5_cursor
 	m.__focusID, m.__focusLoop5_cursor = 5, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop5_cursor = prev, prevAt
+	_ = cmd
 }
 
 // dotClickAt activates the copy of #dot with the key the way a keypress does; for tests.
@@ -1051,9 +1063,10 @@ func (m *Model) dotClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop5_cursor
 	m.__focusID, m.__focusLoop5_cursor = 5, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop5_cursor = prev, prevAt
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -3233,7 +3246,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f4f67684921801427084a60b378c949a
+pass sha256:fd59966d70329e71d34b9d3c84ddb25a
 -- run/go/fyne --
 pass sha256:5f726f243c267b478373f4987393a402
 -- run/go/gtk4 --

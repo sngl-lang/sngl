@@ -329,36 +329,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) inHandlerClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // inFuncClick activates the #inFunc widget the way a keypress does; for tests.
 func (m *Model) inFuncClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // deepClick activates the #deep widget the way a keypress does; for tests.
 func (m *Model) deepClick() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // fineClick activates the #fine widget the way a keypress does; for tests.
 func (m *Model) fineClick() {
 	prev := m.__focusID
 	m.__focusID = 3
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -1270,7 +1274,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:79b26d03621b9dd40b1b426cc2cac5cf
+pass sha256:47860965ecc1d2cc9432a7b240d415f3
 -- run/go/fyne --
 pass sha256:1112193df48bef5dc65ee8dbb21a8081
 -- run/go/gtk4 --

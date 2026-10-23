@@ -335,54 +335,60 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) tsClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // toClick activates the #to widget the way a keypress does; for tests.
 func (m *Model) toClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hitClick activates the #hit widget the way a keypress does; for tests.
 func (m *Model) hitClick() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // k__own0Click activates the #k__own0 widget the way a keypress does; for tests.
 func (m *Model) k__own0Click() {
 	prev := m.__focusID
 	m.__focusID = 3
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hit__1Click activates the #hit__1 widget the way a keypress does; for tests.
 func (m *Model) hit__1Click() {
 	prev := m.__focusID
 	m.__focusID = 4
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // kClick activates the #k widget the way a keypress does; for tests.
 func (m *Model) kClick() {
 	prev := m.__focusID
 	m.__focusID = 5
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m *Model) kPresent() bool {
@@ -2409,7 +2415,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a5d8807af0ce0a24a9dd25f138b8d098
+pass sha256:3bc1cb25ecbc22d2f06be78d70e4dc69
 -- run/go/fyne --
 pass sha256:beac13175327dd712df67e65ba4a0b14
 -- run/go/gtk4 --

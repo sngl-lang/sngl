@@ -244,18 +244,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) failClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // go__r0Click activates the #go__r0 widget the way a keypress does; for tests.
 func (m *Model) go__r0Click() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -476,7 +478,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:887f87ae6129836d1930e07fc7522e09
+pass sha256:d29ad86fbc4625aae38fc2c6dd8975fe
 -- run/go/html --
 pass sha256:e8a3ccae03b6c4b494f6c073e5efa6ca
 -- run/kotlin/android --

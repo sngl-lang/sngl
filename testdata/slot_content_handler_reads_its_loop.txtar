@@ -334,9 +334,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) swapClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // cellClick activates the last copy of #cell the way a keypress does; for tests.
@@ -376,9 +377,10 @@ func (m *Model) cellClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // cellClickAt activates the copy of #cell with the key the way a keypress does; for tests.
@@ -420,9 +422,10 @@ func (m *Model) cellClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // markClick activates the last copy of #mark the way a keypress does; for tests.
@@ -462,9 +465,10 @@ func (m *Model) markClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // markClickAt activates the copy of #mark with the key the way a keypress does; for tests.
@@ -506,18 +510,20 @@ func (m *Model) markClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // tagClick activates the #tag widget the way a keypress does; for tests.
 func (m *Model) tagClick() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m *Model) tagPresent() bool {
@@ -2992,7 +2998,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:318e2d66835025e873c24c118b9953e5
+pass sha256:e3c1735aa65ea4d22ef6a0f63bd08bd8
 -- run/go/fyne --
 pass sha256:f184481e289d242855d198e205309647
 -- run/go/gtk4 --

@@ -405,18 +405,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) allClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // all__1Click activates the #all__1 widget the way a keypress does; for tests.
 func (m *Model) all__1Click() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -1198,7 +1200,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:aa40bf03e5ed5999bc3709d301b2af28
+pass sha256:ddf62842d5a090b241e406a2647e9e76
 -- run/go/fyne --
 pass sha256:7cd567305a5ac00a669f0470a3864ad3
 -- run/go/gtk4 --

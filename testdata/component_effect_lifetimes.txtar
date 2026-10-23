@@ -985,72 +985,80 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) toggleClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // dropClick activates the #drop widget the way a keypress does; for tests.
 func (m *Model) dropClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // addClick activates the #add widget the way a keypress does; for tests.
 func (m *Model) addClick() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // rekeyClick activates the #rekey widget the way a keypress does; for tests.
 func (m *Model) rekeyClick() {
 	prev := m.__focusID
 	m.__focusID = 3
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // fieldClick activates the #field widget the way a keypress does; for tests.
 func (m *Model) fieldClick() {
 	prev := m.__focusID
 	m.__focusID = 4
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // calledClick activates the #called widget the way a keypress does; for tests.
 func (m *Model) calledClick() {
 	prev := m.__focusID
 	m.__focusID = 5
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // sameClick activates the #same widget the way a keypress does; for tests.
 func (m *Model) sameClick() {
 	prev := m.__focusID
 	m.__focusID = 6
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // bumpClick activates the #bump widget the way a keypress does; for tests.
 func (m *Model) bumpClick() {
 	prev := m.__focusID
 	m.__focusID = 7
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -3664,7 +3672,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:84c1c1fee895394429e297d91127f170
+pass sha256:7482d7255368c0374a83a313c06a8423
 -- run/go/fyne --
 pass sha256:3ed190e413697939c6e41739d160f2cb
 -- run/go/gtk4 --

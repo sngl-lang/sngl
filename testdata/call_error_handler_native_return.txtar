@@ -183,9 +183,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) badClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -460,7 +461,7 @@ func (m *Model) badClick() {
 	gtk4rt.Emit(m.bad, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:5321636e0e3f6f95ff100d71ae66483b
+pass sha256:4c541647cd6be4deec23ce3e53ff632f
 -- run/go/fyne --
 pass sha256:40fe7af2d13abba34d13cf99c0e069b9
 -- run/go/gtk4 --

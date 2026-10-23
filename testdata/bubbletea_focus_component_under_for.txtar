@@ -212,9 +212,10 @@ func (m *Model) hitClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
 	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -271,4 +272,4 @@ func TestNothingPicked(t *testing.T) {
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:646e741e7018b4ead68ce944906550ec
+pass sha256:0b1f64d71a76358719da56de6ef614fa

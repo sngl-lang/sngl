@@ -292,18 +292,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) moveClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // shutClick activates the #shut widget the way a keypress does; for tests.
 func (m *Model) shutClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hitClick activates the last copy of #hit the way a keypress does; for tests.
@@ -339,9 +341,10 @@ func (m *Model) hitClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -1545,7 +1548,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ea340ece84c39224652adb88fc5f7da7
+pass sha256:6f7a51fd27bc5cd7968ca723702c695b
 -- run/go/fyne --
 pass sha256:1897d7056106aa9694376ea3733b8bda
 -- run/go/gtk4 --

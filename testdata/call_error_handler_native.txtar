@@ -196,18 +196,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) badClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // goodClick activates the #good widget the way a keypress does; for tests.
 func (m *Model) goodClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -536,7 +538,7 @@ func (m *Model) goodClick() {
 	gtk4rt.Emit(m.good, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:1586054cdce0609b6d17dbaebb147caa
+pass sha256:6d5ab14d768046d66331482cc6554208
 -- run/go/fyne --
 pass sha256:fcab6d3387f571e63ded96227a7f36d3
 -- run/go/gtk4 --

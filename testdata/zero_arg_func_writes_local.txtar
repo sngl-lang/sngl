@@ -155,9 +155,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) go__r0Click() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -306,6 +307,6 @@ func newTestComponent() *Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:baa778931a297401202506eae8036212
+pass sha256:ceda46528ac3db4a86d95155332e968f
 -- run/go/fyne --
 pass sha256:4ae8fb7d2035de2955ffd684c427c39a

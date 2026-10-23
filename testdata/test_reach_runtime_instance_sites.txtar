@@ -385,9 +385,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) hit__reach0Click() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hit__reach1Click activates the last copy of #hit__reach1 the way a keypress does; for tests.
@@ -421,9 +422,10 @@ func (m *Model) hit__reach1Click() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // hit__reach1ClickAt activates the copy of #hit__reach1 with the key the way a keypress does; for tests.
@@ -459,27 +461,30 @@ func (m *Model) hit__reach1ClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // hit__reach2Click activates the #hit__reach2 widget the way a keypress does; for tests.
 func (m *Model) hit__reach2Click() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hit__reach3Click activates the #hit__reach3 widget the way a keypress does; for tests.
 func (m *Model) hit__reach3Click() {
 	prev := m.__focusID
 	m.__focusID = 3
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m *Model) done__reach1Present() bool {
@@ -3529,7 +3534,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b31a58074095740cda3082440461881d
+pass sha256:344300bbdefdb63ea854f54d30924749
 -- run/go/fyne --
 pass sha256:ccf03ddc2ea6a52589895ae7e263c9c1
 -- run/go/gtk4 --

@@ -152,9 +152,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) runClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -426,7 +427,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5e5e540499015957959ae879422c3cd1
+pass sha256:d686aa4c3efec15f4673980bac41d323
 -- run/go/fyne --
 pass sha256:2044f3aac50b00cba81ecc6270c8d745
 -- run/kotlin/android --

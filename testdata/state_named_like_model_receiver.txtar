@@ -266,9 +266,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) bumpClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // incClick activates the last copy of #inc the way a keypress does; for tests.
@@ -302,9 +303,10 @@ func (m *Model) incClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -827,7 +829,7 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:81548a63fdb1519bb7ecf00eb62f446d
+pass sha256:4f584623c94b9ba6682422325c100efd
 -- run/go/fyne --
 pass sha256:3504111b78e88ffc61bc1a02d70f5808
 -- run/go/gtk4 --

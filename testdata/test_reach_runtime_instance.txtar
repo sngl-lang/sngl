@@ -381,9 +381,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) hitClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // tapClick activates the last copy of #tap the way a keypress does; for tests.
@@ -417,9 +418,10 @@ func (m *Model) tapClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // tapClickAt activates the copy of #tap with the key the way a keypress does; for tests.
@@ -455,18 +457,20 @@ func (m *Model) tapClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // toggleClick activates the #toggle widget the way a keypress does; for tests.
 func (m *Model) toggleClick() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m *Model) donePresent() bool {
@@ -2761,7 +2765,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:43f6961a63836d0c10e84d1b5d664d42
+pass sha256:59a0c2b0a032fb0a9ced8c77adcf95c9
 -- run/go/fyne --
 pass sha256:42ee12569e5c06c606ad31b3d7f7fff3
 -- run/go/gtk4 --

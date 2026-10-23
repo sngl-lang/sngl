@@ -433,18 +433,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) moveClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // hideClick activates the #hide widget the way a keypress does; for tests.
 func (m *Model) hideClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m *Model) thPresentAt(key string) bool {
@@ -3901,7 +3903,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:751ed887a3bb7349b582d20eeb476d1f
+pass sha256:f4c3997baecbd23401f0c5e40dfb2e7d
 -- run/go/fyne --
 pass sha256:4f74892b0aba744c690dbd0d3bab804e
 -- run/go/gtk4 --

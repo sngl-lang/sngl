@@ -420,7 +420,16 @@ var __snglSettle = func() {}
 // __snglSettleModel is Update after whatever the test did, whose commands --
 // each schedule's tick, armed after every Update -- run off the test's
 // goroutine, each message they answer posted back to be delivered on it.
-func (m *Model) __snglSettleModel() { m.__snglDeliver(struct{}{}) }
+func (m *Model) __snglSettleModel() {
+	__snglLive = m
+	m.__snglDeliver(struct{}{})
+}
+
+// __snglLive is the Model the running test settles. A message answering a
+// command another Model's Update returned -- a test that has ended, its tick
+// still on the way -- is dropped rather than delivered to it, so it neither
+// runs that test's handlers during this one nor arms its tick again.
+var __snglLive *Model
 
 func (m *Model) __snglDeliver(msg tea.Msg) {
 	nm, cmd := m.Update(msg)
@@ -441,7 +450,11 @@ func __snglRunCmd(m *Model, cmd tea.Cmd) {
 			return
 		}
 		if msg != nil {
-			__snglPost(func() { m.__snglDeliver(msg) })
+			__snglPost(func() {
+				if __snglLive == m {
+					m.__snglDeliver(msg)
+				}
+			})
 		}
 	}()
 }
@@ -582,4 +595,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:7552188c1ee617b642493ef0d8627110
+pass sha256:9b8a952ec607f5911655fe5b9340424b

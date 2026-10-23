@@ -1216,6 +1216,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Arrangement
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -1305,10 +1306,13 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
+            val __tick1 = rememberUpdatedState({
+                frame = (frame + 1)
+            })
             LaunchedEffect(true) {
                 while (true) {
                     delay(100L)
-                    frame = (frame + 1)
+                    __tick1.value()
                 }
             }
             Canvas(modifier = Modifier.size(40.dp, 40.dp)) {
@@ -1657,6 +1661,6 @@ pass sha256:3ef58c1c7642f5dd519d7f072265ec04
 -- run/go/gtk4 --
 pass sha256:7f89c845dcf9eb9c90fff9b71406f854
 -- run/kotlin/android --
-pass sha256:d886e6c67aae4b0063f3ca7cf831cc8f
+pass sha256:d4a5f0d3be7e75a1c67aca4094a4b58f
 -- run/none/html --
 pass sha256:c0734e24e4c62eb54ec0d72b6bc15710

@@ -306,9 +306,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) changeClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // onlyClick activates the last copy of #only the way a keypress does; for tests.
@@ -345,9 +346,10 @@ func (m *Model) onlyClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // onlyClickAt activates the copy of #only with the key the way a keypress does; for tests.
@@ -386,9 +388,10 @@ func (m *Model) onlyClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // tickChange activates the last copy of #tick the way a keypress does; for tests.
@@ -425,9 +428,10 @@ func (m *Model) tickChange() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // tickChangeAt activates the copy of #tick with the key the way a keypress does; for tests.
@@ -466,9 +470,10 @@ func (m *Model) tickChangeAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 func (m *Model) onlyPresentAt(key string) bool {
@@ -1649,7 +1654,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b55f61a9d03b5c37656ae64238585b00
+pass sha256:6ac4a0374abdc7ba51fc1d00e14cf377
 -- run/go/fyne --
 pass sha256:292fda03715dd78cf1a414fd758359f7
 -- run/go/gtk4 --

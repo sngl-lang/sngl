@@ -410,27 +410,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) boxChange(_ bool) {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // swChange activates the #sw widget the way a keypress does; for tests.
 func (m *Model) swChange(_ bool) {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // pressClick activates the #press widget the way a keypress does; for tests.
 func (m *Model) pressClick() {
 	prev := m.__focusID
 	m.__focusID = 4
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // fieldChange puts v in the #field widget; for tests.
@@ -1854,7 +1857,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:af3e33865390f37884a487bbd839eb45
+pass sha256:2c10909663d89d1edbd818791d9f834d
 -- run/go/fyne --
 pass sha256:7afd12707a166b11f90f0b791c169384
 -- run/go/gtk4 --

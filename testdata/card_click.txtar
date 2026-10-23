@@ -226,9 +226,10 @@ func (m *Model) rowClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
 	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
+	_ = cmd
 }
 
 // rowClickAt activates the copy of #row with the key the way a keypress does; for tests.
@@ -264,9 +265,10 @@ func (m *Model) rowClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
 	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -1200,7 +1202,7 @@ window.__sngl_boot = () => {
     __renderSlot0(__slotAnchor_0);
   });
   $0.addEventListener("keydown", function(e) {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.eventPhase === 2 && (e.key === "Enter" || e.key === " ")) {
       ;
       e.preventDefault();
       state.opened = "one";
@@ -1213,7 +1215,7 @@ window.__sngl_boot = () => {
     __renderSlot0(__slotAnchor_0);
   });
   $3.addEventListener("keydown", function(e) {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.eventPhase === 2 && (e.key === "Enter" || e.key === " ")) {
       ;
       e.preventDefault();
       state.opened = "two";
@@ -1227,7 +1229,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ee655e2186fb094797178d873ea3729b
+pass sha256:9350c9135e0c1f90ce5138546a2c9100
 -- run/go/fyne --
 pass sha256:3f36c274b8a9fd8df261bf80e099a301
 -- run/go/gtk4 --
@@ -1235,4 +1237,4 @@ pass sha256:e54137836ce500e19979c98b5277e45e
 -- run/kotlin/android --
 pass sha256:233a133f02e271f09d9db56fd5b49627
 -- run/none/html --
-pass sha256:9a438ed963e1787061b677f79036330c
+pass sha256:7a7f1118a4931cd7ff41c251c852b2f7

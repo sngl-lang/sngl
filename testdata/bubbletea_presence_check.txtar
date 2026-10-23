@@ -376,18 +376,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) toggleClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // bumpClick activates the #bump widget the way a keypress does; for tests.
 func (m *Model) bumpClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 func (m *Model) bPresent() bool {
@@ -525,4 +527,4 @@ func TestPresence(t *testing.T) {
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:f60d1ef938de74588ac42cdf1b480ebc
+pass sha256:41c412800383e00ea128a362fefe73fd

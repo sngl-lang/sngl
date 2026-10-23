@@ -271,9 +271,10 @@ func (m *Model) bClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
 	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -441,6 +442,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:63382a9524c87b4aa10a67801a68d04c
+pass sha256:094061346d4bb10def1b56b3b352c94b
 -- run/none/html --
 pass sha256:46cd49c86744429b449ac2a994286fc2

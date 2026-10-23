@@ -373,9 +373,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) swapClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = cmd
 }
 
 // tapClick activates the last copy of #tap the way a keypress does; for tests.
@@ -411,9 +412,10 @@ func (m *Model) tapClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // tapClickAt activates the copy of #tap with the key the way a keypress does; for tests.
@@ -451,9 +453,10 @@ func (m *Model) tapClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // boxChange activates the last copy of #box the way a keypress does; for tests.
@@ -489,9 +492,10 @@ func (m *Model) boxChange(_ bool) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // boxChangeAt activates the copy of #box with the key the way a keypress does; for tests.
@@ -529,9 +533,10 @@ func (m *Model) boxChangeAt(key string, _ bool) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
 	m.__focusID, m.__focusLoop1_cursor = 1, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+	_ = cmd
 }
 
 // widget0Copy is the copy of widget0 the key names, built the first time it renders
@@ -2411,7 +2416,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eafdcc6fe6809079b2a7643963e2d0e5
+pass sha256:f7a25c1ac3dc9900ab05ddcf99c4fd5c
 -- run/go/fyne --
 pass sha256:c6f3700ea12e19cd38917000980f7d7e
 -- run/go/gtk4 --
