@@ -331,14 +331,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     return w;
 }
 
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
 static GtkBox *sngl_slot_box(GtkBox *b) {
     if (b != NULL) return b;
     GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);

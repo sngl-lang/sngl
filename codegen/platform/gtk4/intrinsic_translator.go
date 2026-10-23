@@ -1000,7 +1000,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		if t.wrapped {
 			return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
 		}
-		call := nativeCall("sngl_insert_before", ir.TypVoid, cgoCast("GtkBox", parent), t.slotAnchor, cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
+		// Through gtk4rt on cgo too: a box's alignItems is its, and a child
+		// inserted with GTK's own call sat where GTK put it.
+		call := rtCall("InsertBefore", ir.TypVoid, t.rtHandle(parent), t.rtHandle(t.slotAnchor), t.rtHandle(t.qualifyNodeExpr(child)))
 		return []ir.Stmt{&ir.CallStmt{Call: call}}
 	}
 	if t.wrapped {
@@ -1013,6 +1015,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 			return nil
 		}
 		return []ir.Stmt{stmt}
+	}
+	if fn == "gtk_box_append" {
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("BoxAppend", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(parent)), t.rtHandle(t.qualifyNodeExpr(child)))}}
 	}
 	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
