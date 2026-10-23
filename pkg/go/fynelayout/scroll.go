@@ -75,7 +75,7 @@ func (s *ReachScroll) check() {
 	}
 	height := s.Content.MinSize().Height
 	near := height-(s.scroll.Offset.Y+page) <= page/2
-	fire := near && (!s.near || height != s.height)
+	fire := near && (!s.near || height > s.height)
 	s.near, s.height = near, height
 	if !fire || s.asked {
 		return

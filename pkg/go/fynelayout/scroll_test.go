@@ -102,6 +102,15 @@ func TestReachEndAsksAgainWhenTheContentGrows(t *testing.T) {
 	if calls != 2 {
 		t.Errorf("the content grew with its end showing and the scroll asked %d times, want 2", calls)
 	}
+
+	// A row goes, its end still showing: nothing arrived, so nothing more is
+	// asked, as html's end, still in sight, reports nothing new.
+	list.Remove(list.Objects[1])
+	frame(s)
+	p.run()
+	if calls != 2 {
+		t.Errorf("the content shrank with its end showing and the scroll asked %d times, want 2", calls)
+	}
 }
 
 // Content long enough that its end is out of sight asks for nothing.

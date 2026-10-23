@@ -390,7 +390,9 @@ something it ships: android's `SnglScroll` (`scroll.kt`), html's
 `sngl-reach-end` element (`reachend.go`), gtk4rt's `Scroll` and fynelayout's
 `ReachScroll`. Each fires as the end arrives and again when the content
 grows while it is there, so a short first page loads the next without a
-scroll. gtk4 and fyne measure on a scroll, a resize of the viewport and the
+scroll; content shrinking while it is there -- a row removed, a filter
+narrowed -- is nothing new, as html's sentinel, still in sight, reports
+nothing, where gtk4 and fyne fired on any change of size. gtk4 and fyne measure on a scroll, a resize of the viewport and the
 content changing size, which neither toolkit reports of its own: each puts a
 probe between the viewport and the content, a box Fyne or GTK lays out again
 as the content's size changes, and gtk4's reads the content's natural height

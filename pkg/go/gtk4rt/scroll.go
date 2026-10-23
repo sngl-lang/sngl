@@ -183,7 +183,7 @@ func (s *scroll) changed(h Handle) {
 	}
 	near := float64(upper)-float64(value+page) <= float64(page)/2
 	content := int(C.sngl_probe_content(widget(h)))
-	grew := content != s.content
+	grew := content > s.content
 	fire := near && (!s.near || grew)
 	s.near, s.content = near, content
 	if !fire || s.asked {

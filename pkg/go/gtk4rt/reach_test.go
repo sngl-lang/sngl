@@ -17,8 +17,8 @@ const reachChildEnv = "SNGL_GTK4RT_REACH_CHILD"
 
 // A scroll's @reachEnd is posted to idle, not called while GTK allocates, and
 // is asked again when the content grows while its end shows -- however long
-// after the report the next page arrives. fyne's ReachScroll is held to the
-// same rule (pkg/go/fynelayout/scroll_test.go).
+// after the report the next page arrives -- and not when it shrinks. fyne's
+// ReachScroll is held to the same rule (pkg/go/fynelayout/scroll_test.go).
 //
 // In a process of its own, because it pumps GLib's default context with a
 // window on screen.
@@ -39,6 +39,7 @@ func TestReachEndIsPostedAndAsksAgainAsTheContentGrows(t *testing.T) {
 			"pumped: calls=2",
 			"pumped again: calls=2",
 			"grown: calls=3",
+			"shrunk: calls=3",
 		}, "\n")
 		if !strings.Contains(string(out), want) {
 			t.Fatalf("want the steps\n%s\ngot\n%s", want, out)
@@ -83,7 +84,14 @@ func TestReachEndIsPostedAndAsksAgainAsTheContentGrows(t *testing.T) {
 	fmt.Printf("pumped again: calls=%d\n", calls)
 
 	// The next page arrives long after the report, its end still showing.
-	BoxAppend(list, LabelNew("another row"))
+	another := LabelNew("another row")
+	BoxAppend(list, another)
 	PumpFor(300)
 	fmt.Printf("grown: calls=%d\n", calls)
+
+	// A row goes, its end still showing: nothing arrived, so nothing more is
+	// asked, as html's end, still in sight, reports nothing new.
+	BoxRemove(list, another)
+	PumpFor(300)
+	fmt.Printf("shrunk: calls=%d\n", calls)
 }
