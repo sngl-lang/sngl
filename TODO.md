@@ -140,8 +140,10 @@ under it. Delete this file before the MR leaves draft.
   it was written. `cmd/sngl/testdata/timer_tab_loop_wait_runs.txt`, all six.
   `collectLoopTimers`, `widgetLoops` and `callSiteWraps` count the record's
   loop consistently with each other, which is all bubbletea's schedules need.
-- [ ] html's clickable card takes no Enter or Space: an element's handlers
-  read no key.
+- [X] html's clickable card took no Enter or Space. `html.element` declares
+  `@keydown(e KeyEvent)` (`key`, `preventDefault`), and the card clicks on
+  either; `codegen/platform/html`'s `TestACardTakesEnterAndSpaceAsAClick`
+  presses them in Chromium.
 - [ ] gtk4's drop-down C helpers are written twice, in `pkg/go/gtk4rt` and
   `codegen/platform/gtk4/scaffold_files.go`.
 - [ ] Lower confidence: a reactive write to a fyne constructor-only prop

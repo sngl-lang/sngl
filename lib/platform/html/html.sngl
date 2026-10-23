@@ -129,6 +129,18 @@ struct Event {
     currentTarget Target
 }
 
+// A key pressed while an element has the focus, as `@keydown` hands it: the
+// key's name as the DOM spells it -- "Enter", " " for the space bar.
+#[js.native("KeyboardEvent")]
+struct KeyEvent {
+    key string
+}
+
+// Keeps the browser from doing what the key does by default: the space bar
+// scrolling the page.
+#[js.native("preventDefault", "", method)]
+func KeyEvent.preventDefault()
+
 // The element an event was dispatched to, as far as a control reports its
 // state through it: the text of an input, a textarea or a select, and whether
 // a checkbox is checked.
@@ -219,6 +231,7 @@ component element(
     @error(e error),
     @close(),
     @select(),
+    @keydown(e KeyEvent),
     // Dispatched by `sngl-reach-end`, an element the page defines rather than
     // the DOM (codegen/platform/html/reachend.go). Declared because it is
     // camelCase, which the wildcard below refuses, and it is camelCase so a
@@ -704,13 +717,20 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
 
 // A clickable card is a button to assistive technology and the keyboard's
 // focus order, and shows the pointer a link does: one element either way, with
-// the difference in its attributes.
+// the difference in its attributes. As a button does, it takes Enter and the
+// space bar as a click, which a div with a role is not given.
 const component ui.card[platform](style, clickable, @click, content) {
     html.div(
         attrs = clickable ? {"role"="button", "tabindex"="0"} : {},
         style = {borderRadius=8px, padding=16px, cursor=clickable ? "pointer" : "auto", ...style},
         @click {
             if clickable {
+                click()
+            }
+        },
+        @keydown(e) {
+            if clickable && (e.key == "Enter" || e.key == " ") {
+                e.preventDefault()
                 click()
             }
         },
