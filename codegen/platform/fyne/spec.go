@@ -83,6 +83,9 @@ type fyneSpec struct {
 	// receiver: "SetText" emits `w.SetText(v)`. A prop absent here has no
 	// Fyne surface to reach, so the assignment is dropped.
 	Setters map[string]string
+	// SetterFuncs maps a value prop to the Go function it becomes, which
+	// takes the widget first: a setter fyne gives no method for.
+	SetterFuncs map[string]fyneNative
 	// SetterArgs splits a prop's value into the setter's arguments, for a
 	// setter that takes a record's fields rather than the record: a span's
 	// style is a SNGL struct the runtime has no type for.
@@ -282,6 +285,14 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 				if prop != "" && call != "" {
 					sp.Setters[prop] = call
 				}
+				if fn := structField(sl, "fn"); prop != "" && fn != nil {
+					if n := nativeFromExpr(tag, fn); n.Name != "" {
+						if sp.SetterFuncs == nil {
+							sp.SetterFuncs = map[string]fyneNative{}
+						}
+						sp.SetterFuncs[prop] = n
+					}
+				}
 				if cur := specString(tag, "Setter.current", structField(sl, "current")); prop != "" && cur != "" {
 					sp.Currents[prop] = cur
 				}
@@ -309,7 +320,11 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	// constructor's alone: a grid's column count. Its first write is answered
 	// by the constructor, and any other is reported as reaching nothing.
 	for _, a := range sp.Args {
-		if _, set := sp.Setters[a.Prop]; a.Prop != "" && !set {
+		_, set := sp.Setters[a.Prop]
+		if _, fn := sp.SetterFuncs[a.Prop]; fn {
+			set = true
+		}
+		if a.Prop != "" && !set {
 			if sp.CtorOnly == nil {
 				sp.CtorOnly = map[string]bool{}
 			}

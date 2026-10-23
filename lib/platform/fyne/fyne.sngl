@@ -109,11 +109,14 @@ struct Arg {
 }
 
 // The Go setter method one value prop becomes: `Setter{prop="text",
-// call="SetText"}` emits `w.SetText(v)`. A prop with no Setter has no Fyne
-// surface to reach, so the assignment is dropped.
+// call="SetText"}` emits `w.SetText(v)`, and one naming a function in place
+// of a method, `fn`, emits `fn(w, v)` -- for a widget fyne gives no method,
+// a grid's column count. A prop with no Setter has no Fyne surface to reach,
+// so the assignment is dropped.
 struct Setter {
     prop    string
     call    string
+    fn      Native
     // current is the Go field holding what `call` writes, for a widget whose
     // setter fires its own change callback even for the value it holds:
     // the write is skipped then.
@@ -439,6 +442,7 @@ const component Grid(columns int = 1, style ui.Style = ui.Style{}, children ...c
             args = [Arg{prop="number", raw="1"}],
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
+            setters = [Setter{prop="number", fn=Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="SetGridColumns"}}],
         },
         number = columns,
         style = {...style},
@@ -608,7 +612,7 @@ const component ui.menu[platform](style) {
 // A table is a grid of labels a column per heading, the headings first and
 // then each row's cells, so a cell lines up under its heading. Fyne's own
 // Table reads its cells through callbacks a Spec cannot spell; the grid's
-// column count is a constructor argument, fixed where the table is built.
+// column count is a constructor argument, set again where the columns change.
 const component ui.table[platform](style, columns, rows) {
     Grid(columns=columns.length(), style={...style}) {
         for var col = columns {

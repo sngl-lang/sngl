@@ -287,3 +287,17 @@ func TestInsertingRefreshesNoOtherChild(t *testing.T) {
 		t.Errorf("the inserted row is at %v, want laid out after the first, at %v", got, old.MinSize().Height)
 	}
 }
+
+// A grid given another column count lays its children out that many to a row.
+func TestSetGridColumnsLaysOutThatManyToARow(t *testing.T) {
+	a, b, c := box(10, 10), box(10, 10), box(10, 10)
+	g := container.NewGridWithColumns(2, a, b, c)
+	g.Resize(fyne.NewSize(300, 100))
+	if c.Position().Y == a.Position().Y {
+		t.Fatalf("with two columns the third child should start a row: %v %v", a.Position(), c.Position())
+	}
+	fynelayout.SetGridColumns(g, 3)
+	if c.Position().Y != a.Position().Y {
+		t.Errorf("with three columns the third child should share the first's row: %v %v", a.Position(), c.Position())
+	}
+}

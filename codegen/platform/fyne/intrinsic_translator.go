@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"path"
 	"reflect"
 	"slices"
 	"strings"
@@ -928,6 +929,9 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// A window that names no title is built with none.
 	if lit, ok := value.(*ir.Literal); ok && sp.toplevel && prop == "title" && lit.Value == "" {
 		return nil
+	}
+	if fn, ok := sp.SetterFuncs[prop]; ok {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt(path.Base(fn.Path)+"."+fn.Name, fn.Path, []ir.Expr{t.nodeRefFor(bareID), value}, ir.TypVoid)}}
 	}
 	methodName, ok := sp.Setters[prop]
 	if !ok {

@@ -148,10 +148,17 @@ under it. Delete this file before the MR leaves draft.
   `gtk4rt`'s `DropDownLabel`, `DropDownOffer` and `DropDownSelect` through
   `gtk4rt.Handle(unsafe.Pointer(…))`, as it does its style and images, and the
   scaffold's copy is gone; `testdata/select_choices.txtar` denies it.
-- [ ] Lower confidence: a reactive write to a fyne constructor-only prop
-  (`intrinsic_translator.go`'s `reflect.DeepEqual`) may go silently stale;
-  a package const named like an import (`theme`, `layout`, `time`) collides
-  on fyne and gtk4 (`golang.PackageConstDecls`).
+- [X] Lower confidence, confirmed or not before fixing: a reactive write to
+  a fyne constructor-only prop did go silently stale -- a table's column
+  count, `container.NewGridWithColumns`' argument, so a column added fell to
+  the next row. A Spec `Setter` may name a function (`fn`), and the grid's is
+  `fynelayout.SetGridColumns` (`testdata/fyne_table_columns_reactive.txtar`,
+  `pkg/go/fynelayout`'s `TestSetGridColumnsLaysOutThatManyToARow`). Left: any
+  other constructor-only prop still answers a reactive write as its
+  constructor's; markup's `kind` and `spanStyle` are the ones. A package const
+  named like an import does not collide: `passReservedNames` renames one
+  meeting fyne's or Go's imports (`theme__r0`, `layout__r0`, `time__r0`), and
+  gtk4 imports neither `theme` nor `layout`.
 
 ## Part 5: the example on every target again
 
