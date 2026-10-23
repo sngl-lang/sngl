@@ -144,7 +144,36 @@ arena per event or frame reset when it ends.
   list, so a C program leaks only what it holds in a `#[retains]` native
   with no node around it, which the checker refuses.
 
-## Part 6: docs
+## Part 6: a sanitizer check on gtk4 (one-off, not a test)
+
+A check of the generated code's correctness after Parts 1 to 4, run by hand
+and written up, not a permanent suite: GTK keeps caches alive on purpose, so
+no report is ever empty and a threshold would be a number nobody can defend.
+
+- [ ] Build a gtk4 program with `go build -asan` and
+  `CGO_CFLAGS=-fsanitize=address`, so Go and C are both instrumented, and run
+  it under `ASAN_OPTIONS=detect_leaks=1` with a suppression file
+  (`LSAN_OPTIONS=suppressions=…`) for GTK's and GLib's static allocations.
+  Not valgrind: Go's allocator and stack switching are noise it has no
+  suppressions for. ASan sees C allocations only -- a C string, a pixbuf, a
+  cairo surface -- which is every allocation the held list names on gtk4;
+  Go-held memory is the collector's and never a leak to it.
+- [ ] The programs: `examples/pokedex` on gtk4, and the canvas-text and
+  picture fixtures (`owned_canvas_text`, `gtk4_image_pictures`), each driven
+  through its recorded run or its tests so every handler and frame runs,
+  and ended by SIGTERM so the application tears down first. The report at
+  exit is then a real hold, since `__snglTeardown` has released everything
+  with a lifetime.
+- [ ] Run the same programs at `ownership`'s last commit for the baseline,
+  and diff: a hold Parts 1 to 4 were meant to close that is still reported
+  is a bug with a fixture, an allocation the translator writes after
+  lowering (`ownCStrings`) is #293's, and a GTK static goes in the
+  suppression file with a line saying what it is.
+- [ ] Write the result into `design/ownership.md`: what was run, what each
+  report showed, and what is left to #293. Keep the suppression file under
+  `tmp/` or in the note; it is not a test.
+
+## Part 7: docs
 
 - [ ] `design/ownership.md`: the held list paragraph says what is left,
   which is nothing, and each part's mechanism is in the section it changes.
