@@ -108,8 +108,11 @@ nvim: sngl.so ## Build and install parser for neovim
 	cp sngl.so $(NVIM_PARSER_DIR)/sngl.so
 	@echo "Installed to $(NVIM_PARSER_DIR)/sngl.so"
 
+# sngl.so.sum is the digest of the sources the parser was built from, which
+# the Neovim plugin compares: a checkout gives them a new mtime, not new text.
 sngl.so: $(SRC_DIR)/parser.c $(EXTRAS)
 	$(CC) -o $@ -shared -fPIC -I$(SRC_DIR) $^ -Os
+	cat $^ | { sha256sum 2>/dev/null || shasum -a 256; } | cut -d' ' -f1 > $@.sum
 
 parse: ## Parse testdata/full_example.sngl
 	$(TS) parse ../../testdata/full_example.sngl

@@ -24,19 +24,38 @@ function M.setup(opts)
     return
   end
 
-  -- A parser older than the grammar it was built from rejects the queries,
-  -- which name the grammar's current nodes, and Neovim then highlights
-  -- nothing at all.
-  local built = vim.fn.getftime(so_path)
-  for _, src in ipairs({ "src/parser.c", "src/scanner.c" }) do
-    if vim.fn.getftime(ts_dir .. src) > built then
-      vim.notify(
-        "sngl: " .. so_path .. " is older than the grammar it was built from" ..
-        "\nRebuild it with: make -C " .. ts_dir .. " sngl.so",
-        vim.log.levels.WARN
-      )
-      break
+  -- A parser built from other sources than the grammar's rejects the
+  -- queries, which name the grammar's current nodes, and Neovim then
+  -- highlights nothing at all. `make sngl.so` records the digest of what it
+  -- built from; a parser built before it did is judged by mtime, which a
+  -- checkout also moves.
+  local sources = { ts_dir .. "src/parser.c", ts_dir .. "src/scanner.c" }
+  local stale
+  local sum = io.open(so_path .. ".sum")
+  if sum then
+    local built = vim.trim(sum:read("a"))
+    sum:close()
+    local text = {}
+    for _, src in ipairs(sources) do
+      local f = io.open(src, "rb")
+      if f then
+        table.insert(text, f:read("a"))
+        f:close()
+      end
     end
+    stale = vim.fn.sha256(table.concat(text)) ~= built
+  else
+    local built = vim.fn.getftime(so_path)
+    for _, src in ipairs(sources) do
+      stale = stale or vim.fn.getftime(src) > built
+    end
+  end
+  if stale then
+    vim.notify(
+      "sngl: " .. so_path .. " was built from other sources than the grammar's" ..
+      "\nRebuild it with: make -C " .. ts_dir .. " sngl.so",
+      vim.log.levels.WARN
+    )
   end
 
   -- Nvim 0.10+: language.add(name, {path = ...}) registers an external
