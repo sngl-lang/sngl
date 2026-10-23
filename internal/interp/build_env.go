@@ -17,8 +17,17 @@ import (
 // is evaluated here, before BuildEnv returns, so a caller that assigned the
 // field afterwards had already read the wall clock. Nil is the wall clock.
 func BuildEnv(pkg *ir.Package, compName string, clock Clock) (*Env, error) {
+	return BuildSimulatedEnv(pkg, compName, clock, "")
+}
+
+// BuildSimulatedEnv is BuildEnv for a package PrepareFor specialized for
+// platform, whose natives it stubs: each call answers a zero value, or a fresh
+// handle where it returns an owned type, and does with its arguments what the
+// declaration says. Set before the initializers run, for the reason clock is.
+func BuildSimulatedEnv(pkg *ir.Package, compName string, clock Clock, platform string) (*Env, error) {
 	env := newPackageEnv(pkg)
 	env.Clock = clock
+	env.owned().simulated = platform
 	if compName == "" {
 		seedPackageState(env, pkg)
 		return env, nil

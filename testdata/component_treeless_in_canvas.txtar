@@ -377,6 +377,7 @@ type Model struct {
 	__effect1_desired   []bool
 	__effect2_key       time.Duration
 	__effect2_dirty     bool
+	__effect2_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -404,6 +405,7 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effect2_key = (time.Duration(0) * time.Millisecond)
 	m.__effect2_dirty = false
+	m.__effect2_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -545,10 +547,18 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
+				__effect2_seen := false
 				if m.__effect2_dirty {
 					m.__effect2_dirty = false
-					m.__effect2_key = (time.Duration(100) * time.Millisecond)
-					m.__effect2_update()
+					if !m.__effect2_absent {
+						m.__effect2_key = (time.Duration(100) * time.Millisecond)
+						m.__effect2_update()
+					}
+				}
+				__effect2_seen = true
+				m.__effect2_absent = !__effect2_seen
+				if m.__effect2_absent {
+					m.__effect2_dirty = false
 				}
 				m.__effect1_down()
 				m.__effect0_down()
@@ -732,11 +742,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if snglModel != nil {
@@ -913,6 +925,10 @@ type ErrorEvent struct {
 	Message string
 	Kind    string
 }
+
+var (
+	__cstr0 = C.CString("drawing")
+)
 
 type Measurement struct {
 	Px  float64
@@ -1188,7 +1204,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString("drawing"))
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr0)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -1655,9 +1671,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:666f74f6ae9fe819ce3f3e05870157b3
 -- run/go/fyne --
-pass sha256:3ef58c1c7642f5dd519d7f072265ec04
+pass sha256:dce8391fc383bf12ab1a6663e810f61b
 -- run/go/gtk4 --
-pass sha256:7f89c845dcf9eb9c90fff9b71406f854
+pass sha256:c4e15e3561e14171da053fa61195d295
 -- run/kotlin/android --
 pass sha256:53b1aa1678a308017c5abace73d8d6e7
 -- run/none/html --

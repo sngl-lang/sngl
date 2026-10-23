@@ -1,0 +1,154 @@
+// An owned value a statement makes and only borrows is released once the
+// statement completes: after it, before a `return`, and when it raises. One
+// built from constants is made once and released when the application tears
+// down. Nothing here releases by hand, and the tracker finds nothing held.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) => file{fd=fd}
+
+const func fixed(fd int) => file{fd=fd}
+
+func size(f file) => f.fd * 10
+
+func check(f file) {
+    if f.fd == 0 {
+        error.raise("empty", "")
+    }
+}
+
+func testReleasedAfterTheStatement(t test.Test) {
+    var n = 1
+    t.assert(size(open(n)) == 10)
+    t.assert(closed == [1])
+}
+
+func testReleasedEachIteration(t test.Test) {
+    var total = 0
+    for var i = [3, 4, 5] {
+        total += size(open(i))
+    }
+    t.assert(total == 120)
+    t.assert(closed == [3, 4, 5])
+}
+
+func sizeOf(fd int) int {
+    return size(open(fd))
+}
+
+func testReleasedBeforeReturn(t test.Test) {
+    t.assert(sizeOf(6) == 60)
+    t.assert(closed == [6])
+}
+
+func testReleasedInALambda(t test.Test) {
+    var measure = func(fd int) => size(open(fd))
+    t.assert(measure(7) == 70)
+    t.assert(closed == [7])
+}
+
+func testDiscardedResultReleased(t test.Test) {
+    var n = 2
+    open(n)
+    t.assert(closed == [2])
+}
+
+func testConstantMadeOnce(t test.Test) {
+    var total = 0
+    for var i = [1, 2, 3] {
+        total += size(fixed(9))
+    }
+    t.assert(total == 270)
+    t.assert(closed.length == 0)
+}
+
+component guarded ui.node {
+    var fd = 0
+    var problem = ""
+
+    ui.boundary(@error(e) {
+        problem = e.message
+    }) {
+        ui.button #go(text="go", @click {
+            check(open(fd))
+        })
+    }
+}
+
+func testReleasedWhenItRaises(t test.Test, c guarded) {
+    c.go.click()
+    t.assert(c.problem == "empty")
+    t.assert(closed == [0])
+}
+
+func testReleasedUnderAConversion(t test.Test) {
+    var n = 8
+    t.assert(string(size(open(n))) == "80")
+    t.assert(closed == [8])
+}
+
+func testReleasedInAnInterpolation(t test.Test) {
+    var n = 9
+    t.assert("fd {open(n).fd}" == "fd 9")
+    t.assert(closed == [9])
+}
+
+func testReleasedWhenALambdaBorrows(t test.Test) {
+    var fd = func(f file) => f.fd
+    t.assert(fd(open(10)) == 10)
+    t.assert(closed == [10])
+}
+
+func testReleasedUnderAMapLiteral(t test.Test) {
+    var n = 11
+    var m map[string, int] = {"a"=size(open(n))}
+    t.assert(m["a"] == 110)
+    t.assert(closed == [11])
+}
+
+component handlers ui.node {
+    var fd = 0
+    var n = 12
+    var caught = 0
+    var problem = 0
+
+    ui.boundary(@error(e) {
+        problem = size(open(n))
+    }) {
+        ui.button #perCall(text="per call", @click {
+            check(open(fd), @error(e) { caught = size(open(n + 1)) })
+        })
+        ui.button #bubbles(text="bubbles", @click {
+            check(open(fd))
+        })
+    }
+}
+
+func testReleasedInAPerCallHandler(t test.Test, c handlers) {
+    c.perCall.click()
+    t.assert(c.caught == 130)
+    t.assert(closed == [13, 0])
+}
+
+func testReleasedInABoundaryHandler(t test.Test, c handlers) {
+    c.bubbles.click()
+    t.assert(c.problem == 120)
+    t.assert(closed == [0, 12])
+}
+
+ui.window(title="t") {
+    guarded
+    handlers
+}

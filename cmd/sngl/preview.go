@@ -112,7 +112,7 @@ func (s *previewServer) recompile() error {
 		return err
 	}
 
-	pkg, err := checkDoc(doc, s.sourceDir, true)
+	pkg, err := checkDoc(doc, s.sourceDir, true, nil)
 	if err != nil {
 		return err
 	}

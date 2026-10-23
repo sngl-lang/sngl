@@ -1,0 +1,41 @@
+// A component under an `if` is a new instance each time the branch is taken:
+// its state goes when the branch leaves, and it starts again from its
+// initializers. A component whose only child sat under the `if` renders
+// nothing once it goes false, and the child's state still has to go with it.
+import ui "sngl:ui"
+import "sngl:test"
+
+var log list[string] = []
+
+component child ui.node {
+    var k = 0
+
+    effect(@unmount {
+        log.push("left at {k}")
+    })
+    ui.button #b(text="{k}", @click {
+        k += 1
+    })
+}
+
+component branch ui.node {
+    var on = true
+
+    if on {
+        child #c
+    }
+}
+
+func testStateGoesWithTheBranch(t test.Test, c branch) {
+    if c.c != null {
+        c.c.b.click()
+    }
+    c.on = false
+    c.on = true
+    c.on = false
+    t.assert(log == ["left at 1", "left at 0"])
+}
+
+ui.window(title="t") {
+    branch
+}

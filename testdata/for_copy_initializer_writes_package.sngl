@@ -1,0 +1,76 @@
+// A var initializer that writes package state writes it whichever view
+// construct mounts the instance. A `for` mounts each copy in a snapshot of
+// its scope, and the count a copy's initializer made stayed in that snapshot:
+// `opened` read 0 after the mount and every copy opened fd 1. The copies' own
+// state stays their own. A scoped population mounts in a snapshot too.
+import ui "sngl:ui"
+import "sngl:test"
+
+struct file {
+    fd int
+}
+
+var opened = 0
+
+func open() file {
+    opened += 1
+    return file{fd=opened}
+}
+
+component child ui.node {
+    var f = open()
+    var clicks = 0
+
+    ui.text(value="{f.fd}")
+    ui.button #b(text="{clicks}", @click {
+        clicks += 1
+    })
+}
+
+component rows ui.node {
+    var xs = [1, 2]
+
+    for var x = xs {
+        child #c
+    }
+}
+
+component holder(content ...component(n int) ui.node) ui.node {
+    ui.vbox {
+        content(1)
+    }
+}
+
+component populated ui.node {
+    holder {
+        component content(n) {
+            child #s
+        }
+    }
+    holder {
+        component content(n) {
+            child #t
+        }
+    }
+}
+
+func testEachCopyOpensOnce(t test.Test, c rows) {
+    t.assert(opened == 2)
+    t.assert(c.c[0].f.fd == 1)
+    t.assert(c.c[1].f.fd == 2)
+}
+
+func testCopiesKeepTheirOwnState(t test.Test, c rows) {
+    c.c[0].b.click()
+    t.assert(c.c[0].b.text == "1")
+    t.assert(c.c[1].b.text == "0")
+    t.assert(c.c[1].f.fd == 2)
+}
+
+func testEachPopulationOpensOnce(t test.Test, c populated) {
+    t.assert(opened == 2)
+}
+
+ui.window(title="t") {
+    rows
+}

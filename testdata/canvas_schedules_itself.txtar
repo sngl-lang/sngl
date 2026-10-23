@@ -128,6 +128,7 @@ type Model struct {
 	__effect1_desired   []bool
 	__effect2_key       time.Duration
 	__effect2_dirty     bool
+	__effect2_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -154,6 +155,7 @@ func New() *Model {
 	m.__effect1_desired = []bool{}
 	m.__effect2_key = (time.Duration(0) * time.Millisecond)
 	m.__effect2_dirty = false
+	m.__effect2_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -295,10 +297,18 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
+				__effect2_seen := false
 				if m.__effect2_dirty {
 					m.__effect2_dirty = false
-					m.__effect2_key = (time.Duration(100) * time.Millisecond)
-					m.__effect2_update()
+					if !m.__effect2_absent {
+						m.__effect2_key = (time.Duration(100) * time.Millisecond)
+						m.__effect2_update()
+					}
+				}
+				__effect2_seen = true
+				m.__effect2_absent = !__effect2_seen
+				if m.__effect2_absent {
+					m.__effect2_dirty = false
 				}
 				m.__effect1_down()
 				m.__effect0_down()
@@ -594,6 +604,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:9d55e0d70b0a7965f9964902d3d6737d
+pass sha256:ef14fc3ab17083f64136b3f1d0e6d174
 -- run/none/html --
 pass sha256:92e53af97a7246e0fa0d8ce4443aacdb

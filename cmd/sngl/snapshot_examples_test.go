@@ -44,7 +44,7 @@ func assertExampleChecks(t *testing.T, name, src string) {
 		t.Errorf("%s: %v\n%s", name, err, src)
 		return
 	}
-	pkg, err := checkDoc(doc, t.TempDir(), true)
+	pkg, err := checkDoc(doc, t.TempDir(), true, nil)
 	if err != nil {
 		t.Errorf("%s: %v\n%s", name, err, src)
 		return

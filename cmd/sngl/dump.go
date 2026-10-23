@@ -113,8 +113,9 @@ func dumpChecked(cmd *cobra.Command, args []string, inp dumpInput) (*ir.Package,
 	if err != nil {
 		return nil, "", err
 	}
+	optSlice, _ := cmd.Flags().GetStringSlice("opt")
 	start := time.Now()
-	pkg, err := checkDoc(doc, dir, true, targets...)
+	pkg, err := checkDoc(doc, dir, true, build.ParseCLIOpts(optSlice), targets...)
 	if err != nil {
 		return nil, "", err
 	}

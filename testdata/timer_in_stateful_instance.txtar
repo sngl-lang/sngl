@@ -380,6 +380,7 @@ type TickerInstance struct {
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
 	__effect1_dirty     bool
+	__effect1_absent    bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -403,6 +404,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effect0_desired = []bool{}
 	c.__effect1_key = (time.Duration(0) * time.Millisecond)
 	c.__effect1_dirty = false
+	c.__effect1_absent = false
 	c.__effects0_settling = false
 	c.__effects0_pending = false
 	c.__effects0_torn = false
@@ -503,12 +505,20 @@ func (c *TickerInstance) __effects0_settle() {
 			for c.__effects0_pending && (c.__effects0_steps < 512) {
 				c.__effects0_pending = false
 				c.__effects0_steps = (c.__effects0_steps + 1)
-				if c.__effect1_dirty {
-					c.__effect1_dirty = false
-					if c.__prop_period > (time.Duration(0) * time.Millisecond) {
-						c.__effect1_key = c.__prop_period
-						c.__effect1_update()
+				__effect1_seen := false
+				if c.__prop_period > (time.Duration(0) * time.Millisecond) {
+					if c.__effect1_dirty {
+						c.__effect1_dirty = false
+						if !c.__effect1_absent {
+							c.__effect1_key = c.__prop_period
+							c.__effect1_update()
+						}
 					}
+					__effect1_seen = true
+				}
+				c.__effect1_absent = !__effect1_seen
+				if c.__effect1_absent {
+					c.__effect1_dirty = false
 				}
 				c.__effect0_down()
 				c.__effect0_up()
@@ -527,6 +537,9 @@ func (c *TickerInstance) Destroy() {
 }
 
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
+	if c.__prop_period != __v {
+		c.__effect1_dirty = true
+	}
 	c.__prop_period = __v
 	c.__n0.SetText(((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
@@ -1013,7 +1026,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c3560649d8a0cfdafdeb591f6a0d957d
 -- run/go/fyne --
-pass sha256:a8403b9d2e2114078872d40e31461be9
+pass sha256:baa23727b0898910e6cdd6ecce7810eb
 -- run/go/gtk4 --
 pass sha256:7bdeac0b4f20d899e7c553f51d812ca7
 -- run/none/html --

@@ -279,8 +279,13 @@ What it needed from the checker is general:
 And from the interpreter, each a rule for every component:
 
 - **An instance the mount no longer reaches loses its state**
-  (`evictUnreached`), as every compiled target already does: a component under
-  an `if` that went false starts again from its initializers.
+  (`evictUnreached`): a component under an `if` that went false starts again
+  from its initializers. A scope is visited whether or not it renders a child,
+  since one whose only child sat under that `if` renders none and still holds
+  it (`testdata/component_state_leaves_with_branch.sngl`). fyne, gtk4, html
+  and android build such an instance afresh; bubbletea, which splices it into
+  the Model, sets its vars again as the branch is taken (`restartOnEntry`,
+  design/instances.md).
 - **A handle compares by instance**, the scope the interpreter keeps for it,
   through the test runner's wrapper as well (`InstanceValue`).
 - **An event on a component whose call site handled none of it reaches what

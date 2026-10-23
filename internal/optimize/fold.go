@@ -114,6 +114,12 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		for i := range x.Args {
 			x.Args[i].Value = foldCallArg(x, i, ctx)
 		}
+		// A per-call `@error` body is the call's, as a lambda's is the
+		// lambda's: no declaration walk reaches it, so a call in it was one
+		// the inliner never saw.
+		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
+			x.ErrorHandler.Func.Block = foldStmts(x.ErrorHandler.Func.Block, ctx)
+		}
 	case *ir.Conversion:
 		x.Operand = foldExpr(x.Operand, ctx)
 		// An unwrap of a value put into an option is that value. The pair
@@ -357,6 +363,9 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 			}
 			for i := range n.Call.Args {
 				n.Call.Args[i].Value = foldCallArg(n.Call, i, ctx)
+			}
+			if n.Call.ErrorHandler != nil && n.Call.ErrorHandler.Func != nil {
+				n.Call.ErrorHandler.Func.Block = foldStmts(n.Call.ErrorHandler.Func.Block, ctx)
 			}
 		}
 	case *ir.LocalVar:

@@ -75,6 +75,11 @@ import (
 	"os"
 )
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -82,12 +87,22 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	shown       bool
-	other       bool
-	hits__inst0 int
-	on__inst0   bool
-	hits__inst1 int
-	__focusID   int
+	shown               bool
+	other               bool
+	hits__inst0         int
+	on__inst0           bool
+	hits__inst1         int
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effect1_live      []bool
+	__effect1_desired   []bool
+	__effect2_live      []bool
+	__effect2_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__focusID           int
 
 	width, height int
 }
@@ -98,9 +113,20 @@ func New() Model {
 	m.shown = true
 	m.other = false
 	m.hits__inst0 = 0
-	m.on__inst0 = true
+	m.on__inst0 = false
 	m.hits__inst1 = 0
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effect1_live = []bool{}
+	m.__effect1_desired = []bool{}
+	m.__effect2_live = []bool{}
+	m.__effect2_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -108,6 +134,76 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []bool{}
+	if m.shown {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != true)
+		}
+		if __effect0_fresh {
+			m.hits__inst0 = 0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, true)
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_enter() {
+	m.__effect1_desired = []bool{}
+	if m.other {
+		__effect1_fresh := true
+		if len(m.__effect1_desired) < len(m.__effect1_live) {
+			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != true)
+		}
+		if __effect1_fresh {
+			m.on__inst0 = true
+		}
+		m.__effect1_desired = append(m.__effect1_desired, true)
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effect2_enter() {
+	m.__effect2_desired = []bool{}
+	if m.other {
+		if m.on__inst0 {
+			__effect2_fresh := true
+			if len(m.__effect2_desired) < len(m.__effect2_live) {
+				__effect2_fresh = (m.__effect2_live[len(m.__effect2_desired)] != true)
+			}
+			if __effect2_fresh {
+				m.hits__inst1 = 0
+			}
+			m.__effect2_desired = append(m.__effect2_desired, true)
+		}
+	}
+	m.__effect2_live = m.__effect2_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_enter()
+				m.__effect2_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusNext() {
@@ -261,12 +357,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.shown = !m.shown
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.other = !m.other
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
 			m.hits__inst0 = (m.hits__inst0 + 1)
 		case msg.Code == tea.KeyEnter && m.__focusID == 3:
 			m.on__inst0 = !m.on__inst0
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 4:
 			m.hits__inst1 = (m.hits__inst1 + 1)
 		}
@@ -320,65 +419,68 @@ func (m *Model) hit__1Click() {
 }
 
 func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	var parts []string
+	var part0 string
+	var part0Children []string
+	var part0_0 string
+	part0_0Focused := (m.__focusID == 0)
+	part0_0Prefix := " "
+	if part0_0Focused {
+		part0_0Prefix = ">"
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("s"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1Focused := (m.__focusID == 1)
-	content_1Prefix := " "
-	if content_1Focused {
-		content_1Prefix = ">"
+	part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("s"))
+	part0Children = append(part0Children, part0_0)
+	var part0_1 string
+	part0_1Focused := (m.__focusID == 1)
+	part0_1Prefix := " "
+	if part0_1Focused {
+		part0_1Prefix = ">"
 	}
-	content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("o"))
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
+	part0_1 = lipgloss.NewStyle().Render(part0_1Prefix + " " + fmt.Sprint("o"))
+	part0Children = append(part0Children, part0_1)
+	var part0_2 string
 	if m.shown {
-		content_2Focused := (m.__focusID == 2)
-		content_2Prefix := " "
-		if content_2Focused {
-			content_2Prefix = ">"
+		part0_2Focused := (m.__focusID == 2)
+		part0_2Prefix := " "
+		if part0_2Focused {
+			part0_2Prefix = ">"
 		}
-		content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
+		part0_2 = lipgloss.NewStyle().Render(part0_2Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
 	}
-	if content_2 != "" {
-		contentChildren = append(contentChildren, content_2)
+	if part0_2 != "" {
+		part0Children = append(part0Children, part0_2)
 	}
-	var content_3 string
+	var part0_3 string
 	if m.other {
-		var content_3Children []string
-		var content_3_0 string
-		content_3_0Focused := (m.__focusID == 3)
-		content_3_0Prefix := " "
-		if content_3_0Focused {
-			content_3_0Prefix = ">"
+		var part0_3Children []string
+		var part0_3_0 string
+		part0_3_0Focused := (m.__focusID == 3)
+		part0_3_0Prefix := " "
+		if part0_3_0Focused {
+			part0_3_0Prefix = ">"
 		}
-		content_3_0 = lipgloss.NewStyle().Render(content_3_0Prefix + " " + fmt.Sprint("f"))
-		content_3Children = append(content_3Children, content_3_0)
-		var content_3_1 string
+		part0_3_0 = lipgloss.NewStyle().Render(part0_3_0Prefix + " " + fmt.Sprint("f"))
+		part0_3Children = append(part0_3Children, part0_3_0)
+		var part0_3_1 string
 		if m.on__inst0 {
-			content_3_1Focused := (m.__focusID == 4)
-			content_3_1Prefix := " "
-			if content_3_1Focused {
-				content_3_1Prefix = ">"
+			part0_3_1Focused := (m.__focusID == 4)
+			part0_3_1Prefix := " "
+			if part0_3_1Focused {
+				part0_3_1Prefix = ">"
 			}
-			content_3_1 = lipgloss.NewStyle().Render(content_3_1Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
+			part0_3_1 = lipgloss.NewStyle().Render(part0_3_1Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
 		}
-		if content_3_1 != "" {
-			content_3Children = append(content_3Children, content_3_1)
+		if part0_3_1 != "" {
+			part0_3Children = append(part0_3Children, part0_3_1)
 		}
-		content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+		part0_3 = lipgloss.JoinVertical(lipgloss.Left, part0_3Children...)
 	}
-	if content_3 != "" {
-		contentChildren = append(contentChildren, content_3)
+	if part0_3 != "" {
+		part0Children = append(part0Children, part0_3)
 	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1667,7 +1769,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:15b040d4a3baf6deacad1fa0d7196502
+pass sha256:ded8a9cdfedf0398ca355fc42d4535f9
 -- run/go/fyne --
 pass sha256:ccc84596c81671af234975af5353d722
 -- run/go/gtk4 --

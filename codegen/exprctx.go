@@ -593,3 +593,15 @@ func StateFieldNames(pkg *ir.Package) map[string]bool {
 	}
 	return names
 }
+
+// HasBody reports whether fn is a function the output defines: one with
+// statements, or an owned type's release written `{}`. A native has no block
+// and nothing to emit, and an empty function the program wrote was inlined
+// away with its calls; a release is called by lowering after the inliner
+// ran, so it has to exist however little it does.
+func HasBody(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	return len(fn.Block) > 0 || ir.IsRelease(fn) && fn.Foreign.Name == "" && fn.Intrinsic == ""
+}

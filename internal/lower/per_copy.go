@@ -124,7 +124,7 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 	}
 	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
 		n, ok := s.(*ir.NodeInst)
-		if !ok || !isEffectNode(n) || !handlersTouchCells(n, cells, keyed) {
+		if !ok || !isEffectNode(n) || n.Enter || !handlersTouchCells(n, cells, keyed) {
 			return nil
 		}
 		// Keyed by the copy already, by the splice of a component inside this
@@ -797,6 +797,27 @@ func retargetCell(s ir.Stmt, v *ir.Var, tmp *ir.Var) {
 // InstanceState, has nowhere to keep.
 func holdsLifetime(stmts []ir.Stmt) bool {
 	return places(stmts, func(n *ir.NodeInst) bool { return ir.IsTimerPrimitive(n.Component) || isEffectNode(n) })
+}
+
+// splicesLibraryState reports whether stmts instantiate a library component
+// with state of its own -- a var, a lifetime, an owned derived value -- which
+// a splice of stmts splices with them: gtk4's `remote` in the wrapper
+// passImplicitState writes for it under a `for`, whose picture every copy
+// would otherwise share.
+func splicesLibraryState(stmts []ir.Stmt) bool {
+	seen := map[*ir.Component]bool{}
+	var holds func(stmts []ir.Stmt) bool
+	holds = func(stmts []ir.Stmt) bool {
+		return places(stmts, func(n *ir.NodeInst) bool {
+			c := n.Component
+			if c == nil || c.PkgPath() == "" || seen[c] {
+				return false
+			}
+			seen[c] = true
+			return len(c.Vars) > 0 || derivesOwned(c) || holdsLifetime(c.Stmts) || holds(c.Stmts)
+		})
+	}
+	return holds(stmts)
 }
 
 // placesTimer reports whether stmts place a timer primitive.

@@ -8,6 +8,7 @@ import markup "sngl:ui/markup"
 import math "sngl:math"
 import go "sngl:language/go"
 import gen "sngl:x/gen"
+import c "sngl:x/c"
 import family "sngl:family"
 import gtk "gir:Gtk-4.0"
 
@@ -33,8 +34,9 @@ component platform(
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
     // that never calls it gets a process whose loop still runs -- timers,
-    // effects, posted work -- with no window on screen. `args` is the command
-    // line after the program's name.
+    // effects, posted work -- with no window on screen. The application has
+    // torn down when `run` returns, and a second call ends the process. `args`
+    // is the command line after the program's name.
     @run(args list[string], run func()),
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
@@ -587,9 +589,9 @@ const component time.timer[platform](interval, enabled, @tick) {
 // `cairo_t*`, so cairo's own functions are the drawing vocabulary. Declared
 // with `#[cnative(…)]`, which names a C identifier and no language: each is a
 // free function taking the context first, which is the shape a native gets by
-// default. The backend that can call C supplies the conversions its own ABI
-// needs from the declared parameter types -- for the Go one that is
-// `C.double`/`C.int`. Nothing here is Go's.
+// default. Each argument crosses through the `c` conversion its declared
+// parameter type names (`c.cdouble`, `c.cstring`), which is why this package
+// imports one. Nothing here is Go's.
 //
 // Named as the cgo pointer it is, so a helper that takes the context has the
 // right type in its own signature -- the draw function's own parameter type
@@ -688,7 +690,6 @@ const func toFontSlant(v int) FontSlant
 #[cnative("C.cairo_font_weight_t")]
 const func toFontWeight(v int) FontWeight
 
-// The family is a string cairo copies.
 #[cnative("cairo_select_font_face")]
 func CairoContext.selectFontFace(family string, slant FontSlant, weight FontWeight)
 
@@ -910,18 +911,35 @@ component Scroll(
     content ...component option[ui.node],
 ) ui.node
 
+// The picture a URL names, decoded once: a file the program carries at once,
+// one fetched when it arrives. Owned by the source deriving it, so it is made
+// once per URL and given back when the URL changes or the source unmounts.
+#[go.native(_rtPkg, "*gtk4rt.Picture")]
+#[owned(unrefPicture)]
+struct Picture {}
+
+#[go.native(_rtPkg, "gtk4rt.LoadPicture")]
+func loadPicture(url string) Picture
+
+#[go.native(_rtPkg, "gtk4rt.UnrefPicture")]
+func unrefPicture(p Picture)
+
 #[marks.intrinsic("gtk4:ImageUrl")]
-component ImageUrl(url string) ui.imageSource
+component ImageUrl(url string, picture Picture) ui.imageSource
 
 #[marks.intrinsic("gtk4:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
 const component ui.file[platform](path) {
-    ImageUrl(url=path)
+    func picture() => loadPicture(path)
+
+    ImageUrl(url=path, picture=picture)
 }
 
 const component ui.remote[platform](url) {
-    ImageUrl(url=url)
+    func picture() => loadPicture(url)
+
+    ImageUrl(url=url, picture=picture)
 }
 
 const component shapes.image[platform](width, height, shapes) {
@@ -939,17 +957,18 @@ func CairoContext.scale(x float, y float)
 #[cnative("cairo_clip")]
 func CairoContext.clip()
 
-// Paints the picture a URL names into a box, decoded once per URL: a file the
-// program carries at once, and one fetched the next time the drawing paints
-// after it arrives.
-#[go.native(_rtPkg, "gtk4rt.CairoPaintURL")]
-func paintURL(cr CairoContext, url string, x float, y float, w float, h float)
+// Paints a picture into a box, scaled once per box size rather than per
+// frame; one still on its way paints nothing, and is there the next time the
+// drawing paints after it arrives.
+#[go.native(_rtPkg, "gtk4rt.CairoPaintPicture")]
+func paintPicture(cr CairoContext, p Picture, x float, y float, w float, h float)
 
-// What a `drawSource` paints a carried or fetched image with: the context, and
-// the URL its source names.
+// What a `drawSource` paints a carried or fetched image with: the context, the
+// URL its source names and the picture the source holds.
 struct SourceEvent {
-    ctx CairoContext
-    url string
+    ctx     CairoContext
+    url     string
+    picture Picture
 }
 
 // The primitive a `canvasImage` paints its source through. `@url` paints an
@@ -967,7 +986,7 @@ component drawSource(
 const component shapes.canvasImage[platform](x, y, w, h, src) {
     drawSource(
         @url(e) {
-            paintURL(e.ctx, e.url, x, y, w, h)
+            paintPicture(e.ctx, e.picture, x, y, w, h)
         },
         @enter(e) {
             e.ctx.save()

@@ -62,6 +62,11 @@ import (
 	"strings"
 )
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -74,6 +79,12 @@ type modelState struct {
 	names__inst0        []string
 	visible__inst0      bool
 	clicks__inst0       map[string]int
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -88,8 +99,15 @@ func New() Model {
 	m.names__inst0 = []string{"a", "b"}
 	m.visible__inst0 = true
 	m.clicks__inst0 = map[string]int{}
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -97,6 +115,49 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, _ := range m.names__inst0 {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			var __cell1_clicks__inst0 int = func() int {
+				if __v, __ok := m.clicks__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell1_clicks__inst0 = 0
+			m.clicks__inst0[fmt.Sprint(__copy0)] = __cell1_clicks__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -249,14 +310,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = n
 					if m.__focusLoop0_cursor == __focusPos0 {
-						var __cell1_clicks__inst0 int = func() int {
+						var __cell2_clicks__inst0 int = func() int {
 							if __v, __ok := m.clicks__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}()
-						__cell1_clicks__inst0 += 1
-						m.clicks__inst0[fmt.Sprint(__copy0)] = __cell1_clicks__inst0
+						__cell2_clicks__inst0 += 1
+						m.clicks__inst0[fmt.Sprint(__copy0)] = __cell2_clicks__inst0
 						m.at__inst0 = func() int {
 							if __v, __ok := m.clicks__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
@@ -275,35 +336,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentParts []string
-		var contentPart_0 string
+		var part0Parts []string
+		var part0Part_0 string
 		__focusPos0 := 0
 		_ = __focusPos0
-		var contentPart_0Items []string
+		var part0Part_0Items []string
 		for __copy0, n := range m.names__inst0 {
 			_ = __copy0
 			_ = n
-			var contentPart_0Item string
-			contentPart_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-			contentPart_0ItemPrefix := " "
-			if contentPart_0ItemFocused {
-				contentPart_0ItemPrefix = ">"
+			var part0Part_0Item string
+			part0Part_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			part0Part_0ItemPrefix := " "
+			if part0Part_0ItemFocused {
+				part0Part_0ItemPrefix = ">"
 			}
-			contentPart_0Item = lipgloss.NewStyle().Render(contentPart_0ItemPrefix + " " + fmt.Sprint(n))
+			part0Part_0Item = lipgloss.NewStyle().Render(part0Part_0ItemPrefix + " " + fmt.Sprint(n))
 			__focusPos0++
-			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
+			part0Part_0Items = append(part0Part_0Items, part0Part_0Item)
 		}
-		contentPart_0 = strings.Join(contentPart_0Items, "")
-		if contentPart_0 != "" {
-			contentParts = append(contentParts, contentPart_0)
+		part0Part_0 = strings.Join(part0Part_0Items, "")
+		if part0Part_0 != "" {
+			part0Parts = append(part0Parts, part0Part_0)
 		}
-		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
-		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		var part0Part_1 string
+		part0Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
+		part0Parts = append(part0Parts, part0Part_1)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
 	}
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -893,7 +957,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:31cb00006613f48fe7f69c4b1b35e41a
+pass sha256:56734c97efc190cf936e0f927fe744a5
 -- run/go/fyne --
 pass sha256:8db9948de273d3273798c7bbb2d3ca83
 -- run/go/gtk4 --

@@ -220,13 +220,14 @@ func parseDir(dir string) (*ast.Document, error) {
 
 // checkDoc type-checks one unit. The check itself is internal/build's, so
 // the CLI and the golden harness put the same package in front of the same
-// checker configuration.
-func checkDoc(doc *ast.Document, dir string, isMain bool, targets ...ir.StaticTarget) (*ir.Package, error) {
+// checker configuration. opts are the command's `--opt` values.
+func checkDoc(doc *ast.Document, dir string, isMain bool, opts map[string]string, targets ...ir.StaticTarget) (*ir.Package, error) {
 	return build.Check(doc, build.CheckConfig{
 		Dir:      dir,
 		Resolver: cliResolver(dir),
 		IsMain:   isMain,
 		Targets:  targets,
+		Opts:     opts,
 		Warn:     func(d ir.Diagnostic) { fmt.Fprintln(os.Stderr, "warning: "+d.Error()) },
 	})
 }

@@ -6,3 +6,8 @@
 // runs pkg-config for gtk4 and includes `<gtk/gtk.h>`, `c:lib/math.h`
 // includes `"lib/math.h"` -- and the program declares the functions it calls
 // beside it with `#[cnative]`. A package may also write one by hand.
+//
+// It also declares how a SNGL value crosses to C. An argument of a C function
+// is converted by its parameter's type: a `string` to a `str` the program owns
+// and gives back with `free`, an `int` or a `bool` to a C `int`, a `float` to
+// a `double`.

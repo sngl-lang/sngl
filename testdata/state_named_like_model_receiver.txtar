@@ -64,6 +64,11 @@ import (
 	"strings"
 )
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -75,6 +80,12 @@ type modelState struct {
 	xs                  []int
 	m__inst0            map[string]int
 	c__inst0            map[string]int
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop1_cursor int
 
@@ -88,8 +99,15 @@ func New() Model {
 	m.xs = []int{1, 2}
 	m.m__inst0 = map[string]int{}
 	m.c__inst0 = map[string]int{}
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -97,6 +115,57 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, x := range m.xs {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			var __cell1_m__inst0 int = func() int {
+				if __v, __ok := m.m__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell1_m__inst0 = x
+			m.m__inst0[fmt.Sprint(__copy0)] = __cell1_m__inst0
+			var __cell2_c__inst0 int = func() int {
+				if __v, __ok := m.c__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell2_c__inst0 = 0
+			m.c__inst0[fmt.Sprint(__copy0)] = __cell2_c__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop1_len() int {
@@ -232,26 +301,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
 				__focusPos1 := 0
-				for __copy0, x := range m.xs {
+				for __copy0, _ := range m.xs {
 					_ = __copy0
-					_ = x
 					if m.__focusLoop1_cursor == __focusPos1 {
-						var __cell1_m__inst0 int = func() int {
+						var __cell3_m__inst0 int = func() int {
 							if __v, __ok := m.m__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
-							return x
+							return 0
 						}()
-						__cell1_m__inst0 += 1
-						m.m__inst0[fmt.Sprint(__copy0)] = __cell1_m__inst0
-						var __cell2_c__inst0 int = func() int {
+						__cell3_m__inst0 += 1
+						m.m__inst0[fmt.Sprint(__copy0)] = __cell3_m__inst0
+						var __cell4_c__inst0 int = func() int {
 							if __v, __ok := m.c__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}()
-						__cell2_c__inst0 += 1
-						m.c__inst0[fmt.Sprint(__copy0)] = __cell2_c__inst0
+						__cell4_c__inst0 += 1
+						m.c__inst0[fmt.Sprint(__copy0)] = __cell4_c__inst0
 						return
 					}
 					__focusPos1++
@@ -282,9 +350,8 @@ func (m *Model) incClick() {
 			pos int
 		}
 		__focusPos1 := 0
-		for __copy0, x := range m.xs {
+		for __copy0, _ := range m.xs {
 			_ = __copy0
-			_ = x
 			__at = append(__at, struct {
 				key string
 				pos int
@@ -308,58 +375,60 @@ func (m *Model) incClick() {
 }
 
 func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint(("page " + fmt.Sprint(m.m__r0))))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1Focused := (m.__focusID == 0)
-	content_1Prefix := " "
-	if content_1Focused {
-		content_1Prefix = ">"
+	var parts []string
+	var part0 string
+	var part0Children []string
+	var part0_0 string
+	part0_0 = lipgloss.NewStyle().Render(fmt.Sprint(("page " + fmt.Sprint(m.m__r0))))
+	part0Children = append(part0Children, part0_0)
+	var part0_1 string
+	part0_1Focused := (m.__focusID == 0)
+	part0_1Prefix := " "
+	if part0_1Focused {
+		part0_1Prefix = ">"
 	}
-	content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("bump"))
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
+	part0_1 = lipgloss.NewStyle().Render(part0_1Prefix + " " + fmt.Sprint("bump"))
+	part0Children = append(part0Children, part0_1)
+	var part0_2 string
 	__focusPos1 := 0
 	_ = __focusPos1
-	var content_2Items []string
-	for __copy0, x := range m.xs {
+	var part0_2Items []string
+	for __copy0, _ := range m.xs {
 		_ = __copy0
-		_ = x
-		var content_2Item string
-		var content_2ItemChildren []string
-		var content_2Item_0 string
-		content_2Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("m " + fmt.Sprint(func() int {
+		var part0_2Item string
+		var part0_2ItemChildren []string
+		var part0_2Item_0 string
+		part0_2Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("m " + fmt.Sprint(func() int {
 			if __v, __ok := m.m__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return x
+			return 0
 		}())) + " c ") + fmt.Sprint(func() int {
 			if __v, __ok := m.c__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
 			return 0
 		}()))))
-		content_2ItemChildren = append(content_2ItemChildren, content_2Item_0)
-		var content_2Item_1 string
-		content_2Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-		content_2Item_1Prefix := " "
-		if content_2Item_1Focused {
-			content_2Item_1Prefix = ">"
+		part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_0)
+		var part0_2Item_1 string
+		part0_2Item_1Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+		part0_2Item_1Prefix := " "
+		if part0_2Item_1Focused {
+			part0_2Item_1Prefix = ">"
 		}
-		content_2Item_1 = lipgloss.NewStyle().Render(content_2Item_1Prefix + " " + fmt.Sprint("inc"))
+		part0_2Item_1 = lipgloss.NewStyle().Render(part0_2Item_1Prefix + " " + fmt.Sprint("inc"))
 		__focusPos1++
-		content_2ItemChildren = append(content_2ItemChildren, content_2Item_1)
-		content_2Item = lipgloss.JoinHorizontal(lipgloss.Top, content_2ItemChildren...)
-		content_2Items = append(content_2Items, content_2Item)
+		part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_1)
+		part0_2Item = lipgloss.JoinHorizontal(lipgloss.Top, part0_2ItemChildren...)
+		part0_2Items = append(part0_2Items, part0_2Item)
 	}
-	content_2 = strings.Join(content_2Items, "\n")
-	if content_2 != "" {
-		contentChildren = append(contentChildren, content_2)
+	part0_2 = strings.Join(part0_2Items, "\n")
+	if part0_2 != "" {
+		part0Children = append(part0Children, part0_2)
 	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -819,7 +888,7 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:b7f705f23da3b6f663af5f75abed7937
+pass sha256:f4804497d61d8f12e187ddb27003ad97
 -- run/go/fyne --
 pass sha256:1b39a11a9652f93a5693ca9e22dd4437
 -- run/go/gtk4 --

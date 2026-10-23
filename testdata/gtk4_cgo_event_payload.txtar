@@ -404,11 +404,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -551,6 +553,12 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+var (
+	__cstr0 = C.CString("changed")
+	__cstr1 = C.CString("activate")
+	__cstr2 = C.CString("notify::active")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	last                string
@@ -604,7 +612,9 @@ func New() *Model {
 
 func (m *Model) __effect1_mount() {
 	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box)))) != m.__effect1_key {
-		C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.box)), C.CString(m.__effect1_key))
+		__ctmp1 := C.CString(m.__effect1_key)
+		C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.box)), __ctmp1)
+		C.free(unsafe.Pointer(__ctmp1))
 	}
 }
 
@@ -705,7 +715,9 @@ func (m *Model) box_changed_handler() {
 func (m *Model) box_activate_handler() {
 	m.value__inst0 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box))))
 	m.last = ("got " + m.value__inst0)
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString(m.last))
+	__ctmp2 := C.CString(m.last)
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp2)
+	C.free(unsafe.Pointer(__ctmp2))
 	m.__effects1_settle()
 }
 
@@ -765,14 +777,16 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		}
 		c.__effects0_settle()
 	})
-	C.sngl_connect(unsafe.Pointer(c.entry), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(c.entry), __cstr0, C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, func() {
 		c.value__inst1 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.entry))))
 		c.got = ((c.__prop_label + " ") + c.value__inst1)
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.CString(c.got))
+		__ctmp3 := C.CString(c.got)
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp3)
+		C.free(unsafe.Pointer(__ctmp3))
 		c.__effects0_settle()
 	})
-	C.sngl_connect(unsafe.Pointer(c.entry), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(c.entry), __cstr1, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(c.entry)))
 	c.__n0 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt(c.checked__inst1)))
@@ -783,10 +797,12 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 			C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt(c.checked__inst1)))
 		}
 	})
-	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(c.__n0), __cstr2, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
 	c.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.CString(c.got))
+	__ctmp4 := C.CString(c.got)
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp4)
+	C.free(unsafe.Pointer(__ctmp4))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(c.__n1)))
 	c.__effects0_settle()
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n6))
@@ -797,7 +813,9 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 
 func (c *RowInstance) __effect0_mount() {
 	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.entry)))) != c.__effect0_key {
-		C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(c.entry)), C.CString(c.__effect0_key))
+		__ctmp5 := C.CString(c.__effect0_key)
+		C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(c.entry)), __ctmp5)
+		C.free(unsafe.Pointer(__ctmp5))
 	}
 }
 
@@ -907,18 +925,20 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n5)), C.int(6))
 	m.box = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
 	snglCallbacks = append(snglCallbacks, m.box_changed_handler)
-	C.sngl_connect(unsafe.Pointer(m.box), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.box), __cstr0, C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.box_activate_handler)
-	C.sngl_connect(unsafe.Pointer(m.box), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.box), __cstr1, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
 	m.__n2 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(m.checked__inst0)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n2_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n2), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.__n2), __cstr2, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString(m.last))
+	__ctmp0 := C.CString(m.last)
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp0)
+	C.free(unsafe.Pointer(__ctmp0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__renderSlot0(__n5)
 	m.__effects1_settle()
@@ -976,4 +996,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:88797177f61dd03a8cfecb1fa35a50b5
 -- run/go/gtk4 --
-pass sha256:38591b12396f874887fe99d8aa088f28
+pass sha256:c786884dd51646bd254e9b83937baae4

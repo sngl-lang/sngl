@@ -216,11 +216,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -361,6 +363,13 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+var (
+	__cstr0 = C.CString("toggle")
+	__cstr1 = C.CString("clicked")
+	__cstr2 = C.CString("rows")
+	__cstr3 = C.CString("busy")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	busy           bool
@@ -406,7 +415,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			if m.busy {
 				__n1 := (*C.GtkSpinner)(unsafe.Pointer(C.gtk_spinner_new()))
 				C.gtk_spinner_set_spinning((*C.GtkSpinner)(unsafe.Pointer(__n1)), C.gboolean(boolToInt(true)))
-				C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n1)), C.CString("busy"))
+				C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n1)), __cstr3)
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 			}
@@ -457,16 +466,16 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
 	gtk4rt.Flex(gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), C.CString("toggle"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr0)
 	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n3), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.__n3), __cstr1, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__renderSlot0(m.__n2)
 	m.__n4 = (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
 	gtk4rt.Flex(gtk4rt.Handle(unsafe.Pointer(m.__n4)))
 	gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(m.__n4)), m.__n4_reachEnd_handler)
 	m.__n5 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n5)), C.CString("rows"))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n5)), __cstr2)
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -484,4 +493,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 -- run/go/fyne --
 pass sha256:ee48b981604b2b663f9abdc65535ef44
 -- run/go/gtk4 --
-pass sha256:bf5e154d39ad9215329d8fddb5fcbc8c
+pass sha256:141350876a2d3385401a61705251b6f7

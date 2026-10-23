@@ -310,11 +310,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -421,6 +423,11 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 import "C"
 import "unsafe"
 
+var (
+	__cstr0 = C.CString("hover")
+	__cstr1 = C.CString("clicked")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	msg    string
@@ -452,11 +459,13 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	__n0 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n0)), C.CString(m.msg))
+	__ctmp0 := C.CString(m.msg)
+	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n0)), __ctmp0)
+	C.free(unsafe.Pointer(__ctmp0))
 	__n1 := (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(__n1)), C.CString("hover"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(__n1)), __cstr0)
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(__n1), __cstr1, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
@@ -596,7 +605,7 @@ pass sha256:28d0f1f52c3fbe2813aea4b9f6d0ee04
 -- run/go/fyne --
 pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
-pass sha256:fc2ce8c7fe35a834757d06622ce91590
+pass sha256:820c7d6e00bb320a828131677b5ecdc0
 -- run/kotlin/android --
 pass sha256:ee23cedbec76377068253f1b69fd9506
 -- run/none/html --

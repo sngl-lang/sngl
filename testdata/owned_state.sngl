@@ -1,0 +1,200 @@
+// An owned value a component holds lives as long as the node: a `var` is
+// released when it is overwritten and when the node unmounts, and an owned
+// derived value is made once per value of what it reads, released when that
+// changes, and released when the node unmounts. Nothing here releases by hand,
+// and the tracker finds nothing held. `opened` says how often each was made,
+// which is what tells a value held from one made and released per read.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var opened list[int] = []
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) file {
+    opened.push(fd)
+    return file{fd=fd}
+}
+
+component holds ui.node {
+    var f = open(1)
+
+    ui.button #next(text="{f.fd}", @click {
+        f = open(f.fd + 1)
+    })
+}
+
+func testOverwriteReleasesTheOldValue(t test.Test, c holds) {
+    c.next.click()
+    t.assert(c.f.fd == 2)
+    t.assert(closed == [1])
+    c.next.click()
+    t.assert(closed == [1, 2])
+}
+
+func testHeldUntilUnmount(t test.Test, c holds) {
+    t.assert(c.f.fd == 1)
+    t.assert(closed.length == 0)
+}
+
+func testWrittenFromOutside(t test.Test, c holds) {
+    c.f = open(9)
+    t.assert(closed == [1])
+}
+
+component shows(n int) ui.node {
+    var extra = 0
+
+    func label() => open(n * 10 + extra)
+
+    ui.text #out(value="{label.fd}")
+    ui.button #bump(text="+", @click {
+        extra += 1
+    })
+}
+
+func testMadeOncePerKey(t test.Test, c shows) {
+    t.assert(c.out.value == "0")
+    t.assert(c.label.fd == 0)
+    t.assert(opened == [0])
+}
+
+func testRekeyedReleasesTheOldValue(t test.Test, c shows) {
+    c.bump.click()
+    t.assert(c.out.value == "1")
+    t.assert(opened == [0, 1])
+    t.assert(closed == [0])
+}
+
+// One derived value reading another is made after it, and remade after it
+// when what both read is written; one with a block body is made the same way.
+component chain ui.node {
+    var k = 1
+
+    func outer() => open(inner.fd + 100)
+
+    func inner() file {
+        var x = k * 2
+        return open(x)
+    }
+
+    ui.button #grow(text="{outer.fd}", @click {
+        k += 1
+    })
+}
+
+func testADerivedValueReadingAnother(t test.Test, c chain) {
+    t.assert(c.outer.fd == 102)
+    c.grow.click()
+    t.assert(c.outer.fd == 104)
+    t.assert(closed == [2, 102])
+}
+
+component branch ui.node {
+    var on = true
+    var n = 1
+
+    if on {
+        shows(n=n)
+    }
+}
+
+func testAPropRekeys(t test.Test, c branch) {
+    c.n = 2
+    t.assert(opened == [10, 20])
+    t.assert(closed == [10])
+}
+
+// Coming back is a new instance with a value of its own: had it kept the one
+// released on leaving, the second leave would release it twice.
+func testLeavingTheBranchReleases(t test.Test, c branch) {
+    c.on = false
+    t.assert(closed == [10])
+    c.on = true
+    c.on = false
+    t.assert(closed == [10, 10])
+}
+
+component rows ui.node {
+    var ns = [1, 2, 3]
+
+    for var n = ns {
+        shows(n=n)
+    }
+}
+
+// Rows are keyed by position, so removing the second of three rekeys the
+// second row onto the third's value and unmounts the third.
+func testRemovingARowReleasesIt(t test.Test, c rows) {
+    c.ns = [1, 3]
+    t.assert(closed == [20, 30])
+}
+
+component block ui.node {
+    var on = true
+
+    if on {
+        var f = open(5)
+
+        ui.button #swap(text="{f.fd}", @click {
+            f = open(6)
+        })
+    }
+}
+
+// A view block's var is the block's state, released as a component's is.
+func testABlockVarIsReleasedWithItsBlock(t test.Test, c block) {
+    if c.swap != null {
+        c.swap.click()
+    }
+    t.assert(closed == [5])
+    c.on = false
+    t.assert(closed == [5, 6])
+}
+
+component reads ui.node {
+    var base = 1
+
+    func label() => open(base)
+
+    var copy = open(label.fd + 100)
+
+    ui.text #out(value="{label.fd} {copy.fd}")
+}
+
+// A var's initializer reading an owned derived value reads the value made
+// for the node, not a zero one made and never released.
+func testAVarInitializerReadsADerivedValue(t test.Test, c reads) {
+    t.assert(c.out.value == "1 101")
+    t.assert(opened == [1, 101])
+}
+
+component windows root {
+    var open = true
+
+    if open {
+        ui.window(title="w") {
+            holds
+        }
+    }
+}
+
+func testClosingTheWindowReleases(t test.Test, c windows) {
+    c.open = false
+    t.assert(closed == [1])
+}
+
+ui.window(title="t") {
+    holds
+    shows(n=1)
+    reads
+}

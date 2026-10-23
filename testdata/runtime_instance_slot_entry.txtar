@@ -109,12 +109,14 @@ type modelState struct {
 	heads               string
 	contents            string
 	k__inst0            map[string]int
-	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
-	__effect1_key       int
-	__effect1_live      []int
-	__effect1_desired   []int
+	__effect1_key       string
+	__effect1_live      []string
+	__effect1_desired   []string
+	__effect2_key       int
+	__effect2_live      []int
+	__effect2_desired   []int
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_torn     bool
@@ -131,12 +133,14 @@ func New() Model {
 	m.heads = ""
 	m.contents = ""
 	m.k__inst0 = map[string]int{}
-	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
-	m.__effect1_key = 0
-	m.__effect1_live = []int{}
-	m.__effect1_desired = []int{}
+	m.__effect1_key = ""
+	m.__effect1_live = []string{}
+	m.__effect1_desired = []string{}
+	m.__effect2_key = 0
+	m.__effect2_live = []int{}
+	m.__effect2_desired = []int{}
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -152,50 +156,41 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m *Model) __effect0_mount() {
-	m.heads = ((m.heads + m.__effect0_key) + " ")
-}
-
-func (m *Model) __effect0_down() {
+func (m *Model) __effect0_enter() {
 	m.__effect0_desired = []string{}
 	for __copy0, i := range m.items {
-		m.__effect0_desired = append(m.__effect0_desired, ((fmt.Sprint(i) + ":") + fmt.Sprint(func() int {
-			if __v, __ok := m.k__inst0[fmt.Sprint(__copy0)]; __ok {
-				return __v
-			}
-			return (i * 5)
-		}())))
-	}
-}
-
-func (m *Model) __effect0_up() {
-	for __effect0_i, __effect0_k := range m.__effect0_desired {
-		if __effect0_i >= len(m.__effect0_live) {
-			m.__effect0_key = __effect0_k
-			m.__effect0_mount()
-		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
-				m.__effect0_key = __effect0_k
-				m.__effect0_mount()
-			}
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
 		}
+		if __effect0_fresh {
+			var __cell1_k__inst0 int = func() int {
+				if __v, __ok := m.k__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell1_k__inst0 = (i * 5)
+			m.k__inst0[fmt.Sprint(__copy0)] = __cell1_k__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
 	}
 	m.__effect0_live = m.__effect0_desired
 }
 
 func (m *Model) __effect1_mount() {
-	m.contents = ((m.contents + ("c" + fmt.Sprint(m.__effect1_key))) + " ")
+	m.heads = ((m.heads + m.__effect1_key) + " ")
 }
 
 func (m *Model) __effect1_down() {
-	m.__effect1_desired = []int{}
+	m.__effect1_desired = []string{}
 	for __copy0, i := range m.items {
-		m.__effect1_desired = append(m.__effect1_desired, func() int {
+		m.__effect1_desired = append(m.__effect1_desired, ((fmt.Sprint(i) + ":") + fmt.Sprint(func() int {
 			if __v, __ok := m.k__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return (i * 5)
-		}())
+			return 0
+		}())))
 	}
 }
 
@@ -214,6 +209,37 @@ func (m *Model) __effect1_up() {
 	m.__effect1_live = m.__effect1_desired
 }
 
+func (m *Model) __effect2_mount() {
+	m.contents = ((m.contents + ("c" + fmt.Sprint(m.__effect2_key))) + " ")
+}
+
+func (m *Model) __effect2_down() {
+	m.__effect2_desired = []int{}
+	for __copy0, _ := range m.items {
+		m.__effect2_desired = append(m.__effect2_desired, func() int {
+			if __v, __ok := m.k__inst0[fmt.Sprint(__copy0)]; __ok {
+				return __v
+			}
+			return 0
+		}())
+	}
+}
+
+func (m *Model) __effect2_up() {
+	for __effect2_i, __effect2_k := range m.__effect2_desired {
+		if __effect2_i >= len(m.__effect2_live) {
+			m.__effect2_key = __effect2_k
+			m.__effect2_mount()
+		} else {
+			if m.__effect2_live[__effect2_i] != __effect2_k {
+				m.__effect2_key = __effect2_k
+				m.__effect2_mount()
+			}
+		}
+	}
+	m.__effect2_live = m.__effect2_desired
+}
+
 func (m *Model) __effects0_settle() {
 	if !m.__effects0_torn {
 		if m.__effects0_settling {
@@ -225,10 +251,11 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect2_down()
 				m.__effect1_down()
-				m.__effect0_down()
-				m.__effect0_up()
 				m.__effect1_up()
+				m.__effect2_up()
 			}
 			m.__effects0_settling = false
 			if m.__effects0_pending {
@@ -381,7 +408,7 @@ func (m Model) View() tea.View {
 			if __v, __ok := m.k__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return (i * 5)
+			return 0
 		}()))))
 		part0_1Item_0Children = append(part0_1Item_0Children, part0_1Item_0_0)
 		var part0_1Item_0_1 string
@@ -389,7 +416,7 @@ func (m Model) View() tea.View {
 			if __v, __ok := m.k__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
-			return (i * 5)
+			return 0
 		}()))))
 		part0_1Item_0Children = append(part0_1Item_0Children, part0_1Item_0_1)
 		part0_1Item_0 = lipgloss.JoinVertical(lipgloss.Left, part0_1Item_0Children...)
@@ -1491,7 +1518,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b1fcb44e12271df38008522b3f2a1b0f
+pass sha256:b85792f09ee58bdb6fac3b88fd50d8fc
 -- run/go/fyne --
 pass sha256:15b8043889ff8617c3d3d082013ee543
 -- run/go/gtk4 --

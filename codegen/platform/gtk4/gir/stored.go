@@ -63,12 +63,12 @@ func stripParams(ps []ConstructorParam) {
 
 func restoreProps(ps []Prop) {
 	for i := range ps {
-		ps[i].IRType = girTypeToIR(ps[i].GIRType)
+		ps[i].IRType = TypeToIR(ps[i].GIRType)
 	}
 }
 
 func restoreParams(ps []ConstructorParam) {
 	for i := range ps {
-		ps[i].IRType = girTypeToIR(ps[i].GIRType)
+		ps[i].IRType = TypeToIR(ps[i].GIRType)
 	}
 }

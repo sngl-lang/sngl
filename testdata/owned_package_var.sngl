@@ -1,0 +1,55 @@
+// An owned value a package var holds lives as long as the application: it is
+// released when the var is overwritten and when the application tears down,
+// after every node has unmounted. Nothing here releases by hand, and the
+// tracker finds nothing held once the test tears down.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) => file{fd=fd}
+
+var shared = open(1)
+
+func reopen(fd int) {
+    shared = open(fd)
+}
+
+func testHeldUntilTeardown(t test.Test) {
+    t.assert(shared.fd == 1)
+    t.assert(closed.length == 0)
+}
+
+func testOverwriteReleasesTheOldValue(t test.Test) {
+    reopen(2)
+    t.assert(shared.fd == 2)
+    t.assert(closed == [1])
+    shared = open(3)
+    t.assert(closed == [1, 2])
+}
+
+component shows ui.node {
+    ui.button #next(text="{shared.fd}", @click {
+        shared = open(shared.fd + 1)
+    })
+}
+
+func testWrittenFromAHandler(t test.Test, c shows) {
+    c.next.click()
+    t.assert(c.next.text == "2")
+    t.assert(closed == [1])
+}
+
+ui.window(title="t") {
+    shows
+}

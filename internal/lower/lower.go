@@ -80,6 +80,7 @@ var passes = []pass{
 	// reads, and before anything rewrites a body out from under a position.
 	passAsyncCapable,
 	passAsyncReactive,
+	passOwnedState,
 	passComputed,
 	passLambda,
 	passNoListLambdas,
@@ -110,6 +111,7 @@ var passes = []pass{
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
+	passCMarshal,
 	passDirectCalls,
 	passAsyncProps,
 	passEffect,
@@ -133,6 +135,7 @@ var passes = []pass{
 	passIndexedIter,
 	passForElse,
 	passErrorCatch,
+	passReleaseTemps,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,
@@ -435,6 +438,8 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 			switch x := e.(type) {
 			case *ir.Call:
 				visit(x.Func)
+			case *ir.StructLit:
+				visit(ir.ReleaseOf(x.Type))
 			case *ir.Ident:
 				// Held as a value -- handed to a func-typed prop, stored in a
 				// record -- a function is as much the program's as one it
@@ -447,12 +452,15 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		}).stmts(stmts)
 	}
 	visit = func(fn *ir.Func) {
-		if fn == nil || have[fn] || !mine[fn] || fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 {
+		if fn == nil || have[fn] || !mine[fn] || fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 && !ir.IsRelease(fn) {
 			return
 		}
 		have[fn] = true
 		out = append(out, fn)
 		walk(fn.Block)
+		// Lowering releases what the program allocates, so an owned type's
+		// release is called as surely as the function that made the value.
+		visit(ir.ReleaseOf(fn.Return))
 	}
 	for _, c := range pkg.Components {
 		walk(c.Stmts)

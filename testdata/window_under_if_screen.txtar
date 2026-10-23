@@ -49,6 +49,11 @@ import (
 	"os"
 )
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -56,10 +61,16 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	details        bool
-	n              int
-	visible__inst0 bool
-	__focusID      int
+	details             bool
+	n                   int
+	visible__inst0      bool
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__focusID           int
 
 	width, height int
 }
@@ -69,8 +80,15 @@ func New() Model {
 	m := Model{&modelState{}}
 	m.details = true
 	m.n = 0
-	m.visible__inst0 = true
+	m.visible__inst0 = false
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -78,6 +96,42 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []bool{}
+	if m.details {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != true)
+		}
+		if __effect0_fresh {
+			m.visible__inst0 = true
+		}
+		m.__effect0_desired = append(m.__effect0_desired, true)
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusNext() {
@@ -161,6 +215,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.details && m.visible__inst0 {
 				m.visible__inst0 = false
 				m.details = false
+				m.__effects0_settle()
 			}
 			if !(m.details && m.visible__inst0) {
 				return m, tea.Quit
@@ -178,24 +233,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.details {
 		if m.visible__inst0 {
-			var contentParts []string
-			var contentPart_0 string
-			contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.n)))
-			contentParts = append(contentParts, contentPart_0)
-			var contentPart_1 string
-			contentPart_1Focused := (m.__focusID == 0)
-			contentPart_1Prefix := " "
-			if contentPart_1Focused {
-				contentPart_1Prefix = ">"
+			var part0Parts []string
+			var part0Part_0 string
+			part0Part_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.n)))
+			part0Parts = append(part0Parts, part0Part_0)
+			var part0Part_1 string
+			part0Part_1Focused := (m.__focusID == 0)
+			part0Part_1Prefix := " "
+			if part0Part_1Focused {
+				part0Part_1Prefix = ">"
 			}
-			contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("+"))
-			contentParts = append(contentParts, contentPart_1)
-			content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+			part0Part_1 = lipgloss.NewStyle().Render(part0Part_1Prefix + " " + fmt.Sprint("+"))
+			part0Parts = append(part0Parts, part0Part_1)
+			part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
 		}
 	}
+	if part0 != "" {
+		parts = append(parts, part0)
+	}
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -274,6 +334,6 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
     }
 }
 -- run/go/bubbletea --
-pass sha256:dede24178c74660d785bb220a63a10dc
+pass sha256:39a05d24f7478d23e442c33531d84005
 -- run/kotlin/android --
 pass sha256:aba0b7e49bade64c4eb4243fe966a9d6

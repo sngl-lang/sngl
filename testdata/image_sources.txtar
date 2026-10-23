@@ -935,20 +935,28 @@ func sngl_draw_dispatch(idx C.int, cr *C.cairo_t, width, height C.int) {
 	}
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
+
+var snglActivateSignal = C.CString("activate")
 
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -1139,6 +1147,19 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
+var (
+	__cstr0 = C.CString("see [logo]")
+	__cstr1 = C.CString("grow")
+	__cstr2 = C.CString("clicked")
+	__cstr3 = C.CString("JD")
+	__cstr4 = C.CString("Images")
+)
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1164,29 +1185,44 @@ type Color struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	radius__inst0   float64
-	url__inst0      string
-	hasPhoto__inst0 bool
-	visible__inst0  bool
-	failed__inst0   bool
-	__slot1         []*C.GtkWidget
-	__slot1_at      *C.GtkWidget
-	__inst0_live    []*__child0Instance
-	__rendering1    bool
-	__renderAgain1  bool
-	__n0            *C.GtkBox
-	__n6            *C.GtkBox
-	__n7            *C.GtkBox
-	__n8            *C.GtkPicture
-	__n9            *C.GtkBox
-	__n1            *C.GtkPicture
-	__n10           *C.GtkBox
-	__n11           *C.GtkPicture
-	__n12           *C.GtkDrawingArea
-	__n13           *C.GtkLabel
-	__n16           *C.GtkButton
-	__n17           *C.GtkPicture
-	__root          *C.GtkBox
+	radius__inst0         float64
+	url__inst0            string
+	hasPhoto__inst0       bool
+	picture__inst0__inst0 *gtk4rt.Picture
+	picture__inst1__inst0 *gtk4rt.Picture
+	picture__inst2__inst0 *gtk4rt.Picture
+	visible__inst0        bool
+	failed__inst0         bool
+	__effect0_live        []bool
+	__effect0_desired     []bool
+	__effect1_key         string
+	__effect1_dirty       bool
+	__effect2_live        []bool
+	__effect2_desired     []bool
+	__effect3_key         string
+	__effect3_dirty       bool
+	__effects0_settling   bool
+	__effects0_pending    bool
+	__effects0_torn       bool
+	__effects0_steps      int
+	__slot1               []*C.GtkWidget
+	__slot1_at            *C.GtkWidget
+	__inst1_live          []*__child0Instance
+	__rendering1          bool
+	__renderAgain1        bool
+	__n1                  *C.GtkBox
+	__n8                  *C.GtkBox
+	__n9                  *C.GtkBox
+	__n2                  *C.GtkPicture
+	__n10                 *C.GtkBox
+	__n3                  *C.GtkPicture
+	__n11                 *C.GtkBox
+	__n12                 *C.GtkPicture
+	__n13                 *C.GtkDrawingArea
+	__n14                 *C.GtkLabel
+	__n17                 *C.GtkButton
+	__n18                 *C.GtkPicture
+	__root                *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
@@ -1196,11 +1232,26 @@ func New() *Model {
 	m.radius__inst0 = 4.0
 	m.url__inst0 = "https://example.com/a.png"
 	m.hasPhoto__inst0 = false
+	m.picture__inst0__inst0 = gtk4rt.LoadPicture("logo.svg")
+	m.picture__inst1__inst0 = gtk4rt.LoadPicture(m.url__inst0)
+	m.picture__inst2__inst0 = gtk4rt.LoadPicture("logo.svg")
 	m.visible__inst0 = true
 	m.failed__inst0 = false
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effect1_key = ""
+	m.__effect1_dirty = false
+	m.__effect2_live = []bool{}
+	m.__effect2_desired = []bool{}
+	m.__effect3_key = ""
+	m.__effect3_dirty = false
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__slot1 = nil
 	m.__slot1_at = nil
-	m.__inst0_live = []*__child0Instance{}
+	m.__inst1_live = []*__child0Instance{}
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
@@ -1248,6 +1299,122 @@ func LineJoinFunc(join string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
+func (m *Model) __effect0_unmount() {
+	gtk4rt.UnrefPicture(m.picture__inst0__inst0)
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []bool{}
+	m.__effect0_desired = append(m.__effect0_desired, true)
+	for __effect0_i, _ := range m.__effect0_live {
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
+		if __effect0_j >= len(m.__effect0_desired) {
+			m.__effect0_unmount()
+		} else {
+			if m.__effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
+				m.__effect0_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect0_up() {
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect0_teardown() {
+	for range m.__effect0_live {
+		m.__effect0_unmount()
+	}
+	m.__effect0_live = []bool{}
+}
+
+func (m *Model) __effect1_update() {
+	__new0 := gtk4rt.LoadPicture("logo.svg")
+	__old1 := m.picture__inst0__inst0
+	m.picture__inst0__inst0 = __new0
+	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.picture__inst0__inst0)
+	gtk4rt.UnrefPicture(__old1)
+}
+
+func (m *Model) __effect2_unmount() {
+	gtk4rt.UnrefPicture(m.picture__inst1__inst0)
+}
+
+func (m *Model) __effect2_down() {
+	m.__effect2_desired = []bool{}
+	m.__effect2_desired = append(m.__effect2_desired, true)
+	for __effect2_i, _ := range m.__effect2_live {
+		var __effect2_j int = ((len(m.__effect2_live) - 1) - __effect2_i)
+		if __effect2_j >= len(m.__effect2_desired) {
+			m.__effect2_unmount()
+		} else {
+			if m.__effect2_desired[__effect2_j] != m.__effect2_live[__effect2_j] {
+				m.__effect2_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect2_up() {
+	m.__effect2_live = m.__effect2_desired
+}
+
+func (m *Model) __effect2_teardown() {
+	for range m.__effect2_live {
+		m.__effect2_unmount()
+	}
+	m.__effect2_live = []bool{}
+}
+
+func (m *Model) __effect3_update() {
+	__new2 := gtk4rt.LoadPicture(m.url__inst0)
+	__old3 := m.picture__inst1__inst0
+	m.picture__inst1__inst0 = __new2
+	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.picture__inst1__inst0)
+	gtk4rt.UnrefPicture(__old3)
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				if m.__effect1_dirty {
+					m.__effect1_dirty = false
+					m.__effect1_key = "logo.svg"
+					m.__effect1_update()
+				}
+				if m.__effect3_dirty {
+					m.__effect3_dirty = false
+					m.__effect3_key = m.url__inst0
+					m.__effect3_update()
+				}
+				m.__effect2_down()
+				m.__effect0_down()
+				m.__effect0_up()
+				m.__effect2_up()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	m.__effects0_torn = true
+	m.__effect2_teardown()
+	m.__effect0_teardown()
+}
+
 func (m *Model) __renderSlot1(parent *C.GtkBox) {
 	if m.__rendering1 {
 		m.__renderAgain1 = true
@@ -1261,65 +1428,56 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 			}
 			m.__slot1 = nil
 			m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
+			__inst1_next := []*__child0Instance{}
+			var __inst1_i int = 0
 			if m.failed__inst0 || !m.hasPhoto__inst0 {
-				__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
-				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n4)))
+				__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr3)
+				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n6)))
+				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n6)))
 			} else {
-				var __n5 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n5 = m.__inst0_live[__inst0_i]
-					__n5.Set__on0(func(m__r0 string) {
+				var __n7 *__child0Instance
+				if len(m.__inst1_live) > __inst1_i {
+					__n7 = m.__inst1_live[__inst1_i]
+					__n7.Set__on0(func(m__r0 string) {
 						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
+						m.__renderSlot1(m.__n8)
 					})
-					__n5.Set__p0(m.hasPhoto__inst0)
-					__n5.Set__p1(m.url__inst0)
+					__n7.Set__p0(m.hasPhoto__inst0)
+					__n7.Set__p1(m.url__inst0)
 				} else {
-					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
 					}
-					__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
+					__n7__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
 						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
+						m.__renderSlot1(m.__n8)
 					})
-					__n5 = __n5__new
+					__n7 = __n7__new
 				}
-				__inst0_next = append(__inst0_next, __n5)
-				__inst0_i = (__inst0_i + 1)
-				__n5__el := __n5.Root
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
-				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
+				__inst1_next = append(__inst1_next, __n7)
+				__inst1_i = (__inst1_i + 1)
+				__n7__el := __n7.Root
+				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
+				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
 			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
 				}
 			}
-			m.__inst0_live = __inst0_next
+			m.__inst1_live = __inst1_next
 		}
 		m.__rendering1 = false
 	}
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-}
-
-func (m *Model) __n7_click_handler() {
-}
-
-func (m *Model) __n7_load_handler() {
-}
-
-func (m *Model) __n7_failed_handler(m__r0 string) {
 }
 
 func (m *Model) __n9_click_handler() {
@@ -1340,11 +1498,20 @@ func (m *Model) __n10_load_handler() {
 func (m *Model) __n10_failed_handler(m__r0 string) {
 }
 
-func (m *Model) __n16_clicked_handler() {
+func (m *Model) __n11_click_handler() {
+}
+
+func (m *Model) __n11_load_handler() {
+}
+
+func (m *Model) __n11_failed_handler(m__r0 string) {
+}
+
+func (m *Model) __n17_clicked_handler() {
 	m.radius__inst0 = (m.radius__inst0 + 1.0)
 	m.hasPhoto__inst0 = !m.hasPhoto__inst0
-	m.__renderSlot1(m.__n6)
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) {
+	m.__renderSlot1(m.__n8)
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n12)), 16, 16, func(cr unsafe.Pointer) {
 		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
 	})
 }
@@ -1358,7 +1525,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 }
 
 func (m *Model) _canvasDraw1(ctx *C.cairo_t) {
-	gtk4rt.CairoPaintURL(ctx, "logo.svg", 0.0, 0.0, 16.0, 16.0)
+	gtk4rt.CairoPaintPicture(ctx, m.picture__inst2__inst0, 0.0, 0.0, 16.0, 16.0)
 	C.cairo_save(ctx)
 	C.cairo_translate(ctx, C.double(16.0), C.double(16.0))
 	C.cairo_scale(ctx, C.double(2.0), C.double(2.0))
@@ -1379,6 +1546,144 @@ func (m *Model) _canvasDraw2(ctx *C.cairo_t) {
 	C.cairo_restore(ctx)
 }
 
+// __remote_state1Instance is one live instance of the __remote_state1 component.
+type __remote_state1Instance struct {
+	Root                *C.GtkWidget
+	__model             *Model
+	__prop_url          string
+	picture__inst4      *gtk4rt.Picture
+	__effect4_live      []bool
+	__effect4_desired   []bool
+	__effect5_key       string
+	__effect5_dirty     bool
+	__effects1_settling bool
+	__effects1_pending  bool
+	__effects1_torn     bool
+	__effects1_steps    int
+	__root              *C.GtkBox
+	__slot0             []*C.GtkWidget
+	__slot0_at          *C.GtkWidget
+	__slot1             []*C.GtkWidget
+	__slot1_at          *C.GtkWidget
+	__n0                *C.GtkPicture
+}
+
+func new__remote_state1Instance(__model *Model, __a_url string) *__remote_state1Instance {
+	c := &__remote_state1Instance{}
+	c.__model = __model
+	c.__prop_url = __a_url
+	c.picture__inst4 = gtk4rt.LoadPicture(c.__prop_url)
+	c.__effect4_live = []bool{}
+	c.__effect4_desired = []bool{}
+	c.__effect5_key = ""
+	c.__effect5_dirty = false
+	c.__effects1_settling = false
+	c.__effects1_pending = false
+	c.__effects1_torn = false
+	c.__effects1_steps = 0
+	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst4)
+	c.__effects1_settle()
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
+	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
+	return c
+}
+
+func (c *__remote_state1Instance) __effect4_unmount() {
+	gtk4rt.UnrefPicture(c.picture__inst4)
+}
+
+func (c *__remote_state1Instance) __effect4_down() {
+	c.__effect4_desired = []bool{}
+	c.__effect4_desired = append(c.__effect4_desired, true)
+	for __effect4_i, _ := range c.__effect4_live {
+		var __effect4_j int = ((len(c.__effect4_live) - 1) - __effect4_i)
+		if __effect4_j >= len(c.__effect4_desired) {
+			c.__effect4_unmount()
+		} else {
+			if c.__effect4_desired[__effect4_j] != c.__effect4_live[__effect4_j] {
+				c.__effect4_unmount()
+			}
+		}
+	}
+}
+
+func (c *__remote_state1Instance) __effect4_up() {
+	c.__effect4_live = c.__effect4_desired
+}
+
+func (c *__remote_state1Instance) __effect4_teardown() {
+	for range c.__effect4_live {
+		c.__effect4_unmount()
+	}
+	c.__effect4_live = []bool{}
+}
+
+func (c *__remote_state1Instance) __effect5_update() {
+	__new2 := gtk4rt.LoadPicture(c.__prop_url)
+	__old3 := c.picture__inst4
+	c.picture__inst4 = __new2
+	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst4)
+	gtk4rt.UnrefPicture(__old3)
+}
+
+func (c *__remote_state1Instance) __effects1_settle() {
+	if !c.__effects1_torn {
+		if c.__effects1_settling {
+			c.__effects1_pending = true
+		} else {
+			c.__effects1_settling = true
+			c.__effects1_pending = true
+			c.__effects1_steps = 0
+			for c.__effects1_pending && (c.__effects1_steps < 512) {
+				c.__effects1_pending = false
+				c.__effects1_steps = (c.__effects1_steps + 1)
+				if c.__effect5_dirty {
+					c.__effect5_dirty = false
+					c.__effect5_key = c.__prop_url
+					c.__effect5_update()
+				}
+				c.__effect4_down()
+				c.__effect4_up()
+			}
+			c.__effects1_settling = false
+			if c.__effects1_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
+}
+
+func (c *__remote_state1Instance) teardown() {
+	c.__effects1_torn = true
+	c.__effect4_teardown()
+}
+
+func (c *__remote_state1Instance) SetUrl(__v string) {
+	if c.__prop_url != __v {
+		c.__effect5_dirty = true
+	}
+	c.__prop_url = __v
+	c.__effects1_settle()
+}
+
+func (c *__remote_state1Instance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
+	if c.__slot1_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
+	}
+}
+
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
 	Root           *C.GtkWidget
@@ -1389,11 +1694,12 @@ type __child0Instance struct {
 	__root         *C.GtkBox
 	__slot0        []*C.GtkWidget
 	__slot0_at     *C.GtkWidget
+	__inst0_live   []*__remote_state1Instance
 	__rendering0   bool
 	__renderAgain0 bool
 	__slot1        []*C.GtkWidget
 	__slot1_at     *C.GtkWidget
-	__n3           *C.GtkBox
+	__n5           *C.GtkBox
 }
 
 func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___on0 func(string)) *__child0Instance {
@@ -1404,32 +1710,35 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__prop___on0 = __a___on0
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
+	c.__inst0_live = []*__remote_state1Instance{}
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n3 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
-	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(c.__n3)), "cover")
-	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func() {
+	c.__n5 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
+	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(c.__n5)), "cover")
+	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(c.__n5)), func() {
 	})
-	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func() {
+	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(c.__n5)), func() {
 	})
-	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func(__on0_0 string) {
+	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(c.__n5)), func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
 	})
-	c.__renderSlot0(c.__n3)
-	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n3))
+	c.__renderSlot0(c.__n5)
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n5))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
 }
 
 func (c *__child0Instance) Set__p0(__v bool) {
 	c.__prop___p0 = __v
-	c.__renderSlot0(c.__n3)
+	c.__renderSlot0(c.__n5)
 }
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	c.__renderSlot0(c.__n3)
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].SetUrl(c.__prop___p1)
+	}
 }
 
 func (c *__child0Instance) Set__on0(__v func(string)) {
@@ -1449,18 +1758,48 @@ func (c *__child0Instance) __renderSlot0(parent *C.GtkBox) {
 			}
 			c.__slot0 = nil
 			c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
+			__inst0_next := []*__remote_state1Instance{}
+			var __inst0_i int = 0
 			if c.__prop___p0 {
-				__n2 := (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-				gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(__n2)), c.__prop___p1)
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n2)))
-				c.__slot0 = append(c.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n2)))
+				var __n4 *__remote_state1Instance
+				if len(c.__inst0_live) > __inst0_i {
+					__n4 = c.__inst0_live[__inst0_i]
+					__n4.SetUrl(c.__prop___p1)
+				} else {
+					if len(c.__inst0_live) > __inst0_i {
+						c.__inst0_live[__inst0_i].Destroy()
+					}
+					__n4__new := new__remote_state1Instance(c.__model, c.__prop___p1)
+					__n4 = __n4__new
+				}
+				__inst0_next = append(__inst0_next, __n4)
+				__inst0_i = (__inst0_i + 1)
+				__n4__el := __n4.Root
+				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
+				c.__slot0 = append(c.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
 			}
+			for __inst0_i_d, _ := range c.__inst0_live {
+				var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					c.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			c.__inst0_live = __inst0_next
 		}
 		c.__rendering0 = false
 	}
 }
 
+func (c *__child0Instance) teardown() {
+	for __inst0_live_di, _ := range c.__inst0_live {
+		var __inst0_live_dj int = ((len(c.__inst0_live) - 1) - __inst0_live_di)
+		c.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	c.__inst0_live = []*__remote_state1Instance{}
+}
+
 func (c *__child0Instance) Destroy() {
+	c.teardown()
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
@@ -1497,6 +1836,30 @@ func (m *Model) SetHasPhoto__inst0(v bool) {
 	m.hasPhoto__inst0 = v
 }
 
+func (m *Model) Picture__inst0__inst0() *gtk4rt.Picture {
+	return m.picture__inst0__inst0
+}
+
+func (m *Model) SetPicture__inst0__inst0(v *gtk4rt.Picture) {
+	m.picture__inst0__inst0 = v
+}
+
+func (m *Model) Picture__inst1__inst0() *gtk4rt.Picture {
+	return m.picture__inst1__inst0
+}
+
+func (m *Model) SetPicture__inst1__inst0(v *gtk4rt.Picture) {
+	m.picture__inst1__inst0 = v
+}
+
+func (m *Model) Picture__inst2__inst0() *gtk4rt.Picture {
+	return m.picture__inst2__inst0
+}
+
+func (m *Model) SetPicture__inst2__inst0(v *gtk4rt.Picture) {
+	m.picture__inst2__inst0 = v
+}
+
 func (m *Model) Visible__inst0() bool {
 	return m.visible__inst0
 }
@@ -1518,66 +1881,67 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n6 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n6)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n6)), C.int(6))
-	m.__n7 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
-	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n7)), "cover")
-	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n7)), m.__n7_click_handler)
-	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n7)), m.__n7_load_handler)
-	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n7)), m.__n7_failed_handler)
-	m.__n8 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(m.__n8)), "logo.svg")
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n7)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n7)))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n8 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n8)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n8)), C.int(6))
 	m.__n9 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
-	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n9)), "contain")
+	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n9)), "cover")
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_click_handler)
 	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_load_handler)
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_failed_handler)
-	m.__n1 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.url__inst0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n9)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
+	m.__n2 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.picture__inst0__inst0)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n9)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
 	m.__n10 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "contain")
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_click_handler)
 	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_load_handler)
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_failed_handler)
-	m.__n11 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) {
+	m.__n3 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.picture__inst1__inst0)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n10)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
+	m.__n11 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
+	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n11)), "contain")
+	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n11)), m.__n11_click_handler)
+	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n11)), m.__n11_load_handler)
+	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n11)), m.__n11_failed_handler)
+	m.__n12 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n12)), 16, 16, func(cr unsafe.Pointer) {
 		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
 	})
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n10)), (*C.GtkWidget)(unsafe.Pointer(m.__n11)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
-	m.__renderSlot1(m.__n6)
-	m.__n12 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
-	C.gtk_drawing_area_set_content_width(m.__n12, C.int(32))
-	C.gtk_drawing_area_set_content_height(m.__n12, C.int(32))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n11)), (*C.GtkWidget)(unsafe.Pointer(m.__n12)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n11)))
+	m.__renderSlot1(m.__n8)
+	m.__n13 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
+	C.gtk_drawing_area_set_content_width(m.__n13, C.int(32))
+	C.gtk_drawing_area_set_content_height(m.__n13, C.int(32))
 	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
 		_snglCairoScale(cr, pw, ph, 32, 32, "")
 		m._canvasDraw1(cr)
 	})
-	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n12), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n12)))
-	m.__n13 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_wrap((*C.GtkLabel)(unsafe.Pointer(m.__n13)), C.gboolean(1))
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n13)), C.float(0.0))
-	C.gtk_label_set_markup((*C.GtkLabel)(unsafe.Pointer(m.__n13)), C.CString("see [logo]"))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n13)))
-	m.__n16 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n16)), C.CString("grow"))
-	snglCallbacks = append(snglCallbacks, m.__n16_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n16), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n16)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
-	m.__n17 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n17)), 16, 16, func(cr unsafe.Pointer) {
+	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n13), C.int((len(snglDrawFuncs) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n13)))
+	m.__n14 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_wrap((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.gboolean(1))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.float(0.0))
+	C.gtk_label_set_markup((*C.GtkLabel)(unsafe.Pointer(m.__n14)), __cstr0)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n14)))
+	m.__n17 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n17)), __cstr1)
+	snglCallbacks = append(snglCallbacks, m.__n17_clicked_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n17), __cstr2, C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n17)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
+	m.__n18 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n18)), 16, 16, func(cr unsafe.Pointer) {
 		m._canvasDraw2((*C.cairo_t)(unsafe.Pointer(cr)))
 	})
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n17)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	m.__effects0_settle()
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n18)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -1585,9 +1949,9 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString("Images"))
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr4)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
-	gtk4rt.WindowSetIcon(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n17)))
+	gtk4rt.WindowSetIcon(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n18)))
 	return win
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -2245,7 +2609,7 @@ pass sha256:4e1e85f17b4a2065817399c5fe88588a
 -- run/go/fyne --
 pass sha256:08060448a4ef95dda9c3550abb8b9828
 -- run/go/gtk4 --
-pass sha256:aea44ab7f2dd4e632d3026a8b6121cba
+pass sha256:73208f6333d90ff7b60b34f9ab930ef7
 -- run/kotlin/android --
 pass sha256:b42b419cf3fd88c15d167bd6b7c70df3
 -- run/none/html --

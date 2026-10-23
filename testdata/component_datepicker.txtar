@@ -372,11 +372,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -529,6 +531,10 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+var (
+	__cstr0 = C.CString("day-selected")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	d                   time.Time
@@ -646,7 +652,7 @@ func (m *Model) buildWidgetTree() {
 	m.cal = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.cal)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.cal_daySelected_handler)
-	C.sngl_connect(unsafe.Pointer(m.cal), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.cal), __cstr0, C.int((len(snglCallbacks) - 1)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.cal)))
 }
@@ -880,7 +886,7 @@ pass sha256:4c0af4220760b1b381b136ac2d5b831e
 -- run/go/fyne --
 pass sha256:95eb24ffec20a57a93b8c2be1eeb39c4
 -- run/go/gtk4 --
-pass sha256:771136eb35f4412c9f59d201c2bf7650
+pass sha256:4e32797668889b4d6c56c00c2939f0ae
 -- run/kotlin/android --
 pass sha256:9cdaf99dcadc2d6c3feffb8ba1c9f1db
 -- run/none/html --

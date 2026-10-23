@@ -224,6 +224,7 @@ func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	savedScope, savedTab := c.scope, c.symtab
 	c.scope, c.symtab = pkg.Symbols.Root, pkg.Symbols
 	defer func() { c.scope, c.symtab = savedScope, savedTab }()
+	defer pushTypeParams(c, fn.AST.RecvTypeParams, fn.AST.TypeParams)()
 	for i, p := range fn.AST.Params.Params {
 		fn.Params[i].Type = c.resolveType(p.Type)
 	}

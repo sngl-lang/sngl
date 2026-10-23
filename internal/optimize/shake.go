@@ -512,6 +512,11 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 					walkExpr(f.Default, used, walk)
 				}
 			}
+			// Lowering calls it wherever a value of the struct is let go of,
+			// and nothing before that names it.
+			if s.Release != nil {
+				walk(s.Release)
+			}
 		case *ir.EnumDef:
 			for _, m := range s.Members {
 				// A payload enum's declaration names what each member

@@ -88,6 +88,11 @@ import (
 	"os"
 )
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -95,14 +100,22 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	shown__inst0   bool
-	mh__inst0      int
-	on__inst0      bool
-	ph__inst0      int
-	visible__inst0 bool
-	hits__inst0    int
-	hits__inst1    int
-	__focusID      int
+	shown__inst0        bool
+	mh__inst0           int
+	on__inst0           bool
+	ph__inst0           int
+	visible__inst0      bool
+	hits__inst0         int
+	hits__inst1         int
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effect1_live      []bool
+	__effect1_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__focusID           int
 
 	width, height int
 }
@@ -117,7 +130,16 @@ func New() Model {
 	m.visible__inst0 = true
 	m.hits__inst0 = 0
 	m.hits__inst1 = 0
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effect1_live = []bool{}
+	m.__effect1_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -125,6 +147,58 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []bool{}
+	if m.shown__inst0 {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != true)
+		}
+		if __effect0_fresh {
+			m.hits__inst0 = 0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, true)
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_enter() {
+	m.__effect1_desired = []bool{}
+	if m.on__inst0 {
+		__effect1_fresh := true
+		if len(m.__effect1_desired) < len(m.__effect1_live) {
+			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != true)
+		}
+		if __effect1_fresh {
+			m.hits__inst1 = 0
+		}
+		m.__effect1_desired = append(m.__effect1_desired, true)
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusNext() {
@@ -326,12 +400,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.shown__inst0 = !m.shown__inst0
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.hits__inst0 = (m.hits__inst0 + 1)
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
 			m.mh__inst0 = (m.mh__inst0 + 1)
 		case msg.Code == tea.KeyEnter && m.__focusID == 3:
 			m.on__inst0 = !m.on__inst0
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 4:
 			m.hits__inst1 = (m.hits__inst1 + 1)
 		case msg.Code == tea.KeyEnter && m.__focusID == 5:
@@ -399,6 +475,7 @@ func (m *Model) kPresent() bool {
 	if m.shown__inst0 {
 		return true
 	}
+	m.__effects0_settle()
 	return false
 }
 
@@ -406,87 +483,91 @@ func (m *Model) k__own0Present() bool {
 	if m.on__inst0 {
 		return true
 	}
+	m.__effects0_settle()
 	return false
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentParts []string
-		var contentPart_0 string
-		var contentPart_0Children []string
-		var contentPart_0_0 string
-		contentPart_0_0Focused := (m.__focusID == 0)
-		contentPart_0_0Prefix := " "
-		if contentPart_0_0Focused {
-			contentPart_0_0Prefix = ">"
+		var part0Parts []string
+		var part0Part_0 string
+		var part0Part_0Children []string
+		var part0Part_0_0 string
+		part0Part_0_0Focused := (m.__focusID == 0)
+		part0Part_0_0Prefix := " "
+		if part0Part_0_0Focused {
+			part0Part_0_0Prefix = ">"
 		}
-		contentPart_0_0 = lipgloss.NewStyle().Render(contentPart_0_0Prefix + " " + fmt.Sprint("s"))
-		contentPart_0Children = append(contentPart_0Children, contentPart_0_0)
-		var contentPart_0_1 string
+		part0Part_0_0 = lipgloss.NewStyle().Render(part0Part_0_0Prefix + " " + fmt.Sprint("s"))
+		part0Part_0Children = append(part0Part_0Children, part0Part_0_0)
+		var part0Part_0_1 string
 		if m.shown__inst0 {
-			var contentPart_0_1Parts []string
-			var contentPart_0_1Part_0 string
-			contentPart_0_1Part_0Focused := (m.__focusID == 1)
-			contentPart_0_1Part_0Prefix := " "
-			if contentPart_0_1Part_0Focused {
-				contentPart_0_1Part_0Prefix = ">"
+			var part0Part_0_1Parts []string
+			var part0Part_0_1Part_0 string
+			part0Part_0_1Part_0Focused := (m.__focusID == 1)
+			part0Part_0_1Part_0Prefix := " "
+			if part0Part_0_1Part_0Focused {
+				part0Part_0_1Part_0Prefix = ">"
 			}
-			contentPart_0_1Part_0 = lipgloss.NewStyle().Render(contentPart_0_1Part_0Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
-			contentPart_0_1Parts = append(contentPart_0_1Parts, contentPart_0_1Part_0)
-			var contentPart_0_1Part_1 string
-			contentPart_0_1Part_1Focused := (m.__focusID == 2)
-			contentPart_0_1Part_1Prefix := " "
-			if contentPart_0_1Part_1Focused {
-				contentPart_0_1Part_1Prefix = ">"
+			part0Part_0_1Part_0 = lipgloss.NewStyle().Render(part0Part_0_1Part_0Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
+			part0Part_0_1Parts = append(part0Part_0_1Parts, part0Part_0_1Part_0)
+			var part0Part_0_1Part_1 string
+			part0Part_0_1Part_1Focused := (m.__focusID == 2)
+			part0Part_0_1Part_1Prefix := " "
+			if part0Part_0_1Part_1Focused {
+				part0Part_0_1Part_1Prefix = ">"
 			}
-			contentPart_0_1Part_1 = lipgloss.NewStyle().Render(contentPart_0_1Part_1Prefix + " " + fmt.Sprint(("mk" + fmt.Sprint(m.mh__inst0))))
-			contentPart_0_1Parts = append(contentPart_0_1Parts, contentPart_0_1Part_1)
-			contentPart_0_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0_1Parts...)
+			part0Part_0_1Part_1 = lipgloss.NewStyle().Render(part0Part_0_1Part_1Prefix + " " + fmt.Sprint(("mk" + fmt.Sprint(m.mh__inst0))))
+			part0Part_0_1Parts = append(part0Part_0_1Parts, part0Part_0_1Part_1)
+			part0Part_0_1 = lipgloss.JoinVertical(lipgloss.Left, part0Part_0_1Parts...)
 		}
-		if contentPart_0_1 != "" {
-			contentPart_0Children = append(contentPart_0Children, contentPart_0_1)
+		if part0Part_0_1 != "" {
+			part0Part_0Children = append(part0Part_0Children, part0Part_0_1)
 		}
-		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
-		contentParts = append(contentParts, contentPart_0)
-		var contentPart_1 string
-		var contentPart_1Children []string
-		var contentPart_1_0 string
-		contentPart_1_0Focused := (m.__focusID == 3)
-		contentPart_1_0Prefix := " "
-		if contentPart_1_0Focused {
-			contentPart_1_0Prefix = ">"
+		part0Part_0 = lipgloss.JoinVertical(lipgloss.Left, part0Part_0Children...)
+		part0Parts = append(part0Parts, part0Part_0)
+		var part0Part_1 string
+		var part0Part_1Children []string
+		var part0Part_1_0 string
+		part0Part_1_0Focused := (m.__focusID == 3)
+		part0Part_1_0Prefix := " "
+		if part0Part_1_0Focused {
+			part0Part_1_0Prefix = ">"
 		}
-		contentPart_1_0 = lipgloss.NewStyle().Render(contentPart_1_0Prefix + " " + fmt.Sprint("p"))
-		contentPart_1Children = append(contentPart_1Children, contentPart_1_0)
-		var contentPart_1_1 string
+		part0Part_1_0 = lipgloss.NewStyle().Render(part0Part_1_0Prefix + " " + fmt.Sprint("p"))
+		part0Part_1Children = append(part0Part_1Children, part0Part_1_0)
+		var part0Part_1_1 string
 		if m.on__inst0 {
-			var contentPart_1_1Parts []string
-			var contentPart_1_1Part_0 string
-			contentPart_1_1Part_0Focused := (m.__focusID == 4)
-			contentPart_1_1Part_0Prefix := " "
-			if contentPart_1_1Part_0Focused {
-				contentPart_1_1Part_0Prefix = ">"
+			var part0Part_1_1Parts []string
+			var part0Part_1_1Part_0 string
+			part0Part_1_1Part_0Focused := (m.__focusID == 4)
+			part0Part_1_1Part_0Prefix := " "
+			if part0Part_1_1Part_0Focused {
+				part0Part_1_1Part_0Prefix = ">"
 			}
-			contentPart_1_1Part_0 = lipgloss.NewStyle().Render(contentPart_1_1Part_0Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
-			contentPart_1_1Parts = append(contentPart_1_1Parts, contentPart_1_1Part_0)
-			var contentPart_1_1Part_1 string
-			contentPart_1_1Part_1Focused := (m.__focusID == 5)
-			contentPart_1_1Part_1Prefix := " "
-			if contentPart_1_1Part_1Focused {
-				contentPart_1_1Part_1Prefix = ">"
+			part0Part_1_1Part_0 = lipgloss.NewStyle().Render(part0Part_1_1Part_0Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
+			part0Part_1_1Parts = append(part0Part_1_1Parts, part0Part_1_1Part_0)
+			var part0Part_1_1Part_1 string
+			part0Part_1_1Part_1Focused := (m.__focusID == 5)
+			part0Part_1_1Part_1Prefix := " "
+			if part0Part_1_1Part_1Focused {
+				part0Part_1_1Part_1Prefix = ">"
 			}
-			contentPart_1_1Part_1 = lipgloss.NewStyle().Render(contentPart_1_1Part_1Prefix + " " + fmt.Sprint(("pk" + fmt.Sprint(m.ph__inst0))))
-			contentPart_1_1Parts = append(contentPart_1_1Parts, contentPart_1_1Part_1)
-			contentPart_1_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_1Parts...)
+			part0Part_1_1Part_1 = lipgloss.NewStyle().Render(part0Part_1_1Part_1Prefix + " " + fmt.Sprint(("pk" + fmt.Sprint(m.ph__inst0))))
+			part0Part_1_1Parts = append(part0Part_1_1Parts, part0Part_1_1Part_1)
+			part0Part_1_1 = lipgloss.JoinVertical(lipgloss.Left, part0Part_1_1Parts...)
 		}
-		if contentPart_1_1 != "" {
-			contentPart_1Children = append(contentPart_1Children, contentPart_1_1)
+		if part0Part_1_1 != "" {
+			part0Part_1Children = append(part0Part_1Children, part0Part_1_1)
 		}
-		contentPart_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1Children...)
-		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		part0Part_1 = lipgloss.JoinVertical(lipgloss.Left, part0Part_1Children...)
+		part0Parts = append(part0Parts, part0Part_1)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
 	}
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -2191,7 +2272,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7e32b2d164a3b6e0adae016333cba5d7
+pass sha256:a553e5e423dc7b36e89d8d32b8597f59
 -- run/go/fyne --
 pass sha256:ae64423700c43602e29133f4312bf235
 -- run/go/gtk4 --

@@ -314,10 +314,31 @@ func sameType(a, b *ir.Type) bool {
 // call site's population renders, which lower.DataFamilies builds once the
 // compositions in it are spliced.
 func Prepare(pkg *ir.Package) (*ir.Package, error) {
-	pkg = ir.ClonePackageFor(pkg, InterpreterPlatform, "")
-	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	if err := lower.DataFamilies(pkg, ir.ReachedFrom(pkg, InterpreterPlatform, ""), nil); err != nil {
+	return PrepareFor(pkg, InterpreterPlatform)
+}
+
+// PrepareFor is Prepare specialized for platform's overrides rather than the
+// interpreter's own, which is what a simulated run (Env.Simulate) takes. The
+// language axis is left alone: the interpreter is the language. A simulated
+// target's C calls convert their arguments as the target's do
+// (lower.CMarshal), so a stubbed native is handed the `c.str` the target
+// allocates.
+func PrepareFor(pkg *ir.Package, platform string) (*ir.Package, error) {
+	pkg = ir.ClonePackageFor(pkg, platform, "")
+	ir.SpecializeForTarget(pkg, platform, "")
+	if err := lower.DataFamilies(pkg, ir.ReachedFrom(pkg, platform, ""), nil); err != nil {
 		return pkg, err
 	}
-	return pkg, lower.RefParams(pkg)
+	if platform != InterpreterPlatform {
+		if err := lower.CMarshal(pkg); err != nil {
+			return pkg, err
+		}
+	}
+	if err := lower.RefParams(pkg); err != nil {
+		return pkg, err
+	}
+	if err := lower.OwnedState(pkg); err != nil {
+		return pkg, err
+	}
+	return pkg, lower.ReleaseTemps(pkg)
 }

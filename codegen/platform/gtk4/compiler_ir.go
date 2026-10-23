@@ -431,13 +431,12 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	// The inline-cgo scaffold has no runtime to attach a window to, so it puts
 	// the first one's box in the window BuildUI makes, as it did the one
 	// window it could build before a window was a node.
-	cgoTitle, cgoIcon := "", ""
+	var cgoTitle ir.Expr
+	cgoIcon := ""
 	if appRoot && !c.wrapped {
 		topLevelRefs = append(slices.Clip(topLevelRefs), appChildren...)
 		if len(appChildren) > 0 {
-			if t := c.shared.toplevelTitles[appChildren[0]]; t != nil {
-				cgoTitle = gc.EvalExpr(t)
-			}
+			cgoTitle = c.shared.toplevelTitles[appChildren[0]]
 			cgoIcon = c.shared.toplevelIcons[appChildren[0]]
 		}
 	}
@@ -472,7 +471,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 		}
 		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
 	} else {
-		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoTitle, cgoIcon, widgetFieldNames(widgetFields))
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, c.shared, cgoTitle, cgoIcon, widgetFieldNames(widgetFields))
 	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
@@ -547,6 +546,7 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 		Main:              c.cfg.Main,
 		FunctionCode:      functionCode,
 		NeedsBoolToInt:    c.shared.boolToInt,
+		CStrings:          c.shared.cStrings,
 		NeedsGObjectSet:   c.shared.gObjectSet,
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,
@@ -720,6 +720,8 @@ var widgetWrites = map[string]string{
 type widgetAccess struct {
 	read  func(cType string, ref ir.Expr) ir.Expr
 	write func(cType string, ref, value ir.Expr) ir.Expr
+	// shared releases the C strings a write makes (ownCStrings).
+	shared *emitShared
 }
 
 // selfIsNode is a signal handler's body with its parameters read as the node
@@ -803,7 +805,7 @@ func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 		}
 		return e, nil
 	})
-	return stmts
+	return access.shared.ownCStrings(stmts)
 }
 
 // widgetReader is readWidgets' read for one scope, which qualify spells a
@@ -825,7 +827,7 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 		}
 		return ref
 	}
-	return widgetAccess{read: func(cType string, ref ir.Expr) ir.Expr {
+	return widgetAccess{shared: shared, read: func(cType string, ref ir.Expr) ir.Expr {
 		w := spell(cType, ref)
 		if wrapped {
 			if g := rtEventGetterExpr(cType, w); g != nil {
@@ -1133,9 +1135,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 	stmts = readWidgets(stmts, widgetReader(wrapped, shared, modelNode(wrapped)))
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	// Drop self-setter splices: writing the entry's text from inside its own
-	// "changed" handler re-fires the signal and recurses.
-	body = dropSelfSetterCalls(body, nodeID)
 	synthesized := &ir.Func{
 		Name:    fn.Name,
 		Lowered: ir.FuncLowering{HostReceiver: "Model"},
@@ -1148,47 +1147,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
-}
-
-// dropSelfSetterCalls filters out setter calls on selfNode so a two-way bound
-// widget does not recurse into its own changed-signal handler.
-func dropSelfSetterCalls(stmts []ir.Stmt, selfNode string) []ir.Stmt {
-	if selfNode == "" {
-		return stmts
-	}
-	out := stmts[:0:0]
-	for _, s := range stmts {
-		if cs, ok := s.(*ir.CallStmt); ok && cs != nil && isSetterOn(cs.Call, selfNode) {
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
-}
-
-// isSetterOn reports whether a Call is a C.gtk_*_set_* invocation whose
-// first argument resolves to m.<selfNode>.
-func isSetterOn(call *ir.Call, selfNode string) bool {
-	if call == nil || call.Func == nil || len(call.Args) == 0 {
-		return false
-	}
-	if call.Func.Foreign.Path != "C" || !strings.Contains(call.Func.Foreign.Name, "_set_") {
-		return false
-	}
-	first := call.Args[0].Value
-	for {
-		conv, ok := first.(*ir.Conversion)
-		if !ok {
-			break
-		}
-		first = conv.Operand
-	}
-	if sel, ok := first.(*ir.Select); ok {
-		if op, ok := sel.Operand.(*ir.Ident); ok && op.Name == "m" && sel.Field == selfNode {
-			return true
-		}
-	}
-	return false
 }
 
 // gtk4ComponentFuncs is every func some component declares; what is left in
@@ -1212,7 +1170,7 @@ func gtk4ComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // emitGTK4FreeFunc emits a top-level func under its exported name, which is
 // what ExprCtx.FreeFuncs told the call sites to expect.
 func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fnCopy := *fn
@@ -1229,7 +1187,7 @@ func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 // body touches no widget, so it goes through the plain renderer rather than
 // the gtk4 translator.
 func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	for _, line := range gc.EmitTypeMethodDef(fn) {
@@ -1242,7 +1200,7 @@ func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 // emitGTK4Func emits a top-level user function as a method on *Model, routing
 // the body through WalkLowered so a CanvasRedrawStmt becomes queue_draw.
 func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withRegistry(reg).withShared(shared).withWrapped(wrapped)
@@ -1320,9 +1278,9 @@ func isWindowClass(cType string) bool {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title, icon string, fields map[string]bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, shared *emitShared, title ir.Expr, icon string, fields map[string]bool) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title, fields)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, "", fields)
 		return
 	}
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
@@ -1393,10 +1351,14 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		fmt.Fprintf(b, "\t%s\n", line)
 	}
 	// Not through gtk4rt: the cgo scaffold does not require that module, so
-	// importing it does not build. The string is allocated once and not freed.
-	if title != "" {
-		fmt.Fprintf(b, "\tC.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString(%s))\n", title)
-		gc.RequireImport("unsafe")
+	// importing it does not build.
+	if title != nil {
+		setTitle := &ir.CallStmt{Call: nativeCall("gtk_window_set_title", ir.TypVoid, cgoCast("GtkWindow", winRef), cString(title))}
+		for _, st := range shared.ownCStrings([]ir.Stmt{setTitle}) {
+			for _, line := range gc.EvalStmt(st) {
+				fmt.Fprintf(b, "\t%s\n", line)
+			}
+		}
 	}
 	setChildCall := &ir.Call{
 		Type:     ir.TypVoid,
@@ -1661,26 +1623,18 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wr
 // preamble is declarations only, so the //export snglActivate can coexist.
 func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, app bool) error {
 	if app {
-		callee := ""
-		if pkg.Run != nil && len(pkg.Run.Block) > 0 {
-			callee = golang.ModelCallee(pkg, pkg.Run, "m")
-		}
-		emitGTK4AppMain(b, callee, pkg.Run != nil, pkg.Teardown)
+		emitGTK4AppMain(b, pkg)
 		return nil
 	}
 	if pkg != nil && pkg.Run != nil {
 		if !wrapped {
 			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
 		}
-		callee := ""
-		if len(pkg.Run.Block) > 0 {
-			callee = golang.ModelCallee(pkg, pkg.Run, "m")
-		}
-		emitGTK4RunMainWrapped(b, callee)
+		emitGTK4RunMainWrapped(b, pkg)
 		return nil
 	}
 	if wrapped {
-		emitGTK4MainWrapped(b)
+		emitGTK4MainWrapped(b, pkg.Teardown)
 		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil
@@ -1701,13 +1655,14 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package,
 	b.WriteString("\twin := m.BuildUI(app)\n")
 	b.WriteString("\tC.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))\n")
 	b.WriteString("}\n\n")
+	b.WriteString("var snglActivateSignal = C.CString(\"activate\")\n\n")
 	b.WriteString("func main() {\n")
 	b.WriteString("\truntime.LockOSThread()\n")
 	// G_APPLICATION_NON_UNIQUE avoids needing an app-id, which
 	// gtk_application_new otherwise requires to be reverse-DNS-valid.
 	b.WriteString("\tapp := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)\n")
 	b.WriteString("\tC.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),\n")
-	b.WriteString("\t\tC.CString(\"activate\"),\n")
+	b.WriteString("\t\tsnglActivateSignal,\n")
 	b.WriteString("\t\tC.GCallback(C.snglActivate), nil, nil, 0)\n")
 	b.WriteString("\tstatus := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)\n")
 	if teardown {

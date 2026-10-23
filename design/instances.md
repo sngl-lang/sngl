@@ -242,7 +242,27 @@ in the same sense: a component holding an `effect` or a timer is built per copy
 under a `for` (`reactiveCtx.perCopy`) and not substituted there (`isPure`),
 since spliced, the copies shared one key and one handle; an override with no
 var of its own that holds one -- gtk4's entry, pushing its value from an effect
--- is wrapped per call site by `passImplicitState` so that it is.
+-- is wrapped per call site by `passImplicitState` so that it is, and so is
+one deriving an owned value, which `OwnedState` makes a var and an effect of
+(gtk4's `ui.remote`), under any branch as well as a loop: under a `for` every
+copy would share one picture, and under an `if` the picture was made where
+the owner was built, for a branch not yet shown and from what the branch
+guards -- the pokedex's form card read `got.pokemon.url` with `got` still
+null. The wrapper holds that state only through the library body it
+instantiates, so `perCopy` asks `splicesLibraryState` as well as
+`holdsLifetime`, and `isPure` refuses a body that splices such state or
+holds an owned var at all: before that, `InlinePure` substituted the wrapper
+and the override, and the inliner elected the library component itself a
+runtime instance, which nothing builds ("prop url of component remote can
+neither be written after construction nor rebuild the instance",
+`testdata/gtk4_image_pictures.txtar` and the pokedex example). A shape
+with state of its own under a `for` or a reactive `if` in a canvas is
+spliced per copy on every target, its cells keyed by the copy as bubbletea
+keys every component's (`reactiveCtx.drawn`, `expandPerCopy`): a drawing is
+spliced into its canvas's draw routine, so there is nowhere a copy could be
+built at run time, and a target keeping instance state left the shape to that
+and read the loop variable from a method that never bound it
+(`testdata/canvas_for_shape_state.txtar`).
 
 A loop that holds a component built at run time is a slot too, whatever it
 iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
@@ -322,6 +342,46 @@ a slot insertion, a boundary, a canvas or a window, or declares a handle
 something reads. bubbletea and android re-render the view anyway and are
 untouched (`testdata/slot_body_updates_in_place.txtar`,
 `cmd/sngl/testdata/slot_body_updates_in_place_runs.txt`).
+
+**A prop's setter reports a write to an effect keyed on the prop.** passEffect
+marks an effect's `@update` written after each write to a var its key reads,
+and a prop of a component built at run time is a parameter then, which
+nothing writes; `passComponentProps` promotes it to a cell whose setter is its
+one write. The effect lowering records each report whose key reads a prop
+(`ir.Package.PropReports`), and `settleOnSet` has the setter mark it and
+settle. Where the prop's type compares, only a new value marks it, which is
+what the interpreter does with a key reading something no write is logged
+against. Before this, fyne's setter settled with nothing marked and html's did
+not settle, so such an `@update` never ran on a target. An owned derived value
+reading a prop is one (`testdata/effect_update_on_prop.txtar`). android has
+no setter: a composable is called again with the new value. So it keeps the
+value it last saw beside a `DisposableEffect` keyed on the prop, which marks
+and settles when the two differ (`emitPropReports`); the first value is the
+one the brackets began with and reports nothing. Without it the `@update`
+never ran there either, and an owned derived value kept the first value it
+made (`testdata/owned_derived_built_once_on_entry.txtar`'s
+`testRebuiltOnAWriteWhileShown`).
+
+**An `@update` is owed only the writes made while its bracket ran**, as the
+interpreter has it: a bracket mounted after a write starts reading the log
+past it. A target's dirty flag outlived the position, so a write while an
+`if` was hidden and the branch taken back in the same settle ran the
+`@update` of a bracket just begun, and on bubbletea, where the enter function
+had just built an owned derived value, built it a second time. A report under
+an `if` remembers whether its position described the bracket at the last pass
+(`__effectN_absent`) and runs nothing for one it describes only now; the dirty
+flag is cleared either way. It starts false: an instance whose only brackets are `@update`s is not settled when it is built, so starting true missed a write made straight after (`effect_update_runs.txt`'s `testGated`). A bracket under a loop stepping into its key keeps its per-copy
+queue. One under a loop that does not keeps each copy's key at the last pass
+by the copy (`__effectN_keys`, `keysReportBlock`): a copy the last pass
+described runs its `@update` on a write to what the key reads, and a copy
+entered since was made with its key and is owed nothing. A key naming the
+loop's variable reads the list the loop walks, so a write replacing the list
+sets a second flag (`__effectN_rekey`, `rekeyBy`) on which only a copy whose
+key differs runs: a prop reports only a new value, and after the per-copy
+splice the loop variable is the prop
+(`testdata/canvas_for_shape_state.txtar`, where replacing the list rekeys
+one copy and releases one value). Before this a write to the list reached no
+copy at all, and a dirty flag ran every copy.
 
 **A two-way prop the caller leaves unbound is state of the instance**
 (`ir.UnboundProps`): a cell that starts from what the call site gave the prop,
@@ -451,6 +511,46 @@ component that reads its props, which would be the Model's
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
 
+**A spliced instance starts again each time its position is taken**, as one a
+target builds there does and as the interpreter's `evictUnreached` has it.
+Spliced, its vars are its owner's and were set once, in `New()`, so on
+bubbletea a counter at 1 when its `if` left was 1 when the branch came back,
+and an owned var released at the leave was released again at the next one.
+`restartOnEntry` writes the instance an `effect` marked `ir.NodeInst.Enter`
+whose `@mount` assigns each var its initializer, and declares the var from
+its type's zero instead, since an initializer run twice makes an owned value
+twice. Under loops it is keyed on the copy, and the copy's cells are written
+through. passEffect lowers it to one function (`lowerEnter`) that rebuilds the
+position from its frames and runs the assignments inside it, for each key it
+did not describe at the last pass, where a loop's variables are in scope: a
+prop bound to one, `child(n=x)`, is read where the copy is. It runs ahead of
+every other bracket of the scope, so the owned-state effect, a derived
+value's key and a user's `@mount` all read the fresh values. Its writes are
+neither marked nor settled after: the settle that ran it is already running,
+and a mark would report a write to a lifetime just beginning. A `for` copy
+needed this as much as a branch: its cells are a map nothing removes from, so
+a row that left and came back kept its state. A component that renders
+nothing is spliced under a reactive `if` on every target, not only bubbletea,
+and kept its state on all of them; it gets the same effect. A target that
+brackets lifetimes itself (android) never runs the settle `lowerEnter` builds,
+so there the effect stays a native bracket, a `DisposableEffect` whose
+`@mount` assigns the initializers; spliced ahead of the instance's own
+brackets, it runs before them, as Compose runs a composition's effects in
+order. Without it android counted the mounts, as bubbletea had
+(`testdata/bubbletea_state_leaves_with_branch.txtar`,
+`testdata/renders_nothing_state_leaves_with_branch.txtar`).
+
+**The interpreter mounts a `for` copy or a scoped population in a snapshot
+of the scope around it** (`forStmt`, `slotInst`, `entryInst`), where the loop's
+variables and the population's parameters are bound. What the mount writes to
+a binding that scope holds is carried back once the copy has mounted
+(`writeBackMountCopies`), as a handler's writes are when it returns
+(`runHandler`), and the next copy's snapshot is taken after that. Nothing
+carried it before: a var initializer counting in a package var left the count
+at 0, and every copy got the first value. A copy's own state is its
+component's scope, cached by the copy's path, which no snapshot holds, so it
+stays per copy (`testdata/for_copy_initializer_writes_package.sngl`).
+
 **A bubbles model a loop renders is one per copy** (`bubbletea/loopwidget.go`):
 a map keyed as a cell of the copy is, each model built the first time View
 renders it and set from the copy's cell -- read off the write-back handler's
@@ -494,7 +594,13 @@ page's state, widgets and funcs -- is spelled through it
 (`ExprCtx.OuterReceiver`, `golang.PageNodes`); spelled through the record, it
 named a field no record has. On android a composable other than MainScreen
 cannot see MainScreen's `remember`ed locals, so page state such a composable
-reads is declared at file level (`sharedPageState`). In a test build the
+reads is declared at file level (`sharedPageState`). So is a package function
+it calls, with every function that one calls and the state they reach
+(`composedCallees`): a call is no read by name, and `var fd = open()` called
+a local fun of MainScreen (`testdata/android_instance_calls_page_func_app.txtar`),
+or in a test build a member through a `state` the file declared only for a
+composable naming page state itself
+(`testdata/android_instance_calls_page_func.txtar`). In a test build the
 page's state is a class, and a function reading it is a member of the class
 (`stateScopedFuncs`); what the function binds itself is no read of the
 page's, or `display(name string)` beside a page's `name` became a member a

@@ -49,6 +49,7 @@ package main
 
 /*
 #include "ctype.h"
+#include <stdlib.h>
 */
 import "C"
 
@@ -197,6 +198,7 @@ package main
 
 /*
 #include "ctype.h"
+#include <stdlib.h>
 */
 import "C"
 
@@ -334,11 +336,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -449,6 +453,11 @@ import (
 	"unsafe"
 )
 
+var (
+	__cstr0 = C.CString("clicked")
+	__cstr1 = C.CString("t")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	v              int
@@ -476,6 +485,9 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.v = int(C.toupper(C.int((m.v + 97))))
+	__ctmp1 := C.CString(("upper " + fmt.Sprint(m.v)))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp1)
+	C.free(unsafe.Pointer(__ctmp1))
 }
 
 func (m *Model) V() int {
@@ -501,9 +513,11 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), C.CString(("upper " + fmt.Sprint(m.v))))
+	__ctmp0 := C.CString(("upper " + fmt.Sprint(m.v)))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp0)
+	C.free(unsafe.Pointer(__ctmp0))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr0, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -513,13 +527,13 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString("t"))
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr1)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:afdda4f8cb61b2e22dfdb71d895ffb51
+pass sha256:95603e190116c45d265e54a1856a8e93
 -- run/go/fyne --
-pass sha256:d285179224c8840ca2bdcf7dac5b6795
+pass sha256:00b0d2f7a17fcaa854c749bb102f1161
 -- run/go/gtk4 --
-pass sha256:0d1a6b744351a47a1431fd9d8963d654
+pass sha256:08521a83996c06e60a435147b5206b12
