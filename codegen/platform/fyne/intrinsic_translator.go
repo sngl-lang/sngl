@@ -923,11 +923,11 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	// The constructor answers the write it was built from, and a copy of
 	// that write a pass made: the expression, not the pointer, is the value.
-	// Only a constant one, though: a write reading state is the same
-	// expression when the state has moved, and was dropped -- a document's
-	// run kept the kind it was built with. That goes to the setter, or is
-	// reported as reaching nothing where there is none.
-	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) && !readsState(value) {
+	// A write reading state is the same expression when the state has
+	// moved, though, and was dropped -- a document's run kept the kind it
+	// was built with -- so one with a setter goes to it. One with none, a
+	// drawn image's size, is still the constructor's.
+	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) && !(readsState(value) && hasSetter(sp, prop)) {
 		return nil
 	}
 	// A window that names no title is built with none.
@@ -1259,4 +1259,11 @@ func readsState(e ir.Expr) bool {
 		return nil
 	})
 	return found
+}
+
+// hasSetter reports whether sp names something that writes prop.
+func hasSetter(sp *fyneSpec, prop string) bool {
+	_, method := sp.Setters[prop]
+	_, fn := sp.SetterFuncs[prop]
+	return method || fn
 }
