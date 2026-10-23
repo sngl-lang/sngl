@@ -167,7 +167,13 @@ under it. Delete this file before the MR leaves draft.
   date. A bubbletea test draws its view only when it snapshots, so a picture
   starts fetching there: the screenshots take a snapshot first to start them.
 - [X] The user checked android on the device: it looks right.
-- [ ] A review agent over the branch; fix what it finds.
+- [X] A review agent over the branch; fix what it finds. It found: android's
+  loop timers kept their first composition's loop variable; bubbletea's
+  invokers dropped the commands their Update returned, and an ended test's
+  ticks were delivered during the next; html's card took keys pressed inside
+  it; the optimizer's cloner shared a finally block. Each is fixed with a
+  fixture. Left: gtk4rt's style classes are never removed, so a style
+  computed from a value that keeps changing adds a CSS rule per value.
 - [ ] Delete this file; take the MR out of draft -- ask the user first.
 
 Not here: `ui.table`'s redesign is #290, and a constant `$"..."` message
