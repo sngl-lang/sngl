@@ -252,3 +252,50 @@ func TestSetStyleAligns(t *testing.T) {
 		t.Errorf("a long label 100 wide is %d pixels high to a line's %d: it did not wrap", yellowBox.Dy(), redBox.Dy())
 	}
 }
+
+// A style that keeps changing keeps one rule, not one per value it passed
+// through: SetStyle kept a class per distinct style and dropped none, so an
+// animated color grew the stylesheet by a rule a frame, each reloading the
+// whole of it. Two widgets alike share one, and a destroyed widget lets its
+// go.
+func TestSetStyleDropsRulesNoWidgetHolds(t *testing.T) {
+	if r := testutil.GUIRenderSkipReason(); r != "" {
+		t.Skip(r)
+	}
+	var during, twins, after int
+	build := func(app Handle) Handle {
+		before := len(rules)
+		moving := LabelNew("moving")
+		Retain(moving)
+		for i := range 100 {
+			SetStyle(moving, Style{Color: snglcolor.Color{R: i, A: 255}})
+		}
+		during = len(rules) - before
+		a, b := LabelNew("a"), LabelNew("b")
+		Retain(a)
+		Retain(b)
+		SetStyle(a, Style{Padding: 3})
+		SetStyle(b, Style{Padding: 3})
+		twins = len(rules) - before
+		Release(moving)
+		Release(a)
+		Release(b)
+		after = len(rules) - before
+		return ApplicationWindowNew(app)
+	}
+	if _, err := SnapshotModelBytes(build, 64, 64); err != nil {
+		if strings.Contains(err.Error(), "sngl_snapshot rc=") {
+			t.Skipf("headless render backend unavailable: %v", err)
+		}
+		t.Fatalf("SnapshotModelBytes: %v", err)
+	}
+	if during != 1 {
+		t.Errorf("a style changed 100 times holds %d rules, want 1", during)
+	}
+	if twins != 2 {
+		t.Errorf("two widgets alike beside it hold %d rules in all, want 2", twins)
+	}
+	if after != 0 {
+		t.Errorf("%d rules outlived the widgets holding them", after)
+	}
+}

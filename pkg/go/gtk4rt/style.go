@@ -198,9 +198,21 @@ var (
 	styledWidgets = map[Handle]*styled{}
 	// classes is the class carrying each distinct style's CSS: one rule per
 	// style rather than per widget, so a thousand cards alike are one rule.
-	classes = map[string]string{}
-	rules   []string
+	// A class no widget holds is dropped, rule and all: a style computed from
+	// a value that keeps changing -- an animated width or color -- left a
+	// rule per value it passed through, each reloaded with every new one.
+	classes = map[string]*styleClassRule{}
+	// rules is the live classes in the order they were made, which is the
+	// order the stylesheet lists them in.
+	rules  []*styleClassRule
+	classN int
 )
+
+// styleClassRule is one class's rule and how many widgets hold it.
+type styleClassRule struct {
+	css, class string
+	holders    int
+}
 
 // SetStyle applies s to w, a constant style once and a run-time one each time
 // it changes. A width and a height are a size request, except on an image and
@@ -212,7 +224,12 @@ func SetStyle(w Handle, s Style) {
 	if st == nil {
 		st = &styled{}
 		styledWidgets[w] = st
-		gone := cbind.Register(func() { delete(styledWidgets, w) })
+		gone := cbind.Register(func() {
+			if st := styledWidgets[w]; st != nil {
+				releaseClass(st.class)
+			}
+			delete(styledWidgets, w)
+		})
 		C.sngl_style_watch((*C.GObject)(p(w)), C.int(gone))
 	}
 	label := C.sngl_style_is_label(widget(w)) != 0
@@ -269,10 +286,14 @@ func SetStyle(w Handle, s Style) {
 		C.sngl_label_align(widget(w), x, j)
 		st.textAligned = s.TextAlign != ""
 	}
-	class := styleClass(s.CSS())
-	if class == st.class {
+	css := s.CSS()
+	if old := classes[css]; old != nil && old.class == st.class {
 		return
 	}
+	if css == "" && st.class == "" {
+		return
+	}
+	class := holdClass(css)
 	if st.class != "" {
 		cs, free := cstr(st.class)
 		C.gtk_widget_remove_css_class(widget(w), cs)
@@ -283,7 +304,11 @@ func SetStyle(w Handle, s Style) {
 		C.gtk_widget_add_css_class(widget(w), cs)
 		free()
 	}
+	released := releaseClass(st.class)
 	st.class = class
+	if class != "" && classes[css].holders == 1 || released {
+		loadRules()
+	}
 }
 
 // alignment is the GtkAlign an `alignItems` member puts a child at, plus one,
@@ -319,22 +344,53 @@ func sizeRequest(px float64) C.int {
 	return C.int(px)
 }
 
-// styleClass is the class carrying css, its rule added to the display's
-// provider the first time it is asked for; "" for no CSS at all.
-func styleClass(css string) string {
+// holdClass is the class carrying css, made the first time it is asked for,
+// held once more; "" for no CSS at all. The caller loads the rules when it is
+// new.
+func holdClass(css string) string {
 	if css == "" {
 		return ""
 	}
-	if class, ok := classes[css]; ok {
-		return class
+	r := classes[css]
+	if r == nil {
+		r = &styleClassRule{css: css, class: "sngl-style-" + strconv.Itoa(classN)}
+		classN++
+		classes[css] = r
+		rules = append(rules, r)
 	}
-	class := "sngl-style-" + strconv.Itoa(len(rules))
-	classes[css] = class
-	rules = append(rules, "."+class+" { "+css+" }")
-	all, free := cstr(strings.Join(rules, "\n"))
+	r.holders++
+	return r.class
+}
+
+// releaseClass lets go of one hold on class, and drops its rule when nothing
+// holds it: it reports whether it did, so the caller loads the rules again.
+func releaseClass(class string) bool {
+	if class == "" {
+		return false
+	}
+	for i, r := range rules {
+		if r.class != class {
+			continue
+		}
+		if r.holders--; r.holders > 0 {
+			return false
+		}
+		delete(classes, r.css)
+		rules = append(rules[:i], rules[i+1:]...)
+		return true
+	}
+	return false
+}
+
+// loadRules puts every live class's rule on the display's provider.
+func loadRules() {
+	var b strings.Builder
+	for _, r := range rules {
+		b.WriteString("." + r.class + " { " + r.css + " }\n")
+	}
+	all, free := cstr(b.String())
 	defer free()
 	C.sngl_style_load(all)
-	return class
 }
 
 // CSS is the declarations GTK's CSS draws of s, in a fixed order: the same
