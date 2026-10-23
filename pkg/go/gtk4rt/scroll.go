@@ -41,6 +41,10 @@ static GtkSizeRequestMode sngl_probe_mode(GtkWidget *w) {
     GtkWidget *c = gtk_widget_get_first_child(w);
     return c != NULL ? gtk_widget_get_request_mode(c) : GTK_SIZE_REQUEST_CONSTANT_SIZE;
 }
+static int sngl_scroll_holds(GtkWidget *sw, GtkWidget *c) {
+    GtkWidget *probe = g_object_get_data(G_OBJECT(sw), "sngl-probe");
+    return probe != NULL && c != NULL && gtk_widget_get_parent(c) == probe;
+}
 static int sngl_probe_content(GtkWidget *sw) {
     GtkWidget *probe = g_object_get_data(G_OBJECT(sw), "sngl-probe");
     return probe != NULL ? GPOINTER_TO_INT(g_object_get_data(G_OBJECT(probe), "sngl-content")) : -1;
@@ -145,6 +149,12 @@ func ScrollNew() Handle {
 	})
 	C.sngl_scroll_watch((*C.GObject)(p(h)), C.int(gone))
 	return h
+}
+
+// scrollHolds reports whether child is already the content of sw, a scroll
+// ScrollNew made, which holds it in its probe rather than as its child.
+func scrollHolds(sw, child Handle) bool {
+	return C.sngl_scroll_holds(widget(sw), widget(child)) != 0
 }
 
 // ScrollOnReachEnd is the handler a `@reachEnd` attaches.

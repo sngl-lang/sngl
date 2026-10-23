@@ -593,7 +593,15 @@ func ScrolledWindowNew() Handle {
 	return Handle(unsafe.Pointer(C.gtk_scrolled_window_new()))
 }
 
+// ScrolledWindowSetChild sets sw's child. Content a scroll ScrollNew made
+// already holds is in its probe, whose parent the content's is, so a render
+// slot asking whether the scroll holds its box by the box's parent set it
+// again, and GTK refused a child that has a parent with a CRITICAL per render
+// (cmd/sngl/testdata/render_slot_container_runs.txt).
 func ScrolledWindowSetChild(sw, child Handle) {
+	if child != nil && scrollHolds(sw, child) {
+		return
+	}
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(p(sw)), widget(child))
 }
 

@@ -71,7 +71,7 @@ window {
     main
 }
 -- testrun/fyne/go/scroll.sngl/main/1 --
-sha256:ec277a28b9dbd5a07571a608ce7f61e4
+sha256:61dea11d7ade58863387e1159aa8aa4e
 {
   "results": [
     {
@@ -81,7 +81,7 @@ sha256:ec277a28b9dbd5a07571a608ce7f61e4
   ]
 }
 -- testrun/gtk4/go/scroll.sngl/main/1 --
-sha256:a625cf4bbfbf5d517a1dc19e08680202
+sha256:59778849e8a83abffd8f61d4df404795
 {
   "results": [
     {
