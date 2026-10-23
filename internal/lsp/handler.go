@@ -13,8 +13,8 @@ import (
 // this short-circuits on any check error so the preview server can fall
 // back to its last good render.
 func (s *Server) checkForPreview(fs *fileState) (*ir.Package, error) {
-	dir := filepath.Dir(uriToPath(fs.URI))
-	return checkPreviewDoc(fs.Doc, dir)
+	filename := uriToPath(fs.URI)
+	return checkPreviewDoc(s.withSiblings(fs.Doc, filename), filepath.Dir(filename))
 }
 
 func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {
@@ -105,6 +105,7 @@ func (s *Server) handleDidChange(params json.RawMessage) {
 	fs := s.ws.update(p.TextDocument.URI, text, p.TextDocument.Version)
 	diags := s.analyze(fs)
 	s.publishDiagnostics(p.TextDocument.URI, diags)
+	s.republishSiblings(p.TextDocument.URI)
 	s.scheduleReload()
 }
 
@@ -115,6 +116,7 @@ func (s *Server) handleDidClose(params json.RawMessage) {
 	}
 	s.publishDiagnostics(p.TextDocument.URI, nil)
 	s.ws.close(p.TextDocument.URI)
+	s.republishSiblings(p.TextDocument.URI)
 }
 
 func (s *Server) handleDidSave(params json.RawMessage) {

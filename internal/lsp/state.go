@@ -62,3 +62,13 @@ func (w *workspace) close(uri string) {
 	defer w.mu.Unlock()
 	delete(w.files, uri)
 }
+
+func (w *workspace) all() []*fileState {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	files := make([]*fileState, 0, len(w.files))
+	for _, fs := range w.files {
+		files = append(files, fs)
+	}
+	return files
+}
