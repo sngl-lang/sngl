@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -522,9 +523,10 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		}
 		return rs
 	case *If:
+		// A finally has no source form: a dump shows it after the body.
 		is := &ast.IfStmt{
 			Cond: c.convertExpr(s.Cond),
-			Body: c.convertStmtBlock(s.Body),
+			Body: c.convertStmtBlock(append(slices.Clip(s.Body), s.Finally...)),
 		}
 		if len(s.Else) > 0 {
 			is.Else = c.convertStmtBlock(s.Else)

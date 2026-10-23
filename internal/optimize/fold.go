@@ -264,9 +264,9 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 				continue
 			}
 		}
-		// A catch block's condition is the literal true by construction, and
-		// flattening it would drop the catch.
-		if ifs, ok := s.(*ir.If); ok && ifs.Catch == nil {
+		// A catch or finally block's condition is the literal true by
+		// construction, and flattening it would drop what guards it.
+		if ifs, ok := s.(*ir.If); ok && !ifs.Guarded() {
 			cond := foldExpr(ifs.Cond, ctx)
 			if lit, ok := cond.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
 				branch := ifs.Else
@@ -447,6 +447,12 @@ func foldIfStmt(s *ir.If, ctx *evalCtx) ir.Stmt {
 				h.Func.Block = foldStmts(h.Func.Block, ctx)
 			}
 		}
+		s.Finally = foldStmts(s.Finally, ctx)
+		return s
+	}
+	if len(s.Finally) > 0 {
+		s.Body = foldStmts(s.Body, ctx)
+		s.Finally = foldStmts(s.Finally, ctx)
 		return s
 	}
 	s.Cond = foldExpr(s.Cond, ctx)

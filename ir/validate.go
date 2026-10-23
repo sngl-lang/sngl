@@ -75,6 +75,7 @@ func Validate(pkg *Package) []error {
 			// (see optimize.foldIfStmt); accept it.
 			checkNoNilStmts(add, "if body", x.Body)
 			checkNoNilStmts(add, "if else", x.Else)
+			checkNoNilStmts(add, "if finally", x.Finally)
 		case *Match:
 			for _, arm := range x.Arms {
 				checkNoNilStmts(add, "match arm", arm.Body)

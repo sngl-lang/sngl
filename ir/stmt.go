@@ -392,6 +392,14 @@ type If struct {
 	// an alias -- the handler belongs to a call, a boundary or a window, and
 	// walks reach it there.
 	Catch *EventHandler `json:"-"`
+	// Finally runs after Body whether Body finished or raised, and a raise
+	// carries on from there: a `try`/`finally`, which no program writes and
+	// a lowering does where state it set must be put back however Body ends
+	// -- a slot's render clearing its re-entry guard (lower's renderOnce). Cond
+	// is the literal true, as for Catch, so a walk that does not know the
+	// field reads Body as run once; ir.Walk visits it. Body holds no `return`
+	// or `break` leaving it, since Go says it as a deferred call in a closure.
+	Finally []Stmt `json:",omitempty"`
 	// Instances is NodeInst.Instances, for an `if` at the root of a spliced
 	// body: the instance renders where the `if` stands, whichever branch it
 	// takes.
@@ -399,6 +407,11 @@ type If struct {
 }
 
 func (*If) stmtNode() {}
+
+// Guarded reports whether n is a block its Catch or Finally runs around
+// rather than a condition: its Cond is the literal true by construction, and
+// a fold taking the branch in its place would drop what guards it.
+func (n *If) Guarded() bool { return n.Catch != nil || len(n.Finally) > 0 }
 
 // InstancesOf is where s records the instances whose spliced bodies it is a
 // root of: a node, an `if`, a `for` or a boundary. Nil for any other statement.

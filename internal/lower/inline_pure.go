@@ -1792,7 +1792,7 @@ func freshNodeHandles(body []ir.Stmt, renames map[ir.Symbol]ir.Symbol) {
 // neither a catch block nor the root of a spliced instance.
 func decidedBranch(n *ir.If) ([]ir.Stmt, bool) {
 	lit, ok := n.Cond.(*ir.Literal)
-	if !ok || lit.Type != ir.TypBool || n.Catch != nil || n.FromTernary || len(n.Instances) > 0 {
+	if !ok || lit.Type != ir.TypBool || n.Guarded() || n.FromTernary || len(n.Instances) > 0 {
 		return nil, false
 	}
 	taken := n.Else

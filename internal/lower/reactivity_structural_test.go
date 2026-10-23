@@ -118,12 +118,17 @@ component main node {
 func slotRenderBody(t *testing.T, fn *ir.Func) []ir.Stmt {
 	t.Helper()
 	guard, ok := fn.Block[0].(*ir.If)
-	if !ok || len(fn.Block) != 1 || len(guard.Else) != 4 {
+	if !ok || len(fn.Block) != 1 || len(guard.Else) != 3 {
 		t.Fatalf("expected %s to be one renderOnce guard; got %d stmts", fn.Name, len(fn.Block))
 	}
-	loop, ok := guard.Else[2].(*ir.For)
+	// The loop runs in a finally block clearing the guard however it ends.
+	try, ok := guard.Else[2].(*ir.If)
+	if !ok || len(try.Finally) != 1 || len(try.Body) != 1 {
+		t.Fatalf("expected the guard's try/finally third; got %T", guard.Else[2])
+	}
+	loop, ok := try.Body[0].(*ir.For)
 	if !ok {
-		t.Fatalf("expected the guard's loop third; got %T", guard.Else[2])
+		t.Fatalf("expected the loop in the try; got %T", try.Body[0])
 	}
 	return loop.Body[1:]
 }

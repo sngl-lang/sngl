@@ -1849,12 +1849,21 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 //	} else {
 //	    __renderingN = true
 //	    __renderAgainN = true
-//	    for __renderAgainN {
-//	        __renderAgainN = false
-//	        <render>
+//	    try {
+//	        for __renderAgainN {
+//	            __renderAgainN = false
+//	            <render>
+//	        }
+//	    } finally {
+//	        __renderingN = false
 //	    }
-//	    __renderingN = false
 //	}
+//
+// The guard is cleared in a finally (ir.If.Finally): a render that raises --
+// a prop read through a function that raises, caught by the handler whose
+// write asked for the render -- left it set, and every later render of the
+// slot was taken for a re-entry and drew nothing
+// (cmd/sngl/testdata/slot_render_raise_draws_again_runs.txt).
 //
 // A render builds the instances its body holds, and a query's mounts in the
 // instance's constructor: a fetch that answers at once runs the call site's
@@ -1885,8 +1894,11 @@ func (st *reactivityState) renderOnce(slotID string, render []ir.Stmt) []ir.Stmt
 		Else: []ir.Stmt{
 			set(rendering, true),
 			set(again, true),
-			&ir.For{Iter: ref(again), Body: append([]ir.Stmt{set(again, false)}, render...)},
-			set(rendering, false),
+			&ir.If{
+				Cond:    &ir.Literal{Type: ir.TypBool, Value: "true"},
+				Body:    []ir.Stmt{&ir.For{Iter: ref(again), Body: append([]ir.Stmt{set(again, false)}, render...)}},
+				Finally: []ir.Stmt{set(rendering, false)},
+			},
 		},
 	}}
 }

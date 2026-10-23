@@ -1192,6 +1192,15 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
+// Finally renders a finally block as try/finally.
+func (kc *KtIRContext) Finally(_ *ir.If, body, finally []string) []string {
+	lines := []string{"try {"}
+	lines = append(lines, irwalk.IndentLines("\t", body)...)
+	lines = append(lines, "} finally {")
+	lines = append(lines, irwalk.IndentLines("\t", finally)...)
+	return append(lines, "}")
+}
+
 // Catch renders a catch block as try/catch over SnglRaise, the exception a
 // raise throws, so a host exception is not taken for one.
 func (kc *KtIRContext) Catch(n *ir.If, body []string) []string {

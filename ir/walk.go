@@ -195,6 +195,7 @@ func (w *walker) stmt(s Stmt) {
 		w.expr(n.Cond)
 		w.stmts(n.Body)
 		w.stmts(n.Else)
+		w.stmts(n.Finally)
 	case *Match:
 		w.expr(n.Subject)
 		for _, arm := range n.Arms {

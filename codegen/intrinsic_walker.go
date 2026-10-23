@@ -252,6 +252,9 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		if len(n.Else) > 0 {
 			cp.Else = WalkLowered(ctx, n.Else, t)
 		}
+		if len(n.Finally) > 0 {
+			cp.Finally = WalkLowered(ctx, n.Finally, t)
+		}
 		// A catch block renders its handler in place, so the handler's widget
 		// writes are this body's and need the same translation.
 		if n.Catch != nil && n.Catch.Func != nil {

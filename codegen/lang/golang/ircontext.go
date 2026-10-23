@@ -1620,6 +1620,16 @@ func (gc *GoIRContext) Catch(n *ir.If, body []string) []string {
 	return append(lines, "}()")
 }
 
+// Finally renders a finally block as a closure deferring it, which runs
+// however the body ends, a panic carrying a raise included.
+func (gc *GoIRContext) Finally(_ *ir.If, body, finally []string) []string {
+	lines := []string{"func() {", "\tdefer func() {"}
+	lines = append(lines, irwalk.IndentLines("\t\t", finally)...)
+	lines = append(lines, "\t}()")
+	lines = append(lines, irwalk.IndentLines("\t", body)...)
+	return append(lines, "}()")
+}
+
 // emitHandlerInvoke declares the event variable and inlines the handler body,
 // wrapped in a Go lexical block so the variable does not leak. It is what a
 // raise no catch block covers gets: a direct raise with a per-call handler,

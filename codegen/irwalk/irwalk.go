@@ -63,6 +63,9 @@ type Renderer interface {
 	// Catch renders a catch block (If.Catch set): body is the rendered Body,
 	// and the renderer renders the handler itself.
 	Catch(n *ir.If, body []string) []string
+	// Finally renders body, then finally however body ends (If.Finally set),
+	// both already rendered.
+	Finally(n *ir.If, body, finally []string) []string
 	ElseHead() string
 	// Match renders a match statement as the language's own switch: its
 	// subject rendered ("" for a headless match), each arm's patterns
@@ -239,6 +242,13 @@ func EvalBlock(r Renderer, stmts []ir.Stmt) []string {
 }
 
 func evalIf(r Renderer, n *ir.If) []string {
+	if len(n.Finally) > 0 {
+		body := EvalBlock(r, n.Body)
+		if n.Catch != nil {
+			body = r.Catch(n, body)
+		}
+		return r.Finally(n, body, EvalBlock(r, n.Finally))
+	}
 	if n.Catch != nil {
 		return r.Catch(n, EvalBlock(r, n.Body))
 	}

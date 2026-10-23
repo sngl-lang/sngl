@@ -1,0 +1,115 @@
+# A slot's render that raises draws again on the next write. The render of
+# the `for` reads labels(n), which raises at 1; the click whose write asked
+# for that render holds a call that may raise, so its catch block takes the
+# raise. The render's re-entry guard (__renderingN) was cleared after the
+# loop, which the raise skipped, so every later render was taken for a
+# re-entry and the list stayed as the raise left it. It is cleared in a
+# finally now (ir.If.Finally, lower's renderOnce).
+#
+# Not asserted: whether the boundary's @error saw the raise. A render runs
+# inside the handler that asked for it on html, fyne, gtk4 and android, and
+# after it on the interpreter and bubbletea, where the boundary is not told.
+#
+# Not run on android: Compose has no render slot to guard, and a raise while
+# it composes reaches no catch block at all -- the test ends there, with or
+# without this fix. TODO.md carries it.
+
+sngl test --platform=none app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+func labels(n int) list[string] {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return ["n{n}"]
+}
+
+func check(n int) {
+    if n > 100 {
+        error.raise("too many", "bad")
+    }
+}
+
+component main ui.node {
+    var n = 0
+    var caught = ""
+    boundary(@error(e) {
+        caught = e.message
+    }) {
+        ui.button #step(text="step", @click {
+            n += 1
+            check(n)
+        })
+        for var l = labels(n) {
+            ui.text #shown(value=l)
+        }
+    }
+}
+
+func testARenderDrawsAgainAfterARaise(t Test, c main) {
+    t.assert(c.shown[0] != null && c.shown[0].value == "n0")
+    c.step.click()
+    t.assert(c.n == 1)
+    c.step.click()
+    t.assert(c.shown[0] != null && c.shown[0].value == "n2")
+}
+
+ui.window {
+    main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:bcb58159d62424969efdd284c645f2fe
+{
+  "results": [
+    {
+      "Desc": "ARenderDrawsAgainAfterARaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:e4eb899cd3d784784ec39fe43d41e25e
+{
+  "results": [
+    {
+      "Desc": "ARenderDrawsAgainAfterARaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:2ea8e770c4bc65aefee530eee111b3f3
+{
+  "results": [
+    {
+      "Desc": "ARenderDrawsAgainAfterARaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:f739bf1a5c91c95949274c52ffb94378
+{
+  "results": [
+    {
+      "Desc": "ARenderDrawsAgainAfterARaise",
+      "Passed": true
+    }
+  ]
+}

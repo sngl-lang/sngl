@@ -475,6 +475,15 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
+// Finally renders a finally block as try/finally.
+func (jc *JsIRContext) Finally(_ *ir.If, body, finally []string) []string {
+	lines := []string{"try {"}
+	lines = append(lines, irwalk.IndentLines("\t", body)...)
+	lines = append(lines, "} finally {")
+	lines = append(lines, irwalk.IndentLines("\t", finally)...)
+	return append(lines, "}")
+}
+
 // Catch renders a catch block as try/catch. Only a raise is caught, which is
 // what carries a `kind`: a host exception is a bug in the program or the
 // runtime, not an error the program raised.

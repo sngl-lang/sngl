@@ -112,16 +112,25 @@ under it. Delete this file before the MR leaves draft.
 
 ## Part 4: what the review found and left
 
-- [ ] The interpreter's tab press (`View.Choosing`, `internal/interp/view.go`)
-  does not follow `lower.NamePresses`: it presses where the body's first node
-  handles the event, accepts any loop variable compared by value, and reads
-  no callback prop. One rule, both sides, a script test on all six.
-- [ ] Kotlin's state reads are hidden by a same-named local anywhere in the
-  body (`codegen.BodyLocals` binds every local up front; writes check by
-  symbol, reads by name). A script test with a page var and a nested local
-  of its name.
-- [ ] A render that raises leaves `__renderingN` set, so the slot never draws
-  again: the re-entry guard wants a `finally`, which the IR does not have.
+- [X] The interpreter's tab press (`View.Choosing`) did not follow
+  `lower.NamePresses`. Both ask `ir.PressedNode` now, which presses by the
+  index of a two-variable loop only. No program can tell the rules apart --
+  only a library body is pressed, and `ui.tabs` met both -- so
+  `internal/interp`'s `TestChoosingPressesByTheRuleTheTargetsDo` pins the
+  view; `tabs_runs.txt` still runs on all six.
+- [X] Kotlin's state reads asked the name, writes the symbol; both ask the
+  symbol. Found on the way: html's page handler and bubbletea's key handlers
+  bound no body locals, so the nested local's own read was the page var;
+  `irwalk.EvalBlock` binds a block's local from its declaration on.
+  `cmd/sngl/testdata/state_read_before_nested_local_runs.txt`, all six.
+- [X] A render that raises left `__renderingN` set, so the slot never drew
+  again. `ir.If.Finally` is a `finally` (Go's `defer`, `try`/`finally`
+  elsewhere), and renderOnce clears the guard in one;
+  `cmd/sngl/testdata/slot_render_raise_draws_again_runs.txt` fails on fyne and
+  gtk4 without it. Left: on android a raise while Compose composes reaches no
+  catch block, so the test ends there; and the interpreter and bubbletea
+  render after the handler, so a render's raise never reaches the boundary's
+  `@error` that html, fyne and gtk4 report it to.
 - [ ] A timer in a tab's loop never ticks on bubbletea. `collectLoopTimers`
   (`codegen/timers.go`), `widgetLoops` (`bubbletea/loopwidget.go`) and
   `callSiteWraps` (`internal/lower/test_reach_flatten.go`) count a

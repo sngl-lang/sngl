@@ -296,6 +296,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		n.Cond = w.expr(n.Cond)
 		n.Body = w.stmts(n.Body)
 		n.Else = w.stmts(n.Else)
+		n.Finally = w.stmts(n.Finally)
 	case *Match:
 		n.Subject = w.expr(n.Subject)
 		for _, arm := range n.Arms {
