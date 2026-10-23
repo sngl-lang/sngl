@@ -925,6 +925,10 @@ type reactiveCtx struct {
 	// loops are the view loops enclosing the position, outermost first: what a
 	// copy is a copy of, for a target that keys a copy's state by it.
 	loops []*ir.For
+	// drawn is whether the position is inside a canvas, whose shapes are
+	// spliced into its draw routine: a shape built at run time has nowhere to
+	// be built there, so one with state is spliced per copy on every target.
+	drawn bool
 }
 
 // perCopy reports whether an instantiation of c here is built at run time, one
@@ -958,13 +962,14 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// built per showing, so a component with state there starts again.
 		// Lowered by passNavigation, it already is an `if`.
 		if n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
-			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops}
+			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
 		} else if n.Record != nil {
 			// A target's own primitive standing for a page, which it writes
 			// as a document or a route of its own (html): a rendering root,
 			// so a loop of pages is not a position its body is repeated in.
 			childRC = reactiveCtx{}
 		}
+		childRC.drawn = childRC.drawn || ir.IsShapeContainer(n)
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
 		if err != nil {
 			return nil, false, err
@@ -1050,6 +1055,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// second mount, so the first schedule can never be stopped. That a
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
+		if rc.drawn && st.captureOnly == nil && n.Component != nil && rc.perCopy(n.Component) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+			return st.expandPerCopy(n, rc)
+		}
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
 			if err := st.instantiateRuntime(n); err != nil {
 				return nil, false, err
@@ -1083,7 +1091,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return spliced, true, nil
 	case *ir.If:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
 		// A record's content, in its container's loop over the records, is
 		// rendered by one iteration of it, so that loop keys none of its
 		// copies -- of a stateful card under a `for` in a tab's panel, the
@@ -1103,7 +1111,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.Match:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Subject, st.reactive), repeated: rc.repeated, loops: rc.loops}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Subject, st.reactive), repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
 		for _, arm := range n.Arms {
 			for _, p := range arm.Patterns {
 				inner.in = inner.in || dependsOnReactiveVar(p, st.reactive)
@@ -1120,7 +1128,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return []ir.Stmt{n}, changed, nil
 	case *ir.For:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n)}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n), drawn: rc.drawn}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err

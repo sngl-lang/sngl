@@ -179,10 +179,11 @@ The node half.
   the bracket ran: a report now skips a bracket its position did not describe
   at the last pass
   (`testdata/owned_derived_built_once_on_entry.txtar`).
-- [ ] An `@update` under a `for` whose key does not step into the loop still
-  runs for a copy that entered in the pass a write reached its key: only a
-  position of `if`s remembers what it described. It needs the copies keyed, as
-  a cell under a loop has them (`dirtyAt`).
+- [X] An `@update` under a `for` whose key does not step into the loop still
+  ran for a copy that entered in the pass a write reached its key, and never
+  for a copy whose element a replaced list changed: the copies are keyed now
+  (`__effectN_keys`, `testdata/canvas_for_shape_state.txtar`, found in Part 8
+  as the first thing a stateful shape under a canvas `for` needed).
 
 ## Part 6: application teardown on targets
 

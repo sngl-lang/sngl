@@ -242,7 +242,14 @@ in the same sense: a component holding an `effect` or a timer is built per copy
 under a `for` (`reactiveCtx.perCopy`) and not substituted there (`isPure`),
 since spliced, the copies shared one key and one handle; an override with no
 var of its own that holds one -- gtk4's entry, pushing its value from an effect
--- is wrapped per call site by `passImplicitState` so that it is.
+-- is wrapped per call site by `passImplicitState` so that it is. A shape
+with state of its own under a `for` or a reactive `if` in a canvas is
+spliced per copy on every target, its cells keyed by the copy as bubbletea
+keys every component's (`reactiveCtx.drawn`, `expandPerCopy`): a drawing is
+spliced into its canvas's draw routine, so there is nowhere a copy could be
+built at run time, and a target keeping instance state left the shape to that
+and read the loop variable from a method that never bound it
+(`testdata/canvas_for_shape_state.txtar`).
 
 A loop that holds a component built at run time is a slot too, whatever it
 iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
@@ -351,9 +358,17 @@ had just built an owned derived value, built it a second time. A report under
 an `if` remembers whether its position described the bracket at the last pass
 (`__effectN_absent`) and runs nothing for one it describes only now; the dirty
 flag is cleared either way. It starts false: an instance whose only brackets are `@update`s is not settled when it is built, so starting true missed a write made straight after (`effect_update_runs.txt`'s `testGated`). A bracket under a loop stepping into its key keeps its per-copy
-queue. One under a loop that does not keeps nothing, since that would need the
-copies keyed: a copy entered in the pass a write reached its key is still
-reported (`testdata/owned_derived_built_once_on_entry.txtar`).
+queue. One under a loop that does not keeps each copy's key at the last pass
+by the copy (`__effectN_keys`, `keysReportBlock`): a copy the last pass
+described runs its `@update` on a write to what the key reads, and a copy
+entered since was made with its key and is owed nothing. A key naming the
+loop's variable reads the list the loop walks, so a write replacing the list
+sets a second flag (`__effectN_rekey`, `rekeyBy`) on which only a copy whose
+key differs runs: a prop reports only a new value, and after the per-copy
+splice the loop variable is the prop
+(`testdata/canvas_for_shape_state.txtar`, where replacing the list rekeys
+one copy and releases one value). Before this a write to the list reached no
+copy at all, and a dirty flag ran every copy.
 
 **A two-way prop the caller leaves unbound is state of the instance**
 (`ir.UnboundProps`): a cell that starts from what the call site gave the prop,

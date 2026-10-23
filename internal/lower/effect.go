@@ -55,7 +55,7 @@ func lowerEffects(pkg *ir.Package, feats Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &effectState{pkg: pkg, native: feats.Effects, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}, cellBy: map[*ir.Var][]*loweredEffect{}}
+	st := &effectState{pkg: pkg, native: feats.Effects, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}, rekeyBy: map[*ir.Var][]*loweredEffect{}, cellBy: map[*ir.Var][]*loweredEffect{}}
 	for _, o := range ir.Owners(pkg) {
 		if err := st.owner(o); err != nil {
 			return err
@@ -83,6 +83,10 @@ type effectState struct {
 	// dirtyBy is the brackets with an `@update` a write to each state var
 	// marks owed one: those whose `on` reads it.
 	dirtyBy map[*ir.Var][]*loweredEffect
+	// rekeyBy is the brackets under a loop whose key reads the loop's
+	// variable, by the list the loop walks: a write to it reaches every copy
+	// whose key it changed.
+	rekeyBy map[*ir.Var][]*loweredEffect
 	// cellBy is the brackets with an `@update` keyed on a cell of each state
 	// var, which a write reaches by where it landed rather than by the var
 	// alone (notesFor).
@@ -180,12 +184,21 @@ type loweredEffect struct {
 	// since an instance may never settle before its first write. A loop's
 	// copies would need keys, so it keeps none.
 	absent *ir.Var
+	// keys is each copy's key at the last pass, by the copy, for a computed
+	// key under a loop: an `@update` is owed to a copy the last pass
+	// described, and after a write to the list the loop walks (rekey) only
+	// to one whose key changed. A copy the last pass did not describe was
+	// made with its key and is owed nothing; a position of `if`s keeps the
+	// same with absent.
+	keys, rekey *ir.Var
+	loops       []*ir.For
 	// mark sets dirty, for a test body: a test reaches the instance's state
 	// through the instance, and html keeps a synthesized var where only the
 	// page's script can name it. Built the first time a test needs it.
-	mark   *ir.Func
-	key    ir.Expr
-	frames []effectFrame
+	mark      *ir.Func
+	rekeyMark *ir.Func
+	key       ir.Expr
+	frames    []effectFrame
 	// cell is the cell `on` names, or nil for a computed key, whose writes
 	// mark it by the vars it reads.
 	cell *effectCell
@@ -406,8 +419,22 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		if fx.cell != nil {
 			st.cellBy[fx.cell.root] = append(st.cellBy[fx.cell.root], fx)
 		} else {
-			for _, v := range st.reactiveVarsIn(key) {
+			direct := st.reactiveVarsIn(key)
+			for _, v := range direct {
 				st.dirtyBy[v] = append(st.dirtyBy[v], fx)
+			}
+			if loops := positionLoops(frames); key != nil && len(loops) > 0 {
+				keysT := ir.MapOf(ir.TypString, key.ExprType())
+				fx.keys = &ir.Var{Name: prefix + "_keys", Type: keysT, Init: &ir.MapLitIR{Type: keysT}, Synthesized: true}
+				fx.rekey = &ir.Var{Name: prefix + "_rekey", Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Synthesized: true}
+				fx.loops = loops
+				st.addVar(o, fx.keys)
+				st.addVar(o, fx.rekey)
+				for _, v := range st.loopIterableVars(key, frames) {
+					if !slices.Contains(direct, v) {
+						st.rekeyBy[v] = append(st.rekeyBy[v], fx)
+					}
+				}
 			}
 		}
 	}
@@ -849,6 +876,9 @@ func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
 	if fx.dirtyAt != nil {
 		return st.copyReportBlock(prefix, fx)
 	}
+	if fx.keys != nil {
+		return st.keysReportBlock(prefix, fx)
+	}
 	var out []ir.Stmt
 	if fx.kinds != nil {
 		out = st.drainBlock(fx)
@@ -882,6 +912,95 @@ func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
 		&ir.Assign{Target: st.varIdent(fx.absent), Op: ast.AssignSet, Value: not(deepCloneExpr(ref))},
 		&ir.If{Cond: st.varIdent(fx.absent), Body: []ir.Stmt{st.setFlag(fx.dirty, false)}},
 	)
+}
+
+// keysReportBlock is reportBlock for a computed key under a loop, where the
+// copies the position describes come and go: each copy's key at the last
+// pass is kept by the copy, so a copy the last pass described runs its
+// `@update` on a write to what the key reads, or on one to the list the loop
+// walks where its key changed, and a copy that entered since -- made with its
+// key -- is owed nothing.
+//
+//	__effectN_next := {}
+//	<the position> {
+//	    __effectN_key = <on>
+//	    __effectN_copy := <the copy>
+//	    if __effectN_keys.contains(__effectN_copy) {
+//	        __effectN_prev := __effectN_keys.get(__effectN_copy)
+//	        if __effectN_dirty || __effectN_rekey && __effectN_prev != __effectN_key { __effectN_update() }
+//	    }
+//	    __effectN_next[__effectN_copy] = __effectN_key
+//	}
+//	__effectN_keys = __effectN_next
+//	__effectN_dirty = false; __effectN_rekey = false
+//
+// Every pass, flagged or not, since the copies a pass describes are what the
+// next one compares against.
+func (st *effectState) keysReportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
+	keyT := fx.keyVar.Type
+	next := &ir.Var{Name: fx.prefix + "_next", Type: fx.keys.Type, Synthesized: true}
+	copyVar := &ir.Var{Name: fx.prefix + "_copy", Type: ir.TypString, Synthesized: true}
+	or := func(a, b ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypBool, Op: ast.BinOr, Left: a, Right: b} }
+	and := func(a, b ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: a, Right: b} }
+	prev := &ir.Var{Name: fx.prefix + "_prev", Type: keyT, Synthesized: true}
+	owed := or(st.varIdent(fx.dirty), and(st.varIdent(fx.rekey), rebuildDiffers(st.varIdent(prev), st.varIdent(fx.keyVar), keyT)))
+	leaf := []ir.Stmt{
+		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
+		&ir.LocalVar{Name: copyVar.Name, Type: copyVar.Type, Sym: copyVar, Init: CopyKey(fx.loops)},
+		&ir.If{
+			Cond: callMapContains(st.varIdent(fx.keys), st.varIdent(copyVar), keyT),
+			Body: []ir.Stmt{
+				&ir.LocalVar{Name: prev.Name, Type: keyT, Sym: prev, Init: callMapGet(st.varIdent(fx.keys), st.varIdent(copyVar), st.varIdent(fx.keyVar), keyT)},
+				&ir.If{Cond: owed, Body: callHandler(fx.update)},
+			},
+		},
+		&ir.Assign{Target: &ir.Index{Type: keyT, Operand: st.varIdent(next), Idx: st.varIdent(copyVar)}, Op: ast.AssignSet, Value: st.varIdent(fx.keyVar)},
+	}
+	out := []ir.Stmt{&ir.LocalVar{Name: next.Name, Type: next.Type, Sym: next, Init: &ir.MapLitIR{Type: next.Type}}}
+	out = append(out, st.positionBlock(prefix, fx.frames, leaf)...)
+	return append(out,
+		&ir.Assign{Target: st.varIdent(fx.keys), Op: ast.AssignSet, Value: st.varIdent(next)},
+		st.setFlag(fx.dirty, false),
+		st.setFlag(fx.rekey, false),
+	)
+}
+
+// positionLoops is the loops a position holds copies of, outermost first.
+func positionLoops(frames []effectFrame) []*ir.For {
+	var out []*ir.For
+	for _, f := range frames {
+		if f.loop != nil && !f.loopElse {
+			out = append(out, f.loop)
+		}
+	}
+	return out
+}
+
+// loopIterableVars is the reactive vars read by the iterable of each enclosing
+// loop whose variable key names: a copy's key `{copy, on: k}` reads `k` off
+// the list the loop walks, so replacing the list may rekey any copy.
+func (st *effectState) loopIterableVars(key ir.Expr, frames []effectFrame) []*ir.Var {
+	named := map[*ir.LoopVar]bool{}
+	_ = ir.WalkExprs(key, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok {
+			if lv, ok := id.Sym.(*ir.LoopVar); ok {
+				named[lv] = true
+			}
+		}
+		return nil
+	})
+	var out []*ir.Var
+	for _, f := range frames {
+		if f.loop == nil || f.loopElse || !(named[f.loop.KeySym] || named[f.loop.ValueSym]) {
+			continue
+		}
+		for _, v := range st.reactiveVarsIn(f.loop.Iter) {
+			if !slices.Contains(out, v) {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
 }
 
 // checkHandlerScope refuses a handler body that reads a loop variable of an
@@ -1599,6 +1718,21 @@ func (st *effectState) markFunc(fx *loweredEffect) *ir.Func {
 	return fx.mark
 }
 
+// rekeyMarkFunc is fx's rekey mark, built on first use.
+func (st *effectState) rekeyMarkFunc(fx *loweredEffect) *ir.Func {
+	if fx.rekeyMark == nil {
+		fx.rekeyMark = &ir.Func{
+			Name:        fx.rekey.Name + "_mark",
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block:       []ir.Stmt{st.setFlag(fx.rekey, true)},
+		}
+		st.addFunc(&ir.Owner{Comp: fx.comp}, fx.rekeyMark)
+	}
+	return fx.rekeyMark
+}
+
 // settleAfterWrites settles after each statement of a test body that writes:
 // a test reads the instance between statements, and the interpreter settles
 // before every read, so each write is a handler of its own.
@@ -1610,12 +1744,15 @@ func (st *effectState) settleAfterWrites(stmts []ir.Stmt, own map[*[]ir.Stmt]boo
 				*b = st.markInto(*b, own)
 			}
 		}
-		before, after, dirty := st.writeNotes(s)
+		before, after, dirty, rekey := st.writeNotes(s)
 		out = append(out, before...)
 		out = append(out, s)
 		out = append(out, after...)
 		for _, fx := range dirty {
 			out = append(out, call(fx.group, st.markFunc(fx)))
+		}
+		for _, fx := range rekey {
+			out = append(out, call(fx.group, st.rekeyMarkFunc(fx)))
 		}
 		hit := map[*effectGroup]bool{}
 		st.collectSettled([]ir.Stmt{s}, own, hit)
@@ -1652,12 +1789,15 @@ func (st *effectState) markInto(stmts []ir.Stmt, own map[*[]ir.Stmt]bool) []ir.S
 				*b = st.markInto(*b, own)
 			}
 		}
-		before, after, dirty := st.writeNotes(s)
+		before, after, dirty, rekey := st.writeNotes(s)
 		out = append(out, before...)
 		out = append(out, s)
 		out = append(out, after...)
 		for _, fx := range dirty {
 			out = append(out, st.setFlag(fx.dirty, true))
+		}
+		for _, fx := range rekey {
+			out = append(out, st.setFlag(fx.rekey, true))
 		}
 	}
 	return out
@@ -1713,7 +1853,7 @@ func nestedBodies(s ir.Stmt) []*[]ir.Stmt {
 // the notes around it for each change a bracket handles, and every bracket
 // owed a report -- a computed key's whose reads it wrote, whatever value it
 // wrote, and a cell key's that it reached and no change handler described.
-func (st *effectState) writeNotes(s ir.Stmt) (before, after []ir.Stmt, dirty []*loweredEffect) {
+func (st *effectState) writeNotes(s ir.Stmt) (before, after []ir.Stmt, dirty, rekey []*loweredEffect) {
 	before, after, cellDirty := st.notesFor(s)
 	seen := map[*loweredEffect]bool{}
 	add := func(fx *loweredEffect) {
@@ -1730,7 +1870,14 @@ func (st *effectState) writeNotes(s ir.Stmt) (before, after []ir.Stmt, dirty []*
 	for _, fx := range cellDirty {
 		add(fx)
 	}
-	return before, after, dirty
+	for _, v := range st.writtenVars(s) {
+		for _, fx := range st.rekeyBy[v] {
+			if !seen[fx] && !slices.Contains(rekey, fx) {
+				rekey = append(rekey, fx)
+			}
+		}
+	}
+	return before, after, dirty, rekey
 }
 
 // settledBy is the scopes whose brackets a statement may have moved, in a
