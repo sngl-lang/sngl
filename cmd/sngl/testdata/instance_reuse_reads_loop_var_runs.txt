@@ -56,7 +56,7 @@ func testEachAnswerLandsUnderItsWord(t test.Test, c page) {
     t.assert(c.seen.get("Green-b", "") == "Green-b!")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:b87a6545f025b9c215d567313b7b12cc
+sha256:c810045fbd3c248d1226772e05f4cc8b
 {
   "results": [
     {
