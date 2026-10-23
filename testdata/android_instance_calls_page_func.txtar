@@ -502,8 +502,17 @@ window.__sngl_boot = () => {
     note("o");
     return state.opened;
   }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { note, open });
+    Object.assign(window, { note, open, __snglTeardown });
   }
   function __cf_holder(props) {
     const __root = document.createElement("div");
@@ -588,6 +597,7 @@ window.__sngl_boot = () => {
     state.shown = !state.shown;
     __renderSlot0(__slotAnchor_0);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
@@ -598,4 +608,4 @@ pass sha256:832e4e553ba5c5052667a2e0f400245a
 -- run/kotlin/android --
 pass sha256:14214d298b512cf00d83e31c5bfa60af
 -- run/none/html --
-pass sha256:6a07e61d6d0a7584b8a0e2829640f498
+pass sha256:16c76220f17b3bbf855e040fe900ecc9

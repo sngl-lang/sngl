@@ -2218,7 +2218,15 @@ A struct marked `#[macro.owned(release)]` is **owned**: a value of it is
 something the program allocated and must give back, and `release` is the
 function that does. The release takes exactly one value of the type and
 returns nothing; anything else is an error at the mark. Only a struct may be
-owned, and nothing is owned by its name.
+owned, and nothing is owned by its name. A type whose host counts references
+names its **retain** beside the release, `#[macro.owned(unref, retain=ref)]`:
+a function taking one value of the type and answering it.
+
+A type that holds an owned value is owned by what it holds: a struct with an
+owned field, and a `list`, a `map` or an `option` of an owned type. Releasing
+a value of one releases what it holds, newest first -- a list's last element
+first, a struct's last owned field first -- and a var, a temporary or a literal
+of one lives as long as a value of the owned type itself would.
 
 ```sngl
 import macro "sngl:macro"
@@ -2239,7 +2247,7 @@ or reading or passing one after its release, is a runtime error.
 A value is **made** by a literal of the type or by a call of a function
 answering it. A function taking an owned value and answering the same type is
 taken to answer a new value: one that answers its argument leaves the compiler
-releasing the one value twice.
+releasing the one value twice, unless it is the type's retain.
 
 The compiler releases every owned value the program makes, at the narrowest of
 four lifetimes that holds it:
@@ -2247,16 +2255,29 @@ four lifetimes that holds it:
 - **Statement** -- a value a statement makes and only reads -- passed to a
   parameter that only reads or copies it, used as a receiver, read a field or
   an element of, or discarded -- is released once the statement completes,
-  including when it returns or raises.
+  including when it returns or raises. An arm of a ternary or of a `match`
+  expression and the right operand of `&&` or `||` are the statement's: a
+  value the taken arm makes is released with the statement, and an arm not
+  taken makes nothing. The head of a `for` over an iterable is evaluated once
+  and what it makes is released when the loop ends, by a `return` out of it
+  included; a condition head is evaluated before each iteration and what it
+  makes is released before the test.
 - **Node** -- a value held in a `var` of a component or of a view block,
   computed by an owned derived value, or handed to a `#[macro.retains]`
-  parameter by an effect's handler lives as long as the node: it is released
-  when the var is overwritten, when what the derived value reads is written,
-  when the native is handed the next value, and when the node unmounts. The
+  parameter from inside a component -- by an effect's handler, an event
+  handler, a timer's `@tick` or a function of the component -- lives as long
+  as the node: it is released when the var is overwritten, when what the
+  derived value reads is written, when the native is handed the next value
+  from the same call, and when the node unmounts. The
   compiler releases these itself, so a program that releases one by hand as
   well releases it twice. The value such a var holds is one its initializer
   or the assignment made: a var initialized or assigned from another var's
-  value is released twice, once by each.
+  value is released twice, once by each, unless the type names a retain
+  (below). What a var's initializer makes and
+  only borrows -- `open(fd)` in `var n = size(open(fd))` -- is held with
+  the var and released with it, since an initializer has no statement to
+  release it after: with the node for a component's var, at teardown for a
+  package's.
 - **Application** -- a value built only from constants, which is a literal of
   the type, or a call of a `const func`, whose arguments are literals or
   package constants, is made once and released when the application tears
@@ -2266,10 +2287,37 @@ four lifetimes that holds it:
 - **Moved** -- a value handed to a `#[macro.moves]` parameter belongs to the
   callee, and the program never releases it.
 
+**A write into a collection moves the value in.** `push` and `insert` hand the
+list what they are given, and it is released with the list. An assignment to
+an element of a list, to a map entry or to a field releases what stood there
+once the new value is in place; `remove` releases what it took out, and
+`clear` what the list held. A value stored in two places -- pushed from a var,
+or assigned to an element from another -- is released by each, as a var
+assigned another var's value is, unless the type names a retain.
+
+**A type with a retain is stored by reference.** Where a value of such a type
+is stored from what another holder holds -- a component's, a view block's or
+a package's `var`, a field, an element, a parameter, which is the caller's --
+into a second var, a field or a collection, the stored value is passed through
+the retain, and each holder releases its own: the host counts, and the
+program's copies are its references. A local names a value rather than
+holding it: one initialized by a value made there moves that value into the
+holder it is stored in, and one initialized from what a holder holds is
+stored as the holder's own would be. A function that answers a holder's value
+retains it itself, since its caller takes the answer for a new value. The
+retain is the type's alone: a list, a map, an option or a struct holding one
+is still released by each var that holds it.
+
 `#[macro.retains]` and `#[macro.moves]` mark a parameter of a function with no
 body: a native that keeps a pointer to its argument while the caller still
 owns it, and one that takes the argument. A function with a body says what it
-does with its arguments itself, so the marks are an error there.
+does with its arguments itself, so the marks are an error there. A value
+handed to a `#[macro.retains]` parameter is released by the node that made
+the call, so a call that makes the value where no component encloses it -- in
+a free function, a test, a package `var`'s initializer or the package's own
+body -- is an error naming the parameter. A value some other holder owns may
+be handed over anywhere: it lives as long as that holder, and the holder may
+not release it while the native keeps it.
 
 A derived value of an owned type -- an **owned derived value**, a function of
 a component taking nothing and answering an owned type -- is computed when
@@ -2282,21 +2330,11 @@ A `var`'s initializer runs once and is not keyed. The value is state the
 component holds, so a const component's render may read one as it reads a
 prop.
 
-**What the compiler does not release is held**, never released wrongly, and
-the interpreter reports it as a leak:
-
-- A value the statement may not make: the right operand of `&&` or `||`, an
-  arm of a ternary or of a `match` expression, or the head of a `for`. Make
-  such a value in a statement of its own, and bind it to a `var` to release by
-  hand where it must be conditional.
-- A value made earlier in a statement whose later value raises while being
-  made.
-- A value held in a list, a map, a struct field or an `option`, rather than in
-  a var of the owned type itself.
-- A value handed to a `#[macro.retains]` parameter outside an effect's
-  handler, from an event handler or a function.
-
-A program that must release one of these releases it by hand.
+**Nothing the compiler reaches is held.** Every owned value a program makes
+has one of the four lifetimes, and the compiler releases it at that
+lifetime's end; a program releases nothing by hand, and one that releases a
+value the compiler releases as well releases it twice. What the compiler
+cannot reach it refuses: a `#[macro.retains]` call no component encloses.
 
 **An application tears down before its process ends.** When the event loop
 exits, the root tree unmounts, so every `@unmount` runs and every node-lifetime

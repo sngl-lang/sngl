@@ -5355,6 +5355,14 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst11_live_di, _ := range m.__inst11_live {
+		var __inst11_live_dj int = ((len(m.__inst11_live) - 1) - __inst11_live_di)
+		m.__inst11_live[__inst11_live_dj].Destroy()
+	}
+	m.__inst11_live = []*_list1Instance{}
+}
+
 func (m *Model) __n6_closed_handler() {
 }
 
@@ -10606,6 +10614,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/none/html/index.html --
@@ -10673,6 +10682,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3069a47cbe54206bd6157b1b21fe7e40
 -- run/go/fyne --
-pass sha256:58b6559fa83737b24b16abbf7b2eabcb
+pass sha256:44fc1feff70a1be90e95a18ed15f884f
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

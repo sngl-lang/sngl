@@ -401,6 +401,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { items: ["a", "b"], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf_row(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -498,10 +507,11 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
 pass sha256:b98d353b683367031b9908af8fb55f16
 -- run/none/html --
-pass sha256:6368e92351dc44b2c52610b64cb821fb
+pass sha256:c63e881f41dbf4d2892dbd3d87a641cb

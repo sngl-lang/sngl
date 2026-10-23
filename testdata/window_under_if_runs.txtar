@@ -279,6 +279,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__window_state1__slot0Instance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -770,6 +775,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__window_state1__slot0Instance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -861,7 +871,6 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.mounts))
@@ -976,7 +985,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__prop_title = __a_title
 	c.__prop_closed = __a_closed
 	c.visible = c.__prop___start_visible
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(c.__n1, c.__prop_title)
@@ -1084,6 +1092,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:e11afe187688a7e18b57170325453663
+pass sha256:5df93fc5b017fa9a6f62d4ba716531a2
 -- run/go/gtk4 --
-pass sha256:f22ee368ca0f9b2a0395b32143aff29e
+pass sha256:9f2e767f4ca4bddcded3486b6d447f28

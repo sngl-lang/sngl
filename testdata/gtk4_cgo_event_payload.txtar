@@ -150,6 +150,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*RowInstance{}
+}
+
 func (m *Model) box_input_handler(v string) {
 	if v != m.value__inst0 {
 		m.value__inst0 = v
@@ -328,6 +336,7 @@ func main() {
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(480, 640))
 	w.ShowAndRun()
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/fyne/model_test.go --
@@ -397,9 +406,12 @@ func gtkPost(fn func()) {
 	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -413,6 +425,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -705,6 +720,14 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*RowInstance{}
+}
+
 func (m *Model) box_changed_handler() {
 	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box)))) != m.value__inst0 {
 		m.value__inst0 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box))))
@@ -765,7 +788,6 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	__n6 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n6)), C.GTK_ORIENTATION_HORIZONTAL)
@@ -994,6 +1016,6 @@ func (m *Model) entryChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_entry)), sig)
 }
 -- run/go/fyne --
-pass sha256:88797177f61dd03a8cfecb1fa35a50b5
+pass sha256:f48ee85a6bcc796b235295889d415fc1
 -- run/go/gtk4 --
-pass sha256:c786884dd51646bd254e9b83937baae4
+pass sha256:e2a45f8d13e2b895c4e5f6a7591bbb64

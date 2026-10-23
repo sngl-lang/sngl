@@ -142,6 +142,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*ChildInstance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -283,6 +291,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -418,6 +427,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { shown: true, n: 1, visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf_child(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -549,12 +567,13 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:72a202711c832c6aa7d4c8b080104491
+pass sha256:50c7324836589eceff8bfaecc9eb0e86
 -- run/kotlin/android --
 pass sha256:3062d2b81577919a9292fac6b8603181
 -- run/none/html --
-pass sha256:34c89e7d0ebb5d890e60d37a54364087
+pass sha256:1c7f872d62013b49cb19545d84a7dcfd

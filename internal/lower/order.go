@@ -259,6 +259,12 @@ var orderConstraints = []orderConstraint{
 		"CSE binds a call a statement makes twice, and an allocation made twice is two values each released once, not one value read twice"},
 	{"CMarshal", "NoTernary",
 		"a `bool` argument is written as sngl:x/c's `cbool` body, a ternary, which a target with none needs lowered"},
+	{"CMarshal", "ConditionalTemps",
+		"the `c.str` a C call's string argument becomes is the allocation an arm is lifted for, and before the conversion there is none to see"},
+	{"NoReactivity", "ConditionalTemps",
+		"the value-only `if` it synthesizes would be misread as a reactive render slot, as NoTernary's would"},
+	{"ConditionalTemps", "ReleaseTemps",
+		"an arm that allocates is a statement only once lifted, and ReleaseTemps releases what a statement borrows"},
 
 	{"NoReactivity", "NoTernary",
 		"the value-only `if` NoTernary synthesizes would be misread as a reactive render slot and relocated into a __renderSlotN func, orphaning the `var __ltN` it assigns into"},

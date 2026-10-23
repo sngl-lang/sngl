@@ -17,11 +17,14 @@ registered on `pagehide` was the same name in the same way.
 
 pageComponents is the one list all of them read now, so the indentation below
 is the assertion: every effect name is inside the factory, and nothing about
-this effect appears at page scope.
+this effect appears at page scope. The page does register a teardown on
+`pagehide`, since it holds the registry of `Row` instances and empties it at
+exit (design/ownership.md); that teardown destroys the instances, whose own
+`__snglTeardown` runs the effect's, and names the effect nowhere itself.
 
 deny out/none/html/index.html `(?m)^  __effects0_settle` -- an instance's effect settles from inside its factory; the page has no instance to settle
-deny out/none/html/index.html `(?m)^  window.addEventListener\("pagehide"` -- the page registers no teardown for an effect it does not own; the instance's __destroy runs it
-deny out/none/html/index.html `settle2|__snglTeardown2` -- a name suffixed by the emitter is a collision, and the collision is a declaration the page should not have made
+deny out/none/html/index.html `(?m)^  function __snglTeardown\(\) \{[^}]*__effects0` -- the page's teardown destroys the instances it holds; the effect they own is theirs to tear
+deny out/none/html/index.html `settle2` -- a settle name suffixed by the emitter is a collision, and the collision is a declaration the page should not have made
 
 -- app.sngl --
 import . "sngl:ui"
@@ -72,6 +75,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { on__inst0: true, visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf_Row(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -152,7 +164,7 @@ body { font-family: system-ui, sans-serif; }
         }
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       __effects0_torn = true;
       __effect0_teardown();
     }
@@ -168,7 +180,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_label
     };
@@ -239,8 +251,9 @@ body { font-family: system-ui, sans-serif; }
     state.on__inst0 = !state.on__inst0;
     __renderSlot0(__slotAnchor_0);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c6faf7efd72d00d9e60a7cf5a9d2e628
+pass sha256:0c5cfaf9b1237d55792d350ae118ba18

@@ -342,9 +342,12 @@ func gtkPost(fn func()) {
 	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -358,6 +361,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -593,6 +599,14 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
+}
+
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
 	Root           *C.GtkWidget
@@ -619,7 +633,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__rendering1 = false
@@ -905,7 +918,7 @@ pass sha256:e75b892c72c7c83a4dd911f3d2646f5f
 -- run/go/fyne --
 pass sha256:221a58215fa84e1a529cfe11eb4244a8
 -- run/go/gtk4 --
-pass sha256:3d3da8433eed6544a4f6c39bcca49e0a
+pass sha256:7f0fdeeb9d78ab936ce593ceef69a988
 -- run/kotlin/android --
 pass sha256:c7c1f7ee5995768bf87ba91b77d3788c
 -- run/none/html --

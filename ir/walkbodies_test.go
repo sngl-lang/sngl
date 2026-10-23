@@ -92,6 +92,8 @@ var referenceSlots = map[string]bool{
 	"Closure.Func": true,
 	// The same *Funcs already reached through their owning slice.
 	"Component.Methods": true,
+	// The releases ReleaseFor synthesized, each appended to pkg.Funcs.
+	"Package.Releases": true,
 	// The declaration's own body, set aside when an override was swapped in.
 	// Nothing renders it where it lies -- a node that wants it is handed a
 	// deep clone (passNavigation's link) -- and a pass rewriting it in place

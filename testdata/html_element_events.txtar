@@ -71,6 +71,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { msg: "", txt: "", hits: 0, rows: ["a"], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -183,8 +192,9 @@ body { font-family: system-ui, sans-serif; }
   $3.addEventListener("mouseover", function() {
     state.hits = state.hits + 1;
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:40dae136594c7cfafd40723a56262ae1
+pass sha256:460ffb0b2470d581db517078884fb02b

@@ -1,0 +1,77 @@
+// What a var's initializer makes and only borrows -- `open(fd)` in
+// `var n = size(open(fd))`, where `size` reads the file and answers a
+// number -- is held with what holds the var and released with it: a
+// component's when the node unmounts, a package var's when the application
+// tears down. An initializer has no statement to release a temp after. The
+// var holds what the initializer answers, not what it borrowed on the way.
+// Nothing here releases by hand, and the tracker finds nothing held.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) => file{fd=fd}
+
+func size(f file) => f.fd * 10
+
+component sized(fd int = 1) ui.node {
+    var n = size(open(fd))
+    var m = n + size(open(fd + 1))
+
+    ui.text(value="{n} {m}")
+}
+
+// Released when the node unmounts, which is when the test ends: the leak
+// check would say otherwise.
+func testComponentInitializerHoldsItsTempsWithTheNode(t test.Test, c sized) {
+    t.assert(c.n == 10)
+    t.assert(c.m == 30)
+    t.assert(closed.length == 0)
+}
+
+component toggles ui.node {
+    var on = true
+
+    if on {
+        sized
+    }
+}
+
+func testUnmountReleasesTheTemps(t test.Test, c toggles) {
+    t.assert(closed.length == 0)
+    c.on = false
+    t.assert(closed == [2, 1])
+}
+
+component holds ui.node {
+    var f = open(3)
+
+    ui.text(value="{f.fd}")
+}
+
+func testComponentInitializerKeepsWhatItAnswers(t test.Test, c holds) {
+    t.assert(c.f.fd == 3)
+    t.assert(closed.length == 0)
+}
+
+var total = size(open(4))
+
+// Released at teardown, after the test: the leak check would say otherwise.
+func testPackageInitializerHoldsItsTempWithTheApplication(t test.Test) {
+    t.assert(total == 40)
+    t.assert(closed.length == 0)
+}
+
+ui.window(title="t") {
+    sized
+}

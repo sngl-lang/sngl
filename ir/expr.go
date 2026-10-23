@@ -143,6 +143,30 @@ func (c *Call) QualifiedName() string {
 	return ""
 }
 
+// ParamFor is the parameter c's argument i is for: the one its name picks
+// where it is named, otherwise the one at its position aligned from the end,
+// since a native in the receiver-first shape is called with the receiver as
+// argument zero, which no parameter declares. Nil where no parameter answers.
+func (c *Call) ParamFor(i int) *Param {
+	if c == nil || c.Func == nil || i < 0 || i >= len(c.Args) {
+		return nil
+	}
+	params := c.Func.Params
+	if name := c.Args[i].Name; name != "" {
+		for _, p := range params {
+			if p.Name == name {
+				return p
+			}
+		}
+		return nil
+	}
+	j := i - (len(c.Args) - len(params))
+	if j < 0 || j >= len(params) {
+		return nil
+	}
+	return params[j]
+}
+
 // ErrorMode describes how a fallible call's error is lowered at the callsite.
 type ErrorMode int
 

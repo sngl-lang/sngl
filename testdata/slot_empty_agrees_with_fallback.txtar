@@ -1387,6 +1387,15 @@ body { font-family: system-ui, sans-serif; }
     state.mounted__inst0 = state.mounted__inst0 + 1;
     __n2.textContent = "mounted " + String(state.mounted__inst0);
   }
+  function __snglTeardown() {
+    for (const [__inst4_live_di, _] of __inst4_live.entries()) {
+      ;
+      let __inst4_live_dj = __inst4_live.length - 1 - __inst4_live_di;
+      __inst4_live[__inst4_live_dj].__destroy();
+    }
+    ;
+    __inst4_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1697,6 +1706,7 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
   __effects0_settle();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
@@ -1709,4 +1719,4 @@ pass sha256:c44dfac1f38087b059eac01e5aed9e2f
 -- run/kotlin/android --
 pass sha256:b59f31e656575919b64c3a3a0297d659
 -- run/none/html --
-pass sha256:0ace3a0daeceb7bfbb9c84624d88f26b
+pass sha256:30e1efc84efdd05ca28fd3af051a14f2

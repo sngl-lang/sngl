@@ -1,0 +1,141 @@
+// An owned type may name a retain beside its release. A value of it stored
+// from another holder -- in a second var, a field or a collection -- is
+// retained there, and each holder releases its own. A local names a value
+// rather than holding it, so one made in a local moves into the holder it is
+// stored in, and one aliasing a holder's value retains as the holder would.
+// A type without a retain keeps the rule that a value stored twice is released
+// twice, and the tracker says so.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close, retain=dup)]
+struct file {
+    fd int
+}
+
+var log list[string] = []
+
+func close(f file) {
+    log.push("close {f.fd}")
+}
+
+func dup(f file) file {
+    log.push("dup {f.fd}")
+    return f
+}
+
+func open(fd int) => file{fd=fd}
+
+struct entry {
+    name string
+    f    file
+}
+
+component holders ui.node {
+    var f = open(1)
+    var g = f
+    var fs = [f]
+    var e = entry{name="e", f=f}
+    var o option[file] = f
+
+    func again() {
+        g = f
+    }
+
+    func keep() {
+        fs.push(f)
+    }
+
+    func alias() {
+        var x = f
+        fs.push(x)
+    }
+
+    func fresh(fd int) {
+        var tmp = open(fd)
+        fs.push(tmp)
+    }
+
+    func refile() {
+        e.f = g
+    }
+
+    ui.text(value="{f.fd}")
+}
+
+func testEachHolderRetains(t test.Test, c holders) {
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1"])
+}
+
+func testAssignmentRetainsThenReleasesTheReplaced(t test.Test, c holders) {
+    c.again()
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1", "dup 1", "close 1"])
+}
+
+func testPushRetains(t test.Test, c holders) {
+    c.keep()
+    t.assert(c.fs.length == 2)
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1", "dup 1"])
+}
+
+func testAnAliasRetains(t test.Test, c holders) {
+    c.alias()
+    t.assert(c.fs.length == 2)
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1", "dup 1"])
+}
+
+func testALocalMovesIn(t test.Test, c holders) {
+    c.fresh(2)
+    t.assert(c.fs.length == 2)
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1"])
+}
+
+func testFieldAssignmentRetains(t test.Test, c holders) {
+    c.refile()
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1", "dup 1", "close 1"])
+}
+
+component page ui.node {
+    var show = true
+
+    if show {
+        holders
+    }
+}
+
+func testEachHolderReleasesItsOwn(t test.Test, c page) {
+    c.show = false
+    t.assert(log == ["dup 1", "dup 1", "dup 1", "dup 1", "close 1", "close 1", "close 1", "close 1", "close 1"])
+}
+
+func testAHolderLeftIsALeak(t test.Test) { // ERROR(test) "leak: the file allocated at owned_retain.sngl:28:22 has 1 of its 2 holders left"
+    var f = open(3)
+    var kept = dup(f)
+    close(f)
+    t.assert(kept.fd == 3)
+}
+
+#[macro.owned(drop)]
+struct raw {
+    fd int
+}
+
+func drop(r raw) {
+}
+
+component twice ui.node {
+    var a = raw{fd=1}
+    var b = a
+
+    ui.text(value="{b.fd}")
+}
+
+func testWithoutARetainAValueStoredTwiceIsReleasedTwice(t test.Test, c twice) { // ERROR(test) "raw released twice: allocated at owned_retain.sngl:128:13, released where the compiler releases it and again where the compiler releases it"
+    t.assert(c.b.fd == 1)
+}
+
+ui.window(title="t") {
+    page
+    twice
+}

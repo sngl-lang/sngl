@@ -1,0 +1,153 @@
+// An owned value a statement may not make -- a ternary's or a match
+// expression's arm, the right of `&&` or `||`, a `for` head -- is released
+// as one made in a statement of its own is: the arm is lowered to a statement
+// under an `if` ahead of the release pass, on every target. A temp bound
+// before a later temp of the same statement raises is released on the way
+// out. Nothing here releases by hand, and the tracker finds nothing held.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) => file{fd=fd}
+
+func opener(fd int) file {
+    if fd == 0 {
+        error.raise("empty", "")
+    }
+    return file{fd=fd}
+}
+
+func size(f file) => f.fd * 10
+
+func fds(f file) => [f.fd, f.fd + 1]
+
+func testReleasedInATernaryArm(t test.Test) {
+    var on = true
+    t.assert((on ? size(open(1)) : 0) == 10)
+    t.assert(closed == [1])
+}
+
+func testUntakenArmMakesNothing(t test.Test) {
+    var on = false
+    t.assert((on ? size(open(1)) : size(open(2))) == 20)
+    t.assert(closed == [2])
+}
+
+func testReleasedInAMatchArm(t test.Test) {
+    var n = 3
+    var got = match n {
+        3 => size(open(n))
+        else => 0
+    }
+    t.assert(got == 30)
+    t.assert(closed == [3])
+}
+
+func testReleasedOnTheRightOfAnd(t test.Test) {
+    var on = true
+    t.assert(on && size(open(4)) == 40)
+    t.assert(closed == [4])
+}
+
+func testUnreachedRightMakesNothing(t test.Test) {
+    var on = true
+    t.assert(on || size(open(5)) == 50)
+    t.assert(closed.length == 0)
+}
+
+func testReleasedOnTheRightOfOr(t test.Test) {
+    var on = false
+    t.assert(on || size(open(6)) == 60)
+    t.assert(closed == [6])
+}
+
+func testReleasedAfterTheLoop(t test.Test) {
+    var total = 0
+    for var i = fds(open(7)) {
+        total += i
+    }
+    t.assert(total == 15)
+    t.assert(closed == [7])
+}
+
+func openAll(fd int) list[file] {
+    return [open(fd), open(fd + 1)]
+}
+
+func testReleasedAfterTheLoopItWalks(t test.Test) {
+    var total = 0
+    for var f = openAll(10) {
+        total += f.fd
+    }
+    t.assert(total == 21)
+    t.assert(closed == [11, 10])
+}
+
+func firstOf(fd int) int {
+    for var f = openAll(fd) {
+        return f.fd
+    }
+    return 0
+}
+
+func testReleasedBeforeAReturnInTheLoop(t test.Test) {
+    t.assert(firstOf(12) == 12)
+    t.assert(closed == [13, 12])
+}
+
+func testReleasedEachTimeTheConditionIsAsked(t test.Test) {
+    var n = 3
+    for size(open(n)) > 0 {
+        n -= 1
+    }
+    t.assert(n == 0)
+    t.assert(closed == [3, 2, 1, 0])
+}
+
+func testReleasedInANestedArm(t test.Test) {
+    var on = true
+    t.assert((on ? (on ? size(open(14)) : 0) + 1 : 0) == 141)
+    t.assert(closed == [14])
+}
+
+func testReleasedInATernaryInitializer(t test.Test) {
+    var on = true
+    var got = on ? size(open(8)) : 0
+    t.assert(got == 80)
+    t.assert(closed == [8])
+}
+
+component later ui.node {
+    var total = 0
+    var problem = ""
+
+    ui.boundary(@error(e) {
+        problem = e.message
+    }) {
+        ui.button #go(text="go", @click {
+            total = size(open(9)) + size(opener(0))
+        })
+    }
+}
+
+func testReleasedWhenALaterTempRaises(t test.Test, c later) {
+    c.go.click()
+    t.assert(c.problem == "empty")
+    t.assert(c.total == 0)
+    t.assert(closed == [9])
+}
+
+ui.window(title="t") {
+    later
+}

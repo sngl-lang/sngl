@@ -79,11 +79,11 @@ func (st *releaseTemps) packageVars() {
 		}
 	}
 	for _, v := range vars {
-		if v.IsConst || v.NodeHandle || v.Synthesized || released[v] || ir.ReleaseOf(v.Type) == nil {
+		if v.IsConst || v.NodeHandle || v.Synthesized || released[v] || !ir.Owned(v.Type) {
 			continue
 		}
 		released[v] = true
-		st.teardown().Block = append(st.teardown().Block, st.releaseCall(ir.ReleaseOf(v.Type), identOf(v)))
+		st.teardown().Block = append(st.teardown().Block, st.releaseCall(st.pkg.ReleaseFor(v.Type), identOf(v)))
 	}
 }
 
@@ -236,7 +236,7 @@ func (st *releaseTemps) boundArgs(stmts []ir.Stmt) ([]temp, int) {
 		}
 		if isAllocation(lv.Init) && !st.released[lv.Sym] {
 			st.released[lv.Sym] = true
-			out = append(out, temp{sym: lv.Sym, release: ir.ReleaseOf(lv.Init.ExprType())})
+			out = append(out, temp{sym: lv.Sym, release: st.pkg.ReleaseFor(lv.Init.ExprType())})
 		}
 	}
 	return out, n
@@ -273,6 +273,14 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 		}
 	case *ir.Match:
 		c.visit(&n.Subject, false)
+	case *ir.For:
+		// An iterable head is evaluated once and read by every iteration, so
+		// what it makes lives across the loop. A condition head is evaluated
+		// per iteration, and ConditionalTemps has made it a call whose body
+		// is reached as a block of its own.
+		if k := ir.DeriveIterKind(n); k != ir.IterCondition && k != ir.IterForever {
+			c.visit(&n.Iter, true)
+		}
 	default:
 		return []ir.Stmt{s}
 	}
@@ -290,15 +298,19 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 		st.counter++
 		typ := f.expr.ExprType()
 		sym := &ir.Var{Name: name, Type: typ, Synthesized: true}
-		pre = append(pre, &ir.LocalVar{Name: name, Type: typ, Init: f.expr, Sym: sym})
+		pre = append(pre, st.bind(&ir.LocalVar{Name: name, Type: typ, Init: f.expr, Sym: sym}, temps)...)
 		*f.slot = &ir.Ident{Name: name, Sym: sym, Type: typ}
-		temps = append(temps, temp{sym: sym, release: ir.ReleaseOf(typ)})
+		temps = append(temps, temp{sym: sym, release: st.pkg.ReleaseFor(typ)})
 	}
 	if discarded {
 		return append(pre, st.releases(temps)...)
 	}
 	if len(temps) == 0 {
 		return append(pre, s)
+	}
+	if loop, ok := s.(*ir.For); ok {
+		st.releaseBeforeReturns(&loop.Body, temps)
+		st.releaseBeforeReturns(&loop.Else, temps)
 	}
 	body, after := st.split(s)
 	if raising := raisingCalls(body); len(raising) > 0 {
@@ -307,6 +319,46 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 	out := append(pre, body...)
 	out = append(out, st.releases(temps)...)
 	return append(out, after...)
+}
+
+// bind is decl, run so that a raise while its value is made releases the
+// temps bound before it: declared ahead and assigned in a catch block of its
+// own. A binding that cannot raise, or has nothing bound before it, is the
+// declaration alone.
+func (st *releaseTemps) bind(decl *ir.LocalVar, before []temp) []ir.Stmt {
+	assign := &ir.Assign{Target: identOf(decl.Sym), Op: ast.AssignSet, Value: decl.Init}
+	raising := raisingCalls([]ir.Stmt{assign})
+	if len(before) == 0 || len(raising) == 0 {
+		return []ir.Stmt{decl}
+	}
+	decl.Init = nil
+	return []ir.Stmt{decl, st.catchReleasing([]ir.Stmt{assign}, before, raising)}
+}
+
+// releaseBeforeReturns releases temps ahead of each `return` in a loop's
+// body, which leaves the loop the releases after it would have ended. The
+// result is bound first, as split binds a statement's own.
+func (st *releaseTemps) releaseBeforeReturns(block *[]ir.Stmt, temps []temp) {
+	var out []ir.Stmt
+	for _, s := range *block {
+		ret, ok := s.(*ir.Return)
+		if !ok {
+			for _, b := range ir.TransparentBlocks(s) {
+				st.releaseBeforeReturns(b, temps)
+			}
+			out = append(out, s)
+			continue
+		}
+		if ret.Value != nil {
+			if _, plain := ret.Value.(*ir.Ident); !plain {
+				body, _ := st.split(ret)
+				out = append(out, body...)
+			}
+		}
+		out = append(out, st.releases(temps)...)
+		out = append(out, ret)
+	}
+	*block = out
 }
 
 // split is s as what reads the temps and what runs once they are released. A
@@ -342,20 +394,50 @@ func (st *releaseTemps) releases(temps []temp) []ir.Stmt {
 }
 
 func (st *releaseTemps) releaseCall(release *ir.Func, arg ir.Expr) ir.Stmt {
-	if release.PkgPath() != "" {
+	if callsLibrary(release) {
 		st.promote = true
 	}
 	return releaseWith(release, arg)
 }
 
+// callsLibrary reports whether release is a library's, or a synthesized one
+// whose body reaches a library's, which LibFuncs has to promote.
+func callsLibrary(release *ir.Func) bool {
+	if release.PkgPath() != "" {
+		return true
+	}
+	if release.Releases == nil {
+		return false
+	}
+	found := false
+	_ = ir.Walk(release.Block, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && call.Func != nil && ir.IsRelease(call.Func) && callsLibrary(call.Func) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
 // constant reports whether e is built from constants: a literal of an owned
 // type whose fields are, or a call of a const function, or of sngl:x/c's
-// `cstring`, whose arguments are.
+// `cstring`, whose arguments are; a list or map literal of such values is
+// one too.
 func (st *releaseTemps) constant(e ir.Expr) bool {
 	switch x := e.(type) {
 	case *ir.StructLit:
 		for _, f := range x.Fields {
-			if f.Spread || !constantArg(f.Value) {
+			if f.Spread || !st.constantValue(f.Value) {
+				return false
+			}
+		}
+		return true
+	case *ir.ListLit:
+		return !slices.ContainsFunc(x.Elems, func(e ir.Expr) bool { return !st.constantValue(e) })
+	case *ir.MapLitIR:
+		for _, en := range x.Entries {
+			if !constantArg(en.Key) || !st.constantValue(en.Value) {
 				return false
 			}
 		}
@@ -373,6 +455,10 @@ func (st *releaseTemps) constant(e ir.Expr) bool {
 		return true
 	}
 	return false
+}
+
+func (st *releaseTemps) constantValue(e ir.Expr) bool {
+	return constantArg(e) || isAllocation(e) && st.constant(e)
 }
 
 // constantArg is a value the package itself can evaluate: a literal, or a
@@ -402,7 +488,7 @@ func (st *releaseTemps) application(e ir.Expr) ir.Expr {
 		if ok {
 			st.app[key] = v
 		}
-		st.teardown().Block = append(st.teardown().Block, st.releaseCall(ir.ReleaseOf(typ), identOf(v)))
+		st.teardown().Block = append(st.teardown().Block, st.releaseCall(st.pkg.ReleaseFor(typ), identOf(v)))
 	}
 	return identOf(v)
 }
@@ -503,32 +589,37 @@ func (st *releaseTemps) eventType() *ir.Type {
 }
 
 // raisingCalls is every call in body a raise can leave other than through a
-// per-call handler, which ends the call and not the statement.
+// per-call handler, which ends the call and not the statement. A catch block
+// nested in body -- a loop's statement released its own temps -- raises again
+// from its handler, which the walk does not enter on its own, and the raise
+// again is one the catch around it has to see.
 func raisingCalls(body []ir.Stmt) []*ir.Call {
 	var out []*ir.Call
-	visitCoveredCalls(body, func(c *ir.Call) {
-		if c.ErrorMode != ir.ErrorNone && c.ErrorMode != ir.ErrorPerCall {
-			out = append(out, c)
+	var visit func(block []ir.Stmt)
+	visit = func(block []ir.Stmt) {
+		for _, s := range block {
+			_ = ir.Walk(s, func(n ir.Node) error {
+				switch x := n.(type) {
+				case *ir.Lambda:
+					return ir.SkipDir
+				case *ir.If:
+					if x.Catch != nil && x.Catch.Func != nil {
+						visit(x.Catch.Func.Block)
+					}
+				case *ir.Call:
+					if x.ErrorMode != ir.ErrorNone && x.ErrorMode != ir.ErrorPerCall {
+						out = append(out, x)
+					}
+				}
+				return nil
+			})
 		}
-	})
+	}
+	visit(body)
 	return out
 }
 
-// isAllocation reports whether e makes an owned value, rather than reading
-// one something else holds. An intrinsic only reads one out of a collection:
-// a cell's `map.get` is the copy's value, not a new one.
-func isAllocation(e ir.Expr) bool {
-	if e == nil || ir.ReleaseOf(e.ExprType()) == nil {
-		return false
-	}
-	switch x := e.(type) {
-	case *ir.Call:
-		return x.Func != nil && x.Func.Intrinsic == ""
-	case *ir.StructLit:
-		return true
-	}
-	return false
-}
+func isAllocation(e ir.Expr) bool { return ir.Allocates(e) }
 
 type foundTemp struct {
 	slot *ir.Expr
@@ -568,7 +659,10 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 			c.visit(&x.Args[i].Value, borrows(x, paramIndex(x, i, off)))
 		}
 	case *ir.Conversion:
-		c.visit(&x.Operand, true)
+		// An owned value converted to a type that holds it -- an option of
+		// it, or it out of one -- passes through; converted to anything else
+		// it is read.
+		c.visit(&x.Operand, borrowed && ir.Owned(x.Type) && ir.Owned(x.Operand.ExprType()) || !ir.Owned(x.Type))
 	case *ir.Select:
 		c.visit(&x.Operand, true)
 	case *ir.Index:
