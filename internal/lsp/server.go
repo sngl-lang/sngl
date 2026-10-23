@@ -190,6 +190,12 @@ func (s *Server) serve() error {
 			s.handleReferences(req.ID, req.Params)
 		case "textDocument/documentSymbol":
 			s.handleDocumentSymbol(req.ID, req.Params)
+		case "textDocument/formatting":
+			s.handleFormatting(req.ID, req.Params)
+		case "textDocument/prepareRename":
+			s.handlePrepareRename(req.ID, req.Params)
+		case "textDocument/rename":
+			s.handleRename(req.ID, req.Params)
 		default:
 			if !isNotification {
 				s.sendError(req.ID, -32601, "method not found: "+req.Method)

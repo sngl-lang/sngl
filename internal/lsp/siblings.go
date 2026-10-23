@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,8 +15,9 @@ import (
 // siblings parses the other .sngl files in filename's directory: the package
 // a build of that directory checks it beside. An open buffer is read in place
 // of its file on disk, so an unsaved edit is what its siblings see. A sibling
-// that does not parse is left out and named in broken.
-func (s *Server) siblings(filename string) (docs []*ast.Document, broken []string) {
+// that does not parse is left out and named in broken. over replaces a
+// file's text, by path, ahead of both.
+func (s *Server) siblings(filename string, over map[string]string) (docs []*ast.Document, broken []string) {
 	dir := filepath.Dir(filename)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -25,6 +27,7 @@ func (s *Server) siblings(filename string) (docs []*ast.Document, broken []strin
 	for _, fs := range s.ws.all() {
 		open[uriToPath(fs.URI)] = fs.Content
 	}
+	maps.Copy(open, over)
 	for _, e := range entries {
 		path := filepath.Join(dir, e.Name())
 		if e.IsDir() || !strings.HasSuffix(strings.ToLower(e.Name()), ".sngl") || path == filename {
@@ -50,7 +53,7 @@ func (s *Server) siblings(filename string) (docs []*ast.Document, broken []strin
 // withSiblings is doc merged with its package's other files, as a build reads
 // the directory, into a new document: doc itself is shared and never written.
 func (s *Server) withSiblings(doc *ast.Document, filename string) *ast.Document {
-	sibs, _ := s.siblings(filename)
+	sibs, _ := s.siblings(filename, nil)
 	if len(sibs) == 0 {
 		return doc
 	}

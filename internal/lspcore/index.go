@@ -55,6 +55,11 @@ type Index struct {
 	Sites map[any]Site
 	// Library holds the decls whose site is in lib.FS.
 	Library map[any]bool
+	// Shorthands are the positions of `{a}`, which names a field and the
+	// value it takes at once, and so has a Ref to each.
+	Shorthands map[ast.Pos]bool
+
+	src Sources
 }
 
 // Sources reads a file a position names: one of the package's, or a library
@@ -90,6 +95,27 @@ func (ix *Index) RefsTo(decl any) []Ref {
 	return out
 }
 
+// text is the name r covers, as its file writes it.
+func (ix *Index) text(r Ref) string {
+	l := ix.line(r.Pos.File, r.Pos.Line)
+	if r.Pos.Column-1+r.Len > len(l) {
+		return ""
+	}
+	return string(l[r.Pos.Column-1 : r.Pos.Column-1+r.Len])
+}
+
+func (ix *Index) line(file string, n int) []rune {
+	text, ok := ix.src(file)
+	if !ok {
+		return nil
+	}
+	lines := strings.Split(text, "\n")
+	if n < 1 || n > len(lines) {
+		return nil
+	}
+	return []rune(lines[n-1])
+}
+
 // InFile is the names written in file, in source order.
 func (ix *Index) InFile(file string) []Ref {
 	var out []Ref
@@ -114,7 +140,7 @@ func BuildIndex(pkg *ir.Package, files []string, src Sources) *Index {
 		seen:   map[ast.Pos]bool{},
 		propOf: map[*ir.Param]*ir.Prop{},
 		owners: map[any]bool{},
-		ix:     &Index{Sites: map[any]Site{}, Library: map[any]bool{}},
+		ix:     &Index{Sites: map[any]Site{}, Library: map[any]bool{}, Shorthands: map[ast.Pos]bool{}, src: src},
 	}
 	for _, f := range files {
 		x.files[f] = true
@@ -909,8 +935,24 @@ func (x *indexer) structLit(v *ir.StructLit) {
 	}
 	x.members(v.Def)
 	for _, f := range v.Fields {
-		if f.Name != "" && f.NamePos.IsSet() {
-			x.named(f.NamePos, f.Name, fieldOf(v.Def.Fields, f.Name), KindField)
+		if f.Name == "" || !f.NamePos.IsSet() {
+			continue
+		}
+		field := fieldOf(v.Def.Fields, f.Name)
+		id, short := f.Value.(*ir.Ident)
+		if !short || id.AST == nil || id.AST.Pos != f.NamePos || field == nil || id.Sym == nil {
+			x.named(f.NamePos, f.Name, field, KindField)
+			continue
+		}
+		// The value's Ident is at the same position, which a Ref takes once.
+		value := x.norm(id.Sym)
+		x.declSite(field)
+		x.declSite(value)
+		delete(x.seen, f.NamePos)
+		x.add(f.NamePos, f.Name, field, KindField, false)
+		if x.seen[f.NamePos] {
+			x.ix.Refs = append(x.ix.Refs, Ref{Pos: f.NamePos, Len: len([]rune(f.Name)), Decl: value, Kind: kindOf(value)})
+			x.ix.Shorthands[f.NamePos] = true
 		}
 	}
 }

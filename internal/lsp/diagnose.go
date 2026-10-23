@@ -5,27 +5,23 @@ import (
 	"path/filepath"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/lspcore"
 )
 
-// analyze parses and type-checks a file, returning LSP diagnostics.
-func (s *Server) analyze(fs *fileState) []Diagnostic {
-	uri := fs.URI
-	filename := uriToPath(uri)
+// check checks filename, whose text is content, beside the other files of its
+// package, over standing in for any file's text by path.
+func (s *Server) check(filename, content string, over map[string]string) (lspcore.Analysis, []*ast.Document, []string) {
 	dir := filepath.Dir(filename)
-	if isLibraryCopy(filename) {
-		return nil
-	}
-
 	// Imports resolve as a build's do, so a plugin's handler runs here too --
 	// under the server's grants, never prompting.
 	resolver := build.NewResolver(dir)
 	resolver.Trust = s.trust
-	siblings, broken := s.siblings(filename)
+	siblings, broken := s.siblings(filename, over)
 	langs, plats := build.RegisteredTargets()
-	a := lspcore.AnalyzePackageChecked(fs.Content, filename, siblings, &checker.Config{
+	a := lspcore.AnalyzePackageChecked(content, filename, siblings, &checker.Config{
 		FS:              build.ProjectFS(dir),
 		Dir:             dir,
 		Resolver:        resolver,
@@ -34,6 +30,18 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 		Platforms:       plats,
 		TargetsComplete: true,
 	})
+	return a, siblings, broken
+}
+
+// analyze parses and type-checks a file, returning LSP diagnostics.
+func (s *Server) analyze(fs *fileState) []Diagnostic {
+	uri := fs.URI
+	filename := uriToPath(uri)
+	if isLibraryCopy(filename) {
+		return nil
+	}
+
+	a, siblings, broken := s.check(filename, fs.Content, nil)
 	coreDiags := a.Diags
 	for _, name := range broken {
 		coreDiags = append(coreDiags, lspcore.Diagnostic{

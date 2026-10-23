@@ -67,6 +67,14 @@ func (s *siblingSession) request(method string, params any) int {
 // server sends first.
 func (s *siblingSession) call(method string, params, out any) {
 	s.t.Helper()
+	if msg := s.callErr(method, params, out); msg != "" {
+		s.t.Fatalf("%s: %s", method, msg)
+	}
+}
+
+// callErr is call answering the error the server sent, if any.
+func (s *siblingSession) callErr(method string, params, out any) string {
+	s.t.Helper()
 	id := s.request(method, params)
 	for {
 		var raw json.RawMessage
@@ -82,12 +90,16 @@ func (s *siblingSession) call(method string, params, out any) {
 		var resp struct {
 			ID     *int            `json:"id"`
 			Result json.RawMessage `json:"result"`
+			Error  *RespError      `json:"error"`
 		}
 		if json.Unmarshal(raw, &resp) == nil && resp.ID != nil && *resp.ID == id {
+			if resp.Error != nil {
+				return resp.Error.Message
+			}
 			if err := json.Unmarshal(resp.Result, out); err != nil {
 				s.t.Fatalf("%s result: %v", method, err)
 			}
-			return
+			return ""
 		}
 	}
 }

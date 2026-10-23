@@ -62,7 +62,14 @@ func semanticTokens(content string, ix *lspcore.Index, file string) []uint32 {
 	}
 	lines := strings.Split(content, "\n")
 	prevLine, prevCol := 0, 0
+	var last *lspcore.Ref
 	for _, r := range ix.InFile(file) {
+		// A shorthand field, `{a}`, has two Refs at one position, and tokens
+		// may not overlap.
+		if last != nil && last.Pos == r.Pos {
+			continue
+		}
+		last = &r
 		// The editor's syntax highlighting draws `#id` as one token, which a
 		// token on the name alone would split.
 		if r.Pos.Line-1 >= len(lines) || r.Kind == lspcore.KindElement && r.IsDecl {
