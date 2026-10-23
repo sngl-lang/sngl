@@ -454,6 +454,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			gc.RequireImport(fyneLayoutImportPath)
 			emitIRAppMain(&b, ctx.Pkg)
 		} else {
+			if ctx.Pkg.Run != nil {
+				gc.RequireImport(fyneLayoutImportPath)
+			}
 			emitIRMain(&b, cfg, info, ctx.Pkg)
 		}
 	}
@@ -845,20 +848,12 @@ func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
-	b.WriteString("\tran := false\n")
-	// An empty handler is emitted as no function at all, and never calls run.
-	if len(pkg.Run.Block) > 0 {
-		fmt.Fprintf(b, "\t%s(os.Args[1:], func() {\n", golang.ModelCallee(pkg, pkg.Run, "m"))
-		b.WriteString("\t\tran = true\n")
-		b.WriteString("\t\tw.ShowAndRun()\n")
-		b.WriteString("\t})\n")
-	}
-	b.WriteString("\tif !ran {\n")
-	b.WriteString("\t\ta.Run()\n")
-	b.WriteString("\t}\n")
-	if pkg.Teardown != nil {
-		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
-	}
+	golang.EmitAppStart(b, pkg, "os.Args[1:]", func(show bool) string {
+		if show {
+			return "w.ShowAndRun()"
+		}
+		return "a.Run()"
+	}, "fynelayout.RefuseRunAgain")
 	b.WriteString("\t_ = os.Stderr\n")
 	b.WriteString("}\n")
 }

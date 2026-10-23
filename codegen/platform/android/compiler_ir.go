@@ -902,6 +902,20 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
+	// The application ends with the composition, when the activity is
+	// destroyed. Remembered first, so it is forgotten last: every @unmount
+	// and timer below has gone when Teardown releases what lives as long as
+	// the application.
+	if td := ctx.Pkg.Teardown; td != nil && !cfg.GoLib {
+		fmt.Fprintf(&body, "    %s(Unit) {\n", kc.Name(ktDisposableEffect))
+		body.WriteString("        onDispose {\n")
+		for _, line := range kc.EvalStmt(&ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: td}}) {
+			fmt.Fprintf(&body, "            %s\n", line)
+		}
+		body.WriteString("        }\n")
+		body.WriteString("    }\n\n")
+	}
+
 	// Timers
 	for _, t := range info.Timers {
 		// The gate as an expression, not the bare variable name it used to be

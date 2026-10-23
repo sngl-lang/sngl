@@ -186,17 +186,21 @@ The node half.
 
 ## Part 6: application teardown on targets
 
-- [ ] List every entry point a host calls to start the application, per
+- [X] List every entry point a host calls to start the application, per
   target: `main`, the `run` an `@run` handler is handed, `BuildUI`, and
-  anything else that starts one.
-- [ ] Each gets its teardown: when the loop exits (gtk4 and fyne
+  anything else that starts one (design/ownership.md).
+- [X] Each gets its teardown: when the loop exits (gtk4 and fyne
   `RunWindows`, bubbletea's program returning), before `run` returns to the
   handler, the root tree unmounts, timers stop, and `Teardown` runs. Where the
   application ends only with its process or its host (html's page, android's
   activity), the design note says what ends it and that nothing more is owed.
-- [ ] Settle `run()` called twice: a second application after a full
-  teardown, or a refusal. Fixture either way.
-- [ ] Script tests extending `platform_run_handler_runs.txtar`: an
+  android called `Teardown` nowhere, and now does when MainScreen is disposed
+  (`testdata/application_teardown.txtar`). gtk4rt and fynelayout end the loop
+  on SIGINT and SIGTERM.
+- [X] Settle `run()` called twice: refused, naming the handler
+  (`testdata/platform_run_handler_twice_runs.txtar`, with `exec`'s new
+  `exit=N` and `2>file`).
+- [X] Script tests extending `platform_run_handler_runs.txtar`: an
   `@unmount` and an application-lifetime release both happen before "after"
   prints, on gtk4 and fyne.
 

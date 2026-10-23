@@ -17,6 +17,7 @@ func TestExecRefusesWhatCannotRun(t *testing.T) {
 		"stdout not a file":  "exec out/go/gtk4 -- missing.txt",
 		"stdout is source":   "exec out/go/gtk4 -- app.sngl",
 		"stdin not a file":   "exec out/go/gtk4 <missing.txt",
+		"stderr not a file":  "exec out/go/gtk4 2>missing.txt",
 		"-- takes one file":  "exec out/go/gtk4 -- want.txt in.txt",
 		"-- ends the line":   "exec out/go/gtk4 -- want.txt --flag",
 		"no Wayland on fyne": "exec out/go/fyne toplevels=1",
@@ -44,6 +45,14 @@ func TestExecParses(t *testing.T) {
 		t.Errorf("parsed %+v", e)
 	}
 	if e.toplevels["Load"] != 2 || e.toplevels[""] != 3 || e.line != 3 {
+		t.Errorf("parsed %+v", e)
+	}
+
+	execs, err = parseExecs("exec out/go/fyne exit=2 2>want.txt", execSrc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e := execs["go/fyne"][0]; e.exit != 2 || e.stderr != "want.txt" || len(e.run.Args) != 0 {
 		t.Errorf("parsed %+v", e)
 	}
 }

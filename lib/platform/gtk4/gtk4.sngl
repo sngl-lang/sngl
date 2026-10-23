@@ -34,8 +34,9 @@ component platform(
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
     // that never calls it gets a process whose loop still runs -- timers,
-    // effects, posted work -- with no window on screen. `args` is the command
-    // line after the program's name.
+    // effects, posted work -- with no window on screen. The application has
+    // torn down when `run` returns, and a second call ends the process. `args`
+    // is the command line after the program's name.
     @run(args list[string], run func()),
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the

@@ -2271,8 +2271,9 @@ map is an error. A `var`'s initializer runs once and is not keyed.
 exits, the root tree unmounts, so every `@unmount` runs and every node-lifetime
 value is released; timers stop; and every application-lifetime value is
 released. Only then does a platform's `@run` handler's `run` return, so a
-program that goes on after the windows close holds nothing they allocated. A
-test is an application: it tears down when the test function returns, and an
+program that goes on after the windows close holds nothing they allocated.
+A process runs one application: a second call of `run` ends the process with
+an error naming the handler. A test is an application: it tears down when the test function returns, and an
 owned value still held after that is a leak the test fails with.
 
 ## Trees and families

@@ -1661,26 +1661,18 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wr
 // preamble is declarations only, so the //export snglActivate can coexist.
 func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, app bool) error {
 	if app {
-		callee := ""
-		if pkg.Run != nil && len(pkg.Run.Block) > 0 {
-			callee = golang.ModelCallee(pkg, pkg.Run, "m")
-		}
-		emitGTK4AppMain(b, callee, pkg.Run != nil, pkg.Teardown)
+		emitGTK4AppMain(b, pkg)
 		return nil
 	}
 	if pkg != nil && pkg.Run != nil {
 		if !wrapped {
 			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
 		}
-		callee := ""
-		if len(pkg.Run.Block) > 0 {
-			callee = golang.ModelCallee(pkg, pkg.Run, "m")
-		}
-		emitGTK4RunMainWrapped(b, callee)
+		emitGTK4RunMainWrapped(b, pkg)
 		return nil
 	}
 	if wrapped {
-		emitGTK4MainWrapped(b)
+		emitGTK4MainWrapped(b, pkg.Teardown)
 		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil

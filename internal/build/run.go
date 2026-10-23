@@ -32,4 +32,7 @@ func installRun(pkg *ir.Package, t Target) {
 	checker.AnalyzeSynthesizedFunc(pkg, nil, fn)
 	pkg.Funcs = append(pkg.Funcs, fn)
 	pkg.Run = fn
+	if h.AST != nil {
+		pkg.RunPos = h.AST.Pos
+	}
 }

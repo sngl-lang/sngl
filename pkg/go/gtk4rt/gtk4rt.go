@@ -274,8 +274,10 @@ import "C"
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -758,7 +760,37 @@ func Run(build func(app Handle) Handle) int {
 		C.GCallback(C.snglRtActivate),
 		nil, nil, 0,
 	)
+	stop := quitOnSignal((*C.GApplication)(unsafe.Pointer(app)))
+	defer stop()
 	return int(C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil))
+}
+
+// quitOnSignal ends app's loop on SIGINT or SIGTERM, as fyne's driver does,
+// so the program's main tears the application down before the process ends.
+// stop gives the signals back once the loop has exited.
+func quitOnSignal(app *C.GApplication) (stop func()) {
+	sig := make(chan os.Signal, 1)
+	done := make(chan struct{})
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		select {
+		case <-sig:
+			Post(func() { C.g_application_quit(app) })
+		case <-done:
+		}
+	}()
+	return func() {
+		signal.Stop(sig)
+		close(done)
+	}
+}
+
+// RefuseRunAgain ends the process when an `@run` handler calls its `run` a
+// second time: the tree run presents is built once, before the handler, and
+// the first run tore it down. pos is where the handler is written.
+func RefuseRunAgain(pos string) {
+	fmt.Fprintf(os.Stderr, "%s: run called again; an application runs once per process\n", pos)
+	os.Exit(2)
 }
 
 // RunHidden is Run without presenting the window build returns: the loop runs

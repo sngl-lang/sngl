@@ -207,6 +207,72 @@ which releases every node-lifetime value), timers stop, and the
 application-lifetime values are released. Every entry point a host calls to
 start the application has a teardown paired with it.
 
+The teardown is `__snglTeardown` (`lower.TeardownFunc`, `ir.Package.Teardown`):
+the effect lowering writes it to end every lifetime newest first -- which is
+every `@unmount` and every timer -- and `ReleaseTemps` appends the
+application-lifetime releases, so one call is the test teardown's order. The
+entry points, and where each calls it:
+
+- **gtk4**, `main` of a program whose root is the application
+  (`emitGTK4AppMain`): after `gtk4rt.RunWindows` returns, inside `run` where
+  the program wrote `@run` and after the hidden loop where the handler never
+  called it.
+- **gtk4**, `main` of a build rooted at a component (the `rootComponent`
+  option): `gtk4rt.Run`/`RunHidden` with `@run` (`emitGTK4RunMainWrapped`),
+  the same way; `gtk4rt.Run` without (`emitGTK4MainWrapped`), whose Model is
+  made on activate, so the teardown asks whether one was. Neither tore down
+  before.
+- **gtk4**, inline-cgo `main`: after `g_application_run`, through the package
+  `snglModel`. It refuses `@run`, and has no `gtk4rt` to quit on a signal.
+- **fyne**, `main` rooted at the application (`emitIRAppMain`) or a component
+  (`emitIRRunMain` with `@run`, `emitIRMain` without): after
+  `fynelayout.RunWindows`, `ShowAndRun` or `a.Run` returns, inside `run` as on
+  gtk4.
+- **bubbletea**, `main`: after `p.Run()` returns, on the final model, since
+  bubbletea passes the model by value. It has no `@run`; ctrl+c is
+  `tea.Quit`.
+- **`BuildUI`** (gtk4's and fyne's), and bubbletea's `New()`: what a library
+  build (`main` false), a snapshot and a compiled test start. The host owns
+  the loop there, and pairing a teardown with it is the host calling
+  `__snglTeardown` when its loop exits, which a host in the generated
+  package can. A compiled test build calls it nowhere; the interpreter's
+  test teardown, below, is the one that leak checks.
+- **html**: the page. `pagehide` runs the page's `__snglTeardown`; a crashed
+  or discarded tab runs nothing, and nothing more is owed, since the page is
+  the application and its host ends both.
+- **android**: the activity. MainScreen's composition is disposed when the
+  activity is destroyed, which disposes every `DisposableEffect` -- each
+  `@unmount` -- and cancels each timer's `LaunchedEffect`. `Teardown` holds
+  only the application-lifetime releases there, since android lowers effects
+  itself, and a `DisposableEffect` remembered ahead of the rest of MainScreen
+  runs it on dispose, after the rest, as Compose forgets in reverse. Before,
+  nothing called it, and an application-lifetime value was never released
+  (`testdata/application_teardown.txtar`). A recreated activity is a new
+  application; nothing more is owed, since a process outliving its activity
+  holds nothing the activity made.
+
+A loop exits when the last window closes or when the process is asked to
+stop: `gtk4rt` and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
+ctrl+c does, so a terminal's ctrl+c or i3 restarting a bar tears down rather
+than killing the process mid-loop. fyne's driver quits on both already, but
+registers from a goroutine `Run` starts and missed a signal sent during
+startup; `RunWindows` registers its own first. That is also how a fixture
+ends a loop the headless compositor cannot close a window of
+(`testdata/platform_run_handler_runs.txtar`: the tick sends SIGTERM, and on
+both targets the probe's `@unmount` and the token's release print before
+"after").
+
+**A second `run` is refused.** The tree `run` presents is built once, before
+the handler, so that the handler's writes update widgets that exist; the first
+`run` tears it down. A second application would need a second tree whose state
+none of the handler's writes reached, fyne's `App.Run` does not run twice, and
+the handler is the process start, so there is one application per process.
+The `run` each host hands over refuses a call after the first, and one after
+the hidden loop started, with `RefuseRunAgain` naming the handler's position
+(`ir.Package.RunPos`) on stderr and exiting 2
+(`testdata/platform_run_handler_twice_runs.txtar`). A run-time refusal,
+because `run` is a value the handler can pass anywhere.
+
 ## The interpreter tracks every owned value
 
 The interpreter runs the passes rather than a second implementation of them,

@@ -203,6 +203,9 @@ type Package struct {
 	// calls it before anything the program renders exists. Nil where the
 	// program wrote none, and the host starts as it always has.
 	Run *Func `json:"-"`
+	// RunPos is where the handler Run was made from is written, which a host
+	// names when the handler calls `run` a second time.
+	RunPos ast.Pos `json:"-"`
 }
 
 // PropReport is one effect a prop's setter marks written and settles.

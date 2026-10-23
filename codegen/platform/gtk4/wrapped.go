@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/codegen/platform/gtk4/gir"
-
 	"duckfam.us/sngl/ir"
 )
 
@@ -385,36 +385,40 @@ func init() {
 // handler makes is an ordinary update of widgets that exist; `run` then
 // presents the window and runs the loop, and a handler that never calls it
 // gets the loop with the window hidden.
-//
-// run is the call's spelling of the handler's function, receiver included.
-// An empty handler is emitted as no function at all, and never calls run.
-func emitGTK4RunMainWrapped(b *strings.Builder, run string) {
+func emitGTK4RunMainWrapped(b *strings.Builder, pkg *ir.Package) {
 	b.WriteString("\nfunc main() {\n")
 	b.WriteString("\tgtk4rt.Init()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.buildWidgetTree()\n")
-	if run == "" {
-		b.WriteString("\tgtk4rt.RunHidden(m.BuildUI)\n")
-		b.WriteString("}\n")
-		return
-	}
-	b.WriteString("\tran := false\n")
-	fmt.Fprintf(b, "\t%s(gtk4rt.Args(), func() {\n", run)
-	b.WriteString("\t\tran = true\n")
-	b.WriteString("\t\tgtk4rt.Run(m.BuildUI)\n")
-	b.WriteString("\t})\n")
-	b.WriteString("\tif !ran {\n")
-	b.WriteString("\t\tgtk4rt.RunHidden(m.BuildUI)\n")
-	b.WriteString("\t}\n")
+	golang.EmitAppStart(b, pkg, "gtk4rt.Args()", func(show bool) string {
+		if show {
+			return "gtk4rt.Run(m.BuildUI)"
+		}
+		return "gtk4rt.RunHidden(m.BuildUI)"
+	}, "gtk4rt.RefuseRunAgain")
 	b.WriteString("}\n")
 }
 
 // emitGTK4MainWrapped emits the wrapped-mode program entry point. All GTK
-// bootstrapping lives in gtk4rt.Run, so the generated main is cgo-free.
-func emitGTK4MainWrapped(b *strings.Builder) {
+// bootstrapping lives in gtk4rt.Run, so the generated main is cgo-free. The
+// Model is made on activate, after GTK is up, so the teardown asks whether
+// one was.
+func emitGTK4MainWrapped(b *strings.Builder, teardown *ir.Func) {
 	b.WriteString("\nfunc main() {\n")
+	if teardown == nil {
+		b.WriteString("\tgtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {\n")
+		b.WriteString("\t\treturn New().BuildUI(app)\n")
+		b.WriteString("\t})\n")
+		b.WriteString("}\n")
+		return
+	}
+	b.WriteString("\tvar m *Model\n")
 	b.WriteString("\tgtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {\n")
-	b.WriteString("\t\treturn New().BuildUI(app)\n")
+	b.WriteString("\t\tm = New()\n")
+	b.WriteString("\t\treturn m.BuildUI(app)\n")
 	b.WriteString("\t})\n")
+	b.WriteString("\tif m != nil {\n")
+	fmt.Fprintf(b, "\t\tm.%s()\n", teardown.Name)
+	b.WriteString("\t}\n")
 	b.WriteString("}\n")
 }

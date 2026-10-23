@@ -304,13 +304,16 @@ func snglToplevelsActivate(app *C.GtkApplication, _ C.gpointer) {
 // RunWindows runs the application over the toplevels attached so far and
 // those attached later. show puts the visible ones on screen at start;
 // without it the loop runs with nothing on screen until a window is opened or
-// attached. Returns the application's exit status.
+// attached. SIGINT and SIGTERM end the loop, as on fyne. Returns the
+// application's exit status.
 func RunWindows(show bool) int {
 	runtime.LockOSThread()
 	topsHidden = !show
 	topsApp = C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.sngl_top_connect_activate(topsApp)
+	stop := quitOnSignal((*C.GApplication)(unsafe.Pointer(topsApp)))
 	status := int(C.g_application_run((*C.GApplication)(unsafe.Pointer(topsApp)), 0, nil))
+	stop()
 	if status != 0 {
 		os.Stderr.WriteString("gtk: application exited with a non-zero status\n")
 	}
