@@ -443,11 +443,10 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
 
 // Offers a drop-down the labels `labels` joins with newlines, and selects
 // `chosen` where one of them is it and nothing where none is. A drop-down
-// takes its choices as a GListModel, which no SNGL expression produces, so the
-// preamble's sngl_drop_down_offer builds one, reached through gtk4rt or cgo as
-// the program is emitted. Neither is a choice anyone made, so the drop-down
-// reports neither.
-#[marks.intrinsic("gtk4.offerChoices")]
+// takes its choices as a GListModel, which no SNGL expression produces, so
+// gtk4rt builds one, copying both strings into C itself in either mode.
+// Neither is a choice anyone made, so the drop-down reports neither.
+#[go.native(_rtPkg, "gtk4rt.DropDownOffer")]
 func offerChoices(d gtk.GtkDropDown, labels string, chosen string)
 
 // The label a drop-down has selected, or "" where it has none.

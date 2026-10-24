@@ -52,9 +52,8 @@ type scaffoldData struct {
 	// NeedsCalendarDate emits snglCalendarDate, which a datepicker's change
 	// handler reads its payload through.
 	NeedsCalendarDate bool
-	// NeedsDropDown emits the preamble's drop-down helpers and
-	// snglDropDownOffer, which a select's override offers its choices through
-	// (offerChoices), for a program that renders a GtkDropDown.
+	// NeedsDropDown emits the preamble's drop-down helpers, which read and
+	// select a GtkDropDown's choice, for a program that renders one.
 	NeedsDropDown bool
 	HasCanvas     bool // emit the cairo draw-func trampoline glue in callbacks.go
 	Wrapped       bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble

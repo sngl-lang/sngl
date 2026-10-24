@@ -492,9 +492,10 @@ holds the bound value even before a choice carries it, since choices may
 be state that arrives later, and neither offering choices nor writing the
 value is reported as a choice:
 
-- **gtk4** offers a GtkStringList through `offerChoices`, a platform
-  intrinsic calling the template's `snglDropDownOffer` (gtk4rt in wrapped
-  mode, cgo otherwise), whose C blocks `notify::selected` meanwhile; the
+- **gtk4** offers a GtkStringList through `offerChoices`,
+  `gtk4rt.DropDownOffer` as a `#[go.native]` in both modes, which copies the
+  labels into C itself and blocks `notify::selected` meanwhile
+  (`testdata/gtk4_declared_dropdown.txtar`); the
   handler reads `dropDownLabel`. The invoker selects the label, which
   notifies, and fires nothing after it. Each splice of the override has its
   own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's

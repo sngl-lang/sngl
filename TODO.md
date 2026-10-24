@@ -276,7 +276,10 @@ commit each.
   image's append, remove, `fit` and three events, and a URL source's
   `picture`, as `#[go.native]`s over gtk4rt; a drawing's paint stays the
   translator's until the canvas is declared. No golden flipped to cgo.
-- [ ] Drop-down (`dropdown.go`, a `GtkDropDown` over a string list).
+- [X] Drop-down (`dropdown.go`, a `GtkDropDown` over a string list): the
+  create was already declgen's; `offerChoices` is `gtk4rt.DropDownOffer` as
+  a `#[go.native]`, which copies its strings, and `dropdown.go` and the
+  `snglDropDownOffer` helper, whose cgo copy made two C strings, went.
 - [ ] Toplevel (`toplevel.go`): the window's create, its title -- the
   `compiler_ir.go` call site -- its icon and `visible`.
 - [ ] Flow and span markup (`markup.go`): the label's create and its
