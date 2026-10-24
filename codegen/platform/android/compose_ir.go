@@ -142,7 +142,10 @@ func (cc *irComposeContext) renderSchedule(t codegen.ScheduledTimer) {
 	cc.line("})")
 	cc.line("%s(%s) {", cc.kc.Name(ktLaunchedEffect), gate)
 	cc.line("    while (%s) {", gate)
-	cc.line("        delay(%dL)", codegen.IntervalToMs(t.Interval))
+	// The interval is an expression: a copy's wrapper hands it in as a param
+	// (passImplicitState), and reading only a literal made that a delay of
+	// 0, which spun Compose's test clock forever.
+	cc.line("        delay(%s)", cc.kc.EvalExpr(t.Interval))
 	cc.line("        %s.value()", handler)
 	cc.line("    }")
 	cc.line("}")
