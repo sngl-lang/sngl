@@ -29,6 +29,8 @@ func (c *checker) bindProtocols() {
 		switch op {
 		case ir.ProtocolSet:
 			served, verb = fn.Params[0].Type, "sets"
+		case ir.ProtocolOn:
+			served, verb = fn.Params[0].Type, "connects to"
 		case ir.ProtocolAppend, ir.ProtocolRemove:
 			served, verb = fn.Params[0].Type, "adds to"
 		}
@@ -48,8 +50,12 @@ func (c *checker) bindProtocols() {
 		if comp.Protocol == nil {
 			comp.Protocol = &ir.NodeProtocol{}
 		}
-		if op == ir.ProtocolSet {
+		switch op {
+		case ir.ProtocolSet:
 			c.bindSet(pm, comp)
+			continue
+		case ir.ProtocolOn:
+			c.bindOn(pm, comp)
 			continue
 		}
 		if prev := comp.Protocol.Op(op); prev != nil {
@@ -108,4 +114,22 @@ func (c *checker) bindSet(pm protocolMark, comp *ir.Component) {
 		comp.Protocol.Set = map[string]*ir.Func{}
 	}
 	comp.Protocol.Set[prop] = pm.fn
+}
+
+// bindOn gives a #[gen.protocol(on)] function to the event of comp its handler
+// parameter is named as.
+func (c *checker) bindOn(pm protocolMark, comp *ir.Component) {
+	event := pm.fn.Params[1].Name
+	if !slices.ContainsFunc(comp.Events, func(e *ir.EventDecl) bool { return e.Name == event }) {
+		c.error(pm.pos, "#[gen.protocol(on)] connects the event its handler parameter is named as, and %s has no event @%s", comp.Name, event)
+		return
+	}
+	if prev := comp.Protocol.Handler(event); prev != nil {
+		c.error(pm.pos, "#[gen.protocol(on)]: %s already connects @%s with %s", comp.Name, event, prev.Name)
+		return
+	}
+	if comp.Protocol.On == nil {
+		comp.Protocol.On = map[string]*ir.Func{}
+	}
+	comp.Protocol.On[event] = pm.fn
 }

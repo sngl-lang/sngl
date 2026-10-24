@@ -148,16 +148,21 @@ func (t *gtk4Translator) isScroll(bare string) bool {
 	return t.shared != nil && t.shared.scrolls[bare]
 }
 
-func (t *gtk4Translator) emitScrollCreate(id string) []ir.Stmt {
-	return t.emitConstructorAssign(id, primitiveCType(scrollTag), rtCall("ScrollNew", gtk4rtHandleIRType()))
+func (t *gtk4Translator) emitScrollCreate(id string, made ir.Expr) []ir.Stmt {
+	if made == nil {
+		panic("gtk4: a Scroll reached the translator without the create gtk4.sngl declares")
+	}
+	return t.emitConstructorAssign(id, primitiveCType(scrollTag), made)
 }
 
-func (t *gtk4Translator) scrollAttachHandler(node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
-	if event != "reachEnd" {
-		return nil
+// scrollAttachHandler connects a Scroll's handler through the call its
+// declared connect makes, and records the test invoker that fires it.
+func (t *gtk4Translator) scrollAttachHandler(node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt {
+	if call == nil {
+		panic(fmt.Sprintf("gtk4: a Scroll's @%s reached the translator without the connect gtk4.sngl declares", event))
 	}
 	if id := codegen.IdentBareName(node); t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
 		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: "GtkScrolledWindow", RtFire: "ScrollReachEnd"})
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall("ScrollOnReachEnd", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), handler)}}
+	return []ir.Stmt{&ir.CallStmt{Call: t.connectCall(call, handler)}}
 }

@@ -986,6 +986,16 @@ func markGenProtocol(m *mark) error {
 		if t := fn.Params[0].Type; t == nil || t.Kind != ir.TypeComponent {
 			return fmt.Errorf("#[gen.protocol(set)] declares the #[intrinsic] component it sets as its first parameter")
 		}
+	case ir.ProtocolOn:
+		if len(fn.Params) != 2 {
+			return fmt.Errorf("#[gen.protocol(on)] takes the widget and the handler, named as the event it connects: func f(w W, reachEnd func())")
+		}
+		if t := fn.Params[0].Type; t == nil || t.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(on)] declares the #[intrinsic] component it connects to as its first parameter")
+		}
+		if t := fn.Params[1].Type; t == nil || t.Kind != ir.TypeFunc {
+			return fmt.Errorf("#[gen.protocol(on)] is handed the handler, a function, as its second parameter")
+		}
 	default:
 		return fmt.Errorf("#[gen.protocol(%s)]: the compiler implements no such operation", op)
 	}

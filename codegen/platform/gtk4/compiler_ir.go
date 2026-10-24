@@ -852,11 +852,23 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 		return shared.cgoEventGetter(cType, w)
 	}, handle: func(cType string, ref ir.Expr) ir.Expr {
 		w := spell(cType, ref)
-		if wrapped {
+		if wrapped || isHandle(w) {
 			return w
 		}
 		return &ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", w)}
 	}}
+}
+
+// isHandle reports whether n is already a node as gtk4rt takes it, which a
+// declared protocol's call puts its node in before a render slot's body is
+// read again.
+func isHandle(n ir.Node) bool {
+	conv, ok := n.(*ir.Conversion)
+	if !ok || conv.Type == nil {
+		return false
+	}
+	ref, ok := conv.Type.Meta.(ir.NativeTypeRef)
+	return ok && ref.Name == gtk4rtHandleType
 }
 
 // isNodeRef reports whether id names a node: one a lowering synthesized, or a

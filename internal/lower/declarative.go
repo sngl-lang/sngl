@@ -435,21 +435,29 @@ func (st *declarativeState) made(n *ir.NodeInst) ir.Expr {
 	return made
 }
 
-// connected is what the platform's #[gen.protocol(connect)] does with event
-// on node, spliced as the attachHandler op's fourth operand, or nil where the
-// node's component declares no protocol and its platform connects it itself.
-// The event is handed over under the name its host knows it by.
+// connected is what the component's #[gen.protocol(on)] for event, or else
+// the platform's #[gen.protocol(connect)], does with event on node, spliced
+// as the attachHandler op's fourth operand, or nil where the node's component
+// declares no protocol and its platform connects it itself. The platform's
+// connect is handed the event under the name its host knows it by.
 func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr) ir.Expr {
-	if st.connect == nil || n.Component == nil || n.Component.Protocol == nil {
+	if n.Component == nil || n.Component.Protocol == nil {
 		return nil
 	}
-	name := event
-	for _, e := range n.Component.Events {
-		if e.Name == event && e.Connects != "" {
-			name = e.Connects
+	fn, args := n.Component.Protocol.Handler(event), []ir.Expr{node}
+	if fn == nil {
+		if st.connect == nil {
+			return nil
 		}
+		name := event
+		for _, e := range n.Component.Events {
+			if e.Name == event && e.Connects != "" {
+				name = e.Connects
+			}
+		}
+		fn, args = st.connect, append(args, &ir.Literal{Type: ir.TypString, Value: name})
 	}
-	connect, err := protocolSplice(st.connect, []ir.Expr{node, &ir.Literal{Type: ir.TypString, Value: name}})
+	connect, err := protocolSplice(fn, args)
 	if err != nil && st.err == nil {
 		st.err = fmt.Errorf("%s: %w", n.Name, err)
 	}

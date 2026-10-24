@@ -694,7 +694,7 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 	case imageTag, imageURLTag, imageDrawingTag:
 		return t.emitImageCreate(id, tag)
 	case scrollTag:
-		return t.emitScrollCreate(id)
+		return t.emitScrollCreate(id, made)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -1123,13 +1123,55 @@ func (t *gtk4Translator) callStmt(call ir.Expr) []ir.Stmt {
 	if !ok {
 		panic(fmt.Sprintf("gtk4: a declared child op made %T, not a call", call))
 	}
+	t.placeNodes(c)
+	return []ir.Stmt{&ir.CallStmt{Call: c}}
+}
+
+// replaceHandle is n, a node readWidgets already made a Handle of before the
+// scope was known, put where this scope holds it.
+func (t *gtk4Translator) replaceHandle(n ir.Node) (ir.Expr, bool) {
+	if !isHandle(n) {
+		return nil, false
+	}
+	inner := n.(*ir.Conversion).Operand
+	if cast, ok := inner.(*ir.Conversion); ok {
+		inner = cast.Operand
+	}
+	if id, ok := inner.(*ir.Ident); ok && id.IsElementRef {
+		return t.rtHandle(t.qualifyNodeExpr(id)), true
+	}
+	return n.(ir.Expr), true
+}
+
+// placeNodes puts each node c names where this scope holds it: as a Handle
+// where the call is gtk4rt's.
+func (t *gtk4Translator) placeNodes(c *ir.Call) {
 	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
-		if id, ok := n.(*ir.Ident); ok {
-			return t.qualifyNodeExpr(id), nil
+		if h, ok := t.replaceHandle(n); ok {
+			return h, ir.SkipDir
+		}
+		switch x := n.(type) {
+		case *ir.Call:
+			if x.Func != nil && x.Func.Foreign.Path == gtk4rtPkg {
+				for i, a := range x.Args {
+					// The class handed to a gtk4rt native's ui.node arrives
+					// widened to it, which Go would box in an any.
+					v := a.Value
+					if conv, ok := v.(*ir.Conversion); ok {
+						v = conv.Operand
+					}
+					if id, ok := v.(*ir.Ident); ok && id.IsElementRef {
+						x.Args[i].Value = t.rtHandle(t.qualifyNodeExpr(id))
+					}
+				}
+			}
+		case *ir.Ident:
+			if x.IsElementRef {
+				return t.qualifyNodeExpr(x), ir.SkipDir
+			}
 		}
 		return n, nil
 	})
-	return []ir.Stmt{&ir.CallStmt{Call: c}}
 }
 
 // declaresProtocol reports whether e is a node whose component's package
@@ -1273,29 +1315,7 @@ func (t *gtk4Translator) setThrough(call ir.Expr) []ir.Stmt {
 	if strings.HasPrefix(nativeName(c), "sngl_set_prop_") {
 		t.shared.needGObjectSet()
 	}
-	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
-		switch x := n.(type) {
-		case *ir.Call:
-			if x.Func != nil && x.Func.Foreign.Path == gtk4rtPkg {
-				for i, a := range x.Args {
-					// The class handed to a gtk4rt native's ui.node arrives
-					// widened to it, which Go would box in an any.
-					v := a.Value
-					if conv, ok := v.(*ir.Conversion); ok {
-						v = conv.Operand
-					}
-					if id, ok := v.(*ir.Ident); ok && id.IsElementRef {
-						x.Args[i].Value = t.rtHandle(t.qualifyNodeExpr(id))
-					}
-				}
-			}
-		case *ir.Ident:
-			if x.IsElementRef {
-				return t.qualifyNodeExpr(x), ir.SkipDir
-			}
-		}
-		return n, nil
-	})
+	t.placeNodes(c)
 	return []ir.Stmt{&ir.CallStmt{Call: c}}
 }
 
@@ -1436,7 +1456,7 @@ func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call
 		return t.imageAttachHandler(node, tag, event, handler)
 	}
 	if t.isScroll(bare) {
-		return t.scrollAttachHandler(node, event, handler)
+		return t.scrollAttachHandler(node, event, handler, call)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
@@ -1481,6 +1501,9 @@ func (t *gtk4Translator) connectCall(call, handler ir.Expr) *ir.Call {
 		panic(fmt.Sprintf("gtk4: a declared connect made %T, not a call", call))
 	}
 	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
+		if h, ok := t.replaceHandle(n); ok {
+			return h, ir.SkipDir
+		}
 		id, ok := n.(*ir.Ident)
 		if !ok {
 			return n, nil

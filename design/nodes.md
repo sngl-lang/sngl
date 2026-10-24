@@ -64,6 +64,16 @@ every later pass rewrites, the two sharing whatever the body declares. The
 platform puts the walked handler there, shaped as its trampoline calls it
 (`codegen.HandlerConnector`).
 
+`on` is a component's own connect for one event the host raises through no
+call `connect` makes: a function of the widget, typed as the component, and
+the handler, whose parameter is named as the event (`bindOn`,
+`testdata/error_gen_protocol_on.sngl`, `TestGenProtocolPlacement`), at most
+one per event. `passDeclarative` splices it in place of the platform's
+connect, with the node bound and the handler left for the platform as
+`connect` leaves it. gtk4's scroll is the first: GTK raises no signal for
+the end of the content arriving, so `@reachEnd` is gtk4rt's
+`ScrollOnReachEnd`, not a `g_signal_connect` (`testdata/gtk4_declared_scroll.txtar`).
+
 `set` writes one prop: a function of the widget, typed as the component, and
 the value, whose parameter is named as the prop it sets (`bindSet`,
 `testdata/error_gen_protocol_set.sngl`, `TestGenProtocolPlacement`), at most

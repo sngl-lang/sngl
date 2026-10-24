@@ -267,7 +267,11 @@ cases go unrefused.
 Each is a protocol written by hand in `gtk4.sngl`, smallest first, one
 commit each.
 
-- [ ] Scroll (`scrollTag`, a `GtkScrolledWindow` with its own child rule).
+- [X] Scroll (`scrollTag`, a `GtkScrolledWindow` with its own child rule):
+  `gtk4rt.ScrollNew`, `ScrolledWindowSetChild` and `ScrollOnReachEnd` as
+  `#[go.native]`s; `@reachEnd` is no GTK signal, so `Protocol` gains `on`,
+  a component's own connect for one event (`bindOn`,
+  `testdata/error_gen_protocol_on.sngl`). No golden flipped to cgo.
 - [ ] Image, URL image and drawing image (`image.go`).
 - [ ] Drop-down (`dropdown.go`, a `GtkDropDown` over a string list).
 - [ ] Toplevel (`toplevel.go`): the window's create, its title -- the

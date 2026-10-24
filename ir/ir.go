@@ -772,6 +772,7 @@ const (
 	ProtocolRemove  ProtocolOp = "remove"
 	ProtocolConnect ProtocolOp = "connect"
 	ProtocolSet     ProtocolOp = "set"
+	ProtocolOn      ProtocolOp = "on"
 )
 
 // NodeProtocol is the functions a platform declares to build an #[intrinsic]
@@ -786,6 +787,17 @@ type NodeProtocol struct {
 	Connect *Func
 	// Set is each prop's set, by the prop's name.
 	Set map[string]*Func
+	// On is each event's own connect, by the event's name, which a node of
+	// the component is connected through in place of the platform's.
+	On map[string]*Func
+}
+
+// Handler is the function declared to connect event, nil where none is.
+func (p *NodeProtocol) Handler(event string) *Func {
+	if p == nil {
+		return nil
+	}
+	return p.On[event]
 }
 
 // Setter is the function declared to set prop, nil where none is.
