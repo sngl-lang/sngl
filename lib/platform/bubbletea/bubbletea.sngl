@@ -209,19 +209,19 @@ const component ui.window[platform](visible, @error, @closed, content) {
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         children
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         layers
     }
 }
@@ -231,7 +231,7 @@ const component ui.spacer[platform](style) {
 }
 
 const component ui.scroll[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         content
     }
 }
@@ -257,7 +257,7 @@ const component ui.button[platform](text, style) {
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform](style, src) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         #[family.crosses]
         src
     }
@@ -319,7 +319,7 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](style) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
     }
 }
 
@@ -468,7 +468,7 @@ const component ui.card[platform](style, clickable, @click, content) {
                 @click { click() },
             ) {}
         }
-        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
             content
         }
     }
@@ -509,19 +509,19 @@ const component ui.tooltip[platform](style, text, trigger) {
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
-    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         panes
     }
 }
@@ -598,12 +598,12 @@ const component ui.menu[platform](style, open, items) {
 }
 
 const component ui.menubar[platform](style) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
     }
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cells(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         controls
     }
 }

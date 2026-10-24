@@ -53,7 +53,7 @@ const unstyled list[string] = [
 // A length in cells, as codegen.MeasurementPx reads one for this target: an
 // em is 16px and a cell 8px wide, so an em is two cells. Anything visible is
 // at least one.
-const func cells(m ui.measurement) int {
+const func cellsOf(m ui.measurement) int {
     var px = m.px + 16.0 * (m.em + m.rem)
     return px <= 0.0 ? 0 : int.max(1, int(px) / 8)
 }
@@ -61,7 +61,7 @@ const func cells(m ui.measurement) int {
 // One side of a margin or a padding: its own field, else its axis's, else the
 // whole box's, as CSS reads them.
 const func side(all ui.measurement, axis ui.measurement, own ui.measurement) int {
-    return cells(own != unset.margin ? own : axis != unset.margin ? axis : all)
+    return cellsOf(own != unset.margin ? own : axis != unset.margin ? axis : all)
 }
 
 const func hue(c color) => hueOf(c.hex())
@@ -134,17 +134,17 @@ const func boxLook(s ui.Style, words bool) Look {
     l = l.paddingBottom(side(s.padding, s.paddingY, s.paddingBottom))
     l = l.paddingLeft(side(s.padding, s.paddingX, s.paddingLeft))
     if s.width != unset.width {
-        l = l.width(cells(s.width))
+        l = l.width(cellsOf(s.width))
     }
     if s.height != unset.height {
-        l = l.height(cells(s.height))
+        l = l.height(cellsOf(s.height))
     }
     if s.maxWidth != unset.maxWidth {
-        l = l.maxWidth(cells(s.maxWidth))
+        l = l.maxWidth(cellsOf(s.maxWidth))
     }
     if s.maxHeight != unset.maxHeight || s.maxLines != 0 {
         // maxLines counts the text, and lipgloss caps the box with its frame.
-        l = l.maxHeight(lineCap(cells(s.maxHeight), s.maxLines == 0 ? 0 : s.maxLines + l.verticalFrame()))
+        l = l.maxHeight(lineCap(cellsOf(s.maxHeight), s.maxLines == 0 ? 0 : s.maxLines + l.verticalFrame()))
     }
     return l
 }
