@@ -1356,14 +1356,17 @@ ui.window {
 
 **Declare `#[owned]` on the type, once.** An owned value is tracked wherever a copy of it goes, and a copy is the same value: releasing either releases both. The mark is for a value something outside the program holds a reference to and will not reclaim on its own, and not for a value that is merely expensive -- a large list is garbage like any other. A `string` handed to a `#[cnative]` function is already covered: it crosses as a `c.str` from `sngl:x/c`, which is owned, and is freed after the call.
 
+**Name a retain only where the host counts.** A GObject, a texture, gtk4's `Picture` -- anything with a `ref` beside its `unref` -- names it, `#[macro.owned(unref, retain=ref)]`, and a value of the type stored into a second var, a field or a list from a var that holds it is stored as a reference: the compiler writes the `ref`, and each holder's release is one `unref`. A file descriptor, a C string, a handle with one `close` has no retain, and should not be given one that pretends: a value of such a type belongs to the one var that made it, and a program that wants it in two places makes it twice. The interpreter counts the holders either way and reports a value some holder never released.
+
 **Which lifetime a value gets is decided by where it is written.** The compiler picks the narrowest of four that holds it:
 
-| Written as                                                                                        | Lifetime    | Released                                                |
-|---------------------------------------------------------------------------------------------------|-------------|---------------------------------------------------------|
-| an argument a function only reads, a receiver, a field read, a discarded result                   | statement   | after the statement, before a `return`, when it raises  |
-| a component's or view block's `var`, an owned derived value, a `#[retains]` argument in an effect | node        | on overwrite, when what it reads changes, at `@unmount` |
-| a literal or `const func` call over constants, a package `var`                                    | application | at teardown                                             |
-| an argument to a `#[moves]` parameter                                                             | moved       | never -- the callee owns it now                         |
+| Written as                                                                                                                        | Lifetime     | Released                                                |
+|-----------------------------------------------------------------------------------------------------------------------------------|--------------|---------------------------------------------------------|
+| an argument a function only reads, a receiver, a field read, a discarded result                                                   | statement    | after the statement, before a `return`, when it raises  |
+| a component's or view block's `var`, what its initializer borrows, an owned derived value, a `#[retains]` argument in a component | node         | on overwrite, when what it reads changes, at `@unmount` |
+| an element of a list or a map, a struct's field, an option's value                                                                | its holder's | when replaced or removed, and with the holder           |
+| a literal or `const func` call over constants, a package `var`                                                                    | application  | at teardown                                             |
+| an argument to a `#[moves]` parameter                                                                                             | moved        | never -- the callee owns it now                         |
 
 Aim for the statement lifetime. A value made and spent inside one statement is the easiest to see is right, and a canvas drawing text per frame is nothing but such statements. A value the next event needs goes in a `var` of the component, where overwriting it releases what it held and leaving the tree releases the last:
 
@@ -1395,7 +1398,7 @@ ui.window {
 }
 ```
 
-Do not release such a var by hand: the compiler already does, and a second release is an error. The var holds the value it made -- initialize or assign it from `open`, not from another var, or both vars release the one value.
+Do not release such a var by hand: the compiler already does, and a second release is an error. The var holds the value it made -- initialize or assign it from `open`, not from another var, or both vars release the one value; a type with a retain is the exception, since the second var then holds a reference of its own.
 
 A value computed from state is an owned derived value: a zero-arg function answering the owned type, made once per value of what it reads, remade when that is written, and the old one released after the new one exists. It is the shape for a picture decoded from a URL or a font face built from a name, where the program wants one decode per input rather than one per frame:
 
@@ -1486,7 +1489,7 @@ ui.window(title="Pick") {
 
 When `run` returns, the tree has unmounted, so every `@unmount` has run and every node-lifetime value is released; timers have stopped; and every application-lifetime value is released. The code after `run()` holds nothing the windows made. There is one application per process: a second `run()` ends the process with an error naming the handler, so a program that wants the window again keeps it open. A test is an application too, torn down when the test function returns.
 
-**What the compiler holds rather than releases.** A value the statement may not make -- the right of `&&` or `||`, a ternary's or a `match` expression's arm, a `for` head -- is not released; make it in a statement of its own. A value pushed into a list, stored in a map or a struct field, or kept in an `option` is held by what holds it, and the program releases it by hand when it takes it out. A value handed to a `#[retains]` native from an event handler rather than an effect is held too; make the call from an effect's `@mount` or `@update`, where the lifetime is the node's. The specification's *Owned values* has the full list.
+**What is released twice.** Nothing the compiler reaches is held, so the shapes to avoid are the ones it releases twice: a var of a component or a package assigned another var's value, a var's value pushed into a list or stored in a field, and a function that answers its argument, since the caller takes the answer for a new value. For a type with a retain the first two are what the retain is for, and the third is written `=> ref(f)`. For one without, make the value where it is held: a second var calls `open` again, a list is pushed what `open` answers, and a function that would hand back a var's value hands back its fields instead. A `#[retains]` call no component encloses is refused outright; the specification's *Owned values* has the rules.
 
 **Finding a leak.** The interpreter tracks every owned value, so `sngl test` is the leak checker: a test whose teardown finds a value still held fails naming where it was made, and a double release or a use after release fails where it happens, naming the allocation, the release and the use. A target's natives have no body the interpreter can run, so a binding leak-checks under the target's overrides with the natives stubbed:
 

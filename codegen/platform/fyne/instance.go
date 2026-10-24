@@ -188,6 +188,12 @@ func emitComponentInstance(
 	if comp.KeyedCopy {
 		fmt.Fprintf(&unlisting, "\t%s.%s.%s(%s.%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, instanceReceiver, golang.ComponentRootField)
 	}
+	// A root node listed under its own key is the widget, which its box shows.
+	if comp.KeyedCopy && strings.HasSuffix(root, boxField("")) {
+		fmt.Fprintf(&unlisting, "\tif b, ok := %s.%s.(%s); ok {\n\t\t%s.%s.%s(b.Content)\n\t}\n",
+			instanceReceiver, golang.ComponentRootField, (fyneNative{Path: fyneLayoutImportPath, Name: "*Box"}).qualify(gc),
+			instanceReceiver, golang.InstanceModelField, unlistInstance)
+	}
 	unlisting.WriteString(golang.InstanceRelease(gc.InstanceReads, comp, instanceReceiver))
 	if len(codegen.InstanceRootIDs(comp)) > 0 {
 		fmt.Fprintf(&unlisting, "\tfor _, w := range %s.%s {\n\t\t%s.%s.%s(w)\n\t}\n", instanceReceiver, rootedField, instanceReceiver, golang.InstanceModelField, unlistInstance)

@@ -33,10 +33,6 @@ type ReachScroll struct {
 	asked bool
 }
 
-// Post runs f once what is running now has finished: fyne.Do, which a running
-// app queues for its loop. A test that pumps no loop replaces it.
-var Post = fyne.Do
-
 func NewReachScroll() *ReachScroll {
 	s := &ReachScroll{height: -1}
 	s.probe = container.New(probeLayout{s})

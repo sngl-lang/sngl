@@ -131,7 +131,7 @@ func (m *Model) SetOn(v bool) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n2)
 	m.flip = widget.NewButton("", nil)
 	m.flip.SetText("flip")
@@ -290,6 +290,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:b2047fc293c7799904261ba509907f4c
+pass sha256:4950356c3f5a85cfdddb2d853f3ac5c2
 -- run/go/gtk4 --
 pass sha256:3fdab01789692deb0eb4574458ddbaed

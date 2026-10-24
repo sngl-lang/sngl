@@ -101,7 +101,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="live"><span>Live</span></h1>
+  <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="live"><span>Live</span></h1>
   <p style="margin:0px;white-space:pre-wrap"><span>A counter:</span></p>
   <span id="__n0" data-sngl-id="__n0">
   </span>
@@ -140,4 +140,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:afb21d1ae4ee8c3af8720a412e1282a2
+pass sha256:452de9a5f28287e3b0f524c2de116c10

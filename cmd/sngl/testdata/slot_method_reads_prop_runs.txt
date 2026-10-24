@@ -102,7 +102,7 @@ ui.window {
     pickAgain()
 }
 -- testrun/android/kotlin/app.sngl/pick/1 --
-sha256:24a1163b8841399609c251520531ec39
+sha256:841a2996b350c2bf1832fd002fcc6e5a
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:24a1163b8841399609c251520531ec39
   ]
 }
 -- testrun/android/kotlin/app.sngl/pickAgain/1 --
-sha256:551de936b01257c5aa929caab716b2d6
+sha256:5adc39df9c50cde2a60eda88f429e818
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:551de936b01257c5aa929caab716b2d6
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pick/1 --
-sha256:04203b65edc7c012cb65cd0edc6ae72a
+sha256:abfe84bd15a983dd8069f44e197a875a
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:04203b65edc7c012cb65cd0edc6ae72a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pickAgain/1 --
-sha256:3aa8e3c3df4d1554645b6414da9c8ccd
+sha256:28255eaa658df4801f820c5d269a641b
 {
   "results": [
     {
@@ -142,7 +142,7 @@ sha256:3aa8e3c3df4d1554645b6414da9c8ccd
   ]
 }
 -- testrun/fyne/go/app.sngl/pick/1 --
-sha256:7aa5d992b7b4d5620ec6d7562196a0b2
+sha256:6e795b0532912ffc1031b9d344ea5a29
 {
   "results": [
     {
@@ -152,7 +152,7 @@ sha256:7aa5d992b7b4d5620ec6d7562196a0b2
   ]
 }
 -- testrun/fyne/go/app.sngl/pickAgain/1 --
-sha256:465b23acb3b4b9786aa945a4cbfd7f83
+sha256:9fadbc7e1bcf41893c333ec9bc62e62a
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:465b23acb3b4b9786aa945a4cbfd7f83
   ]
 }
 -- testrun/gtk4/go/app.sngl/pick/1 --
-sha256:e613ca46a8037ed32572c97ef85c4d4e
+sha256:a0343c40db30acb984bfc038c4546b94
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:e613ca46a8037ed32572c97ef85c4d4e
   ]
 }
 -- testrun/gtk4/go/app.sngl/pickAgain/1 --
-sha256:d1f7f04f1b439e4f55f7f38eb933beae
+sha256:24d3e58a09a137cfc0ade7845c8ddfd6
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:d1f7f04f1b439e4f55f7f38eb933beae
   ]
 }
 -- testrun/html/none/app.sngl/pick/1 --
-sha256:71d0826d4d714e45c1c23ff0f6da3894
+sha256:8739c5fbe41dda7ac0f9e471c91f0219
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:71d0826d4d714e45c1c23ff0f6da3894
   ]
 }
 -- testrun/html/none/app.sngl/pickAgain/1 --
-sha256:04b2e799361ba24c8fca1b513204eb94
+sha256:e4b96f6ecc9c529582a177e44b87eadb
 {
   "results": [
     {

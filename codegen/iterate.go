@@ -339,6 +339,44 @@ func IRIsLiteral(e ir.Expr) bool {
 	return false
 }
 
+// IRIsZeroLiteral reports whether an expression is a literal of its type's
+// zero, a struct literal whose every written field is one included.
+func IRIsZeroLiteral(e ir.Expr) bool {
+	switch x := e.(type) {
+	case *ir.StructLit:
+		for _, f := range x.Fields {
+			if f.Value != nil && !IRIsZeroLiteral(f.Value) {
+				return false
+			}
+		}
+		return true
+	case *ir.Literal:
+		if x.Value == "false" || x.Value == "" {
+			return true
+		}
+		n, err := strconv.ParseFloat(x.Value, 64)
+		return err == nil && n == 0
+	}
+	return false
+}
+
+// IRWrittenFields is a struct literal with only the fields it sets, which is
+// what it says once the build has filled the rest with their zeros.
+func IRWrittenFields(v ir.Expr) ir.Expr {
+	lit, ok := v.(*ir.StructLit)
+	if !ok {
+		return v
+	}
+	out := *lit
+	out.Fields = nil
+	for _, f := range lit.Fields {
+		if f.Value != nil && !IRIsZeroLiteral(f.Value) {
+			out.Fields = append(out.Fields, f)
+		}
+	}
+	return &out
+}
+
 // IRIsReactive reports whether an expression references runtime state.
 func IRIsReactive(e ir.Expr) bool {
 	return e != nil && !IRIsLiteral(e)

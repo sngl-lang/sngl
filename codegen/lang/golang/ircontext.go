@@ -1838,6 +1838,34 @@ func (gc *GoIRContext) requireForeignStructImport(n *ir.StructLit) {
 	}
 }
 
+// TypeImports is every package IRTypeToGo's spelling of t names: a struct
+// declaration's field types are spelled with no expression beside them to
+// have required one.
+func TypeImports(t *ir.Type) []string {
+	var out []string
+	add := func(p string) {
+		if !slices.Contains(out, p) {
+			out = append(out, p)
+		}
+	}
+	t.Any(func(e *ir.Type) bool {
+		switch {
+		case ir.IsColorStruct(e):
+			add(colorImportPath)
+		case ir.IsDateStruct(e) || ir.IsTimeStruct(e) || ir.IsDateTimeStruct(e):
+			add("time")
+		case ClassifyUnit(unitDeclOf(e)) == UnitDuration:
+			add("time")
+		default:
+			if sd, ok := e.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" && !sd.Foreign.Marked && sd.Foreign.Path != "" && sd.Foreign.Path != "C" {
+				add(sd.Foreign.Path)
+			}
+		}
+		return false
+	})
+	return out
+}
+
 func structLitTypeName(n *ir.StructLit) string {
 	if n == nil {
 		return "struct{}"

@@ -63,34 +63,3 @@ type gtkSetterEntry struct {
 	RecvType string
 	ValType  string
 }
-
-var gtkSetterTable = map[string]map[string]gtkSetterEntry{
-	"GtkButton": {
-		"label": {Setter: "gtk_button_set_label"},
-	},
-	"GtkLabel": {
-		"label": {Setter: "gtk_label_set_text"},
-	},
-	"GtkEntry": {
-		"text": {Setter: "gtk_editable_set_text", RecvType: "GtkEditable"},
-	},
-	"GtkCheckButton": {
-		"active": {Setter: "gtk_check_button_set_active"},
-		"label":  {Setter: "gtk_check_button_set_label"},
-	},
-	"GtkApplicationWindow": {
-		"title": {Setter: "gtk_window_set_title", RecvType: "GtkWindow"},
-	},
-	"GtkImage": {
-		"file": {Setter: "gtk_image_set_from_file"},
-	},
-}
-
-// gtkSetterFor returns both the setter and its receiver cast override
-// (empty when the cast type is the widget's own C type).
-func gtkSetterFor(cType, prop string) gtkSetterEntry {
-	if m, ok := gtkSetterTable[cType]; ok {
-		return m[prop]
-	}
-	return gtkSetterEntry{}
-}

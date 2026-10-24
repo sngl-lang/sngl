@@ -6,8 +6,7 @@
 # as a centered label's was, a `textAlign=center` changed nothing, and a
 # label 96 wide with a long line was as wide as the line. Now `ui.text`
 # starts its lines at the left, as html's does, and each pair differs.
-# pkg/go/gtk4rt/style_test.go measures what GTK lays out of them, and
-# testdata/gtk4_style.txtar shows the calls.
+# pkg/go/gtk4rt/look_test.go measures what GTK lays out of them.
 #
 # Confirmed by reverting the gtk4 change: each pair of snapshots was then the
 # same picture.
@@ -121,7 +120,7 @@ ui.window {
     centered
 }
 -- testrun/gtk4/go/app.sngl/centered/1 --
-sha256:8b43888749c6b093af60979d8e76c65c
+sha256:b10b0d0b65ec5dd30bd602bf2945e06c
 {
   "results": [
     {
@@ -134,7 +133,7 @@ sha256:8b43888749c6b093af60979d8e76c65c
   }
 }
 -- testrun/gtk4/go/app.sngl/long/1 --
-sha256:37583a8ac90bf19645cd0f8cbb888070
+sha256:006522b93e62d05e2e0857284d90694b
 {
   "results": [
     {
@@ -147,7 +146,7 @@ sha256:37583a8ac90bf19645cd0f8cbb888070
   }
 }
 -- testrun/gtk4/go/app.sngl/stretched/1 --
-sha256:c1e6885d2a402fba5e2ecc4d9c54847b
+sha256:2d259a7b4a25fcbdd2cd4f95f680df5e
 {
   "results": [
     {
@@ -160,7 +159,7 @@ sha256:c1e6885d2a402fba5e2ecc4d9c54847b
   }
 }
 -- testrun/gtk4/go/app.sngl/textCentered/1 --
-sha256:97982ed73375a6fad6f0d05e42d110aa
+sha256:79d53f5695855e1df05477b812696d1f
 {
   "results": [
     {
@@ -173,7 +172,7 @@ sha256:97982ed73375a6fad6f0d05e42d110aa
   }
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:8d769fefe9f1d9ba03c3563dfc296c3a
+sha256:44cc45b229130a70b6b45c7f10251051
 {
   "results": [
     {
@@ -186,7 +185,7 @@ sha256:8d769fefe9f1d9ba03c3563dfc296c3a
   }
 }
 -- testrun/gtk4/go/cgo.sngl/centered/1 --
-sha256:75a3c616d28f3467bab80c2029603250
+sha256:fecb4ea37122185fe8a71d13edcc2289
 {
   "results": [
     {
@@ -199,7 +198,7 @@ sha256:75a3c616d28f3467bab80c2029603250
   }
 }
 -- testrun/gtk4/go/cgo.sngl/plain/1 --
-sha256:8adcecf2d975d248e82d808891a2bc13
+sha256:58a35c377ee1e0e502ea1cb646805d92
 {
   "results": [
     {

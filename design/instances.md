@@ -597,6 +597,15 @@ surface and a kitty image ID per copy, and the transmit reaches each copy
 through the same walk (`bubbletea/viewwalk.go`,
 `testdata/bubbletea_canvas_in_loop.txtar`).
 
+**A gtk4 record's `__root` is made only where a render names it.** It is the
+box a slot at the top of the body renders into (`instanceRootVar`); a body
+whose top is one node binds that node as the record's Root instead, and the
+constructor made the box all the same, so one GtkBox was leaked per instance
+built -- never parented, never sunk, never unreferenced -- which the ASan
+check in design/ownership.md counted in the hundreds over a pokedex run. The
+constructor skips it where `RootSlotRenders` finds no render into it
+(`testdata/gtk4_instance_root_box.txtar`).
+
 **An instance reaches the page through what holds it.** A fyne or gtk4 record
 holds its Model (`__model`), and a name its component does not declare -- the
 page's state, widgets and funcs -- is spelled through it

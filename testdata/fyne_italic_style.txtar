@@ -17,6 +17,9 @@ literal. Every fixture until this one had a color somewhere in its themes, so
 a program styling a slant and nothing else was the first to emit Go that does
 not compile. The `run/go/fyne` record below is what says it does now.
 
+The theme is a fynelayout.Box's now, built from the Look style.sngl's lookOf
+makes of the Style, and both claims hold of that.
+
 deny out/go/fyne/model.go `Bold: true` -- a run that asked for a slant is not also given a weight
 deny out/go/fyne/model.go `image/color` -- nothing here writes a color literal, and Go refuses an import nothing uses
 -- doc.sngl --
@@ -40,25 +43,21 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Italic: true}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 
-	home    *fynelayout.Toplevel
-	__n0    *fyne.Container
-	__n1    *widget.Label
-	__built bool
+	home      *fynelayout.Toplevel
+	__n0      *fyne.Container
+	__n1      *widget.Label
+	__n1__box *fynelayout.Box
+	__built   bool
 }
 
 // New creates a Model with default values.
@@ -111,11 +110,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n0 = container.NewVBox()
+	m.__n0 = fynelayout.NewVBox()
 	m.__n1 = widget.NewLabel("")
-	m.__n1.TextStyle = fyne.TextStyle{Bold: false, Italic: true}
+	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("slanted")
-	m.__n0.Add(container.NewThemeOverride(m.__n1, _snglTheme0))
+	m.__n1__box.SetLook(fynelayout.Look{Italic: true})
+	m.__n0.Add(m.__n1__box)
 	m.home.Add(m.__n0)
 	fynelayout.AppAttach(m.home)
 	return m.home.Container
@@ -129,4 +129,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:369278ac80d6f9f03408a61d9fcab7f4
+pass sha256:8ed47a374962cc3c5bd55f1b0523d541

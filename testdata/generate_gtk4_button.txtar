@@ -11,9 +11,9 @@ member's own C identifier (gtk_orientable_set_orientation with
 C.GTK_ORIENTATION_VERTICAL, gtk_button_set_label), and constructors --
 gtk_box_new, gtk_button_new -- come from the GIR rather than from the class
 name. A window is not among them: GTK places a window in no container, so a
-program writes ui.window and the platform makes the GtkApplicationWindow. GtkImage.file is a property real GIR names no
-setter for, so the platform carries a table of its own, and that table wins
-where both name one.
+program writes ui.window and the platform makes the GtkApplicationWindow.
+A label's text is GIR's setter for `label` too, gtk_label_set_label: no
+table beside GIR picks another.
 
 tooltip-text and sensitive are declared only on Widget and reach GtkBox and
 GtkButton down the parent chain. Their setters take a GtkWidget*, so the cast
@@ -22,7 +22,7 @@ class -- cgo rejects a GtkBox* where a GtkWidget* is wanted. The GTK
 entrypoint lands in callbacks.go as snglActivate, the //export'd activate
 handler hooked to the GApplication.
 
-deny out/go/gtk4/model.go `gtk_label_set_label` -- the platform's own setter table wins over the GIR name, so a label's text goes through gtk_label_set_text
+deny out/go/gtk4/model.go `gtk_label_set_text` -- GIR names gtk_label_set_label as the label property's setter, and nothing in Go chooses another
 deny out/go/gtk4/model.go `gtk_button_new_with_label` -- the GIR names gtk_button_new as the constructor; with_label is a separate one the emitter must not reach for
 -- main.sngl --
 import . "sngl:test"
@@ -287,7 +287,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(m.__n1)), __cstr0)
 	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n2)), __cstr1)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n2)), __cstr1)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr2)
@@ -309,4 +309,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:e1f1130f01b8fe38fd06fb4423a08974
+pass sha256:b07db3a596cb5b2dc6f14e54109d2b59

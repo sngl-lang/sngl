@@ -78,6 +78,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
@@ -85,9 +86,70 @@ import (
 	"strings"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
 type Row struct {
 	Items []int
 	N     int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 type ErrorEvent struct {
@@ -150,6 +212,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func RowsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
+	} else {
+		__lt8 = max(1, (int(px) / 8))
+	}
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __effect0_update() {
@@ -367,7 +573,8 @@ func (m Model) View() tea.View {
 		var contentParts []string
 		var contentPart_0 string
 		var contentPart_0Children []string
-		contentPart_0 = tui.Column(0, contentPart_0Children...)
+		contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Children...)
+		contentPart_0 = BoxLook(Style{}, true).Render(contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 0)
@@ -375,7 +582,7 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("grow"))
+		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("grow"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		contentPart_2Focused := (m.__focusID == 1)
@@ -383,7 +590,7 @@ func (m Model) View() tea.View {
 		if contentPart_2Focused {
 			contentPart_2Prefix = ">"
 		}
-		contentPart_2 = lipgloss.NewStyle().Render(contentPart_2Prefix + " " + fmt.Sprint("same"))
+		contentPart_2 = BoxLook(Style{}, true).Render(contentPart_2Prefix + " " + fmt.Sprint("same"))
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
 		contentPart_3Focused := (m.__focusID == 2)
@@ -391,7 +598,7 @@ func (m Model) View() tea.View {
 		if contentPart_3Focused {
 			contentPart_3Prefix = ">"
 		}
-		contentPart_3 = lipgloss.NewStyle().Render(contentPart_3Prefix + " " + fmt.Sprint("push"))
+		contentPart_3 = BoxLook(Style{}, true).Render(contentPart_3Prefix + " " + fmt.Sprint("push"))
 		contentParts = append(contentParts, contentPart_3)
 		var contentPart_4 string
 		contentPart_4Focused := (m.__focusID == 3)
@@ -399,12 +606,12 @@ func (m Model) View() tea.View {
 		if contentPart_4Focused {
 			contentPart_4Prefix = ">"
 		}
-		contentPart_4 = lipgloss.NewStyle().Render(contentPart_4Prefix + " " + fmt.Sprint("first"))
+		contentPart_4 = BoxLook(Style{}, true).Render(contentPart_4Prefix + " " + fmt.Sprint("first"))
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
-		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(strings.Join(m.log__inst0, ",")))
+		contentPart_5 = BoxLook(Style{}, true).Render(fmt.Sprint(strings.Join(m.log__inst0, ",")))
 		contentParts = append(contentParts, contentPart_5)
-		content = tui.Column(0, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -429,7 +636,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"slices"
@@ -641,7 +847,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n0.Add(m.__n2)
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("grow")
@@ -761,12 +967,12 @@ func New() *Model {
 
 func (m *Model) __effect0_update() {
 	m.log__inst0 = append(m.log__inst0, ("update " + fmt.Sprint(len(m.__effect0_key))))
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 }
 
 func (m *Model) __effect0_insert() {
 	m.log__inst0 = append(m.log__inst0, ((("insert " + fmt.Sprint(m.__effect0_at)) + " ") + fmt.Sprint(m.__effect0_item)))
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 }
 
 func (m *Model) __effects0_settle() {
@@ -923,7 +1129,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n6)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -951,11 +1157,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Row(
     var items: List<Int> = listOf(),
@@ -1087,30 +1296,30 @@ fun MainScreen() {
                 xs__inst0[1] = xs__inst0[1].copy(items = xs__inst0[1].items.toMutableList().also { it.add(5) })
                 __effect0_note_append(1)
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "grow", modifier = Modifier)
             }
             Button(onClick = {
                 xs__inst0[1] = xs__inst0[1].copy(items = listOf(2))
                 __effect0_note_mark(1)
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "same", modifier = Modifier)
             }
             Button(onClick = {
                 xs__inst0.add(Row(items = listOf<Int>(), n = 0))
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "push", modifier = Modifier)
             }
             Button(onClick = {
                 __effect0_note_shift(0)
                 run { val __l = xs__inst0; val __i = 0; if (__i >= 0 && __i <= __l.size) __l.add(__i, Row(items = listOf(9), n = 0)) }
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "first", modifier = Modifier)
             }
-            Text(text = log__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding())
+            Text(text = log__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1270,12 +1479,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:389106c5871246392899a2dff8d51415
+pass sha256:9eec4eac6feef66f262068806f63de4b
 -- run/go/fyne --
-pass sha256:9103aa9e633b2117dbe331983818f424
+pass sha256:e1653310e652a74ba8b763f811caaa9d
 -- run/go/gtk4 --
-pass sha256:91bda5e8320881384db9fbdda7bad414
+pass sha256:12efc5468b3565011e1d8db8c59fd551
 -- run/kotlin/android --
-pass sha256:b7de94c036d9cc4b10616190e172ee78
+pass sha256:2fd9f105f477275e22af391626932cfe
 -- run/none/html --
 pass sha256:98f4b29ea97008e012cbe3593bcc86b0

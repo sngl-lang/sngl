@@ -1,130 +1,98 @@
 package fynehost
 
 import (
-	"image/color"
+	"reflect"
+	"strings"
 
 	fyne "fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
-// style is the part of sngl.Style this host can answer, in the
-// device-independent pixels Fyne measures in.
-//
-// The layout half is read by a layout -- flex and margin by the *parent's*,
-// gap and padding by this box's own -- and the paint half by a theme, which is
-// the only per-widget styling Fyne has.
-type style struct {
-	flex, margin, gap, padding float32
-	background, foreground     color.Color
-	textSize, radius           float32
-	bold                       bool
-}
+// LookProp is the primitive prop carrying the fynelayout.Look the platform's
+// style.sngl built from the node's Style.
+const LookProp = "look"
 
-// decodeStyle reads a node's `style` prop. It arrives as the Style record the
-// program wrote, projected onto the wire, so nothing here parses SNGL.
-func decodeStyle(props []snglhost.PropVal) style {
-	var st style
-	raw, ok := fieldOf(props, "style")
-	if !ok {
-		return st
+// boxed is what a node is mounted as: the widget, or the widget inside the Box
+// showing a look that asks for anything.
+func boxed(obj fyne.CanvasObject, props []snglhost.PropVal) (fyne.CanvasObject, *fynelayout.Box) {
+	if v, ok := fieldOf(props, LookProp); !ok || decodeLook(v) == (fynelayout.Look{}) {
+		return obj, nil
 	}
-	rec, ok := raw.(snglhost.WireStruct)
+	b := fynelayout.NewBox(obj)
+	return b, b
+}
+
+// decodeLook reads a Look record off the wire. It crosses with its SNGL
+// field names, which are the Go ones spelled lower.
+func decodeLook(v any) fynelayout.Look {
+	var l fynelayout.Look
+	rec, ok := v.(snglhost.WireStruct)
 	if !ok {
-		return st
+		return l
 	}
-	st.flex = num(structField(rec, "flex"))
-	st.margin = num(structField(rec, "margin"))
-	st.gap = num(structField(rec, "gap"))
-	st.padding = num(structField(rec, "padding"))
-	st.textSize = num(structField(rec, "fontSize"))
-	st.radius = num(structField(rec, "borderRadius"))
-	st.bold = structField(rec, "fontWeight") == "bold"
-	st.background = colorOf(structField(rec, "background"))
-	st.foreground = colorOf(structField(rec, "color"))
-	return st
+	lv := reflect.ValueOf(&l).Elem()
+	for _, f := range rec.Fields {
+		dst := lv.FieldByName(strings.ToUpper(f.Name[:1]) + f.Name[1:])
+		if !dst.IsValid() {
+			continue
+		}
+		setWire(dst, f.Value)
+	}
+	return l
 }
 
-// theme is the paint half as a Fyne theme, or an empty one when the node asked
-// for nothing.
-func (s style) theme(base fyne.Theme) fynetheme.Theme {
-	t := fynetheme.New(base)
-	t.Background, t.Foreground = s.background, s.foreground
-	t.TextSize, t.Radius, t.Bold = s.textSize, s.radius, s.bold
-	return t
-}
-
-// num reads a number or a measurement. JSON has only float64, and a
-// `measurement` crosses as its magnitude per base, an em being the default
-// theme's text size.
-func num(v any) float32 {
-	switch x := v.(type) {
-	case map[string]any:
-		return num(x["px"]) + emPx*(num(x["em"])+num(x["rem"]))
-	case float64:
-		return float32(x)
-	case float32:
-		return x
+func setWire(dst reflect.Value, v any) {
+	switch dst.Interface().(type) {
+	case snglcolor.Color:
+		rec, ok := v.(snglhost.WireStruct)
+		if !ok {
+			return
+		}
+		dst.Set(reflect.ValueOf(snglcolor.Color{
+			R: int(num(structField(rec, "r"))),
+			G: int(num(structField(rec, "g"))),
+			B: int(num(structField(rec, "b"))),
+			A: int(num(structField(rec, "a"))),
+		}))
+	case bool:
+		b, _ := v.(bool)
+		dst.SetBool(b)
 	case int:
-		return float32(x)
+		dst.SetInt(int64(num(v)))
+	case float32:
+		dst.SetFloat(float64(num(v)))
+	}
+}
+
+func num(v any) float64 {
+	switch x := v.(type) {
+	case float64:
+		return x
+	case float32:
+		return float64(x)
+	case int:
+		return float64(x)
+	case int64:
+		return float64(x)
 	}
 	return 0
 }
 
-// emPx is an em: the default theme's text size, as the code generator reads
-// one.
-const emPx = 14
-
-// colorOf reads a color record, which is four channels rather than a string.
-func colorOf(v any) color.Color {
-	rec, ok := v.(snglhost.WireStruct)
-	if !ok {
-		return nil
+// rebox mounts m inside a Box where its parent held the widget itself, for a
+// look that asked for nothing when m was created.
+func (h *Host) rebox(m *mounted) error {
+	siblings, _ := h.slotsOf(m.parent)
+	index := len(*siblings)
+	for i, c := range *siblings {
+		if c.key == m.key {
+			index = i
+		}
 	}
-	a := num(structField(rec, "a"))
-	if a == 0 {
-		return nil // fully transparent is how "unset" reaches here
-	}
-	return color.NRGBA{
-		R: uint8(num(structField(rec, "r"))),
-		G: uint8(num(structField(rec, "g"))),
-		B: uint8(num(structField(rec, "b"))),
-		A: uint8(a),
-	}
-}
-
-// relayout rebuilds a container's layout from its children's styles.
-//
-// Fyne's own boxes pack children at their minimum size, so `flex` has nowhere
-// to be said; fynelayout.Weighted is what answers it. A child's share is
-// recorded on the object its parent holds, and a style write reaches here, so
-// each is said again rather than tracked.
-func (h *Host) relayout(key snglhost.Key) {
-	m, ok := h.nodes[key]
-	if !ok {
-		return
-	}
-	c, ok := m.obj.(*fyne.Container)
-	if !ok || m.spec.axis == "" {
-		return
-	}
-	for _, kid := range m.children {
-		fynelayout.Share(kid.view, kid.style.flex, kid.style.margin)
-	}
-	c.Layout = fynelayout.New(m.spec.axis == "horizontal", m.style.gap, m.style.padding)
-	c.Refresh()
-}
-
-// themed wraps an object in its node's paint theme, or returns it unchanged
-// when the node asked for none -- a wrapper that answers nothing still costs a
-// node in the tree.
-func themed(obj fyne.CanvasObject, st style) fyne.CanvasObject {
-	t := st.theme(fyne.CurrentApp().Settings().Theme())
-	if t.Empty() {
-		return obj
-	}
-	return container.NewThemeOverride(obj, t)
+	h.detach(m)
+	m.box = fynelayout.NewBox(m.obj)
+	m.view = m.box
+	return h.insert(m, m.parent, index)
 }

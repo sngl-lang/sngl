@@ -81,6 +81,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { ticks__inst0: 0, periods__inst0: [20, 500], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf_timer(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -168,7 +177,7 @@ body { font-family: system-ui, sans-serif; }
         }
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       __effects0_torn = true;
       __effect0_teardown();
     }
@@ -180,7 +189,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_tick
     };
@@ -272,8 +281,9 @@ body { font-family: system-ui, sans-serif; }
     __n1.textContent = "ticks=" + String(state.ticks__inst0);
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:924a0c16dd51ff9587e7ef7e3764ba85
+pass sha256:7be8ed27e6a5211b6dfa17c625a952c3

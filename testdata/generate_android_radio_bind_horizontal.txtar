@@ -55,12 +55,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Choice__record(
     var label: String = ""
@@ -97,9 +98,9 @@ fun MainScreen() {
                     }
                 }
             }
-            Text(text = pick__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = pick__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:2d85daf6f6e14dfeb79ef31a5b6f3f85
+pass sha256:f0bc87fdcffc02e2d913057278281925

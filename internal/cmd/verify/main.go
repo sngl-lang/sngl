@@ -577,9 +577,12 @@ func recordPackages(pkgs []string) []string {
 }
 
 // rerecord runs pkgs' tests with -update under the headless compositor, so
-// gtk4's runs are recorded where verify reads them.
+// gtk4's runs are recorded where verify reads them. A change that moves every
+// android run -- a merge of a codegen change -- relaunches Robolectric for
+// each script, one at a time in the shared Gradle daemon, which took
+// cmd/sngl past an hour.
 func rerecord(pkgs []string, verbose bool) bool {
-	args := []string{"test", "-timeout=60m", "-p=" + strconv.Itoa(codegen.BuildTokenSlots())}
+	args := []string{"test", "-timeout=4h", "-p=" + strconv.Itoa(codegen.BuildTokenSlots())}
 	if verbose {
 		args = append(args, "-v")
 	}

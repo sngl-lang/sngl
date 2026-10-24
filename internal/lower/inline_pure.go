@@ -294,7 +294,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	// (splicesLibraryState), and an owned var is a lifetime wherever it
 	// stands: initialized where the owner is built, gtk4's picture was loaded
 	// for a branch not yet shown, reading what the branch guards.
-	if splicesLibraryState(c.Stmts) || slices.ContainsFunc(c.Vars, func(v *ir.Var) bool { return ir.ReleaseOf(v.Type) != nil }) {
+	if splicesLibraryState(c.Stmts) || slices.ContainsFunc(c.Vars, func(v *ir.Var) bool { return ir.Owned(v.Type) }) {
 		return false
 	}
 	if len(c.Vars) == 0 {
@@ -730,7 +730,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		own = splicedBody(comp, typeArgs)
 		freshNodeHandles(own, symRenames)
 	}
-	body := substituteVars(own, provided)
+	body := own
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -761,8 +761,8 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			// Before the props: an argument may carry the caller's own
 			// `.empty`, which asks about the caller's slot.
 			(*st.hoist)[i].Init = answerSlotEmptyIn((*st.hoist)[i].Init, callsite)
-			(*st.hoist)[i].Init = substituteVarsExpr((*st.hoist)[i].Init, provided)
 			(*st.hoist)[i].Init = substituteParamsExpr((*st.hoist)[i].Init, bindings)
+			(*st.hoist)[i].Init = substituteVarsExpr((*st.hoist)[i].Init, provided)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
 		}
 		body = renameIdents(body, renames, nil)
@@ -776,6 +776,10 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
+	// A provided context value is the caller's expression, so it goes in
+	// after the props: substituted first, a `style` it read became this
+	// component's `style`.
+	body = substituteVars(body, provided)
 
 	// Apply event-invocation substitution: replace any *ir.Emit whose
 	// Name matches a user-provided event handler with the handler body.

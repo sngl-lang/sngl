@@ -279,6 +279,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__window_state1__slot0Instance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -696,7 +701,7 @@ func New() *Model {
 func (m *Model) __effect0_mount() {
 	m.handle__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
 		m.ticks += 1
-		gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.ticks))
+		gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.ticks))
 		if m.ticks <= 3 {
 			m.details = !m.details
 			m.__renderSlot0(gtk4rt.App)
@@ -774,6 +779,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__window_state1__slot0Instance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -869,10 +879,9 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.mounts))
+	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.mounts))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.__effects1_settle()
 	c.Root = c.__n0
@@ -882,7 +891,7 @@ func newCounterInstance(__model *Model) *CounterInstance {
 
 func (c *CounterInstance) __effect1_mount() {
 	c.mounts += 1
-	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.mounts))
+	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.mounts))
 	fmt.Println(("mounted " + fmt.Sprint(c.mounts)))
 }
 
@@ -985,7 +994,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__prop_title = __a_title
 	c.__prop_closed = __a_closed
 	c.visible = c.__prop___start_visible
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n1 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(c.__n1, c.__prop_title)
@@ -998,7 +1006,7 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 		gtk4rt.ToplevelSetVisible(c.__n1, c.visible)
 	})
 	__n4 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n4, "load")
+	gtk4rt.LabelSetLabel(__n4, "load")
 	gtk4rt.LabelSetXAlign(__n4, 0.0)
 	gtk4rt.BoxAppend(c.__n1, __n4)
 	c.__n5 = newCounterInstance(c.__model)
@@ -1080,7 +1088,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.ticks))
+	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.ticks))
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.main, m.__n2)
 	gtk4rt.AppAttach(m.main)
@@ -1095,6 +1103,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:f1f88bef7bcc394927f6c48a625d1f14
+pass sha256:00de47a2bab79c40ca611d219bfc5ee7
 -- run/go/gtk4 --
-pass sha256:9fa0db86b825d8f6ed79909d85cf5b83
+pass sha256:de3b03d5bdb654866e452024b23ffda6

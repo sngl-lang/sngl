@@ -145,6 +145,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -203,7 +211,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n3 := container.NewVBox()
+	__n3 := fynelayout.NewVBox()
 	c.__n0 = widget.NewSelect(nil, nil)
 	c.__n0.SetOptions(func() []string {
 		__out := make([]string, len([]Choice__record{Choice__record{Label: "a"}}))
@@ -250,7 +258,8 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:95595edeb4407790979dd6830851897e
+pass sha256:af0560327d6c0c55cf6970837f54f1b8

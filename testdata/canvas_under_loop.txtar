@@ -247,6 +247,19 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__canvas1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__canvas0Instance{}
+}
+
 func (m *Model) add_click_handler() {
 	m.rs = append(m.rs, 12.0)
 	m.__renderSlot0(m.__n2)
@@ -281,7 +294,7 @@ func (m *Model) SetGrow(v float64) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n2)
 	m.__renderSlot1(m.__n2)
 	m.add = widget.NewButton("", nil)
@@ -416,6 +429,7 @@ func main() {
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(480, 640))
 	w.ShowAndRun()
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/fyne/model_test.go --
@@ -500,9 +514,12 @@ func sngl_draw_dispatch(idx C.int, cr *C.cairo_t, width, height C.int) {
 	}
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -516,6 +533,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -719,13 +739,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	rs             []float64
@@ -917,6 +930,19 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__canvas1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__canvas0Instance{}
+}
+
 func (m *Model) add_clicked_handler() {
 	m.rs = append(m.rs, 12.0)
 	m.__renderSlot0(m.__n2)
@@ -948,7 +974,6 @@ func new__canvas0Instance(__model *Model, __a___p0 float64, __a___p1 float64, __
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___on0 = __a___on0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
@@ -1022,7 +1047,6 @@ func new__canvas1Instance(__model *Model, __a___p0 float64) *__canvas1Instance {
 	c := &__canvas1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
@@ -1161,8 +1185,24 @@ window.__sngl_boot = () => {
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
     ctx.lineWidth = style.strokeWidth;
   }
+  function __snglTeardown() {
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { paintStyle });
+    Object.assign(window, { paintStyle, __snglTeardown });
   }
   function __cf___canvas0(props) {
     const __root = document.createElement("div");
@@ -1434,14 +1474,15 @@ window.__sngl_boot = () => {
     }
     ;
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7a2aff799e301f896a20892693f8b99a
+pass sha256:4fa04db0b73be51fec2fbaec374d9132
 -- run/go/gtk4 --
-pass sha256:c36a4e067e738cfe54831ae4cca9ef80
+pass sha256:32dcab381e4a6f93bd230266c937a590
 -- run/none/html --
-pass sha256:6a0092c2a48d1995143183ae65ba579f
+pass sha256:deae481f007d2c7d920023c53afe9d4b

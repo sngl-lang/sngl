@@ -60,6 +60,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
@@ -75,6 +76,61 @@ type Tab__record struct {
 	Label    string
 	Disabled bool
 	__id     int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -106,6 +162,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func RowsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt2 int
+	if px <= 0.0 {
+		__lt2 = 0
+	} else {
+		__lt2 = max(1, (int(px) / 8))
+	}
+	return __lt2
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt3 int
+		if s.MaxLines == 0 {
+			__lt3 = 0
+		} else {
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt4 lipgloss.Position
+	switch a {
+	case "center":
+		__lt4 = lipgloss.Center
+	case "right":
+		__lt4 = lipgloss.Right
+	default:
+		__lt4 = lipgloss.Left
+	}
+	return __lt4
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt6 = lipgloss.RoundedBorder()
+		} else {
+			__lt6 = lipgloss.NormalBorder()
+		}
+		__lt5 = __lt6
+	}
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return CellsOf(__lt8)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -200,12 +400,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for k, t__r0 := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					_ = k
 					_ = t__r0
-					var __lt0 string
-					_ = __lt0
+					var __lt11 string
+					_ = __lt11
 					if k == m.idx {
-						__lt0 = "bold"
+						__lt11 = "bold"
 					} else {
-						__lt0 = "normal"
+						__lt11 = "normal"
+					}
+					var __lt12 string
+					_ = __lt12
+					if k == m.idx {
+						__lt12 = "bold"
+					} else {
+						__lt12 = "normal"
 					}
 					if m.__focusLoop0_cursor == __focusPos0 {
 						m.idx = k
@@ -222,8 +429,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
+	contentLook := BoxLook(Style{}, true)
 	var contentChildren []string
 	var content_0 string
+	content_0Look := BoxLook(Style{Gap: Measurement{Px: 4}}, true)
 	var content_0Children []string
 	var content_0_0 string
 	__focusPos0 := 0
@@ -233,27 +442,34 @@ func (m Model) View() tea.View {
 		_ = k
 		_ = t__r0
 		var content_0_0Item string
-		var __lt0 string
+		var __lt11 string
 		if k == m.idx {
-			__lt0 = "bold"
+			__lt11 = "bold"
 		} else {
-			__lt0 = "normal"
+			__lt11 = "normal"
 		}
+		var __lt12 string
+		if k == m.idx {
+			__lt12 = "bold"
+		} else {
+			__lt12 = "normal"
+		}
+		_ = __lt12
 		content_0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
 		content_0_0ItemPrefix := " "
 		if content_0_0ItemFocused {
 			content_0_0ItemPrefix = ">"
 		}
-		content_0_0Item = lipgloss.NewStyle().
-			Bold(__lt0 == "bold").Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_0Item = BoxLook(Style{FontWeight: __lt11}, true).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
 		__focusPos0++
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
-	content_0_0 = tui.Row(1, content_0_0Items...)
+	content_0_0 = tui.Spaced(true, lipgloss.Top, 1, content_0_0Items...)
 	if content_0_0 != "" {
 		content_0Children = append(content_0Children, content_0_0)
 	}
-	content_0 = tui.Row(1, content_0Children...)
+	content_0 = tui.Spaced(true, lipgloss.Top, 1, content_0Children...)
+	content_0 = content_0Look.Render(content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Items []string
@@ -263,24 +479,25 @@ func (m Model) View() tea.View {
 		var content_1Item string
 		if k == m.idx {
 			if t__r1.__id == 0 {
-				content_1Item = lipgloss.NewStyle().Render(fmt.Sprint("Overview content"))
+				content_1Item = BoxLook(Style{}, true).Render(fmt.Sprint("Overview content"))
 			} else {
 				if t__r1.__id == 1 {
-					content_1Item = lipgloss.NewStyle().Render(fmt.Sprint("Detail content"))
+					content_1Item = BoxLook(Style{}, true).Render(fmt.Sprint("Detail content"))
 				} else {
 					if t__r1.__id == 2 {
-						content_1Item = lipgloss.NewStyle().Render(fmt.Sprint("Settings content"))
+						content_1Item = BoxLook(Style{}, true).Render(fmt.Sprint("Settings content"))
 					}
 				}
 			}
 		}
 		content_1Items = append(content_1Items, content_1Item)
 	}
-	content_1 = tui.Column(0, content_1Items...)
+	content_1 = tui.Spaced(false, lipgloss.Left, 0, content_1Items...)
 	if content_1 != "" {
 		contentChildren = append(contentChildren, content_1)
 	}
-	content = tui.Column(0, contentChildren...)
+	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = contentLook.Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -318,11 +535,10 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -337,6 +553,61 @@ type Tab__record struct {
 	Label    string
 	Disabled bool
 	__id     int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model holds the state for this SNGL UI.
@@ -354,8 +625,9 @@ type Model struct {
 	__rendering1   bool
 	__renderAgain1 bool
 
-	__n5 *fyne.Container
-	__n6 *fyne.Container
+	__n5      *fyne.Container
+	__n6      *fyne.Container
+	__n6__box *fynelayout.Box
 }
 
 // New creates a Model with default values.
@@ -374,6 +646,97 @@ func New() *Model {
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
+}
+
+func LookOf(s Style) fynelayout.Look {
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	return look
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) float32 {
+	var __lt1 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt1 = own
+	} else {
+		var __lt0 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt0 = axis
+		} else {
+			__lt0 = all
+		}
+		__lt1 = __lt0
+	}
+	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
+	var __lt3 int
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
+		__lt3 = 2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func Paint(c__r0 snglcolor.Color) snglcolor.Color {
+	var __lt4 snglcolor.Color
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt4 = c__r0
+	}
+	return __lt4
+}
+
+func TextAlignOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
+	}
+	return __lt5
+}
+
+func WrapOf(w string) int {
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
+	}
+	return __lt6
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -488,6 +851,14 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
+}
+
 func (m *Model) Idx() int {
 	return m.idx
 }
@@ -506,10 +877,12 @@ func (m *Model) SetChanged(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n5 = container.NewVBox()
-	m.__n6 = container.New(fynelayout.New(true, 4, 0))
+	m.__n5 = fynelayout.NewVBox()
+	m.__n6 = fynelayout.NewHBox()
+	m.__n6__box = fynelayout.NewBox(m.__n6)
+	m.__n6__box.SetLook(fynelayout.Look{Gap: 4.0})
 	m.__renderSlot0(m.__n6)
-	m.__n5.Add(m.__n6)
+	m.__n5.Add(m.__n6__box)
 	m.__renderSlot1(m.__n5)
 	content := fyne.CanvasObject(m.__n5)
 	return content
@@ -529,7 +902,7 @@ type __child0Instance struct {
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
 	__n0         *widget.Button
-	__n0__theme  *container.ThemeOverride
+	__n0__box    *fynelayout.Box
 }
 
 func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a___p2 int, __a___on0 func()) *__child0Instance {
@@ -542,21 +915,20 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt2 string
+	var __lt9 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt2 = "bold"
+		__lt9 = "bold"
 	} else {
-		__lt2 = "normal"
+		__lt9 = "normal"
 	}
 	c.__n0 = widget.NewButton("", nil)
-	c.__n0__theme = container.NewThemeOverride(c.__n0, fynetheme.New(theme.DefaultTheme()))
+	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop___p0.Label)
-	c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt2)
-	c.__n0__theme.Refresh()
+	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt9}))
 	c.__n0.OnTapped = func() {
 		c.__prop___on0()
 	}
-	c.Root = c.__n0__theme
+	c.Root = c.__n0__box
 	return c
 }
 
@@ -567,26 +939,24 @@ func (c *__child0Instance) Set__p0(__v Tab__record) {
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt0 string
+	var __lt7 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt0 = "bold"
+		__lt7 = "bold"
 	} else {
-		__lt0 = "normal"
+		__lt7 = "normal"
 	}
-	c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt0)
-	c.__n0__theme.Refresh()
+	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt7}))
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt1 string
+	var __lt8 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt1 = "bold"
+		__lt8 = "bold"
 	} else {
-		__lt1 = "normal"
+		__lt8 = "normal"
 	}
-	c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt1)
-	c.__n0__theme.Refresh()
+	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt8}))
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -602,6 +972,7 @@ func main() {
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(480, 640))
 	w.ShowAndRun()
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/fyne/model_test.go --
@@ -638,16 +1009,25 @@ package main
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
+	var m *Model
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
+		m = New()
+		return m.BuildUI(app)
 	})
+	if m != nil {
+		m.__snglTeardown()
+	}
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from component_tabs.sngl; DO NOT EDIT.
 
 package main
 
-import "duckfam.us/sngl/pkg/go/gtk4rt"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
+)
 
 type Measurement struct {
 	Px  float64
@@ -659,6 +1039,61 @@ type Tab__record struct {
 	Label    string
 	Disabled bool
 	__id     int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -695,6 +1130,188 @@ func New() *Model {
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
+}
+
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
+}
+
+func CssOf(s Style) string {
+	var __lt1 string
+	if s.Opacity == 0.0 {
+		__lt1 = ""
+	} else {
+		__lt1 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	case "baseline":
+		__lt2 = 4
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func TextAlignOf(a string) int {
+	var __lt3 int
+	switch a {
+	case "center":
+		__lt3 = 1
+	case "right":
+		__lt3 = 2
+	case "justify":
+		__lt3 = 3
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func WrapOf(w string) int {
+	var __lt4 int
+	switch w {
+	case "pre", "nowrap":
+		__lt4 = 1
+	case "preWrap", "preLine":
+		__lt4 = 2
+	default:
+		__lt4 = 0
+	}
+	return __lt4
+}
+
+func ClipOf(o string) bool {
+	var __lt5 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt5 = true
+	default:
+		__lt5 = false
+	}
+	return __lt5
+}
+
+func Decl(name string, value string) string {
+	var __lt6 string
+	if value == "" {
+		__lt6 = ""
+	} else {
+		__lt6 = (((name + ": ") + value) + "; ")
+	}
+	return __lt6
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt9 string
+	if v == 0.0 {
+		__lt9 = ""
+	} else {
+		__lt9 = (fmt.Sprint(v) + "px")
+	}
+	return __lt9
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt10 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt10 = ""
+	} else {
+		__lt10 = c__r0.Hex()
+	}
+	return __lt10
+}
+
+func Points(v float64) string {
+	var __lt11 string
+	if v == 0.0 {
+		__lt11 = ""
+	} else {
+		__lt11 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt11
+}
+
+func WeightOf(w string) string {
+	var __lt12 string
+	switch w {
+	case "bold":
+		__lt12 = "bold"
+	case "bolder":
+		__lt12 = "bolder"
+	case "lighter":
+		__lt12 = "lighter"
+	default:
+		__lt12 = ""
+	}
+	return __lt12
+}
+
+func SlantOf(s string) string {
+	var __lt13 string
+	switch s {
+	case "italic":
+		__lt13 = "italic"
+	case "oblique":
+		__lt13 = "oblique"
+	default:
+		__lt13 = ""
+	}
+	return __lt13
+}
+
+func LineOf(s Style) string {
+	var __lt14 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt14 = "solid"
+	case "dashed":
+		__lt14 = "dashed"
+	case "dotted":
+		__lt14 = "dotted"
+	case "double":
+		__lt14 = "double"
+	default:
+		var __lt15 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt15 = "solid"
+		} else {
+			__lt15 = ""
+		}
+		__lt14 = __lt15
+	}
+	return __lt14
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -784,21 +1401,21 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					if k == m.idx {
 						if t.__id == 0 {
 							__n2 := gtk4rt.LabelNew("")
-							gtk4rt.LabelSetText(__n2, "Overview content")
+							gtk4rt.LabelSetLabel(__n2, "Overview content")
 							gtk4rt.LabelSetXAlign(__n2, 0.0)
 							gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
 							m.__slot1 = append(m.__slot1, __n2)
 						} else {
 							if t.__id == 1 {
 								__n3 := gtk4rt.LabelNew("")
-								gtk4rt.LabelSetText(__n3, "Detail content")
+								gtk4rt.LabelSetLabel(__n3, "Detail content")
 								gtk4rt.LabelSetXAlign(__n3, 0.0)
 								gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 								m.__slot1 = append(m.__slot1, __n3)
 							} else {
 								if t.__id == 2 {
 									__n4 := gtk4rt.LabelNew("")
-									gtk4rt.LabelSetText(__n4, "Settings content")
+									gtk4rt.LabelSetLabel(__n4, "Settings content")
 									gtk4rt.LabelSetXAlign(__n4, 0.0)
 									gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 									m.__slot1 = append(m.__slot1, __n4)
@@ -810,6 +1427,14 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			}
 		}()
 	}
+}
+
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -835,18 +1460,17 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
 	c.__prop___on0 = __a___on0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt2 string
+	var __lt18 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt2 = "bold"
+		__lt18 = "bold"
 	} else {
-		__lt2 = "normal"
+		__lt18 = "normal"
 	}
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
-	gtk4rt.SetStyle(c.__n0, gtk4rt.Style{FontWeight: __lt2})
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt18}))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -862,24 +1486,24 @@ func (c *__child0Instance) Set__p0(__v Tab__record) {
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt0 string
+	var __lt16 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt0 = "bold"
+		__lt16 = "bold"
 	} else {
-		__lt0 = "normal"
+		__lt16 = "normal"
 	}
-	gtk4rt.SetStyle(c.__n0, gtk4rt.Style{FontWeight: __lt0})
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt16}))
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt1 string
+	var __lt17 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt1 = "bold"
+		__lt17 = "bold"
 	} else {
-		__lt1 = "normal"
+		__lt17 = "normal"
 	}
-	gtk4rt.SetStyle(c.__n0, gtk4rt.Style{FontWeight: __lt1})
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt17}))
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -925,8 +1549,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n5, 6)
 	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationHorizontal)
-	gtk4rt.BoxSetSpacing(__n6, 6)
-	gtk4rt.SetStyle(__n6, gtk4rt.Style{Gap: 4.0})
+	gtk4rt.BoxSetSpacing(__n6, 4)
 	m.__renderSlot0(__n6)
 	gtk4rt.BoxAppend(m.__n5, __n6)
 	m.__renderSlot1(m.__n5)
@@ -953,12 +1576,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Tab__record(
     var label: String = "",
@@ -995,13 +1619,13 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         for ((k, t) in listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
             if ((k == state.idx)) {
                 if ((t.__id == 0)) {
-                    Text(text = "Overview content", modifier = Modifier)
+                    Text(text = "Overview content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 } else {
                     if ((t.__id == 1)) {
-                        Text(text = "Detail content", modifier = Modifier)
+                        Text(text = "Detail content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     } else {
                         if ((t.__id == 2)) {
-                            Text(text = "Settings content", modifier = Modifier)
+                            Text(text = "Settings content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                         }
                     }
                 }
@@ -1062,7 +1686,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <div id="__n5" data-sngl-id="__n5" style="border-bottom:1px solid #ccc;display:flex;gap:4px" role="tablist">
+  <div id="__n5" data-sngl-id="__n5" style="display:flex;gap:4px;border-bottom:1px solid #ccc" role="tablist">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
   <div id="__n6" data-sngl-id="__n6" role="tabpanel">
@@ -1091,6 +1715,18 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { __snglTeardown });
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1112,13 +1748,13 @@ window.__sngl_boot = () => {
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
       __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
       __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
     function __set___p2(__v) {
       __prop___p2 = __v;
-      __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
       __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
       __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
@@ -1128,7 +1764,7 @@ window.__sngl_boot = () => {
     let __n0 = document.createElement("button");
     __n0.textContent = __prop___p0.label;
     __n0.disabled = __prop___p0.disabled;
-    __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+    __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
     __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
     __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     __n0.setAttribute("role", "tab");
@@ -1310,23 +1946,24 @@ window.__sngl_boot = () => {
   __renderSlot0(__slotAnchor_0);
   var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
   __renderSlot1(__slotAnchor_1);
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9bf8be22cfb8599bf7b6abaf242868cb
+pass sha256:b6e6623bd17dd92b806367b5bfb1fbc9
 -- run/go/fyne --
-pass sha256:fddf6b794b8705e9424506fad669bae9
+pass sha256:372ac1f489e15279cf0c938d21e76d5d
 -- run/go/gtk4 --
-pass sha256:63a0901456e02432329922ce519711a2
+pass sha256:974096ee407996c4155bd7073a859c3d
 -- run/kotlin/android --
-pass sha256:88eb90c6f9d073f667a5b619f80a95ed
+pass sha256:90f2d70e3e40cbc0a0c29d96716f3364
 -- run/none/html --
-pass sha256:49c04d6c615e22aa70ee9df45c47acf3
+pass sha256:0b3d8dbef5058b5a48c9a0544002c5e0
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:df4755da9f0a38a15909527f04e808cf
+sha256:015768068f8e4ed9996be4506fc8253b
 {
   "results": [
     {

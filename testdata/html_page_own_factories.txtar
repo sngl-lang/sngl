@@ -79,6 +79,22 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -101,6 +117,7 @@ body { font-family: system-ui, sans-serif; }
     };
   }
   var __slot0 = [];
+  var __inst1_live = [];
   var __slot1 = [];
   var __inst3_live = [];
   var __rendering1 = false;
@@ -170,6 +187,7 @@ body { font-family: system-ui, sans-serif; }
     state.lines__inst1.push("About");
     __renderSlot1(__slotAnchor_1);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
@@ -196,6 +214,22 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -222,6 +256,7 @@ body { font-family: system-ui, sans-serif; }
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
+  var __inst3_live = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -287,6 +322,7 @@ body { font-family: system-ui, sans-serif; }
     state.lines__inst0.push("One");
     __renderSlot0(__slotAnchor_0);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
@@ -313,6 +349,22 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -339,6 +391,7 @@ body { font-family: system-ui, sans-serif; }
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
+  var __inst3_live = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -404,6 +457,7 @@ body { font-family: system-ui, sans-serif; }
     state.lines__inst0.push("Three");
     __renderSlot0(__slotAnchor_0);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
@@ -430,6 +484,22 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -456,6 +526,7 @@ body { font-family: system-ui, sans-serif; }
   var __rendering0 = false;
   var __renderAgain0 = false;
   var __slot1 = [];
+  var __inst3_live = [];
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -521,8 +592,9 @@ body { font-family: system-ui, sans-serif; }
     state.lines__inst0.push("Two");
     __renderSlot0(__slotAnchor_0);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a87f404ab14837acb3c173430c554891
+pass sha256:8fce00d1461bd68db7be44634db37826

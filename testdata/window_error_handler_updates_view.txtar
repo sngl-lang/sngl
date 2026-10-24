@@ -49,10 +49,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -93,6 +155,150 @@ func Risky(n int) int {
 		panic(ErrorEvent{Message: "too big", Kind: "range"})
 	}
 	return (n * 10)
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt0 int
+		if s.MaxLines == 0 {
+			__lt0 = 0
+		} else {
+			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
+		} else {
+			__lt3 = lipgloss.NormalBorder()
+		}
+		__lt2 = __lt3
+	}
+	return __lt2
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
+	} else {
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
+		} else {
+			__lt4 = all
+		}
+		__lt5 = __lt4
+	}
+	return CellsOf(__lt5)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt6 int
+	if px <= 0.0 {
+		__lt6 = 0
+	} else {
+		__lt6 = max(1, (int(px) / 8))
+	}
+	return __lt6
+}
+
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
+	} else {
+		__lt7 = max(1, (int(px) / 16))
+	}
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -244,7 +450,7 @@ func (m Model) View() tea.View {
 		if contentPart_0Focused {
 			contentPart_0Prefix = ">"
 		}
-		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("Call"))
+		contentPart_0 = BoxLook(Style{}, true).Render(contentPart_0Prefix + " " + fmt.Sprint("Call"))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 1)
@@ -252,12 +458,12 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("Raise"))
+		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("Raise"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
+		contentPart_2 = BoxLook(Style{}, true).Render(fmt.Sprint(m.caught))
 		contentParts = append(contentParts, contentPart_2)
-		content = tui.Column(0, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -498,7 +704,7 @@ func (m *Model) call_clicked_handler() {
 			}
 			_ = e
 			m.caught = e.Message
-			gtk4rt.LabelSetText(m.__n1, m.caught)
+			gtk4rt.LabelSetLabel(m.__n1, m.caught)
 		}()
 		Risky(5)
 	}()
@@ -517,7 +723,7 @@ func (m *Model) direct_clicked_handler() {
 			}
 			_ = e
 			m.caught = e.Message
-			gtk4rt.LabelSetText(m.__n1, m.caught)
+			gtk4rt.LabelSetLabel(m.__n1, m.caught)
 		}()
 		panic(ErrorEvent{Message: "direct", Kind: ""})
 	}()
@@ -557,7 +763,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.direct, "clicked", m.direct_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.direct)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.caught)
+	gtk4rt.LabelSetLabel(m.__n1, m.caught)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -629,10 +835,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -666,7 +876,7 @@ fun MainScreen() {
                 	val e = __e.event
                 	caught = e.message
                 }
-            }, modifier = Modifier.testTag("call").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("call").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Call", modifier = Modifier)
             }
             Button(onClick = {
@@ -676,10 +886,10 @@ fun MainScreen() {
                 	val e = __e.event
                 	caught = e.message
                 }
-            }, modifier = Modifier.testTag("direct").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("direct").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Raise", modifier = Modifier)
             }
-            Text(text = caught, modifier = Modifier.safeDrawingPadding())
+            Text(text = caught, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -765,14 +975,14 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4c59b8eaa6f294444c3f645e023eca61
+pass sha256:c6bacd97b0450b4996e89985e2e6147e
 -- run/go/fyne --
 pass sha256:2d576af890c99d303720ddb781871c62
 -- run/go/gtk4 --
-pass sha256:8a42a32dcbf6281f4077f6e17b225157
+pass sha256:7b7de34999fcfbe9bdf458ba7e3ed270
 -- run/go/html --
 pass sha256:c97dcdc7f518111192194d2ed80d3c7e
 -- run/kotlin/android --
-pass sha256:b4189342ecd5c6d9189c286d44b9e470
+pass sha256:4d36ebc5b06a6360fdef40f30afc3465
 -- run/none/html --
 pass sha256:f875f6c669a8bf464ecb11916209b395

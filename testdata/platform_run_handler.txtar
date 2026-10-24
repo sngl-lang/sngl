@@ -432,7 +432,7 @@ func New() *Model {
 func (m *Model) start(args []string, run func()) {
 	fmt.Print((("before " + fmt.Sprint(len(args))) + "\n"))
 	m.n = len(args)
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	if slices.Index(args, "--window") >= 0 {
 		run()
 	}
@@ -563,7 +563,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -579,4 +579,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:a4744d7ef8b17f6cdf6352eb12f85eb7
 -- run/go/gtk4 --
-pass sha256:1898bbe4f374d08243202859b82e0769
+pass sha256:517364fcbe65e311dcd2bc1257568f7d

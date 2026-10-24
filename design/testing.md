@@ -73,6 +73,14 @@ when one fails, names what changed since (`reportTreeChange`). Building from a
 snapshot instead would cost every run a cold build cache, which keys on the
 absolute source directory, and write records into the copy.
 
+**Every Gradle build the compiler runs takes turns in one daemon**
+(`internal/gradle`): a file lock lets one build run at a time across every
+test binary, the first starts the daemon, and it exits five minutes after the
+last. Kotlin compiles inside it. With `--no-daemon` each build was a Gradle
+JVM and a Kotlin daemon of 2 GB each, the Kotlin one outliving the build, and
+the script and golden harnesses running several at once ran the machine out of
+memory.
+
 **verify launches nothing a record answers.** It runs no `sngl test` of its
 own: the examples are all `./...` reaches, and `examples_runs.txt` runs them
 on every target from its records. Run unrecorded in verify, every launch

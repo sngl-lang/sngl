@@ -88,166 +88,6 @@ import (
 	"os"
 )
 
-func __merge_Style(base, ov Style) Style {
-	if ov.Padding != (Measurement{}) {
-		base.Padding = ov.Padding
-	}
-	if ov.PaddingTop != (Measurement{}) {
-		base.PaddingTop = ov.PaddingTop
-	}
-	if ov.PaddingRight != (Measurement{}) {
-		base.PaddingRight = ov.PaddingRight
-	}
-	if ov.PaddingBottom != (Measurement{}) {
-		base.PaddingBottom = ov.PaddingBottom
-	}
-	if ov.PaddingLeft != (Measurement{}) {
-		base.PaddingLeft = ov.PaddingLeft
-	}
-	if ov.PaddingX != (Measurement{}) {
-		base.PaddingX = ov.PaddingX
-	}
-	if ov.PaddingY != (Measurement{}) {
-		base.PaddingY = ov.PaddingY
-	}
-	if ov.Margin != (Measurement{}) {
-		base.Margin = ov.Margin
-	}
-	if ov.MarginTop != (Measurement{}) {
-		base.MarginTop = ov.MarginTop
-	}
-	if ov.MarginRight != (Measurement{}) {
-		base.MarginRight = ov.MarginRight
-	}
-	if ov.MarginBottom != (Measurement{}) {
-		base.MarginBottom = ov.MarginBottom
-	}
-	if ov.MarginLeft != (Measurement{}) {
-		base.MarginLeft = ov.MarginLeft
-	}
-	if ov.MarginX != (Measurement{}) {
-		base.MarginX = ov.MarginX
-	}
-	if ov.MarginY != (Measurement{}) {
-		base.MarginY = ov.MarginY
-	}
-	if ov.Gap != (Measurement{}) {
-		base.Gap = ov.Gap
-	}
-	if ov.Width != (Measurement{}) {
-		base.Width = ov.Width
-	}
-	if ov.MinWidth != (Measurement{}) {
-		base.MinWidth = ov.MinWidth
-	}
-	if ov.Height != (Measurement{}) {
-		base.Height = ov.Height
-	}
-	if ov.MaxWidth != (Measurement{}) {
-		base.MaxWidth = ov.MaxWidth
-	}
-	if ov.MaxHeight != (Measurement{}) {
-		base.MaxHeight = ov.MaxHeight
-	}
-	if ov.Flex != 0 {
-		base.Flex = ov.Flex
-	}
-	if ov.FlexDirection != "" {
-		base.FlexDirection = ov.FlexDirection
-	}
-	if ov.AlignItems != "" {
-		base.AlignItems = ov.AlignItems
-	}
-	if ov.JustifyContent != "" {
-		base.JustifyContent = ov.JustifyContent
-	}
-	if ov.Position != "" {
-		base.Position = ov.Position
-	}
-	if ov.Top != (Measurement{}) {
-		base.Top = ov.Top
-	}
-	if ov.Bottom != (Measurement{}) {
-		base.Bottom = ov.Bottom
-	}
-	if ov.Left != (Measurement{}) {
-		base.Left = ov.Left
-	}
-	if ov.Right != (Measurement{}) {
-		base.Right = ov.Right
-	}
-	if ov.ZIndex != 0 {
-		base.ZIndex = ov.ZIndex
-	}
-	if ov.Color != (snglcolor.Color{}) {
-		base.Color = ov.Color
-	}
-	if ov.FontSize != (Measurement{}) {
-		base.FontSize = ov.FontSize
-	}
-	if ov.FontFamily != "" {
-		base.FontFamily = ov.FontFamily
-	}
-	if ov.FontWeight != "" {
-		base.FontWeight = ov.FontWeight
-	}
-	if ov.FontStyle != "" {
-		base.FontStyle = ov.FontStyle
-	}
-	if ov.TextAlign != "" {
-		base.TextAlign = ov.TextAlign
-	}
-	if ov.MaxLines != 0 {
-		base.MaxLines = ov.MaxLines
-	}
-	if ov.WhiteSpace != "" {
-		base.WhiteSpace = ov.WhiteSpace
-	}
-	if ov.Background != (snglcolor.Color{}) {
-		base.Background = ov.Background
-	}
-	if ov.BorderRadius != (Measurement{}) {
-		base.BorderRadius = ov.BorderRadius
-	}
-	if ov.BorderColor != (snglcolor.Color{}) {
-		base.BorderColor = ov.BorderColor
-	}
-	if ov.BorderWidth != (Measurement{}) {
-		base.BorderWidth = ov.BorderWidth
-	}
-	if ov.Border != "" {
-		base.Border = ov.Border
-	}
-	if ov.BorderBottom != "" {
-		base.BorderBottom = ov.BorderBottom
-	}
-	if ov.BorderLeft != "" {
-		base.BorderLeft = ov.BorderLeft
-	}
-	if ov.BorderCollapse != "" {
-		base.BorderCollapse = ov.BorderCollapse
-	}
-	if ov.BorderStyle != "" {
-		base.BorderStyle = ov.BorderStyle
-	}
-	if ov.Opacity != 0 {
-		base.Opacity = ov.Opacity
-	}
-	if ov.Cursor != "" {
-		base.Cursor = ov.Cursor
-	}
-	if ov.Display != "" {
-		base.Display = ov.Display
-	}
-	if ov.Overflow != "" {
-		base.Overflow = ov.Overflow
-	}
-	if ov.ListStyleType != "" {
-		base.ListStyleType = ov.ListStyleType
-	}
-	return base
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -309,92 +149,6 @@ type Style struct {
 	ListStyleType  string
 }
 
-func __styleLipgloss(s Style) lipgloss.Style {
-	cells := func(v float64) int {
-		if v == 0 {
-			return 0
-		}
-		return max(1, int(v)/8)
-	}
-	rows := func(v float64) int {
-		if v == 0 {
-			return 0
-		}
-		return max(1, int(v)/(2*8))
-	}
-	st := lipgloss.NewStyle()
-	if s.Color != (snglcolor.Color{}) {
-		st = st.Foreground(lipgloss.Color(s.Color.String()))
-	}
-	if s.Background != (snglcolor.Color{}) {
-		st = st.Background(lipgloss.Color(s.Background.String()))
-	}
-	if s.BorderColor != (snglcolor.Color{}) {
-		st = st.BorderForeground(lipgloss.Color(s.BorderColor.String()))
-	}
-	if s.BorderWidth != (Measurement{}) {
-		st = st.Border(lipgloss.NormalBorder())
-	}
-	if s.FontWeight == "bold" {
-		st = st.Bold(true)
-	}
-	if s.FontStyle == "italic" {
-		st = st.Italic(true)
-	}
-	switch s.TextAlign {
-	case "center":
-		st = st.AlignHorizontal(lipgloss.Center)
-	case "right":
-		st = st.AlignHorizontal(lipgloss.Right)
-	}
-	if s.Opacity != 0 {
-		st = st.Faint(true)
-	}
-	if v := cells(s.Padding.Px); v != 0 {
-		st = st.Padding(v)
-	}
-	if v := cells(s.Margin.Px); v != 0 {
-		st = st.Margin(v)
-	}
-	if v := cells(s.PaddingTop.Px); v != 0 {
-		st = st.PaddingTop(v)
-	}
-	if v := cells(s.PaddingRight.Px); v != 0 {
-		st = st.PaddingRight(v)
-	}
-	if v := cells(s.PaddingBottom.Px); v != 0 {
-		st = st.PaddingBottom(v)
-	}
-	if v := cells(s.PaddingLeft.Px); v != 0 {
-		st = st.PaddingLeft(v)
-	}
-	if v := cells(s.MarginTop.Px); v != 0 {
-		st = st.MarginTop(v)
-	}
-	if v := cells(s.MarginRight.Px); v != 0 {
-		st = st.MarginRight(v)
-	}
-	if v := cells(s.MarginBottom.Px); v != 0 {
-		st = st.MarginBottom(v)
-	}
-	if v := cells(s.MarginLeft.Px); v != 0 {
-		st = st.MarginLeft(v)
-	}
-	if v := cells(s.Width.Px); v != 0 {
-		st = st.Width(v)
-	}
-	if v := rows(s.Height.Px); v != 0 {
-		st = st.Height(v)
-	}
-	if v := cells(s.MaxWidth.Px); v != 0 {
-		st = st.MaxWidth(v)
-	}
-	if v := rows(s.MaxHeight.Px); v != 0 {
-		st = st.MaxHeight(v)
-	}
-	return st
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -428,6 +182,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt0 int
+		if s.MaxLines == 0 {
+			__lt0 = 0
+		} else {
+			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
+		} else {
+			__lt3 = lipgloss.NormalBorder()
+		}
+		__lt2 = __lt3
+	}
+	return __lt2
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
+	} else {
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
+		} else {
+			__lt4 = all
+		}
+		__lt5 = __lt4
+	}
+	return CellsOf(__lt5)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt6 int
+	if px <= 0.0 {
+		__lt6 = 0
+	} else {
+		__lt6 = max(1, (int(px) / 8))
+	}
+	return __lt6
+}
+
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
+	} else {
+		__lt7 = max(1, (int(px) / 16))
+	}
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -582,7 +480,7 @@ func (m Model) View() tea.View {
 		if contentPart_0Focused {
 			contentPart_0Prefix = ">"
 		}
-		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("swap"))
+		contentPart_0 = BoxLook(Style{}, true).Render(contentPart_0Prefix + " " + fmt.Sprint("swap"))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 1)
@@ -590,36 +488,43 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
+		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = __styleLipgloss(__merge_Style(Style{}, m.s)).Render(fmt.Sprint("styled"))
+		contentPart_2 = BoxLook(m.s, true).Render(fmt.Sprint("styled"))
 		contentParts = append(contentParts, contentPart_2)
-		var __lt0 Style
+		var __lt10 Style
 		if m.on {
-			__lt0 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+			__lt10 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
 		} else {
-			__lt0 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+			__lt10 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 		}
-		var contentPart_5 string
-		contentPart_5 = __styleLipgloss(__merge_Style(Style{}, __lt0)).Render(fmt.Sprint("picked"))
-		contentParts = append(contentParts, contentPart_5)
-		var contentPart_6 string
-		contentPart_6 = __styleLipgloss(__merge_Style(Style{}, m.kept[0])).Render(fmt.Sprint("kept"))
-		contentParts = append(contentParts, contentPart_6)
+		var __lt11 Style
+		if m.on {
+			__lt11 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		} else {
+			__lt11 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		}
 		var contentPart_7 string
-		var contentPart_7Items []string
+		_ = __lt11
+		contentPart_7 = BoxLook(__lt10, true).Render(fmt.Sprint("picked"))
+		contentParts = append(contentParts, contentPart_7)
+		var contentPart_8 string
+		contentPart_8 = BoxLook(m.kept[0], true).Render(fmt.Sprint("kept"))
+		contentParts = append(contentParts, contentPart_8)
+		var contentPart_9 string
+		var contentPart_9Items []string
 		for _, r := range m.rows {
 			_ = r
-			var contentPart_7Item string
-			contentPart_7Item = __styleLipgloss(__merge_Style(Style{}, m.s)).Render(fmt.Sprint(r))
-			contentPart_7Items = append(contentPart_7Items, contentPart_7Item)
+			var contentPart_9Item string
+			contentPart_9Item = BoxLook(m.s, true).Render(fmt.Sprint(r))
+			contentPart_9Items = append(contentPart_9Items, contentPart_9Item)
 		}
-		contentPart_7 = tui.Column(0, contentPart_7Items...)
-		if contentPart_7 != "" {
-			contentParts = append(contentParts, contentPart_7)
+		contentPart_9 = tui.Spaced(false, lipgloss.Left, 0, contentPart_9Items...)
+		if contentPart_9 != "" {
+			contentParts = append(contentParts, contentPart_9)
 		}
-		content = tui.Column(0, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -641,186 +546,13 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
-
-func __merge_Style(base, ov Style) Style {
-	if ov.Padding != (Measurement{}) {
-		base.Padding = ov.Padding
-	}
-	if ov.PaddingTop != (Measurement{}) {
-		base.PaddingTop = ov.PaddingTop
-	}
-	if ov.PaddingRight != (Measurement{}) {
-		base.PaddingRight = ov.PaddingRight
-	}
-	if ov.PaddingBottom != (Measurement{}) {
-		base.PaddingBottom = ov.PaddingBottom
-	}
-	if ov.PaddingLeft != (Measurement{}) {
-		base.PaddingLeft = ov.PaddingLeft
-	}
-	if ov.PaddingX != (Measurement{}) {
-		base.PaddingX = ov.PaddingX
-	}
-	if ov.PaddingY != (Measurement{}) {
-		base.PaddingY = ov.PaddingY
-	}
-	if ov.Margin != (Measurement{}) {
-		base.Margin = ov.Margin
-	}
-	if ov.MarginTop != (Measurement{}) {
-		base.MarginTop = ov.MarginTop
-	}
-	if ov.MarginRight != (Measurement{}) {
-		base.MarginRight = ov.MarginRight
-	}
-	if ov.MarginBottom != (Measurement{}) {
-		base.MarginBottom = ov.MarginBottom
-	}
-	if ov.MarginLeft != (Measurement{}) {
-		base.MarginLeft = ov.MarginLeft
-	}
-	if ov.MarginX != (Measurement{}) {
-		base.MarginX = ov.MarginX
-	}
-	if ov.MarginY != (Measurement{}) {
-		base.MarginY = ov.MarginY
-	}
-	if ov.Gap != (Measurement{}) {
-		base.Gap = ov.Gap
-	}
-	if ov.Width != (Measurement{}) {
-		base.Width = ov.Width
-	}
-	if ov.MinWidth != (Measurement{}) {
-		base.MinWidth = ov.MinWidth
-	}
-	if ov.Height != (Measurement{}) {
-		base.Height = ov.Height
-	}
-	if ov.MaxWidth != (Measurement{}) {
-		base.MaxWidth = ov.MaxWidth
-	}
-	if ov.MaxHeight != (Measurement{}) {
-		base.MaxHeight = ov.MaxHeight
-	}
-	if ov.Flex != 0 {
-		base.Flex = ov.Flex
-	}
-	if ov.FlexDirection != "" {
-		base.FlexDirection = ov.FlexDirection
-	}
-	if ov.AlignItems != "" {
-		base.AlignItems = ov.AlignItems
-	}
-	if ov.JustifyContent != "" {
-		base.JustifyContent = ov.JustifyContent
-	}
-	if ov.Position != "" {
-		base.Position = ov.Position
-	}
-	if ov.Top != (Measurement{}) {
-		base.Top = ov.Top
-	}
-	if ov.Bottom != (Measurement{}) {
-		base.Bottom = ov.Bottom
-	}
-	if ov.Left != (Measurement{}) {
-		base.Left = ov.Left
-	}
-	if ov.Right != (Measurement{}) {
-		base.Right = ov.Right
-	}
-	if ov.ZIndex != 0 {
-		base.ZIndex = ov.ZIndex
-	}
-	if ov.Color != (snglcolor.Color{}) {
-		base.Color = ov.Color
-	}
-	if ov.FontSize != (Measurement{}) {
-		base.FontSize = ov.FontSize
-	}
-	if ov.FontFamily != "" {
-		base.FontFamily = ov.FontFamily
-	}
-	if ov.FontWeight != "" {
-		base.FontWeight = ov.FontWeight
-	}
-	if ov.FontStyle != "" {
-		base.FontStyle = ov.FontStyle
-	}
-	if ov.TextAlign != "" {
-		base.TextAlign = ov.TextAlign
-	}
-	if ov.MaxLines != 0 {
-		base.MaxLines = ov.MaxLines
-	}
-	if ov.WhiteSpace != "" {
-		base.WhiteSpace = ov.WhiteSpace
-	}
-	if ov.Background != (snglcolor.Color{}) {
-		base.Background = ov.Background
-	}
-	if ov.BorderRadius != (Measurement{}) {
-		base.BorderRadius = ov.BorderRadius
-	}
-	if ov.BorderColor != (snglcolor.Color{}) {
-		base.BorderColor = ov.BorderColor
-	}
-	if ov.BorderWidth != (Measurement{}) {
-		base.BorderWidth = ov.BorderWidth
-	}
-	if ov.Border != "" {
-		base.Border = ov.Border
-	}
-	if ov.BorderBottom != "" {
-		base.BorderBottom = ov.BorderBottom
-	}
-	if ov.BorderLeft != "" {
-		base.BorderLeft = ov.BorderLeft
-	}
-	if ov.BorderCollapse != "" {
-		base.BorderCollapse = ov.BorderCollapse
-	}
-	if ov.BorderStyle != "" {
-		base.BorderStyle = ov.BorderStyle
-	}
-	if ov.Opacity != 0 {
-		base.Opacity = ov.Opacity
-	}
-	if ov.Cursor != "" {
-		base.Cursor = ov.Cursor
-	}
-	if ov.Display != "" {
-		base.Display = ov.Display
-	}
-	if ov.Overflow != "" {
-		base.Overflow = ov.Overflow
-	}
-	if ov.ListStyleType != "" {
-		base.ListStyleType = ov.ListStyleType
-	}
-	return base
-}
-
-func __styleTheme(s Style) fynetheme.Theme {
-	t := fynetheme.New(theme.DefaultTheme())
-	if s.Background != (snglcolor.Color{}) {
-		t = t.WithBackground(s.Background)
-	}
-	if s.Color != (snglcolor.Color{}) {
-		t = t.WithForeground(s.Color)
-	}
-	return t.WithTextSize(s.FontSize.Px).WithRadius(s.BorderRadius.Px).WithWeight(s.FontWeight).WithSlant(s.FontStyle)
-}
 
 type Measurement struct {
 	Px  float64
@@ -896,16 +628,16 @@ type Model struct {
 	__rendering0   bool
 	__renderAgain0 bool
 
-	__n1        *fynelayout.Toplevel
-	__n6        *widget.Button
-	__n7        *widget.Button
-	__n2        *widget.Label
-	__n2__theme *container.ThemeOverride
-	__n3        *widget.Label
-	__n3__theme *container.ThemeOverride
-	__n4        *widget.Label
-	__n4__theme *container.ThemeOverride
-	__built     bool
+	__n1      *fynelayout.Toplevel
+	__n6      *widget.Button
+	__n7      *widget.Button
+	__n2      *widget.Label
+	__n2__box *fynelayout.Box
+	__n3      *widget.Label
+	__n3__box *fynelayout.Box
+	__n4      *widget.Label
+	__n4__box *fynelayout.Box
+	__built   bool
 }
 
 // New creates a Model with default values.
@@ -922,6 +654,97 @@ func New() *Model {
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func LookOf(s Style) fynelayout.Look {
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	return look
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) float32 {
+	var __lt1 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt1 = own
+	} else {
+		var __lt0 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt0 = axis
+		} else {
+			__lt0 = all
+		}
+		__lt1 = __lt0
+	}
+	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
+	var __lt3 int
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
+		__lt3 = 2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func Paint(c__r0 snglcolor.Color) snglcolor.Color {
+	var __lt4 snglcolor.Color
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt4 = c__r0
+	}
+	return __lt4
+}
+
+func TextAlignOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
+	}
+	return __lt5
+}
+
+func WrapOf(w string) int {
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
+	}
+	return __lt6
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -974,6 +797,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -984,26 +815,23 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 
 func (m *Model) __n6_click_handler() {
 	m.s = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}, FontSize: Measurement{Px: 20}, FontWeight: "bold"}
-	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
-	m.__n2__theme.Refresh()
+	m.__n2__box.SetLook(LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
 	m.on = !m.on
-	var __lt0 Style
+	var __lt7 Style
 	if m.on {
-		__lt0 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt7 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
 	} else {
-		__lt0 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt7 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
-	m.__n3__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __lt0)))
-	m.__n3__theme.Refresh()
+	m.__n3__box.SetLook(LookOf(__lt7))
 }
 
 func (m *Model) __n7_click_handler() {
 	m.s.Color = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
-	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
-	m.__n2__theme.Refresh()
+	m.__n2__box.SetLook(LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
@@ -1070,29 +898,26 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n7.OnTapped = m.__n7_click_handler
 	m.__n1.Add(m.__n7)
 	m.__n2 = widget.NewLabel("")
-	m.__n2__theme = container.NewThemeOverride(fynetheme.NewBackdrop(m.__n2), fynetheme.New(theme.DefaultTheme()))
+	m.__n2__box = fynelayout.NewBox(m.__n2)
 	m.__n2.SetText("styled")
-	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
-	m.__n2__theme.Refresh()
-	m.__n1.Add(m.__n2__theme)
-	var __lt1 Style
+	m.__n2__box.SetLook(LookOf(m.s))
+	m.__n1.Add(m.__n2__box)
+	var __lt8 Style
 	if m.on {
-		__lt1 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt8 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
 	} else {
-		__lt1 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt8 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
 	m.__n3 = widget.NewLabel("")
-	m.__n3__theme = container.NewThemeOverride(fynetheme.NewBackdrop(m.__n3), fynetheme.New(theme.DefaultTheme()))
+	m.__n3__box = fynelayout.NewBox(m.__n3)
 	m.__n3.SetText("picked")
-	m.__n3__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __lt1)))
-	m.__n3__theme.Refresh()
-	m.__n1.Add(m.__n3__theme)
+	m.__n3__box.SetLook(LookOf(__lt8))
+	m.__n1.Add(m.__n3__box)
 	m.__n4 = widget.NewLabel("")
-	m.__n4__theme = container.NewThemeOverride(fynetheme.NewBackdrop(m.__n4), fynetheme.New(theme.DefaultTheme()))
+	m.__n4__box = fynelayout.NewBox(m.__n4)
 	m.__n4.SetText("kept")
-	m.__n4__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.kept[0])))
-	m.__n4__theme.Refresh()
-	m.__n1.Add(m.__n4__theme)
+	m.__n4__box.SetLook(LookOf(m.kept[0]))
+	m.__n1.Add(m.__n4__box)
 	m.__renderSlot0(m.__n1.Container)
 	fynelayout.AppAttach(m.__n1)
 	return m.__n1.Container
@@ -1108,7 +933,7 @@ type __child0Instance struct {
 	__slot0     []fyne.CanvasObject
 	__slot0_at  fyne.CanvasObject
 	__n0        *widget.Label
-	__n0__theme *container.ThemeOverride
+	__n0__box   *fynelayout.Box
 }
 
 func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__child0Instance {
@@ -1119,11 +944,10 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__chi
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
-	c.__n0__theme = container.NewThemeOverride(fynetheme.NewBackdrop(c.__n0), fynetheme.New(theme.DefaultTheme()))
+	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop___p0)
-	c.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, c.__prop___p1)))
-	c.__n0__theme.Refresh()
-	c.Root = c.__n0__theme
+	c.__n0__box.SetLook(LookOf(c.__prop___p1))
+	c.Root = c.__n0__box
 	return c
 }
 
@@ -1134,8 +958,7 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v Style) {
 	c.__prop___p1 = __v
-	c.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, c.__prop___p1)))
-	c.__n0__theme.Refresh()
+	c.__n0__box.SetLook(LookOf(c.__prop___p1))
 }
 
 func (c *__child0Instance) Destroy() {}
@@ -1145,6 +968,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -1159,6 +983,7 @@ func main() {
 	m := New()
 	m.buildWidgetTree()
 	gtk4rt.RunWindows(true)
+	m.__snglTeardown()
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from style.sngl; DO NOT EDIT.
@@ -1168,171 +993,8 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
 )
-
-func __merge_Style(base, ov Style) Style {
-	if ov.Padding != (Measurement{}) {
-		base.Padding = ov.Padding
-	}
-	if ov.PaddingTop != (Measurement{}) {
-		base.PaddingTop = ov.PaddingTop
-	}
-	if ov.PaddingRight != (Measurement{}) {
-		base.PaddingRight = ov.PaddingRight
-	}
-	if ov.PaddingBottom != (Measurement{}) {
-		base.PaddingBottom = ov.PaddingBottom
-	}
-	if ov.PaddingLeft != (Measurement{}) {
-		base.PaddingLeft = ov.PaddingLeft
-	}
-	if ov.PaddingX != (Measurement{}) {
-		base.PaddingX = ov.PaddingX
-	}
-	if ov.PaddingY != (Measurement{}) {
-		base.PaddingY = ov.PaddingY
-	}
-	if ov.Margin != (Measurement{}) {
-		base.Margin = ov.Margin
-	}
-	if ov.MarginTop != (Measurement{}) {
-		base.MarginTop = ov.MarginTop
-	}
-	if ov.MarginRight != (Measurement{}) {
-		base.MarginRight = ov.MarginRight
-	}
-	if ov.MarginBottom != (Measurement{}) {
-		base.MarginBottom = ov.MarginBottom
-	}
-	if ov.MarginLeft != (Measurement{}) {
-		base.MarginLeft = ov.MarginLeft
-	}
-	if ov.MarginX != (Measurement{}) {
-		base.MarginX = ov.MarginX
-	}
-	if ov.MarginY != (Measurement{}) {
-		base.MarginY = ov.MarginY
-	}
-	if ov.Gap != (Measurement{}) {
-		base.Gap = ov.Gap
-	}
-	if ov.Width != (Measurement{}) {
-		base.Width = ov.Width
-	}
-	if ov.MinWidth != (Measurement{}) {
-		base.MinWidth = ov.MinWidth
-	}
-	if ov.Height != (Measurement{}) {
-		base.Height = ov.Height
-	}
-	if ov.MaxWidth != (Measurement{}) {
-		base.MaxWidth = ov.MaxWidth
-	}
-	if ov.MaxHeight != (Measurement{}) {
-		base.MaxHeight = ov.MaxHeight
-	}
-	if ov.Flex != 0 {
-		base.Flex = ov.Flex
-	}
-	if ov.FlexDirection != "" {
-		base.FlexDirection = ov.FlexDirection
-	}
-	if ov.AlignItems != "" {
-		base.AlignItems = ov.AlignItems
-	}
-	if ov.JustifyContent != "" {
-		base.JustifyContent = ov.JustifyContent
-	}
-	if ov.Position != "" {
-		base.Position = ov.Position
-	}
-	if ov.Top != (Measurement{}) {
-		base.Top = ov.Top
-	}
-	if ov.Bottom != (Measurement{}) {
-		base.Bottom = ov.Bottom
-	}
-	if ov.Left != (Measurement{}) {
-		base.Left = ov.Left
-	}
-	if ov.Right != (Measurement{}) {
-		base.Right = ov.Right
-	}
-	if ov.ZIndex != 0 {
-		base.ZIndex = ov.ZIndex
-	}
-	if ov.Color != (snglcolor.Color{}) {
-		base.Color = ov.Color
-	}
-	if ov.FontSize != (Measurement{}) {
-		base.FontSize = ov.FontSize
-	}
-	if ov.FontFamily != "" {
-		base.FontFamily = ov.FontFamily
-	}
-	if ov.FontWeight != "" {
-		base.FontWeight = ov.FontWeight
-	}
-	if ov.FontStyle != "" {
-		base.FontStyle = ov.FontStyle
-	}
-	if ov.TextAlign != "" {
-		base.TextAlign = ov.TextAlign
-	}
-	if ov.MaxLines != 0 {
-		base.MaxLines = ov.MaxLines
-	}
-	if ov.WhiteSpace != "" {
-		base.WhiteSpace = ov.WhiteSpace
-	}
-	if ov.Background != (snglcolor.Color{}) {
-		base.Background = ov.Background
-	}
-	if ov.BorderRadius != (Measurement{}) {
-		base.BorderRadius = ov.BorderRadius
-	}
-	if ov.BorderColor != (snglcolor.Color{}) {
-		base.BorderColor = ov.BorderColor
-	}
-	if ov.BorderWidth != (Measurement{}) {
-		base.BorderWidth = ov.BorderWidth
-	}
-	if ov.Border != "" {
-		base.Border = ov.Border
-	}
-	if ov.BorderBottom != "" {
-		base.BorderBottom = ov.BorderBottom
-	}
-	if ov.BorderLeft != "" {
-		base.BorderLeft = ov.BorderLeft
-	}
-	if ov.BorderCollapse != "" {
-		base.BorderCollapse = ov.BorderCollapse
-	}
-	if ov.BorderStyle != "" {
-		base.BorderStyle = ov.BorderStyle
-	}
-	if ov.Opacity != 0 {
-		base.Opacity = ov.Opacity
-	}
-	if ov.Cursor != "" {
-		base.Cursor = ov.Cursor
-	}
-	if ov.Display != "" {
-		base.Display = ov.Display
-	}
-	if ov.Overflow != "" {
-		base.Overflow = ov.Overflow
-	}
-	if ov.ListStyleType != "" {
-		base.ListStyleType = ov.ListStyleType
-	}
-	return base
-}
-
-func snglStyle(s Style) gtk4rt.Style {
-	return gtk4rt.Style{Width: (s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), MinWidth: (s.MinWidth.Px + (11.0 * (s.MinWidth.Em + s.MinWidth.Rem))), Height: (s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), Gap: (s.Gap.Px + (11.0 * (s.Gap.Em + s.Gap.Rem))), Padding: (s.Padding.Px + (11.0 * (s.Padding.Em + s.Padding.Rem))), PaddingX: (s.PaddingX.Px + (11.0 * (s.PaddingX.Em + s.PaddingX.Rem))), PaddingY: (s.PaddingY.Px + (11.0 * (s.PaddingY.Em + s.PaddingY.Rem))), PaddingTop: (s.PaddingTop.Px + (11.0 * (s.PaddingTop.Em + s.PaddingTop.Rem))), PaddingRight: (s.PaddingRight.Px + (11.0 * (s.PaddingRight.Em + s.PaddingRight.Rem))), PaddingBottom: (s.PaddingBottom.Px + (11.0 * (s.PaddingBottom.Em + s.PaddingBottom.Rem))), PaddingLeft: (s.PaddingLeft.Px + (11.0 * (s.PaddingLeft.Em + s.PaddingLeft.Rem))), Margin: (s.Margin.Px + (11.0 * (s.Margin.Em + s.Margin.Rem))), MarginX: (s.MarginX.Px + (11.0 * (s.MarginX.Em + s.MarginX.Rem))), MarginY: (s.MarginY.Px + (11.0 * (s.MarginY.Em + s.MarginY.Rem))), MarginTop: (s.MarginTop.Px + (11.0 * (s.MarginTop.Em + s.MarginTop.Rem))), MarginRight: (s.MarginRight.Px + (11.0 * (s.MarginRight.Em + s.MarginRight.Rem))), MarginBottom: (s.MarginBottom.Px + (11.0 * (s.MarginBottom.Em + s.MarginBottom.Rem))), MarginLeft: (s.MarginLeft.Px + (11.0 * (s.MarginLeft.Em + s.MarginLeft.Rem))), AlignItems: s.AlignItems, TextAlign: s.TextAlign, FontSize: (s.FontSize.Px + (11.0 * (s.FontSize.Em + s.FontSize.Rem))), FontWeight: s.FontWeight, FontStyle: s.FontStyle, Color: s.Color, Background: s.Background, BorderRadius: (s.BorderRadius.Px + (11.0 * (s.BorderRadius.Em + s.BorderRadius.Rem)))}
-}
 
 type Measurement struct {
 	Px  float64
@@ -1433,6 +1095,188 @@ func New() *Model {
 	return m
 }
 
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
+}
+
+func CssOf(s Style) string {
+	var __lt0 string
+	if s.Opacity == 0.0 {
+		__lt0 = ""
+	} else {
+		__lt0 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt0))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt1 int
+	switch a {
+	case "center":
+		__lt1 = 2
+	case "end":
+		__lt1 = 3
+	case "baseline":
+		__lt1 = 4
+	default:
+		__lt1 = 0
+	}
+	return __lt1
+}
+
+func TextAlignOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 1
+	case "right":
+		__lt2 = 2
+	case "justify":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func WrapOf(w string) int {
+	var __lt3 int
+	switch w {
+	case "pre", "nowrap":
+		__lt3 = 1
+	case "preWrap", "preLine":
+		__lt3 = 2
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func ClipOf(o string) bool {
+	var __lt4 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt4 = true
+	default:
+		__lt4 = false
+	}
+	return __lt4
+}
+
+func Decl(name string, value string) string {
+	var __lt5 string
+	if value == "" {
+		__lt5 = ""
+	} else {
+		__lt5 = (((name + ": ") + value) + "; ")
+	}
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt8 string
+	if v == 0.0 {
+		__lt8 = ""
+	} else {
+		__lt8 = (fmt.Sprint(v) + "px")
+	}
+	return __lt8
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt9 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt9 = ""
+	} else {
+		__lt9 = c__r0.Hex()
+	}
+	return __lt9
+}
+
+func Points(v float64) string {
+	var __lt10 string
+	if v == 0.0 {
+		__lt10 = ""
+	} else {
+		__lt10 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt10
+}
+
+func WeightOf(w string) string {
+	var __lt11 string
+	switch w {
+	case "bold":
+		__lt11 = "bold"
+	case "bolder":
+		__lt11 = "bolder"
+	case "lighter":
+		__lt11 = "lighter"
+	default:
+		__lt11 = ""
+	}
+	return __lt11
+}
+
+func SlantOf(s string) string {
+	var __lt12 string
+	switch s {
+	case "italic":
+		__lt12 = "italic"
+	case "oblique":
+		__lt12 = "oblique"
+	default:
+		__lt12 = ""
+	}
+	return __lt12
+}
+
+func LineOf(s Style) string {
+	var __lt13 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt13 = "solid"
+	case "dashed":
+		__lt13 = "dashed"
+	case "dotted":
+		__lt13 = "dotted"
+	case "double":
+		__lt13 = "double"
+	default:
+		var __lt14 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt14 = "solid"
+		} else {
+			__lt14 = ""
+		}
+		__lt13 = __lt14
+	}
+	return __lt13
+}
+
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1483,6 +1327,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -1493,23 +1345,23 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 
 func (m *Model) __n6_clicked_handler() {
 	m.s = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}, FontSize: Measurement{Px: 20}, FontWeight: "bold"}
-	gtk4rt.SetStyle(m.__n2, snglStyle(__merge_Style(Style{}, m.s)))
+	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
 	m.on = !m.on
-	var __lt0 Style
+	var __lt15 Style
 	if m.on {
-		__lt0 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt15 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
 	} else {
-		__lt0 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt15 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
-	gtk4rt.SetStyle(m.__n3, snglStyle(__merge_Style(Style{}, __lt0)))
+	gtk4rt.SetLook(m.__n3, LookOf(__lt15))
 }
 
 func (m *Model) __n7_clicked_handler() {
 	m.s.Color = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
-	gtk4rt.SetStyle(m.__n2, snglStyle(__merge_Style(Style{}, m.s)))
+	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
@@ -1534,12 +1386,11 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__chi
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
-	gtk4rt.SetStyle(c.__n0, snglStyle(__merge_Style(Style{}, c.__prop___p1)))
+	gtk4rt.SetLook(c.__n0, LookOf(c.__prop___p1))
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1547,12 +1398,12 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__chi
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 }
 
 func (c *__child0Instance) Set__p1(__v Style) {
 	c.__prop___p1 = __v
-	gtk4rt.SetStyle(c.__n0, snglStyle(__merge_Style(Style{}, c.__prop___p1)))
+	gtk4rt.SetLook(c.__n0, LookOf(c.__prop___p1))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1623,25 +1474,25 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n7)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, "styled")
+	gtk4rt.LabelSetLabel(m.__n2, "styled")
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
-	gtk4rt.SetStyle(m.__n2, snglStyle(__merge_Style(Style{}, m.s)))
+	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
-	var __lt1 Style
+	var __lt16 Style
 	if m.on {
-		__lt1 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt16 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
 	} else {
-		__lt1 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt16 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, "picked")
+	gtk4rt.LabelSetLabel(m.__n3, "picked")
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.SetStyle(m.__n3, snglStyle(__merge_Style(Style{}, __lt1)))
+	gtk4rt.SetLook(m.__n3, LookOf(__lt16))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, "kept")
+	gtk4rt.LabelSetLabel(m.__n4, "kept")
 	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
-	gtk4rt.SetStyle(m.__n4, snglStyle(__merge_Style(Style{}, m.kept[0])))
+	gtk4rt.SetLook(m.__n4, LookOf(m.kept[0]))
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	m.__renderSlot0(m.__n1)
 	gtk4rt.AppAttach(m.__n1)
@@ -1670,22 +1521,33 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 
 data class Measurement(
     val px: Double = 0.0,
@@ -1763,62 +1625,6 @@ fun _snglFloatStr(v: Double): String =
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
-
-fun __merge_Style(base: Style, ov: Style): Style =
-    base.copy(
-        padding = if (ov.padding != Measurement()) ov.padding else base.padding,
-        paddingTop = if (ov.paddingTop != Measurement()) ov.paddingTop else base.paddingTop,
-        paddingRight = if (ov.paddingRight != Measurement()) ov.paddingRight else base.paddingRight,
-        paddingBottom = if (ov.paddingBottom != Measurement()) ov.paddingBottom else base.paddingBottom,
-        paddingLeft = if (ov.paddingLeft != Measurement()) ov.paddingLeft else base.paddingLeft,
-        paddingX = if (ov.paddingX != Measurement()) ov.paddingX else base.paddingX,
-        paddingY = if (ov.paddingY != Measurement()) ov.paddingY else base.paddingY,
-        margin = if (ov.margin != Measurement()) ov.margin else base.margin,
-        marginTop = if (ov.marginTop != Measurement()) ov.marginTop else base.marginTop,
-        marginRight = if (ov.marginRight != Measurement()) ov.marginRight else base.marginRight,
-        marginBottom = if (ov.marginBottom != Measurement()) ov.marginBottom else base.marginBottom,
-        marginLeft = if (ov.marginLeft != Measurement()) ov.marginLeft else base.marginLeft,
-        marginX = if (ov.marginX != Measurement()) ov.marginX else base.marginX,
-        marginY = if (ov.marginY != Measurement()) ov.marginY else base.marginY,
-        gap = if (ov.gap != Measurement()) ov.gap else base.gap,
-        width = if (ov.width != Measurement()) ov.width else base.width,
-        minWidth = if (ov.minWidth != Measurement()) ov.minWidth else base.minWidth,
-        height = if (ov.height != Measurement()) ov.height else base.height,
-        maxWidth = if (ov.maxWidth != Measurement()) ov.maxWidth else base.maxWidth,
-        maxHeight = if (ov.maxHeight != Measurement()) ov.maxHeight else base.maxHeight,
-        flex = if (ov.flex != 0.0) ov.flex else base.flex,
-        flexDirection = if (ov.flexDirection != SnglFlexDirection.ROW) ov.flexDirection else base.flexDirection,
-        alignItems = if (ov.alignItems != SnglAlignment.START) ov.alignItems else base.alignItems,
-        justifyContent = if (ov.justifyContent != SnglJustification.START) ov.justifyContent else base.justifyContent,
-        position = if (ov.position != SnglPosition.STATIC) ov.position else base.position,
-        top = if (ov.top != Measurement()) ov.top else base.top,
-        bottom = if (ov.bottom != Measurement()) ov.bottom else base.bottom,
-        left = if (ov.left != Measurement()) ov.left else base.left,
-        right = if (ov.right != Measurement()) ov.right else base.right,
-        zIndex = if (ov.zIndex != 0) ov.zIndex else base.zIndex,
-        color = if (ov.color != Color()) ov.color else base.color,
-        fontSize = if (ov.fontSize != Measurement()) ov.fontSize else base.fontSize,
-        fontFamily = if (ov.fontFamily != "") ov.fontFamily else base.fontFamily,
-        fontWeight = if (ov.fontWeight != SnglFontWeight.NORMAL) ov.fontWeight else base.fontWeight,
-        fontStyle = if (ov.fontStyle != SnglFontStyle.NORMAL) ov.fontStyle else base.fontStyle,
-        textAlign = if (ov.textAlign != SnglTextAlign.LEFT) ov.textAlign else base.textAlign,
-        maxLines = if (ov.maxLines != 0) ov.maxLines else base.maxLines,
-        whiteSpace = if (ov.whiteSpace != SnglWhiteSpace.NORMAL) ov.whiteSpace else base.whiteSpace,
-        background = if (ov.background != Color()) ov.background else base.background,
-        borderRadius = if (ov.borderRadius != Measurement()) ov.borderRadius else base.borderRadius,
-        borderColor = if (ov.borderColor != Color()) ov.borderColor else base.borderColor,
-        borderWidth = if (ov.borderWidth != Measurement()) ov.borderWidth else base.borderWidth,
-        border = if (ov.border != "") ov.border else base.border,
-        borderBottom = if (ov.borderBottom != "") ov.borderBottom else base.borderBottom,
-        borderLeft = if (ov.borderLeft != "") ov.borderLeft else base.borderLeft,
-        borderCollapse = if (ov.borderCollapse != "") ov.borderCollapse else base.borderCollapse,
-        borderStyle = if (ov.borderStyle != SnglBorderStyle.NONE) ov.borderStyle else base.borderStyle,
-        opacity = if (ov.opacity != 0.0) ov.opacity else base.opacity,
-        cursor = if (ov.cursor != "") ov.cursor else base.cursor,
-        display = if (ov.display != SnglDisplay.FLEX) ov.display else base.display,
-        overflow = if (ov.overflow != SnglOverflow.VISIBLE) ov.overflow else base.overflow,
-        listStyleType = if (ov.listStyleType != SnglListStyle.NONE) ov.listStyleType else base.listStyleType,
-    )
 
 enum class SnglFlexDirection(private val sngl: String) {
     ROW("row"),
@@ -1958,46 +1764,73 @@ fun MainScreen() {
             Button(onClick = {
                 s = Style(color = Color(r = 0, g = 0, b = 255, a = 255), fontSize = Measurement(px = 20.0), fontWeight = SnglFontWeight.BOLD)
                 on = !on
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "swap", modifier = Modifier)
             }
             Button(onClick = {
                 s = s.copy(color = Color(r = 0, g = 255, b = 0, a = 255))
                 (listOf("a", "b")).let { __v -> rows.clear(); rows.addAll(__v) }
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "tint", modifier = Modifier)
             }
-            Text(text = "styled", modifier = Modifier.snglStyle(__merge_Style(Style(), s)).safeDrawingPadding(), style = snglTextStyle(__merge_Style(Style(), s)))
-            Text(text = "picked", modifier = Modifier.snglStyle(__merge_Style(Style(), (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))))).safeDrawingPadding(), style = snglTextStyle(__merge_Style(Style(), (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))))))
-            Text(text = "kept", modifier = Modifier.snglStyle(__merge_Style(Style(), kept[0])).safeDrawingPadding(), style = snglTextStyle(__merge_Style(Style(), kept[0])))
+            Text(text = "styled", modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, true)) else (if ((s == Style())) Modifier else styleModifier(s, true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != Color()) || (s.fontSize != Measurement(px = 0.0))) || (s.fontWeight != SnglFontWeight.NORMAL)) || (s.fontStyle != SnglFontStyle.NORMAL)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((s.color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color.r.toInt(), green = s.color.g.toInt(), blue = s.color.b.toInt(), alpha = s.color.a.toInt())), fontSize = (if ((s.fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((s.fontSize.px + (16.0 * (s.fontSize.em + s.fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "picked", modifier = (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).flex == 0.0)) (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))) == Style())) Modifier else styleModifier((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))), true)) else (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))) == Style())) Modifier else styleModifier((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))), true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!(((((((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color != Color()) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize != Measurement(px = 0.0))) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontWeight != SnglFontWeight.NORMAL)) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontStyle != SnglFontStyle.NORMAL)) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontFamily != "")) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.r.toInt(), green = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.g.toInt(), blue = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.b.toInt(), alpha = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.a.toInt())), fontSize = (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit(((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize.px + (16.0 * ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize.em + (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "kept", modifier = (if ((kept[0].flex == 0.0)) (if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)) else (if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((kept[0].color != Color()) || (kept[0].fontSize != Measurement(px = 0.0))) || (kept[0].fontWeight != SnglFontWeight.NORMAL)) || (kept[0].fontStyle != SnglFontStyle.NORMAL)) || (kept[0].fontFamily != "")) || (kept[0].textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((kept[0].color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = kept[0].color.r.toInt(), green = kept[0].color.g.toInt(), blue = kept[0].color.b.toInt(), alpha = kept[0].color.a.toInt())), fontSize = (if ((kept[0].fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((kept[0].fontSize.px + (16.0 * (kept[0].fontSize.em + kept[0].fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (kept[0].fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (kept[0].fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (kept[0].fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (kept[0].textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
             for (r in rows) {
-                Text(text = r, modifier = Modifier.snglStyle(__merge_Style(Style(), s)).safeDrawingPadding(), style = snglTextStyle(__merge_Style(Style(), s)))
+                Text(text = r, modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, true)) else (if ((s == Style())) Modifier else styleModifier(s, true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != Color()) || (s.fontSize != Measurement(px = 0.0))) || (s.fontWeight != SnglFontWeight.NORMAL)) || (s.fontStyle != SnglFontStyle.NORMAL)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((s.color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color.r.toInt(), green = s.color.g.toInt(), blue = s.color.b.toInt(), alpha = s.color.a.toInt())), fontSize = (if ((s.fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((s.fontSize.px + (16.0 * (s.fontSize.em + s.fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
             }
         }
     }
 }
-fun Modifier.snglStyle(s: Style, withBackground: Boolean = true): Modifier {
-    var m = this
-    if (s.padding != Measurement()) m = m.padding(s.padding.px.dp)
-    if (s.paddingTop != Measurement()) m = m.padding(top = s.paddingTop.px.dp)
-    if (s.paddingBottom != Measurement()) m = m.padding(bottom = s.paddingBottom.px.dp)
-    if (s.paddingLeft != Measurement()) m = m.padding(start = s.paddingLeft.px.dp)
-    if (s.paddingRight != Measurement()) m = m.padding(end = s.paddingRight.px.dp)
-    if (s.width != Measurement()) m = m.width(s.width.px.dp)
-    if (s.height != Measurement()) m = m.height(s.height.px.dp)
-    if (withBackground && s.background != Color()) m = m.background(ComposeColor(s.background.r, s.background.g, s.background.b, s.background.a))
-    if (s.opacity != 0.0) m = m.alpha(s.opacity.toFloat())
+
+fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
+    var m: androidx.compose.ui.Modifier = Modifier
+    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    }
+    if ((s.zIndex != 0)) {
+    	m = m.zIndex(s.zIndex.toFloat())
+    }
+    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
+    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    }
+    if ((s.maxHeight != Measurement(px = 0.0))) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    }
+    if ((s.width != Measurement(px = 0.0))) {
+    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    }
+    if ((s.height != Measurement(px = 0.0))) {
+    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    }
+    if ((s.opacity != 0.0)) {
+    	m = m.alpha(s.opacity.toFloat())
+    }
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
+    if ((s.borderRadius != Measurement(px = 0.0))) {
+    	m = m.clip(shape)
+    }
+    var edge = 0.0
+    if ((s.borderWidth != Measurement(px = 0.0))) {
+    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
+    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    }
+    if ((paints && (s.background != Color()))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    }
+    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    }
     return m
 }
-
-fun snglTextStyle(s: Style): TextStyle = TextStyle(
-    color = if (s.color != Color()) ComposeColor(s.color.r, s.color.g, s.color.b, s.color.a) else ComposeColor.Unspecified,
-    fontSize = if (s.fontSize != Measurement()) s.fontSize.px.sp else TextUnit.Unspecified,
-    fontWeight = when (s.fontWeight) { SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold; else -> null },
-    fontStyle = when (s.fontStyle) { SnglFontStyle.ITALIC -> FontStyle.Italic; SnglFontStyle.OBLIQUE -> FontStyle.Italic; else -> null },
-    textAlign = when (s.textAlign) { SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; else -> TextAlign.Unspecified }
-)
-
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from style.sngl; DO NOT EDIT. -->
 
@@ -2083,6 +1916,15 @@ body { font-family: system-ui, sans-serif; }
     if (ov.overflow != null) r.overflow = ov.overflow;
     if (ov.listStyleType != null) r.listStyleType = ov.listStyleType;
     return r;
+  }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -2178,23 +2020,24 @@ body { font-family: system-ui, sans-serif; }
   function _snglStyleCSS(s) {
     const d = [];
     if (s.padding != null) d.push("padding:" + _snglStyleLength(s.padding));
-    if (s.paddingTop != null) d.push("padding-top:" + _snglStyleLength(s.paddingTop));
-    if (s.paddingRight != null) d.push("padding-right:" + _snglStyleLength(s.paddingRight));
-    if (s.paddingBottom != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingBottom));
-    if (s.paddingLeft != null) d.push("padding-left:" + _snglStyleLength(s.paddingLeft));
+    if (s.margin != null) d.push("margin:" + _snglStyleLength(s.margin));
+    if (s.border != null) d.push("border:" + s.border);
     if (s.paddingX != null) d.push("padding-left:" + _snglStyleLength(s.paddingX));
     if (s.paddingX != null) d.push("padding-right:" + _snglStyleLength(s.paddingX));
     if (s.paddingY != null) d.push("padding-top:" + _snglStyleLength(s.paddingY));
     if (s.paddingY != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingY));
-    if (s.margin != null) d.push("margin:" + _snglStyleLength(s.margin));
-    if (s.marginTop != null) d.push("margin-top:" + _snglStyleLength(s.marginTop));
-    if (s.marginRight != null) d.push("margin-right:" + _snglStyleLength(s.marginRight));
-    if (s.marginBottom != null) d.push("margin-bottom:" + _snglStyleLength(s.marginBottom));
-    if (s.marginLeft != null) d.push("margin-left:" + _snglStyleLength(s.marginLeft));
     if (s.marginX != null) d.push("margin-left:" + _snglStyleLength(s.marginX));
     if (s.marginX != null) d.push("margin-right:" + _snglStyleLength(s.marginX));
     if (s.marginY != null) d.push("margin-top:" + _snglStyleLength(s.marginY));
     if (s.marginY != null) d.push("margin-bottom:" + _snglStyleLength(s.marginY));
+    if (s.paddingTop != null) d.push("padding-top:" + _snglStyleLength(s.paddingTop));
+    if (s.paddingRight != null) d.push("padding-right:" + _snglStyleLength(s.paddingRight));
+    if (s.paddingBottom != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingBottom));
+    if (s.paddingLeft != null) d.push("padding-left:" + _snglStyleLength(s.paddingLeft));
+    if (s.marginTop != null) d.push("margin-top:" + _snglStyleLength(s.marginTop));
+    if (s.marginRight != null) d.push("margin-right:" + _snglStyleLength(s.marginRight));
+    if (s.marginBottom != null) d.push("margin-bottom:" + _snglStyleLength(s.marginBottom));
+    if (s.marginLeft != null) d.push("margin-left:" + _snglStyleLength(s.marginLeft));
     if (s.gap != null) d.push("gap:" + _snglStyleLength(s.gap));
     if (s.width != null) d.push("width:" + _snglStyleLength(s.width));
     if (s.minWidth != null) d.push("min-width:" + _snglStyleLength(s.minWidth));
@@ -2228,10 +2071,7 @@ body { font-family: system-ui, sans-serif; }
     if (s.borderRadius != null) d.push("border-radius:" + _snglStyleLength(s.borderRadius));
     if (s.borderColor != null) d.push("border-color:" + _snglStyleColor(s.borderColor));
     if (s.borderWidth != null) d.push("border-width:" + _snglStyleLength(s.borderWidth));
-    if (s.borderWidth != null && s.borderStyle == null) d.push("border-style:solid");
-    if (s.border != null) d.push("border:" + s.border);
-    if (s.borderBottom != null) d.push("border-bottom:" + s.borderBottom);
-    if (s.borderLeft != null) d.push("border-left:" + s.borderLeft);
+    if (s.borderWidth != null && s.borderStyle == null && s.border == null) d.push("border-style:solid");
     if (s.borderCollapse != null) d.push("border-collapse:" + s.borderCollapse);
     if (s.borderStyle != null) d.push("border-style:" + _snglStyleKeyword(s.borderStyle));
     if (s.opacity != null) d.push("opacity:" + s.opacity);
@@ -2239,6 +2079,8 @@ body { font-family: system-ui, sans-serif; }
     if (s.display != null) d.push("display:" + _snglStyleKeyword(s.display));
     if (s.overflow != null) d.push("overflow:" + _snglStyleKeyword(s.overflow));
     if (s.listStyleType != null) d.push("list-style-type:" + _snglStyleKeyword(s.listStyleType));
+    if (s.borderBottom != null) d.push("border-bottom:" + s.borderBottom);
+    if (s.borderLeft != null) d.push("border-left:" + s.borderLeft);
     return d.join(";");
   }
   function _snglStyleColor(c) {
@@ -2290,16 +2132,17 @@ body { font-family: system-ui, sans-serif; }
     __n4.style.cssText = _snglStyleCSS(__merge_Style({}, state.kept[0]));
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:46a09db62f252f2ca91b92224d43d3ed
+pass sha256:56eebc5f19ae40ae41a4d6ee68300553
 -- run/go/fyne --
-pass sha256:49aadda5fa4d7a57319ad980ff77138f
+pass sha256:336410584ece220ba1828dbe9518c3f1
 -- run/go/gtk4 --
-pass sha256:fb288d0811aac63147887521526fb750
+pass sha256:7cfd9abfeb2afda5cc0b050478bc1ef8
 -- run/kotlin/android --
-pass sha256:88234080768550dc196b7b44baf85d84
+pass sha256:ce5f510aca5ec3ee0fd19704e1f0ab7c
 -- run/none/html --
-pass sha256:db0699c9934fb9dd358a9fd68dda4119
+pass sha256:c41b27f67dbcdaf02f9cd3443fa79eb4

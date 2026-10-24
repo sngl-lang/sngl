@@ -72,10 +72,10 @@ component SearchHit(entry docs.SearchEntry, query = "") node {
         vbox(style={gap=2px, padding=4px, display=matches ? flex : none}) {
             text(value=entry.title, style={fontWeight=bold})
             if entry.crumb != "" {
-                text(value=entry.crumb, style={color="#888", fontSize=12px})
+                text(value=entry.crumb, style={color=#888, fontSize=12px})
             }
             if entry.blurb != "" {
-                text(value=entry.blurb, style={color="#aaa", fontSize=12px})
+                text(value=entry.blurb, style={color=#aaa, fontSize=12px})
             }
         }
     }

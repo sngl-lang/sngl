@@ -27,7 +27,7 @@ It is not free everywhere, and this fixture is what says so per target.
     once and the handler writes it again, which the two `LabelSetMarkup` calls
     below are.
 
-deny out/go/gtk4/model.go `LabelSetText` -- a flow's words are markup, and set_text would show the tags rather than obey them
+deny out/go/gtk4/model.go `LabelSetLabel` -- a flow's words are markup, and set_label would show the tags rather than obey them
 deny out/go/gtk4/model.go `Escape\("` -- a literal run is escaped where it is written; a page of prose would otherwise be a page of calls
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `(?m)^\s*(Flow|Span)\(` -- a run that reads state is still no composable; the whole flow is one Text rebuilt from the state it reads
 -- doc.sngl --
@@ -70,6 +70,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
@@ -79,6 +80,61 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -108,6 +164,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func RowsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt5 int
+		if s.MaxLines == 0 {
+			__lt5 = 0
+		} else {
+			__lt5 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt6 lipgloss.Position
+	switch a {
+	case "center":
+		__lt6 = lipgloss.Center
+	case "right":
+		__lt6 = lipgloss.Right
+	default:
+		__lt6 = lipgloss.Left
+	}
+	return __lt6
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt7 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt7 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt7 = tui.DashedBorder()
+	default:
+		var __lt8 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt8 = lipgloss.RoundedBorder()
+		} else {
+			__lt8 = lipgloss.NormalBorder()
+		}
+		__lt7 = __lt8
+	}
+	return __lt7
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt10 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt10 = own
+	} else {
+		var __lt9 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
+	}
+	return CellsOf(__lt10)
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
+	} else {
+		__lt11 = max(1, (int(px) / 8))
+	}
+	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -197,6 +397,7 @@ func (m Model) View() tea.View {
 		content_0 = ""
 		content_0 += fmt.Sprint("count: ")
 		content_0 += lipgloss.NewStyle().Bold(true).Render(fmt.Sprint(fmt.Sprint(m.n)))
+		content_0 = BoxLook(Style{}, false).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1Focused := (m.__focusID == 0)
@@ -204,9 +405,10 @@ func (m Model) View() tea.View {
 		if content_1Focused {
 			content_1Prefix = ">"
 		}
-		content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("+"))
+		content_1 = BoxLook(Style{}, true).Render(content_1Prefix + " " + fmt.Sprint("+"))
 		contentChildren = append(contentChildren, content_1)
-		content = tui.Column(0, contentChildren...)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -232,7 +434,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -322,7 +523,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.__n2 = fynetext.NewFlow()
 	m.__n3 = fynetext.NewSpan(fynetext.Style())
 	m.__n3.SetText("count: ")
@@ -508,15 +709,18 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class Measurement(
     val px: Double = 0.0,
@@ -550,10 +754,10 @@ fun MainScreen() {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                     append(n.toString())
                 }
-            }, modifier = Modifier)
+            }, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 n += 1
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "+", modifier = Modifier)
             }
         }
@@ -601,14 +805,14 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:77c7494f6e71991ba2e706244337e5b7
+pass sha256:598b7551df248b4b92d3ea463ae41bd7
 -- run/go/fyne --
-pass sha256:e20a23c05adfc7cf6a000e41be9752a5
+pass sha256:9ab4cfbf0826fefa4f46333c3c97de16
 -- run/go/gtk4 --
 pass sha256:905dfbc6dbbad8d7e969853e0d5070e7
 -- run/go/html --
 pass sha256:b3641d52508f8aad1477725df23f05f5
 -- run/kotlin/android --
-pass sha256:135fc0bbd5cf66cda917870af8951daa
+pass sha256:1234608f14b0b6f32dfbda6db92ef017
 -- run/none/html --
 pass sha256:29a40121654d0eef3cb6aa15104b5990

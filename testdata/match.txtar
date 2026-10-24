@@ -109,10 +109,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -180,6 +242,150 @@ func Describe(n int) string {
 func (m *Model) roll__inst0() string {
 	m.rolls__inst0 = (m.rolls__inst0 + 1)
 	return m.status__inst0
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt1 int
+		if s.MaxLines == 0 {
+			__lt1 = 0
+		} else {
+			__lt1 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt2 lipgloss.Position
+	switch a {
+	case "center":
+		__lt2 = lipgloss.Center
+	case "right":
+		__lt2 = lipgloss.Right
+	default:
+		__lt2 = lipgloss.Left
+	}
+	return __lt2
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt3 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt3 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt3 = tui.DashedBorder()
+	default:
+		var __lt4 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt4 = lipgloss.RoundedBorder()
+		} else {
+			__lt4 = lipgloss.NormalBorder()
+		}
+		__lt3 = __lt4
+	}
+	return __lt3
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt6 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt6 = own
+	} else {
+		var __lt5 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt5 = axis
+		} else {
+			__lt5 = all
+		}
+		__lt6 = __lt5
+	}
+	return CellsOf(__lt6)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
+	} else {
+		__lt7 = max(1, (int(px) / 8))
+	}
+	return __lt7
+}
+
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
+	} else {
+		__lt8 = max(1, (int(px) / 16))
+	}
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusNext() {
@@ -314,14 +520,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				m.status__inst0 = "active"
 			}
-			var __lt3 string
+			var __lt13 string
 			switch m.roll__inst0() {
 			case "active":
-				__lt3 = m.label(m.status__inst0)
+				__lt13 = m.label(m.status__inst0)
 			default:
-				__lt3 = "rolled"
+				__lt13 = "rolled"
 			}
-			m.last__inst0 = __lt3
+			m.last__inst0 = __lt13
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -334,36 +540,36 @@ func (m Model) View() tea.View {
 		var contentPart_0 string
 		switch m.status__inst0 {
 		case "active":
-			contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("on"))
+			contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint("on"))
 		case "inactive":
-			contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("off"))
+			contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint("off"))
 		default:
-			contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("waiting"))
+			contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint("waiting"))
 		}
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
-		var __lt1 string
+		var __lt11 string
 		switch m.status__inst0 {
 		case "active":
-			__lt1 = "on"
+			__lt11 = "on"
 		default:
-			__lt1 = "not on"
+			__lt11 = "not on"
 		}
 		var contentPart_3 string
-		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+		contentPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 		contentParts = append(contentParts, contentPart_3)
-		var __lt2 string
+		var __lt12 string
 		switch {
 		case (m.rolls__inst0 > 10):
-			__lt2 = "many"
+			__lt12 = "many"
 		case (m.rolls__inst0 > 0):
-			__lt2 = Describe(m.rolls__inst0)
+			__lt12 = Describe(m.rolls__inst0)
 		default:
-			__lt2 = "none"
+			__lt12 = "none"
 		}
 		var contentPart_6 string
-		contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+		contentPart_6 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
 		contentParts = append(contentParts, contentPart_6)
 		var contentPart_7 string
 		contentPart_7Focused := (m.__focusID == 0)
@@ -371,12 +577,12 @@ func (m Model) View() tea.View {
 		if contentPart_7Focused {
 			contentPart_7Prefix = ">"
 		}
-		contentPart_7 = lipgloss.NewStyle().Render(contentPart_7Prefix + " " + fmt.Sprint("Roll"))
+		contentPart_7 = BoxLook(Style{}, true).Render(contentPart_7Prefix + " " + fmt.Sprint("Roll"))
 		contentParts = append(contentParts, contentPart_7)
 		var contentPart_8 string
-		contentPart_8 = lipgloss.NewStyle().Render(fmt.Sprint(m.last__inst0))
+		contentPart_8 = BoxLook(Style{}, true).Render(fmt.Sprint(m.last__inst0))
 		contentParts = append(contentParts, contentPart_8)
-		content = tui.Column(0, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -537,43 +743,43 @@ func (m *Model) __n7_click_handler() {
 	switch m.roll__inst0() {
 	case "active":
 		m.status__inst0 = "inactive"
-		var __lt6 string
+		var __lt13 string
 		if m.status__inst0 == "active" {
-			__lt6 = "on"
+			__lt13 = "on"
 		} else {
-			__lt6 = "not on"
+			__lt13 = "not on"
 		}
-		m.__n1.SetText(__lt6)
+		m.__n1.SetText(__lt13)
 		m.__renderSlot0(m.__n0.Container)
 	case "inactive":
 		m.status__inst0 = "pending"
-		var __lt7 string
+		var __lt14 string
 		if m.status__inst0 == "active" {
-			__lt7 = "on"
+			__lt14 = "on"
 		} else {
-			__lt7 = "not on"
+			__lt14 = "not on"
 		}
-		m.__n1.SetText(__lt7)
+		m.__n1.SetText(__lt14)
 		m.__renderSlot0(m.__n0.Container)
 	default:
 		m.status__inst0 = "active"
-		var __lt8 string
+		var __lt15 string
 		if m.status__inst0 == "active" {
-			__lt8 = "on"
+			__lt15 = "on"
 		} else {
-			__lt8 = "not on"
+			__lt15 = "not on"
 		}
-		m.__n1.SetText(__lt8)
+		m.__n1.SetText(__lt15)
 		m.__renderSlot0(m.__n0.Container)
 	}
-	var __lt9 string
+	var __lt16 string
 	switch m.roll__inst0() {
 	case "active":
-		__lt9 = m.label(m.status__inst0)
+		__lt16 = m.label(m.status__inst0)
 	default:
-		__lt9 = "rolled"
+		__lt16 = "rolled"
 	}
-	m.last__inst0 = __lt9
+	m.last__inst0 = __lt16
 	m.__n3.SetText(m.last__inst0)
 }
 
@@ -628,29 +834,29 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__renderSlot0(m.__n0.Container)
-	var __lt3 string
+	var __lt10 string
 	if m.status__inst0 == "active" {
-		__lt3 = "on"
+		__lt10 = "on"
 	} else {
-		__lt3 = "not on"
+		__lt10 = "not on"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt3)
+	m.__n1.SetText(__lt10)
 	m.__n0.Add(m.__n1)
-	var __lt5 string
+	var __lt12 string
 	if m.rolls__inst0 > 10 {
-		__lt5 = "many"
+		__lt12 = "many"
 	} else {
-		var __lt4 string
+		var __lt11 string
 		if m.rolls__inst0 > 0 {
-			__lt4 = Describe(m.rolls__inst0)
+			__lt11 = Describe(m.rolls__inst0)
 		} else {
-			__lt4 = "none"
+			__lt11 = "none"
 		}
-		__lt5 = __lt4
+		__lt12 = __lt11
 	}
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(__lt5)
+	m.__n2.SetText(__lt12)
 	m.__n0.Add(m.__n2)
 	m.__n7 = widget.NewButton("", nil)
 	m.__n7.SetText("Roll")
@@ -767,7 +973,7 @@ func (m *Model) roll__inst0() string {
 		}
 		__lt2 = __lt1
 	}
-	gtk4rt.LabelSetText(m.__n2, __lt2)
+	gtk4rt.LabelSetLabel(m.__n2, __lt2)
 	return m.status__inst0
 }
 
@@ -790,20 +996,20 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				if m.status__inst0 == "active" {
 					__n4 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n4, "on")
+					gtk4rt.LabelSetLabel(__n4, "on")
 					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
 					m.__slot0 = append(m.__slot0, __n4)
 				} else {
 					if m.status__inst0 == "inactive" {
 						__n5 := gtk4rt.LabelNew("")
-						gtk4rt.LabelSetText(__n5, "off")
+						gtk4rt.LabelSetLabel(__n5, "off")
 						gtk4rt.LabelSetXAlign(__n5, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
 						m.__slot0 = append(m.__slot0, __n5)
 					} else {
 						__n6 := gtk4rt.LabelNew("")
-						gtk4rt.LabelSetText(__n6, "waiting")
+						gtk4rt.LabelSetLabel(__n6, "waiting")
 						gtk4rt.LabelSetXAlign(__n6, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
 						m.__slot0 = append(m.__slot0, __n6)
@@ -826,44 +1032,44 @@ func (m *Model) __n7_clicked_handler() {
 	switch m.roll__inst0() {
 	case "active":
 		m.status__inst0 = "inactive"
-		var __lt6 string
+		var __lt21 string
 		if m.status__inst0 == "active" {
-			__lt6 = "on"
+			__lt21 = "on"
 		} else {
-			__lt6 = "not on"
+			__lt21 = "not on"
 		}
-		gtk4rt.LabelSetText(m.__n1, __lt6)
+		gtk4rt.LabelSetLabel(m.__n1, __lt21)
 		m.__renderSlot0(m.__n0)
 	case "inactive":
 		m.status__inst0 = "pending"
-		var __lt7 string
+		var __lt22 string
 		if m.status__inst0 == "active" {
-			__lt7 = "on"
+			__lt22 = "on"
 		} else {
-			__lt7 = "not on"
+			__lt22 = "not on"
 		}
-		gtk4rt.LabelSetText(m.__n1, __lt7)
+		gtk4rt.LabelSetLabel(m.__n1, __lt22)
 		m.__renderSlot0(m.__n0)
 	default:
 		m.status__inst0 = "active"
-		var __lt8 string
+		var __lt23 string
 		if m.status__inst0 == "active" {
-			__lt8 = "on"
+			__lt23 = "on"
 		} else {
-			__lt8 = "not on"
+			__lt23 = "not on"
 		}
-		gtk4rt.LabelSetText(m.__n1, __lt8)
+		gtk4rt.LabelSetLabel(m.__n1, __lt23)
 		m.__renderSlot0(m.__n0)
 	}
-	var __lt9 string
+	var __lt24 string
 	switch m.roll__inst0() {
 	case "active":
-		__lt9 = m.label(m.status__inst0)
+		__lt24 = m.label(m.status__inst0)
 	default:
-		__lt9 = "rolled"
+		__lt24 = "rolled"
 	}
-	m.last__inst0 = __lt9
-	gtk4rt.LabelSetText(m.__n3, m.last__inst0)
+	m.last__inst0 = __lt24
+	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
 }
 
 func (m *Model) Bumps() int {
@@ -916,30 +1122,30 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__renderSlot0(m.__n0)
-	var __lt3 string
+	var __lt18 string
 	if m.status__inst0 == "active" {
-		__lt3 = "on"
+		__lt18 = "on"
 	} else {
-		__lt3 = "not on"
+		__lt18 = "not on"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, __lt3)
+	gtk4rt.LabelSetLabel(m.__n1, __lt18)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	var __lt5 string
+	var __lt20 string
 	if m.rolls__inst0 > 10 {
-		__lt5 = "many"
+		__lt20 = "many"
 	} else {
-		var __lt4 string
+		var __lt19 string
 		if m.rolls__inst0 > 0 {
-			__lt4 = Describe(m.rolls__inst0)
+			__lt19 = Describe(m.rolls__inst0)
 		} else {
-			__lt4 = "none"
+			__lt19 = "none"
 		}
-		__lt5 = __lt4
+		__lt20 = __lt19
 	}
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, __lt5)
+	gtk4rt.LabelSetLabel(m.__n2, __lt20)
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n7 = gtk4rt.ButtonNew()
@@ -947,7 +1153,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, m.last__inst0)
+	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	gtk4rt.AppAttach(m.__n0)
@@ -975,9 +1181,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1028,17 +1238,17 @@ fun MainScreen() {
         Column {
             when (status__inst0) {
                 Status.ACTIVE -> {
-                    Text(text = "on", modifier = Modifier.safeDrawingPadding())
+                    Text(text = "on", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 Status.INACTIVE -> {
-                    Text(text = "off", modifier = Modifier.safeDrawingPadding())
+                    Text(text = "off", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 Status.PENDING -> {
-                    Text(text = "waiting", modifier = Modifier.safeDrawingPadding())
+                    Text(text = "waiting", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = (when (status__inst0) { Status.ACTIVE -> "on"; else -> "not on" }), modifier = Modifier.safeDrawingPadding())
-            Text(text = (when { (rolls__inst0 > 10) -> "many"; (rolls__inst0 > 0) -> describe(rolls__inst0); else -> "none" }), modifier = Modifier.safeDrawingPadding())
+            Text(text = (when (status__inst0) { Status.ACTIVE -> "on"; else -> "not on" }), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (when { (rolls__inst0 > 10) -> "many"; (rolls__inst0 > 0) -> describe(rolls__inst0); else -> "none" }), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 when (roll__inst0()) {
                 	Status.ACTIVE -> {
@@ -1052,10 +1262,10 @@ fun MainScreen() {
                 	}
                 }
                 last__inst0 = (when (roll__inst0()) { Status.ACTIVE -> label(status__inst0); else -> "rolled" })
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Roll", modifier = Modifier)
             }
-            Text(text = last__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = last__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1260,12 +1470,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:77571e3b79583570d39a0e2da73c2982
+pass sha256:9ea721136a0548cdda31270a9dda1638
 -- run/go/fyne --
-pass sha256:620ef3a9f415a02614963326ec85224a
+pass sha256:6ba9f96d62dc48338314f1a2940a03ca
 -- run/go/gtk4 --
-pass sha256:6056e173eec34fa3b65e9f3e4fcf3fb0
+pass sha256:bfc8b9e447414a92b57e3f360f1be320
 -- run/kotlin/android --
-pass sha256:be1b0e75d071643981b9c61ddd539b52
+pass sha256:c3653b5a9d3e229d63aff68c3f8dd268
 -- run/none/html --
 pass sha256:0434191529fcc3a69d6b0b3117219823

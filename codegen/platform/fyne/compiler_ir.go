@@ -215,10 +215,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	if err != nil {
 		return "", nil, nil, "", err
 	}
-	// Before any translator runs: OnAppendChild wraps a styled child in the
-	// override naming its theme, so the names have to exist by then.
-	themes := assignThemes(nodeSpecs)
-
 	// Shared into every translator so OnCreateNode builds the raster-backed
 	// widget and OnDefault wires reactive redraws.
 	canvasByID, canvasByNode := collectCanvases(ctx.Canvases)
@@ -407,18 +403,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		td.LangHelpers += golang.ErrorEventDecl
 	}
 	td.LangHelpers += golang.PackageConstDecls(ctx.Pkg, gc)
-	if decls := emitThemeDecls(themes); decls != "" {
-		td.LangHelpers += decls
-		for _, path := range themeImports(themes) {
-			gc.RequireImport(path)
-		}
-	}
-	if fn := styleValueTheme(nodeSpecs); fn != "" {
-		td.LangHelpers += fn
-		for _, path := range []string{"fyne.io/fyne/v2/theme", ThemeImportPath, "duckfam.us/sngl/pkg/go/snglcolor"} {
-			gc.RequireImport(path)
-		}
-	}
 	if err != nil {
 		return "", nil, nil, "", err
 	}
@@ -504,6 +488,9 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	for _, sd := range info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
 		for _, f := range sd.Fields {
+			for _, p := range golang.TypeImports(f.Type) {
+				gc.RequireImport(p)
+			}
 			s.Fields = append(s.Fields, structFieldData{
 				Name: golang.ExportName(f.Name),
 				Type: golang.IRTypeToGo(f.Type),
@@ -869,8 +856,8 @@ func elementRef(name string) *ir.Ident {
 // bare local for non-escaping ids (declared as `__nN := ...` in the same
 // scope), else the m.<name> element ref.
 func topRef(tr *fyneTranslator, name string) ir.Expr {
-	if sp := tr.specs[name]; sp != nil && sp.RuntimeTheme {
-		return tr.themeOverrideRef(name)
+	if sp := tr.specs[name]; sp != nil && sp.Boxed {
+		return tr.boxRef(name)
 	}
 	if tr.isLocalRef(name) {
 		return tr.localElementRef(name)
@@ -982,11 +969,6 @@ func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Fun
 func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, error) {
 	specs := map[string]*fyneSpec{}
 	var firstErr error
-	// A child is appended after every node in the tree has been created, so
-	// the edges are recorded here and read back once the walk is done -- a
-	// container's layout is decided by its children's flex, which is not known
-	// when the container itself is reached.
-	kids := map[string][]string{}
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for i, s := range stmts {
@@ -1005,11 +987,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 				}
 			case *ir.NodeInst:
 				walk(n.Children)
-			case *ir.CallStmt:
-				if parent, child, ok := appendChildEdge(n); ok {
-					kids[parent] = append(kids[parent], child)
-				}
-			case *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			case *ir.CallStmt, *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 				*ir.Break, *ir.Continue:
 				// No CreateNode call to harvest.
 			default:
@@ -1039,25 +1017,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 		}
 		walk(pkg.Body)
 	}
-	for id, sp := range specs {
-		sp.Children = kids[id]
-	}
 	return specs, firstErr
-}
-
-// appendChildEdge reads the parent and child of a `lower.AppendChild(p, c)`
-// statement, when that is what this is.
-func appendChildEdge(cs *ir.CallStmt) (parent, child string, ok bool) {
-	call := cs.Call
-	if call == nil || call.Func == nil || call.Func.Intrinsic != ir.NodeOpAppendChild || len(call.Args) < 2 {
-		return "", "", false
-	}
-	parent = codegen.IdentBareName(call.Args[0].Value)
-	child = codegen.IdentBareName(call.Args[1].Value)
-	if parent == "" || child == "" {
-		return "", "", false
-	}
-	return parent, child, true
 }
 
 // harvestSpec decodes the Spec for one created node. rest is what follows the
@@ -1099,8 +1059,8 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 		}
 		// A value read from a temp computed after the create is no
 		// constructor's to say, so its write goes through the setter; only
-		// the style is still read here, for the theme it needs.
-		if sel.Field != stylePropName && readsAny(asn.Value, temps) {
+		// the look is still read here, for whether it asks for a box.
+		if sel.Field != lookPropName && readsAny(asn.Value, temps) {
 			continue
 		}
 		props[sel.Field] = asn.Value

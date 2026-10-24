@@ -16,7 +16,6 @@ import (
 type irViewContext struct {
 	gc          *golang.GoIRContext
 	ctx         *codegen.CodegenCtx
-	scaleFactor int
 	widgetCount int
 	widgets     []widgetInfo
 	buf         *strings.Builder
@@ -34,22 +33,19 @@ type irViewContext struct {
 	focusPos  map[string]bool
 	canvasSeq map[string]bool
 
-	// gap is the box being rendered's gap along its axis, in cells, as Go:
-	// what its parts -- a loop's copies and a branch's nodes among them --
-	// are joined with.
-	gap string
-	// at is where the box's alignItems puts its parts across it, a Go
-	// lipgloss.Position; "" at the start.
-	at string
-	// weights names the list a flexing row keeps each part's share in, beside
-	// its parts; "" in any other box.
-	weights string
-	// flexRows says the program has a row a part of which flexes, which is
-	// what reads the width a box leaves its children (m.avail).
-	flexRows bool
-	// pictureCols and pictureRows are the box a picture in the image being
-	// rendered is fitted into, zero for the default.
-	pictureCols, pictureRows int
+	// availW and availH are Go ints holding the extent the node rendered next
+	// is placed in, "" where nothing knows it; sizeTo is the share of a
+	// Layout's free space it grows into.
+	availW, availH string
+	sizeTo         *growSize
+
+	// joinGap and joinAt are the Layout being rendered's spacing and where it
+	// puts its children across it, as Go: what a loop's copies and a branch's
+	// nodes among its children are joined with, being its parts too.
+	joinGap, joinAt string
+	// pictureLook names the look of the box a picture is shown in, whose size
+	// the picture is fitted to; "" where it is in no box.
+	pictureLook string
 }
 
 // pendingOverlay records one Overlay primitive deferred out of the inline join
@@ -111,21 +107,13 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	}
 
 	vc := &irViewContext{
-		gc:          gc,
-		ctx:         ctx,
-		scaleFactor: cfg.ScaleFactor,
-		widgets:     info.widgets,
-		buf:         &strings.Builder{},
-		indent:      1,
-		flexRows:    usesFlexRows(ctx.Pkg),
-	}
-	if vc.flexRows {
-		// A terminal that has said no size -- a test's snapshot, a first frame
-		// -- is the conventional 80 columns to a flexing row.
-		vc.line("m.avail = m.width")
-		vc.line("if m.avail == 0 {")
-		vc.line("\tm.avail = 80")
-		vc.line("}")
+		gc:      gc,
+		ctx:     ctx,
+		widgets: info.widgets,
+		availW:  "tui.Avail(m.width)",
+		availH:  "m.height",
+		buf:     &strings.Builder{},
+		indent:  1,
 	}
 
 	vc.renderBody(bodyStmts, "content")
@@ -198,6 +186,11 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		params = append(params, bindName(p.Name)+" "+goType)
 	}
 	params = append(params, slotParams(cc.Component)...)
+	availW := ""
+	if componentGrows(cc.Component, nil) {
+		availW = availParam
+		params = append(params, availParam+" int")
+	}
 
 	fmt.Fprintf(b, "func (m Model) %s(%s) string {\n", methodName, strings.Join(params, ", "))
 
@@ -209,11 +202,10 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 	vc := &irViewContext{
 		gc:          compGC,
 		ctx:         ctx,
-		scaleFactor: cfg.ScaleFactor,
 		buf:         &strings.Builder{},
 		indent:      1,
 		inComponent: true,
-		flexRows:    usesFlexRows(ctx.Pkg),
+		availW:      availW,
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -234,22 +226,15 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
-	weights := vc.weights
-	add := func(prefix string) {
-		vc.line("%s%s = append(%s, %s)", prefix, childrenVar, childrenVar, childVar)
-		if weights != "" {
-			vc.line("%s%s = append(%s, %s)", prefix, weights, weights, float32Text(flexOf(child)))
-		}
-	}
 	switch child.(type) {
 	case *ir.If, *ir.Match, *ir.For:
 		// A branch not taken or a loop over nothing renders nothing, and
 		// joining its empty string would put a blank line in the box.
 		vc.line("if %s != \"\" {", childVar)
-		add("\t")
+		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 		vc.line("}")
 	default:
-		add("")
+		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 	}
 }
 
@@ -272,8 +257,7 @@ func (vc *irViewContext) renderBody(stmts []ir.Stmt, single string) {
 	for i, child := range stmts {
 		vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
 	}
-	vc.requireImport(tuiImportPath)
-	vc.line(`%s := tui.Column(0, parts...)`, single)
+	vc.line(`%s := lipgloss.JoinVertical(lipgloss.Left, parts...)`, single)
 }
 
 // rendersPart reports whether a view statement produces a string for its
@@ -431,32 +415,26 @@ func (vc *irViewContext) renderBranch(stmts []ir.Stmt, resultVar string) {
 	}
 	list := resultVar + "Parts"
 	vc.line("var %s []string", list)
-	weights := vc.weights
-	vc.weights = ""
 	vc.renderSiblings(stmts, resultVar+"Part", list)
-	vc.weights = weights
 	vc.join(resultVar, list)
 }
 
-// join writes the parts in list into resultVar along the box's axis, the
-// box's gap apart and where its alignItems puts them across it, leaving out
-// the parts that draw nothing.
+// join writes the parts in list into resultVar as the Layout they are in
+// joins its own: along its axis, its spacing apart, where it puts them
+// across it, leaving out a part that draws nothing.
 func (vc *irViewContext) join(resultVar, list string) {
 	vc.requireImport(tuiImportPath)
-	gap := vc.gap
+	gap, at := vc.joinGap, vc.joinAt
 	if gap == "" {
 		gap = "0"
 	}
-	switch {
-	case vc.at != "" && vc.horizontal:
-		vc.line(`%s = tui.RowAt(%s, %s, %s...)`, resultVar, vc.at, gap, list)
-	case vc.at != "":
-		vc.line(`%s = tui.ColumnAt(%s, %s, %s...)`, resultVar, vc.at, gap, list)
-	case vc.horizontal:
-		vc.line(`%s = tui.Row(%s, %s...)`, resultVar, gap, list)
-	default:
-		vc.line(`%s = tui.Column(%s, %s...)`, resultVar, gap, list)
+	if at == "" {
+		at = "lipgloss.Left"
+		if vc.horizontal {
+			at = "lipgloss.Top"
+		}
 	}
+	vc.line(`%s = tui.Spaced(%t, %s, %s, %s...)`, resultVar, vc.horizontal, at, gap, list)
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
@@ -491,8 +469,6 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	}
 
 	innerVar := resultVar + "Item"
-	weights := vc.weights
-	vc.weights = ""
 	vc.renderSiblings(s.Body, innerVar, loopVar)
 
 	vc.indent--
@@ -516,7 +492,6 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 		vc.line("}")
 	}
 
-	vc.weights = weights
 	vc.gc = savedGC
 }
 
@@ -624,17 +599,15 @@ func tooltipFocusExpr(stmts []ir.Stmt, gc *golang.GoIRContext) string {
 // component's bubbletea override body is inlined (see bubbletea.sngl).
 func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	bp := extractBlueprint(n)
-	var style string
-	switch bp.Kind {
-	case bpOverlay, bpLayout, bpStyled:
-		style = vc.nodeStyle(n)
-	case bpSpan, bpWidget:
-		vc.discardStyle(codegen.NodeStyleFields(n))
+	if g := codegen.NodeProp(n, "grow"); g != nil && vc.sizeTo == nil {
+		// Not a direct child of a Layout sharing its space, so the share is unread.
+		vc.discard(g)
 	}
+	style := vc.look(n)
 
 	switch bp.Kind {
 	case bpFlow:
-		vc.renderFlow(n, resultVar)
+		vc.renderFlow(n, resultVar, style)
 
 	case bpSpan:
 		// A Span outside a Flow: the family's own membership rule makes that
@@ -658,16 +631,19 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		childrenVar := boxVar + "Children"
 		vc.line("var %s []string", childrenVar)
 		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
-		prevGap, prevWeights, prevAt := vc.gap, vc.weights, vc.at
+		prevGap, prevAt := vc.joinGap, vc.joinAt
 		vc.vertical, vc.horizontal = true, false
-		vc.gap, vc.weights, vc.at = "0", "", ""
+		vc.joinGap, vc.joinAt = "", ""
+		savedW, savedH := vc.availW, vc.availH
+		vc.availW, vc.availH = "", ""
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", boxVar, i), childrenVar)
 		}
+		vc.availW, vc.availH = savedW, savedH
 		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
-		vc.gap, vc.weights, vc.at = prevGap, prevWeights, prevAt
+		vc.joinGap, vc.joinAt = prevGap, prevAt
 		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
-		if style != "lipgloss.NewStyle()" {
+		if style != plainLook {
 			vc.line(`%s = %s.Render(%s)`, boxVar, style, boxVar)
 		}
 		placementExpr := `"center"`
@@ -688,74 +664,7 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		})
 
 	case bpLayout:
-		// Join children vertically/horizontally, then apply style if present.
-		childrenVar := resultVar + "Children"
-		vc.line("var %s []string", childrenVar)
-		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
-		prevGap, prevWeights, prevAt := vc.gap, vc.weights, vc.at
-		prevCols, prevRows := vc.pictureCols, vc.pictureRows
-		vc.vertical = bp.Join == joinVertical
-		vc.horizontal = !vc.vertical
-		vc.gap = vc.gapCells(n)
-		vc.at = vc.alignAt(n)
-		if strings.HasPrefix(vc.at, "map[") {
-			vc.line("%sAt := %s", resultVar, vc.at)
-			vc.at = resultVar + "At"
-		}
-		vc.weights = ""
-		if vc.horizontal && childFlexes(n.Children) {
-			vc.weights = resultVar + "Weights"
-			vc.line("var %s []float64", vc.weights)
-		}
-		vc.pictureCols, vc.pictureRows = vc.pictureBox(n)
-		restoreAvail := vc.narrow(n, resultVar)
-		for i, child := range n.Children {
-			vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
-		}
-		gap, weights, at := vc.gap, vc.weights, vc.at
-		// tooltip: reveal the body text (dim) below the trigger while the wrapped
-		// focusable descendant is focused. The `tooltip` prop carries the text;
-		// the focus expression comes from the focusable descendant's injected
-		// __focused prop. If no static focus expression is available (e.g. the
-		// trigger sits inside a for-loop, whose key isn't in scope here), the
-		// tooltip degrades to never showing rather than emitting invalid Go.
-		if tip := codegen.NodeProp(n, "tooltip"); tip != nil {
-			if focusExpr := tooltipFocusExpr(n.Children, vc.gc); focusExpr != "" {
-				vc.requireImport("fmt")
-				vc.line(`if %s {`, focusExpr)
-				vc.line(`%s = append(%s, lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(%s)))`, childrenVar, childrenVar, vc.gc.EvalExpr(tip))
-				if weights != "" {
-					vc.line(`%s = append(%s, 0)`, weights, weights)
-				}
-				vc.line(`}`)
-			}
-		}
-		if weights != "" {
-			vc.requireImport(tuiImportPath)
-			if at != "" {
-				vc.line(`%s = tui.FlexRowAt(%s, m.avail, %s, %s, %s)`, resultVar, at, gap, childrenVar, weights)
-			} else {
-				vc.line(`%s = tui.FlexRow(m.avail, %s, %s, %s)`, resultVar, gap, childrenVar, weights)
-			}
-		} else {
-			vc.join(resultVar, childrenVar)
-		}
-		restoreAvail()
-		// A box wider or taller than its parts puts them where they are
-		// joined: a column of names centered in a card 14 cells wide.
-		switch {
-		case at == "":
-		case vc.vertical:
-			style += ".AlignHorizontal(" + at + ")"
-		default:
-			style += ".AlignVertical(" + at + ")"
-		}
-		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
-		vc.gap, vc.weights, vc.at = prevGap, prevWeights, prevAt
-		vc.pictureCols, vc.pictureRows = prevCols, prevRows
-		if style != "lipgloss.NewStyle()" {
-			vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
-		}
+		vc.renderLayout(n, bp, resultVar, style)
 
 	case bpStyled:
 		// Render the content expression through lipgloss. A present `__focused`
@@ -790,12 +699,358 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			panic(fmt.Sprintf("bubbletea: widget index %d out of range (%d widgets analyzed); view/analyze walk desync", idx, len(vc.widgets)))
 		}
 		w := vc.widgets[idx]
+		view := "m." + w.fieldName + w.model.View
 		if w.loop != nil {
-			vc.line(`%s = %s%s`, resultVar, copyCall(w, vc.gc), w.model.View)
+			view = copyCall(w, vc.gc) + w.model.View
+		}
+		if style != plainLook {
+			view = style + ".Render(" + view + ")"
+		}
+		vc.line(`%s = %s`, resultVar, view)
+	}
+}
+
+// plainLook is the look of a primitive whose override handed it none.
+const plainLook = "lipgloss.NewStyle()"
+
+// look is the lipgloss style a primitive renders with: what its override built
+// from the node's Style, sized to the share of its parent it grows into.
+func (vc *irViewContext) look(n *ir.NodeInst) string {
+	look := plainLook
+	if v := codegen.NodeProp(n, "look"); v != nil {
+		look = vc.gc.EvalExpr(v)
+	}
+	if s := vc.sizeTo; s != nil {
+		vc.sizeTo = nil
+		look = fmt.Sprintf("tui.Sized(%s, %t, %s)", look, s.horizontal, s.cells)
+	}
+	return look
+}
+
+// growSize is the share of a Layout's free space the primitive rendered next
+// grows into: the Go int holding it, and the axis it is along.
+type growSize struct {
+	horizontal bool
+	cells      string
+}
+
+// grows reports whether n is a primitive its override handed a share of its
+// parent's free space.
+func grows(n *ir.NodeInst) bool {
+	g := codegen.NodeProp(n, "grow")
+	if g == nil || btIntrinsic(n) == "" {
+		return false
+	}
+	if v, ok := codegen.IRLiteralNumber(g); ok {
+		return v > 0
+	}
+	return true
+}
+
+func growsWithin(s ir.Stmt) bool {
+	found := false
+	_ = ir.Walk([]ir.Stmt{s}, func(nd ir.Node) error {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, nil)) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// directlyGrows reports whether s is a child its Layout renders once the
+// fixed ones are done. One that counts a loop's focus stops or canvas copies
+// as it renders is joined at its own size, since its count would come after
+// its later siblings'.
+func (vc *irViewContext) directlyGrows(s ir.Stmt) bool {
+	n, ok := s.(*ir.NodeInst)
+	if !ok || !grows(n) {
+		return false
+	}
+	ordered := false
+	_ = ir.Walk([]ir.Stmt{n}, func(nd ir.Node) error {
+		m, ok := nd.(*ir.NodeInst)
+		if !ok {
+			return nil
+		}
+		if _, ok := nodeLoopFocus(m); ok {
+			ordered = true
+		} else if c := vc.ctx.Canvases.ForNode(m); c != nil && vc.canvasSeq[c.Name] {
+			ordered = true
+		}
+		if ordered {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return !ordered
+}
+
+// renderLayout joins a Layout's children along its axis.
+//
+// A child that grows is rendered in a closure once the fixed ones have said
+// how much of the Layout they leave, which needs the Layout's own extent: its
+// look's, or what its parent gave it, the terminal's at the top. A child that
+// grows under an `if` or a `for` is joined at its own size, being one of the
+// parts that statement renders rather than a part of its own.
+func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, style string) {
+	horizontal := bp.Join != joinVertical
+	savedW, savedH := vc.availW, vc.availH
+	inner := ""
+	outer := vc.buf
+	if slices.ContainsFunc(n.Children, growsWithin) {
+		vc.requireImport(tuiImportPath)
+		look := resultVar + "Look"
+		vc.line("%s := %s", look, style)
+		style = look
+		inner = fmt.Sprintf("tui.Inner(%s, %s, %s)", look, extent(vc.availW), extent(vc.availH))
+		vc.availW, vc.availH = resultVar+"W", resultVar+"H"
+		// A child that does not grow has no extent along the axis, as in CSS:
+		// what grows inside it takes its own size. renderPart gives a grower one.
+		if horizontal {
+			vc.availW = ""
+		} else {
+			vc.availH = ""
+		}
+		// Declared once the children say which of the two they read.
+		vc.buf = &strings.Builder{}
+	}
+	// A picture is fitted to the box it is shown in, where that box's look
+	// gives it a size.
+	prevPicture := vc.pictureLook
+	vc.pictureLook = ""
+	if slices.ContainsFunc(n.Children, isPicture) {
+		if style == plainLook {
+			vc.pictureLook = plainLook
+		} else {
+			if inner == "" {
+				look := resultVar + "Look"
+				vc.line("%s := %s", look, style)
+				style = look
+			}
+			vc.pictureLook = style
+		}
+	}
+	pos := vc.position(n, horizontal)
+	spacing := "0"
+	if v := codegen.NodeProp(n, "spacing"); v != nil {
+		if c, ok := codegen.IRLiteralNumber(v); !ok || c != 0 {
+			spacing = vc.gc.EvalExpr(v)
+		}
+	}
+	prevGap, prevAt := vc.joinGap, vc.joinAt
+	vc.joinGap, vc.joinAt = spacing, pos
+	parts := slices.ContainsFunc(n.Children, vc.directlyGrows)
+	childrenVar := resultVar + "Children"
+	if parts {
+		vc.line("var %s []tui.Part", childrenVar)
+	} else {
+		vc.line("var %s []string", childrenVar)
+	}
+	prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+	vc.vertical, vc.horizontal = !horizontal, horizontal
+	for i, child := range n.Children {
+		childVar := fmt.Sprintf("%s_%d", resultVar, i)
+		if parts {
+			vc.renderPart(child, childVar, childrenVar, horizontal)
+		} else {
+			vc.renderChild(child, childVar, childrenVar)
+		}
+	}
+	vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+	vc.joinGap, vc.joinAt = prevGap, prevAt
+	vc.pictureLook = prevPicture
+	// tooltip: reveal the body text (dim) below the trigger while the wrapped
+	// focusable descendant is focused. The `tooltip` prop carries the text;
+	// the focus expression comes from the focusable descendant's injected
+	// __focused prop. If no static focus expression is available (e.g. the
+	// trigger sits inside a for-loop, whose key isn't in scope here), the
+	// tooltip degrades to never showing rather than emitting invalid Go.
+	if tip := codegen.NodeProp(n, "tooltip"); tip != nil {
+		if focusExpr := tooltipFocusExpr(n.Children, vc.gc); focusExpr != "" {
+			vc.requireImport("fmt")
+			text := fmt.Sprintf("lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(%s))", vc.gc.EvalExpr(tip))
+			if parts {
+				text = "tui.Fixed(" + text + ")"
+			}
+			vc.line(`if %s {`, focusExpr)
+			vc.line(`%s = append(%s, %s)`, childrenVar, childrenVar, text)
+			vc.line(`}`)
+		}
+	}
+	main := ""
+	if inner != "" {
+		main = resultVar + "H"
+		if horizontal {
+			main = resultVar + "W"
+		}
+	}
+	switch {
+	case parts:
+		vc.line(`%s = tui.Join(%t, %s, %s, %s, %s)`, resultVar, horizontal, pos, spacing, extent(main), childrenVar)
+	case spacing != "0":
+		vc.requireImport(tuiImportPath)
+		vc.line(`%s = tui.Spaced(%t, %s, %s, %s...)`, resultVar, horizontal, pos, spacing, childrenVar)
+	case horizontal:
+		vc.line(`%s = lipgloss.JoinHorizontal(%s, %s...)`, resultVar, pos, childrenVar)
+	default:
+		vc.line(`%s = lipgloss.JoinVertical(%s, %s...)`, resultVar, pos, childrenVar)
+	}
+	if inner != "" {
+		body := vc.buf.String()
+		vc.buf = outer
+		w, h := resultVar+"W", resultVar+"H"
+		if !readsName(body, w) {
+			w = "_"
+		}
+		if !readsName(body, h) {
+			h = "_"
+		}
+		if w != "_" || h != "_" {
+			vc.line("%s, %s := %s", w, h, inner)
+		}
+		vc.buf.WriteString(body)
+	}
+	vc.availW, vc.availH = savedW, savedH
+	// A box wider or taller than its children puts them where it joins them
+	// across it: a card's names centered in its width, where they sat at its
+	// left edge.
+	if !strings.HasSuffix(pos, ".Left") && !strings.HasSuffix(pos, ".Top") {
+		if horizontal {
+			style += ".AlignVertical(" + pos + ")"
+		} else {
+			style += ".AlignHorizontal(" + pos + ")"
+		}
+	}
+	if style != plainLook {
+		vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
+	}
+}
+
+// isPicture reports whether s is a picture a URL names.
+func isPicture(s ir.Stmt) bool {
+	n, ok := s.(*ir.NodeInst)
+	return ok && btIntrinsic(n) == pictureIntrinsic
+}
+
+// availParam is a component's render method's parameter for the width it is
+// placed in, which a growing child inside it is handed a share of.
+const availParam = "__availW"
+
+// componentGrows reports whether c's body has a child growing into its
+// Layout's free space, which needs the width c is placed in. seen holds the
+// components already asked, for a recursive one.
+func componentGrows(c *ir.Component, seen map[*ir.Component]bool) bool {
+	if c == nil || seen[c] {
+		return false
+	}
+	if seen == nil {
+		seen = map[*ir.Component]bool{}
+	}
+	seen[c] = true
+	found := false
+	_ = ir.Walk(c.Body.Stmts, func(nd ir.Node) error {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, seen)) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// readsName reports whether the Go in body reads the local name: a selector
+// of the same spelling, `m.contentW`, is not it.
+func readsName(body, name string) bool {
+	for i := strings.Index(body, name); i >= 0; {
+		end := i + len(name)
+		if (i == 0 || !isIdentByte(body[i-1]) && body[i-1] != '.') && (end == len(body) || !isIdentByte(body[end])) {
+			return true
+		}
+		next := strings.Index(body[end:], name)
+		if next < 0 {
+			break
+		}
+		i = end + next
+	}
+	return false
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'
+}
+
+// renderPart is renderChild for a Layout one of whose children grows.
+func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, horizontal bool) {
+	if !vc.directlyGrows(child) {
+		if !rendersPart(child) {
+			vc.renderStmt(child, "")
 			return
 		}
-		vc.line(`%s = m.%s%s`, resultVar, w.fieldName, w.model.View)
+		vc.line("var %s string", childVar)
+		vc.renderStmt(child, childVar)
+		switch child.(type) {
+		case *ir.If, *ir.For:
+			vc.line("if %s != \"\" {", childVar)
+			vc.line("\t%s = append(%s, tui.Fixed(%s))", partsVar, partsVar, childVar)
+			vc.line("}")
+		default:
+			vc.line("%s = append(%s, tui.Fixed(%s))", partsVar, partsVar, childVar)
+		}
+		return
 	}
+	n := child.(*ir.NodeInst)
+	cells := childVar + "Cells"
+	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, vc.gc.EvalExpr(codegen.NodeProp(n, "grow")), cells)
+	vc.indent++
+	savedW, savedH := vc.availW, vc.availH
+	if horizontal {
+		vc.availW = cells
+	} else {
+		vc.availH = cells
+	}
+	vc.sizeTo = &growSize{horizontal: horizontal, cells: cells}
+	vc.line("var %s string", childVar)
+	vc.renderStmt(child, childVar)
+	vc.sizeTo = nil
+	vc.availW, vc.availH = savedW, savedH
+	vc.line("return %s", childVar)
+	vc.indent--
+	vc.line("}))")
+}
+
+// position is where a Layout's children sit across its axis.
+func (vc *irViewContext) position(n *ir.NodeInst, horizontal bool) string {
+	start, end := "lipgloss.Left", "lipgloss.Right"
+	if horizontal {
+		start, end = "lipgloss.Top", "lipgloss.Bottom"
+	}
+	a := codegen.NodeProp(n, "align")
+	if a == nil {
+		return start
+	}
+	v, ok := codegen.IRLiteralNumber(a)
+	switch {
+	case !ok:
+		return "lipgloss.Position(" + vc.gc.EvalExpr(a) + ")"
+	case v == 0:
+		return start
+	case v == 0.5:
+		return "lipgloss.Center"
+	case v == 1:
+		return end
+	}
+	return fmt.Sprintf("lipgloss.Position(%v)", v)
+}
+
+// extent is a Go int holding a Layout's extent along one axis, 0 where nothing
+// knows it.
+func extent(v string) string {
+	if v == "" {
+		return "0"
+	}
+	return v
 }
 
 func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
@@ -818,12 +1073,17 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 	if n.Component != nil {
 		args = append(args, vc.populationArgs(n, resultVar)...)
 	}
+	if componentGrows(n.Component, nil) {
+		args = append(args, extent(vc.availW))
+	}
 
 	vc.line(`%s = m.%s(%s)`, resultVar, methodName, strings.Join(args, ", "))
 }
 
 func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
-	style := vc.nodeStyle(n)
+	// A component the build emptied has no override to translate its Style.
+	vc.discardStyle(codegen.NodeStyleFields(n))
+	style := vc.look(n)
 
 	// Join layout
 	if joinExpr := codegen.NodeProp(n, "join"); joinExpr != nil {
@@ -831,12 +1091,15 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 			childrenVar := resultVar + "Children"
 			vc.line("var %s []string", childrenVar)
 			prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+			prevGap, prevAt := vc.joinGap, vc.joinAt
 			vc.vertical = s == "vertical"
 			vc.horizontal = !vc.vertical
+			vc.joinGap, vc.joinAt = "", ""
 			for i, child := range n.Children {
 				vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 			}
 			vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+			vc.joinGap, vc.joinAt = prevGap, prevAt
 			if s == "vertical" {
 				vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
 			} else {
@@ -864,23 +1127,6 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	} else {
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
 	}
-}
-
-// styleExpr builds a Go lipgloss style chain from IR style fields.
-func (vc *irViewContext) styleExpr(styles []codegen.StyleField) string {
-	chain := []string{"lipgloss.NewStyle()"}
-	// Sort by property name: a lipgloss builder chain is order-independent, and
-	// a stable key order keeps the emitted source reproducible.
-	sorted := append([]codegen.StyleField(nil), styles...)
-	slices.SortFunc(sorted, func(a, b codegen.StyleField) int { return strings.Compare(a.Name, b.Name) })
-	for _, sf := range sorted {
-		if call := irStyleCall(sf.Name, sf.Value, vc.gc, vc.scaleFactor); call != "" {
-			chain = append(chain, call)
-		} else {
-			vc.discard(sf.Value)
-		}
-	}
-	return strings.Join(chain, ".\n")
 }
 
 func (vc *irViewContext) discardStyle(styles []codegen.StyleField) {
@@ -924,173 +1170,6 @@ func lipglossColor(expr ir.Expr, gc *golang.GoIRContext) string {
 		return val + ".String()"
 	}
 	return val
-}
-
-// cellVal is a style value in terminal cells.
-//
-// A measurement is read as pixels and scaled to cells: a cell stands for
-// scaleFactor pixels, and an em for emPx of them -- a terminal's font is one
-// cell wide and about two tall, so 16px, two cells, is an em
-// (codegen.MeasurementPx).
-//
-// Reading the magnitude at all is what was missing: a unit value is a record
-// in Go, so `paddingLeft=20px` came out as `max(1, Measurement{Px: 20}/8)` and
-// no generated program carrying a padding, margin, width or height has ever
-// compiled. Nothing in lib/ rendered a body until now, which is why the one
-// spelling every document uses did not reach it sooner.
-func cellVal(expr ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
-	ud := ir.UnitDeclOf(exprType(expr))
-	if ud == nil {
-		return scaleVal(gc.EvalExpr(expr), scaleFactor)
-	}
-	if px, ok := codegen.MeasurementPx(expr, emPx); ok {
-		return scaleVal(strconv.Itoa(int(px)), scaleFactor)
-	}
-	val := gc.EvalExpr(expr)
-	if ud.IsSingleBase() {
-		return scaleVal("int("+val+")", scaleFactor)
-	}
-	return scaleVal("int("+codegen.MeasurementSum(ud, val, golang.ExportName, strconv.Itoa(emPx))+")", scaleFactor)
-}
-
-// emPx is an em in the pixels a cell is counted in.
-const emPx = 16
-
-// exprType is expr's type, nil-safely: a style field may carry no expression
-// at all.
-func exprType(expr ir.Expr) *ir.Type {
-	if expr == nil {
-		return nil
-	}
-	return expr.ExprType()
-}
-
-// scaleVal wraps a numeric value expression with pixel-to-cell scaling.
-func scaleVal(val string, scaleFactor int) string {
-	var n int
-	if _, err := fmt.Sscanf(val, "%d", &n); err == nil {
-		if n == 0 {
-			return "0"
-		}
-		scaled := max(n/scaleFactor, 1)
-		return fmt.Sprintf("%d", scaled)
-	}
-	return fmt.Sprintf("max(1, %s / %d)", val, scaleFactor)
-}
-
-func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
-	// color/background fold a constant #rrggbb to a CSS string without
-	// evaluating expr; handle them before the eager EvalExpr below so a
-	// constant color struct-lit doesn't register an unused snglcolor import.
-	switch prop {
-	case "color":
-		return fmt.Sprintf("Foreground(lipgloss.Color(%s))", lipglossColor(expr, gc))
-	case "background":
-		return fmt.Sprintf("Background(lipgloss.Color(%s))", lipglossColor(expr, gc))
-	case "borderColor":
-		return fmt.Sprintf("BorderForeground(lipgloss.Color(%s))", lipglossColor(expr, gc))
-	}
-
-	val := gc.EvalExpr(expr)
-
-	switch prop {
-	case "padding":
-		return fmt.Sprintf("Padding(%s)", cellVal(expr, gc, scaleFactor))
-	case "paddingTop":
-		return fmt.Sprintf("PaddingTop(%s)", cellVal(expr, gc, scaleFactor))
-	case "paddingRight":
-		return fmt.Sprintf("PaddingRight(%s)", cellVal(expr, gc, scaleFactor))
-	case "paddingBottom":
-		return fmt.Sprintf("PaddingBottom(%s)", cellVal(expr, gc, scaleFactor))
-	case "paddingLeft":
-		return fmt.Sprintf("PaddingLeft(%s)", cellVal(expr, gc, scaleFactor))
-	case "margin":
-		return fmt.Sprintf("Margin(%s)", cellVal(expr, gc, scaleFactor))
-	case "marginTop":
-		return fmt.Sprintf("MarginTop(%s)", cellVal(expr, gc, scaleFactor))
-	case "marginRight":
-		return fmt.Sprintf("MarginRight(%s)", cellVal(expr, gc, scaleFactor))
-	case "marginBottom":
-		return fmt.Sprintf("MarginBottom(%s)", cellVal(expr, gc, scaleFactor))
-	case "marginLeft":
-		return fmt.Sprintf("MarginLeft(%s)", cellVal(expr, gc, scaleFactor))
-	case "width":
-		return fmt.Sprintf("Width(%s)", cellVal(expr, gc, scaleFactor))
-	case "height":
-		return fmt.Sprintf("Height(%s)", cellVal(expr, gc, 2*scaleFactor))
-	case "maxWidth":
-		return fmt.Sprintf("MaxWidth(%s)", cellVal(expr, gc, scaleFactor))
-	case "maxHeight":
-		return fmt.Sprintf("MaxHeight(%s)", cellVal(expr, gc, 2*scaleFactor))
-	case "fontWeight":
-		return enumFlagCall("Bold", expr, val, "bold")
-	case "fontStyle":
-		return enumFlagCall("Italic", expr, val, "italic")
-	case "textAlign":
-		if m := enumMember(expr); m != "" {
-			if pos, ok := lipglossPositions[m]; ok {
-				return "AlignHorizontal(" + pos + ")"
-			}
-			return ""
-		}
-		// Every enum is a string in Go. A member with no entry reads the zero
-		// Position, which is lipgloss.Left -- what left and justify both get.
-		return fmt.Sprintf(`AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[%s])`, val)
-	case "borderWidth":
-		if mag, ok := codegen.MeasurementPx(expr, emPx); ok {
-			if mag <= 0 {
-				return ""
-			}
-			return "Border(lipgloss.NormalBorder())"
-		}
-		return fmt.Sprintf("Border(lipgloss.NormalBorder(), %s)", nonzero(expr, val))
-	case "opacity":
-		if v, ok := codegen.IRLiteralNumber(expr); ok {
-			if v >= 1 {
-				return ""
-			}
-			return "Faint(true)"
-		}
-		return fmt.Sprintf("Faint(%s < 1)", val)
-	}
-	return ""
-}
-
-var lipglossPositions = map[string]string{
-	"left":   "lipgloss.Left",
-	"center": "lipgloss.Center",
-	"right":  "lipgloss.Right",
-}
-
-// enumFlagCall is a lipgloss toggle that one member of an enum field turns on.
-func enumFlagCall(method string, expr ir.Expr, val, member string) string {
-	if on := enumFlag(expr, val, member); on != "" {
-		return method + "(" + on + ")"
-	}
-	return ""
-}
-
-// enumFlag is whether an enum field holds member, as a Go bool expression: ""
-// for a literal that does not, "true" for one that does. A value that reads
-// state is compared at render time; a lowering has usually hoisted it into a
-// temp by now, which is an Ident with no member. val is expr in Go.
-func enumFlag(expr ir.Expr, val, member string) string {
-	if m := enumMember(expr); m != "" {
-		if m == member {
-			return "true"
-		}
-		return ""
-	}
-	return fmt.Sprintf("%s == %q", val, member)
-}
-
-// nonzero is whether a run-time measurement is anything but zero, in Go. A
-// multi-base one is a struct, and nonzero in any base.
-func nonzero(expr ir.Expr, val string) string {
-	if ud := ir.UnitDeclOf(exprType(expr)); ud != nil && !ud.IsSingleBase() {
-		return fmt.Sprintf("%s != (%s{})", val, golang.ExportName(ud.Name))
-	}
-	return val + " > 0"
 }
 
 // viewStmts is what View draws: the package body, which is the application's

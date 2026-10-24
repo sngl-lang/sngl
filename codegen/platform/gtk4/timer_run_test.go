@@ -12,7 +12,7 @@ import (
 // than the root is emitted.
 //
 // No label reads a counter, deliberately: a tick that wrote one would carry the
-// reactive `gtk4rt.LabelSetText` beside it, and the widget it names is built by
+// reactive `gtk4rt.LabelSetLabel` beside it, and the widget it names is built by
 // buildWidgetTree, which is gtk_init and a display. What a tick writes to a
 // widget is a claim the `timer_every_target.txtar` golden makes; what this one
 // makes is that the schedule runs at all, and that has to run without a

@@ -64,7 +64,7 @@ type Measurement struct {
 	Rem float64
 }
 
-type Style struct {
+type Style__draw struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -72,6 +72,61 @@ type Style struct {
 	LineJoin    string
 	FontSize    float64
 	FontFamily  string
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -103,7 +158,7 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(5.0, 5.0, 5.0)
 	ctx.Restore()
 }
@@ -121,12 +176,156 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style Style) {
+func RowsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func ApplyStyle(ctx *snglcanvas.Context, style Style__draw) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
 	ctx.SetFont(style.FontSize, style.FontFamily)
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCapFunc(RowsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
+	} else {
+		__lt8 = max(1, (int(px) / 8))
+	}
+	return __lt8
+}
+
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m Model) Visible__inst0() bool {
@@ -181,9 +380,10 @@ func (m Model) View() tea.View {
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("inside"))
+		content_0_0 = BoxLook(Style{}, true).Render(fmt.Sprint("inside"))
 		content_0Children = append(content_0Children, content_0_0)
-		content_0 = tui.Column(0, content_0Children...)
+		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		content_0 = BoxLook(Style{}, true).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = tui.RenderTerminal(10, 5, 1, func() image.Image {
@@ -193,9 +393,10 @@ func (m Model) View() tea.View {
 		})
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
-		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("radius 5"))
+		content_2 = BoxLook(Style{}, true).Render(fmt.Sprint("radius 5"))
 		contentChildren = append(contentChildren, content_2)
-		content = tui.Column(0, contentChildren...)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -222,7 +423,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -306,8 +506,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewVBox()
-	m.__n2 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.label = widget.NewLabel("")
 	m.label.SetText("inside")
 	m.__n2.Add(m.label)
@@ -596,13 +796,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -701,7 +894,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
 	m.label = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.label)), __cstr0)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.label)), __cstr0)
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.label)), C.float(0.0))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.label)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
@@ -715,7 +908,7 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n3), C.int((len(snglDrawFuncs) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), __cstr1)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n4)), __cstr1)
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.float(0.0))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
@@ -752,11 +945,12 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -844,11 +1038,11 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             Column(modifier = Modifier) {
-                Text(text = "inside", modifier = Modifier.testTag("label"))
+                Text(text = "inside", modifier = Modifier.testTag("label"), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             Canvas(modifier = Modifier.size(10.dp, 10.dp)) {
             }
-            Text(text = "radius 5", modifier = Modifier)
+            Text(text = "radius 5", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1087,12 +1281,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4fe50b5d33008f6b8fa0d786946ef400
+pass sha256:61641ad57d1f2436bad86a734f7491b6
 -- run/go/fyne --
-pass sha256:c269fa43fcc8ff0f3fc0f3f8423487cd
+pass sha256:0f41bd035795d62cc97c884ecf2e1abd
 -- run/go/gtk4 --
-pass sha256:b8978e5b2e4d989b2fb2dc5a99e92442
+pass sha256:1cc0707e426b4d6dccc463c1e8b3ec5a
 -- run/kotlin/android --
-pass sha256:06067c5416f333ab560bd88f089cbfc8
+pass sha256:71178f2534083b0b5e102879a5f5e92a
 -- run/none/html --
 pass sha256:8fe9908cb020dd422679a3e1b1ac0bc8

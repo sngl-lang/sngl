@@ -95,7 +95,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;gap:calc(2em + 1rem);padding:7px;width:2rem" data-sngl-id="box">
+<div style="padding:7px;display:flex;flex-direction:column;gap:calc(2em + 1rem);width:2rem" data-sngl-id="box">
   <span>x</span>
 </div>
 <div style="display:flex;flex-direction:column">
@@ -141,9 +141,6 @@ window.__sngl_boot = () => {
   state.growClick = () => $4.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function color(r, g, b, a) {
-    return { r, g, b, a };
   }
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
@@ -291,9 +288,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:da146921cfcdd2b9aa20dcc979c8fc3d
+pass sha256:803fbbc4184e13de680cf01f4c5a4cf6
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
-sha256:6166b5a512403272ec880b2875c163b2
+sha256:790725e86d9b28e93718d4fa4771a68e
 {
   "results": [
     {

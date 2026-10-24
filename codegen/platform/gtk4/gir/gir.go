@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/xml"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"sort"
 
 	"duckfam.us/sngl/ir"
@@ -326,8 +328,9 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inMethod = true
 				name := attrVal(t.Attr, "", "name")
 				currentMethod = &methodInfo{
-					ident:    attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier"),
-					instance: local == "method",
+					ident:        attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier"),
+					instance:     local == "method",
+					setsProperty: attrVal(t.Attr, "http://www.gtk.org/introspection/glib/1.0", "set-property"),
 					// What a program cannot call as declared: one the bindings
 					// are told to skip, one a newer API replaces, and one that
 					// reports through a GError.
@@ -726,6 +729,9 @@ func hasSignal(signals []Signal, name string) bool {
 func resolveSetters(props []Prop, methods map[string]*methodInfo) {
 	for i := range props {
 		if props[i].Setter == "" {
+			props[i].Setter = setterNaming(methods, props[i].Name)
+		}
+		if props[i].Setter == "" {
 			continue
 		}
 		m := methods[props[i].Setter]
@@ -751,11 +757,15 @@ func resolveSetters(props []Prop, methods map[string]*methodInfo) {
 // takes beyond the instance, and the C type of the first of them — for a
 // setter, the value.
 type methodInfo struct {
-	ident    string
-	instance bool   // a <method>, called on an instance, rather than a <function>
-	returns  string // the GIR name of the return type, "none" for void
-	skip     bool
-	valCType string
+	ident string
+	// setsProperty is the property a <method glib:set-property> says it sets:
+	// GTK links some setters only this way round, GtkImage.file to
+	// gtk_image_set_from_file among them.
+	setsProperty string
+	instance     bool   // a <method>, called on an instance, rather than a <function>
+	returns      string // the GIR name of the return type, "none" for void
+	skip         bool
+	valCType     string
 	// valParams counts the <parameter> elements after the instance — the
 	// values a caller supplies.
 	valParams int
@@ -850,4 +860,15 @@ func TypeToIR(name string) *ir.Type {
 		// No SNGL spelling: the declaration generator leaves the prop out.
 		return ir.TypInvalid
 	}
+}
+
+// setterNaming is the GIR name of the method that says it sets the property
+// prop, or "" where none does.
+func setterNaming(methods map[string]*methodInfo, prop string) string {
+	for _, name := range slices.Sorted(maps.Keys(methods)) {
+		if m := methods[name]; m.setsProperty == prop && m.instance && !m.skip {
+			return name
+		}
+	}
+	return ""
 }

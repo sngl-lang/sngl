@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	fyne "fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
@@ -266,7 +265,7 @@ component main node {
 		t.Fatalf("NewSession: %v", err)
 	}
 	ctors := fynehost.Ctors()
-	delete(ctors, "fyne.io/fyne/v2/container.NewHBox")
+	delete(ctors, "duckfam.us/sngl/pkg/go/fynelayout.NewHBox")
 	h := fynehost.New(ctors)
 	if err := s.Attach(h); err != nil {
 		t.Fatalf("Attach: %v", err)
@@ -339,8 +338,8 @@ component main node {
 
 // TestAContainerCarriesItsChildrensFlex: Fyne's own boxes pack children at
 // their minimum size, so a keypad laid out with `flex=1` came up as small
-// buttons in the corner. The layout is what answers it, and its weights are
-// positional, so it is rebuilt as children arrive.
+// buttons in the corner. The weighted layout reads each child's share off the
+// Box its look put it in.
 func TestAContainerCarriesItsChildrensFlex(t *testing.T) {
 	app := fynetest.NewApp()
 	t.Cleanup(app.Quit)
@@ -371,30 +370,31 @@ component main node {
 	if !ok {
 		t.Fatalf("#row is a %T, want a *fyne.Container", obj)
 	}
-	w, ok := c.Layout.(fynelayout.Weighted)
+	w, ok := c.Layout.(*fynelayout.Weighted)
 	if !ok {
 		t.Fatalf("#row lays out with %T; its children's flex has nowhere to be said", c.Layout)
 	}
 	if !w.Horizontal {
 		t.Error("an hbox laid out vertically")
 	}
-	// 400 - 2*6 padding - 4 gap - 2*3 margin = 378, split 1:2.
-	c.Resize(fyne.NewSize(400, 50))
-	if got := c.Objects[0].Size().Width; got != 126 {
-		t.Errorf("flex=1 child with margin 3 got width %v, want 126", got)
+	if w.Gap != 4 {
+		t.Errorf("gap is %v, want 4", w.Gap)
 	}
-	if got := c.Objects[1].Size().Width; got != 252 {
-		t.Errorf("flex=2 child got width %v, want 252", got)
+	var grows []float32
+	for _, o := range c.Objects {
+		if b, ok := o.(*fynelayout.Box); ok {
+			grows = append(grows, b.Grow())
+		}
 	}
-	if w.Gap != 4 || w.Padding != 6 {
-		t.Errorf("gap/padding are %v/%v, want 4/6", w.Gap, w.Padding)
+	if len(grows) != 2 || grows[0] != 1 || grows[1] != 2 {
+		t.Errorf("the children grow by %v, want [1 2]", grows)
 	}
 }
 
-// TestPaintStylesReachATheme: Fyne has no per-widget styling, so a color or a
-// text size is a theme over the subtree it applies to. Without this the
+// TestPaintStylesReachABox: Fyne has no per-widget styling, so a color or a
+// text size is the theme of the Box the widget is shown in. Without this the
 // calculator's keys were all one color.
-func TestPaintStylesReachATheme(t *testing.T) {
+func TestPaintStylesReachABox(t *testing.T) {
 	app := fynetest.NewApp()
 	t.Cleanup(app.Quit)
 
@@ -420,10 +420,10 @@ component main node {
 	if root == nil {
 		t.Fatal("#plain is not mounted")
 	}
-	// A node asking for nothing is not wrapped: a theme that answers nothing
+	// A node asking for nothing is not wrapped: a box that answers nothing
 	// still costs a node in the tree.
 	if h.ViewOf(s.View().Find("plain")[0].Key) != root {
-		t.Error("#plain was wrapped in a theme it did not ask for")
+		t.Error("#plain was wrapped in a box it did not ask for")
 	}
 	painted := s.View().Find("painted")[0].Key
 	wrapper := h.ViewOf(painted)
@@ -431,7 +431,7 @@ component main node {
 	if wrapper == obj {
 		t.Fatal("#painted was not wrapped; its background and text size reach nothing")
 	}
-	if _, ok := wrapper.(*container.ThemeOverride); !ok {
-		t.Errorf("#painted is wrapped in a %T, want a *container.ThemeOverride", wrapper)
+	if _, ok := wrapper.(*fynelayout.Box); !ok {
+		t.Errorf("#painted is wrapped in a %T, want a *fynelayout.Box", wrapper)
 	}
 }

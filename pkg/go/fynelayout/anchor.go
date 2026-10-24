@@ -6,7 +6,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 )
 
 // SlotAnchor returns the anchor a render slot inserts its entries before: a,
@@ -43,7 +42,7 @@ func Nothing() fyne.CanvasObject {
 // b, or a new one.
 func SlotBox(b *fyne.Container) *fyne.Container {
 	if b == nil {
-		b = container.NewVBox()
+		b = NewVBox()
 	}
 	return b
 }

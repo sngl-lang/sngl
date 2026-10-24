@@ -92,6 +92,10 @@ type reactivityState struct {
 	// they were opened, so its teardown can destroy what it holds. Keyed by
 	// component because a window's registries live as long as the page does.
 	held map[*ir.Component][]*slotInstance
+	// pageHeld is every registry the page scope holds, in the order the
+	// walks opened them: the package body's and those of a component the
+	// build spliced into it, whose vars are the page's.
+	pageHeld []pageRegistry
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR

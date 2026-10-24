@@ -121,11 +121,18 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"slices"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
 
 type Item struct {
 	Type  string
@@ -134,6 +141,61 @@ type Item struct {
 
 type Model__r0 struct {
 	N int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 type ErrorEvent struct {
@@ -211,6 +273,230 @@ func Bump(m__r1 int, fmt__r0 int, class int) int {
 
 func (m *Model) add(state int) {
 	m.object = (m.object + state)
+}
+
+func RowsOf(m__r2 Measurement) int {
+	var px float64 = (m__r2.Px + (16.0 * (m__r2.Em + m__r2.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		var __lt2 lipgloss.Position
+		switch s.TextAlign {
+		case "center":
+			__lt2 = lipgloss.Center
+		case "right":
+			__lt2 = lipgloss.Right
+		default:
+			__lt2 = lipgloss.Left
+		}
+		l = l.AlignHorizontal(__lt2)
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		var __lt3 lipgloss.Border
+		switch s.BorderStyle {
+		case "double":
+			__lt3 = lipgloss.DoubleBorder()
+		case "dashed", "dotted":
+			__lt3 = tui.DashedBorder()
+		default:
+			var __lt4 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt4 = lipgloss.RoundedBorder()
+			} else {
+				__lt4 = lipgloss.NormalBorder()
+			}
+			__lt3 = __lt4
+		}
+		l = l.Border(__lt3)
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	var __lt6 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt6 = s.MarginTop
+	} else {
+		var __lt5 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt5 = s.MarginY
+		} else {
+			__lt5 = s.Margin
+		}
+		__lt6 = __lt5
+	}
+	l = l.MarginTop(CellsOf(__lt6))
+	var __lt8 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt8 = s.MarginRight
+	} else {
+		var __lt7 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt7 = s.MarginX
+		} else {
+			__lt7 = s.Margin
+		}
+		__lt8 = __lt7
+	}
+	l = l.MarginRight(CellsOf(__lt8))
+	var __lt10 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt10 = s.MarginBottom
+	} else {
+		var __lt9 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt9 = s.MarginY
+		} else {
+			__lt9 = s.Margin
+		}
+		__lt10 = __lt9
+	}
+	l = l.MarginBottom(CellsOf(__lt10))
+	var __lt12 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt12 = s.MarginLeft
+	} else {
+		var __lt11 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt11 = s.MarginX
+		} else {
+			__lt11 = s.Margin
+		}
+		__lt12 = __lt11
+	}
+	l = l.MarginLeft(CellsOf(__lt12))
+	var __lt14 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt14 = s.PaddingTop
+	} else {
+		var __lt13 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt13 = s.PaddingY
+		} else {
+			__lt13 = s.Padding
+		}
+		__lt14 = __lt13
+	}
+	l = l.PaddingTop(CellsOf(__lt14))
+	var __lt16 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt16 = s.PaddingRight
+	} else {
+		var __lt15 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt15 = s.PaddingX
+		} else {
+			__lt15 = s.Padding
+		}
+		__lt16 = __lt15
+	}
+	l = l.PaddingRight(CellsOf(__lt16))
+	var __lt18 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt18 = s.PaddingBottom
+	} else {
+		var __lt17 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt17 = s.PaddingY
+		} else {
+			__lt17 = s.Padding
+		}
+		__lt18 = __lt17
+	}
+	l = l.PaddingBottom(CellsOf(__lt18))
+	var __lt20 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt20 = s.PaddingLeft
+	} else {
+		var __lt19 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt19 = s.PaddingX
+		} else {
+			__lt19 = s.Padding
+		}
+		__lt20 = __lt19
+	}
+	l = l.PaddingLeft(CellsOf(__lt20))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt25 int
+		if RowsOf(s.MaxHeight) == 0 {
+			var __lt21 int
+			if s.MaxLines == 0 {
+				__lt21 = 0
+			} else {
+				__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
+			}
+			__lt25 = __lt21
+		} else {
+			var __lt22 int
+			if s.MaxLines == 0 {
+				__lt22 = 0
+			} else {
+				__lt22 = (s.MaxLines + l.GetVerticalFrameSize())
+			}
+			var __lt24 int
+			if __lt22 == 0 {
+				__lt24 = RowsOf(s.MaxHeight)
+			} else {
+				var __lt23 int
+				if s.MaxLines == 0 {
+					__lt23 = 0
+				} else {
+					__lt23 = (s.MaxLines + l.GetVerticalFrameSize())
+				}
+				__lt24 = min(RowsOf(s.MaxHeight), __lt23)
+			}
+			__lt25 = __lt24
+		}
+		l = l.MaxHeight(__lt25)
+	}
+	return l
+}
+
+func CellsOf(m__r3 Measurement) int {
+	var px float64 = (m__r3.Px + (16.0 * (m__r3.Em + m__r3.Rem)))
+	var __lt26 int
+	if px <= 0.0 {
+		__lt26 = 0
+	} else {
+		__lt26 = max(1, (int(px) / 8))
+	}
+	return __lt26
 }
 
 func (m *Model) __effect0_enter() {
@@ -579,7 +865,7 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint(((((((((((((((((("go " + fmt.Sprint(m.range__r0)) + " ") + fmt.Sprint(m.chan__r0)) + " ") + fmt.Sprint(m.m__r0)) + " ") + fmt.Sprint(m.cmd__r0)) + " ") + fmt.Sprint(m.object)) + " ") + fmt.Sprint(m.width__r0)) + " ") + m.it.Type) + " ") + fmt.Sprint(m.it.Class)) + " ") + fmt.Sprint(m.mod.N))))
+		part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint(((((((((((((((((("go " + fmt.Sprint(m.range__r0)) + " ") + fmt.Sprint(m.chan__r0)) + " ") + fmt.Sprint(m.m__r0)) + " ") + fmt.Sprint(m.cmd__r0)) + " ") + fmt.Sprint(m.object)) + " ") + fmt.Sprint(m.width__r0)) + " ") + m.it.Type) + " ") + fmt.Sprint(m.it.Class)) + " ") + fmt.Sprint(m.mod.N))))
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		__focusPos1 := 0
@@ -594,7 +880,7 @@ func (m Model) View() tea.View {
 			if part0_1ItemFocused {
 				part0_1ItemPrefix = ">"
 			}
-			part0_1Item = lipgloss.NewStyle().Render(part0_1ItemPrefix + " " + fmt.Sprint(((("w" + fmt.Sprint(r)) + " ") + fmt.Sprint(func() int {
+			part0_1Item = BoxLook(Style{}, true).Render(part0_1ItemPrefix + " " + fmt.Sprint(((("w" + fmt.Sprint(r)) + " ") + fmt.Sprint(func() int {
 				if __v, __ok := m.count__inst0[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
@@ -603,7 +889,7 @@ func (m Model) View() tea.View {
 			__focusPos1++
 			part0_1Items = append(part0_1Items, part0_1Item)
 		}
-		part0_1 = tui.Column(0, part0_1Items...)
+		part0_1 = tui.Spaced(false, lipgloss.Left, 0, part0_1Items...)
 		if part0_1 != "" {
 			part0Children = append(part0Children, part0_1)
 		}
@@ -613,12 +899,13 @@ func (m Model) View() tea.View {
 		if part0_2Focused {
 			part0_2Prefix = ">"
 		}
-		part0_2 = lipgloss.NewStyle().Render(part0_2Prefix + " " + fmt.Sprint("more"))
+		part0_2 = BoxLook(Style{}, true).Render(part0_2Prefix + " " + fmt.Sprint("more"))
 		part0Children = append(part0Children, part0_2)
-		part0 = tui.Column(0, part0Children...)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+		part0 = BoxLook(Style{}, true).Render(part0)
 	}
 	parts = append(parts, part0)
-	content := tui.Column(0, parts...)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -763,6 +1050,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*ModifierInstance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -888,7 +1183,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.go__r0 = widget.NewButton("", nil)
 	m.go__r0.SetText(((((((((((((((((("go " + fmt.Sprint(m.range__r0)) + " ") + fmt.Sprint(m.chan__r0)) + " ") + fmt.Sprint(m.m__r0)) + " ") + fmt.Sprint(m.cmd)) + " ") + fmt.Sprint(m.object)) + " ") + fmt.Sprint(m.width)) + " ") + m.it.Type) + " ") + fmt.Sprint(m.it.Class)) + " ") + fmt.Sprint(m.mod.N)))
 	m.go__r0.OnTapped = m.go__r0_click_handler
@@ -944,6 +1239,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -958,6 +1254,7 @@ func main() {
 	m := New()
 	m.buildWidgetTree()
 	gtk4rt.RunWindows(true)
+	m.__snglTeardown()
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -1085,6 +1382,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*ModifierInstance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -1129,7 +1434,6 @@ func newModifierInstance(__model *Model, __a_label string) *ModifierInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.count = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.count)))
@@ -1290,12 +1594,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier as Modifier_2
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier as Modifier_2
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 
 data class Item(
     var type: String = "",
@@ -1347,15 +1653,15 @@ fun MainScreen() {
                 width = (width + rows.size)
                 it = Item(type = "b", `class` = (it.`class` + 1))
                 mod = Model(n = (mod.n + 1))
-            }, modifier = Modifier_2.testTag("go")) {
+            }, modifier = Modifier_2.testTag("go"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ((((((((((((((((("go " + range.toString()) + " ") + chan.toString()) + " ") + m.toString()) + " ") + cmd.toString()) + " ") + object__r0.toString()) + " ") + width.toString()) + " ") + it.type) + " ") + it.`class`.toString()) + " ") + mod.n.toString()), modifier = Modifier_2)
             }
             for (r in rows) {
-                Modifier(label = ("w" + r.toString()))
+                Modifier(label = ("w" + r.toString()), __ctx_flexShare = { w: Float -> Modifier_2.weight(w).fillMaxWidth() })
             }
             Button(onClick = {
                 (listOf(*rows.toTypedArray(), 3)).let { __v -> rows.clear(); rows.addAll(__v) }
-            }, modifier = Modifier_2) {
+            }, modifier = Modifier_2, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "more", modifier = Modifier_2)
             }
         }
@@ -1363,12 +1669,12 @@ fun MainScreen() {
 }
 
 @Composable
-fun Modifier(label: String = "") {
+fun Modifier(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var count by remember { mutableStateOf(0) }
 
     Button(onClick = {
         count = (count + 1)
-    }, modifier = Modifier_2) {
+    }, modifier = Modifier_2, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ((label + " ") + count.toString()), modifier = Modifier_2)
     }
 }
@@ -1417,6 +1723,15 @@ body { font-family: system-ui, sans-serif; }
   function add(state__r0) {
     state.object = state.object + state__r0;
     __n2.textContent = "go " + String(state.range) + " " + String(state.chan) + " " + String(state.m) + " " + String(state.cmd) + " " + String(state.object) + " " + String(state.width) + " " + state.it.type + " " + String(state.it.class) + " " + String(state.mod.n);
+  }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
   }
   function __cf_modifier(props) {
     const __root = document.createElement("div");
@@ -1539,16 +1854,17 @@ body { font-family: system-ui, sans-serif; }
     __n2.textContent = "go " + String(state.range) + " " + String(state.chan) + " " + String(state.m) + " " + String(state.cmd) + " " + String(state.object) + " " + String(state.width) + " " + state.it.type + " " + String(state.it.class) + " " + String(state.mod.n);
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:83c667b1fc70b7f1c73a3c30c7291ccc
+pass sha256:e21baa647805898fb1c7edd40016d9cb
 -- run/go/fyne --
-pass sha256:473bac07955110454e609094ea9a3ffa
+pass sha256:26865ea3f1d3d0a163f719a18333ecdf
 -- run/go/gtk4 --
-pass sha256:08ce884b99228e191dc4959c8a340abc
+pass sha256:20407f3659c3372ffd0141d1d56c9767
 -- run/kotlin/android --
-pass sha256:1553fb77e44c6941102bb279790ad56c
+pass sha256:a52feb0e778e5b109a6fc70aa3049491
 -- run/none/html --
-pass sha256:47eacef3fb3753dce1b46e0ea3d7f5c2
+pass sha256:8e3b5155f0c8580fee482ff8237de32f

@@ -20,7 +20,7 @@ import (
 // Both sides now ask signalFor, so the signature and the wiring cannot
 // disagree about whether this handler is a trampoline's.
 func TestAComponentEventHandlerKeepsItsPayloadParameter(t *testing.T) {
-	model := generateGTK4Model(t, fixtureSource(t, "type_params_on_components.sngl"))
+	model := generateGTK4ModelBuilt(t, fixtureSource(t, "type_params_on_components.sngl"))
 
 	// `main` is an ordinary component under the window that renders it, and
 	// the window inlines it: one call site, no reactive position, so its state

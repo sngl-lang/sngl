@@ -1,0 +1,54 @@
+# A picture a program keeps in a var of its own, beside the derived value
+# that made it, is retained there: gtk4's `Picture` names `refPicture` as its
+# retain, the stub counts the holder, and when the URL moves on the derived
+# value releases its reference while the var keeps its own. Teardown releases
+# both, and the tracker is left holding nothing.
+
+env PATH=
+
+sngl test --simulate gtk4 app.sngl
+stdout '^ok   2 tests, 0 failures$'
+! stdout 'leak'
+
+-- app.sngl --
+import ui "sngl:ui"
+import gtk4 "sngl:platform/gtk4"
+import "sngl:test"
+
+component page ui.node {
+    var url = "a.png"
+
+    func picture() => gtk4.loadPicture(url)
+
+    var last = picture()
+
+    func next() {
+        last = picture()
+        url = "b.png"
+    }
+
+    ui.vbox {
+        ui.image {
+            gtk4.ImageUrl(url=url, picture=picture)
+        }
+        ui.image {
+            gtk4.ImageUrl(url=url, picture=last)
+        }
+        ui.button(text="next", @click {
+            next()
+        })
+    }
+}
+
+func testKeepsTheLast(t test.Test, c page) {
+    c.next()
+    t.assert(c.url == "b.png")
+}
+
+func testHolds(t test.Test, c page) {
+    t.assert(c.url == "a.png")
+}
+
+ui.window(title="t") {
+    page
+}

@@ -163,6 +163,13 @@ window.__sngl_boot = () => {
     clearInterval(state.handle__inst2__inst0);
   }
   function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
     __effects0_torn = true;
     __effect2_teardown();
     __effect1_teardown();
@@ -543,7 +550,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:e38196fe3fa052a6c4c944948d4e5382
+pass sha256:35e601a3f8aebeff6b9c2abc0f49a143
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
 sha256:07b94d87dc1790b809b468043582016f
 {
@@ -565,7 +572,7 @@ sha256:a6df3ac3b193f778f382ea5602703e37
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:64779c5b7c4aabf6f7202ad104b9dc59
+sha256:f903cf59578fb320cf1c17395355e245
 {
   "results": [
     {

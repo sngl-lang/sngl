@@ -10,23 +10,35 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// A target package's components and overrides are inlined into every program
-// that renders them, so each must be const: written, or inherited from a const
-// base. And being const, each render is held to the const rule, reported where
-// the target wrote it. This is what passInlinePure's strict mode used to find
-// out at lowering, with no position.
+// A target package's own components are inlined into every program that
+// renders them, so each must be const, and a const render is held to the const
+// rule where the target wrote it. An override is a body like a program's: it
+// may hold state, and is held to the rule only where it or its base says
+// const.
 func TestTargetPackageComponentsAreConst(t *testing.T) {
 	for _, tc := range []struct {
 		name, src, want string
 	}{{
-		name: "override not const",
+		name: "override holds state",
 		src: `import sngl "sngl:ui"
 
 component sngl.text[tgtstub.platform] {
-    sngl.vbox {}
+    var count int = 0
+    sngl.vbox {
+        sngl.button(text=string(count), @click { count = count + 1 })
+    }
 }
 `,
-		want: "override sngl.text[tgtstub] in a target package must be const",
+	}, {
+		name: "const override reads state",
+		src: `import sngl "sngl:ui"
+
+const component sngl.text[tgtstub.platform] {
+    var count int = 0
+    sngl.button(text=string(count))
+}
+`,
+		want: `const component sngl.text[tgtstub] renders var "count"`,
 	}, {
 		name: "component not const",
 		src: `import sngl "sngl:ui"

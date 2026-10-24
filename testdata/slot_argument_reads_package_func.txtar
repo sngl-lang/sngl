@@ -60,10 +60,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -99,6 +161,150 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func Twice(n int) int {
 	return (n * 2)
+}
+
+func RowsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
+	} else {
+		__lt8 = max(1, (int(px) / 8))
+	}
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m Model) Depth() int {
@@ -169,12 +375,13 @@ func (m Model) View() tea.View {
 		var content_0 string
 		content_0_label := func(d int) string {
 			var result string
-			result = lipgloss.NewStyle().Render(fmt.Sprint(("level " + fmt.Sprint(d))))
+			result = BoxLook(Style{}, true).Render(fmt.Sprint(("level " + fmt.Sprint(d))))
 			return result
 		}
 		content_0 = m.renderFrame(m.depth, 0, content_0_label)
 		contentChildren = append(contentChildren, content_0)
-		content = tui.Column(0, contentChildren...)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -206,7 +413,8 @@ func (m Model) renderFrame(n int, __depth int, label func(int) string) string {
 	if result_1 != "" {
 		resultChildren = append(resultChildren, result_1)
 	}
-	result = tui.Column(0, resultChildren...)
+	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
+	result = BoxLook(Style{}, true).Render(result)
 	return result
 }
 
@@ -292,7 +500,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
 	m.__n3 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n3__el = m.__n3.Root
 	m.__n8.Add(m.__n3__el)
@@ -330,7 +538,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n5 = container.NewVBox()
+	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__n5.Add(c.__n0)
@@ -441,7 +649,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__n7 = container.NewVBox()
+	c.__n7 = fynelayout.NewVBox()
 	c.__n1 = widget.NewLabel("")
 	c.__n1.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__n7.Add(c.__n1)
@@ -609,7 +817,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__model = __model
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
@@ -619,7 +826,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
 	c.__renderSlot0(c.__n5)
@@ -630,7 +837,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 
 func (c *Frame__slot2Instance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__renderSlot0(c.__n5)
 }
 
@@ -738,7 +945,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__model = __model
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
@@ -748,7 +954,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n7, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n7, 6)
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(c.__n7, c.__n1)
 	c.__renderSlot1(c.__n7)
@@ -759,7 +965,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 
 func (c *Frame__slot0Instance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__renderSlot1(c.__n7)
 }
 
@@ -900,10 +1106,12 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -930,21 +1138,21 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Frame(n = depth, __depth = 0, label = { d ->
-                Text(text = ("level " + d.toString()), modifier = Modifier)
+            Frame(n = depth, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = 0, label = { d ->
+                Text(text = ("level " + d.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
         }
     }
 }
 
 @Composable
-fun Frame(n: Int = 0, __depth: Int = 0, label: (@Composable (Int) -> Unit)? = null) {
+fun Frame(n: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0, label: (@Composable (Int) -> Unit)? = null) {
     Column(modifier = Modifier) {
         label?.invoke(twice(n))
         if ((n > 0)) {
             if ((__depth >= 512)) {
             } else {
-                Frame(n = (n - 1), __depth = (__depth + 1), label = { d ->
+                Frame(n = (n - 1), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = (__depth + 1), label = { d ->
                     label?.invoke(d)
                 })
             }
@@ -1204,12 +1412,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7963174a5d0787b0fab3f7987a533a5b
+pass sha256:d2c49c2eb1875b0286297e622f979932
 -- run/go/fyne --
-pass sha256:d8172d14b4dd77413404a732aacac4c9
+pass sha256:35f386c4a440a13fdb91afdc0d8dfafe
 -- run/go/gtk4 --
-pass sha256:999ad97f80db1e91ef56f6102f07cb9c
+pass sha256:291ac5b939d017d3b49fe7090ee7a6be
 -- run/kotlin/android --
-pass sha256:658b249c8a045e2fe5609ea41b22efb8
+pass sha256:c364f7c8bbd237f4b5bdf9faa88152b3
 -- run/none/html --
 pass sha256:91ec817c8621a39e10d5e8a019f07125

@@ -47,7 +47,7 @@ func testAMethodsAnswerIsAReceiver(t test.Test, c host) {
     t.assert(c.g.loud().map(func(s string) => string.length(s)).join(",") == "2,2")
 }
 -- testrun/android/kotlin/app.sngl/host/1 --
-sha256:7926758e8b6a4b0ce28e07dfb9aa8d9c
+sha256:ef860aeab8262897aa99f750db9fdb0e
 {
   "results": [
     {
@@ -57,7 +57,7 @@ sha256:7926758e8b6a4b0ce28e07dfb9aa8d9c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/host/1 --
-sha256:c1bff606c8c26550741cc54eedc5416a
+sha256:54602d1c22386bc42f16e1ee6144188d
 {
   "results": [
     {
@@ -67,7 +67,7 @@ sha256:c1bff606c8c26550741cc54eedc5416a
   ]
 }
 -- testrun/fyne/go/app.sngl/host/1 --
-sha256:6433282985bc97f13a3041600aa9459d
+sha256:8becb751935b8e67b07e9bcd923e2b6e
 {
   "results": [
     {
@@ -77,7 +77,7 @@ sha256:6433282985bc97f13a3041600aa9459d
   ]
 }
 -- testrun/gtk4/go/app.sngl/host/1 --
-sha256:a4cdd2447142ba6da0f52962a0968609
+sha256:21d51868d4ac885781b362ea3ee14a6d
 {
   "results": [
     {

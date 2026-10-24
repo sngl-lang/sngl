@@ -53,11 +53,12 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -87,9 +88,9 @@ fun MainScreen() {
 })
             }
             Checkbox(checked = true, onCheckedChange = null)
-            Text(text = log__inst0, modifier = Modifier)
+            Text(text = log__inst0, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:128698068d5547acb1aa1b0ab4e8cb4c
+pass sha256:ed76882ba7feab82f257d4c9eff81404

@@ -159,6 +159,11 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	if len(args) != len(fn.Params) {
 		return nil, false
 	}
+	for i, a := range args {
+		if s, ok := a.(*interp.Struct); ok {
+			completeStruct(s, expectedStructDef(fn.Params[i].Type), ctx)
+		}
+	}
 	// A body that reads the host is a producer: stored, gated, recorded.
 	if ctx != nil && ctx.host != nil && reachesHost(fn, ctx.hostMemo) {
 		return ctx.produce(fn, args)
@@ -200,6 +205,7 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 // stdlib wrappers, and the evalCall purity gate rejects them on that.
 func bodyUsesNativeCall(fn *ir.Func) bool {
 	var hasNative bool
+	seen := map[*ir.Func]bool{fn: true}
 	var walkExpr func(e ir.Expr)
 	var walkStmt func(s ir.Stmt)
 	walkExpr = func(e ir.Expr) {
@@ -207,6 +213,13 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			return
 		}
 		switch x := e.(type) {
+		case *ir.Ident:
+			// A host value -- Compose's `Alignment.Top` -- is the target's,
+			// and the interpreter reads it as nil, which folded a const func
+			// returning one to null.
+			if v, ok := x.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
+				hasNative = true
+			}
 		case *ir.Call:
 			// Whatever declared it: an unresolved scheme import (no Func), a
 			// foreign path, or a native mark. The path test alone missed the
@@ -218,6 +231,10 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			// Compose shape became `drawRect(color = null, ...)`, which is no
 			// Kotlin that compiles.
 			if x.Func == nil || x.Func.Foreign.Path != "" || isUnfoldableNative(x.Func) {
+				hasNative = true
+				return
+			}
+			if calleeCallsNative(x.Func, seen) {
 				hasNative = true
 				return
 			}
@@ -494,4 +511,33 @@ func unitValueExpr(amounts map[string]float64, typ *ir.Type) ir.Expr {
 		return &ir.Literal{Type: typ, Value: "0", Suffix: bases[0].Name}
 	}
 	return sum
+}
+
+// calleeCallsNative reports whether f's body, or a body it calls, calls a
+// declared native. A call there with no Func is through a value, which the
+// caller's own walk answers for where the value is written.
+func calleeCallsNative(f *ir.Func, seen map[*ir.Func]bool) bool {
+	if seen[f] || !hasWrittenBody(f) {
+		return false
+	}
+	seen[f] = true
+	found := false
+	_ = ir.Walk(f.Block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		c, ok := n.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		if c.Func.Foreign.Path != "" || isUnfoldableNative(c.Func) || calleeCallsNative(c.Func, seen) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

@@ -57,10 +57,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -115,6 +177,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt0 int
+		if s.MaxLines == 0 {
+			__lt0 = 0
+		} else {
+			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
+		} else {
+			__lt3 = lipgloss.NormalBorder()
+		}
+		__lt2 = __lt3
+	}
+	return __lt2
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
+	} else {
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
+		} else {
+			__lt4 = all
+		}
+		__lt5 = __lt4
+	}
+	return CellsOf(__lt5)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt6 int
+	if px <= 0.0 {
+		__lt6 = 0
+	} else {
+		__lt6 = max(1, (int(px) / 8))
+	}
+	return __lt6
+}
+
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
+	} else {
+		__lt7 = max(1, (int(px) / 16))
+	}
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __effect0_enter() {
@@ -353,21 +559,21 @@ func (m Model) View() tea.View {
 			if part0Part_0ItemFocused {
 				part0Part_0ItemPrefix = ">"
 			}
-			part0Part_0Item = lipgloss.NewStyle().Render(part0Part_0ItemPrefix + " " + fmt.Sprint(n))
+			part0Part_0Item = BoxLook(Style{}, true).Render(part0Part_0ItemPrefix + " " + fmt.Sprint(n))
 			__focusPos0++
 			part0Part_0Items = append(part0Part_0Items, part0Part_0Item)
 		}
-		part0Part_0 = tui.Column(0, part0Part_0Items...)
+		part0Part_0 = tui.Spaced(false, lipgloss.Left, 0, part0Part_0Items...)
 		if part0Part_0 != "" {
 			part0Parts = append(part0Parts, part0Part_0)
 		}
 		var part0Part_1 string
-		part0Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
+		part0Part_1 = BoxLook(Style{}, true).Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
 		part0Parts = append(part0Parts, part0Part_1)
-		part0 = tui.Column(0, part0Parts...)
+		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
 	}
 	parts = append(parts, part0)
-	content := tui.Column(0, parts...)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -488,6 +694,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*CardInstance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -593,6 +807,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -607,6 +822,7 @@ func main() {
 	m := New()
 	m.buildWidgetTree()
 	gtk4rt.RunWindows(true)
+	m.__snglTeardown()
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from event_params_instance.sngl; DO NOT EDIT.
@@ -675,9 +891,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						__n3 = m.__inst0_live[__inst0_i]
 						__n3.SetPick(func(i int, l string) {
 							m.at__inst0 = i
-							gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 							m.picked__inst0 = l
-							gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 						})
 						__n3.SetLabel(n)
 					} else {
@@ -686,9 +902,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						}
 						__n3__new := newCardInstance(m, n, func(i int, l string) {
 							m.at__inst0 = i
-							gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 							m.picked__inst0 = l
-							gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 						})
 						__n3 = __n3__new
 					}
@@ -708,6 +924,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 		}()
 	}
+}
+
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*CardInstance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -737,7 +961,6 @@ func newCardInstance(__model *Model, __a_label string, __a_pick func(int, string
 	c.__prop_label = __a_label
 	c.__prop_pick = __a_pick
 	c.clicks = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_label)
@@ -812,7 +1035,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__renderSlot0(m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+	gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	gtk4rt.AppAttach(m.__n1)
@@ -845,6 +1068,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { picked__inst0: "", at__inst0: 0, names__inst0: ["a", "b"], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf_card(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -965,14 +1197,15 @@ body { font-family: system-ui, sans-serif; }
     __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f329734e402c3aaf9a67aa0abeea82fb
+pass sha256:ade42ff091ac89cd03d09fd836260a06
 -- run/go/fyne --
-pass sha256:492291474da3f75c23358de8d2cb3fbb
+pass sha256:6a33394bd44d05815d1a2b95d62a3b6b
 -- run/go/gtk4 --
-pass sha256:7b2dca0614f04df737b40a93c10ce4dd
+pass sha256:7f9f2e6998737539245a6c198af7c083
 -- run/none/html --
-pass sha256:e98c139b9c34a8c50f33807d5d2df132
+pass sha256:ece199ae46ec94988362e5d7c5e1c2bb

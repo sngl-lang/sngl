@@ -25,7 +25,7 @@ component NavGroup(title = "", href = "", children ...component) node {
         }
     } else {
         vbox(style={gap=2px, paddingTop=8px}) {
-            text(value=title, style={fontWeight=bold, fontSize=14px, paddingY=4px, paddingX=8px, color="#666"})
+            text(value=title, style={fontWeight=bold, fontSize=14px, paddingY=4px, paddingX=8px, color=#666})
             vbox(style={gap=1px, paddingLeft=8px}) {
                 children
             }

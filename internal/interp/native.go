@@ -13,9 +13,9 @@ func isCNative(fn *ir.Func) bool {
 }
 
 // callCNative stubs a call of a C function. The result is the zero value of
-// its type, or a fresh handle where the type is owned; a #[moves] argument is
-// the native's from here, and a #[retains] one may not be released until the
-// lifetime making the call ends.
+// its type, or a fresh handle where the type is owned, or the argument itself
+// for a type's retain; a #[moves] argument is the native's from here, and a
+// #[retains] one may not be released until the lifetime making the call ends.
 func (env *Env) callCNative(call *ir.Call) (any, error) {
 	fn := call.Func
 	values, err := env.evalCallArgs(call.Args)
@@ -33,6 +33,9 @@ func (env *Env) callCNative(call *ir.Call) (any, error) {
 	if ir.IsRelease(fn) {
 		return env.releaseCall(fn, args, func() (any, error) { return nil, nil })
 	}
+	if ir.IsRetain(fn) {
+		return env.retainCall(fn, args, func() (any, error) { return args[0], nil })
+	}
 	h := env.owned()
 	for i, p := range fn.Params {
 		if hd := handleOf(args[i]); hd != nil {
@@ -40,7 +43,7 @@ func (env *Env) callCNative(call *ir.Call) (any, error) {
 			case ir.TransferMoves:
 				h.move(hd)
 			case ir.TransferRetains:
-				h.retain(hd)
+				h.retain(hd, env.instance())
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -249,10 +250,15 @@ func styleValueJS(sd *ir.StructDef, helpers map[string]bool) string {
 		}
 	}
 	var b strings.Builder
+	fields := slices.Clone(sd.Fields)
+	slices.SortStableFunc(fields, func(a, b *ir.StructField) int {
+		return htmlutil.CascadeRank(a.Name) - htmlutil.CascadeRank(b.Name)
+	})
 	fmt.Fprintf(&b, "function %s(s) {\n  const d = [];\n", styleValueHelper)
-	for _, f := range sd.Fields {
+	for _, f := range fields {
 		for _, d := range htmlutil.StylePropDecls(f.Name) {
-			cond := "s." + f.Name + " != null"
+			var cond strings.Builder
+			cond.WriteString("s." + f.Name + " != null")
 			var val string
 			switch {
 			case d.Dynamic:
@@ -263,13 +269,18 @@ func styleValueJS(sd *ir.StructDef, helpers map[string]bool) string {
 				} else {
 					val += "s." + f.Name
 				}
+			case f.Name == "borderWidth" && d.Name == "border-style":
+				for _, l := range htmlutil.BorderLineFields {
+					cond.WriteString(" && s." + l + " == null")
+				}
+				val = strconv.Quote(d.Name + ":" + d.Value)
 			case named[d.Name] != "":
-				cond += " && s." + named[d.Name] + " == null"
+				cond.WriteString(" && s." + named[d.Name] + " == null")
 				val = strconv.Quote(d.Name + ":" + d.Value)
 			default:
 				val = strconv.Quote(d.Name + ":" + d.Value)
 			}
-			fmt.Fprintf(&b, "  if (%s) d.push(%s);\n", cond, val)
+			fmt.Fprintf(&b, "  if (%s) d.push(%s);\n", cond.String(), val)
 		}
 	}
 	b.WriteString("  return d.join(\";\");\n}\n")

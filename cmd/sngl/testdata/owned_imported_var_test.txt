@@ -1,0 +1,45 @@
+# An imported package's var is bound once when the program starts, so a read
+# is of the one value and an assignment to it is an overwrite: the old value
+# is released, and the last one at teardown. The interpreter used to refuse
+# the assignment ("cannot assign to undefined variable") and re-evaluate the
+# initializer at every read, allocating a value nothing released, which kept
+# testdata/owned_imported_var.txtar a golden with no run beside it.
+
+sngl test app.sngl
+stdout '^--- PASS: /testReopens '
+stdout '^ok   1 tests, 0 failures$'
+! stdout 'leak'
+
+-- app.sngl --
+import p "./p"
+import "sngl:test"
+
+func testReopens(t test.Test) {
+    t.assert(p.current() == 9)
+    p.reopen(10)
+    t.assert(p.current() == 10)
+    t.assert(p.closed == [9])
+}
+-- p/p.sngl --
+import macro "sngl:macro"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) => file{fd=fd}
+
+var cache = open(9)
+
+func reopen(fd int) {
+    cache = open(fd)
+}
+
+func current() => cache.fd

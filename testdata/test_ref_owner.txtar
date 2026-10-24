@@ -79,10 +79,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -147,6 +209,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func RowsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
+	} else {
+		__lt8 = max(1, (int(px) / 8))
+	}
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __effect0_enter() {
@@ -514,7 +720,7 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("s"))
+	part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint("s"))
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	part0_1Focused := (m.__focusID == 1)
@@ -522,7 +728,7 @@ func (m Model) View() tea.View {
 	if part0_1Focused {
 		part0_1Prefix = ">"
 	}
-	part0_1 = lipgloss.NewStyle().Render(part0_1Prefix + " " + fmt.Sprint("o"))
+	part0_1 = BoxLook(Style{}, true).Render(part0_1Prefix + " " + fmt.Sprint("o"))
 	part0Children = append(part0Children, part0_1)
 	var part0_2 string
 	if m.other {
@@ -536,7 +742,7 @@ func (m Model) View() tea.View {
 			if part0_2_0Part_0Focused {
 				part0_2_0Part_0Prefix = ">"
 			}
-			part0_2_0Part_0 = lipgloss.NewStyle().Render(part0_2_0Part_0Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
+			part0_2_0Part_0 = BoxLook(Style{}, true).Render(part0_2_0Part_0Prefix + " " + fmt.Sprint(("p" + fmt.Sprint(m.hits__inst1))))
 			part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_0)
 			var part0_2_0Part_1 string
 			part0_2_0Part_1Focused := (m.__focusID == 3)
@@ -544,14 +750,15 @@ func (m Model) View() tea.View {
 			if part0_2_0Part_1Focused {
 				part0_2_0Part_1Prefix = ">"
 			}
-			part0_2_0Part_1 = lipgloss.NewStyle().Render(part0_2_0Part_1Prefix + " " + fmt.Sprint(("pk" + fmt.Sprint(m.ph__inst0))))
+			part0_2_0Part_1 = BoxLook(Style{}, true).Render(part0_2_0Part_1Prefix + " " + fmt.Sprint(("pk" + fmt.Sprint(m.ph__inst0))))
 			part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_1)
-			part0_2_0 = tui.Column(0, part0_2_0Parts...)
+			part0_2_0 = tui.Spaced(false, lipgloss.Left, 0, part0_2_0Parts...)
 		}
 		if part0_2_0 != "" {
 			part0_2Children = append(part0_2Children, part0_2_0)
 		}
-		part0_2 = tui.Column(0, part0_2Children...)
+		part0_2 = lipgloss.JoinVertical(lipgloss.Left, part0_2Children...)
+		part0_2 = BoxLook(Style{}, true).Render(part0_2)
 	}
 	if part0_2 != "" {
 		part0Children = append(part0Children, part0_2)
@@ -565,7 +772,7 @@ func (m Model) View() tea.View {
 		if part0_3Part_0Focused {
 			part0_3Part_0Prefix = ">"
 		}
-		part0_3Part_0 = lipgloss.NewStyle().Render(part0_3Part_0Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
+		part0_3Part_0 = BoxLook(Style{}, true).Render(part0_3Part_0Prefix + " " + fmt.Sprint(("m" + fmt.Sprint(m.hits__inst0))))
 		part0_3Parts = append(part0_3Parts, part0_3Part_0)
 		var part0_3Part_1 string
 		part0_3Part_1Focused := (m.__focusID == 5)
@@ -573,16 +780,17 @@ func (m Model) View() tea.View {
 		if part0_3Part_1Focused {
 			part0_3Part_1Prefix = ">"
 		}
-		part0_3Part_1 = lipgloss.NewStyle().Render(part0_3Part_1Prefix + " " + fmt.Sprint(("mk" + fmt.Sprint(m.mh))))
+		part0_3Part_1 = BoxLook(Style{}, true).Render(part0_3Part_1Prefix + " " + fmt.Sprint(("mk" + fmt.Sprint(m.mh))))
 		part0_3Parts = append(part0_3Parts, part0_3Part_1)
-		part0_3 = tui.Column(0, part0_3Parts...)
+		part0_3 = tui.Spaced(false, lipgloss.Left, 0, part0_3Parts...)
 	}
 	if part0_3 != "" {
 		part0Children = append(part0Children, part0_3)
 	}
-	part0 = tui.Column(0, part0Children...)
+	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = BoxLook(Style{}, true).Render(part0)
 	parts = append(parts, part0)
-	content := tui.Column(0, parts...)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -816,6 +1024,24 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst4_live_di, _ := range m.__inst4_live {
+		var __inst4_live_dj int = ((len(m.__inst4_live) - 1) - __inst4_live_di)
+		m.__inst4_live[__inst4_live_dj].Destroy()
+	}
+	m.__inst4_live = []*__child1Instance{}
+	for __inst3_live_di, _ := range m.__inst3_live {
+		var __inst3_live_dj int = ((len(m.__inst3_live) - 1) - __inst3_live_di)
+		m.__inst3_live[__inst3_live_dj].Destroy()
+	}
+	m.__inst3_live = []*BadgeInstance{}
+	for __inst2_live_di, _ := range m.__inst2_live {
+		var __inst2_live_dj int = ((len(m.__inst2_live) - 1) - __inst2_live_di)
+		m.__inst2_live[__inst2_live_dj].Destroy()
+	}
+	m.__inst2_live = []*PanelInstance{}
+}
+
 func (m *Model) ts_click_handler() {
 	m.shown = !m.shown
 	m.__renderSlot2(m.__n4)
@@ -892,7 +1118,7 @@ func (m *Model) SetMh(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
+	m.__n4 = fynelayout.NewVBox()
 	m.ts = widget.NewButton("", nil)
 	m.ts.SetText("s")
 	m.ts.OnTapped = m.ts_click_handler
@@ -982,7 +1208,7 @@ func newPanelInstance(__model *Model) *PanelInstance {
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
-	__n1 := container.NewVBox()
+	__n1 := fynelayout.NewVBox()
 	c.__renderSlot0(__n1)
 	c.Root = __n1
 	return c
@@ -1189,6 +1415,7 @@ func main() {
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(480, 640))
 	w.ShowAndRun()
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/fyne/model_test.go --
@@ -1229,9 +1456,14 @@ package main
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
+	var m *Model
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
+		m = New()
+		return m.BuildUI(app)
 	})
+	if m != nil {
+		m.__snglTeardown()
+	}
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -1427,6 +1659,24 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst4_live_di, _ := range m.__inst4_live {
+		var __inst4_live_dj int = ((len(m.__inst4_live) - 1) - __inst4_live_di)
+		m.__inst4_live[__inst4_live_dj].Destroy()
+	}
+	m.__inst4_live = []*__child1Instance{}
+	for __inst3_live_di, _ := range m.__inst3_live {
+		var __inst3_live_dj int = ((len(m.__inst3_live) - 1) - __inst3_live_di)
+		m.__inst3_live[__inst3_live_dj].Destroy()
+	}
+	m.__inst3_live = []*BadgeInstance{}
+	for __inst2_live_di, _ := range m.__inst2_live {
+		var __inst2_live_dj int = ((len(m.__inst2_live) - 1) - __inst2_live_di)
+		m.__inst2_live[__inst2_live_dj].Destroy()
+	}
+	m.__inst2_live = []*PanelInstance{}
+}
+
 func (m *Model) ts_clicked_handler() {
 	m.shown = !m.shown
 	m.__renderSlot2(m.__n4)
@@ -1458,7 +1708,6 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.hits = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -1519,7 +1768,6 @@ func newPanelInstance(__model *Model) *PanelInstance {
 	c.__model = __model
 	c.on = true
 	c.ph = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*BadgeInstance{}
 	c.__inst1_live = []*__child0Instance{}
@@ -1672,7 +1920,6 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -1733,7 +1980,6 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -1865,6 +2111,8 @@ func (m *Model) kPresent() bool {
 package test.sngl.app
 
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -1872,12 +2120,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1889,6 +2138,7 @@ val SnglPresent = mutableStateMapOf<Any, String>()
 
 class MainScreenState {
     init { SnglPresent.clear() }
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var shown by mutableStateOf(true)
     var other by mutableStateOf(false)
     var mh by mutableStateOf(0)
@@ -1901,22 +2151,22 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             state.shown = !state.shown
-        }, modifier = Modifier.testTag("ts")) {
+        }, modifier = Modifier.testTag("ts"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "s", modifier = Modifier)
         }
         Button(onClick = {
             state.other = !state.other
-        }, modifier = Modifier.testTag("to")) {
+        }, modifier = Modifier.testTag("to"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "o", modifier = Modifier)
         }
         if (state.other) {
-            Panel()
+            Panel(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
         }
         if (state.shown) {
-            Badge(label = "m")
+            Badge(label = "m", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             Button(onClick = {
                 state.mh = (state.mh + 1)
-            }, modifier = Modifier.testTag("k")) {
+            }, modifier = Modifier.testTag("k"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ("mk" + state.mh.toString()), modifier = Modifier)
             }
         }
@@ -1924,27 +2174,27 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun Badge(label: String = "") {
+fun Badge(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = Modifier.testTag("hit")) {
+    }, modifier = Modifier.testTag("hit"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = (label + hits.toString()), modifier = Modifier)
     }
 }
 
 @Composable
-fun Panel() {
+fun Panel(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var on by remember { mutableStateOf(true) }
     var ph by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier) {
         if (on) {
-            Badge(label = "p")
+            Badge(label = "p", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             Button(onClick = {
                 ph = (ph + 1)
-            }, modifier = Modifier.testTag("k__own0")) {
+            }, modifier = Modifier.testTag("k__own0"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ("pk" + ph.toString()), modifier = Modifier)
             }
         }
@@ -2072,6 +2322,32 @@ window.__sngl_boot = () => {
   state.kPresent = () => document.querySelector('[data-sngl-id="k"], [data-sngl-instance="k"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
+  }
+  function __snglTeardown() {
+    for (const [__inst7_live_di, _] of __inst7_live.entries()) {
+      ;
+      let __inst7_live_dj = __inst7_live.length - 1 - __inst7_live_di;
+      __inst7_live[__inst7_live_dj].__destroy();
+    }
+    ;
+    __inst7_live = [];
+    for (const [__inst6_live_di, _] of __inst6_live.entries()) {
+      ;
+      let __inst6_live_dj = __inst6_live.length - 1 - __inst6_live_di;
+      __inst6_live[__inst6_live_dj].__destroy();
+    }
+    ;
+    __inst6_live = [];
+    for (const [__inst4_live_di, _] of __inst4_live.entries()) {
+      ;
+      let __inst4_live_dj = __inst4_live.length - 1 - __inst4_live_di;
+      __inst4_live[__inst4_live_dj].__destroy();
+    }
+    ;
+    __inst4_live = [];
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { __snglTeardown });
   }
   function __cf_badge(props) {
     const __root = document.createElement("div");
@@ -2225,7 +2501,7 @@ window.__sngl_boot = () => {
         }
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst2_live_di, _] of __inst2_live.entries()) {
         let __inst2_live_dj = __inst2_live.length - 1 - __inst2_live_di;
         __inst2_live[__inst2_live_dj].__destroy();
@@ -2247,7 +2523,7 @@ window.__sngl_boot = () => {
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       }
     };
   }
@@ -2518,18 +2794,19 @@ window.__sngl_boot = () => {
     state.other = !state.other;
     __renderSlot1(__slotAnchor_1);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:aff7f334ce9f130120d1fa54be6516aa
+pass sha256:b8f0c009823b602ab1a4fd0dc1dacceb
 -- run/go/fyne --
-pass sha256:beac13175327dd712df67e65ba4a0b14
+pass sha256:e1b9b462b0e4813636a7f30f6017f65e
 -- run/go/gtk4 --
-pass sha256:e63d0caa427a542da6944438d21db489
+pass sha256:a4476f190130bf91a96b05033fdda905
 -- run/kotlin/android --
-pass sha256:132a7ec51c8e6efca2fae7780f9302b2
+pass sha256:b0b741b8d3e37c1fb77081019338c177
 -- run/none/html --
-pass sha256:19bee5f6330d2c7abc1c75cf77484a0a
+pass sha256:c21c03f09b43d0995b3dd79855dab579

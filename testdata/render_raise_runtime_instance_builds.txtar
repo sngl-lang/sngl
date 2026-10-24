@@ -152,6 +152,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*RowInstance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -233,6 +241,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/none/html/index.html --
@@ -261,6 +270,15 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
     return "n" + String(n);
+  }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
   }
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -361,10 +379,11 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:1079c639756d891a2512ca94f0476aa4
+pass sha256:7c49c20a21da3ba424df915c65fa263f
 -- run/none/html --
-pass sha256:ab0aa72afd8971fb5eb9cc8b9cb502e6
+pass sha256:e3d1d48c0e12487ae0e33a41f1947a04

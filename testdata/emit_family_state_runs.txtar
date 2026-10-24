@@ -521,7 +521,7 @@ func (m *Model) __bar_members() []Entry {
 		__members = append(__members, Entry{Full: w, Color: __lt1, Click: func(__e0 int) {
 			func(button int) {
 				m.n = (i + button)
-				gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+				gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 				m.__effects0_settle()
 			}(__e0)
 		}})
@@ -648,7 +648,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -662,6 +662,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:001b7c925736c973f7d06308fbc258e9
+pass sha256:c10ff28607424c4b609cfb6abbdf69ee
 -- run/go/gtk4 --
-pass sha256:047c465d7cd086684d4198ecdda6f444
+pass sha256:eacd28b9efafa363348c38dddf8138e8

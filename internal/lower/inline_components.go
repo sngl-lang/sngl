@@ -936,8 +936,28 @@ type reactiveCtx struct {
 // state is its own -- its vars, or a lifetime it holds, whose handle and key
 // one splice would share between the copies -- or a library component's it
 // would splice, which nothing builds at run time in its place.
-func (rc reactiveCtx) perCopy(c *ir.Component) bool {
-	return rc.in || rc.repeated && (len(c.Vars) > 0 || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts))
+func (rc reactiveCtx) perCopy(n *ir.NodeInst) bool {
+	c := n.Component
+	return rc.in || rc.repeated && c != nil && (ownsState(n) || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts))
+}
+
+// ownsState reports whether n's component keeps state of its own there. A
+// context's var does only where the value n is handed cannot be read twice,
+// since a splice reads a rereadable one in its place.
+func ownsState(n *ir.NodeInst) bool {
+	if n.Component == nil {
+		return false
+	}
+	return slices.ContainsFunc(n.Component.Vars, func(v *ir.Var) bool {
+		if !v.Provided {
+			return true
+		}
+		val := v.Init
+		if i := slices.IndexFunc(n.Props, func(a ir.Arg) bool { return a.Name == v.Name }); i >= 0 {
+			val = n.Props[i].Value
+		}
+		return !rereadable(val)
+	})
 }
 
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
@@ -1013,7 +1033,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			}
 			return spliced, true, nil
 		}
-		if st.captureOnly != nil && st.captureOnly[n.Component] && rc.perCopy(n.Component) {
+		if st.captureOnly != nil && st.captureOnly[n.Component] && rc.perCopy(n) {
 			where := "inside a reactive if or for"
 			if !rc.in {
 				where = "inside a for and declares state of its own"
@@ -1030,7 +1050,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		// Nor does its focus order reach a render function of the Model, so a
 		// component rendering a focus stop is spliced too.
-		if !st.instanceState && st.captureOnly == nil && n.Component != nil && rc.perCopy(n.Component) && !st.cycles[n.Component] && st.inlinable(n.Component) && rendersFocusStop(n.Component, map[*ir.Component]bool{}) {
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && rc.perCopy(n) && !st.cycles[n.Component] && st.inlinable(n.Component) && rendersFocusStop(n.Component, map[*ir.Component]bool{}) {
 			return st.expandPerCopy(n, rc)
 		}
 		// A library declaration with no state of its own is spliced even here:
@@ -1040,7 +1060,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// -- `ui.window`, whose methods keep passInlinePure off it, composed
 		// under a reactive `if` on bubbletea, where the implicit-state wrapper
 		// around it was spliced per copy.
-		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.PkgPath() != "" && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Stmts) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if rc.perCopy(n) && st.captureOnly == nil && n.Component != nil && n.Component.PkgPath() != "" && !ownsState(n) && !holdsLifetime(n.Component.Stmts) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
@@ -1056,10 +1076,10 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// second mount, so the first schedule can never be stopped. That a
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
-		if rc.drawn && st.captureOnly == nil && n.Component != nil && rc.perCopy(n.Component) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if rc.drawn && st.captureOnly == nil && n.Component != nil && rc.perCopy(n) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			return st.expandPerCopy(n, rc)
 		}
-		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
+		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n) || st.cycles[n.Component]) {
 			if err := st.instantiateRuntime(n); err != nil {
 				return nil, false, err
 			}
@@ -1331,19 +1351,16 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Apply renames to every hoisted block.
 	for i := varStart; i < len(*hoist.vars); i++ {
 		if (*hoist.vars)[i].Init != nil {
-			(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 			(*hoist.vars)[i].Init = renameInExpr((*hoist.vars)[i].Init, renames, symRenames)
 		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
-		fn.Block = substituteVars(fn.Block, provided)
 		fn.Block = renameIdents(fn.Block, renames, symRenames)
 		fn.Reads = renameVarList(fn.Reads, symRenames)
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
-	body := substituteVars(splicedBody(comp, typeArgs), provided)
-	body = renameIdents(body, renames, symRenames)
+	body := renameIdents(splicedBody(comp, typeArgs), renames, symRenames)
 
 	bindings := map[string]ir.Expr{}
 	for _, p := range comp.Props {
@@ -1376,12 +1393,17 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := varStart; i < len(*hoist.vars); i++ {
 		(*hoist.vars)[i].Init = answerSlotEmptyIn((*hoist.vars)[i].Init, n)
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
+		(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
 		fn.Block = substituteParams(fn.Block, bindings)
 		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
+		fn.Block = substituteVars(fn.Block, provided)
 	}
+	// After the props, as passInlinePure does: a provided value is the
+	// caller's expression.
+	body = substituteVars(body, provided)
 	// The caller's handlers land inside the body's own, so a parameter of the
 	// body's sharing a name they read is renamed first (freshenShadowingParams).
 	body = freshenShadowingParams(body, callsiteNames(n), st.names)
@@ -1403,8 +1425,16 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	if comp.PkgPath() != "" {
 		ir.AttachNodeSite(body, n)
 	}
+	// An override's body renders the node the id names, as passInlinePure
+	// splices one; an override reading a context is spliced here instead.
+	override := comp.PkgPath() != "" && comp.SpecializedFor != ""
+	if override && n.ID != "" {
+		if was, ok := ir.AttachNodeIDFrom(body, n.ID, n.Handle); ok && was != "" && was != n.ID {
+			followTestNodeID(st.pkg, was, n.ID)
+		}
+	}
 	instances := n.Instances
-	if n.ID != "" {
+	if n.ID != "" && !override {
 		instances = append(slices.Clip(instances), n.ID)
 	}
 	if len(instances) > 0 {

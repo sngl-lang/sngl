@@ -39,7 +39,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <span style="padding:8px">base</span>
-<span style="gap:4px;padding:8px">card</span>
+<span style="padding:8px;gap:4px">card</span>
 
 <script>
 (() => {
@@ -49,4 +49,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:adb876471a3da10f2ab5b3ca42d743f5
+pass sha256:ce6928325cb868e5e4fd8ae7e5b8d8a6

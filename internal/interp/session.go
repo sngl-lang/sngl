@@ -340,5 +340,8 @@ func PrepareFor(pkg *ir.Package, platform string) (*ir.Package, error) {
 	if err := lower.OwnedState(pkg); err != nil {
 		return pkg, err
 	}
+	if err := lower.ConditionalTemps(pkg); err != nil {
+		return pkg, err
+	}
 	return pkg, lower.ReleaseTemps(pkg)
 }

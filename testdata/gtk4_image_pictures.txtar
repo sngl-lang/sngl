@@ -464,6 +464,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__remote_state1Instance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -494,7 +499,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					})
 					gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(__n3)), func() {
 					})
-					gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r0 string) {
+					gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r2 string) {
 					})
 					var __n4 *__remote_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
@@ -539,7 +544,7 @@ func (m *Model) __n6_click_handler() {
 func (m *Model) __n6_load_handler() {
 }
 
-func (m *Model) __n6_failed_handler(m__r0 string) {
+func (m *Model) __n6_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n8_clicked_handler() {
@@ -596,7 +601,6 @@ func new__remote_state1Instance(__model *Model, __a_url string) *__remote_state1
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.picture__inst2)
@@ -791,4 +795,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:4d5521a3f6defa6384837fb1c44d7939
+pass sha256:955b35e36a69b7b6b067aa4015df04aa

@@ -9,44 +9,51 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// dateFieldKt is SnglDateField's source, selectKt SnglSelect's and scrollKt
-// SnglScroll's.
+// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's and choosesKt
+// snglChooses's.
 //
 //go:embed datefield.kt
 var dateFieldKt string
 
-//go:embed select.kt
-var selectKt string
-
 //go:embed scroll.kt
 var scrollKt string
 
-// shippedComposables are the composables the platform writes beside
-// MainScreen.kt for a program that renders them, by the intrinsic id
-// lib/platform/android declares each under. Each holds state its render
-// reads -- a field's half-typed text, whether a dialog or a menu is open, how
-// far a scroll has gone -- which a const override has nowhere to hold, so it
-// is Kotlin and the override renders it.
+//go:embed chooses.kt
+var choosesKt string
+
+// shippedComposables are the Kotlin the platform writes beside MainScreen.kt
+// for a program that uses it: a composable by the intrinsic id
+// lib/platform/android declares it under, or a function by the native name a
+// call of it emits. A composable here keeps state an effect or a dialog of
+// Compose's reads -- a field's half-typed text, how far a scroll has gone --
+// and a function says what SNGL has no syntax for.
 var shippedComposables = []struct {
-	intrinsic, name, src string
+	intrinsic, call, name, src string
 }{
-	{intrinsicNS + "SnglDateField", "SnglDateField", dateFieldKt},
-	{intrinsicNS + "SnglSelect", "SnglSelect", selectKt},
-	{intrinsicNS + "SnglScroll", "SnglScroll", scrollKt},
+	{intrinsic: intrinsicNS + "SnglDateField", name: "SnglDateField", src: dateFieldKt},
+	{intrinsic: intrinsicNS + "SnglScroll", name: "SnglScroll", src: scrollKt},
+	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
 }
 
 // emitShippedComposables writes each shipped composable the program renders
 // into the package MainScreen.kt is in, beside it.
 func emitShippedComposables(req *codegen.Request, sink codegen.Sink, mainScreen, pkg string) error {
-	rendered := map[string]bool{}
+	rendered, called := map[string]bool{}, map[string]bool{}
 	_ = ir.Walk(req.Pkg, func(n ir.Node) error {
-		if ni, ok := n.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Intrinsic != "" {
-			rendered[ni.Component.Intrinsic] = true
+		switch n := n.(type) {
+		case *ir.NodeInst:
+			if n.Component != nil && n.Component.Intrinsic != "" {
+				rendered[n.Component.Intrinsic] = true
+			}
+		case *ir.Call:
+			if n.Func != nil && n.Func.Foreign.Scheme == "kotlin" && n.Func.Foreign.Name != "" {
+				called[n.Func.Foreign.Name] = true
+			}
 		}
 		return nil
 	})
 	for _, c := range shippedComposables {
-		if !rendered[c.intrinsic] {
+		if !rendered[c.intrinsic] && !called[c.call] {
 			continue
 		}
 		src := strings.Replace(c.src, "package PACKAGE", "package "+pkg, 1)

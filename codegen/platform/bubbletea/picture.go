@@ -9,8 +9,8 @@ import (
 // in half-block cells.
 const pictureIntrinsic = "Picture"
 
-// The box a picture is fitted into, in cells, where the image holding it
-// gives no size (pictureBox).
+// The box a picture is fitted into, in cells, where the box it is shown in
+// gives it no size (tui.PictureBox): a terminal has no size a pixel has.
 const (
 	pictureCols = 24
 	pictureRows = 12
@@ -18,14 +18,13 @@ const (
 
 func (vc *irViewContext) renderPicture(n *ir.NodeInst, resultVar string) {
 	vc.requireImport(tuiImportPath)
-	cols, rows := pictureCols, pictureRows
-	if vc.pictureCols > 0 {
-		cols = vc.pictureCols
+	url := vc.gc.EvalExpr(codegen.NodeProp(n, ir.ImageSourceURL))
+	if vc.pictureLook == "" || vc.pictureLook == plainLook {
+		vc.line("%s = tui.Picture(%s, %d, %d)", resultVar, url, pictureCols, pictureRows)
+		return
 	}
-	if vc.pictureRows > 0 {
-		rows = vc.pictureRows
-	}
-	vc.line("%s = tui.Picture(%s, %d, %d)", resultVar, vc.gc.EvalExpr(codegen.NodeProp(n, ir.ImageSourceURL)), cols, rows)
+	vc.line("%sCols, %sRows := tui.PictureBox(%s, %d, %d)", resultVar, resultVar, vc.pictureLook, pictureCols, pictureRows)
+	vc.line("%s = tui.Picture(%s, %sCols, %sRows)", resultVar, url, resultVar, resultVar)
 }
 
 // usesPictures reports whether the view draws a picture, whose fetch arriving

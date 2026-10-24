@@ -51,7 +51,7 @@ func testALiteralInATestLiftsItsBranches(t test.Test, c compass) {
     t.assert(c.headings.map(func(h string) => short(h)).join("") == "NS?")
 }
 -- testrun/android/kotlin/app.sngl/compass/1 --
-sha256:884441051fb88e37a244af70c5e46904
+sha256:3190198df19500ee98bf913449d63d74
 {
   "results": [
     {
@@ -65,7 +65,7 @@ sha256:884441051fb88e37a244af70c5e46904
   ]
 }
 -- testrun/bubbletea/go/app.sngl/compass/1 --
-sha256:d99f0f668f009ff1817b0c1ac2a8e180
+sha256:e0a719fcbd8d66b2e9e4451ab3625aaf
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:d99f0f668f009ff1817b0c1ac2a8e180
   ]
 }
 -- testrun/fyne/go/app.sngl/compass/1 --
-sha256:377ef893b057b903bfca6264d3216535
+sha256:27ebebe043c2e0c563b3ac3c00424eab
 {
   "results": [
     {
@@ -93,7 +93,7 @@ sha256:377ef893b057b903bfca6264d3216535
   ]
 }
 -- testrun/gtk4/go/app.sngl/compass/1 --
-sha256:eb2f4355619078ac541cd971ce592468
+sha256:5f56db2b1c557fd66088a146666aef63
 {
   "results": [
     {

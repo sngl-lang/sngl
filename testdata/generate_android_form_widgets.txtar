@@ -1,7 +1,5 @@
 The four form widgets android renders as a text field, a dropdown and a bar,
-pinned together: three are declared overrides in codegen/platform/android and
-`select` alone is still a case in compose_ir.go, so converting it shows as a
-diff here.
+pinned together, each a declared override in lib/platform/android.
 
 input and datepicker are both Compose's OutlinedTextField. The placeholder is
 its `label`, which takes content rather than a value, so the intrinsic declares
@@ -16,11 +14,11 @@ datepicker's `value` is an `option[date]`, which is what lets the override show
 nothing for a date nobody picked -- a `date`'s zero is the first day of year
 one and would otherwise pre-fill every empty field with it.
 
-select is what is left, and it is left for its state: `expanded` is numbered
-per rendered node, which an override has no way to ask for.
+select is the one that holds state: whether its menu is open, a var of the
+override, which is a cell of each select.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `value = plain.*label` -- `plain` is the field given no placeholder: it passes no label argument at all, not an empty one
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `!= ""` -- the override's placeholder test is a constant here and folds away; it does not reach the emitted lambda
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `"[^"]*" != ""` -- the override's placeholder test is a constant here and folds away; it does not reach the emitted lambda
 
 -- app.sngl --
 import . "sngl:ui"
@@ -64,9 +62,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 
 data class Choice__record(
@@ -92,6 +94,15 @@ fun MainScreen() {
     var value__inst3 by remember { mutableStateOf<String?>(null) }
     var value__inst4 by remember { mutableStateOf<String?>(birthday) }
     var visible__inst0 by remember { mutableStateOf(true) }
+    var open__inst0 by remember { mutableStateOf(false) }
+
+
+    fun choose__inst0(v: String) {
+        open__inst0 = false
+        if (((v != value__inst2) && (listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana")).map({ o: Choice__record -> o.label }).indexOf(v) >= 0))) {
+        	value__inst2 = v
+        }
+    }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -111,9 +122,30 @@ fun MainScreen() {
             OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst1 = v
             })
-            SnglSelect(value = value__inst2, options = listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana")).map({ o: Choice__record -> o.label }), label = "Pick", enabled = true, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
-                value__inst2 = v
-            })
+            Box(modifier = Modifier.snglChooses({ v: String ->
+    choose__inst0(v)
+}).safeDrawingPadding()) {
+                OutlinedTextField(value = value__inst2, readOnly = true, enabled = true, singleLine = true, modifier = Modifier, onValueChange = {}, label = {
+                    Text(text = "Pick", modifier = Modifier)
+                }, trailingIcon = {
+                    Text(text = "▾", modifier = Modifier)
+                })
+                Box(modifier = Modifier.matchParentSize().clickable(enabled = true, onClick = {  ->
+    open__inst0 = true
+})) {
+                }
+                DropdownMenu(expanded = open__inst0, onDismissRequest = {
+                    open__inst0 = false
+                }) {
+                    for (opt in listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana"))) {
+                        DropdownMenuItem(onClick = {
+                            choose__inst0(opt.label)
+                        }, text = {
+                            Text(text = opt.label, modifier = Modifier)
+                        })
+                    }
+                }
+            }
             LinearProgressIndicator(progress = fun(): Float {
                 return 0.2f
             }, modifier = Modifier.safeDrawingPadding())
@@ -124,6 +156,25 @@ fun MainScreen() {
                 value__inst4 = v
             })
         }
+    }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglChooses.kt --
+package test.sngl.app
+
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setText
+
+// snglChooses makes a select's box a dropdown list to accessibility and to a
+// test: setting its text is choosing, and onText is handed the text set.
+// Compose says it in a lambda with a receiver, which SNGL has no way to write.
+fun Modifier.snglChooses(onText: (String) -> Unit): Modifier = semantics {
+    role = Role.DropdownList
+    setText { typed ->
+        onText(typed.text)
+        true
     }
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglDateField.kt --
@@ -213,76 +264,5 @@ private fun parseDate(s: String): String? =
     } catch (e: DateTimeParseException) {
         null
     }
--- out/kotlin/android/app/src/main/java/test/sngl/app/SnglSelect.kt --
-package test.sngl.app
-
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.setText
-
-// SnglSelect is sngl:ui's select: a field showing the label chosen, which a
-// tap anywhere on opens a menu of the choices. The field is read-only -- a
-// select chooses among its choices, and a field a user types into is a
-// different control. Picking one in the menu reports it. A test chooses as a
-// keyboard would, by setting the field's text to a choice's label, which the
-// field's semantics answer as a pick; a label that names no choice, or is
-// already the value, reports nothing.
-@Composable
-fun SnglSelect(
-    value: String,
-    options: List<String>,
-    label: String,
-    enabled: Boolean,
-    modifier: Modifier,
-    onValueChange: (String) -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    val choose = { v: String ->
-        open = false
-        if (v != value && v in options) {
-            onValueChange(v)
-        }
-    }
-    Box(
-        modifier = modifier.semantics {
-            role = Role.DropdownList
-            setText { typed ->
-                choose(typed.text)
-                true
-            }
-        },
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
-            enabled = enabled,
-            singleLine = true,
-            label = if (label.isEmpty()) null else ({ Text(label) }),
-            trailingIcon = { Text("▾") },
-        )
-        // A read-only field still takes a tap as its own, to place a cursor,
-        // so the tap that opens the menu is a layer over it.
-        Box(Modifier.matchParentSize().clickable(enabled = enabled) { open = true })
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (o in options) {
-                DropdownMenuItem(text = { Text(o) }, onClick = { choose(o) })
-            }
-        }
-    }
-}
 -- run/kotlin/android --
-pass sha256:aac005895e89ad48c71206a810cf4ecd
+pass sha256:66aca081353729c80371c69430e2fbce

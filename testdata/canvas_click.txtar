@@ -193,6 +193,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__canvas0Instance{}
+}
+
 func (m *Model) board_click_handler() {
 	m.hits += 1
 	m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
@@ -230,7 +238,7 @@ func (m *Model) SetXs(v []int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 	m.__n2.Add(m.__n0)
@@ -313,6 +321,7 @@ func main() {
 	w.SetContent(m.BuildUI())
 	w.Resize(fyne.NewSize(480, 640))
 	w.ShowAndRun()
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/fyne/model_test.go --
@@ -399,9 +408,12 @@ func sngl_draw_dispatch(idx C.int, cr *C.cairo_t, width, height C.int) {
 	}
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -415,6 +427,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -614,13 +629,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	hits           int
@@ -719,7 +727,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 						__n1.Set__on0(func() {
 							m.hits += x
 							__ctmp1 := C.CString(("hits " + fmt.Sprint(m.hits)))
-							C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp1)
+							C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp1)
 							C.free(unsafe.Pointer(__ctmp1))
 						})
 						__n1.Set__p0(x)
@@ -730,7 +738,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 						__n1__new := new__canvas0Instance(m, x, func() {
 							m.hits += x
 							__ctmp2 := C.CString(("hits " + fmt.Sprint(m.hits)))
-							C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp2)
+							C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp2)
 							C.free(unsafe.Pointer(__ctmp2))
 						})
 						__n1 = __n1__new
@@ -753,10 +761,18 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__canvas0Instance{}
+}
+
 func (m *Model) board_click_handler() {
 	m.hits += 1
 	__ctmp3 := C.CString(("hits " + fmt.Sprint(m.hits)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp3)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp3)
 	C.free(unsafe.Pointer(__ctmp3))
 }
 
@@ -786,7 +802,6 @@ func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__can
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n3, C.int(40))
@@ -860,7 +875,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(6))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp0 := C.CString(("hits " + fmt.Sprint(m.hits)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp0)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp0)
 	C.free(unsafe.Pointer(__ctmp0))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.float(0.0))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
@@ -942,8 +957,17 @@ window.__sngl_boot = () => {
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
     ctx.lineWidth = style.strokeWidth;
   }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { paintStyle });
+    Object.assign(window, { paintStyle, __snglTeardown });
   }
   function __cf___canvas0(props) {
     const __root = document.createElement("div");
@@ -1118,14 +1142,15 @@ window.__sngl_boot = () => {
     _snglCanvasDraw($0, 40, 40, "", _canvasDraw2);
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:266e0590897241bfe232e0269bc96be5
+pass sha256:84964ce959de6b4b0de00a570ca2ddb1
 -- run/go/gtk4 --
-pass sha256:a2b0705862ffcba0ff2dbb035bc6fd72
+pass sha256:c37126c79214e0c4f7479ed4bb4750f2
 -- run/none/html --
-pass sha256:e69231ca8368ed1ffa7b7f9d78866897
+pass sha256:54d0065e779f1d590befcdb71dfec655

@@ -63,6 +63,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { items__inst0: ["a", "b", "c"], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -152,8 +161,9 @@ body { font-family: system-ui, sans-serif; }
     state.items__inst0.push("new");
     __renderSlot0(__slotAnchor_0);
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9b6c74adec62722a69f068d059862f50
+pass sha256:33307cadfde2afc11f2b4be1288176f4

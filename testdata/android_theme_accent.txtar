@@ -34,8 +34,10 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
@@ -57,7 +59,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Button(onClick = {}, modifier = Modifier.safeDrawingPadding()) {
+        Button(onClick = {}, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "Catch", modifier = Modifier)
         }
     }
@@ -88,4 +90,4 @@ fun AppTheme(content: @Composable () -> Unit) {
     )
 }
 -- run/kotlin/android --
-pass sha256:a431db0e36ad8ea12d431cd078efe5e0
+pass sha256:04f2a32932f95b6fdcfb1ecb4b8ce2eb

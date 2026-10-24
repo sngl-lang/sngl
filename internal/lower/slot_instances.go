@@ -116,10 +116,23 @@ func (st *reactivityState) newSlotInstance(node *ir.NodeInst) *slotInstance {
 		st.owner.addVar(cp.live)
 		inst.ctor = append(inst.ctor, cp)
 	}
-	if o, ok := st.owner.(compOwner); ok {
+	switch o := st.owner.(type) {
+	case compOwner:
 		st.held[o.c] = append(st.held[o.c], inst)
+		if !o.c.RuntimeInstance {
+			st.pageHeld = append(st.pageHeld, pageRegistry{inst, o.c})
+		}
+	case pkgOwner:
+		st.pageHeld = append(st.pageHeld, pageRegistry{inst, nil})
 	}
 	return inst
+}
+
+// pageRegistry is a registry the page scope holds and the component, if any,
+// whose declaration opened it.
+type pageRegistry struct {
+	inst *slotInstance
+	comp *ir.Component
 }
 
 // destroyHeld gives every component that holds a registry a teardown that
@@ -161,6 +174,50 @@ func (st *reactivityState) destroyHeld() {
 			Block:  body,
 		})
 	}
+	st.destroyPageHeld()
+}
+
+// destroyPageHeld empties the page's own registries from the exit handler the
+// platform calls, ahead of the page's effect teardowns as an instance's
+// registries go ahead of its brackets'. The effect pass runs first and writes
+// the handler only where a page effect has a teardown; a page whose every
+// lifetime is inside an instance it holds had none, so nothing destroyed
+// those instances at exit and what each held -- a picture, a retained value --
+// was held until the process ended.
+func (st *reactivityState) destroyPageHeld() {
+	if len(st.pageHeld) == 0 {
+		return
+	}
+	var body []ir.Stmt
+	for _, r := range slices.Backward(st.pageHeld) {
+		body = append(body, st.emptyRegistry(r.inst)...)
+	}
+	if fn := st.pkg.Teardown; fn != nil {
+		fn.Block = append(body, fn.Block...)
+		return
+	}
+	fn := &ir.Func{
+		Name:   TeardownFunc,
+		Return: ir.TypVoid,
+		Purity: ir.PurityMutates,
+		Block:  body,
+	}
+	// Owned as the effect pass would own it: the one spliced component whose
+	// declarations opened every registry, or the package.
+	var owner *ir.Component
+	for i, r := range st.pageHeld {
+		if i == 0 {
+			owner = r.comp
+		} else if r.comp != owner {
+			owner = nil
+		}
+	}
+	if owner != nil {
+		owner.Funcs = append(owner.Funcs, fn)
+	} else {
+		st.pkg.Funcs = append(st.pkg.Funcs, fn)
+	}
+	st.pkg.Teardown = fn
 }
 
 // emptyRegistry destroys everything one registry holds and leaves it empty, so

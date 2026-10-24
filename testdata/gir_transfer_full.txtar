@@ -267,7 +267,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.l = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.l)), __cstr0)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.l)), __cstr0)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.l)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __cstr1)
@@ -287,4 +287,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:5b8077d1d9f0e7ce42e6c4ff95154a1a
+pass sha256:8c4ce9911da70c686a7c9c6c0d30b377

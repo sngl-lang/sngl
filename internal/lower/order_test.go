@@ -73,6 +73,9 @@ var alwaysOn = []string{
 	"CSE",
 	// Every emitted function takes every parameter it declares.
 	"CallDefaults",
+	// An owned value a statement may not make is a statement of its own on
+	// every target, since ReleaseTemps releases what a statement borrows.
+	"ConditionalTemps",
 	// A copy of a node a test indexes carries its key on every target.
 	"CopyKeys",
 	// A call through a name the inliner bound to a declared function.

@@ -88,6 +88,7 @@ package main
 
 import (
 	"charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
@@ -474,7 +475,7 @@ func (m Model) View() tea.View {
 		return __c.Result()
 	})
 	parts = append(parts, part0)
-	content := tui.Column(0, parts...)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1176,13 +1177,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	opened              int
@@ -1742,10 +1736,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:00f7edcc92f428a320a2707e475413cc
+pass sha256:e3a373f56c8a32dee27e696f03e8ea2e
 -- run/go/fyne --
 pass sha256:1575f2ca1bfbf3c14adc6b5ee0dc88a2
 -- run/go/gtk4 --
-pass sha256:1783369c9cc34073294f62c74f4fb6bf
+pass sha256:9bbe8b994915c5c6fb2294086b353736
 -- run/none/html --
 pass sha256:79a49d3f3ec2b45f6a4885cca3e5d1cd

@@ -96,7 +96,7 @@ func testAWordOfAnInstanceInFrench(t test.Test, c plain) {
   "{count, plural, one{# book} other{# books}}": {"translations": {"fr": "{count, plural, one{# livre} other{# livres}}"}}
 }
 -- testrun/android/kotlin/app.sngl/greeting/1 --
-sha256:b8d75b8466233faddaaaa47d929e1aa0
+sha256:b8625c197c182386ed564efd8361a15d
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:b8d75b8466233faddaaaa47d929e1aa0
   ]
 }
 -- testrun/android/kotlin/app.sngl/outer/1 --
-sha256:1124fc55228bcf755833f40ffff42412
+sha256:afdb58309a381742022e9712c4b26ee7
 {
   "results": [
     {
@@ -116,7 +116,7 @@ sha256:1124fc55228bcf755833f40ffff42412
   ]
 }
 -- testrun/android/kotlin/app.sngl/plain/1 --
-sha256:0e3a5e9a90e68dca1fb9a5283cb05789
+sha256:3191facb0d8ebb6fa5c1e73875e2b841
 {
   "results": [
     {
@@ -126,7 +126,7 @@ sha256:0e3a5e9a90e68dca1fb9a5283cb05789
   ]
 }
 -- testrun/bubbletea/go/app.sngl/greeting/1 --
-sha256:1a64cb36f7a80d88f4b26e59b0340974
+sha256:4ca53d2a17e700573a23709579c76dde
 {
   "results": [
     {
@@ -136,7 +136,7 @@ sha256:1a64cb36f7a80d88f4b26e59b0340974
   ]
 }
 -- testrun/bubbletea/go/app.sngl/outer/1 --
-sha256:ab690b2badc580b6198a4185c686ee34
+sha256:01b0af362e774e80e7e081f31e886a3a
 {
   "results": [
     {
@@ -146,7 +146,7 @@ sha256:ab690b2badc580b6198a4185c686ee34
   ]
 }
 -- testrun/bubbletea/go/app.sngl/plain/1 --
-sha256:4c5337b8e9f773596c784396c668ef11
+sha256:c7605e26078e781f556e31601c789c00
 {
   "results": [
     {
@@ -156,7 +156,7 @@ sha256:4c5337b8e9f773596c784396c668ef11
   ]
 }
 -- testrun/fyne/go/app.sngl/greeting/1 --
-sha256:16237d62b400e6f13ffa05a041369a9d
+sha256:be417892c69bdaa77c01b741c3fa4653
 {
   "results": [
     {
@@ -166,7 +166,7 @@ sha256:16237d62b400e6f13ffa05a041369a9d
   ]
 }
 -- testrun/fyne/go/app.sngl/outer/1 --
-sha256:d2d90c96e2d5f1bc1178ef3b102c6085
+sha256:d3e5c2cf0f5d99aae36266ae7ead5b40
 {
   "results": [
     {
@@ -176,7 +176,7 @@ sha256:d2d90c96e2d5f1bc1178ef3b102c6085
   ]
 }
 -- testrun/fyne/go/app.sngl/plain/1 --
-sha256:177247f676ed0ccd7e5c15176dde575b
+sha256:6fc64d687649c9629a76b4106fb9746d
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:177247f676ed0ccd7e5c15176dde575b
   ]
 }
 -- testrun/gtk4/go/app.sngl/greeting/1 --
-sha256:94539580e4c0363484441fd2cefde9d4
+sha256:1da1d597082f8a3b4b8b2ae8174c727c
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:94539580e4c0363484441fd2cefde9d4
   ]
 }
 -- testrun/gtk4/go/app.sngl/outer/1 --
-sha256:f8768fbc32e13697fc135953edaeb939
+sha256:2986fc8dc044b2c3b594e6d0fd3abb19
 {
   "results": [
     {
@@ -206,7 +206,7 @@ sha256:f8768fbc32e13697fc135953edaeb939
   ]
 }
 -- testrun/gtk4/go/app.sngl/plain/1 --
-sha256:ff272a5dc6dab023f3b9be205a66558e
+sha256:95ceccbba2e4bfd17120d1ffa97b9009
 {
   "results": [
     {
@@ -226,7 +226,7 @@ sha256:fe2460ba0ba447929ee2c563caafe2d1
   ]
 }
 -- testrun/html/none/app.sngl/outer/1 --
-sha256:7dbb3429f475d9cea3d82c502b1471ff
+sha256:54370dd72bacb4c9a6725e5abc49996b
 {
   "results": [
     {

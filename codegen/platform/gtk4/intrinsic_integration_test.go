@@ -67,7 +67,7 @@ window {
 		// node-escape lower pass emits it as a function-local `__n1 := ...`
 		// rather than a shared Model field. The slot slice keeps it alive.
 		"__n1 := gtk4rt.LabelNew(",
-		"gtk4rt.LabelSetText(",
+		"gtk4rt.LabelSetLabel(",
 		"gtk4rt.BoxAppend(",
 		"m.__slot0 = append(m.__slot0",
 	} {

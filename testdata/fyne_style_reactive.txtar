@@ -17,8 +17,10 @@ own override. The tagged text is a plain node in a reactive loop, where
 NoTernary's temp lands between the node's prop writes rather than ahead of
 its create; its slot records the override, so a re-render removes it.
 
-deny out/go/fyne/model.go `__lt\d+ = [^\n]*\n\t+\}\n\t*\}\n` -- a temp the lowering computes for a style field is read by the theme write after it, not dropped at the end of the block
-deny out/go/fyne/model.go `__theme = container.NewThemeOverride\([^\n]*_snglTheme` -- an override a style write replaces starts from no build-time theme; only the static node takes one
+The override is a fynelayout.Box's now, and a write of `style` is a write of
+the look style.sngl's lookOf builds from the whole Style, set on the box.
+
+deny out/go/fyne/model.go `__lt\d+ = [^\n]*\n\t+\}\n\t*\}\n` -- a temp the lowering computes for a style field is read by the look write after it, not dropped at the end of the block
 -- style.sngl --
 import ui "sngl:ui"
 
@@ -69,23 +71,73 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
 	"os"
 )
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Foreground: color.NRGBA{R: 0, G: 255, B: 0, A: 255}}
 
 type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model holds the state for this SNGL UI.
@@ -104,15 +156,16 @@ type Model struct {
 	__rendering1   bool
 	__renderAgain1 bool
 
-	__n2        *fynelayout.Toplevel
-	__n7        *widget.Button
-	__n8        *widget.Button
-	__n3        *widget.Label
-	__n3__theme *container.ThemeOverride
-	__n4        *fyne.Container
-	__n4__theme *container.ThemeOverride
-	__n9        *widget.Label
-	__built     bool
+	__n2      *fynelayout.Toplevel
+	__n7      *widget.Button
+	__n8      *widget.Button
+	__n3      *widget.Label
+	__n3__box *fynelayout.Box
+	__n4      *fyne.Container
+	__n4__box *fynelayout.Box
+	__n9      *widget.Label
+	__n9__box *fynelayout.Box
+	__built   bool
 }
 
 // New creates a Model with default values.
@@ -132,6 +185,97 @@ func New() *Model {
 	m.__rendering1 = false
 	m.__renderAgain1 = false
 	return m
+}
+
+func LookOf(s Style) fynelayout.Look {
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	return look
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) float32 {
+	var __lt1 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt1 = own
+	} else {
+		var __lt0 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt0 = axis
+		} else {
+			__lt0 = all
+		}
+		__lt1 = __lt0
+	}
+	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
+	var __lt3 int
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
+		__lt3 = 2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func Paint(c__r0 snglcolor.Color) snglcolor.Color {
+	var __lt4 snglcolor.Color
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt4 = c__r0
+	}
+	return __lt4
+}
+
+func TextAlignOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
+	}
+	return __lt5
+}
+
+func WrapOf(w string) int {
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
+	}
+	return __lt6
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -233,6 +377,19 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child0Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*RowInstance{}
+}
+
 func (m *Model) __n2_closed_handler() {
 }
 
@@ -243,16 +400,14 @@ func (m *Model) __n2_visible_handler(__visible bool) {
 
 func (m *Model) __n7_click_handler() {
 	m.active = 1
-	var __lt6 snglcolor.Color
+	var __lt13 snglcolor.Color
 	if m.active == 0 {
-		__lt6 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
+		__lt13 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
 	} else {
-		__lt6 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
+		__lt13 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
 	}
-	m.__n3__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithForeground(__lt6).WithTextSize(float64(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}.Px)).WithSlant("italic")
-	m.__n3__theme.Refresh()
-	m.__n4__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithBackground(snglcolor.Color{R: 16, G: 16, B: 16, A: 255}).WithRadius(float64(Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}.Px))
-	m.__n4__theme.Refresh()
+	m.__n3__box.SetLook(LookOf(Style{Color: __lt13, FontSize: Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}, FontStyle: "italic"}))
+	m.__n4__box.SetLook(LookOf(Style{Background: snglcolor.Color{R: 16, G: 16, B: 16, A: 255}, BorderRadius: Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}}))
 	for __inst1_live_ui, _ := range m.__inst1_live {
 		m.__inst1_live[__inst1_live_ui].Set__p1(m.active)
 	}
@@ -305,28 +460,27 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n8.SetText("more")
 	m.__n8.OnTapped = m.__n8_click_handler
 	m.__n2.Add(m.__n8)
-	var __lt7 snglcolor.Color
+	var __lt14 snglcolor.Color
 	if m.active == 0 {
-		__lt7 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
+		__lt14 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
 	} else {
-		__lt7 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
+		__lt14 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
 	}
 	m.__n3 = widget.NewLabel("")
-	m.__n3__theme = container.NewThemeOverride(m.__n3, fynetheme.New(theme.DefaultTheme()))
-	m.__n3.TextStyle = fyne.TextStyle{Bold: false, Italic: true}
+	m.__n3__box = fynelayout.NewBox(m.__n3)
 	m.__n3.SetText("hint")
-	m.__n3__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithForeground(__lt7).WithTextSize(float64(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}.Px)).WithSlant("italic")
-	m.__n3__theme.Refresh()
-	m.__n2.Add(m.__n3__theme)
-	m.__n4 = container.NewVBox()
-	m.__n4__theme = container.NewThemeOverride(m.__n4, fynetheme.New(theme.DefaultTheme()))
-	m.__n4__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithBackground(snglcolor.Color{R: 16, G: 16, B: 16, A: 255}).WithRadius(float64(Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}.Px))
-	m.__n4__theme.Refresh()
+	m.__n3__box.SetLook(LookOf(Style{Color: __lt14, FontSize: Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}, FontStyle: "italic"}))
+	m.__n2.Add(m.__n3__box)
+	m.__n4 = fynelayout.NewVBox()
+	m.__n4__box = fynelayout.NewBox(m.__n4)
+	m.__n4__box.SetLook(LookOf(Style{Background: snglcolor.Color{R: 16, G: 16, B: 16, A: 255}, BorderRadius: Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}}))
 	m.__n9 = widget.NewLabel("")
+	m.__n9__box = fynelayout.NewBox(m.__n9)
 	m.__n9.SetText("static")
-	m.__n4.Add(container.NewThemeOverride(m.__n9, _snglTheme0))
+	m.__n9__box.SetLook(fynelayout.Look{TextColor: snglcolor.Color{R: 0, G: 255, B: 0, A: 255}})
+	m.__n4.Add(m.__n9__box)
 	m.__renderSlot0(m.__n4)
-	m.__n2.Add(m.__n4__theme)
+	m.__n2.Add(m.__n4__box)
 	m.__renderSlot1(m.__n2.Container)
 	fynelayout.AppAttach(m.__n2)
 	return m.__n2.Container
@@ -344,7 +498,7 @@ type RowInstance struct {
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
 	__n0         *widget.Button
-	__n0__theme  *container.ThemeOverride
+	__n0__box    *fynelayout.Box
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -355,41 +509,39 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt0 string
+	var __lt7 string
 	if c.on {
-		__lt0 = "bold"
+		__lt7 = "bold"
 	} else {
-		__lt0 = "normal"
+		__lt7 = "normal"
 	}
-	var __lt1 snglcolor.Color
+	var __lt8 snglcolor.Color
 	if c.on {
-		__lt1 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt8 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt1 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
+		__lt8 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
 	}
 	c.__n0 = widget.NewButton("", nil)
-	c.__n0__theme = container.NewThemeOverride(c.__n0, fynetheme.New(theme.DefaultTheme()))
+	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop_label)
-	c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt0).WithBackground(__lt1)
-	c.__n0__theme.Refresh()
+	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt7, Background: __lt8}))
 	c.__n0.OnTapped = func() {
 		c.on = !c.on
-		var __lt2 string
+		var __lt9 string
 		if c.on {
-			__lt2 = "bold"
+			__lt9 = "bold"
 		} else {
-			__lt2 = "normal"
+			__lt9 = "normal"
 		}
-		var __lt3 snglcolor.Color
+		var __lt10 snglcolor.Color
 		if c.on {
-			__lt3 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+			__lt10 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 		} else {
-			__lt3 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
+			__lt10 = snglcolor.Color{R: 0, G: 0, B: 255, A: 255}
 		}
-		c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt2).WithBackground(__lt3)
-		c.__n0__theme.Refresh()
+		c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt9, Background: __lt10}))
 	}
-	c.Root = c.__n0__theme
+	c.Root = c.__n0__box
 	return c
 }
 
@@ -412,7 +564,7 @@ type __child0Instance struct {
 	__slot1     []fyne.CanvasObject
 	__slot1_at  fyne.CanvasObject
 	__n1        *widget.Label
-	__n1__theme *container.ThemeOverride
+	__n1__box   *fynelayout.Box
 }
 
 func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int) *__child0Instance {
@@ -423,18 +575,17 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt5 snglcolor.Color
+	var __lt12 snglcolor.Color
 	if c.__prop___p1 == 0 {
-		__lt5 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt12 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt5 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+		__lt12 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
 	}
 	c.__n1 = widget.NewLabel("")
-	c.__n1__theme = container.NewThemeOverride(c.__n1, fynetheme.New(theme.DefaultTheme()))
+	c.__n1__box = fynelayout.NewBox(c.__n1)
 	c.__n1.SetText(c.__prop___p0)
-	c.__n1__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithForeground(__lt5)
-	c.__n1__theme.Refresh()
-	c.Root = c.__n1__theme
+	c.__n1__box.SetLook(LookOf(Style{Color: __lt12}))
+	c.Root = c.__n1__box
 	return c
 }
 
@@ -445,14 +596,13 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt4 snglcolor.Color
+	var __lt11 snglcolor.Color
 	if c.__prop___p1 == 0 {
-		__lt4 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt11 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt4 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+		__lt11 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
 	}
-	c.__n1__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithForeground(__lt4)
-	c.__n1__theme.Refresh()
+	c.__n1__box.SetLook(LookOf(Style{Color: __lt11}))
 }
 
 func (c *__child0Instance) Destroy() {}
@@ -462,7 +612,8 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:b7a73b3e82175baedbdc628c9f7547ab
+pass sha256:8199661a0cec3e1d44fe296254f810f6

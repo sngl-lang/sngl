@@ -182,6 +182,9 @@ type Package struct {
 	// depends on. An entry point calls what is here rather than looking a name
 	// up, because whether there is anything to call is the lowering's answer.
 	Teardown *Func `json:"-"`
+	// Releases are the releases lowering synthesized for the types owned by
+	// what they hold, by releaseKey (ReleaseFor).
+	Releases map[string]*Func `json:"-"`
 
 	// Mounts are the settle handlers the effect lowering appended to the
 	// owner's body, in the order the program placed the brackets. The body
@@ -749,6 +752,10 @@ type Func struct {
 	// Lowered is what the lowering passes recorded about this function for
 	// codegen. Zero until lowering runs; nothing before it may read it.
 	Lowered FuncLowering `json:"-"`
+	// Releases is the type this function gives back where it is the release
+	// Package.ReleaseFor synthesized for a type owned by what it holds; a
+	// declared release is named by its struct instead (StructDef.Release).
+	Releases *Type `json:"-"`
 }
 
 // FuncLowering is what the lowering passes record on a function for codegen
@@ -936,6 +943,11 @@ type Var struct {
 	// outside that component, so the inliner repoints the read at the one
 	// copy it splices. Copied with the var, so a clone says it too.
 	Cell bool `json:"-"`
+
+	// Provided marks the var passContext gives a component for a context it
+	// reads: its call site sets it, as it sets a prop, so it is no state of
+	// the instance.
+	Provided bool `json:"-"`
 }
 
 func (v *Var) SymName() string { return v.Name }
@@ -1414,6 +1426,10 @@ type StructDef struct {
 	// Release is the function `#[owned(release)]` names: a value of this type
 	// is something the program must give back, and this is how.
 	Release *Func `json:"-"`
+	// Retain is the function `#[owned(release, retain=…)]` names, nil for a
+	// type nothing counts: a value stored from another holder is passed
+	// through it, and each holder then releases its own.
+	Retain *Func `json:"-"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }

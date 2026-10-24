@@ -495,7 +495,7 @@ func __run(args []string, run func()) {
 func (m *Model) __effect0_mount() {
 	m.handle__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
 		m.ticks += 1
-		gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
+		gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.ticks))
 		if m.ticks == 2 {
 			os.Exit(0)
 		}
@@ -632,7 +632,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
+	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.ticks))
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.main, m.__n0)
 	gtk4rt.AppAttach(m.main)
@@ -642,7 +642,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.log, m.log_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.log, m.log_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, "log")
+	gtk4rt.LabelSetLabel(m.__n1, "log")
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.log, m.__n1)
 	gtk4rt.AppAttach(m.log)
@@ -656,6 +656,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:294e88a1fe4934723989e8e75c6da703
+pass sha256:4016d3294aeed8af999b85537c75247b
 -- run/go/gtk4 --
-pass sha256:11f035d835978cf1d6371b6f9bfaf4d4
+pass sha256:c554016224da5870ca63f1a3b2870c80

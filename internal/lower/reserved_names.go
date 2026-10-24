@@ -65,6 +65,7 @@ func reserveNames(pkg *ir.Package, f Features, opts Options, nodeIDs bool) error
 		reserved: reserved,
 		names:    namesOrOwn(opts.names),
 		syms:     map[ir.Symbol]string{},
+		params:   map[*ir.Param]string{},
 		ids:      map[string]string{},
 		comps:    map[*ir.Component]string{},
 		members:  map[*ir.Component]map[string]string{},
@@ -111,6 +112,9 @@ type reservedRenamer struct {
 	// syms is each renamed declaration and its new name; the declaration's own
 	// Name is set as it is recorded.
 	syms map[ir.Symbol]string
+	// params is each renamed parameter's old name, which a call naming its
+	// arguments still spells.
+	params map[*ir.Param]string
 	// ids is each renamed node ID. By name rather than by node: a spliced body
 	// is a clone per copy, and every copy of one `#go` is the one handle.
 	ids map[string]string
@@ -211,7 +215,10 @@ func (r *reservedRenamer) param(p *ir.Param) {
 	if p == nil {
 		return
 	}
-	r.sym(p, p.Name, func(n string) { p.Name = n })
+	old := p.Name
+	if _, seen := r.params[p]; !seen && r.sym(p, old, func(n string) { p.Name = n }) != "" {
+		r.params[p] = old
+	}
 }
 
 // typeDecl renames a struct, enum or unit, and the methods that spell their
@@ -313,6 +320,7 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 		case *ir.Lambda:
 			r.fn(x.Func, nil)
 		case *ir.Call:
+			r.callArgNames(x)
 			if x.ErrorHandler != nil {
 				r.fn(x.ErrorHandler.Func, nil)
 			}
@@ -454,5 +462,21 @@ func (r *reservedRenamer) funcStrings(fn *ir.Func, renameLocalRefs func(map[stri
 	}
 	if fn.Lowered.LocalRefs != nil {
 		renameLocalRefs(fn.Lowered.LocalRefs)
+	}
+}
+
+func (r *reservedRenamer) callArgNames(call *ir.Call) {
+	if call.Func == nil || len(r.params) == 0 {
+		return
+	}
+	for i, a := range call.Args {
+		if a.Name == "" {
+			continue
+		}
+		for _, p := range call.Func.Params {
+			if old, ok := r.params[p]; ok && old == a.Name {
+				call.Args[i].Name = p.Name
+			}
+		}
 	}
 }

@@ -189,6 +189,13 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		if !lok || !rok {
 			return nil, false
 		}
+		if ls, ok := left.(*interp.Struct); ok {
+			if rs, ok := right.(*interp.Struct); ok {
+				if !fillOmittedFields(ls, ls.Def, ctx) || !fillOmittedFields(rs, rs.Def, ctx) {
+					return nil, false
+				}
+			}
+		}
 		return evalBinaryOp(x.Op, left, right, numKindOf(x.Type))
 	case *ir.Unary:
 		operand, ok := evalExpr(x.Operand, ctx)
@@ -290,12 +297,20 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 			if v, exists := s.Get(x.Field); exists {
 				return v, true
 			}
+			fillOmittedFields(s, s.Def, ctx)
+			if v, exists := s.Get(x.Field); exists {
+				return v, true
+			}
 		}
 		if m, ok := recv.(map[string]any); ok {
 			v, exists := m[x.Field]
 			if exists {
 				return v, true
 			}
+		}
+		// A base of a multi-base unit; one the value does not carry is zero.
+		if amounts, ok := interp.UnitAmounts(recv); ok {
+			return amounts[x.Field], true
 		}
 		return nil, false
 	case *ir.Index:
@@ -646,6 +661,11 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 	operand, ok := evalExpr(conv.Operand, ctx)
 	if !ok {
 		return nil, false
+	}
+	if ud := ir.UnitDeclOf(conv.Type); ud != nil && !ud.IsSingleBase() {
+		if src := conv.Operand.ExprType(); src != nil && src.Kind == ir.TypeInt {
+			return interp.UnitZero(ud, &ctx.evalCache().units), true
+		}
 	}
 	switch conv.Type.Kind {
 	case ir.TypeString:
@@ -1498,4 +1518,52 @@ func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
 		}
 	}
 	return out, true
+}
+
+// fillOmittedFields gives each field a literal left out what the declaration
+// means by omitting it, so a read of one folds and two literals compare; marked
+// omitted, irFromValue writes the literal back as it was written. It reports
+// whether every field now has a value.
+func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
+	if def == nil {
+		def = expectedStructDef(s.Type)
+	}
+	if def == nil {
+		return false
+	}
+	complete := true
+	for _, f := range def.Fields {
+		if _, ok := s.Get(f.Name); ok {
+			continue
+		}
+		init := f.Default
+		if init == nil {
+			init = ir.ZeroExpr(f.Type)
+		}
+		if init == nil {
+			complete = false
+			continue
+		}
+		v, ok := evalExpr(init, ctx)
+		if !ok {
+			complete = false
+			continue
+		}
+		s.Fields = append(s.Fields, interp.Field{Name: f.Name, Value: v, Omitted: true, Filled: interp.DeepCopy(v)})
+	}
+	return complete
+}
+
+// completeStruct fills s's omitted fields, and those of every struct it
+// holds, for the interpreter, which reads a field a literal left out as nil.
+func completeStruct(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) {
+	if s.Def != nil {
+		def = s.Def
+	}
+	fillOmittedFields(s, def, ctx)
+	for _, f := range s.Fields {
+		if inner, ok := f.Value.(*interp.Struct); ok {
+			completeStruct(inner, expectedStructDef(structFieldType(def, f.Name)), ctx)
+		}
+	}
 }

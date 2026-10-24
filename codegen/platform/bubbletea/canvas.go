@@ -89,29 +89,18 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	vc.requireImport("image")
 	// The emitted Style struct decl references snglcolor.Color.
 	vc.requireImport(canvasutil.ColorImportPath)
+	// A canvas's style is draw.Style, what its shapes are painted with; the
+	// cells it fills take none of it.
+	vc.discardStyle(codegen.NodeStyleFields(n))
 	if vc.canvasSeq[c.Name] {
 		id, raster := emitLoopCanvasRaster(vc.line, c, vc.gc)
-		render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %s, %s)", cols, rows, id, raster)
-		style := vc.styleExpr(codegen.NodeStyleFields(n))
-		if style != "lipgloss.NewStyle()" {
-			render = fmt.Sprintf("%s.Render(%s)", style, render)
-		}
-		vc.line("%s = %s", resultVar, render)
+		vc.line("%s = tui.RenderTerminal(%d, %d, %s, %s)", resultVar, cols, rows, id, raster)
 		return
 	}
 	// Rasterization is deferred into a closure so the kitty path (which needs
 	// only the constant, cached placeholder grid) never runs it every frame;
-	// only the half-block fallback invokes it. The terminal string is assigned
-	// like any other leaf node's output. Only wrap it in the node's lipgloss
-	// style when one is actually set — an empty NewStyle().Render() pads the
-	// multi-line half-block grid with background cells, mangling the art.
-	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(c), canvasRasterizer(c))
-	style := vc.styleExpr(codegen.NodeStyleFields(n))
-	if style != "lipgloss.NewStyle()" {
-		vc.line("%s = %s.Render(%s)", resultVar, style, render)
-	} else {
-		vc.line("%s = %s", resultVar, render)
-	}
+	// only the half-block fallback invokes it.
+	vc.line("%s = tui.RenderTerminal(%d, %d, %d, %s)", resultVar, cols, rows, canvasImageID(c), canvasRasterizer(c))
 }
 
 // canvasRasterizer returns a Go `func() image.Image` literal that draws the

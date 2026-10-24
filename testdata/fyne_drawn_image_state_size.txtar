@@ -52,7 +52,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -114,7 +113,7 @@ func (m *Model) __n3_click_handler() {
 func (m *Model) __n3_load_handler() {
 }
 
-func (m *Model) __n3_failed_handler(m__r0 string) {
+func (m *Model) __n3_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n4_click_handler() {
@@ -123,7 +122,7 @@ func (m *Model) __n4_click_handler() {
 func (m *Model) __n4_load_handler() {
 }
 
-func (m *Model) __n4_failed_handler(m__r0 string) {
+func (m *Model) __n4_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n6_click_handler() {
@@ -170,7 +169,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = fynelayout.NewImage()
 	m.__n3.SetFit("contain")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -210,4 +209,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:9ebe08f3ac85a7e836104bdb989ddb16
+pass sha256:2152326c4c10d09bac9ac744fc1d38bc

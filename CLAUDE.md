@@ -46,7 +46,7 @@ spec instead.
 - `design/testing.md` — fixture directives, goldens and `deny`, recorded runs, the two harnesses, test lowering and test reach
 - `design/performance.md` — profiling, the store (`internal/gencache`), what costs
 - `design/trust.md` — grants, `--allow-eval`, fetch gating, the LSP
-- `design/ownership.md` — `#[owned]`, `#[retains]`/`#[moves]`, the four lifetimes, `ir.Keyable`, the interpreter's handles and leak check, application teardown
+- `design/ownership.md` — `#[owned]`, `#[retains]`/`#[moves]`, the four lifetimes, `ir.Keyable`, the interpreter's handles and leak check, application teardown, the C target's per-turn arena
 
 **Where a new note goes.** A rule a session must follow whatever it is
 working on goes here, in a sentence or two. The reasoning behind a design --
@@ -57,7 +57,7 @@ paragraph here per change: this file is loaded into every session.
 ## Rules that hold everywhere
 
 - **`ir.IsConst` asks the declaration, never the inferred purity.** Every
-  component and override a target package declares must be const.
+  component a target package declares must be const; an override need not be.
 - **Built-ins are declared, not hardcoded.** The compiler finds a built-in by
   its `#[builtin("kind")]` mark, never by name, so every one is shadowable.
 - **Every phase after the check works on a copy** (`ir.ClonePackage`); the

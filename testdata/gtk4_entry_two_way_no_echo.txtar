@@ -99,9 +99,12 @@ func sngl_draw_dispatch(idx C.int, cr *C.cairo_t, width, height C.int) {
 	}
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -115,6 +118,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -270,6 +276,7 @@ import "C"
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
 	"unsafe"
 )
 
@@ -314,6 +321,61 @@ type Measurement struct {
 }
 
 type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
+
+type Style__draw struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -321,13 +383,6 @@ type Style struct {
 	LineJoin    string
 	FontSize    float64
 	FontFamily  string
-}
-
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -358,7 +413,12 @@ func New() *Model {
 	return m
 }
 
-func Paint(ctx *C.cairo_t, style Style) {
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func Paint(ctx *C.cairo_t, style Style__draw) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -374,6 +434,11 @@ func Paint(ctx *C.cairo_t, style Style) {
 		Source(ctx, style.Stroke)
 		C.cairo_stroke(ctx)
 	}
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
 }
 
 func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
@@ -398,6 +463,178 @@ func LineJoinFunc(join string) C.cairo_line_join_t {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
+}
+
+func CssOf(s Style) string {
+	var __lt1 string
+	if s.Opacity == 0.0 {
+		__lt1 = ""
+	} else {
+		__lt1 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	case "baseline":
+		__lt2 = 4
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func TextAlignOf(a string) int {
+	var __lt3 int
+	switch a {
+	case "center":
+		__lt3 = 1
+	case "right":
+		__lt3 = 2
+	case "justify":
+		__lt3 = 3
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func WrapOf(w string) int {
+	var __lt4 int
+	switch w {
+	case "pre", "nowrap":
+		__lt4 = 1
+	case "preWrap", "preLine":
+		__lt4 = 2
+	default:
+		__lt4 = 0
+	}
+	return __lt4
+}
+
+func ClipOf(o string) bool {
+	var __lt5 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt5 = true
+	default:
+		__lt5 = false
+	}
+	return __lt5
+}
+
+func Decl(name string, value string) string {
+	var __lt6 string
+	if value == "" {
+		__lt6 = ""
+	} else {
+		__lt6 = (((name + ": ") + value) + "; ")
+	}
+	return __lt6
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt9 string
+	if v == 0.0 {
+		__lt9 = ""
+	} else {
+		__lt9 = (fmt.Sprint(v) + "px")
+	}
+	return __lt9
+}
+
+func CssColor(c__r1 snglcolor.Color) string {
+	var __lt10 string
+	if (c__r1.A == 0) || (c__r1 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt10 = ""
+	} else {
+		__lt10 = c__r1.Hex()
+	}
+	return __lt10
+}
+
+func Points(v float64) string {
+	var __lt11 string
+	if v == 0.0 {
+		__lt11 = ""
+	} else {
+		__lt11 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt11
+}
+
+func WeightOf(w string) string {
+	var __lt12 string
+	switch w {
+	case "bold":
+		__lt12 = "bold"
+	case "bolder":
+		__lt12 = "bolder"
+	case "lighter":
+		__lt12 = "lighter"
+	default:
+		__lt12 = ""
+	}
+	return __lt12
+}
+
+func SlantOf(s string) string {
+	var __lt13 string
+	switch s {
+	case "italic":
+		__lt13 = "italic"
+	case "oblique":
+		__lt13 = "oblique"
+	default:
+		__lt13 = ""
+	}
+	return __lt13
+}
+
+func LineOf(s Style) string {
+	var __lt14 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt14 = "solid"
+	case "dashed":
+		__lt14 = "dashed"
+	case "dotted":
+		__lt14 = "dotted"
+	case "double":
+		__lt14 = "double"
+	default:
+		var __lt15 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt15 = "solid"
+		} else {
+			__lt15 = ""
+		}
+		__lt14 = __lt15
+	}
+	return __lt14
 }
 
 func (m *Model) __renderSlot0(parent *C.GtkBox) {
@@ -448,6 +685,14 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*SearchInstance{}
+}
+
 func (m *Model) __n1_closed_handler() {
 }
 
@@ -459,7 +704,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(5.0), C.double(5.0), C.double(2.0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style__draw{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -493,7 +738,6 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	c.__effects0_pending = false
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	__n4 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n4)), C.GTK_ORIENTATION_VERTICAL)
@@ -503,7 +747,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 		if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.search {
 			c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
 			__ctmp0 := C.CString(c.search)
-			C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp0)
+			C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp0)
 			C.free(unsafe.Pointer(__ctmp0))
 		}
 		c.__effects0_settle()
@@ -512,7 +756,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	snglCallbacks = append(snglCallbacks, func() {
 		c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
 		__ctmp1 := C.CString(c.search)
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp1)
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp1)
 		C.free(unsafe.Pointer(__ctmp1))
 		c.__effects0_settle()
 	})
@@ -520,7 +764,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Handle(unsafe.Pointer(c.box)))
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp2 := C.CString(c.search)
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp2)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp2)
 	C.free(unsafe.Pointer(__ctmp2))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(c.__n0)), C.float(0.0))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Handle(unsafe.Pointer(c.__n0)))
@@ -651,4 +895,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:c3868cfdb914d3bfc736345f11f5ea9f
+pass sha256:4f062675eb5b8a35b64294bb27a55253

@@ -71,6 +71,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { picked__inst0: "plain", visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -187,6 +196,7 @@ body { font-family: system-ui, sans-serif; }
     $1.textContent = state.picked__inst0 === "loud" ? "items!" : "items";
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
@@ -213,6 +223,15 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { picked__inst0: "plain", visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -325,8 +344,9 @@ body { font-family: system-ui, sans-serif; }
     $1.textContent = state.picked__inst0 === "loud" ? "first!" : "first";
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c1baea9835c90ad1df2835024bf5b356
+pass sha256:56ca2926f4e8dbecd322f3eeeb6b5613

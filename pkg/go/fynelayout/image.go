@@ -122,7 +122,7 @@ func (s *ImageSource) SetURL(url string) {
 			s.show(url, data, err)
 			return
 		}
-		fyne.Do(func() { s.show(url, data, err) })
+		Post(func() { s.show(url, data, err) })
 	})
 	later.Store(true)
 }

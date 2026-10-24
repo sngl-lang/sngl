@@ -565,9 +565,6 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 	helpers := golang.HelpersNeeded(c.ctx.Pkg)
 	td.Imports = append(td.Imports, helpers.Imports()...)
 	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(c.ctx.Pkg.MergeStructs)
-	if c.shared.heldStyle != nil {
-		td.LangHelpers += heldStyleDecl(gc, c.shared.heldStyle)
-	}
 
 	// Units (excluding the special-cased `duration`).
 	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units) + golang.EmitEnumTypeDecls(c.info.Enums)
@@ -576,6 +573,7 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 	for _, sd := range c.info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
 		for _, f := range sd.Fields {
+			td.Imports = append(td.Imports, golang.TypeImports(f.Type)...)
 			s.Fields = append(s.Fields, structFieldData{
 				Name: golang.ExportName(f.Name),
 				Type: golang.IRTypeToGo(f.Type),

@@ -73,10 +73,17 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
 
 type Row struct {
 	Name string
@@ -101,6 +108,61 @@ type _page__value struct {
 type Pages__entry struct {
 	Page _page__value
 	Cell Sel
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 var rows []Row = []Row{Row{Name: "a", Cols: []string{"1", "2"}}, Row{Name: "b", Cols: []string{"3"}}}
@@ -140,6 +202,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt3 int
+		if s.MaxLines == 0 {
+			__lt3 = 0
+		} else {
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt4 lipgloss.Position
+	switch a {
+	case "center":
+		__lt4 = lipgloss.Center
+	case "right":
+		__lt4 = lipgloss.Right
+	default:
+		__lt4 = lipgloss.Left
+	}
+	return __lt4
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt6 = lipgloss.RoundedBorder()
+		} else {
+			__lt6 = lipgloss.NormalBorder()
+		}
+		__lt5 = __lt6
+	}
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return CellsOf(__lt8)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt9 int
+	if px <= 0.0 {
+		__lt9 = 0
+	} else {
+		__lt9 = max(1, (int(px) / 8))
+	}
+	return __lt9
+}
+
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt10 int
+	if px <= 0.0 {
+		__lt10 = 0
+	} else {
+		__lt10 = max(1, (int(px) / 16))
+	}
+	return __lt10
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt12 int
+	if height__r0 == 0 {
+		__lt12 = lines
+	} else {
+		var __lt11 int
+		if lines == 0 {
+			__lt11 = height__r0
+		} else {
+			__lt11 = min(height__r0, lines)
+		}
+		__lt12 = __lt11
+	}
+	return __lt12
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -298,23 +504,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						_ = __copy1
 						_ = c
 						if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-							var __lt3 string
-							_ = __lt3
+							var __lt13 string
+							_ = __lt13
 							if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-								__lt3 = "showing"
+								__lt13 = "showing"
 							} else {
-								__lt3 = "hidden"
+								__lt13 = "hidden"
 							}
 							if m.__focusLoop0_cursor == __focusPos0 {
 								m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
 								m.cell__params__inst0 = Sel{Pick: "x"}
-								var __lt4 string
+								var __lt14 string
 								if c == "3" {
-									__lt4 = "/"
+									__lt14 = "/"
 								} else {
-									__lt4 = ((("/" + r.Name) + "/") + c)
+									__lt14 = ((("/" + r.Name) + "/") + c)
 								}
-								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt4, Title: (r.Name + c), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt14, Title: (r.Name + c), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								return
 							}
 							__focusPos0++
@@ -356,12 +562,12 @@ func (m *Model) pickClick() {
 				_ = __copy1
 				_ = c
 				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-					var __lt3 string
-					_ = __lt3
+					var __lt13 string
+					_ = __lt13
 					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt3 = "showing"
+						__lt13 = "showing"
 					} else {
-						__lt3 = "hidden"
+						__lt13 = "hidden"
 					}
 					__at = append(__at, struct {
 						key string
@@ -431,16 +637,16 @@ func (m Model) View() tea.View {
 				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
 					var contentPart_0ItemItemParts []string
 					var contentPart_0ItemItemPart_0 string
-					contentPart_0ItemItemPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((r.Name + " ") + c) + " picked ") + m.cell__params__inst0.Pick)))
+					contentPart_0ItemItemPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((((r.Name + " ") + c) + " picked ") + m.cell__params__inst0.Pick)))
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_0)
-					var __lt3 string
+					var __lt13 string
 					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt3 = "showing"
+						__lt13 = "showing"
 					} else {
-						__lt3 = "hidden"
+						__lt13 = "hidden"
 					}
 					var contentPart_0ItemItemPart_3 string
-					contentPart_0ItemItemPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(__lt3))
+					contentPart_0ItemItemPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt13))
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_3)
 					var contentPart_0ItemItemPart_4 string
 					contentPart_0ItemItemPart_4Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
@@ -448,29 +654,29 @@ func (m Model) View() tea.View {
 					if contentPart_0ItemItemPart_4Focused {
 						contentPart_0ItemItemPart_4Prefix = ">"
 					}
-					contentPart_0ItemItemPart_4 = lipgloss.NewStyle().Render(contentPart_0ItemItemPart_4Prefix + " " + fmt.Sprint("pick"))
+					contentPart_0ItemItemPart_4 = BoxLook(Style{}, true).Render(contentPart_0ItemItemPart_4Prefix + " " + fmt.Sprint("pick"))
 					__focusPos0++
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_4)
-					contentPart_0ItemItem = tui.Column(0, contentPart_0ItemItemParts...)
+					contentPart_0ItemItem = tui.Spaced(false, lipgloss.Left, 0, contentPart_0ItemItemParts...)
 				}
 				contentPart_0ItemItems = append(contentPart_0ItemItems, contentPart_0ItemItem)
 			}
-			contentPart_0Item = tui.Column(0, contentPart_0ItemItems...)
+			contentPart_0Item = tui.Spaced(false, lipgloss.Left, 0, contentPart_0ItemItems...)
 			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
 		}
-		contentPart_0 = tui.Column(0, contentPart_0Items...)
+		contentPart_0 = tui.Spaced(false, lipgloss.Left, 0, contentPart_0Items...)
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
 		var contentPart_1 string
 		if m.pages__current__inst0.Id == 1 {
-			contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint("about"))
+			contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint("about"))
 		}
 		if contentPart_1 != "" {
 			contentParts = append(contentParts, contentPart_1)
 		}
 		var contentPart_2 string
-		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.pages__current__inst0.Title))
+		contentPart_2 = BoxLook(Style{}, true).Render(fmt.Sprint(m.pages__current__inst0.Title))
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
 		contentPart_3Focused := (m.__focusID == 1)
@@ -478,7 +684,7 @@ func (m Model) View() tea.View {
 		if contentPart_3Focused {
 			contentPart_3Prefix = ">"
 		}
-		contentPart_3 = lipgloss.NewStyle().Render(contentPart_3Prefix + " " + fmt.Sprint("About"))
+		contentPart_3 = BoxLook(Style{}, true).Render(contentPart_3Prefix + " " + fmt.Sprint("About"))
 		contentParts = append(contentParts, contentPart_3)
 		var contentPart_4 string
 		contentPart_4Focused := (m.__focusID == 2)
@@ -486,9 +692,9 @@ func (m Model) View() tea.View {
 		if contentPart_4Focused {
 			contentPart_4Prefix = ">"
 		}
-		contentPart_4 = lipgloss.NewStyle().Render(contentPart_4Prefix + " " + fmt.Sprint("Back"))
+		contentPart_4 = BoxLook(Style{}, true).Render(contentPart_4Prefix + " " + fmt.Sprint("Back"))
 		contentParts = append(contentParts, contentPart_4)
-		content = tui.Column(0, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -613,19 +819,19 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				__inst1_next := []*__child1Instance{}
 				var __inst1_i int = 0
 				for __copy, r := range m.rows {
-					for __copy1, c__r0 := range r.Cols {
+					for __copy1, c__r1 := range r.Cols {
 						if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
 							var __n2 *__child0Instance
 							if len(m.__inst0_live) > __inst0_i {
 								__n2 = m.__inst0_live[__inst0_i]
 								__n2.Set__p0(r)
-								__n2.Set__p1(c__r0)
+								__n2.Set__p1(c__r1)
 								__n2.Set__p2(m.cell__params__inst0)
 							} else {
 								if len(m.__inst0_live) > __inst0_i {
 									m.__inst0_live[__inst0_i].Destroy()
 								}
-								__n2__new := new__child0Instance(m, r, c__r0, m.cell__params__inst0)
+								__n2__new := new__child0Instance(m, r, c__r1, m.cell__params__inst0)
 								__n2 = __n2__new
 							}
 							__inst0_next = append(__inst0_next, __n2)
@@ -659,13 +865,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								for __inst0_live_ui, _ := range m.__inst0_live {
 									m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 								}
-								var __lt3 string
-								if c__r0 == "3" {
-									__lt3 = "/"
+								var __lt10 string
+								if c__r1 == "3" {
+									__lt10 = "/"
 								} else {
-									__lt3 = ((("/" + r.Name) + "/") + c__r0)
+									__lt10 = ((("/" + r.Name) + "/") + c__r1)
 								}
-								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt3, Title: (r.Name + c__r0), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt10, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								m.heading.SetText(m.pages__current__inst0.Title)
 								m.__renderSlot0(m.__n1.Container)
 								m.__renderSlot1(m.__n1.Container)
@@ -720,6 +926,19 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			}
 		}()
 	}
+}
+
+func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -906,49 +1125,49 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt7 string
+	var __lt14 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt7 = "showing"
+		__lt14 = "showing"
 	} else {
-		__lt7 = "hidden"
+		__lt14 = "hidden"
 	}
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(__lt7)
+	c.__n0.SetText(__lt14)
 	c.Root = c.__n0
 	return c
 }
 
 func (c *__child1Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	var __lt4 string
+	var __lt11 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt4 = "showing"
+		__lt11 = "showing"
 	} else {
-		__lt4 = "hidden"
+		__lt11 = "hidden"
 	}
-	c.__n0.SetText(__lt4)
+	c.__n0.SetText(__lt11)
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt5 string
+	var __lt12 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt5 = "showing"
+		__lt12 = "showing"
 	} else {
-		__lt5 = "hidden"
+		__lt12 = "hidden"
 	}
-	c.__n0.SetText(__lt5)
+	c.__n0.SetText(__lt12)
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt6 string
+	var __lt13 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt6 = "showing"
+		__lt13 = "showing"
 	} else {
-		__lt6 = "hidden"
+		__lt13 = "hidden"
 	}
-	c.__n0.SetText(__lt6)
+	c.__n0.SetText(__lt13)
 }
 
 func (c *__child1Instance) Destroy() {}
@@ -958,6 +1177,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -972,6 +1192,7 @@ func main() {
 	m := New()
 	m.buildWidgetTree()
 	gtk4rt.RunWindows(true)
+	m.__snglTeardown()
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -1076,19 +1297,19 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				__inst1_next := []*__child1Instance{}
 				var __inst1_i int = 0
 				for __copy, r := range m.rows {
-					for __copy1, c__r0 := range r.Cols {
+					for __copy1, c__r1 := range r.Cols {
 						if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
 							var __n2 *__child0Instance
 							if len(m.__inst0_live) > __inst0_i {
 								__n2 = m.__inst0_live[__inst0_i]
 								__n2.Set__p0(r)
-								__n2.Set__p1(c__r0)
+								__n2.Set__p1(c__r1)
 								__n2.Set__p2(m.cell__params__inst0)
 							} else {
 								if len(m.__inst0_live) > __inst0_i {
 									m.__inst0_live[__inst0_i].Destroy()
 								}
-								__n2__new := new__child0Instance(m, r, c__r0, m.cell__params__inst0)
+								__n2__new := new__child0Instance(m, r, c__r1, m.cell__params__inst0)
 								__n2 = __n2__new
 							}
 							__inst0_next = append(__inst0_next, __n2)
@@ -1122,14 +1343,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								for __inst0_live_ui, _ := range m.__inst0_live {
 									m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 								}
-								var __lt3 string
-								if c__r0 == "3" {
-									__lt3 = "/"
+								var __lt18 string
+								if c__r1 == "3" {
+									__lt18 = "/"
 								} else {
-									__lt3 = ((("/" + r.Name) + "/") + c__r0)
+									__lt18 = ((("/" + r.Name) + "/") + c__r1)
 								}
-								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt3, Title: (r.Name + c__r0), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
-								gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt18, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 								m.__renderSlot0(m.__n1)
 								m.__renderSlot1(m.__n1)
 							})
@@ -1176,7 +1397,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 				if m.pages__current__inst0.Id == 1 {
 					__n4 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n4, "about")
+					gtk4rt.LabelSetLabel(__n4, "about")
 					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 					m.__slot1 = append(m.__slot1, __n4)
@@ -1184,6 +1405,19 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			}
 		}()
 	}
+}
+
+func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -1197,7 +1431,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 func (m *Model) toAbout_clicked_handler() {
 	m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
 	m.pages__current__inst0 = _page__value{Id: 1, Href: "/about", Title: "About", Meta: __anon_e3b0c4{}, Copy: []int{}}
-	gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+	gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 	m.__renderSlot0(m.__n1)
 	m.__renderSlot1(m.__n1)
 }
@@ -1209,7 +1443,7 @@ func (m *Model) back_clicked_handler() {
 			m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 		}
 		m.pages__current__inst0 = m.pages__history__inst0[(len(m.pages__history__inst0) - 1)].Page
-		gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+		gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 		m.__renderSlot0(m.__n1)
 		m.__renderSlot1(m.__n1)
 		if __i := (len(m.pages__history__inst0) - 1); __i >= 0 && __i < len(m.pages__history__inst0) {
@@ -1239,11 +1473,10 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 string, __a___p2
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.line = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 	gtk4rt.LabelSetXAlign(c.line, 0.0)
 	c.Root = c.line
 	gtk4rt.Retain(c.Root)
@@ -1252,17 +1485,17 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 string, __a___p2
 
 func (c *__child0Instance) Set__p0(__v Row) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 }
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 }
 
 func (c *__child0Instance) Set__p2(__v Sel) {
 	c.__prop___p2 = __v
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1299,17 +1532,16 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__prop___p2 = __a___p2
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt7 string
+	var __lt22 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt7 = "showing"
+		__lt22 = "showing"
 	} else {
-		__lt7 = "hidden"
+		__lt22 = "hidden"
 	}
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, __lt7)
+	gtk4rt.LabelSetLabel(c.__n0, __lt22)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1318,35 +1550,35 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 
 func (c *__child1Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	var __lt4 string
+	var __lt19 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt4 = "showing"
+		__lt19 = "showing"
 	} else {
-		__lt4 = "hidden"
+		__lt19 = "hidden"
 	}
-	gtk4rt.LabelSetText(c.__n0, __lt4)
+	gtk4rt.LabelSetLabel(c.__n0, __lt19)
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt5 string
+	var __lt20 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt5 = "showing"
+		__lt20 = "showing"
 	} else {
-		__lt5 = "hidden"
+		__lt20 = "hidden"
 	}
-	gtk4rt.LabelSetText(c.__n0, __lt5)
+	gtk4rt.LabelSetLabel(c.__n0, __lt20)
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt6 string
+	var __lt21 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt6 = "showing"
+		__lt21 = "showing"
 	} else {
-		__lt6 = "hidden"
+		__lt21 = "hidden"
 	}
-	gtk4rt.LabelSetText(c.__n0, __lt6)
+	gtk4rt.LabelSetLabel(c.__n0, __lt21)
 }
 
 func (c *__child1Instance) Destroy() {
@@ -1407,7 +1639,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n1)
 	m.__renderSlot1(m.__n1)
 	m.heading = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+	gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 	gtk4rt.LabelSetXAlign(m.heading, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.heading)
 	m.toAbout = gtk4rt.ButtonNew()
@@ -1474,7 +1706,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.composable
 import kotlin.reflect.typeOf
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Row(
@@ -1580,38 +1816,38 @@ fun MainScreen() {
                     val c = (r.cols).elementAt(__copy1)
                     val s = __r.params ?: Sel(pick = c)
                     Column {
-                        Text(text = ((((r.name + " ") + c) + " picked ") + s.pick), modifier = Modifier.testTag("line"))
-                        Text(text = (if (((pages__current.id == 0) && (((pages__current.copy.size == 2) && (pages__current.copy[0] == __copy)) && (pages__current.copy[1] == __copy1)))) "showing" else "hidden"), modifier = Modifier)
+                        Text(text = ((((r.name + " ") + c) + " picked ") + s.pick), modifier = Modifier.testTag("line"), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        Text(text = (if (((pages__current.id == 0) && (((pages__current.copy.size == 2) && (pages__current.copy[0] == __copy)) && (pages__current.copy[1] == __copy1)))) "showing" else "hidden"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                         Button(onClick = {
                             pages__nav.navigate(_page__valueRoute0(copy = listOf(__copy, __copy1).joinToString("."), params = Sel(pick = "x")))
-                        }, modifier = Modifier.testTag("pick")) {
+                        }, modifier = Modifier.testTag("pick"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                             Text(text = "pick", modifier = Modifier)
                         }
                     }
                 }
                 composable<_page__valueRoute1> {
-                    Text(text = "about", modifier = Modifier)
+                    Text(text = "about", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = pages__current.title, modifier = Modifier.testTag("heading").safeDrawingPadding())
+            Text(text = pages__current.title, modifier = Modifier.testTag("heading").safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute1())
-            }, modifier = Modifier.testTag("toAbout").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("toAbout").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "About", modifier = Modifier)
             }
             Button(onClick = {
                 run { if (pages__nav.previousBackStackEntry != null) pages__nav.popBackStack() }
-            }, modifier = Modifier.testTag("back").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("back").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Back", modifier = Modifier)
             }
         }
     }
 }
 -- run/go/bubbletea --
-pass sha256:97beb3b2e87a028c70a1645810b8eca3
+pass sha256:2d90581e4649750e3678fc013fe5866e
 -- run/go/fyne --
-pass sha256:ed5c371965f791560a6fea6ba76357e9
+pass sha256:fcd203c83e87f70cdbbe56a8b848d682
 -- run/go/gtk4 --
-pass sha256:9f1a95a102bcfed150e9980fb2030355
+pass sha256:8b47492f974ffbaa37fb4838e991a136
 -- run/kotlin/android --
-pass sha256:dc2426df5905b54745512fd282bcbda9
+pass sha256:0a8a2589fec852e0597a10ac0c166bc6

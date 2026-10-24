@@ -370,7 +370,6 @@ func BoxAppend(box, child Handle) {
 		return
 	}
 	C.gtk_box_append((*C.GtkBox)(p(box)), widget(child))
-	aligned(box, child)
 }
 
 func BoxRemove(box, child Handle) {
@@ -431,7 +430,6 @@ func InsertBefore(box, anchor, child Handle) {
 	}
 	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
 	C.gtk_box_insert_child_after((*C.GtkBox)(p(box)), widget(child), prev)
-	aligned(box, child)
 }
 
 func children(parent Handle) []Handle {
@@ -463,10 +461,10 @@ func Nothing() Handle {
 	return Handle(unsafe.Pointer(w))
 }
 
-func LabelSetText(label Handle, text string) {
+func LabelSetLabel(label Handle, text string) {
 	c, free := cstr(text)
 	defer free()
-	C.gtk_label_set_text((*C.GtkLabel)(p(label)), c)
+	C.gtk_label_set_label((*C.GtkLabel)(p(label)), c)
 }
 
 // ---- Button ----

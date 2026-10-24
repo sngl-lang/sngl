@@ -436,13 +436,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -891,8 +884,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:bbba5ad2d6b10159cacd305311b0028a
+pass sha256:2d438c4d6e4072e1c1be3656e0b2ec13
 -- run/kotlin/android --
-pass sha256:b7b01539244ce74b590e5551fc4ab778
+pass sha256:36e28049e3733ac5845c8e53751c4f78
 -- run/none/html --
 pass sha256:774b31d51405558e8a0332ed7aee6ec7

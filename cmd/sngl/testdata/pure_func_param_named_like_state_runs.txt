@@ -64,7 +64,7 @@ func testChipCallsAPureFunc(t test.Test, c page) {
     t.assert(c.picked == "c")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:38367809ef84486087d5658b63b8d97c
+sha256:763963b99e7d9c817291e9ed7675b6c5
 {
   "results": [
     {
@@ -74,7 +74,7 @@ sha256:38367809ef84486087d5658b63b8d97c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:7349f06b2b9b63861e6d0f1a6a804b35
+sha256:a879d33380a59e52507e5a51ebcd7c0a
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:7349f06b2b9b63861e6d0f1a6a804b35
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:ee4b9d0bf15ef421bab033a4ea6653ff
+sha256:314944f005d0e23ee9868476cc25599d
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:ee4b9d0bf15ef421bab033a4ea6653ff
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:3a55f4098a39e858a38cdf1231e06cf4
+sha256:0aea312d084f05b9ceda8ade36ea2a0d
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:3a55f4098a39e858a38cdf1231e06cf4
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:4db4d4f1e2e2afe6ca75da9cdc5f17d4
+sha256:efd9800b32885e681f460bb60eadbe22
 {
   "results": [
     {

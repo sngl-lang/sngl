@@ -118,10 +118,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	// RequireImport is idempotent, so re-running in pass 2 is harmless.
 	var discard strings.Builder
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
-			continue
-		}
-		if fn.Return == nil {
+		if !inGoLib(fn) {
 			continue
 		}
 		emitGoLibIRFunc(&discard, fn, gc)
@@ -150,10 +147,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	// constant before it arrives. The Kotlin side renders them from Compose
 	// state.
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
-			continue
-		}
-		if fn.Return == nil {
+		if !inGoLib(fn) {
 			continue
 		}
 		emitGoLibIRFunc(&b, fn, gc)
@@ -168,10 +162,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
 	read := map[*ir.Var]bool{}
 	for _, fn := range funcs {
-		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
-			continue
-		}
-		if fn.Return == nil {
+		if !inGoLib(fn) {
 			continue
 		}
 		_ = ir.Walk(fn, func(n ir.Node) error {
@@ -215,4 +206,17 @@ func firstCanvasName(draws *codegen.CanvasDraws) string {
 		return ""
 	}
 	return all[0].Name
+}
+
+// composeSide reports whether fn is this platform package's own: one that
+// describes Compose -- what a Style becomes, a closure written in a Row's
+// scope -- which is Kotlin under any `--lang`, where a program's funcs are
+// golib's under `--lang go`.
+func composeSide(fn *ir.Func) bool {
+	return fn.PkgPath() == "sngl:platform/android"
+}
+
+// inGoLib reports whether fn is emitted into the gomobile module.
+func inGoLib(fn *ir.Func) bool {
+	return !fn.IsTest && !fn.IsMethod() && !codegen.IsComputed(fn) && fn.Return != nil && !composeSide(fn)
 }

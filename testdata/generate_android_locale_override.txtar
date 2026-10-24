@@ -38,8 +38,10 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -71,7 +73,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Text(text = price__inst0, modifier = Modifier.safeDrawingPadding())
+        Text(text = price__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 -- out/kotlin/android/app/src/main/kotlin/us/duckfam/git/jonathan/sngl/i18n/I18n.kt --
@@ -560,4 +562,4 @@ private fun loadManifest(ctx: Context): Manifest {
     }
 }
 -- run/kotlin/android --
-pass sha256:6f380b6d675b6c79c826fc35084ddc13
+pass sha256:abc403c027bd014378b9cfade87abbbf

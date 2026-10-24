@@ -5,6 +5,7 @@ import shapes "sngl:ui/draw"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
+import go "sngl:language/go"
 import gen "sngl:x/gen"
 
 // The `bubbletea` node of a build directive: `output { go { bubbletea() } }`.
@@ -115,7 +116,11 @@ struct Event {
 #[intrinsic("bubbletea:Layout")]
 component Layout(
     const join JoinDir,
-    style      ui.Style,
+    look       Look,
+    grow       float,
+    // Where the children sit across the axis, as a lipgloss.Position.
+    align      float,
+    spacing    int,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip    string,
     children   ...component,
@@ -127,7 +132,8 @@ component Styled(
     content      string,
     focus        Focus,
     const events list[Event],
-    style        ui.Style,
+    look         Look,
+    grow         float,
     // Fired by the key an `events` record maps "change" to. A key press
     // carries nothing, so the override says here what the press reports.
     @change,
@@ -144,7 +150,8 @@ component Widget(
     focus       Focus,
     const binds list[Bind],
     placeholder string,
-    style       ui.Style,
+    look        Look,
+    grow        float,
 
     // Operands for the `$\{name\}` tokens in this widget's Model strings. A
     // token names one of these props, so the set grows with the templates
@@ -162,7 +169,7 @@ component Widget(
 component Overlay(
     placement string,
     dim       bool,
-    style     ui.Style,
+    look      Look,
     children  ...component,
 ) ui.node
 
@@ -202,29 +209,29 @@ const component ui.window[platform](visible, @error, @closed, content) {
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, style={...style}) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Layout(join=JoinDir.horizontal, style={...style}) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         children
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    Layout(join=JoinDir.vertical, style={...style}) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         layers
     }
 }
 
 const component ui.spacer[platform](style) {
-    Styled(content="", style={...style}) {}
+    Styled(content="", look=lookOf(style), grow=style.flex) {}
 }
 
 const component ui.scroll[platform](style, content) {
-    Layout(join=JoinDir.vertical, style={...style}) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         content
     }
 }
@@ -232,7 +239,7 @@ const component ui.scroll[platform](style, content) {
 // --- Core Text & Media ---
 
 const component ui.text[platform](value, style) {
-    Styled(content=value, style={...style}) {}
+    Styled(content=value, look=lookOf(style), grow=style.flex) {}
 }
 
 const component ui.button[platform](text, style) {
@@ -240,7 +247,8 @@ const component ui.button[platform](text, style) {
         content = text,
         focus = Focus{enabled=true},
         events = [Event{on="click", key="enter"}],
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
@@ -249,7 +257,7 @@ const component ui.button[platform](text, style) {
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform](style, src) {
-    Layout(join=JoinDir.vertical, style={...style}) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         #[family.crosses]
         src
     }
@@ -289,7 +297,8 @@ const component ui.input[platform](placeholder, style) {
         focus = Focus{enabled=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         placeholder = placeholder,
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
@@ -298,7 +307,8 @@ const component ui.checkbox[platform](label, checked, style, @change) {
         content = label,
         focus = Focus{enabled=true},
         events = [Event{on="change", key="space"}],
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
         @change {
             checked = !checked
             change(checked)
@@ -309,7 +319,7 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](style) {
-    Layout(join=JoinDir.vertical, style={...style}) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
     }
 }
 
@@ -318,7 +328,8 @@ const component ui.toggle[platform](label, checked, style, @change) {
         content = label,
         focus = Focus{enabled=true},
         events = [Event{on="change", key="space"}],
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
         @change {
             checked = !checked
             change(checked)
@@ -342,7 +353,8 @@ const component ui.select[platform](style, options) {
         focus = Focus{enabled=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
@@ -358,7 +370,8 @@ const component ui.textarea[platform](style) {
         },
         focus = Focus{enabled=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
@@ -378,7 +391,8 @@ const component ui.datepicker[platform](placeholder, style) {
         focus = Focus{enabled=true},
         binds = [Bind{prop="value", get=".Date()", set=".SetDate"}],
         placeholder = placeholder,
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
@@ -402,7 +416,8 @@ const component ui.progress[platform](style, value, max) {
             },
             value = value,
             max = max,
-            style = {...style},
+            look = lookOf(style),
+            grow = style.flex,
         ) {}
     } else {
         Widget(
@@ -415,7 +430,8 @@ const component ui.progress[platform](style, value, max) {
             },
             value = 0.0,
             max = max,
-            style = {...style},
+            look = lookOf(style),
+            grow = style.flex,
         ) {}
     }
 }
@@ -430,19 +446,20 @@ const component ui.spinner[platform](style) {
             init = "$\{self\}.Tick",
             pkg = "charm.land/bubbles/v2/spinner",
         },
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
 const component ui.divider[platform](style) {
-    Styled(content="─", style={...style}) {}
+    Styled(content="─", look=lookOf(style), grow=style.flex) {}
 }
 
 // A terminal focuses controls rather than regions, so a clickable card is its
 // content beside a `›` that takes the focus and fires `@click` on enter, as a
 // button's label does.
 const component ui.card[platform](style, clickable, @click, content) {
-    Layout(join=JoinDir.horizontal, style={...style}) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex) {
         if clickable {
             Styled(
                 content = "› ",
@@ -451,7 +468,7 @@ const component ui.card[platform](style, clickable, @click, content) {
                 @click { click() },
             ) {}
         }
-        Layout(join=JoinDir.vertical) {
+        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
             content
         }
     }
@@ -462,17 +479,18 @@ const component ui.chip[platform](label, style) {
         content = label,
         focus = Focus{enabled=true},
         events = [Event{on="click", key="enter"}],
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
 const component ui.link[platform](text, style) {
-    Styled(content=text, style={...style}) {}
+    Styled(content=text, look=lookOf(style), grow=style.flex) {}
 }
 
 const component ui.modal[platform](style, open, content) {
     if open {
-        Overlay(placement="center", dim=true, style={...style}) {
+        Overlay(placement="center", dim=true, look=lookOf(style)) {
             content
         }
     }
@@ -480,7 +498,7 @@ const component ui.modal[platform](style, open, content) {
 
 const component ui.drawer[platform](style, open, side, content) {
     if open {
-        Overlay(placement=side, dim=true, style={...style}) {
+        Overlay(placement=side, dim=true, look=lookOf(style)) {
             content
         }
     }
@@ -491,19 +509,19 @@ const component ui.tooltip[platform](style, text, trigger) {
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
-    Layout(join=JoinDir.vertical, tooltip=text, style={...style}) {
+    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Layout(join=JoinDir.vertical, style={...style}) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    Layout(join=JoinDir.horizontal, style={...style}) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         panes
     }
 }
@@ -523,7 +541,8 @@ const component ui.table[platform](style, columns, rows) {
         binds = [Bind{prop="selected", get=".Cursor()"}],
         columns = columns,
         rows = rows.map(func(r) => r.cells),
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
@@ -551,7 +570,8 @@ const component ui.tree[platform](style, items) {
         focus = Focus{enabled=true},
         binds = [Bind{prop="selected", get="tui.SelectedString"}],
         items = _treeLabels(items),
-        style = {...style},
+        look = lookOf(style),
+        grow = style.flex,
     ) {}
 }
 
@@ -571,18 +591,19 @@ const component ui.menu[platform](style, open, items) {
             },
             focus = Focus{enabled=true},
             items = items.map(func(it) => it.label),
-            style = {...style},
+            look = lookOf(style),
+            grow = style.flex,
         ) {}
     }
 }
 
 const component ui.menubar[platform](style) {
-    Layout(join=JoinDir.horizontal, style={...style}) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
     }
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Layout(join=JoinDir.horizontal, style={...style}) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         controls
     }
 }
@@ -642,10 +663,13 @@ const component time.timer[platform](interval, enabled, @tick) {
 //
 // `role` is not taken. A terminal has the styling and none of the semantics,
 // which `markup.Role`'s own documentation says; what a heading looks like
-// arrives in `style`, and that is the whole of what this target can show.
+// arrives in its look and seed, and that is the whole of what this target can show.
 #[intrinsic("bubbletea:Flow")]
 component Flow(
-    style   ui.Style,
+    look    Look,
+    // What its words start from: the fields of its Style a run carries.
+    seed    markup.SpanStyle,
+    grow    float,
     content ...component markup.span,
 ) ui.node
 
@@ -664,7 +688,7 @@ component Span(
 ) markup.span
 
 const component markup.richText[platform](style, content) {
-    Flow(style={...style}) {
+    Flow(look=flowLookOf(style), seed=seedOf(style), grow=style.flex) {
         content
     }
 }
@@ -701,3 +725,114 @@ const component markup.token[platform](kind, content) {
 const component markup.image[platform](alt) {
     Span(text="[{alt}]") {}
 }
+
+// --- lipgloss ---
+//
+// What style.sngl builds a ui.Style's look from. Each is a value method: a
+// lipgloss style is copied on every call, so a chain is a value like any other.
+
+const _lipgloss = "charm.land/lipgloss/v2"
+
+const _tui = "duckfam.us/sngl/pkg/go/tui"
+
+#[go.native(_lipgloss, "lipgloss.Style")]
+struct Look {}
+
+#[go.native("image/color", "color.Color")]
+struct Hue {}
+
+#[go.native(_lipgloss, "lipgloss.Border")]
+struct Border {}
+
+#[go.native(_lipgloss, "lipgloss.Position")]
+struct Position {}
+
+#[go.native(_lipgloss, "lipgloss.NewStyle")]
+const func newStyle() Look
+
+#[go.native(_lipgloss, "lipgloss.Color")]
+const func hueOf(css string) Hue
+
+#[go.native(_lipgloss, "lipgloss.Left")]
+const posLeft Position
+
+#[go.native(_lipgloss, "lipgloss.Center")]
+const posCenter Position
+
+#[go.native(_lipgloss, "lipgloss.Right")]
+const posRight Position
+
+#[go.native(_lipgloss, "lipgloss.NormalBorder")]
+const func normalBorder() Border
+
+#[go.native(_lipgloss, "lipgloss.RoundedBorder")]
+const func roundedBorder() Border
+
+#[go.native(_lipgloss, "lipgloss.DoubleBorder")]
+const func doubleBorder() Border
+
+#[go.native(_tui, "tui.DashedBorder")]
+const func dashedBorder() Border
+
+#[go.native(_lipgloss, "lipgloss.Style.Foreground", method)]
+const func Look.foreground(c Hue) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.Background", method)]
+const func Look.background(c Hue) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.Bold", method)]
+const func Look.bold(on bool) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.Italic", method)]
+const func Look.italic(on bool) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.Faint", method)]
+const func Look.faint(on bool) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.AlignHorizontal", method)]
+const func Look.alignHorizontal(p Position) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.Border", method)]
+const func Look.border(b Border) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.BorderForeground", method)]
+const func Look.borderForeground(c Hue) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.MarginTop", method)]
+const func Look.marginTop(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.MarginRight", method)]
+const func Look.marginRight(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.MarginBottom", method)]
+const func Look.marginBottom(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.MarginLeft", method)]
+const func Look.marginLeft(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.PaddingTop", method)]
+const func Look.paddingTop(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.PaddingRight", method)]
+const func Look.paddingRight(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.PaddingBottom", method)]
+const func Look.paddingBottom(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.PaddingLeft", method)]
+const func Look.paddingLeft(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.Width", method)]
+const func Look.width(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.Height", method)]
+const func Look.height(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.MaxWidth", method)]
+const func Look.maxWidth(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.MaxHeight", method)]
+const func Look.maxHeight(cells int) Look
+
+#[go.native(_lipgloss, "lipgloss.Style.GetVerticalFrameSize", method)]
+const func Look.verticalFrame() int

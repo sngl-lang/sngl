@@ -464,7 +464,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 // LangForPlatform returns the default language for a platform.
 func LangForPlatform(platform string) string {
 	switch platform {
-	case "bubbletea", "fyne":
+	case "bubbletea", "fyne", "gtk4":
 		return "go"
 	case "android":
 		return "kotlin"

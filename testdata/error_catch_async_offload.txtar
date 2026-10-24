@@ -53,7 +53,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"time"
@@ -193,7 +192,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("go")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -298,13 +297,13 @@ func (m *Model) __n3_clicked_handler() {
 				_ = e
 				gtk4rt.Post(func() {
 					m.caught = ("window: " + e.Message)
-					gtk4rt.LabelSetText(m.__n0, m.caught)
+					gtk4rt.LabelSetLabel(m.__n0, m.caught)
 				})
 			}()
 			__async_off0 := Load("")
 			gtk4rt.Post(func() {
 				m.greeting = __async_off0
-				gtk4rt.LabelSetText(m.__n1, m.greeting)
+				gtk4rt.LabelSetLabel(m.__n1, m.greeting)
 			})
 		}()
 	}()
@@ -352,11 +351,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.caught)
+	gtk4rt.LabelSetLabel(m.__n0, m.caught)
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n0)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.greeting)
+	gtk4rt.LabelSetLabel(m.__n1, m.greeting)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	gtk4rt.BoxAppend(m.home, m.__n2)
@@ -370,6 +369,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/fyne --
-pass sha256:ab72dc9065bbfce5ac013554fe764367
+pass sha256:fe280b6168bbe2ebc7d2d758e36f1018
 -- run/go/gtk4 --
-pass sha256:8ed424203b06704063be7b4ffbca0682
+pass sha256:127b09092f04a33092cd157761f506dd

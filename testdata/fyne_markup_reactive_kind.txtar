@@ -51,7 +51,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -84,13 +83,6 @@ type Palette struct {
 	Comment     snglcolor.Color
 	Operator    snglcolor.Color
 	Punctuation snglcolor.Color
-}
-
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
 }
 
 // Model holds the state for this SNGL UI.
@@ -222,7 +214,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("change")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -260,4 +252,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:043e3a521d1636a0a3df2e7f79ffd7a1
+pass sha256:ec7b3b3c69c823ef95934546bea577da

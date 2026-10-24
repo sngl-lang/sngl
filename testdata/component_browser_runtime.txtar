@@ -471,8 +471,78 @@ window.__sngl_boot = () => {
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
+  function __snglTeardown() {
+    for (const [__inst19_live_di, _] of __inst19_live.entries()) {
+      ;
+      let __inst19_live_dj = __inst19_live.length - 1 - __inst19_live_di;
+      __inst19_live[__inst19_live_dj].__destroy();
+    }
+    ;
+    __inst19_live = [];
+    for (const [__inst17_live_di, _] of __inst17_live.entries()) {
+      ;
+      let __inst17_live_dj = __inst17_live.length - 1 - __inst17_live_di;
+      __inst17_live[__inst17_live_dj].__destroy();
+    }
+    ;
+    __inst17_live = [];
+    for (const [__inst15_live_di, _] of __inst15_live.entries()) {
+      ;
+      let __inst15_live_dj = __inst15_live.length - 1 - __inst15_live_di;
+      __inst15_live[__inst15_live_dj].__destroy();
+    }
+    ;
+    __inst15_live = [];
+    for (const [__inst13_live_di, _] of __inst13_live.entries()) {
+      ;
+      let __inst13_live_dj = __inst13_live.length - 1 - __inst13_live_di;
+      __inst13_live[__inst13_live_dj].__destroy();
+    }
+    ;
+    __inst13_live = [];
+    for (const [__inst11_live_di, _] of __inst11_live.entries()) {
+      ;
+      let __inst11_live_dj = __inst11_live.length - 1 - __inst11_live_di;
+      __inst11_live[__inst11_live_dj].__destroy();
+    }
+    ;
+    __inst11_live = [];
+    for (const [__inst9_live_dk, __inst9_live_dv] of __inst9_live.entries()) {
+      ;
+      __inst9_live_dv.__destroy();
+    }
+    ;
+    __inst9_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst7_live_dk, __inst7_live_dv] of __inst7_live.entries()) {
+      ;
+      __inst7_live_dv.__destroy();
+    }
+    ;
+    __inst7_live = /* @__PURE__ */ new Map([]);
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+      ;
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
+    }
+    ;
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { red });
+    Object.assign(window, { red, __snglTeardown });
   }
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -1783,15 +1853,16 @@ window.__sngl_boot = () => {
     $6.textContent = "picked=" + state.picked__inst1;
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3788b5d0819fb0ed47d5fcc47ee7d00e
+pass sha256:eaab48d57280464b649a6539f648eed7
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:14c5becef6f52e9f3ef76b06a99a5b34
+sha256:b48e0d1f13406a137eca2226baafe11f
 {
   "results": [
     {
@@ -1801,7 +1872,7 @@ sha256:14c5becef6f52e9f3ef76b06a99a5b34
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:99d63fde1aac21b1980992cafb1a1f5a
+sha256:4cf611a576aa6bfe419a69d766afbcc3
 {
   "results": [
     {
@@ -1811,7 +1882,7 @@ sha256:99d63fde1aac21b1980992cafb1a1f5a
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:488ecc36a20c302f2c984099c9a5bc33
+sha256:87a6a6b609337d01e272ab3833f461af
 {
   "results": [
     {
@@ -1821,7 +1892,7 @@ sha256:488ecc36a20c302f2c984099c9a5bc33
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:5e55482fd75d5467af25ee4b91279671
+sha256:45cbb8aac3138e1d99ec620991f2925a
 {
   "results": [
     {
@@ -1835,7 +1906,7 @@ sha256:5e55482fd75d5467af25ee4b91279671
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:8d86e8eca65e93951ad180a6db90ce09
+sha256:0f2c32392b575baed758f8aee7453c77
 {
   "results": [
     {
@@ -1845,7 +1916,7 @@ sha256:8d86e8eca65e93951ad180a6db90ce09
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:efe358ba8b0432ec1ed011bbffb7ce47
+sha256:3cb9c71f6f79720fd8d98cded844cbd5
 {
   "results": [
     {
@@ -1855,7 +1926,7 @@ sha256:efe358ba8b0432ec1ed011bbffb7ce47
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:7c7c395f937b2ecdb6c07a671324a3e5
+sha256:4b2673453912910635a9fee222dcd11e
 {
   "results": [
     {
@@ -1865,7 +1936,7 @@ sha256:7c7c395f937b2ecdb6c07a671324a3e5
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:d4d201afe40c3f6205eaec4a566758fe
+sha256:d9cdef4b69e64e6aeccb75442b25865c
 {
   "results": [
     {
@@ -1875,7 +1946,7 @@ sha256:d4d201afe40c3f6205eaec4a566758fe
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:1ac05487a72fb358afd96cb2922c6c27
+sha256:fd5324cca238e07a95bf208fcf3fd5f9
 {
   "results": [
     {
@@ -1889,7 +1960,7 @@ sha256:1ac05487a72fb358afd96cb2922c6c27
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:c8a9b7dcb0e8e46111850382f23b4623
+sha256:08304df6aa1757f1b59f6bad99ff725e
 {
   "results": [
     {

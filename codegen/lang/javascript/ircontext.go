@@ -56,6 +56,9 @@ func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := multiBaseUnitBinaryJS(n, left, right); ok {
 		return out
 	}
+	if out, ok := colorEqualJS(n, left, right); ok {
+		return out
+	}
 	if out, ok := enumEqualJS(n, left, right); ok {
 		return out
 	}

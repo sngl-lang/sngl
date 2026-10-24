@@ -18,9 +18,6 @@ import (
 // property assignments could not be emitted. A nil *emitShared answers every
 // method, so a scope that emits no widgets need not carry one.
 type emitShared struct {
-	// heldStyle is the Style declaration a style held as a value has, which
-	// snglStyle is written for.
-	heldStyle  *ir.StructDef
 	boolToInt  bool
 	gObjectSet bool
 	slotAnchor bool
@@ -1186,24 +1183,8 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if t.isSkipped(node) {
 		return nil
 	}
-	// style is the platform's own prop, forwarded onto the widget root by the
-	// override bodies, and no GTK property is behind it. Two GTK classes
-	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
-	// declaration reserves the name for style, so it is not theirs.
-	// `flex` asks the box holding the widget for its spare room, which GTK
-	// says with an expand, and without one a scroll is the few pixels its
-	// scrollbar needs; the fields gtk4rt.SetStyle reads are the rest
-	// (setStyle). A temp the value reads that nothing here does is read
-	// into `_`.
-	if prop == stylePropName {
-		var out []ir.Stmt
-		if styleFlexes(value) {
-			out = append(out, &ir.CallStmt{Call: rtCall("Flex", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)))})
-		}
-		if set := t.setStyle(node, value); set != nil {
-			return append(out, set)
-		}
-		return append(codegen.KeepLocalsRead(value), out...)
+	if prop == lookPropName {
+		return t.setLook(node, value)
 	}
 	bare := codegen.IdentBareName(node)
 	if prop == ir.CopyProp {
@@ -1225,25 +1206,16 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	info := t.classFor(cType)
 	p, hasProp := girProp(info, prop)
 
-	// gtkSetterTable wins over GIR's `setter=`: it is the platform's deliberate
-	// choice of gtk_label_set_text over gtk_label_set_label, and it answers for
-	// props GIR names no setter for.
-	entry := gtkSetterFor(cType, prop)
-	if entry.Setter == "" {
-		switch prop {
-		case "value", "text":
-			entry = gtkSetterFor(cType, "label")
-		}
-	}
 	// A construct-only property has no reachable write — the widget exists by
 	// the time any prop is assigned, and GObject answers with a g_critical.
 	// declgen withholds these, so reaching here means the prop arrived some
 	// other way; refuse rather than emit a call that silently does nothing.
-	if entry.Setter == "" && hasProp && p.ConstructOnly {
+	if hasProp && p.ConstructOnly {
 		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
 		return nil
 	}
-	if entry.Setter == "" && hasProp {
+	var entry gtkSetterEntry
+	if hasProp {
 		entry = girSetter(info, p)
 	}
 	// Before anything cgo-shaped is built: a coercion records that its helper
@@ -1260,25 +1232,17 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		recvType = entry.RecvType
 	}
 	if !hasProp {
-		if entry.Setter == "" {
-			if t.canvasMetaForID(bare) != nil {
-				// A canvas's own width and height, which emitCanvasCreate
-				// already read off the drawing to size the GtkDrawingArea.
-				// They arrive here as ordinary props because that is what they
-				// are in the tree; there is nothing further to write.
-				return nil
-			}
-			// GIR describes no property of this name on the class, and the
-			// setter table names none either -- so there is nothing to write
-			// and the value reaches the widget not at all. Reported for the
-			// reason the construct-only and unsettable cases above are: a
-			// write that goes missing is a rendering bug with nothing said.
-			t.shared.fail(fmt.Errorf("gtk4: %s has no property or setter named %q: GIR describes none for the class and gtkSetterTable names none, so the value reaches the widget not at all", cType, prop))
+		if t.canvasMetaForID(bare) != nil {
+			// A canvas's own width and height, which emitCanvasCreate already
+			// read off the drawing to size the GtkDrawingArea. They arrive
+			// here as ordinary props because that is what they are in the
+			// tree; there is nothing further to write.
 			return nil
 		}
-		// The parse merges interface properties but not inherited ones, so the
-		// SNGL value type is all there is to coerce by.
-		return t.emitSetterCall(node, recvType, entry.Setter, t.coerceSetterValue(entry.Setter, value))
+		// A write that goes missing is a rendering bug with nothing said, as
+		// the construct-only and unsettable cases are.
+		t.shared.fail(fmt.Errorf("gtk4: %s has no property named %q: GIR describes none for the class, so the value reaches the widget not at all", cType, prop))
+		return nil
 	}
 	kind := propKind(t.registry, p)
 	if kind == propUnsettable {
@@ -1899,4 +1863,12 @@ func (t *gtk4Translator) copiesType(id string) *ir.Type {
 		return ir.NativeGoNamed(widgetFieldGoType(copyMapType(cType), t.wrapped))
 	}
 	return ir.NativeGoNamed(widgetFieldGoType(copyMapType("GtkWidget"), t.wrapped))
+}
+
+// setLook gives a widget what style.sngl's lookOf built from its Style.
+func (t *gtk4Translator) setLook(node, value ir.Expr) []ir.Stmt {
+	if codegen.IRIsZeroLiteral(value) {
+		return nil
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), codegen.IRWrittenFields(value))}}
 }

@@ -91,6 +91,29 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { big: false, name: "", numbered: false, label: "a", k: 0, visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst6_live_di, _] of __inst6_live.entries()) {
+      ;
+      let __inst6_live_dj = __inst6_live.length - 1 - __inst6_live_di;
+      __inst6_live[__inst6_live_dj].__destroy();
+    }
+    ;
+    __inst6_live = [];
+    for (const [__inst4_live_di, _] of __inst4_live.entries()) {
+      ;
+      let __inst4_live_dj = __inst4_live.length - 1 - __inst4_live_di;
+      __inst4_live[__inst4_live_dj].__destroy();
+    }
+    ;
+    __inst4_live = [];
+    for (const [__inst2_live_di, _] of __inst2_live.entries()) {
+      ;
+      let __inst2_live_dj = __inst2_live.length - 1 - __inst2_live_di;
+      __inst2_live[__inst2_live_dj].__destroy();
+    }
+    ;
+    __inst2_live = [];
+  }
   function __cf_seeded(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -610,8 +633,9 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
   });
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1677071d7d234bceb475af000c4b2999
+pass sha256:b0df340e279760216a2f8453b66a20b7

@@ -1,0 +1,136 @@
+import ui "sngl:ui"
+
+// What a ui.Style becomes on Fyne: the Look of the box a node is shown in.
+// Fyne styles nothing per widget, so the box draws the margin, border, fill and
+// padding around the widget, puts its text under a theme of its own, and is
+// what a vbox's or hbox's layout reads a `flex` share off.
+
+const unset ui.Style = {}
+
+// What a Style may say that Fyne does not answer:
+//
+//   - flexDirection: vbox and hbox are the axis.
+//   - position, top, bottom, left, right, zIndex: a Fyne container lays its
+//     children out itself, with no flow to take one out of and no offsets.
+//   - maxLines: a Label truncates to one line or wraps them all.
+//   - border, borderBottom, borderLeft, borderCollapse: CSS shorthand text and
+//     table borders.
+//   - borderStyle: a canvas.Rectangle strokes a solid line only.
+//   - opacity: Fyne fades no widget it draws.
+//   - cursor: not answered yet; a desktop.Cursorable box would have to sit
+//     above the widget a pointer reaches.
+//   - overflow: Fyne clips only a scroll's content, which is ui.scroll's.
+//   - listStyleType: no widget here draws a list marker.
+const unstyled list[string] = [
+    "flexDirection",
+    "position",
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "zIndex",
+    "maxLines",
+    "border",
+    "borderBottom",
+    "borderLeft",
+    "borderCollapse",
+    "borderStyle",
+    "opacity",
+    "cursor",
+    "overflow",
+    "listStyleType",
+]
+
+// A length in Fyne's device-independent pixels, as codegen.MeasurementPx reads
+// one for this target: an em is the default theme's text size, 14.
+const func px(m ui.measurement) => m.px + 14.0 * (m.em + m.rem)
+
+// Fyne lays nothing outside the box its parent gives a child, so a negative
+// margin, which CSS allows, is none.
+const func inset(m ui.measurement) => float32(float.max(px(m), 0.0))
+
+// One side of a margin or a padding: its own field, else its axis's, else the
+// whole box's, as CSS reads them.
+const func side(all ui.measurement, axis ui.measurement, own ui.measurement) float32 {
+    return inset(own != unset.margin ? own : axis != unset.margin ? axis : all)
+}
+
+// A color the Style left out is the color zero, which SNGL holds as opaque
+// black and a Go literal as alpha zero; both are unset, as zero is in every
+// Style, and a Look reads alpha zero as none.
+const func paint(c color) => c.a == 0 || c == #000000 ? color{a=0} : c
+
+// These name the members that do something rather than compare against the
+// first: an enum field a Go struct literal leaves out is "", not that member.
+const func crossOf(a ui.Alignment) int {
+    return match a {
+        center => 2
+        end => 3
+        start, stretch, baseline => 0
+    }
+}
+
+const func justifyOf(j ui.Justification) int {
+    return match j {
+        center => 1
+        end => 2
+        spaceBetween => 3
+        spaceAround => 4
+        spaceEvenly => 5
+        start => 0
+    }
+}
+
+const func textAlignOf(a ui.TextAlign) int {
+    return match a {
+        center => 2
+        right => 3
+        justify => 1
+        left => 0
+    }
+}
+
+const func wrapOf(w ui.WhiteSpace) int {
+    return match w {
+        pre, nowrap => 1
+        preWrap, preLine => 2
+        normal => 0
+    }
+}
+
+// A block rather than an expression, so the optimizer calls it instead of
+// splicing a computed Style into each of the fields that read it.
+const func lookOf(s ui.Style) Look {
+    var look Look = {
+        marginTop = side(s.margin, s.marginY, s.marginTop),
+        marginRight = side(s.margin, s.marginX, s.marginRight),
+        marginBottom = side(s.margin, s.marginY, s.marginBottom),
+        marginLeft = side(s.margin, s.marginX, s.marginLeft),
+        paddingTop = side(s.padding, s.paddingY, s.paddingTop),
+        paddingRight = side(s.padding, s.paddingX, s.paddingRight),
+        paddingBottom = side(s.padding, s.paddingY, s.paddingBottom),
+        paddingLeft = side(s.padding, s.paddingX, s.paddingLeft),
+        width = inset(s.width),
+        height = inset(s.height),
+        minWidth = inset(s.minWidth),
+        maxWidth = inset(s.maxWidth),
+        maxHeight = inset(s.maxHeight),
+        grow = float32(s.flex),
+        gap = inset(s.gap),
+        cross = crossOf(s.alignItems),
+        justify = justifyOf(s.justifyContent),
+        fill = paint(s.background),
+        stroke = paint(s.borderColor),
+        strokeWidth = inset(s.borderWidth),
+        radius = inset(s.borderRadius),
+        textColor = paint(s.color),
+        textSize = inset(s.fontSize),
+        bold = s.fontWeight == ui.FontWeight.bold || s.fontWeight == ui.FontWeight.bolder,
+        italic = s.fontStyle == ui.FontStyle.italic || s.fontStyle == ui.FontStyle.oblique,
+        monospace = s.fontFamily == "monospace",
+        textAlign = textAlignOf(s.textAlign),
+        wrap = wrapOf(s.whiteSpace),
+        hidden = s.display == ui.Display.none,
+    }
+    return look
+}

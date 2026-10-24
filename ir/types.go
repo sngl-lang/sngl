@@ -592,8 +592,9 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	// The color/date/time/datetime value types are carried as stdlib-
 	// StructDef-backed TypeStructs with a canonical string form. They
 	// participate in string<->string implicit conversion just like the
-	// kind-backed string-domain types above.
-	if t.Kind == TypeString && StringReprStruct(target) {
+	// kind-backed string-domain types above. A color is written as a color
+	// literal and never as a string.
+	if t.Kind == TypeString && StringReprStruct(target) && !IsColorStruct(target) {
 		return true
 	}
 	if StringReprStruct(t) && target.Kind == TypeString {

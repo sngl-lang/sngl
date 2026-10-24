@@ -30,12 +30,14 @@ func seedWidget(tr *gtk4Translator, tag, cType, constructor string) {
 		CType:        cType,
 		Constructors: []gir.ConstructorInfo{{Name: constructor}},
 	}
-	// How the class takes a child comes from the introspection data, not from
-	// this stub: a hand-written zero value would let a translator that reads it
-	// pass here and drop every child in a real build.
+	// How the class takes a child and sets a property come from the
+	// introspection data, not from this stub: a hand-written zero value would
+	// let a translator that reads it pass here and drop every child in a real
+	// build.
 	if reg, err := gir.Minimal(); err == nil {
 		if real := reg.ByCType[cType]; real != nil {
 			cls.ChildAdd = real.ChildAdd
+			cls.Props = real.Props
 		}
 	}
 	tr.registry.ByCType[cType] = cls
@@ -172,14 +174,30 @@ func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
 	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypString, Value: "hi"}
-	// gtk4.sngl maps stdlib `value` prop onto `label` for GtkLabel; the
-	// translator's value/text → label fallback covers that.
-	got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "value", val))
-	if !strings.Contains(got, "C.gtk_label_set_") {
-		t.Errorf("expected gtk_label_set_*; got: %s", got)
+	got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "label", val))
+	if !strings.Contains(got, "C.gtk_label_set_label(") {
+		t.Errorf("expected GIR's gtk_label_set_label; got: %s", got)
 	}
 	if !strings.Contains(got, "C.CString") {
 		t.Errorf("expected C.CString conversion; got: %s", got)
+	}
+}
+
+// A prop the class has no property of is reported rather than read as some
+// other prop: gtk4.sngl writes `label=`, and nothing in Go says `value` means
+// it.
+func TestGtk4Translator_OnPropAssign_UnknownPropReported(t *testing.T) {
+	gc := stubGC()
+	shared := &emitShared{}
+	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
+	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
+	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
+	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
+	if got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "value", &ir.Literal{Type: ir.TypString, Value: "hi"})); got != "" {
+		t.Errorf("expected nothing emitted for GtkLabel.value; got: %s", got)
+	}
+	if len(shared.errs) != 1 || !strings.Contains(shared.errs[0].Error(), `"value"`) {
+		t.Errorf("expected one diagnostic naming value; got %v", shared.errs)
 	}
 }
 

@@ -75,10 +75,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -117,6 +179,150 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func RowsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 16))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(RowsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
+	} else {
+		__lt8 = max(1, (int(px) / 8))
+	}
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusNext() {
@@ -287,108 +493,111 @@ func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
-		__lt0 := "empty"
+		__lt11 := "empty"
 		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+		contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 		contentParts = append(contentParts, contentPart_1)
-		var __lt1 string
+		var __lt12 string
 		if m.started__inst0 {
-			__lt1 = "started empty"
+			__lt12 = "started empty"
 		} else {
-			__lt1 = "started with content"
+			__lt12 = "started with content"
 		}
 		var contentPart_4 string
-		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+		contentPart_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
-		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint("nothing"))
+		contentPart_5 = BoxLook(Style{}, true).Render(fmt.Sprint("nothing"))
 		contentParts = append(contentParts, contentPart_5)
-		__lt2 := "has content"
+		__lt13 := "has content"
 		var contentPart_7 string
-		contentPart_7 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+		contentPart_7 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt13))
 		contentParts = append(contentParts, contentPart_7)
-		var __lt3 string
+		var __lt14 string
 		if m.started__inst1 {
-			__lt3 = "started empty"
+			__lt14 = "started empty"
 		} else {
-			__lt3 = "started with content"
+			__lt14 = "started with content"
 		}
 		var contentPart_10 string
-		contentPart_10 = lipgloss.NewStyle().Render(fmt.Sprint(__lt3))
+		contentPart_10 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt14))
 		contentParts = append(contentParts, contentPart_10)
 		var contentPart_11 string
 		var contentPart_11Children []string
 		var contentPart_11_0 string
-		contentPart_11_0 = lipgloss.NewStyle().Render(fmt.Sprint("a"))
+		contentPart_11_0 = BoxLook(Style{}, true).Render(fmt.Sprint("a"))
 		contentPart_11Children = append(contentPart_11Children, contentPart_11_0)
-		contentPart_11 = tui.Column(0, contentPart_11Children...)
+		contentPart_11 = lipgloss.JoinVertical(lipgloss.Left, contentPart_11Children...)
+		contentPart_11 = BoxLook(Style{}, true).Render(contentPart_11)
 		contentParts = append(contentParts, contentPart_11)
-		var __lt4 string
+		var __lt15 string
 		if !m.shown__inst0 {
-			__lt4 = "empty"
+			__lt15 = "empty"
 		} else {
-			__lt4 = "has content"
+			__lt15 = "has content"
 		}
 		var contentPart_14 string
-		contentPart_14 = lipgloss.NewStyle().Render(fmt.Sprint(__lt4))
+		contentPart_14 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt15))
 		contentParts = append(contentParts, contentPart_14)
-		var __lt5 string
+		var __lt16 string
 		if m.started__inst2 {
-			__lt5 = "started empty"
+			__lt16 = "started empty"
 		} else {
-			__lt5 = "started with content"
+			__lt16 = "started with content"
 		}
 		var contentPart_17 string
-		contentPart_17 = lipgloss.NewStyle().Render(fmt.Sprint(__lt5))
+		contentPart_17 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt16))
 		contentParts = append(contentParts, contentPart_17)
 		var contentPart_18 string
 		if !m.shown__inst0 {
-			contentPart_18 = lipgloss.NewStyle().Render(fmt.Sprint("nothing"))
+			contentPart_18 = BoxLook(Style{}, true).Render(fmt.Sprint("nothing"))
 		} else {
 			var contentPart_18Children []string
 			var contentPart_18_0 string
 			if m.shown__inst0 {
-				contentPart_18_0 = lipgloss.NewStyle().Render(fmt.Sprint("shown"))
+				contentPart_18_0 = BoxLook(Style{}, true).Render(fmt.Sprint("shown"))
 			}
 			if contentPart_18_0 != "" {
 				contentPart_18Children = append(contentPart_18Children, contentPart_18_0)
 			}
-			contentPart_18 = tui.Column(0, contentPart_18Children...)
+			contentPart_18 = lipgloss.JoinVertical(lipgloss.Left, contentPart_18Children...)
+			contentPart_18 = BoxLook(Style{}, true).Render(contentPart_18)
 		}
 		if contentPart_18 != "" {
 			contentParts = append(contentParts, contentPart_18)
 		}
-		var __lt6 string
+		var __lt17 string
 		if !(len(m.xs__inst0) == 0) {
-			__lt6 = "empty"
+			__lt17 = "empty"
 		} else {
-			__lt6 = "has content"
+			__lt17 = "has content"
 		}
 		var contentPart_21 string
-		contentPart_21 = lipgloss.NewStyle().Render(fmt.Sprint(__lt6))
+		contentPart_21 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt17))
 		contentParts = append(contentParts, contentPart_21)
-		var __lt7 string
+		var __lt18 string
 		if m.started__inst3 {
-			__lt7 = "started empty"
+			__lt18 = "started empty"
 		} else {
-			__lt7 = "started with content"
+			__lt18 = "started with content"
 		}
 		var contentPart_24 string
-		contentPart_24 = lipgloss.NewStyle().Render(fmt.Sprint(__lt7))
+		contentPart_24 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt18))
 		contentParts = append(contentParts, contentPart_24)
 		var contentPart_25 string
 		if !(len(m.xs__inst0) == 0) {
-			contentPart_25 = lipgloss.NewStyle().Render(fmt.Sprint("nothing"))
+			contentPart_25 = BoxLook(Style{}, true).Render(fmt.Sprint("nothing"))
 		} else {
 			var contentPart_25Children []string
 			var contentPart_25_0 string
 			if len(m.xs__inst0) == 0 {
-				contentPart_25_0 = lipgloss.NewStyle().Render(fmt.Sprint("no items"))
+				contentPart_25_0 = BoxLook(Style{}, true).Render(fmt.Sprint("no items"))
 			}
 			if contentPart_25_0 != "" {
 				contentPart_25Children = append(contentPart_25Children, contentPart_25_0)
 			}
-			contentPart_25 = tui.Column(0, contentPart_25Children...)
+			contentPart_25 = lipgloss.JoinVertical(lipgloss.Left, contentPart_25Children...)
+			contentPart_25 = BoxLook(Style{}, true).Render(contentPart_25)
 		}
 		if contentPart_25 != "" {
 			contentParts = append(contentParts, contentPart_25)
@@ -399,9 +608,9 @@ func (m Model) View() tea.View {
 		if contentPart_26Focused {
 			contentPart_26Prefix = ">"
 		}
-		contentPart_26 = lipgloss.NewStyle().Render(contentPart_26Prefix + " " + fmt.Sprint("show"))
+		contentPart_26 = BoxLook(Style{}, true).Render(contentPart_26Prefix + " " + fmt.Sprint("show"))
 		contentParts = append(contentParts, contentPart_26)
-		content = tui.Column(0, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -597,6 +806,19 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -607,13 +829,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n22_click_handler() {
 	m.shown__inst0 = true
-	var __lt8 string
+	var __lt15 string
 	if !m.shown__inst0 {
-		__lt8 = "empty"
+		__lt15 = "empty"
 	} else {
-		__lt8 = "has content"
+		__lt15 = "has content"
 	}
-	m.__n3.SetText(__lt8)
+	m.__n3.SetText(__lt15)
 	m.__renderSlot2(m.__n0.Container)
 }
 
@@ -683,76 +905,76 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	__lt0 := "empty"
+	__lt7 := "empty"
 	m.__n15 = widget.NewLabel("")
-	m.__n15.SetText(__lt0)
+	m.__n15.SetText(__lt7)
 	m.__n0.Add(m.__n15)
-	var __lt1 string
+	var __lt8 string
 	if m.started__inst0 {
-		__lt1 = "started empty"
+		__lt8 = "started empty"
 	} else {
-		__lt1 = "started with content"
+		__lt8 = "started with content"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt1)
+	m.__n1.SetText(__lt8)
 	m.__n0.Add(m.__n1)
 	m.__n16 = widget.NewLabel("")
 	m.__n16.SetText("nothing")
 	m.__n0.Add(m.__n16)
-	__lt2 := "has content"
+	__lt9 := "has content"
 	m.__n18 = widget.NewLabel("")
-	m.__n18.SetText(__lt2)
+	m.__n18.SetText(__lt9)
 	m.__n0.Add(m.__n18)
-	var __lt3 string
+	var __lt10 string
 	if m.started__inst1 {
-		__lt3 = "started empty"
+		__lt10 = "started empty"
 	} else {
-		__lt3 = "started with content"
+		__lt10 = "started with content"
 	}
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(__lt3)
+	m.__n2.SetText(__lt10)
 	m.__n0.Add(m.__n2)
-	m.__n20 = container.NewVBox()
+	m.__n20 = fynelayout.NewVBox()
 	m.__n21 = widget.NewLabel("")
 	m.__n21.SetText("a")
 	m.__n20.Add(m.__n21)
 	m.__n0.Add(m.__n20)
-	var __lt4 string
+	var __lt11 string
 	if !m.shown__inst0 {
-		__lt4 = "empty"
+		__lt11 = "empty"
 	} else {
-		__lt4 = "has content"
+		__lt11 = "has content"
 	}
 	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText(__lt4)
+	m.__n3.SetText(__lt11)
 	m.__n0.Add(m.__n3)
-	var __lt5 string
+	var __lt12 string
 	if m.started__inst2 {
-		__lt5 = "started empty"
+		__lt12 = "started empty"
 	} else {
-		__lt5 = "started with content"
+		__lt12 = "started with content"
 	}
 	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText(__lt5)
+	m.__n4.SetText(__lt12)
 	m.__n0.Add(m.__n4)
 	m.__renderSlot2(m.__n0.Container)
-	var __lt6 string
+	var __lt13 string
 	if !(len(m.xs__inst0) == 0) {
-		__lt6 = "empty"
+		__lt13 = "empty"
 	} else {
-		__lt6 = "has content"
+		__lt13 = "has content"
 	}
 	m.__n5 = widget.NewLabel("")
-	m.__n5.SetText(__lt6)
+	m.__n5.SetText(__lt13)
 	m.__n0.Add(m.__n5)
-	var __lt7 string
+	var __lt14 string
 	if m.started__inst3 {
-		__lt7 = "started empty"
+		__lt14 = "started empty"
 	} else {
-		__lt7 = "started with content"
+		__lt14 = "started with content"
 	}
 	m.__n6 = widget.NewLabel("")
-	m.__n6.SetText(__lt7)
+	m.__n6.SetText(__lt14)
 	m.__n0.Add(m.__n6)
 	m.__renderSlot3(m.__n0.Container)
 	m.__n22 = widget.NewButton("", nil)
@@ -793,7 +1015,7 @@ func new__child0Instance(__model *Model, __a___p0 bool) *__child0Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n8 = container.NewVBox()
+	c.__n8 = fynelayout.NewVBox()
 	c.__renderSlot0(c.__n8)
 	c.Root = c.__n8
 	return c
@@ -864,7 +1086,7 @@ func new__child1Instance(__model *Model, __a___p0 []int) *__child1Instance {
 	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n10 = container.NewVBox()
+	c.__n10 = fynelayout.NewVBox()
 	c.__renderSlot1(c.__n10)
 	c.Root = c.__n10
 	return c
@@ -910,6 +1132,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -929,10 +1152,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -960,39 +1186,39 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = "empty", modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst0) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
-            Text(text = "nothing", modifier = Modifier.safeDrawingPadding())
-            Text(text = "has content", modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst1) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
+            Text(text = "empty", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst0) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "nothing", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "has content", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst1) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
-                Text(text = "a", modifier = Modifier)
+                Text(text = "a", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Text(text = (if (!shown__inst0) "empty" else "has content"), modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst2) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
+            Text(text = (if (!shown__inst0) "empty" else "has content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst2) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if (!shown__inst0) {
-                Text(text = "nothing", modifier = Modifier.safeDrawingPadding())
+                Text(text = "nothing", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 Column(modifier = Modifier.safeDrawingPadding()) {
                     if (shown__inst0) {
-                        Text(text = "shown", modifier = Modifier)
+                        Text(text = "shown", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     }
                 }
             }
-            Text(text = (if (!(xs__inst0.size == 0)) "empty" else "has content"), modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst3) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
+            Text(text = (if (!(xs__inst0.size == 0)) "empty" else "has content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst3) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if (!(xs__inst0.size == 0)) {
-                Text(text = "nothing", modifier = Modifier.safeDrawingPadding())
+                Text(text = "nothing", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 Column(modifier = Modifier.safeDrawingPadding()) {
                     if ((xs__inst0.size == 0)) {
-                        Text(text = "no items", modifier = Modifier)
+                        Text(text = "no items", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     }
                 }
             }
             Button(onClick = {
                 shown__inst0 = true
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "show", modifier = Modifier)
             }
         }
@@ -1041,6 +1267,22 @@ body { font-family: system-ui, sans-serif; }
   var state = { xs__inst0: [1], shown__inst0: false, visible__inst0: true, started__inst0: true, started__inst1: false, started__inst2: null, started__inst3: null };
   state.started__inst2 = !state.shown__inst0;
   state.started__inst3 = !(state.xs__inst0.length === 0);
+  function __snglTeardown() {
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+      ;
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
+    }
+    ;
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1348,14 +1590,15 @@ body { font-family: system-ui, sans-serif; }
     __n6.textContent = state.started__inst3 ? "started empty" : "started with content";
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:74351684fa34f6c53f0b4274db4529fb
+pass sha256:15fcb26a9bfb23e6ceb89a80fe4ed80f
 -- run/go/fyne --
-pass sha256:07ae5886424133e00d9ad74bd4046bf2
+pass sha256:8b1060a006538fe5f2466c8b129f540b
 -- run/kotlin/android --
-pass sha256:3f4c9d6aa1afb8581e564be6585c17eb
+pass sha256:3aebb42b9a70dd81742dc283b957430f
 -- run/none/html --
-pass sha256:0f179dfcb81d5f61be45dd6da598d5cd
+pass sha256:981414522c4e04edc1fc412758e0ed8a
