@@ -339,13 +339,6 @@ type Measurement struct {
 	Rem float64
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	shown          bool
@@ -421,7 +414,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
 			if m.shown {
 				__n1 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n1)), __cstr7)
+				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n1)), __cstr7)
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 			}
@@ -498,18 +491,18 @@ func (m *Model) buildWidgetTree() {
 	m.__n4 = (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
 	C.gtk_frame_set_label((*C.GtkFrame)(unsafe.Pointer(m.__n4)), __cstr0)
 	m.__n5 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n5)), __cstr1)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n5)), __cstr1)
 	C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	m.__n6 = (*C.GtkScrolledWindow)(unsafe.Pointer(C.gtk_scrolled_window_new()))
 	m.__n7 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n7)), __cstr2)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n7)), __cstr2)
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n7)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
 	m.__n8 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(m.__rel0)))
 	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n8)), __cstr3)
 	m.__n9 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n9)), __cstr4)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n9)), __cstr4)
 	C.gtk_button_set_child((*C.GtkButton)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
 	m.__n10 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
@@ -532,4 +525,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:b7b80335c3d9f64206879f7caeaf609c
+pass sha256:cf44ce8a682d8e241575a6da4b8f2a85

@@ -635,13 +635,13 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_HORIZONTAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
 	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n2)), __cstr0)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	m.__n3 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
 	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
@@ -740,7 +740,7 @@ pass sha256:6a20f29f5c0f85668dadffdbcfd9e85c
 -- run/go/fyne --
 pass sha256:92e22ede844e03fd9f38b4d5416f8dcd
 -- run/go/gtk4 --
-pass sha256:3eb2e97eaeae0db22d4787fec92e60a9
+pass sha256:b2318adbea77c2d53f05ebdd70189b51
 -- run/kotlin/android --
 pass sha256:05426f82c2abb1b3eeef89a4ce55170b
 -- run/none/html --

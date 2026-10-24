@@ -197,7 +197,7 @@ func TestGtk4Translator_OnPropAssign_UnknownPropReported(t *testing.T) {
 	shared := &emitShared{}
 	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	if got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "value", &ir.Literal{Type: ir.TypString, Value: "hi"})); got != "" {
 		t.Errorf("expected nothing emitted for GtkLabel.value; got: %s", got)

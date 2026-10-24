@@ -967,7 +967,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	__n1 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	__n1 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n1)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n1)), C.int(6))
 	m.box = (*C.GtkCheckButton)(unsafe.Pointer(C.gtk_check_button_new()))
@@ -1250,7 +1250,7 @@ pass sha256:be37577d82a39978cad588bd263de55f
 -- run/go/fyne --
 pass sha256:68c5a4ee52f531df05154c28f8b36143
 -- run/go/gtk4 --
-pass sha256:86bd18aa3631714eade83d15a875570b
+pass sha256:09ee9698d5f41b22f4f509c0fc6ccf06
 -- run/go/html --
 pass sha256:299fd0606c3b9b7f1c96605654863c50
 -- run/kotlin/android --
