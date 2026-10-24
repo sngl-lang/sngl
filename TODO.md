@@ -99,7 +99,8 @@ on 2026-10-23; seven is the count on this branch): the constructor
 that order, after the child adder, which makes no string but is the protocol
 all the same. Parts 1, 3 and 4 retired the constructor, `sngl_connect`, the
 setter, `g_object_set_property` and the entry-text write, and Part 5's
-toplevel the window title; a flow's markup is left.
+toplevel the window title and its flow the markup: `ownCStrings` has
+no caller left, for Part 7 to retire.
 
 **Wrapped mode is kept by what a declared op calls.** Part 3 found that a
 string marshaled in IR leaves a `C.` that sends the program down the cgo
@@ -286,9 +287,12 @@ commit each.
   `gtk4rt.ToplevelTitleWindow`. `on` binds a two-way prop's report too
   (`:visible`). The icon stays the translator's (`windowIcon`): appending a
   source to a window is where it lives, not a call to make.
-- [ ] Flow and span markup (`markup.go`): the label's create and its
+- [X] Flow and span markup (`markup.go`): the label's create and its
   `gtk_label_set_markup`, the last `ownCStrings` site; a span stays a node
-  with no widget, read off the tree.
+  with no widget, read off the tree. `gtk4rt.FlowNew` and a `markup` prop
+  set over `gtk4rt.LabelSetMarkup`, which the translator calls with the
+  markup it assembles (`boundCall`); lowering splices no append for a child
+  whose intrinsic declares no protocol (`isNoWidget`).
 - [ ] Canvas (`canvas.go`): the `GtkDrawingArea`'s create and its draw func.
 
 Fixture per tag: the placement error it introduces, if any, else none.

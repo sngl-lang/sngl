@@ -1347,10 +1347,6 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-var (
-	__cstr0 = C.CString("see [logo]")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -2118,10 +2114,8 @@ func (m *Model) buildWidgetTree() {
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n13), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n13)))
-	m.__n14 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_wrap((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.gboolean(1))
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.float(0.0))
-	C.gtk_label_set_markup((*C.GtkLabel)(unsafe.Pointer(m.__n14)), __cstr0)
+	m.__n14 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.FlowNew()))
+	gtk4rt.LabelSetMarkup(gtk4rt.Handle(unsafe.Pointer(m.__n14)), "see [logo]")
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n14)))
 	m.__n17 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "grow")
@@ -3036,7 +3030,7 @@ pass sha256:6ffa0cb95d1f1c536b3b7bc9791666b9
 -- run/go/fyne --
 pass sha256:10d808cf393bc58b95342b4fd4f899b8
 -- run/go/gtk4 --
-pass sha256:12d39da3cd889f9eecb94c352d425ce1
+pass sha256:ded644f22dc8c996bdf0f7ba8dc8cb0d
 -- run/kotlin/android --
 pass sha256:f095afdc067dbeeba41f1c86078dc049
 -- run/none/html --

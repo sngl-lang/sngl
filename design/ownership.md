@@ -445,9 +445,9 @@ declares: gtk4's preamble includes it, and fyne's and bubbletea's
 those targets make is freed.
 
 **A call the gtk4 translator builds releases its own strings.** The
-inline-cgo translator writes `C.CString` into a flow's markup after
-lowering, so no pass sees the allocation. `emitShared.ownCStrings` (`intrinsic_translator.go`) is
-run over the statements each of those sites returns and writes the release
+inline-cgo translator wrote `C.CString` into calls it built after lowering,
+so no pass saw the allocation, and none is left. `emitShared.ownCStrings` (`intrinsic_translator.go`) was
+run over the statements each of those sites returned and writes the release
 `ReleaseTemps` would have: a literal's copy becomes a package-level `var`
 (`__cstrN`, one per distinct text, `scaffoldData.CStrings`) kept for the
 application's lifetime and never freed, and any other is bound to a `__ctmpN`
@@ -476,7 +476,11 @@ copies the string itself. The window title was the fourth: a window is
 gtk4rt's toplevel in both modes, its title written by a declared set that
 hands gtk4rt a Go string, and the inline-cgo scaffold's window takes it from
 gtk4rt (`gtk4rt.ToplevelTitleWindow`), which copies it into C and frees it,
-where the translator's `__cstr` was kept for the application.
+where the translator's `__cstr` was kept for the application. A flow's markup
+was the last: the label is written by its `markup` prop's declared set,
+`gtk4rt.LabelSetMarkup`, which copies the Pango string into C and frees it,
+where the translator bound a `__ctmp` around `gtk_label_set_markup`
+(`testdata/gtk4_declared_flow.txtar`). `ownCStrings` has no caller.
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective

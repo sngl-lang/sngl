@@ -964,6 +964,16 @@ func Foreground(c snglcolor.Color) string {
 	return fmt.Sprintf(` foreground="#%02X%02X%02X"`, c.R, c.G, c.B)
 }
 
+// FlowNew is the label a flow of rich text is: wrapped, and starting at the
+// left rather than centred, which is what every other target does with a run
+// of prose.
+func FlowNew() Handle {
+	l := LabelNew("")
+	LabelSetWrap(l, true)
+	LabelSetXAlign(l, 0)
+	return l
+}
+
 // LabelSetMarkup sets a label's text from Pango markup, which is what makes a
 // flow of rich text one widget rather than a box of them.
 func LabelSetMarkup(label Handle, markup string) {

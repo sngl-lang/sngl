@@ -693,7 +693,7 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 	case scrollTag:
 		return t.emitScrollCreate(id, made)
 	case flowTag:
-		return t.emitFlowCreate(id)
+		return t.emitFlowCreate(id, made)
 	case spanTag:
 		t.skipped[id] = struct{}{}
 		if t.builtSpans == nil {
@@ -734,6 +734,7 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 	}
 	if made == nil {
 		t.shared.fail(unconstructible(t.registry, cType, info))
+		t.skipped[id] = struct{}{}
 		return nil
 	}
 	return t.emitConstructorAssign(id, cType, made)

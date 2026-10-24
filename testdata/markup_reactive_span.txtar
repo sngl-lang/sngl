@@ -276,9 +276,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0 = nil
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			for range []int{0} {
-				__n0 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetWrap(__n0, true)
-				gtk4rt.LabelSetXAlign(__n0, 0.0)
+				__n0 := gtk4rt.FlowNew()
 				gtk4rt.LabelSetMarkup(__n0, ((("quiet " + gtk4rt.When(m.loud, "<b>LOUD</b>")) + gtk4rt.When(!m.loud, "<i>soft</i>")) + " end"))
 				if m.loud {
 				}
@@ -443,6 +441,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:df398847b058857287609eb634cd138d
 -- run/go/gtk4 --
-pass sha256:9bac9f4648ac1f41cab7a77941ea320a
+pass sha256:49ef3b800018a7da7fa549a6dc8b0dd6
 -- run/none/html --
 pass sha256:6651ad47a42c12e9a87b35388f9b6f51

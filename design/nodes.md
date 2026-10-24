@@ -47,7 +47,10 @@ implements `codegen.ChildProtocol`. The parent is found by its handle's type,
 which names its component. A component with a create and no append takes no
 child, and putting one in is a lowering error where the op is made
 (`TestClassWithNoAdder_RefusesAChild`); one with no remove keeps a child the
-program stops rendering, as it did when the translator answered.
+program stops rendering, as it did when the translator answered. A child of an
+`#[intrinsic]` component whose package declares no protocol for it at all is
+no widget -- gtk4's span, a piece of its flow's markup, read off the tree --
+and takes no splice and no refusal (`isNoWidget`).
 
 `connect` is the platform's rather than a component's: a function of the
 node, the name the host knows the event by and the handler, declared once

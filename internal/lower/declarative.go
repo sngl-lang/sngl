@@ -526,6 +526,9 @@ func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.C
 	if comp == nil || comp.Protocol == nil {
 		return stmt, nil
 	}
+	if isNoWidget(child) {
+		return stmt, nil
+	}
 	fn := comp.Protocol.Op(op)
 	if fn == nil {
 		if op == ir.ProtocolAppend {
@@ -539,6 +542,20 @@ func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.C
 	}
 	call.Args = append(call.Args, ir.CallArg{Value: spliced})
 	return stmt, nil
+}
+
+// isNoWidget reports whether child is a node of an #[intrinsic] component
+// whose package declares no protocol for it, under a parent whose package
+// does: a node the platform reads off the tree rather than builds, such as
+// gtk4's span, a piece of its flow's markup. Nothing is put into the parent
+// for it.
+func isNoWidget(child ir.Expr) bool {
+	t := child.ExprType()
+	if t == nil {
+		return false
+	}
+	comp, _ := t.Decl.(*ir.Component)
+	return comp != nil && comp.Intrinsic != "" && comp.Protocol == nil
 }
 
 // hasRealComponentBody reports whether comp carries SNGL-defined behavior

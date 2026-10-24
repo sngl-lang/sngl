@@ -1205,13 +1205,34 @@ const component shapes.canvasImage[platform](x, y, w, h, src) {
 // class. `codegen/platform/gtk4/markup.go` collects the span tree ahead of the
 // walk and writes the markup as a Go string expression, so a run whose words
 // come from state is an ordinary concatenation and the updater that moved that
-// state sets the label again.
+// state sets the label again, through the flow's `markup` set.
 
 #[marks.intrinsic("gtk4:Flow")]
 component Flow(
     look    gtk.Look,
+    // The Pango markup the spans make, which the platform writes wherever
+    // one of them changes; nothing passes it.
+    markup  string = "",
     content ...component markup.span,
 ) ui.node
+
+#[go.native(_rtPkg, "gtk4rt.FlowNew")]
+func _rtFlowNew() Flow
+
+#[go.native(_rtPkg, "gtk4rt.LabelSetMarkup")]
+func _rtFlowSetMarkup(w Flow, markup string)
+
+#[gen.protocol(create)]
+func _create_Flow() Flow {
+    return _rtFlowNew()
+}
+
+// gtk4rt copies the markup into C itself, so the label is set in either mode
+// with no C string in the program.
+#[gen.protocol(set)]
+func _set_Flow_markup(w Flow, markup string) {
+    _rtFlowSetMarkup(w, markup)
+}
 
 // One run of words. `spanStyle` is read off the literal -- which
 // fields a `SpanStyle` set is a question about the literal, as it is on every
