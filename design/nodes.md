@@ -96,9 +96,11 @@ a set's match maps a word the program writes to the host's own value and its
 `else` is there only because a match over a string must have one; a ternary
 folds on a literal head and is otherwise a call in place on a target without
 ternaries. The platform puts the node where its scope holds it (gtk4's
-`OnPropAssign`), and refuses a write of a prop no set answers. gtk4's GIR classes
-are the first users (`design/architecture.md`), and the plan for the rest of
-gtk4's protocol is #293's.
+`OnPropAssign`), and refuses a write of a prop no set answers. gtk4 declares its whole
+protocol this way, declgen writing a GIR class's and `gtk4.sngl` the tags no
+GIR class is behind, and what its translator still calls GTK for is where a
+node lives -- the application's attach, a render slot's box, the window icon
+-- and the canvas, which #294 takes (`design/architecture.md`).
 
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package

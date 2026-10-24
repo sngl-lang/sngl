@@ -5,7 +5,7 @@ handed to cairo, a pixbuf, a widget a C library keeps a pointer to -- is
 owned, and the IR says so. The spec's *Owned values* is what it means; this is
 how the compiler holds it. #110 is the bug: the Go printer wrote `C.CString`
 into each C call's arguments (`wrapCArgs`, since gone) and the gtk4 translator
-invents more after lowering, so no pass that can add a statement ever saw an
+invented more after lowering until #293 declared its widget protocol, so no pass that can add a statement ever saw an
 allocation, and every canvas that draws text leaks per frame.
 
 **A C call's arguments are converted in the IR.** `lower.CMarshal` wraps each
@@ -444,52 +444,35 @@ declares: gtk4's preamble includes it, and fyne's and bubbletea's
 (`EmitCHeader`) include it beside the program's links, since every `c.str`
 those targets make is freed.
 
-**A call the gtk4 translator builds releases its own strings.** The
-inline-cgo translator wrote `C.CString` into calls it built after lowering,
-so no pass saw the allocation, and none is left. `emitShared.ownCStrings` (`intrinsic_translator.go`) was
-run over the statements each of those sites returned and writes the release
-`ReleaseTemps` would have: a literal's copy becomes a package-level `var`
-(`__cstrN`, one per distinct text, `scaffoldData.CStrings`) kept for the
-application's lifetime and never freed, and any other is bound to a `__ctmpN`
-before the statement that hands it to C and freed with `C.free` after it.
-Every C function the translator calls copies what it is handed, so no string
-outlives its statement. The activate signal name in `callbacks.go` is a package
-`var` for the same reason, and the event invokers already freed theirs
-(`testdata/gtk4_translator_strings.txtar`, whose `deny` lines refuse a
-`C.CString` inside another call or on a line of its own). Resolving these
-calls in lowering would retire this, since `CMarshal` and `ReleaseTemps` would
-see them; that is a re-platforming of gtk4's inline-cgo mode -- the widget
-protocol declared as native-calling bodies rather than answered by the
-translator -- and is #293, split out of the ownership work with the count of
-what it touches. A constructor is the first site it retired: its arguments
-are the declared create's (`design/architecture.md`), and a GTK constructor
-refusing NULL is handed one application-lifetime `""` that `ReleaseTemps`
-frees at teardown, where the translator's copy was never freed. A signal name
-was the second, and makes no C string in the program at all: the declared
-connect is `gtk4rt.Connect`, which copies the name into C and frees it itself,
-so a wrapped build stays one with no cgo (`design/architecture.md`). The
-setters, `g_object_set_property` and the entry's quiet write were the third:
-a prop write is its declared set's call, so a string it hands C is a temp
-`ReleaseTemps` frees after the write or, for a literal, an
-application-lifetime value freed at teardown, where the translator's `__cstr` was never freed, and a setter gtk4rt wraps, the entry's among them,
-copies the string itself. The window title was the fourth: a window is
-gtk4rt's toplevel in both modes, its title written by a declared set that
-hands gtk4rt a Go string, and the inline-cgo scaffold's window takes it from
-gtk4rt (`gtk4rt.ToplevelTitleWindow`), which copies it into C and frees it,
-where the translator's `__cstr` was kept for the application. A flow's markup
-was the last: the label is written by its `markup` prop's declared set,
-`gtk4rt.LabelSetMarkup`, which copies the Pango string into C and frees it,
-where the translator bound a `__ctmp` around `gtk_label_set_markup`
-(`testdata/gtk4_declared_flow.txtar`). With no caller left, `ownCStrings`
-went, and `constCString`, `cTempName` and the `__cstrN` vars with it: the
-golden that pinned it now records, under `gtk4(cgo=true)`, a reactive
-label's `c.str` as a temp freed after its setter and each literal as an
-application-lifetime value freed at teardown
-(`testdata/gtk4_translator_strings.txtar`). What
-`ReleaseTemps` frees in a GIR class's create and sets is the `cgo` option's
-since: by default declgen writes them over gtk4rt's calls by name, which take
-a Go string and copy it into C themselves, so a program's temps are only what
-it hands C on its own (`design/architecture.md`, *Which file a program gets*).
+**gtk4's widget protocol is declared, so its strings are the passes'.** The
+inline-cgo translator used to build the calls that make a widget, add a
+child, write a prop and connect a handler after lowering, writing
+`C.CString` into them where no pass saw the allocation, and
+`emitShared.ownCStrings` wrote by hand the release `ReleaseTemps` would have:
+a literal's copy kept in a package `var` for the application and never freed,
+any other bound to a `__ctmpN` and freed after its statement. #293 moved each
+of those calls into SNGL as a `#[gen.protocol(op)]` function -- declgen
+writes a GIR class's, `gtk4.sngl` the tags no GIR class is behind -- which
+`passDeclarative` splices into the op it makes and marshals there
+(`design/nodes.md`, `design/architecture.md`). With no call left building a
+string, `ownCStrings` went, and `constCString`, `cTempName` and the `__cstrN`
+vars with it.
+
+Where a string goes now depends on what the declared call takes. By default
+a protocol calls gtk4rt as a `#[go.native]` with a Go string, which gtk4rt
+copies into C and frees itself -- the constructor's class name, a signal
+name, a setter's text, the window's title and a flow's markup -- so a
+program's temps are only what it hands C on its own (`design/architecture.md`, *Which file
+a program gets*). Under `gtk4(cgo=true)` a protocol is the class's own `#[cnative]`s,
+so a string it hands GTK is a `CMarshal` temp `ReleaseTemps` frees after the
+call, or for a literal an application-lifetime value freed at teardown, where
+the translator's `__cstr` was never freed; a constructor refusing NULL is
+handed one such `""` (`testdata/gtk4_translator_strings.txtar`,
+`testdata/gtk4_declared_create.txtar`). Either way `--simulate gtk4` runs the
+same protocol functions, so every `c.str` a widget is handed is one the
+tracker follows (below). The canvas's draw function and click
+are still the translator's, and make no C string; they go with #294, which
+retires `passShapeDraw`.
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective
@@ -755,7 +738,7 @@ Every block the two fixtures report is fontconfig's: the font sets, patterns
 and charsets pango builds the first time a label or a `canvasText` is laid
 out, with cairo's toy font face cache behind `cairo_select_font_face` in some
 runs. Nothing in either reaches a `C.CString`, a pixbuf or a cairo surface the
-generated code made: the `__ctmpN` the translator frees after the statement,
+generated code made: the `__ctmpN` the translator freed after the statement,
 the `__relN` `ReleaseTemps` frees per frame and the picture `UnrefPicture`
 gives back are all gone at exit. The pokedex was different, and the same at
 both commits: a GtkBox leaked per instance built, several hundred over a run
@@ -803,12 +786,12 @@ control -- the driver dropping one `g_strdup` and one `gtk_box_new` on its
 first tick -- still reports both (5 blocks, 656 bytes), so the file hides
 nothing the check is for.
 
-**What is left to #293** is unchanged: the strings `ownCStrings` writes after
-lowering are freed by the translator's own statements and never appeared
-here, so the check neither found them nor could it tell whether a future
-site forgets one. Resolving those calls in lowering so `CMarshal` and
-`ReleaseTemps` see them remains the re-platforming of gtk4's inline-cgo mode,
-and nothing in this check changes its size.
+**Nothing is left to #293.** The strings `ownCStrings` wrote after lowering
+were freed by the translator's own statements and never appeared here, so
+the check neither found them nor could tell whether a future site forgot
+one. Every call that made one is a declared protocol now (above), so its
+strings are `CMarshal`'s and `ReleaseTemps`' or gtk4rt's, and the tracker
+holds the first under `--simulate gtk4` on every commit.
 
 **To rerun it**, which a toolkit upgrade or a change to the instance emitter
 or to teardown is reason to: generate a program for gtk4 with
@@ -953,7 +936,5 @@ conditional arm's or a later-raising temp's by its own statement, a
 holder by each holder or through the host's retain. A C program therefore
 leaks only what no lifetime can hold, which is a `#[retains]` call no
 component encloses, and the checker refuses that before any code is written.
-What the tracker cannot see on gtk4, the strings its translator writes after
-lowering (`ownCStrings`), has no counterpart on a C target, whose widget
-protocol would be declared as native-calling bodies from the start; it is
-#293's on gtk4 either way.
+A C target declares its widget protocol as `#[gen.protocol]` functions, as
+gtk4 does, so every call to the toolkit is IR before the passes run.

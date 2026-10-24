@@ -173,6 +173,28 @@ enum Protocol {
 // component its signature names, or for `connect`, the build-target node
 // declared beside it, for `set`, the prop its value parameter is named as,
 // and for `on`, the event its handler parameter is named as.
+//
+// A platform author writes one unexported function per operation, over the
+// host's own calls, as gtk4 writes its image:
+//
+//     #[go.native(_rtPkg, "gtk4rt.ImageFrameNew")]
+//     func _rtImageFrameNew() Image
+//
+//     #[gen.protocol(create)]
+//     func _create_Image() Image {
+//         return _rtImageFrameNew()
+//     }
+//
+//     #[gen.protocol(set)]
+//     func _set_Image_fit(w Image, fit string) {
+//         _rtImageFrameSetFit(w, fit)
+//     }
+//
+// The body is one `return` or one call, since the build splices it into the
+// operation with the parameters bound to the operation's operands. A
+// `#[cnative]` taking a `string` is handed a `c.str` the build makes and
+// frees around the call, so the function passes the SNGL value and releases
+// nothing itself.
 func protocol(op Protocol) ir.Macro
 
 // Names an event as its host knows it, where that is no SNGL name: GTK's
