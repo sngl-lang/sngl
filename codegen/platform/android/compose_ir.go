@@ -382,9 +382,11 @@ const emDp = 16
 const testTagParam = "__testTag"
 
 // takesTestTag reports whether comp's composable takes testTagParam: a
-// library declaration's, whose body a program cannot tag.
+// platform override's, whose root is the node its call site names. A library
+// component with a body of its own is an instance a test reaches into, and
+// its nodes keep their own ids (internal/build's test_reach_library_sites).
 func takesTestTag(comp *ir.Component) bool {
-	return comp != nil && comp.PkgPath() != ""
+	return comp != nil && comp.PkgPath() != "" && comp.SpecializedFor != ""
 }
 
 // userTestTag returns n.ID when it's a user-authored #id and worth
