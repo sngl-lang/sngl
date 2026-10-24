@@ -226,7 +226,7 @@ window {
     main
 }
 -- testrun/android/kotlin/buttons.sngl/main/1 --
-sha256:3eea8e0a0f5c259c2f6cd929d73f1688
+sha256:f112b39cb4c658436e001ca6062aeb7c
 {
   "results": [
     {
@@ -236,7 +236,7 @@ sha256:3eea8e0a0f5c259c2f6cd929d73f1688
   ]
 }
 -- testrun/android/kotlin/counters.sngl/main/1 --
-sha256:ae135df854672aed2370ed1322ca5f8e
+sha256:0ad12ddbd2f0c88538aeba3fc9f4891e
 {
   "results": [
     {
@@ -246,7 +246,7 @@ sha256:ae135df854672aed2370ed1322ca5f8e
   ]
 }
 -- testrun/android/kotlin/recursion.sngl/main/1 --
-sha256:170e5afb6f2ecb80fd6bba6f6380e4c7
+sha256:8b0c65f525d1c8697467236c3226cc06
 {
   "results": [
     {
@@ -256,7 +256,7 @@ sha256:170e5afb6f2ecb80fd6bba6f6380e4c7
   ]
 }
 -- testrun/bubbletea/go/recursion.sngl/main/1 --
-sha256:6af4096e88461abf3988ba82c32c8806
+sha256:c4247876e2a2bd6109fe1f9a734cc0b9
 {
   "results": [
     {
@@ -266,7 +266,7 @@ sha256:6af4096e88461abf3988ba82c32c8806
   ]
 }
 -- testrun/fyne/go/buttons.sngl/main/1 --
-sha256:c310905af6c5b7be6c4a4a5b0878aa42
+sha256:56aaed7b42f67f599a18e3b98e4f9bc9
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:c310905af6c5b7be6c4a4a5b0878aa42
   ]
 }
 -- testrun/fyne/go/counters.sngl/main/1 --
-sha256:c262b2c94800f3a0ce3b4923f03bf5c8
+sha256:a8f2dc40bfb2e6e4c41406111fa5a150
 {
   "results": [
     {
@@ -286,7 +286,7 @@ sha256:c262b2c94800f3a0ce3b4923f03bf5c8
   ]
 }
 -- testrun/fyne/go/recursion.sngl/main/1 --
-sha256:1599bdca69880aa13345d7456ecd87ce
+sha256:5697f278b44dc465a9b18208d0f12c8f
 {
   "results": [
     {
@@ -316,7 +316,7 @@ sha256:0f3126de7a567e78a5db5bf320530384
   ]
 }
 -- testrun/gtk4/go/recursion.sngl/main/1 --
-sha256:8cf3b54410c0559bdc406900a0818ff8
+sha256:e0fae5cf0d9710d1febaee3a01fbe68e
 {
   "results": [
     {

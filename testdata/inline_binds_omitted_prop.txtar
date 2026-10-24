@@ -51,6 +51,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -59,6 +61,61 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -84,6 +141,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m Model) Visible__inst0() bool {
@@ -137,30 +327,34 @@ func (m Model) View() tea.View {
 		var contentPart_0 string
 		var contentPart_0Children []string
 		var contentPart_0_0 string
-		contentPart_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("1."))
+		contentPart_0_0 = BoxLook(Style{}, true).Render(fmt.Sprint("1."))
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_0)
 		var contentPart_0_1 string
 		var contentPart_0_1Children []string
 		var contentPart_0_1_0 string
-		contentPart_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("one"))
+		contentPart_0_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint("one"))
 		contentPart_0_1Children = append(contentPart_0_1Children, contentPart_0_1_0)
 		contentPart_0_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0_1Children...)
+		contentPart_0_1 = BoxLook(Style{}, true).Render(contentPart_0_1)
 		contentPart_0Children = append(contentPart_0Children, contentPart_0_1)
-		contentPart_0 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_0Children...)
+		contentPart_0 = tui.Spaced(true, lipgloss.Top, 1, contentPart_0Children...)
+		contentPart_0 = BoxLook(Style{Gap: Measurement{Px: 8}, AlignItems: "start"}, true).Render(contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		var contentPart_1Children []string
 		var contentPart_1_0 string
-		contentPart_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("•"))
+		contentPart_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint("•"))
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_0)
 		var contentPart_1_1 string
 		var contentPart_1_1Children []string
 		var contentPart_1_1_0 string
-		contentPart_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("two"))
+		contentPart_1_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint("two"))
 		contentPart_1_1Children = append(contentPart_1_1Children, contentPart_1_1_0)
 		contentPart_1_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1_1Children...)
+		contentPart_1_1 = BoxLook(Style{}, true).Render(contentPart_1_1)
 		contentPart_1Children = append(contentPart_1Children, contentPart_1_1)
-		contentPart_1 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_1Children...)
+		contentPart_1 = tui.Spaced(true, lipgloss.Top, 1, contentPart_1Children...)
+		contentPart_1 = BoxLook(Style{Gap: Measurement{Px: 8}, AlignItems: "start"}, true).Render(contentPart_1)
 		contentParts = append(contentParts, contentPart_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
@@ -206,6 +400,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:092b809125af906f965d6c3c3c66a8a3
+pass sha256:3b43591fe5e3b1b6e2d465ed00f297db
 -- run/none/html --
 pass sha256:01e654195fd41434281bfddf24dc3e04

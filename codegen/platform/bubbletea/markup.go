@@ -243,54 +243,44 @@ func enumMember(e ir.Expr) string {
 	return s
 }
 
-// spanSeedFields are the fields of a flow's own `ui.Style` that seed the
-// cascade rather than styling the box.
-//
-// They have to be taken out of the box style rather than left in it as well:
-// applying Bold to the joined flow is the second render the type's comment
-// rules out, and the first inner reset would end it partway along the line.
-// `fontSize` and `fontFamily` are here because a terminal honors neither, so
-// leaving them in the box style would be a lipgloss call that does nothing.
-var spanSeedFields = map[string]bool{
-	"color": true, "fontWeight": true, "fontStyle": true,
-	"fontSize": true, "fontFamily": true,
-}
-
-// splitFlowStyle divides a flow's style into the cascade its words start from
-// and the fields that style the block it sits in.
-func (vc *irViewContext) splitFlowStyle(fields []codegen.StyleField) (spanCascade, []codegen.StyleField) {
-	var seed spanCascade
-	box := make([]codegen.StyleField, 0, len(fields))
-	for _, f := range fields {
-		if !spanSeedFields[f.Name] {
-			box = append(box, f)
-			continue
-		}
-		switch f.Name {
-		case "color":
-			seed.color = lipglossColor(f.Value, vc.gc)
-		case "fontWeight":
-			seed.bold = enumFlag(f.Value, vc.gc.EvalExpr(f.Value), "bold")
-		case "fontStyle":
-			seed.italic = enumFlag(f.Value, vc.gc.EvalExpr(f.Value), "italic")
-		default:
-			vc.discard(f.Value)
-		}
-	}
-	return seed, box
-}
-
-// renderFlow emits one flow of rich text: the words appended in order, then the
-// block style applied to the whole of it.
-func (vc *irViewContext) renderFlow(n *ir.NodeInst, resultVar string) {
-	seed, box := vc.splitFlowStyle(codegen.NodeStyleFields(n))
+// renderFlow emits one flow of rich text: the words appended in order, from
+// the cascade its seed starts, then the block's look applied to the whole of
+// it.
+func (vc *irViewContext) renderFlow(n *ir.NodeInst, resultVar, look string) {
+	saved := vc.gc
+	defer func() { vc.gc = saved }()
+	seed := vc.withSpanStyle(spanCascade{}, vc.spanStyleFields(codegen.NodeProp(n, "seed"), resultVar+"Seed"))
 	vc.line(`%s = ""`, resultVar)
 	for _, child := range n.Children {
 		vc.renderSpan(child, resultVar, seed)
 	}
-	if style := vc.styleExpr(box); style != "lipgloss.NewStyle()" {
-		vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
+	if look != plainLook {
+		vc.line(`%s = %s.Render(%s)`, resultVar, look, resultVar)
 	}
+}
+
+// spanStyleFields is a SpanStyle as a literal withSpanStyle reads field by
+// field: e itself, or one reading each field off a local holding e's value.
+func (vc *irViewContext) spanStyleFields(e ir.Expr, local string) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	if _, ok := e.(*ir.StructLit); ok {
+		return e
+	}
+	sd, ok := e.ExprType().Decl.(*ir.StructDef)
+	if !ok || sd == nil {
+		return nil
+	}
+	vc.line("%s := %s", local, vc.gc.EvalExpr(e))
+	vc.line("_ = %s", local)
+	vc.gc = vc.gc.WithLocal(local)
+	held := &ir.Ident{Name: local, Type: e.ExprType()}
+	lit := &ir.StructLit{Type: e.ExprType(), Def: sd}
+	for _, f := range sd.Fields {
+		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: &ir.Select{Type: f.Type, Operand: held, Field: f.Name}})
+	}
+	return lit
 }
 
 // renderSpan appends one span's words to the flow's accumulator, carrying the

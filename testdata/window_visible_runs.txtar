@@ -479,7 +479,7 @@ func New() *Model {
 func (m *Model) __effect0_mount() {
 	m.handle__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
 		m.ticks += 1
-		gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
+		gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.ticks))
 		fmt.Println(((("shown=" + fmt.Sprint(m.shown)) + " other=") + fmt.Sprint(m.visible__inst0)))
 		if m.ticks == 1 {
 			m.shown = false
@@ -629,7 +629,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.details, m.details_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.details, m.details_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
+	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.ticks))
 	gtk4rt.BoxAppend(m.details, m.__n0)
 	gtk4rt.AppAttach(m.details)
 	m.other = gtk4rt.ToplevelNew()
@@ -638,7 +638,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.other, m.other_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.other, m.other_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, "other")
+	gtk4rt.LabelSetLabel(m.__n1, "other")
 	gtk4rt.BoxAppend(m.other, m.__n1)
 	gtk4rt.AppAttach(m.other)
 	m.__effects0_settle()
@@ -651,6 +651,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:a278e07139ac5a81d2551747a89797a5
+pass sha256:17ff80274a45e25f07f38594b3a72944
 -- run/go/gtk4 --
-pass sha256:cb300dfa0c75a798c5761734e17a082e
+pass sha256:0203e3aa3537d2a605bf2d84e603a5ec

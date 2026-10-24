@@ -26,17 +26,17 @@ import . "sngl:internal/marks"
 // It is the one intrinsic whose Compose arguments are not its props: the
 // `AnnotatedString` is built from the span tree written inside it, which no
 // prop can carry, so markup.go answers this tag before the generic emitter
-// reads the declaration. What it keeps are the two Styles `Text` already
-// takes -- `modifier` for the box a flow sits in, `style` for the typography
+// reads the declaration. What it keeps are the two arguments `Text` takes from
+// a Style -- `modifier` for the box a flow sits in, `style` for the typography
 // its words start from -- so a heading is large and a quote is slanted through
-// the same path `ui.text` uses.
+// the same functions `ui.text` uses.
 //
 // `role` is not taken. Compose has no element that announces itself, so the
 // appearance `style` carries is the whole of what this target can show.
 #[intrinsic("android:Flow")]
 component Flow(
-    modifier ui.Style,
-    style    ui.Style,
+    modifier Modifier,
+    style    TextStyle,
     content  ...component markup.span,
 ) ui.node
 
@@ -59,7 +59,7 @@ component Span(
 ) markup.span
 
 const component markup.richText[platform](style, content) {
-    Flow(modifier={...style}, style={...style}) {
+    Flow(modifier=modifierOf(style, flexShare), style=mergeTextStyle(localTextStyle, textStyle(style))) {
         content
     }
 }

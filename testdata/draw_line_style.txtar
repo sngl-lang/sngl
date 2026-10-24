@@ -619,13 +619,6 @@ type _step__record struct {
 	R   float64
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 type Point struct {
 	X float64
 	Y float64
@@ -989,7 +982,7 @@ fun MainScreen() {
         }
         Canvas(modifier = Modifier.size(60.dp, 40.dp)) {
             drawLine(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 153, alpha = 255), start = Offset(4.0.toFloat(), 4.0.toFloat()), end = Offset(56.0.toFloat(), 4.0.toFloat()), strokeWidth = 4.0.toFloat())
-            var p = Path()
+            var p: androidx.compose.ui.graphics.Path = Path()
             var at = Point(x = 0.0, y = 0.0)
             for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.LINETO, x = 30.0, y = 36.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), _step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0))) {
                 if ((c.op == SnglPathOp.MOVETO)) {
@@ -1007,7 +1000,7 @@ fun MainScreen() {
                         p.lineTo(c.cx1.toFloat(), c.cy1.toFloat())
                     } else {
                         p.lineTo(a.tangent1.x.toFloat(), a.tangent1.y.toFloat())
-                        p.arcTo(Rect(left = (a.center.x - c.r).toFloat(), top = (a.center.y - c.r).toFloat(), right = (a.center.x + c.r).toFloat(), bottom = (a.center.y + c.r).toFloat()), ((a.start * 180.0) / 3.141592653589793).toFloat(), ((a.sweep * 180.0) / 3.141592653589793).toFloat(), false)
+                        p.arcTo(rect = Rect(left = (a.center.x - c.r).toFloat(), top = (a.center.y - c.r).toFloat(), right = (a.center.x + c.r).toFloat(), bottom = (a.center.y + c.r).toFloat()), startAngleDegrees = ((a.start * 180.0) / 3.141592653589793).toFloat(), sweepAngleDegrees = ((a.sweep * 180.0) / 3.141592653589793).toFloat(), forceMoveTo = false)
                     }
                 }
                 if ((c.op == SnglPathOp.CLOSE)) {
@@ -1313,8 +1306,8 @@ pass sha256:bef5265104d4e60d2f9d9ceb2d57b856
 -- run/go/fyne --
 pass sha256:9ed6653bc2c74513345c5f750d86a689
 -- run/go/gtk4 --
-pass sha256:f5da2639bd340eebeaf95883074824b6
+pass sha256:2181e1217a5da3e93ec3681cbdb5a160
 -- run/kotlin/android --
-pass sha256:fd78902b0d402c5dc6cb53ba992ebd54
+pass sha256:9ae5c07d72ddd908cc6a3bb89b7c536b
 -- run/none/html --
 pass sha256:db768984fd227ac56783d7a933a47519

@@ -79,10 +79,73 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -153,6 +216,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt0 int
+		if s.MaxLines == 0 {
+			__lt0 = 0
+		} else {
+			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
+		} else {
+			__lt3 = lipgloss.NormalBorder()
+		}
+		__lt2 = __lt3
+	}
+	return __lt2
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
+	} else {
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
+		} else {
+			__lt4 = all
+		}
+		__lt5 = __lt4
+	}
+	return CellsOf(__lt5)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt6 int
+	if px <= 0.0 {
+		__lt6 = 0
+	} else {
+		__lt6 = max(1, (int(px) / 8))
+	}
+	return __lt6
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt8 int
+	if height__r0 == 0 {
+		__lt8 = lines
+	} else {
+		var __lt7 int
+		if lines == 0 {
+			__lt7 = height__r0
+		} else {
+			__lt7 = min(height__r0, lines)
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
 }
 
 func (m *Model) __effect0_enter() {
@@ -480,8 +676,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					__focusPos0++
 					for __copy1, _ := range []int{1} {
 						_ = __copy1
-						__lt1 := "empty"
-						_ = __lt1
+						__lt10 := "empty"
+						_ = __lt10
 						if m.__focusLoop0_cursor == __focusPos0 {
 							var __cell2_n__inst1 int = func() int {
 								if __v, __ok := m.n__inst1[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
@@ -519,8 +715,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					__focusPos0++
 					for __copy1, _ := range []int{1} {
 						_ = __copy1
-						__lt2 := "has"
-						_ = __lt2
+						__lt11 := "has"
+						_ = __lt11
 						if m.__focusLoop0_cursor == __focusPos0 {
 							var __cell2_n__inst2 int = func() int {
 								if __v, __ok := m.n__inst2[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
@@ -554,7 +750,7 @@ func (m Model) View() tea.View {
 		var part0Part_0 string
 		part0Part_0_content := func() string {
 			var result string
-			result = lipgloss.NewStyle().Render(fmt.Sprint("x"))
+			result = BoxLook(Style{}, true).Render(fmt.Sprint("x"))
 			return result
 		}
 		part0Part_0 = m.renderTree(m.n__inst0, 0, false, part0Part_0_content)
@@ -575,7 +771,7 @@ func (m Model) View() tea.View {
 			if part0Part_2Item_0Focused {
 				part0Part_2Item_0Prefix = ">"
 			}
-			part0Part_2Item_0 = lipgloss.NewStyle().Render(part0Part_2Item_0Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
+			part0Part_2Item_0 = BoxLook(Style{}, true).Render(part0Part_2Item_0Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
 				if __v, __ok := m.m__inst0[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
@@ -587,9 +783,9 @@ func (m Model) View() tea.View {
 			var part0Part_2Item_1Items []string
 			for __copy1, _ := range []int{1} {
 				_ = __copy1
-				__lt1 := "empty"
+				__lt10 := "empty"
 				var part0Part_2Item_1Item_1 string
-				part0Part_2Item_1Item_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+				part0Part_2Item_1Item_1 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
 				part0Part_2Item_1Items = append(part0Part_2Item_1Items, part0Part_2Item_1Item_1)
 				var part0Part_2Item_1Item_2 string
 				part0Part_2Item_1Item_2Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
@@ -597,7 +793,7 @@ func (m Model) View() tea.View {
 				if part0Part_2Item_1Item_2Focused {
 					part0Part_2Item_1Item_2Prefix = ">"
 				}
-				part0Part_2Item_1Item_2 = lipgloss.NewStyle().Render(part0Part_2Item_1Item_2Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
+				part0Part_2Item_1Item_2 = BoxLook(Style{}, true).Render(part0Part_2Item_1Item_2Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
 					if __v, __ok := m.n__inst1[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 						return __v
 					}
@@ -616,7 +812,7 @@ func (m Model) View() tea.View {
 			if part0Part_2Item_2Focused {
 				part0Part_2Item_2Prefix = ">"
 			}
-			part0Part_2Item_2 = lipgloss.NewStyle().Render(part0Part_2Item_2Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
+			part0Part_2Item_2 = BoxLook(Style{}, true).Render(part0Part_2Item_2Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
 				if __v, __ok := m.m__inst1[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
@@ -628,9 +824,9 @@ func (m Model) View() tea.View {
 			var part0Part_2Item_3Items []string
 			for __copy1, _ := range []int{1} {
 				_ = __copy1
-				__lt2 := "has"
+				__lt11 := "has"
 				var part0Part_2Item_3Item_1 string
-				part0Part_2Item_3Item_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+				part0Part_2Item_3Item_1 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 				part0Part_2Item_3Items = append(part0Part_2Item_3Items, part0Part_2Item_3Item_1)
 				var part0Part_2Item_3Item_2 string
 				part0Part_2Item_3Item_2Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
@@ -638,7 +834,7 @@ func (m Model) View() tea.View {
 				if part0Part_2Item_3Item_2Focused {
 					part0Part_2Item_3Item_2Prefix = ">"
 				}
-				part0Part_2Item_3Item_2 = lipgloss.NewStyle().Render(part0Part_2Item_3Item_2Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
+				part0Part_2Item_3Item_2 = BoxLook(Style{}, true).Render(part0Part_2Item_3Item_2Prefix + " " + fmt.Sprint(fmt.Sprint(func() int {
 					if __v, __ok := m.n__inst2[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 						return __v
 					}
@@ -647,7 +843,7 @@ func (m Model) View() tea.View {
 				__focusPos0++
 				part0Part_2Item_3Items = append(part0Part_2Item_3Items, part0Part_2Item_3Item_2)
 				var part0Part_2Item_3Item_3 string
-				part0Part_2Item_3Item_3 = lipgloss.NewStyle().Render(fmt.Sprint(("a" + fmt.Sprint(x))))
+				part0Part_2Item_3Item_3 = BoxLook(Style{}, true).Render(fmt.Sprint(("a" + fmt.Sprint(x))))
 				part0Part_2Item_3Items = append(part0Part_2Item_3Items, part0Part_2Item_3Item_3)
 			}
 			part0Part_2Item_3 = strings.Join(part0Part_2Item_3Items, "")
@@ -670,14 +866,14 @@ func (m Model) View() tea.View {
 
 func (m Model) renderTree(d int, __depth int, __empty_content bool, content func() string) string {
 	var parts []string
-	var __lt0 string
+	var __lt9 string
 	if __empty_content {
-		__lt0 = ("empty " + fmt.Sprint(d))
+		__lt9 = ("empty " + fmt.Sprint(d))
 	} else {
-		__lt0 = ("full " + fmt.Sprint(d))
+		__lt9 = ("full " + fmt.Sprint(d))
 	}
 	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+	part2 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt9))
 	parts = append(parts, part2)
 	var part3 string
 	if d > 0 {
@@ -946,14 +1142,14 @@ func newTreeInstance(__model *Model, __a_d int, __a___depth int, __a___empty_con
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	var __lt2 string
+	var __lt9 string
 	if c.__prop___empty_content {
-		__lt2 = ("empty " + fmt.Sprint(c.__prop_d))
+		__lt9 = ("empty " + fmt.Sprint(c.__prop_d))
 	} else {
-		__lt2 = ("full " + fmt.Sprint(c.__prop_d))
+		__lt9 = ("full " + fmt.Sprint(c.__prop_d))
 	}
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(__lt2)
+	c.__n0.SetText(__lt9)
 	c.__root.Add(c.__n0)
 	c.__renderSlot0(c.__root)
 	c.Root = c.__root
@@ -962,13 +1158,13 @@ func newTreeInstance(__model *Model, __a_d int, __a___depth int, __a___empty_con
 
 func (c *TreeInstance) SetD(__v int) {
 	c.__prop_d = __v
-	var __lt0 string
+	var __lt7 string
 	if c.__prop___empty_content {
-		__lt0 = ("empty " + fmt.Sprint(c.__prop_d))
+		__lt7 = ("empty " + fmt.Sprint(c.__prop_d))
 	} else {
-		__lt0 = ("full " + fmt.Sprint(c.__prop_d))
+		__lt7 = ("full " + fmt.Sprint(c.__prop_d))
 	}
-	c.__n0.SetText(__lt0)
+	c.__n0.SetText(__lt7)
 	c.__renderSlot0(c.__root)
 }
 
@@ -979,13 +1175,13 @@ func (c *TreeInstance) Set__depth(__v int) {
 
 func (c *TreeInstance) Set__empty_content(__v bool) {
 	c.__prop___empty_content = __v
-	var __lt1 string
+	var __lt8 string
 	if c.__prop___empty_content {
-		__lt1 = ("empty " + fmt.Sprint(c.__prop_d))
+		__lt8 = ("empty " + fmt.Sprint(c.__prop_d))
 	} else {
-		__lt1 = ("full " + fmt.Sprint(c.__prop_d))
+		__lt8 = ("full " + fmt.Sprint(c.__prop_d))
 	}
-	c.__n0.SetText(__lt1)
+	c.__n0.SetText(__lt8)
 }
 
 func (c *TreeInstance) __renderSlot0(__parent *fyne.Container) {
@@ -1092,9 +1288,9 @@ func newTree__slot5Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt4 := ("empty " + fmt.Sprint(c.__prop_d))
+	__lt11 := ("empty " + fmt.Sprint(c.__prop_d))
 	c.__n1 = widget.NewLabel("")
-	c.__n1.SetText(__lt4)
+	c.__n1.SetText(__lt11)
 	c.__root.Add(c.__n1)
 	c.__renderSlot1(c.__root)
 	c.Root = c.__root
@@ -1103,8 +1299,8 @@ func newTree__slot5Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot5Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt3 := ("empty " + fmt.Sprint(c.__prop_d))
-	c.__n1.SetText(__lt3)
+	__lt10 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n1.SetText(__lt10)
 	c.__renderSlot1(c.__root)
 }
 
@@ -1217,9 +1413,9 @@ func newTree__slot3Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt6 := ("full " + fmt.Sprint(c.__prop_d))
+	__lt13 := ("full " + fmt.Sprint(c.__prop_d))
 	c.__n2 = widget.NewLabel("")
-	c.__n2.SetText(__lt6)
+	c.__n2.SetText(__lt13)
 	c.__root.Add(c.__n2)
 	c.__renderSlot2(c.__root)
 	c.Root = c.__root
@@ -1228,8 +1424,8 @@ func newTree__slot3Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot3Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt5 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n2.SetText(__lt5)
+	__lt12 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n2.SetText(__lt12)
 	c.__renderSlot2(c.__root)
 }
 
@@ -1342,9 +1538,9 @@ func newTree__slot2Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt8 := ("empty " + fmt.Sprint(c.__prop_d))
+	__lt15 := ("empty " + fmt.Sprint(c.__prop_d))
 	c.__n3 = widget.NewLabel("")
-	c.__n3.SetText(__lt8)
+	c.__n3.SetText(__lt15)
 	c.__root.Add(c.__n3)
 	c.__renderSlot3(c.__root)
 	c.Root = c.__root
@@ -1353,8 +1549,8 @@ func newTree__slot2Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot2Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt7 := ("empty " + fmt.Sprint(c.__prop_d))
-	c.__n3.SetText(__lt7)
+	__lt14 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n3.SetText(__lt14)
 	c.__renderSlot3(c.__root)
 }
 
@@ -1467,9 +1663,9 @@ func newTree__slot0Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt10 := ("full " + fmt.Sprint(c.__prop_d))
+	__lt17 := ("full " + fmt.Sprint(c.__prop_d))
 	c.__n4 = widget.NewLabel("")
-	c.__n4.SetText(__lt10)
+	c.__n4.SetText(__lt17)
 	c.__root.Add(c.__n4)
 	c.__renderSlot4(c.__root)
 	c.Root = c.__root
@@ -1478,8 +1674,8 @@ func newTree__slot0Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot0Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt9 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n4.SetText(__lt9)
+	__lt16 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n4.SetText(__lt16)
 	c.__renderSlot4(c.__root)
 }
 
@@ -1587,14 +1783,14 @@ func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	var __lt12 string
+	var __lt19 string
 	if c.__prop___empty_content {
-		__lt12 = "empty"
+		__lt19 = "empty"
 	} else {
-		__lt12 = "has"
+		__lt19 = "has"
 	}
 	c.__n5 = widget.NewLabel("")
-	c.__n5.SetText(__lt12)
+	c.__n5.SetText(__lt19)
 	c.__n6 = widget.NewButton("", nil)
 	c.__n6.SetText(fmt.Sprint(c.n))
 	c.__n6.OnTapped = func() {
@@ -1607,13 +1803,13 @@ func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
 
 func (c *InnerInstance) Set__empty_content(__v bool) {
 	c.__prop___empty_content = __v
-	var __lt11 string
+	var __lt18 string
 	if c.__prop___empty_content {
-		__lt11 = "empty"
+		__lt18 = "empty"
 	} else {
-		__lt11 = "has"
+		__lt18 = "has"
 	}
-	c.__n5.SetText(__lt11)
+	c.__n5.SetText(__lt18)
 }
 
 func (c *InnerInstance) Destroy() {}
@@ -1659,9 +1855,9 @@ func newInner__slot4Instance(__model *Model, __a___p0 int) *Inner__slot4Instance
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt13 := "has"
+	__lt20 := "has"
 	__n23 := widget.NewLabel("")
-	__n23.SetText(__lt13)
+	__n23.SetText(__lt20)
 	c.__n7 = widget.NewButton("", nil)
 	c.__n7.SetText(fmt.Sprint(c.n))
 	c.__n7.OnTapped = func() {
@@ -1685,7 +1881,7 @@ func (c *Inner__slot4Instance) Destroy() {}
 type OuterInstance struct {
 	Root           fyne.CanvasObject
 	__model        *Model
-	m__r0          int
+	m__r2          int
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
@@ -1712,7 +1908,7 @@ type OuterInstance struct {
 func newOuterInstance(__model *Model) *OuterInstance {
 	c := &OuterInstance{}
 	c.__model = __model
-	c.m__r0 = 0
+	c.m__r2 = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1726,10 +1922,10 @@ func newOuterInstance(__model *Model) *OuterInstance {
 	c.__slot6 = nil
 	c.__slot7 = nil
 	c.__n9 = widget.NewButton("", nil)
-	c.__n9.SetText(fmt.Sprint(c.m__r0))
+	c.__n9.SetText(fmt.Sprint(c.m__r2))
 	c.__n9.OnTapped = func() {
-		c.m__r0 = (c.m__r0 + 1)
-		c.__n9.SetText(fmt.Sprint(c.m__r0))
+		c.m__r2 = (c.m__r2 + 1)
+		c.__n9.SetText(fmt.Sprint(c.m__r2))
 	}
 	c.__root.Add(c.__n9)
 	c.__renderSlot5(c.__root)
@@ -1795,7 +1991,7 @@ type Outer__slot1Instance struct {
 	Root           fyne.CanvasObject
 	__model        *Model
 	__prop___p0    int
-	m__r1          int
+	m__r3          int
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
@@ -1823,7 +2019,7 @@ func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance
 	c := &Outer__slot1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.m__r1 = 0
+	c.m__r3 = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1837,10 +2033,10 @@ func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance
 	c.__renderAgain6 = false
 	c.__slot7 = nil
 	c.__n10 = widget.NewButton("", nil)
-	c.__n10.SetText(fmt.Sprint(c.m__r1))
+	c.__n10.SetText(fmt.Sprint(c.m__r3))
 	c.__n10.OnTapped = func() {
-		c.m__r1 = (c.m__r1 + 1)
-		c.__n10.SetText(fmt.Sprint(c.m__r1))
+		c.m__r3 = (c.m__r3 + 1)
+		c.__n10.SetText(fmt.Sprint(c.m__r3))
 	}
 	c.__root.Add(c.__n10)
 	c.__renderSlot6(c.__root)
@@ -1932,9 +2128,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -1962,14 +2163,14 @@ fun MainScreen() {
             }
         }
         Column {
-            Tree(d = n__inst0, __depth = 0, __empty_content = false, content = {
-                Text(text = "x", modifier = Modifier)
+            Tree(d = n__inst0, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __depth = 0, __empty_content = false, content = {
+                Text(text = "x", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
-            Tree(d = n__inst0, __depth = 0, __empty_content = true)
+            Tree(d = n__inst0, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __depth = 0, __empty_content = true)
             for (x in xs__inst0) {
-                Outer(__empty_content = true)
-                Outer(__empty_content = false, content = {
-                    Text(text = ("a" + x.toString()), modifier = Modifier)
+                Outer(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __empty_content = true)
+                Outer(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __empty_content = false, content = {
+                    Text(text = ("a" + x.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 })
             }
         }
@@ -1977,12 +2178,12 @@ fun MainScreen() {
 }
 
 @Composable
-fun Tree(d: Int = 0, __depth: Int = 0, __empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
-    Text(text = (if (__empty_content) ("empty " + d.toString()) else ("full " + d.toString())), modifier = Modifier)
+fun Tree(d: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0, __empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
+    Text(text = (if (__empty_content) ("empty " + d.toString()) else ("full " + d.toString())), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     if ((d > 0)) {
         if ((__depth >= 512)) {
         } else {
-            Tree(d = (d - 1), __depth = (__depth + 1), __empty_content = __empty_content, content = {
+            Tree(d = (d - 1), __ctx_flexShare = __ctx_flexShare, __depth = (__depth + 1), __empty_content = __empty_content, content = {
                 content?.invoke()
             })
         }
@@ -1990,29 +2191,29 @@ fun Tree(d: Int = 0, __depth: Int = 0, __empty_content: Boolean = true, content:
 }
 
 @Composable
-fun Inner(__empty_content: Boolean = true, slotContent: (@Composable () -> Unit)? = null) {
+fun Inner(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __empty_content: Boolean = true, slotContent: (@Composable () -> Unit)? = null) {
     var n by remember { mutableStateOf(0) }
 
-    Text(text = (if (__empty_content) "empty" else "has"), modifier = Modifier)
+    Text(text = (if (__empty_content) "empty" else "has"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     Button(onClick = {
         n = (n + 1)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = n.toString(), modifier = Modifier)
     }
     slotContent?.invoke()
 }
 
 @Composable
-fun Outer(__empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
+fun Outer(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
     var m by remember { mutableStateOf(0) }
 
     Button(onClick = {
         m = (m + 1)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = m.toString(), modifier = Modifier)
     }
     for (y in listOf(1)) {
-        Inner(__empty_content = __empty_content, slotContent = {
+        Inner(__ctx_flexShare = __ctx_flexShare, __empty_content = __empty_content, slotContent = {
             content?.invoke()
         })
     }
@@ -3011,10 +3212,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e2a955b9e698d29fbe82efb5d9b0decd
+pass sha256:d6927ea7bb8b34337c6bd6be2ea5a73f
 -- run/go/fyne --
-pass sha256:47d269315263adc1de2993152a82c448
+pass sha256:9e7ecf7e0f44a06145e6e54fd74496e9
 -- run/kotlin/android --
-pass sha256:95e1cf0b58aad74f4847ea6e65e1f198
+pass sha256:fd16dcdae7abb53200188bf4e8406cdb
 -- run/none/html --
 pass sha256:49dc04b55ddc0e8d97ba6e1e87c2d957

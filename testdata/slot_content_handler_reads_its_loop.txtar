@@ -96,10 +96,73 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -152,6 +215,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __effect0_enter() {
@@ -375,7 +571,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							s := "!"
 							__list0 := []string{}
 							for _, __item0 := range row {
-								__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+								__list0 = append(__list0, (__item0 + ""))
 							}
 							m.log = ((it + s) + fmt.Sprint(len(__list0)))
 							return
@@ -600,7 +796,7 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("swap"))
+	part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint("swap"))
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	__focusPos1 := 0
@@ -617,7 +813,7 @@ func (m Model) View() tea.View {
 		if part0_1Item_0Focused {
 			part0_1Item_0Prefix = ">"
 		}
-		part0_1Item_0 = lipgloss.NewStyle().Render(part0_1Item_0Prefix + " " + fmt.Sprint(("t " + fmt.Sprint(func() int {
+		part0_1Item_0 = BoxLook(Style{}, true).Render(part0_1Item_0Prefix + " " + fmt.Sprint(("t " + fmt.Sprint(func() int {
 			if __v, __ok := m.open__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
@@ -636,7 +832,7 @@ func (m Model) View() tea.View {
 			if part0_1Item_1Item_0Focused {
 				part0_1Item_1Item_0Prefix = ">"
 			}
-			part0_1Item_1Item_0 = lipgloss.NewStyle().Render(part0_1Item_1Item_0Prefix + " " + fmt.Sprint(it))
+			part0_1Item_1Item_0 = BoxLook(Style{}, true).Render(part0_1Item_1Item_0Prefix + " " + fmt.Sprint(it))
 			__focusPos1++
 			part0_1Item_1Items = append(part0_1Item_1Items, part0_1Item_1Item_0)
 			var part0_1Item_1Item_1 string
@@ -645,7 +841,7 @@ func (m Model) View() tea.View {
 			if part0_1Item_1Item_1Focused {
 				part0_1Item_1Item_1Prefix = ">"
 			}
-			part0_1Item_1Item_1 = lipgloss.NewStyle().Render(part0_1Item_1Item_1Prefix + " " + fmt.Sprint(it))
+			part0_1Item_1Item_1 = BoxLook(Style{}, true).Render(part0_1Item_1Item_1Prefix + " " + fmt.Sprint(it))
 			__focusPos1++
 			part0_1Item_1Items = append(part0_1Item_1Items, part0_1Item_1Item_1)
 		}
@@ -654,6 +850,7 @@ func (m Model) View() tea.View {
 			part0_1ItemChildren = append(part0_1ItemChildren, part0_1Item_1)
 		}
 		part0_1Item = lipgloss.JoinVertical(lipgloss.Left, part0_1ItemChildren...)
+		part0_1Item = BoxLook(Style{}, true).Render(part0_1Item)
 		part0_1Items = append(part0_1Items, part0_1Item)
 	}
 	part0_1 = strings.Join(part0_1Items, "\n")
@@ -667,15 +864,16 @@ func (m Model) View() tea.View {
 		if part0_2Focused {
 			part0_2Prefix = ">"
 		}
-		part0_2 = lipgloss.NewStyle().Render(part0_2Prefix + " " + fmt.Sprint(("x" + m.log)))
+		part0_2 = BoxLook(Style{}, true).Render(part0_2Prefix + " " + fmt.Sprint(("x" + m.log)))
 	}
 	if part0_2 != "" {
 		part0Children = append(part0Children, part0_2)
 	}
 	var part0_3 string
-	part0_3 = lipgloss.NewStyle().Render(fmt.Sprint(m.log))
+	part0_3 = BoxLook(Style{}, true).Render(fmt.Sprint(m.log))
 	part0Children = append(part0Children, part0_3)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = BoxLook(Style{}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -812,7 +1010,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						s := "!"
 						__list0 := []string{}
 						for _, __item0 := range row {
-							__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+							__list0 = append(__list0, (__item0 + ""))
 						}
 						m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
 						m.__n1.SetText(m.log)
@@ -836,7 +1034,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						s := "!"
 						__list0 := []string{}
 						for _, __item0 := range row {
-							__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+							__list0 = append(__list0, (__item0 + ""))
 						}
 						m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
 						m.__n1.SetText(m.log)
@@ -1045,7 +1243,7 @@ func (m *Model) SetShown(v bool) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n7 = container.NewVBox()
+	m.__n7 = fynelayout.NewVBox()
 	m.swap = widget.NewButton("", nil)
 	m.swap.SetText("swap")
 	m.swap.OnTapped = m.swap_click_handler
@@ -1099,7 +1297,7 @@ func newCard__slot0Instance(__model *Model, __a___p0 []string, __a___copy string
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n4 = container.NewVBox()
+	c.__n4 = fynelayout.NewVBox()
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0.SetText(("t " + fmt.Sprint(c.open)))
 	c.__n0.OnTapped = func() {
@@ -1261,15 +1459,15 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt2 string
+	var __lt9 string
 	if c.__prop___p1 == "" {
-		__lt2 = fmt.Sprint(c.__prop___p2)
+		__lt9 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt2 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt9 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.cell = widget.NewButton("", nil)
 	c.cell.SetText(c.__prop___p0)
-	c.__model.__list_cell(__lt2, c.cell)
+	c.__model.__list_cell(__lt9, c.cell)
 	c.cell.OnTapped = func() {
 		c.__prop___on0()
 	}
@@ -1285,24 +1483,24 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt0 string
+	var __lt7 string
 	if c.__prop___p1 == "" {
-		__lt0 = fmt.Sprint(c.__prop___p2)
+		__lt7 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt0 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt7 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_cell(__lt0, c.cell)
+	c.__model.__list_cell(__lt7, c.cell)
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt1 string
+	var __lt8 string
 	if c.__prop___p1 == "" {
-		__lt1 = fmt.Sprint(c.__prop___p2)
+		__lt8 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt1 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt8 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_cell(__lt1, c.cell)
+	c.__model.__list_cell(__lt8, c.cell)
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -1350,15 +1548,15 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt5 string
+	var __lt12 string
 	if c.__prop___p1 == "" {
-		__lt5 = fmt.Sprint(c.__prop___p2)
+		__lt12 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt5 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt12 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.mark = widget.NewButton("", nil)
 	c.mark.SetText(c.__prop___p0)
-	c.__model.__list_mark(__lt5, c.mark)
+	c.__model.__list_mark(__lt12, c.mark)
 	c.mark.OnTapped = func() {
 		c.__prop___on0()
 	}
@@ -1374,24 +1572,24 @@ func (c *__child1Instance) Set__p0(__v string) {
 
 func (c *__child1Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt3 string
+	var __lt10 string
 	if c.__prop___p1 == "" {
-		__lt3 = fmt.Sprint(c.__prop___p2)
+		__lt10 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt3 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt10 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_mark(__lt3, c.mark)
+	c.__model.__list_mark(__lt10, c.mark)
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt4 string
+	var __lt11 string
 	if c.__prop___p1 == "" {
-		__lt4 = fmt.Sprint(c.__prop___p2)
+		__lt11 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt4 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt11 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_mark(__lt4, c.mark)
+	c.__model.__list_mark(__lt11, c.mark)
 }
 
 func (c *__child1Instance) Set__on0(__v func()) {
@@ -1603,7 +1801,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					__n5 = m.__inst2_live[__inst2_i]
 					__n5.Set__on0(func(__on0_i int, __on0_it string) {
 						m.log = (fmt.Sprint(__on0_i) + __on0_it)
-						gtk4rt.LabelSetText(m.__n1, m.log)
+						gtk4rt.LabelSetLabel(m.__n1, m.log)
 						for __inst3_live_ui, _ := range m.__inst3_live {
 							m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 						}
@@ -1612,10 +1810,10 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						s := "!"
 						__list0 := []string{}
 						for _, __item0 := range row {
-							__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+							__list0 = append(__list0, (__item0 + ""))
 						}
 						m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
-						gtk4rt.LabelSetText(m.__n1, m.log)
+						gtk4rt.LabelSetLabel(m.__n1, m.log)
 						for __inst3_live_ui, _ := range m.__inst3_live {
 							m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 						}
@@ -1628,7 +1826,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					}
 					__n5__new := newCard__slot0Instance(m, row, fmt.Sprint(__copy0), func(__on0_i int, __on0_it string) {
 						m.log = (fmt.Sprint(__on0_i) + __on0_it)
-						gtk4rt.LabelSetText(m.__n1, m.log)
+						gtk4rt.LabelSetLabel(m.__n1, m.log)
 						for __inst3_live_ui, _ := range m.__inst3_live {
 							m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 						}
@@ -1636,10 +1834,10 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						s := "!"
 						__list0 := []string{}
 						for _, __item0 := range row {
-							__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+							__list0 = append(__list0, (__item0 + ""))
 						}
 						m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
-						gtk4rt.LabelSetText(m.__n1, m.log)
+						gtk4rt.LabelSetLabel(m.__n1, m.log)
 						for __inst3_live_ui, _ := range m.__inst3_live {
 							m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 						}
@@ -1686,7 +1884,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 					__n6.Set__on0(func() {
 						s := "q"
 						m.log = (m.log + s)
-						gtk4rt.LabelSetText(m.__n1, m.log)
+						gtk4rt.LabelSetLabel(m.__n1, m.log)
 						for __inst3_live_ui, _ := range m.__inst3_live {
 							m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 						}
@@ -1699,7 +1897,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 					__n6__new := new__child2Instance(m, m.log, func() {
 						s := "q"
 						m.log = (m.log + s)
-						gtk4rt.LabelSetText(m.__n1, m.log)
+						gtk4rt.LabelSetLabel(m.__n1, m.log)
 						for __inst3_live_ui, _ := range m.__inst3_live {
 							m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 						}
@@ -1962,15 +2160,15 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt2 string
+	var __lt18 string
 	if c.__prop___p1 == "" {
-		__lt2 = fmt.Sprint(c.__prop___p2)
+		__lt18 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt2 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt18 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.cell = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.cell, c.__prop___p0)
-	c.__model.__list_cell(__lt2, c.cell)
+	c.__model.__list_cell(__lt18, c.cell)
 	gtk4rt.Connect(c.cell, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -1987,24 +2185,24 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt0 string
+	var __lt16 string
 	if c.__prop___p1 == "" {
-		__lt0 = fmt.Sprint(c.__prop___p2)
+		__lt16 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt0 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt16 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_cell(__lt0, c.cell)
+	c.__model.__list_cell(__lt16, c.cell)
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt1 string
+	var __lt17 string
 	if c.__prop___p1 == "" {
-		__lt1 = fmt.Sprint(c.__prop___p2)
+		__lt17 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt1 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt17 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_cell(__lt1, c.cell)
+	c.__model.__list_cell(__lt17, c.cell)
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -2060,15 +2258,15 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt5 string
+	var __lt21 string
 	if c.__prop___p1 == "" {
-		__lt5 = fmt.Sprint(c.__prop___p2)
+		__lt21 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt5 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt21 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.mark = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.mark, c.__prop___p0)
-	c.__model.__list_mark(__lt5, c.mark)
+	c.__model.__list_mark(__lt21, c.mark)
 	gtk4rt.Connect(c.mark, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -2085,24 +2283,24 @@ func (c *__child1Instance) Set__p0(__v string) {
 
 func (c *__child1Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt3 string
+	var __lt19 string
 	if c.__prop___p1 == "" {
-		__lt3 = fmt.Sprint(c.__prop___p2)
+		__lt19 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt3 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt19 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_mark(__lt3, c.mark)
+	c.__model.__list_mark(__lt19, c.mark)
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt4 string
+	var __lt20 string
 	if c.__prop___p1 == "" {
-		__lt4 = fmt.Sprint(c.__prop___p2)
+		__lt20 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt4 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt20 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.__model.__list_mark(__lt4, c.mark)
+	c.__model.__list_mark(__lt20, c.mark)
 }
 
 func (c *__child1Instance) Set__on0(__v func()) {
@@ -2232,7 +2430,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.log)
+	gtk4rt.LabelSetLabel(m.__n1, m.log)
 	gtk4rt.BoxAppend(m.__n7, m.__n1)
 	gtk4rt.BoxAppend(m.__root, m.__n7)
 }
@@ -2317,21 +2515,26 @@ package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -2345,6 +2548,7 @@ val SnglPresent = mutableStateMapOf<Any, String>()
 
 class MainScreenState {
     init { SnglPresent.clear() }
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val rows = mutableStateListOf(listOf("a", "b"), listOf("c"))
     var log by mutableStateOf("")
     var shown by mutableStateOf(true)
@@ -2357,21 +2561,21 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             (listOf(listOf("d"), listOf("e", "f", "g"))).let { __v -> state.rows.clear(); state.rows.addAll(__v) }
-        }, modifier = Modifier.testTag("swap")) {
+        }, modifier = Modifier.testTag("swap"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "swap", modifier = Modifier)
         }
         for ((__copy0, row) in state.rows.withIndex()) {
-            Card(slotContent = {
+            Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, slotContent = {
                 for ((i, it) in row.withIndex()) {
                     Button(onClick = {
                         state.log = (i.toString() + it)
-                    }, modifier = Modifier.testTag("cell").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    }, modifier = Modifier.testTag("cell").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = it, modifier = Modifier)
                     }
                     Button(onClick = {
                         var s = "!"
                         state.log = ((it + s) + row.map({ x: String -> (x + "") }).size.toString())
-                    }, modifier = Modifier.testTag("mark").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    }, modifier = Modifier.testTag("mark").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = it, modifier = Modifier)
                     }
                 }
@@ -2381,22 +2585,22 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             Button(onClick = {
                 var s = "q"
                 state.log = (state.log + s)
-            }, modifier = Modifier.testTag("tag")) {
+            }, modifier = Modifier.testTag("tag"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ("x" + state.log), modifier = Modifier)
             }
         }
-        Text(text = state.log, modifier = Modifier)
+        Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 
 @Composable
-fun Card(slotContent: (@Composable () -> Unit)? = null) {
+fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, slotContent: (@Composable () -> Unit)? = null) {
     var open by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier) {
         Button(onClick = {
             open = (open + 1)
-        }, modifier = Modifier) {
+        }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = ("t " + open.toString()), modifier = Modifier)
         }
         slotContent?.invoke()
@@ -3073,12 +3277,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:68a3c99c516a807be821e2449c3c36c5
+pass sha256:0533e35054073cedb4b185424da97fff
 -- run/go/fyne --
-pass sha256:c19a6b6169ef7d30819db096315d8a9f
+pass sha256:e34935840d73cc107ed651170967fb3a
 -- run/go/gtk4 --
-pass sha256:546df8d5e2b432fb56fc8e4e0603fb92
+pass sha256:90f6868de94cb4fe8fc7c8892e36a8c5
 -- run/kotlin/android --
-pass sha256:c1b493743945c8bc879a283eabdaf7ad
+pass sha256:cbb4c4d56ad81f6bc51bcc4cc46d8b4b
 -- run/none/html --
 pass sha256:4d541ce756802397e9f007f6dda153d6

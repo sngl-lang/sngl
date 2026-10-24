@@ -191,6 +191,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n2_click_handler() {
 	var __async_arg0 int = m.n__inst0
+	_ = __async_arg0
 	go func() {
 		__new0 := FetchFile(__async_arg0)
 		__snglDo(func() {
@@ -257,4 +258,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:52af36ae1052281e56d1e9aef7e8d986
+pass sha256:a1eb7a5e644cc516b099db3b7b2b6658

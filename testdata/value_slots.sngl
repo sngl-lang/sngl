@@ -1,7 +1,7 @@
 // Every position a value is written into holds it to one rule. A value goes
 // there when it is assignable, when it is the literal 0 and a unit is wanted,
 // or when it is a zero-argument function whose result is wanted, which is
-// then called. A colour literal is validated wherever one is written. Each
+// then called. A string is no color, wherever one is wanted. Each
 // position is a line below, once for what it accepts and once for what it
 // refuses.
 
@@ -81,14 +81,14 @@ struct BadDefault {
 
 func badParamDefault(l len = 4) => l // ERROR(check) "default value type int does not match param type len"
 
-// A colour literal is validated in every position.
-const badConst color = "teal"         // ERROR(check) "invalid color literal \"teal\""
-var badPassColor = takesColor("teal") // ERROR(check) "invalid color literal \"teal\""
+// A color is written as a color literal, never as a string.
+const badConst color = "teal"         // ERROR(check) "cannot initialize color with string"
+var badPassColor = takesColor("teal") // ERROR(check) "cannot pass string as color"
 
 func badReturnColor() color {
-    return "teal" // ERROR(check) "invalid color literal \"teal\""
+    return "teal" // ERROR(check) "cannot return string as color"
 }
 
 struct BadColorDefault {
-    k color = "teal" // ERROR(check) "invalid color literal \"teal\""
+    k color = "teal" // ERROR(check) "default value type string does not match field type color"
 }

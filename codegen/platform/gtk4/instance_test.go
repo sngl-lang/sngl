@@ -40,7 +40,7 @@ window {
 // runs-the-output half, over the same lowering (see
 // codegen/platform/fyne/instance_test.go).
 func TestInstanceRecordIsPerRow(t *testing.T) {
-	model := generateGTK4Model(t, loopComponentSrc)
+	model := generateGTK4ModelBuilt(t, loopComponentSrc)
 
 	for _, want := range []string{
 		// The state cell belongs to the record.

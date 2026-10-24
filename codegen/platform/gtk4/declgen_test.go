@@ -1,8 +1,6 @@
 package gtk4
 
 import (
-	"slices"
-	"sort"
 	"strings"
 	"testing"
 
@@ -58,7 +56,8 @@ func TestWidgetSource_DeclaresProps(t *testing.T) {
 		// Hyphenated GIR names are unwritable in SNGL as they stand, so the
 		// declaration carries the camel-cased spelling.
 		"\n    defaultWidth int,\n",
-		"\n    style ui.Style = ui.Style{},\n",
+		"\n    look Look = Look{},\n",
+		"\nstruct Look {\n",
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated source is missing %q", want)
@@ -131,7 +130,7 @@ func TestSnglName_NoCollisions(t *testing.T) {
 			if strings.HasSuffix(n, "_") {
 				rewritten++
 			}
-			if n == stylePropName {
+			if n == lookPropName {
 				reserved = append(reserved, info.CType+"."+p.Name)
 				continue
 			}
@@ -158,23 +157,10 @@ func TestSnglName_NoCollisions(t *testing.T) {
 	if rewritten == 0 {
 		t.Error("no name needed the keyword rewrite; the sweep is asserting nothing")
 	}
-	// The reservation is load-bearing, and these five are what it costs.
-	// GtkCellRendererText and GtkTextTag each have a real GTK property named
-	// style that the platform's own style prop takes the name of; the other
-	// three are GtkCellRendererText's subclasses, which inherit it. If this
-	// list empties, the reservation is dropping nothing and the seeding in
-	// widgetSource is dead; if it grows, a property stopped being declared
-	// without anyone deciding that.
-	sort.Strings(reserved)
-	want := []string{
-		"GtkCellRendererAccel.style",
-		"GtkCellRendererCombo.style",
-		"GtkCellRendererSpin.style",
-		"GtkCellRendererText.style",
-		"GtkTextTag.style",
-	}
-	if !slices.Equal(reserved, want) {
-		t.Errorf("properties dropped by the %q reservation = %v; want %v", stylePropName, reserved, want)
+	// No GTK property is named look, so the reservation drops nothing; if this
+	// grows, a property stopped being declared without anyone deciding that.
+	if len(reserved) > 0 {
+		t.Errorf("properties dropped by the %q reservation = %v; want none", lookPropName, reserved)
 	}
 }
 
@@ -319,20 +305,15 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 		}
 	}
 
-	// A property GIR names no setter for has none — there is no derived
-	// spelling to fall back on, and gtk_image_set_file does not exist.
+	// GtkImage.file names no setter; the method names the property it sets,
+	// and gtk_image_set_from_file is no spelling derived from the name.
 	img := girClassInfoFor(t, "GtkImage")
 	p, ok = girProp(img, "file")
 	if !ok {
 		t.Fatal("girProp(GtkImage, file) not found")
 	}
-	if got := girSetter(img, p).Setter; got != "" {
-		t.Errorf("girSetter(GtkImage.file) = %q; want none", got)
-	}
-	// It is the static table that answers for it, and that answer is the
-	// setter the gtk4 override bodies rely on.
-	if got := gtkSetterFor("GtkImage", "file").Setter; got != "gtk_image_set_from_file" {
-		t.Errorf("gtkSetterFor(GtkImage.file) = %q; want gtk_image_set_from_file", got)
+	if got := girSetter(img, p).Setter; got != "gtk_image_set_from_file" {
+		t.Errorf("girSetter(GtkImage.file) = %q; want gtk_image_set_from_file", got)
 	}
 	// The event a body writes is the SNGL spelling of a GLib signal name.
 	if got, ok := girSignal(girClassInfoFor(t, "GtkButton"), "clicked"); !ok || got.Name != "clicked" {

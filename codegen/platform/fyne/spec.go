@@ -23,9 +23,6 @@ const intrinsicPrefix = "fyne:"
 // here means renaming it in fyne.sngl.
 const specPropName = "spec"
 
-// stylePropName is the primitive prop carrying the sngl.Style record.
-const stylePropName = "style"
-
 // fyneArg is one argument the Go constructor is called with, decoded from the
 // SNGL `Arg` record. Prop names a value prop of the primitive; when the
 // instantiation supplied it, its expression is the argument. Raw is Go source
@@ -104,55 +101,12 @@ type fyneSpec struct {
 	// again. The write that seeded CtorProps is answered by the constructor;
 	// any other write to one of these reaches the screen not at all.
 	CtorOnly map[string]bool
-	// Axis is "horizontal"/"vertical" on a container that lays children out
-	// along one, empty otherwise.
-	Axis string
-	// Style is what the node's own `style` prop asked for, of the fields a
-	// layout can answer. These reach Fyne without a Setter because none of
-	// them is a method on this widget: flex and margin are read by the
-	// *parent's* layout, gap and padding by this one's.
-	Style fyneStyle
-	// Children names this container's children in the order they are appended,
-	// which is the order a layout is handed them in.
-	Children []string
-	// ThemeVar is the generated theme this node's paint styles resolved to,
-	// empty when it asked for none. See theme.go.
-	ThemeVar string
-	// RuntimeTheme is set when a paint field of the style reads state: the
-	// theme is then built where the program runs and held in an override the
-	// node is created with, so a write to `style` can replace it.
-	RuntimeTheme bool
-	// StyleValue is set when the style is a whole value rather than a literal
-	// -- a Style held in state -- so the theme is read off it field by field.
-	StyleValue bool
+	// Boxed is set when the node's look asks for anything, which shows it in
+	// a fynelayout.Box; see box.go.
+	Boxed bool
 }
 
-// fyneStyle is the part of sngl.Style this platform can answer, in the
-// device-independent pixels Fyne measures in.
-//
-// The layout half is read by a layout -- flex and margin by the *parent's*,
-// gap and padding by this box's own. The paint half is read by a theme, which
-// is the only per-widget styling Fyne has: see theme.go.
-type fyneStyle struct {
-	Flex    float64
-	Margin  float64
-	Gap     float64
-	Padding float64
-	// Width and Height are the size the parent's layout gives the node in
-	// place of its own minimum, zero where the style gave none.
-	Width  float64
-	Height float64
-
-	Background   *fyneColor
-	Color        *fyneColor
-	FontSize     float64
-	BorderRadius float64
-	Bold         bool
-	Italic       bool
-}
-
-// fyneColor is an RGBA colour, comparable so a set of styles dedupes to a set
-// of themes.
+// fyneColor is an RGBA color a span's literal names.
 type fyneColor struct{ R, G, B, A uint8 }
 
 // aliaser assigns the alias an import path's symbols are qualified with. The
@@ -224,6 +178,14 @@ func fynePrimitive(comp *ir.Component) string {
 // names it behind, which is issue #120's shape — output that does not compile,
 // from a build that reported success.
 func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
+	sp, err := decodeSpec(tag, props)
+	if sp != nil {
+		sp.Boxed = boxedLook(props)
+	}
+	return sp, err
+}
+
+func decodeSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if markupTags(tag) {
 		return markupSpec(tag, props)
 	}
@@ -231,10 +193,6 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return toplevelSpec(props), nil
 	}
 	if sp := imageSpecFor(tag, props); sp != nil {
-		// An image's box is sized by its style as any node's is.
-		if tag == imageTag {
-			sp.Style = styleFromProps(props)
-		}
 		return sp, nil
 	}
 	raw := props[specPropName]
@@ -258,8 +216,6 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 			sp.Add = specString(tag, "spec.add", f.Value)
 		case "content":
 			sp.Content = specString(tag, "spec.content", f.Value)
-		case "axis":
-			sp.Axis = specString(tag, "spec.axis", f.Value)
 		case "args":
 			for _, e := range specList(tag, "spec.args", f.Value) {
 				sl := specRecord(tag, "spec.args", e)
@@ -310,70 +266,7 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 			sp.CtorOnly[a.Prop] = true
 		}
 	}
-	sp.Style = styleFromProps(props)
-	switch v := props[stylePropName].(type) {
-	case nil:
-	case *ir.StructLit:
-		sp.RuntimeTheme = readsRuntimePaint(v)
-	default:
-		sp.RuntimeTheme, sp.StyleValue = true, true
-	}
 	return sp, nil
-}
-
-// styleFromProps reads the layout fields off the node's `style` record. A
-// field whose expression is not a literal is left at zero: the layout is built
-// once with the widget tree, so a flex that varies with state is not something
-// it can answer.
-func styleFromProps(props map[string]ir.Expr) fyneStyle {
-	var st fyneStyle
-	lit, ok := props[stylePropName].(*ir.StructLit)
-	if !ok {
-		return st
-	}
-	for _, f := range lit.Fields {
-		switch f.Name {
-		case "background":
-			st.Background = colorFromExpr(f.Value)
-		case "color":
-			st.Color = colorFromExpr(f.Value)
-		case "fontWeight":
-			// Written as a string and typed as an enum, so it is the member
-			// after the optimizer folded it and the string before -- both
-			// reach here, since a caller may generate from unoptimized IR.
-			// Fyne has two faces, so everything but bold is the regular one.
-			st.Bold = enumOrString(f.Value) == "bold"
-			continue
-		case "fontStyle":
-			st.Italic = enumOrString(f.Value) == "italic"
-			continue
-		}
-		var into *float64
-		switch f.Name {
-		case "flex":
-			into = &st.Flex
-		case "margin":
-			into = &st.Margin
-		case "gap":
-			into = &st.Gap
-		case "padding":
-			into = &st.Padding
-		case "width":
-			into = &st.Width
-		case "height":
-			into = &st.Height
-		case "fontSize":
-			into = &st.FontSize
-		case "borderRadius":
-			into = &st.BorderRadius
-		default:
-			continue
-		}
-		if v, ok := codegen.MeasurementPx(f.Value, emPx); ok {
-			*into = v
-		}
-	}
-	return st
 }
 
 // emPx is an em on this platform: the default theme's text size.
@@ -388,8 +281,8 @@ func enumOrString(e ir.Expr) string {
 	return v
 }
 
-// colorFromExpr reads a `color{r=.., g=.., b=.., a=..}` literal. A colour that
-// is not a literal is no colour: the theme is built once with the widget tree.
+// colorFromExpr reads a `color{r=.., g=.., b=.., a=..}` literal, or nil for any
+// other expression.
 func colorFromExpr(e ir.Expr) *fyneColor {
 	sl, ok := e.(*ir.StructLit)
 	if !ok {
@@ -416,7 +309,7 @@ func colorFromExpr(e ir.Expr) *fyneColor {
 	return &c
 }
 
-// literalNumber reads a numeric literal: a colour's channel. A measurement is
+// literalNumber reads a numeric literal: a color's channel. A measurement is
 // codegen.MeasurementPx's.
 func literalNumber(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)

@@ -1177,13 +1177,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	opened              int
@@ -1747,6 +1740,6 @@ pass sha256:4b6b51a12805619d5b0f8a60e3cf5337
 -- run/go/fyne --
 pass sha256:1575f2ca1bfbf3c14adc6b5ee0dc88a2
 -- run/go/gtk4 --
-pass sha256:1783369c9cc34073294f62c74f4fb6bf
+pass sha256:9bbe8b994915c5c6fb2294086b353736
 -- run/none/html --
 pass sha256:79a49d3f3ec2b45f6a4885cca3e5d1cd

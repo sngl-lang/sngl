@@ -50,9 +50,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -83,6 +146,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -239,7 +435,7 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("bound"))
+		content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("bound"))
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1Focused := (m.__focusID == 1)
@@ -247,16 +443,16 @@ func (m Model) View() tea.View {
 		if content_1Focused {
 			content_1Prefix = ">"
 		}
-		content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("free"))
+		content_1 = BoxLook(Style{}, true).Render(content_1Prefix + " " + fmt.Sprint("free"))
 		contentChildren = append(contentChildren, content_1)
-		var __lt0 string
+		var __lt10 string
 		if m.checked__inst0 {
-			__lt0 = "on"
+			__lt10 = "on"
 		} else {
-			__lt0 = "off"
+			__lt10 = "off"
 		}
 		var content_4 string
-		content_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+		content_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
 		contentChildren = append(contentChildren, content_4)
 		var content_5 string
 		content_5Focused := (m.__focusID == 2)
@@ -264,9 +460,10 @@ func (m Model) View() tea.View {
 		if content_5Focused {
 			content_5Prefix = ">"
 		}
-		content_5 = lipgloss.NewStyle().Render(content_5Prefix + " " + fmt.Sprint("flip"))
+		content_5 = BoxLook(Style{}, true).Render(content_5Prefix + " " + fmt.Sprint("flip"))
 		contentChildren = append(contentChildren, content_5)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -290,7 +487,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -338,13 +534,13 @@ func (m *Model) free_toggle_handler(on bool) {
 	if on != m.checked__inst0 {
 		m.checked__inst0 = on
 		m.free.SetChecked(m.checked__inst0)
-		var __lt0 string
+		var __lt7 string
 		if m.checked__inst0 {
-			__lt0 = "on"
+			__lt7 = "on"
 		} else {
-			__lt0 = "off"
+			__lt7 = "off"
 		}
-		m.seen.SetText(__lt0)
+		m.seen.SetText(__lt7)
 	}
 }
 
@@ -353,13 +549,13 @@ func (m *Model) flip_click_handler() {
 	m.bound.SetChecked(m.shown__inst0)
 	m.checked__inst0 = !m.checked__inst0
 	m.free.SetChecked(m.checked__inst0)
-	var __lt2 string
+	var __lt9 string
 	if m.checked__inst0 {
-		__lt2 = "on"
+		__lt9 = "on"
 	} else {
-		__lt2 = "off"
+		__lt9 = "off"
 	}
-	m.seen.SetText(__lt2)
+	m.seen.SetText(__lt9)
 }
 
 // boundChange invokes the OnChanged callback on the #bound widget; for tests.
@@ -421,7 +617,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.bound = widget.NewCheck("", nil)
 	m.bound.SetText("bound")
 	m.bound.SetChecked(m.shown__inst0)
@@ -432,14 +628,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.free.SetChecked(m.checked__inst0)
 	m.free.OnChanged = m.free_toggle_handler
 	m.__n1.Add(m.free)
-	var __lt1 string
+	var __lt8 string
 	if m.checked__inst0 {
-		__lt1 = "on"
+		__lt8 = "on"
 	} else {
-		__lt1 = "off"
+		__lt8 = "off"
 	}
 	m.seen = widget.NewLabel("")
-	m.seen.SetText(__lt1)
+	m.seen.SetText(__lt8)
 	m.__n1.Add(m.seen)
 	m.flip = widget.NewButton("", nil)
 	m.flip.SetText("flip")
@@ -520,13 +716,13 @@ func (m *Model) free_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.free) != m.checked__inst0 {
 		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.free)
 		gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
-		var __lt0 string
+		var __lt16 string
 		if m.checked__inst0 {
-			__lt0 = "on"
+			__lt16 = "on"
 		} else {
-			__lt0 = "off"
+			__lt16 = "off"
 		}
-		gtk4rt.LabelSetText(m.seen, __lt0)
+		gtk4rt.LabelSetLabel(m.seen, __lt16)
 	}
 }
 
@@ -535,13 +731,13 @@ func (m *Model) flip_clicked_handler() {
 	gtk4rt.CheckButtonSetActive(m.bound, m.shown__inst0)
 	m.checked__inst0 = !m.checked__inst0
 	gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
-	var __lt2 string
+	var __lt18 string
 	if m.checked__inst0 {
-		__lt2 = "on"
+		__lt18 = "on"
 	} else {
-		__lt2 = "off"
+		__lt18 = "off"
 	}
-	gtk4rt.LabelSetText(m.seen, __lt2)
+	gtk4rt.LabelSetLabel(m.seen, __lt18)
 }
 
 func (m *Model) Shown__inst0() bool {
@@ -590,14 +786,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
 	gtk4rt.Connect(m.free, "toggled", m.free_toggled_handler)
 	gtk4rt.BoxAppend(m.__n1, m.free)
-	var __lt1 string
+	var __lt17 string
 	if m.checked__inst0 {
-		__lt1 = "on"
+		__lt17 = "on"
 	} else {
-		__lt1 = "off"
+		__lt17 = "off"
 	}
 	m.seen = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.seen, __lt1)
+	gtk4rt.LabelSetLabel(m.seen, __lt17)
 	gtk4rt.BoxAppend(m.__n1, m.seen)
 	m.flip = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
@@ -651,15 +847,18 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -695,11 +894,11 @@ fun MainScreen() {
                 })
                 Text(text = "free", modifier = Modifier)
             }
-            Text(text = (if (checked__inst0) "on" else "off"), modifier = Modifier.testTag("seen"))
+            Text(text = (if (checked__inst0) "on" else "off"), modifier = Modifier.testTag("seen"), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 shown__inst0 = false
                 checked__inst0 = !checked__inst0
-            }, modifier = Modifier.testTag("flip")) {
+            }, modifier = Modifier.testTag("flip"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "flip", modifier = Modifier)
             }
         }
@@ -770,12 +969,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e58e728500f708e3dbb41746d06f3a35
+pass sha256:de727bbcfb48d25ae9c1e4d2e6299780
 -- run/go/fyne --
-pass sha256:829b106bd02ca46d204b7962c5f1a8d4
+pass sha256:d557cb5a726f48670b0b90eae68f7827
 -- run/go/gtk4 --
-pass sha256:1b6f5adebdb3e5e5b646f50801087d9c
+pass sha256:f773a4ed8a232aeac5db40e4643288f1
 -- run/kotlin/android --
-pass sha256:9dc73efda2fe32badeea97fd50bd139f
+pass sha256:0b297a5c5df8cd0eeabf5c0da9eef3e1
 -- run/none/html --
 pass sha256:0decffcc8482052c4a18e3935ce4fa5b

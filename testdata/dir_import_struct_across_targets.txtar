@@ -49,12 +49,75 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
 type State struct {
 	N int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -90,6 +153,219 @@ func Label(x int) string {
 	t__r0 := State{N: 3}
 	t__r0.N = (t__r0.N + x)
 	return fmt.Sprint(t__r0.N)
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		var __lt0 lipgloss.Position
+		switch s.TextAlign {
+		case "center":
+			__lt0 = lipgloss.Center
+		case "right":
+			__lt0 = lipgloss.Right
+		default:
+			__lt0 = lipgloss.Left
+		}
+		l = l.AlignHorizontal(__lt0)
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		var __lt1 lipgloss.Border
+		switch s.BorderStyle {
+		case "double":
+			__lt1 = lipgloss.DoubleBorder()
+		case "dashed", "dotted":
+			__lt1 = tui.DashedBorder()
+		default:
+			var __lt2 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt2 = lipgloss.RoundedBorder()
+			} else {
+				__lt2 = lipgloss.NormalBorder()
+			}
+			__lt1 = __lt2
+		}
+		l = l.Border(__lt1)
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	var __lt4 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt4 = s.MarginTop
+	} else {
+		var __lt3 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt3 = s.MarginY
+		} else {
+			__lt3 = s.Margin
+		}
+		__lt4 = __lt3
+	}
+	l = l.MarginTop(CellsOf(__lt4))
+	var __lt6 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt6 = s.MarginRight
+	} else {
+		var __lt5 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt5 = s.MarginX
+		} else {
+			__lt5 = s.Margin
+		}
+		__lt6 = __lt5
+	}
+	l = l.MarginRight(CellsOf(__lt6))
+	var __lt8 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt8 = s.MarginBottom
+	} else {
+		var __lt7 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt7 = s.MarginY
+		} else {
+			__lt7 = s.Margin
+		}
+		__lt8 = __lt7
+	}
+	l = l.MarginBottom(CellsOf(__lt8))
+	var __lt10 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt10 = s.MarginLeft
+	} else {
+		var __lt9 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt9 = s.MarginX
+		} else {
+			__lt9 = s.Margin
+		}
+		__lt10 = __lt9
+	}
+	l = l.MarginLeft(CellsOf(__lt10))
+	var __lt12 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt12 = s.PaddingTop
+	} else {
+		var __lt11 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt11 = s.PaddingY
+		} else {
+			__lt11 = s.Padding
+		}
+		__lt12 = __lt11
+	}
+	l = l.PaddingTop(CellsOf(__lt12))
+	var __lt14 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt14 = s.PaddingRight
+	} else {
+		var __lt13 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt13 = s.PaddingX
+		} else {
+			__lt13 = s.Padding
+		}
+		__lt14 = __lt13
+	}
+	l = l.PaddingRight(CellsOf(__lt14))
+	var __lt16 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt16 = s.PaddingBottom
+	} else {
+		var __lt15 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt15 = s.PaddingY
+		} else {
+			__lt15 = s.Padding
+		}
+		__lt16 = __lt15
+	}
+	l = l.PaddingBottom(CellsOf(__lt16))
+	var __lt18 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt18 = s.PaddingLeft
+	} else {
+		var __lt17 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt17 = s.PaddingX
+		} else {
+			__lt17 = s.Padding
+		}
+		__lt18 = __lt17
+	}
+	l = l.PaddingLeft(CellsOf(__lt18))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt23 int
+		if CellsOf(s.MaxHeight) == 0 {
+			var __lt19 int
+			if s.MaxLines == 0 {
+				__lt19 = 0
+			} else {
+				__lt19 = (s.MaxLines + l.GetVerticalFrameSize())
+			}
+			__lt23 = __lt19
+		} else {
+			var __lt20 int
+			if s.MaxLines == 0 {
+				__lt20 = 0
+			} else {
+				__lt20 = (s.MaxLines + l.GetVerticalFrameSize())
+			}
+			var __lt22 int
+			if __lt20 == 0 {
+				__lt22 = CellsOf(s.MaxHeight)
+			} else {
+				var __lt21 int
+				if s.MaxLines == 0 {
+					__lt21 = 0
+				} else {
+					__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
+				}
+				__lt22 = min(CellsOf(s.MaxHeight), __lt21)
+			}
+			__lt23 = __lt22
+		}
+		l = l.MaxHeight(__lt23)
+	}
+	return l
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt24 int
+	if px <= 0.0 {
+		__lt24 = 0
+	} else {
+		__lt24 = max(1, (int(px) / 8))
+	}
+	return __lt24
 }
 
 func (m *Model) __focusNext() {
@@ -176,7 +452,7 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(Label(m.k)))
+		contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint(Label(m.k)))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 0)
@@ -184,7 +460,7 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("more"))
+		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("more"))
 		contentParts = append(contentParts, contentPart_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
@@ -232,6 +508,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f89caaef59181937b09b196e8f9e1e6e
+pass sha256:b47fbe5b09a13bad934f9e75d320cae6
 -- run/none/html --
 pass sha256:a9aa352b4c660b34ab8290f194b46544

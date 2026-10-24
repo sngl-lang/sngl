@@ -110,53 +110,53 @@ if PLATFORM == html.platform {
             if !entry().found && entry().error != "" {
                 vbox {
                     text(value="Not found", style={fontWeight=bold})
-                    text(value=entry().error, style={color="#888"})
+                    text(value=entry().error, style={color=#888})
                 }
             }
 
             if entry().kind == "index" {
                 vbox {
                     text(value=entry().index.title, style={fontWeight=bold})
-                    text(value=entry().index.description, style={color="#aaa"})
+                    text(value=entry().index.description, style={color=#aaa})
                     if entry().index.isNative && entry().index.nativeImportPath != "" {
                         text(
                             value = "Import: " + entry().index.nativeImportPath,
-                            style = {color="#888", fontFamily="monospace"},
+                            style = {color=#888, fontFamily="monospace"},
                         )
                     }
                     text(value="")
 
-                    text(value="COMPONENTS", style={fontWeight=bold, color="#888"})
+                    text(value="COMPONENTS", style={fontWeight=bold, color=#888})
                     for var c = entry().index.components {
                         text(value="  " + c.name + " — " + c.doc)
                     }
 
                     text(value="")
-                    text(value="TYPES", style={fontWeight=bold, color="#888"})
+                    text(value="TYPES", style={fontWeight=bold, color=#888})
                     for var t = entry().index.types {
                         text(value="  " + t.name + " — " + t.doc)
                     }
 
                     text(value="")
-                    text(value="ENUMS", style={fontWeight=bold, color="#888"})
+                    text(value="ENUMS", style={fontWeight=bold, color=#888})
                     for var e = entry().index.enums {
                         text(value="  " + e.name + " — " + e.doc)
                     }
 
                     text(value="")
-                    text(value="FUNCTIONS", style={fontWeight=bold, color="#888"})
+                    text(value="FUNCTIONS", style={fontWeight=bold, color=#888})
                     for var f = entry().index.functions {
                         text(value="  " + f.name + " — " + f.doc)
                     }
 
                     text(value="")
-                    text(value="CONSTANTS", style={fontWeight=bold, color="#888"})
+                    text(value="CONSTANTS", style={fontWeight=bold, color=#888})
                     for var c = entry().index.constants {
                         text(value="  " + c.name + " — " + c.doc)
                     }
 
                     text(value="")
-                    text(value="DATA", style={fontWeight=bold, color="#888"})
+                    text(value="DATA", style={fontWeight=bold, color=#888})
                     for var d = entry().index.data {
                         text(value="  " + d.name + " — " + d.doc)
                     }
@@ -167,15 +167,15 @@ if PLATFORM == html.platform {
                 vbox {
                     text(value=entry().componentDoc.name, style={fontWeight=bold})
                     text(value=entry().componentDoc.doc)
-                    text(value="PROPS", style={fontWeight=bold, color="#888"})
+                    text(value="PROPS", style={fontWeight=bold, color=#888})
                     for var p = entry().componentDoc.props {
                         text(value="  " + p.name + "  " + p.type + "  " + p.doc)
                     }
-                    text(value="SLOTS", style={fontWeight=bold, color="#888"})
+                    text(value="SLOTS", style={fontWeight=bold, color=#888})
                     for var sl = entry().componentDoc.slots {
                         text(value="  " + sl.name + "  " + sl.type + "  " + sl.doc)
                     }
-                    text(value="EVENTS", style={fontWeight=bold, color="#888"})
+                    text(value="EVENTS", style={fontWeight=bold, color=#888})
                     for var e = entry().componentDoc.events {
                         text(value="  @" + e.name + "  " + e.payload + "  " + e.doc)
                     }
@@ -186,11 +186,11 @@ if PLATFORM == html.platform {
                 vbox {
                     text(value=entry().typeDoc.name, style={fontWeight=bold})
                     text(value=entry().typeDoc.doc)
-                    text(value="FIELDS", style={fontWeight=bold, color="#888"})
+                    text(value="FIELDS", style={fontWeight=bold, color=#888})
                     for var f = entry().typeDoc.fields {
                         text(value="  " + f.name + "  " + f.type)
                     }
-                    text(value="METHODS", style={fontWeight=bold, color="#888"})
+                    text(value="METHODS", style={fontWeight=bold, color=#888})
                     for var m = entry().typeDoc.methods {
                         text(value="  ." + m.short + "  " + m.doc)
                     }
@@ -218,7 +218,7 @@ if PLATFORM == html.platform {
             if entry().kind == "value" {
                 vbox {
                     text(value=entry().valueDoc.name, style={fontWeight=bold})
-                    text(value=entry().valueDoc.type, style={color="#888"})
+                    text(value=entry().valueDoc.type, style={color=#888})
                     text(value=entry().valueDoc.doc)
                 }
             }

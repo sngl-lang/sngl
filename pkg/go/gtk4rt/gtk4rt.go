@@ -461,10 +461,10 @@ func Nothing() Handle {
 	return Handle(unsafe.Pointer(w))
 }
 
-func LabelSetText(label Handle, text string) {
+func LabelSetLabel(label Handle, text string) {
 	c, free := cstr(text)
 	defer free()
-	C.gtk_label_set_text((*C.GtkLabel)(p(label)), c)
+	C.gtk_label_set_label((*C.GtkLabel)(p(label)), c)
 }
 
 // ---- Button ----

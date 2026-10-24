@@ -87,9 +87,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -121,6 +184,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m Model) Depth() int {
@@ -182,9 +378,9 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0_part := func(m__r0 int) string {
+	content_0_part := func(m__r1 int) string {
 		var result string
-		result = lipgloss.NewStyle().Render(fmt.Sprint(((("level " + fmt.Sprint(m__r0)) + " ") + m.mark)))
+		result = BoxLook(Style{}, true).Render(fmt.Sprint(((("level " + fmt.Sprint(m__r1)) + " ") + m.mark)))
 		return result
 	}
 	content_0 = m.renderFrame(m.depth, "top", 0, content_0_part)
@@ -192,7 +388,7 @@ func (m Model) View() tea.View {
 	var content_1 string
 	content_1_part := func(result_ int) string {
 		var result string
-		result = lipgloss.NewStyle().Render(fmt.Sprint(((("r " + fmt.Sprint(result_)) + " ") + m.mark)))
+		result = BoxLook(Style{}, true).Render(fmt.Sprint(((("r " + fmt.Sprint(result_)) + " ") + m.mark)))
 		return result
 	}
 	content_1 = m.renderFrame((m.depth - 1), "second", 0, content_1_part)
@@ -200,12 +396,13 @@ func (m Model) View() tea.View {
 	var content_2 string
 	content_2_part := func(in int) string {
 		var result string
-		result = lipgloss.NewStyle().Render(fmt.Sprint(((("in " + fmt.Sprint(in)) + " ") + m.mark)))
+		result = BoxLook(Style{}, true).Render(fmt.Sprint(((("in " + fmt.Sprint(in)) + " ") + m.mark)))
 		return result
 	}
 	content_2 = m.renderFrame((m.depth - 2), "third", 0, content_2_part)
 	contentChildren = append(contentChildren, content_2)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = BoxLook(Style{}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -215,7 +412,7 @@ func (m Model) renderFrame(result_ int, m_ string, __depth int, part_ func(int) 
 	var result string
 	var resultChildren []string
 	var result_0 string
-	result_0 = lipgloss.NewStyle().Render(fmt.Sprint(m_))
+	result_0 = BoxLook(Style{}, true).Render(fmt.Sprint(m_))
 	resultChildren = append(resultChildren, result_0)
 	var result_1 string
 	if part_ != nil {
@@ -240,6 +437,7 @@ func (m Model) renderFrame(result_ int, m_ string, __depth int, part_ func(int) 
 		resultChildren = append(resultChildren, result_2)
 	}
 	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
+	result = BoxLook(Style{}, true).Render(result)
 	return result
 }
 
@@ -350,7 +548,7 @@ func (m *Model) SetMark(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n27 = container.NewVBox()
+	m.__n27 = fynelayout.NewVBox()
 	m.__n12 = newFrame__slot0Instance(m, m.depth, "top", 0, m.mark)
 	m.__n12__el = m.__n12.Root
 	m.__n27.Add(m.__n12__el)
@@ -410,7 +608,7 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n16 = container.NewVBox()
+	c.__n16 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(c.__prop_m)
 	c.__n16.Add(c.__n0)
@@ -555,7 +753,7 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n18 = container.NewVBox()
+	c.__n18 = fynelayout.NewVBox()
 	c.__n2 = widget.NewLabel("")
 	c.__n2.SetText(c.__prop_m)
 	c.__n18.Add(c.__n2)
@@ -700,7 +898,7 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n20 = container.NewVBox()
+	c.__n20 = fynelayout.NewVBox()
 	c.__n4 = widget.NewLabel("")
 	c.__n4.SetText(c.__prop_m)
 	c.__n20.Add(c.__n4)
@@ -845,7 +1043,7 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__renderAgain3 = false
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n22 = container.NewVBox()
+	c.__n22 = fynelayout.NewVBox()
 	c.__n6 = widget.NewLabel("")
 	c.__n6.SetText(c.__prop_m)
 	c.__n22.Add(c.__n6)
@@ -990,7 +1188,7 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__rendering4 = false
 	c.__renderAgain4 = false
 	c.__slot5 = nil
-	c.__n24 = container.NewVBox()
+	c.__n24 = fynelayout.NewVBox()
 	c.__n8 = widget.NewLabel("")
 	c.__n8.SetText(c.__prop_m)
 	c.__n24.Add(c.__n8)
@@ -1135,7 +1333,7 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__inst5_live = []*Frame__slot4Instance{}
 	c.__rendering5 = false
 	c.__renderAgain5 = false
-	c.__n26 = container.NewVBox()
+	c.__n26 = fynelayout.NewVBox()
 	c.__n10 = widget.NewLabel("")
 	c.__n10.SetText(c.__prop_m)
 	c.__n26.Add(c.__n10)
@@ -1382,10 +1580,10 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n16, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n16, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n16, c.__n0)
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n16, c.__n1)
 	c.__renderSlot0(c.__n16)
 	c.Root = c.__n16
@@ -1395,13 +1593,13 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot6Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot0(c.__n16)
 }
 
 func (c *Frame__slot6Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n0, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop_m)
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].SetM(c.__prop_m)
 	}
@@ -1414,7 +1612,7 @@ func (c *Frame__slot6Instance) Set__depth(__v int) {
 
 func (c *Frame__slot6Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1555,10 +1753,10 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n18, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n18, 6)
 	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n2, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n18, c.__n2)
 	c.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n18, c.__n3)
 	c.__renderSlot1(c.__n18)
 	c.Root = c.__n18
@@ -1568,13 +1766,13 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot5Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot1(c.__n18)
 }
 
 func (c *Frame__slot5Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n2, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n2, c.__prop_m)
 	for __inst1_live_ui, _ := range c.__inst1_live {
 		c.__inst1_live[__inst1_live_ui].SetM(c.__prop_m)
 	}
@@ -1587,7 +1785,7 @@ func (c *Frame__slot5Instance) Set__depth(__v int) {
 
 func (c *Frame__slot5Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst1_live_ui, _ := range c.__inst1_live {
 		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1728,10 +1926,10 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n20, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n20, 6)
 	c.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n4, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n4, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n20, c.__n4)
 	c.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n20, c.__n5)
 	c.__renderSlot2(c.__n20)
 	c.Root = c.__n20
@@ -1741,13 +1939,13 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot4Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot2(c.__n20)
 }
 
 func (c *Frame__slot4Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n4, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n4, c.__prop_m)
 	for __inst2_live_ui, _ := range c.__inst2_live {
 		c.__inst2_live[__inst2_live_ui].SetM(c.__prop_m)
 	}
@@ -1760,7 +1958,7 @@ func (c *Frame__slot4Instance) Set__depth(__v int) {
 
 func (c *Frame__slot4Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst2_live_ui, _ := range c.__inst2_live {
 		c.__inst2_live[__inst2_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1901,10 +2099,10 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n22, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n22, 6)
 	c.__n6 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n6, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n6, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n22, c.__n6)
 	c.__n7 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n22, c.__n7)
 	c.__renderSlot3(c.__n22)
 	c.Root = c.__n22
@@ -1914,13 +2112,13 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot2Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot3(c.__n22)
 }
 
 func (c *Frame__slot2Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n6, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n6, c.__prop_m)
 	for __inst3_live_ui, _ := range c.__inst3_live {
 		c.__inst3_live[__inst3_live_ui].SetM(c.__prop_m)
 	}
@@ -1933,7 +2131,7 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 
 func (c *Frame__slot2Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst3_live_ui, _ := range c.__inst3_live {
 		c.__inst3_live[__inst3_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -2074,10 +2272,10 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n24, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n24, 6)
 	c.__n8 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n8, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n8, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n24, c.__n8)
 	c.__n9 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n24, c.__n9)
 	c.__renderSlot4(c.__n24)
 	c.Root = c.__n24
@@ -2087,13 +2285,13 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot1Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot4(c.__n24)
 }
 
 func (c *Frame__slot1Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n8, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n8, c.__prop_m)
 	for __inst4_live_ui, _ := range c.__inst4_live {
 		c.__inst4_live[__inst4_live_ui].SetM(c.__prop_m)
 	}
@@ -2106,7 +2304,7 @@ func (c *Frame__slot1Instance) Set__depth(__v int) {
 
 func (c *Frame__slot1Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst4_live_ui, _ := range c.__inst4_live {
 		c.__inst4_live[__inst4_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -2247,10 +2445,10 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n26, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n26, 6)
 	c.__n10 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n10, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n10, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n26, c.__n10)
 	c.__n11 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n26, c.__n11)
 	c.__renderSlot5(c.__n26)
 	c.Root = c.__n26
@@ -2260,13 +2458,13 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot0Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot5(c.__n26)
 }
 
 func (c *Frame__slot0Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n10, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n10, c.__prop_m)
 	for __inst5_live_ui, _ := range c.__inst5_live {
 		c.__inst5_live[__inst5_live_ui].SetM(c.__prop_m)
 	}
@@ -2279,7 +2477,7 @@ func (c *Frame__slot0Instance) Set__depth(__v int) {
 
 func (c *Frame__slot0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst5_live_ui, _ := range c.__inst5_live {
 		c.__inst5_live[__inst5_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -2420,6 +2618,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -2427,10 +2627,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -2443,6 +2644,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var depth by mutableStateOf(2)
     var mark by mutableStateOf("*")
 }
@@ -2452,27 +2654,27 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
-        Frame(result = state.depth, m = "top", __depth = 0, part = { m ->
-            Text(text = ((("level " + m.toString()) + " ") + state.mark), modifier = Modifier)
+        Frame(result = state.depth, m = "top", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = 0, part = { m ->
+            Text(text = ((("level " + m.toString()) + " ") + state.mark), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         })
-        Frame(result = (state.depth - 1), m = "second", __depth = 0, part = { result ->
-            Text(text = ((("r " + result.toString()) + " ") + state.mark), modifier = Modifier)
+        Frame(result = (state.depth - 1), m = "second", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = 0, part = { result ->
+            Text(text = ((("r " + result.toString()) + " ") + state.mark), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         })
-        Frame(result = (state.depth - 2), m = "third", __depth = 0, part = { in__r0 ->
-            Text(text = ((("in " + in__r0.toString()) + " ") + state.mark), modifier = Modifier)
+        Frame(result = (state.depth - 2), m = "third", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = 0, part = { in__r0 ->
+            Text(text = ((("in " + in__r0.toString()) + " ") + state.mark), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         })
     }
 }
 
 @Composable
-fun Frame(result: Int = 0, m: String = "", __depth: Int = 0, part: (@Composable (Int) -> Unit)? = null) {
+fun Frame(result: Int = 0, m: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0, part: (@Composable (Int) -> Unit)? = null) {
     Column(modifier = Modifier) {
-        Text(text = m, modifier = Modifier)
+        Text(text = m, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         part?.invoke(result)
         if ((result > 0)) {
             if ((__depth >= 512)) {
             } else {
-                Frame(result = (result - 1), m = m, __depth = (__depth + 1), part = { d ->
+                Frame(result = (result - 1), m = m, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = (__depth + 1), part = { d ->
                     part?.invoke(d)
                 })
             }
@@ -3388,12 +3590,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:547c0374403b4b2e5b3d56c5be882832
+pass sha256:8969573366c236c3176fe0472e2762a3
 -- run/go/fyne --
-pass sha256:262052c843fafaec80f9be09be76d8d7
+pass sha256:78d70b6f2606053ae9f97f1ca400a72b
 -- run/go/gtk4 --
-pass sha256:b95fd72695cc3d9688351d1d60be1c39
+pass sha256:3638c4413dae289e265004a044f82dac
 -- run/kotlin/android --
-pass sha256:7c0d746c9e5037b8688e1bec65bc823a
+pass sha256:cec96adda10ef28af22c9246c8d766d5
 -- run/none/html --
 pass sha256:6304aa80d96707b8f80fee3e0fa0bc86

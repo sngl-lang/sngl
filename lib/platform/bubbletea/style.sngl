@@ -1,0 +1,178 @@
+import ui "sngl:ui"
+import markup "sngl:ui/markup"
+
+// What a ui.Style becomes in a terminal: a lipgloss style for the box, the
+// share of its parent's free space a `flex` child grows into, how a vbox or
+// hbox places and spaces its children, and the cascade a flow of rich text
+// starts from.
+
+const unset ui.Style = {}
+
+// What a Style may say that a terminal does not answer:
+//
+//   - minWidth: lipgloss sizes a block to a width or wraps it under a maximum,
+//     and has no floor.
+//   - flexDirection: vbox and hbox are the axis.
+//   - justifyContent: not answered yet; the free space a `flex` child takes
+//     is where it would come from.
+//   - position, top, bottom, left, right, zIndex: a terminal lays text out in
+//     one flow, and draws nothing over anything but a modal.
+//   - fontSize, fontFamily: a terminal has one face in one size.
+//   - whiteSpace: not answered yet; lipgloss keeps the newlines written and
+//     wraps to a width, and `nowrap` would be its Inline.
+//   - border, borderBottom, borderLeft, borderCollapse: CSS shorthand text and
+//     table borders.
+//   - cursor: a terminal shows no pointer.
+//   - display: not answered yet; `none` is a node rendering nothing, which a
+//     look cannot say.
+//   - overflow: not answered yet; a maximum width or height already clips.
+//   - listStyleType: no widget here draws a list marker.
+const unstyled list[string] = [
+    "minWidth",
+    "flexDirection",
+    "justifyContent",
+    "position",
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "zIndex",
+    "fontSize",
+    "fontFamily",
+    "whiteSpace",
+    "border",
+    "borderBottom",
+    "borderLeft",
+    "borderCollapse",
+    "cursor",
+    "display",
+    "overflow",
+    "listStyleType",
+]
+
+// A length in cells, as codegen.MeasurementPx reads one for this target: an
+// em is 16px and a cell 8px wide, so an em is two cells. Anything visible is
+// at least one.
+const func cellsOf(m ui.measurement) int {
+    var px = m.px + 16.0 * (m.em + m.rem)
+    return px <= 0.0 ? 0 : int.max(1, int(px) / 8)
+}
+
+// One side of a margin or a padding: its own field, else its axis's, else the
+// whole box's, as CSS reads them.
+const func side(all ui.measurement, axis ui.measurement, own ui.measurement) int {
+    return cellsOf(own != unset.margin ? own : axis != unset.margin ? axis : all)
+}
+
+const func hue(c color) => hueOf(c.hex())
+
+const func borderOf(s ui.Style) Border {
+    return match s.borderStyle {
+        double => doubleBorder()
+        dashed, dotted => dashedBorder()
+        else => s.borderRadius != unset.borderRadius ? roundedBorder() : normalBorder()
+    }
+}
+
+// These name the members that do something rather than compare against the
+// first: an enum field a Go struct literal leaves out is "", not that member.
+const func slanted(st ui.FontStyle) => st == ui.FontStyle.italic || st == ui.FontStyle.oblique
+
+const func outlined(b ui.BorderStyle) => b == ui.BorderStyle.solid || b == ui.BorderStyle.dashed || b == ui.BorderStyle.dotted || b == ui.BorderStyle.double
+
+const func alignOf(a ui.TextAlign) Position {
+    return match a {
+        center => posCenter
+        right => posRight
+        left, justify => posLeft
+    }
+}
+
+// The lipgloss style a Style asks for. A border is drawn where a width or a
+// style says so, as CSS draws one for `border-style: solid` alone.
+const func lookOf(s ui.Style) => boxLook(s, true)
+
+// A flow's look leaves out what seedOf hands its words, which the box cannot
+// apply to a string its runs have already reset partway along.
+const func flowLookOf(s ui.Style) => boxLook(s, false)
+
+const func boxLook(s ui.Style, words bool) Look {
+    if s == unset {
+        return newStyle()
+    }
+    var l = newStyle()
+    if words && s.color != unset.color {
+        l = l.foreground(hue(s.color))
+    }
+    if s.background != unset.background {
+        l = l.background(hue(s.background))
+    }
+    if words && (s.fontWeight == ui.FontWeight.bold || s.fontWeight == ui.FontWeight.bolder) {
+        l = l.bold(true)
+    }
+    if words && s.fontWeight == ui.FontWeight.lighter || s.opacity != 0.0 && s.opacity < 1.0 {
+        l = l.faint(true)
+    }
+    if words && slanted(s.fontStyle) {
+        l = l.italic(true)
+    }
+    if s.textAlign == ui.TextAlign.center || s.textAlign == ui.TextAlign.right {
+        l = l.alignHorizontal(alignOf(s.textAlign))
+    }
+    if s.borderWidth != unset.borderWidth || outlined(s.borderStyle) {
+        l = l.border(borderOf(s))
+        if s.borderColor != unset.borderColor {
+            l = l.borderForeground(hue(s.borderColor))
+        }
+    }
+    l = l.marginTop(side(s.margin, s.marginY, s.marginTop))
+    l = l.marginRight(side(s.margin, s.marginX, s.marginRight))
+    l = l.marginBottom(side(s.margin, s.marginY, s.marginBottom))
+    l = l.marginLeft(side(s.margin, s.marginX, s.marginLeft))
+    l = l.paddingTop(side(s.padding, s.paddingY, s.paddingTop))
+    l = l.paddingRight(side(s.padding, s.paddingX, s.paddingRight))
+    l = l.paddingBottom(side(s.padding, s.paddingY, s.paddingBottom))
+    l = l.paddingLeft(side(s.padding, s.paddingX, s.paddingLeft))
+    if s.width != unset.width {
+        l = l.width(cellsOf(s.width))
+    }
+    if s.height != unset.height {
+        l = l.height(cellsOf(s.height))
+    }
+    if s.maxWidth != unset.maxWidth {
+        l = l.maxWidth(cellsOf(s.maxWidth))
+    }
+    if s.maxHeight != unset.maxHeight || s.maxLines != 0 {
+        // maxLines counts the text, and lipgloss caps the box with its frame.
+        l = l.maxHeight(lineCap(cellsOf(s.maxHeight), s.maxLines == 0 ? 0 : s.maxLines + l.verticalFrame()))
+    }
+    return l
+}
+
+const func lineCap(height int, lines int) int {
+    return height == 0 ? lines : lines == 0 ? height : int.min(height, lines)
+}
+
+// Where a vbox's or an hbox's children sit across its axis, as the fraction
+// a lipgloss.Position is: a number rather than the constants, so a literal
+// Style folds to one.
+const func crossOf(a ui.Alignment) float {
+    return match a {
+        center => 0.5
+        end => 1.0
+        start, stretch, baseline => 0.0
+    }
+}
+
+// What a flow's words start from: the fields of its Style a run of words carries.
+const func seedOf(s ui.Style) markup.SpanStyle {
+    return {
+        color = s.color == unset.color ? color{a=0} : s.color,
+        fontWeight = match s.fontWeight {
+            bold, bolder => markup.Weight.bold
+            lighter => markup.Weight.lighter
+            normal => markup.Weight.inherit
+        },
+        fontStyle = slanted(s.fontStyle) ? markup.Slant.italic : markup.Slant.inherit,
+    }
+}

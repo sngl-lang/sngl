@@ -298,13 +298,6 @@ type Measurement struct {
 	Rem float64
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	n              int
@@ -411,4 +404,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:c01c41161312649ec3d8e63c802c2441
+pass sha256:f75794f1f8e170635a87476d1785461c

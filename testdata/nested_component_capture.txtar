@@ -100,9 +100,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -165,6 +228,139 @@ func (m *Model) hit__inst0() {
 
 func (m *Model) hit__inst1() {
 	m.hits__inst1 = (m.hits__inst1 + 1)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -468,7 +664,7 @@ func (m Model) View() tea.View {
 		var content_0_0 string
 		var content_0_0Children []string
 		var content_0_0_0 string
-		content_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
+		content_0_0_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
 		content_0_0Children = append(content_0_0Children, content_0_0_0)
 		var content_0_0_1 string
 		content_0_0_1Focused := (m.__focusID == 0)
@@ -476,14 +672,15 @@ func (m Model) View() tea.View {
 		if content_0_0_1Focused {
 			content_0_0_1Prefix = ">"
 		}
-		content_0_0_1 = lipgloss.NewStyle().Render(content_0_0_1Prefix + " " + fmt.Sprint("+"))
+		content_0_0_1 = BoxLook(Style{}, true).Render(content_0_0_1Prefix + " " + fmt.Sprint("+"))
 		content_0_0Children = append(content_0_0Children, content_0_0_1)
 		content_0_0 = lipgloss.JoinVertical(lipgloss.Left, content_0_0Children...)
+		content_0_0 = BoxLook(Style{}, true).Render(content_0_0)
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		var content_0_1Children []string
 		var content_0_1_0 string
-		content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
+		content_0_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
 		content_0_1Children = append(content_0_1Children, content_0_1_0)
 		var content_0_1_1 string
 		content_0_1_1Focused := (m.__focusID == 1)
@@ -491,18 +688,20 @@ func (m Model) View() tea.View {
 		if content_0_1_1Focused {
 			content_0_1_1Prefix = ">"
 		}
-		content_0_1_1 = lipgloss.NewStyle().Render(content_0_1_1Prefix + " " + fmt.Sprint("+"))
+		content_0_1_1 = BoxLook(Style{}, true).Render(content_0_1_1Prefix + " " + fmt.Sprint("+"))
 		content_0_1Children = append(content_0_1Children, content_0_1_1)
 		content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
+		content_0_1 = BoxLook(Style{}, true).Render(content_0_1)
 		content_0Children = append(content_0Children, content_0_1)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		content_0 = BoxLook(Style{}, true).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
 		var content_1_0Children []string
 		var content_1_0_0 string
-		content_1_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst1)) + " ") + fmt.Sprint(m.runs__inst0__inst1))))
+		content_1_0_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst1)) + " ") + fmt.Sprint(m.runs__inst0__inst1))))
 		content_1_0Children = append(content_1_0Children, content_1_0_0)
 		var content_1_0_1 string
 		content_1_0_1Focused := (m.__focusID == 2)
@@ -510,14 +709,15 @@ func (m Model) View() tea.View {
 		if content_1_0_1Focused {
 			content_1_0_1Prefix = ">"
 		}
-		content_1_0_1 = lipgloss.NewStyle().Render(content_1_0_1Prefix + " " + fmt.Sprint("+"))
+		content_1_0_1 = BoxLook(Style{}, true).Render(content_1_0_1Prefix + " " + fmt.Sprint("+"))
 		content_1_0Children = append(content_1_0Children, content_1_0_1)
 		content_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_0Children...)
+		content_1_0 = BoxLook(Style{}, true).Render(content_1_0)
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		var content_1_1Children []string
 		var content_1_1_0 string
-		content_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst1)) + " ") + fmt.Sprint(m.runs__inst1__inst1))))
+		content_1_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst1)) + " ") + fmt.Sprint(m.runs__inst1__inst1))))
 		content_1_1Children = append(content_1_1Children, content_1_1_0)
 		var content_1_1_1 string
 		content_1_1_1Focused := (m.__focusID == 3)
@@ -525,11 +725,13 @@ func (m Model) View() tea.View {
 		if content_1_1_1Focused {
 			content_1_1_1Prefix = ">"
 		}
-		content_1_1_1 = lipgloss.NewStyle().Render(content_1_1_1Prefix + " " + fmt.Sprint("+"))
+		content_1_1_1 = BoxLook(Style{}, true).Render(content_1_1_1Prefix + " " + fmt.Sprint("+"))
 		content_1_1Children = append(content_1_1Children, content_1_1_1)
 		content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
+		content_1_1 = BoxLook(Style{}, true).Render(content_1_1)
 		content_1Children = append(content_1Children, content_1_1)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		content_1 = BoxLook(Style{}, true).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string
@@ -539,12 +741,13 @@ func (m Model) View() tea.View {
 		if content_2_0Focused {
 			content_2_0Prefix = ">"
 		}
-		content_2_0 = lipgloss.NewStyle().Render(content_2_0Prefix + " " + fmt.Sprint("tap"))
+		content_2_0 = BoxLook(Style{}, true).Render(content_2_0Prefix + " " + fmt.Sprint("tap"))
 		content_2Children = append(content_2Children, content_2_0)
 		var content_2_1 string
-		content_2_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst0)))
+		content_2_1 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(m.hits__inst0)))
 		content_2Children = append(content_2Children, content_2_1)
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		content_2 = BoxLook(Style{}, true).Render(content_2)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		var content_3Children []string
@@ -554,14 +757,16 @@ func (m Model) View() tea.View {
 		if content_3_0Focused {
 			content_3_0Prefix = ">"
 		}
-		content_3_0 = lipgloss.NewStyle().Render(content_3_0Prefix + " " + fmt.Sprint("tap"))
+		content_3_0 = BoxLook(Style{}, true).Render(content_3_0Prefix + " " + fmt.Sprint("tap"))
 		content_3Children = append(content_3Children, content_3_0)
 		var content_3_1 string
-		content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst1)))
+		content_3_1 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(m.hits__inst1)))
 		content_3Children = append(content_3Children, content_3_1)
 		content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+		content_3 = BoxLook(Style{}, true).Render(content_3)
 		contentChildren = append(contentChildren, content_3)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -591,11 +796,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -606,6 +814,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+    var visible__inst0 by remember { mutableStateOf(true) }
     var count__inst0 by remember { mutableStateOf(0) }
     var runs__inst0__inst0 by remember { mutableStateOf(0) }
     var runs__inst1__inst0 by remember { mutableStateOf(0) }
@@ -616,7 +825,6 @@ fun MainScreen() {
     var taps__inst0__inst0 by remember { mutableStateOf(0) }
     var hits__inst1 by remember { mutableStateOf(0) }
     var taps__inst0__inst1 by remember { mutableStateOf(0) }
-    var visible__inst0 by remember { mutableStateOf(true) }
 
 
     fun bump__inst0() {
@@ -649,44 +857,44 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Column(modifier = Modifier) {
                 Column(modifier = Modifier) {
-                    Text(text = ((("a " + count__inst0.toString()) + " ") + runs__inst0__inst0.toString()), modifier = Modifier)
+                    Text(text = ((("a " + count__inst0.toString()) + " ") + runs__inst0__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     Button(onClick = {
                         count__inst0 = (count__inst0 + 1)
                         runs__inst0__inst0 = (runs__inst0__inst0 + 1)
                         bump__inst0()
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = "+", modifier = Modifier)
                     }
                 }
                 Column(modifier = Modifier) {
-                    Text(text = ((("a " + count__inst0.toString()) + " ") + runs__inst1__inst0.toString()), modifier = Modifier)
+                    Text(text = ((("a " + count__inst0.toString()) + " ") + runs__inst1__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     Button(onClick = {
                         count__inst0 = (count__inst0 + 10)
                         runs__inst1__inst0 = (runs__inst1__inst0 + 1)
                         bump__inst0()
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = "+", modifier = Modifier)
                     }
                 }
             }
             Column(modifier = Modifier) {
                 Column(modifier = Modifier) {
-                    Text(text = ((("b " + count__inst1.toString()) + " ") + runs__inst0__inst1.toString()), modifier = Modifier)
+                    Text(text = ((("b " + count__inst1.toString()) + " ") + runs__inst0__inst1.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     Button(onClick = {
                         count__inst1 = (count__inst1 + 1)
                         runs__inst0__inst1 = (runs__inst0__inst1 + 1)
                         bump__inst1()
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = "+", modifier = Modifier)
                     }
                 }
                 Column(modifier = Modifier) {
-                    Text(text = ((("b " + count__inst1.toString()) + " ") + runs__inst1__inst1.toString()), modifier = Modifier)
+                    Text(text = ((("b " + count__inst1.toString()) + " ") + runs__inst1__inst1.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     Button(onClick = {
                         count__inst1 = (count__inst1 + 10)
                         runs__inst1__inst1 = (runs__inst1__inst1 + 1)
                         bump__inst1()
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = "+", modifier = Modifier)
                     }
                 }
@@ -695,19 +903,19 @@ fun MainScreen() {
                 Button(onClick = {
                     hit__inst0()
                     taps__inst0__inst0 = (taps__inst0__inst0 + 1)
-                }, modifier = Modifier) {
+                }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "tap", modifier = Modifier)
                 }
-                Text(text = hits__inst0.toString(), modifier = Modifier)
+                Text(text = hits__inst0.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             Column(modifier = Modifier) {
                 Button(onClick = {
                     hit__inst1()
                     taps__inst0__inst1 = (taps__inst0__inst1 + 1)
-                }, modifier = Modifier) {
+                }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "tap", modifier = Modifier)
                 }
-                Text(text = hits__inst1.toString(), modifier = Modifier)
+                Text(text = hits__inst1.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
@@ -864,8 +1072,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4ebc833e361a39fefbf29b6b3ed63370
+pass sha256:c05f01bb55d7416187fbdf390dd659c2
 -- run/kotlin/android --
-pass sha256:9bee9df9d21bf908814e4af6933e6a7b
+pass sha256:22f1b634549d5df94b6d3db9fabd7612
 -- run/none/html --
 pass sha256:a3d7e109cb2ac242bfdf2f57dc97aae1

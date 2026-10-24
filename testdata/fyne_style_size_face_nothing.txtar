@@ -60,11 +60,9 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -72,14 +70,6 @@ import (
 type ErrorEvent struct {
 	Message string
 	Kind    string
-}
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Bold: true}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
 }
 
 // Model holds the state for this SNGL UI.
@@ -92,14 +82,16 @@ type Model struct {
 	__rendering0   bool
 	__renderAgain0 bool
 
-	__n0    *fynelayout.Toplevel
-	__n2    *fyne.Container
-	__n3    *fyne.Container
-	__n4    *fynelayout.Image
-	__n5    *fynelayout.ImageSource
-	__n6    *widget.Label
-	__n7    *widget.Button
-	__built bool
+	__n0      *fynelayout.Toplevel
+	__n2      *fyne.Container
+	__n3      *fyne.Container
+	__n4      *fynelayout.Image
+	__n4__box *fynelayout.Box
+	__n5      *fynelayout.ImageSource
+	__n6      *widget.Label
+	__n6__box *fynelayout.Box
+	__n7      *widget.Button
+	__built   bool
 }
 
 // New creates a Model with default values.
@@ -182,7 +174,7 @@ func (m *Model) __n4_click_handler() {
 func (m *Model) __n4_load_handler() {
 }
 
-func (m *Model) __n4_failed_handler(m__r0 string) {
+func (m *Model) __n4_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n7_click_handler() {
@@ -216,22 +208,24 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
-	m.__n3 = container.New(fynelayout.New(true, 0, 0))
+	m.__n2 = fynelayout.NewVBox()
+	m.__n3 = fynelayout.NewHBox()
 	m.__n4 = fynelayout.NewImage()
-	fynelayout.ShareSized(m.__n4, 0, 0, 96, 48)
+	m.__n4__box = fynelayout.NewBox(m.__n4)
 	m.__n4.SetFit("contain")
+	m.__n4__box.SetLook(fynelayout.Look{Width: 96.0, Height: 48.0})
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n4.OnLoad = m.__n4_load_handler
 	m.__n4.OnError = m.__n4_failed_handler
 	m.__n5 = fynelayout.NewImageSource()
 	m.__n5.SetURL("https://example.com/dot.png")
 	m.__n4.Add(m.__n5)
-	m.__n3.Add(m.__n4)
+	m.__n3.Add(m.__n4__box)
 	m.__n6 = widget.NewLabel("")
-	m.__n6.TextStyle = fyne.TextStyle{Bold: true, Italic: false}
+	m.__n6__box = fynelayout.NewBox(m.__n6)
 	m.__n6.SetText("Heading")
-	m.__n3.Add(fynelayout.ShareSized(container.NewThemeOverride(m.__n6, _snglTheme0), 0, 0, 120, 0))
+	m.__n6__box.SetLook(fynelayout.Look{Width: 120.0, Bold: true})
+	m.__n3.Add(m.__n6__box)
 	m.__n2.Add(m.__n3)
 	m.__renderSlot0(m.__n2)
 	m.__n7 = widget.NewButton("", nil)
@@ -365,12 +359,6 @@ import "duckfam.us/sngl/pkg/go/gtk4rt"
 type ErrorEvent struct {
 	Message string
 	Kind    string
-}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -558,7 +546,7 @@ func (m *Model) __n5_click_handler() {
 func (m *Model) __n5_load_handler() {
 }
 
-func (m *Model) __n5_failed_handler(m__r0 string) {
+func (m *Model) __n5_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n7_clicked_handler() {
@@ -705,6 +693,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
 	m.__n5 = gtk4rt.ImageFrameNew()
 	gtk4rt.ImageFrameSetFit(m.__n5, "contain")
+	gtk4rt.SetLook(m.__n5, gtk4rt.Look{Width: 96.0, Height: 48.0})
 	gtk4rt.ImageFrameOnClick(m.__n5, m.__n5_click_handler)
 	gtk4rt.ImageFrameOnLoad(m.__n5, m.__n5_load_handler)
 	gtk4rt.ImageFrameOnError(m.__n5, m.__n5_failed_handler)
@@ -713,7 +702,8 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n5, m.__n1)
 	gtk4rt.BoxAppend(m.__n4, m.__n5)
 	m.__n6 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n6, "Heading")
+	gtk4rt.LabelSetLabel(m.__n6, "Heading")
+	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Css: "font-weight: bold; ", Width: 120.0})
 	gtk4rt.BoxAppend(m.__n4, m.__n6)
 	gtk4rt.BoxAppend(m.__n3, m.__n4)
 	m.__renderSlot0(m.__n3)
@@ -733,6 +723,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:21accdfd2b56d5902793c6c0846128da
+pass sha256:da2825604adc75edd6b7554207d04bbe
 -- run/go/gtk4 --
-pass sha256:77249b4093b6c26bd2800dbec7b6bbd1
+pass sha256:ef52adc37be18dcef98f7af4b9803449

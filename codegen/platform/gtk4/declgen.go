@@ -17,10 +17,29 @@ import (
 // directory listing, and only .sngl files in it are source.
 const widgetSourceFile = "widgets.gir.sngl"
 
-// stylePropName is the prop every widget declaration carries beyond what GIR
-// describes: the stdlib override bodies forward `style={...style}` onto the
-// widget root, and GTK has no property behind it (see the emitter's skip).
-const stylePropName = "style"
+// lookPropName is the prop every widget declaration carries beyond what GIR
+// describes: what gtk4rt.SetLook gives the widget, which the overrides build
+// from a ui.Style in style.sngl.
+const lookPropName = "look"
+
+// lookDecl declares the record that prop takes, in the package the widgets
+// are, since gtk4.sngl imports that package and it can import nothing back.
+const lookDecl = `
+#[go.native("duckfam.us/sngl/pkg/go/gtk4rt", "gtk4rt.Look")]
+struct Look {
+    css       string
+    width     float
+    height    float
+    grow      float
+    cross     int
+    textAlign int
+    lines     int
+    wrap      int
+    clip      bool
+    hidden    bool
+    cursor    string
+}
+`
 
 // widgetSource writes the SNGL source for every class in reg. A GIR property
 // becomes a typed prop and a GLib signal an event, both under the SNGL
@@ -38,7 +57,8 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport c \"sngl:x/c\"\n")
+	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport c \"sngl:x/c\"\n")
+	b.WriteString(lookDecl)
 	declared := map[string]bool{}
 	casts := map[string]string{}
 	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}}
@@ -55,7 +75,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// it is true of every one of them -- these are widgets by
 		// construction, the GIR classes this platform wraps.
 		fmt.Fprintf(&b, "\n#[gen.renders(identity)]\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
-		taken := map[string]bool{stylePropName: true, restSlotName: true}
+		taken := map[string]bool{lookPropName: true, restSlotName: true}
 		for _, p := range info.Props {
 			// A construct-only property is not declared: the widget exists
 			// before any prop is assigned, and GObject refuses the write
@@ -84,7 +104,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			taken[n] = true
 			fmt.Fprintf(&b, "    %s %s,\n", n, typ)
 		}
-		fmt.Fprintf(&b, "    %s ui.Style = ui.Style{},\n", stylePropName)
+		fmt.Fprintf(&b, "    %s Look = Look{},\n", lookPropName)
 		// A signal hands its callback the instance it fired on, as GTK's own
 		// signature does (`void toggled(GtkCheckButton *self, gpointer)`), so
 		// a handler reads the widget that fired rather than reaching it

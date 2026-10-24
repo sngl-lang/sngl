@@ -157,10 +157,73 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -221,6 +284,143 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func (m Model) shout__inst0() string {
 	return "x!"
+}
+
+func LookOf(s Style) lipgloss.Style {
+	return BoxLook(s, true)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) check__inst0(n string) {
@@ -525,7 +725,7 @@ func (m Model) View() tea.View {
 	if part0_0Focused {
 		part0_0Prefix = ">"
 	}
-	part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("m"))
+	part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint("m"))
 	part0Children = append(part0Children, part0_0)
 	var part0_1 string
 	part0_1Focused := (m.__focusID == 1)
@@ -533,21 +733,21 @@ func (m Model) View() tea.View {
 	if part0_1Focused {
 		part0_1Prefix = ">"
 	}
-	part0_1 = lipgloss.NewStyle().Render(part0_1Prefix + " " + fmt.Sprint("h"))
+	part0_1 = BoxLook(Style{}, true).Render(part0_1Prefix + " " + fmt.Sprint("h"))
 	part0Children = append(part0Children, part0_1)
 	var part0_2 string
 	if m.shown {
 		if m.skip == "a" {
-			part0_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.skip))
+			part0_2 = BoxLook(Style{}, true).Render(fmt.Sprint(m.skip))
 		} else {
-			part0_2 = lipgloss.NewStyle().Render(fmt.Sprint("z"))
+			part0_2 = BoxLook(Style{}, true).Render(fmt.Sprint("z"))
 		}
 	}
 	if part0_2 != "" {
 		part0Children = append(part0Children, part0_2)
 	}
 	var part0_3 string
-	part0_3 = lipgloss.NewStyle().Render(fmt.Sprint("x!"))
+	part0_3 = BoxLook(Style{}, true).Render(fmt.Sprint("x!"))
 	part0Children = append(part0Children, part0_3)
 	var part0_4 string
 	part0_4 = m.renderStep(m.depth, 0)
@@ -565,7 +765,7 @@ func (m Model) View() tea.View {
 			if part0_5ItemFocused {
 				part0_5ItemPrefix = ">"
 			}
-			part0_5Item = lipgloss.NewStyle().Render(part0_5ItemPrefix + " " + fmt.Sprint(n))
+			part0_5Item = BoxLook(Style{}, true).Render(part0_5ItemPrefix + " " + fmt.Sprint(n))
 			__focusPos2++
 		}
 		part0_5Items = append(part0_5Items, part0_5Item)
@@ -580,9 +780,9 @@ func (m Model) View() tea.View {
 		_ = n
 		var part0_6Item string
 		if n == "a" {
-			part0_6Item = lipgloss.NewStyle().Render(fmt.Sprint(n))
+			part0_6Item = BoxLook(Style{}, true).Render(fmt.Sprint(n))
 		} else {
-			part0_6Item = lipgloss.NewStyle().Render(fmt.Sprint("z"))
+			part0_6Item = BoxLook(Style{}, true).Render(fmt.Sprint("z"))
 		}
 		part0_6Items = append(part0_6Items, part0_6Item)
 	}
@@ -596,12 +796,12 @@ func (m Model) View() tea.View {
 		_ = __copy0
 		_ = n
 		var part0_7Item_0 string
-		part0_7Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(n))
+		part0_7Item_0 = BoxLook(Style{}, true).Render(fmt.Sprint(n))
 		part0_7Items = append(part0_7Items, part0_7Item_0)
 		var part0_7Item_1 string
 		var part0_7Item_1Children []string
 		var part0_7Item_1_0 string
-		part0_7Item_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(func() int {
+		part0_7Item_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(func() int {
 			if __v, __ok := m.local__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
@@ -612,13 +812,13 @@ func (m Model) View() tea.View {
 		if n != m.skip {
 			var part0_7Item_1_1Parts []string
 			var part0_7Item_1_1Part_0 string
-			part0_7Item_1_1Part_0 = lipgloss.NewStyle().Render(fmt.Sprint((n + "!")))
+			part0_7Item_1_1Part_0 = BoxLook(Style{}, true).Render(fmt.Sprint((n + "!")))
 			part0_7Item_1_1Parts = append(part0_7Item_1_1Parts, part0_7Item_1_1Part_0)
 			var part0_7Item_1_1Part_1 string
 			if n == "a" {
-				part0_7Item_1_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(n))
+				part0_7Item_1_1Part_1 = BoxLook(Style{}, true).Render(fmt.Sprint(n))
 			} else {
-				part0_7Item_1_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("z"))
+				part0_7Item_1_1Part_1 = BoxLook(Style{}, true).Render(fmt.Sprint("z"))
 			}
 			if part0_7Item_1_1Part_1 != "" {
 				part0_7Item_1_1Parts = append(part0_7Item_1_1Parts, part0_7Item_1_1Part_1)
@@ -628,7 +828,7 @@ func (m Model) View() tea.View {
 			for _, i := range []int{1, 2} {
 				_ = i
 				var part0_7Item_1_1Part_2Item string
-				part0_7Item_1_1Part_2Item = lipgloss.NewStyle().Render(fmt.Sprint((n + fmt.Sprint(i))))
+				part0_7Item_1_1Part_2Item = BoxLook(Style{}, true).Render(fmt.Sprint((n + fmt.Sprint(i))))
 				part0_7Item_1_1Part_2Items = append(part0_7Item_1_1Part_2Items, part0_7Item_1_1Part_2Item)
 			}
 			part0_7Item_1_1Part_2 = strings.Join(part0_7Item_1_1Part_2Items, "\n")
@@ -641,6 +841,7 @@ func (m Model) View() tea.View {
 			part0_7Item_1Children = append(part0_7Item_1Children, part0_7Item_1_1)
 		}
 		part0_7Item_1 = lipgloss.JoinVertical(lipgloss.Left, part0_7Item_1Children...)
+		part0_7Item_1 = BoxLook(Style{}, true).Render(part0_7Item_1)
 		part0_7Items = append(part0_7Items, part0_7Item_1)
 	}
 	part0_7 = strings.Join(part0_7Items, "\n")
@@ -648,6 +849,7 @@ func (m Model) View() tea.View {
 		part0Children = append(part0Children, part0_7)
 	}
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = BoxLook(Style{}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -659,7 +861,7 @@ func (m Model) renderStep(n int, __depth int) string {
 	var result string
 	var resultChildren []string
 	var result_0 string
-	result_0 = lipgloss.NewStyle().Render(fmt.Sprint(("s" + fmt.Sprint(n))))
+	result_0 = BoxLook(Style{}, true).Render(fmt.Sprint(("s" + fmt.Sprint(n))))
 	resultChildren = append(resultChildren, result_0)
 	var result_1 string
 	if n > 0 {
@@ -672,6 +874,7 @@ func (m Model) renderStep(n int, __depth int) string {
 		resultChildren = append(resultChildren, result_1)
 	}
 	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
+	result = BoxLook(Style{}, true).Render(result)
 	return result
 }
 
@@ -726,6 +929,7 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -737,6 +941,67 @@ import (
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model holds the state for this SNGL UI.
@@ -810,6 +1075,97 @@ func New() *Model {
 
 func (m *Model) shout__inst0() string {
 	return "x!"
+}
+
+func LookOf(s Style) fynelayout.Look {
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	return look
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) float32 {
+	var __lt1 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt1 = own
+	} else {
+		var __lt0 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt0 = axis
+		} else {
+			__lt0 = all
+		}
+		__lt1 = __lt0
+	}
+	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func JustifyOf(j string) int {
+	var __lt3 int
+	switch j {
+	case "center":
+		__lt3 = 1
+	case "end":
+		__lt3 = 2
+	case "spaceBetween":
+		__lt3 = 3
+	case "spaceAround":
+		__lt3 = 4
+	case "spaceEvenly":
+		__lt3 = 5
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func Paint(c__r0 snglcolor.Color) snglcolor.Color {
+	var __lt4 snglcolor.Color
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt4 = c__r0
+	}
+	return __lt4
+}
+
+func TextAlignOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 2
+	case "right":
+		__lt5 = 3
+	case "justify":
+		__lt5 = 1
+	default:
+		__lt5 = 0
+	}
+	return __lt5
+}
+
+func WrapOf(w string) int {
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
+	}
+	return __lt6
 }
 
 func (m *Model) check__inst0(n string) {
@@ -1093,7 +1449,7 @@ func (m *Model) SetShown(v bool) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n10 = container.NewVBox()
+	m.__n10 = fynelayout.NewVBox()
 	m.move = widget.NewButton("", nil)
 	m.move.SetText("m")
 	m.move.OnTapped = m.move_click_handler
@@ -1179,7 +1535,7 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	c.__n5 = container.NewVBox()
+	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("s" + fmt.Sprint(c.__prop_n)))
 	c.__n5.Add(c.__n0)
@@ -1530,7 +1886,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	__n15 := container.NewVBox()
+	__n15 := fynelayout.NewVBox()
 	c.__n2 = new__block_state0Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
 	})
@@ -1770,12 +2126,74 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 )
 
 type ErrorEvent struct {
 	Message string
 	Kind    string
+}
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1847,6 +2265,188 @@ func (m *Model) shout__inst0() string {
 	return "x!"
 }
 
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
+}
+
+func CssOf(s Style) string {
+	var __lt1 string
+	if s.Opacity == 0.0 {
+		__lt1 = ""
+	} else {
+		__lt1 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt2 int
+	switch a {
+	case "center":
+		__lt2 = 2
+	case "end":
+		__lt2 = 3
+	case "baseline":
+		__lt2 = 4
+	default:
+		__lt2 = 0
+	}
+	return __lt2
+}
+
+func TextAlignOf(a string) int {
+	var __lt3 int
+	switch a {
+	case "center":
+		__lt3 = 1
+	case "right":
+		__lt3 = 2
+	case "justify":
+		__lt3 = 3
+	default:
+		__lt3 = 0
+	}
+	return __lt3
+}
+
+func WrapOf(w string) int {
+	var __lt4 int
+	switch w {
+	case "pre", "nowrap":
+		__lt4 = 1
+	case "preWrap", "preLine":
+		__lt4 = 2
+	default:
+		__lt4 = 0
+	}
+	return __lt4
+}
+
+func ClipOf(o string) bool {
+	var __lt5 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt5 = true
+	default:
+		__lt5 = false
+	}
+	return __lt5
+}
+
+func Decl(name string, value string) string {
+	var __lt6 string
+	if value == "" {
+		__lt6 = ""
+	} else {
+		__lt6 = (((name + ": ") + value) + "; ")
+	}
+	return __lt6
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt9 string
+	if v == 0.0 {
+		__lt9 = ""
+	} else {
+		__lt9 = (fmt.Sprint(v) + "px")
+	}
+	return __lt9
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt10 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt10 = ""
+	} else {
+		__lt10 = c__r0.Hex()
+	}
+	return __lt10
+}
+
+func Points(v float64) string {
+	var __lt11 string
+	if v == 0.0 {
+		__lt11 = ""
+	} else {
+		__lt11 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt11
+}
+
+func WeightOf(w string) string {
+	var __lt12 string
+	switch w {
+	case "bold":
+		__lt12 = "bold"
+	case "bolder":
+		__lt12 = "bolder"
+	case "lighter":
+		__lt12 = "lighter"
+	default:
+		__lt12 = ""
+	}
+	return __lt12
+}
+
+func SlantOf(s string) string {
+	var __lt13 string
+	switch s {
+	case "italic":
+		__lt13 = "italic"
+	case "oblique":
+		__lt13 = "oblique"
+	default:
+		__lt13 = ""
+	}
+	return __lt13
+}
+
+func LineOf(s Style) string {
+	var __lt14 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt14 = "solid"
+	case "dashed":
+		__lt14 = "dashed"
+	case "dotted":
+		__lt14 = "dotted"
+	case "double":
+		__lt14 = "double"
+	default:
+		var __lt15 string
+		if (s.BorderWidth != Measurement{Px: 0}) {
+			__lt15 = "solid"
+		} else {
+			__lt15 = ""
+		}
+		__lt14 = __lt15
+	}
+	return __lt14
+}
+
 func (m *Model) check__inst0(n string) {
 	if n == "x" {
 		panic(ErrorEvent{Message: "empty", Kind: "validation"})
@@ -1889,7 +2489,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					m.__slot1 = append(m.__slot1, __n6__el)
 				} else {
 					__n7 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n7, "z")
+					gtk4rt.LabelSetLabel(__n7, "z")
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
 					m.__slot1 = append(m.__slot1, __n7)
 				}
@@ -1923,12 +2523,12 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			for _, n := range m.names {
 				if n == "a" {
 					m.w = gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(m.w, n)
+					gtk4rt.LabelSetLabel(m.w, n)
 					gtk4rt.InsertBefore(parent, m.__slot2_at, m.w)
 					m.__slot2 = append(m.__slot2, m.w)
 				} else {
 					__n8 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n8, "z")
+					gtk4rt.LabelSetLabel(__n8, "z")
 					gtk4rt.InsertBefore(parent, m.__slot2_at, __n8)
 					m.__slot2 = append(m.__slot2, __n8)
 				}
@@ -1956,7 +2556,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 			var __inst2_i int = 0
 			for _, n := range m.names {
 				m.p = gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(m.p, n)
+				gtk4rt.LabelSetLabel(m.p, n)
 				gtk4rt.InsertBefore(parent, m.__slot3_at, m.p)
 				m.__slot3 = append(m.__slot3, m.p)
 				var __n9 *__child1Instance
@@ -2070,7 +2670,7 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
+	gtk4rt.LabelSetLabel(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
 	c.__renderSlot0(c.__n5)
 	c.Root = c.__n5
@@ -2080,7 +2680,7 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 
 func (c *StepInstance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
+	gtk4rt.LabelSetLabel(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
 	c.__renderSlot0(c.__n5)
 }
 
@@ -2218,7 +2818,7 @@ func new__block_state0Instance(__model *Model, __a_n string, __a_skip string, __
 	c.__rendering4 = false
 	c.__renderAgain4 = false
 	__n1 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n1, fmt.Sprint(c.local))
+	gtk4rt.LabelSetLabel(__n1, fmt.Sprint(c.local))
 	gtk4rt.BoxAppend(c.__root, __n1)
 	c.__renderSlot4(c.__root)
 	c.Root = c.__root
@@ -2301,7 +2901,7 @@ func (c *__block_state0Instance) __renderSlot4(parent gtk4rt.Handle) {
 					c.__slot4 = append(c.__slot4, __n12__el)
 				} else {
 					__n13 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n13, "z")
+					gtk4rt.LabelSetLabel(__n13, "z")
 					gtk4rt.InsertBefore(parent, c.__slot4_at, __n13)
 					c.__slot4 = append(c.__slot4, __n13)
 				}
@@ -2421,7 +3021,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.one = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.one, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.one, c.__prop___p0)
 	c.Root = c.one
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2429,7 +3029,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.one, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.one, c.__prop___p0)
 }
 
 func (c *__child0Instance) Destroy() {
@@ -2569,7 +3169,7 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n3, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n3, c.__prop___p0)
 	c.Root = c.__n3
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2577,7 +3177,7 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 
 func (c *__child2Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n3, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n3, c.__prop___p0)
 }
 
 func (c *__child2Instance) Destroy() {
@@ -2633,7 +3233,7 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.f = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
 	c.Root = c.f
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2641,12 +3241,12 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 
 func (c *__child3Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child3Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	gtk4rt.LabelSetText(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child3Instance) Destroy() {
@@ -2700,7 +3300,7 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.e = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.e, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.e, c.__prop___p0)
 	c.Root = c.e
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2708,7 +3308,7 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 
 func (c *__child4Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.e, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.e, c.__prop___p0)
 }
 
 func (c *__child4Instance) Destroy() {
@@ -2791,7 +3391,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n10, m.hide)
 	m.__renderSlot1(m.__n10)
 	__n16 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n16, m.shout__inst0())
+	gtk4rt.LabelSetLabel(__n16, m.shout__inst0())
 	gtk4rt.BoxAppend(m.__n10, __n16)
 	r := newStepInstance(m, m.depth, 0)
 	r__el := r.Root
@@ -2895,6 +3495,8 @@ package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -2903,15 +3505,108 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.composed
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val rem: Double = 0.0
+)
+
+data class Style(
+    var padding: Measurement = Measurement(),
+    var paddingTop: Measurement = Measurement(),
+    var paddingRight: Measurement = Measurement(),
+    var paddingBottom: Measurement = Measurement(),
+    var paddingLeft: Measurement = Measurement(),
+    var paddingX: Measurement = Measurement(),
+    var paddingY: Measurement = Measurement(),
+    var margin: Measurement = Measurement(),
+    var marginTop: Measurement = Measurement(),
+    var marginRight: Measurement = Measurement(),
+    var marginBottom: Measurement = Measurement(),
+    var marginLeft: Measurement = Measurement(),
+    var marginX: Measurement = Measurement(),
+    var marginY: Measurement = Measurement(),
+    var gap: Measurement = Measurement(),
+    var width: Measurement = Measurement(),
+    var minWidth: Measurement = Measurement(),
+    var height: Measurement = Measurement(),
+    var maxWidth: Measurement = Measurement(),
+    var maxHeight: Measurement = Measurement(),
+    var flex: Double = 0.0,
+    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
+    var alignItems: SnglAlignment = SnglAlignment.START,
+    var justifyContent: SnglJustification = SnglJustification.START,
+    var position: SnglPosition = SnglPosition.STATIC,
+    var top: Measurement = Measurement(),
+    var bottom: Measurement = Measurement(),
+    var left: Measurement = Measurement(),
+    var right: Measurement = Measurement(),
+    var zIndex: Int = 0,
+    var color: Color = Color(),
+    var fontSize: Measurement = Measurement(),
+    var fontFamily: String = "",
+    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
+    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
+    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
+    var maxLines: Int = 0,
+    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
+    var background: Color = Color(),
+    var borderRadius: Measurement = Measurement(),
+    var borderColor: Color = Color(),
+    var borderWidth: Measurement = Measurement(),
+    var border: String = "",
+    var borderBottom: String = "",
+    var borderLeft: String = "",
+    var borderCollapse: String = "",
+    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
+    var opacity: Double = 0.0,
+    var cursor: String = "",
+    var display: SnglDisplay = SnglDisplay.FLEX,
+    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
+    var listStyleType: SnglListStyle = SnglListStyle.NONE
+)
+
+data class Color(
+    var r: Int = 0,
+    var g: Int = 0,
+    var b: Int = 0,
+    var a: Int = 255
+) {
+    override fun toString(): String =
+        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+}
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -2923,12 +3618,130 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
+enum class SnglFlexDirection(private val sngl: String) {
+    ROW("row"),
+    COLUMN("column"),
+    ROWREVERSE("rowReverse"),
+    COLUMNREVERSE("columnReverse");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglAlignment(private val sngl: String) {
+    START("start"),
+    CENTER("center"),
+    END("end"),
+    STRETCH("stretch"),
+    BASELINE("baseline");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglJustification(private val sngl: String) {
+    START("start"),
+    CENTER("center"),
+    END("end"),
+    SPACEBETWEEN("spaceBetween"),
+    SPACEAROUND("spaceAround"),
+    SPACEEVENLY("spaceEvenly");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglPosition(private val sngl: String) {
+    STATIC("static"),
+    RELATIVE("relative"),
+    ABSOLUTE("absolute"),
+    FIXED("fixed"),
+    STICKY("sticky");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglFontWeight(private val sngl: String) {
+    NORMAL("normal"),
+    BOLD("bold"),
+    LIGHTER("lighter"),
+    BOLDER("bolder");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglFontStyle(private val sngl: String) {
+    NORMAL("normal"),
+    ITALIC("italic"),
+    OBLIQUE("oblique");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglTextAlign(private val sngl: String) {
+    LEFT("left"),
+    CENTER("center"),
+    RIGHT("right"),
+    JUSTIFY("justify");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglWhiteSpace(private val sngl: String) {
+    NORMAL("normal"),
+    PRE("pre"),
+    PREWRAP("preWrap"),
+    PRELINE("preLine"),
+    NOWRAP("nowrap");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglBorderStyle(private val sngl: String) {
+    NONE("none"),
+    SOLID("solid"),
+    DASHED("dashed"),
+    DOTTED("dotted"),
+    DOUBLE("double");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglDisplay(private val sngl: String) {
+    FLEX("flex"),
+    BLOCK("block"),
+    INLINE("inline"),
+    INLINEBLOCK("inlineBlock"),
+    INLINEFLEX("inlineFlex"),
+    NONE("none"),
+    GRID("grid");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglOverflow(private val sngl: String) {
+    VISIBLE("visible"),
+    HIDDEN("hidden"),
+    SCROLL("scroll"),
+    AUTO("auto");
+
+    override fun toString(): String = sngl
+}
+
+enum class SnglListStyle(private val sngl: String) {
+    NONE("none"),
+    DISC("disc"),
+    CIRCLE("circle"),
+    SQUARE("square"),
+    DECIMAL("decimal");
+
+    override fun toString(): String = sngl
+}
+
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
 val SnglPresent = mutableStateMapOf<Any, String>()
 
 class MainScreenState {
     init { SnglPresent.clear() }
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var depth by mutableStateOf(2)
     var problem by mutableStateOf("none")
     val names = mutableStateListOf("a", "b")
@@ -2949,23 +3762,19 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             state.skip = "a"
-        }, modifier = Modifier.testTag("move")) {
+        }, modifier = Modifier.testTag("move"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "m", modifier = Modifier)
         }
         Button(onClick = {
             state.shown = false
-        }, modifier = Modifier.testTag("hide")) {
+        }, modifier = Modifier.testTag("hide"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "h", modifier = Modifier)
         }
         if (state.shown) {
-            if ((state.skip == "a")) {
-                Text(text = state.skip, modifier = Modifier.testTag("one"))
-            } else {
-                Text(text = "z", modifier = Modifier)
-            }
+            Either(label = state.skip, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
         }
-        Text(text = state.shout__inst0, modifier = Modifier)
-        Step(n = state.depth, __depth = 0)
+        Text(text = state.shout__inst0, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+        Step(n = state.depth, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = 0)
         for ((__copy0, n) in listOf("x", "y").withIndex()) {
             if ((n != "y")) {
                 Button(onClick = {
@@ -2975,22 +3784,18 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                     	val e = __e.event
                     	state.problem = e.message
                     }
-                }, modifier = Modifier.then(("th[" + __copy0.toString() + "]").let { __entry -> Modifier.composed { DisposableEffect(__entry) { val __token = Any(); SnglPresent[__token] = __entry; onDispose { SnglPresent.remove(__token) } }; Modifier } })) {
+                }, modifier = Modifier.then(("th[" + __copy0.toString() + "]").let { __entry -> Modifier.composed { DisposableEffect(__entry) { val __token = Any(); SnglPresent[__token] = __entry; onDispose { SnglPresent.remove(__token) } }; Modifier } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = n, modifier = Modifier)
                 }
             }
         }
         for (n in state.names) {
-            if ((n == "a")) {
-                Text(text = n, modifier = Modifier.testTag("w"))
-            } else {
-                Text(text = "z", modifier = Modifier)
-            }
+            Either(label = n, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
         }
         for (n in state.names) {
-            Text(text = n, modifier = Modifier.testTag("p"))
+            Plain(label = n, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             Column(modifier = Modifier) {
-                __block_state0(n = n, skip = state.skip, onSkip = { __skip ->
+                __block_state0(n = n, skip = state.skip, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, onSkip = { __skip ->
                     state.skip = __skip
                 })
             }
@@ -2999,35 +3804,108 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun Step(n: Int = 0, __depth: Int = 0) {
+fun Plain(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
+    Text(text = label, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+}
+
+@Composable
+fun Either(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
+    if ((label == "a")) {
+        Text(text = label, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+    } else {
+        Text(text = "z", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+    }
+}
+
+@Composable
+fun Step(n: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0) {
     Column(modifier = Modifier) {
-        Text(text = ("s" + n.toString()), modifier = Modifier)
+        Text(text = ("s" + n.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         if ((n > 0)) {
             if ((__depth >= 512)) {
             } else {
-                Step(n = (n - 1), __depth = (__depth + 1))
+                Step(n = (n - 1), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = (__depth + 1))
             }
         }
     }
 }
 
 @Composable
-fun __block_state0(n: String, skip: String, onSkip: ((String) -> Unit)? = null) {
+fun __block_state0(n: String, skip: String, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onSkip: ((String) -> Unit)? = null) {
     var local by remember { mutableStateOf(0) }
     val shout__inst1 by remember { derivedStateOf { (n + "!") } }
 
-    Text(text = local.toString(), modifier = Modifier)
+    Text(text = local.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     if ((n != skip)) {
-        Text(text = shout__inst1, modifier = Modifier)
+        Text(text = shout__inst1, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         if ((n == "a")) {
-            Text(text = n, modifier = Modifier.testTag("e"))
+            Text(text = n, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         } else {
-            Text(text = "z", modifier = Modifier)
+            Text(text = "z", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
         for (i in listOf(1, 2)) {
-            Text(text = (n + i.toString()), modifier = Modifier.testTag("f"))
+            Text(text = (n + i.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
+}
+
+fun modifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, true)) else (if ((s == Style())) Modifier else styleModifier(s, true)).then(share(s.flex.toFloat())))
+
+fun textStyle(s: Style): androidx.compose.ui.text.TextStyle = (if (!((((((s.color != Color()) || (s.fontSize != Measurement(px = 0.0))) || (s.fontWeight != SnglFontWeight.NORMAL)) || (s.fontStyle != SnglFontStyle.NORMAL)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((s.color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color.r.toInt(), green = s.color.g.toInt(), blue = s.color.b.toInt(), alpha = s.color.a.toInt())), fontSize = (if ((s.fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((s.fontSize.px + (16.0 * (s.fontSize.em + s.fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))
+
+fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, false)) else (if ((s == Style())) Modifier else styleModifier(s, false)).then(share(s.flex.toFloat())))
+
+fun colorOf(c: Color): androidx.compose.ui.graphics.Color = (if ((c == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt()))
+
+fun buttonShapeOf(s: Style): androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) CircleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
+
+fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
+    var m: androidx.compose.ui.Modifier = Modifier
+    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    }
+    if ((s.zIndex != 0)) {
+    	m = m.zIndex(s.zIndex.toFloat())
+    }
+    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
+    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    }
+    if ((s.maxHeight != Measurement(px = 0.0))) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    }
+    if ((s.width != Measurement(px = 0.0))) {
+    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    }
+    if ((s.height != Measurement(px = 0.0))) {
+    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    }
+    if ((s.opacity != 0.0)) {
+    	m = m.alpha(s.opacity.toFloat())
+    }
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
+    if ((s.borderRadius != Measurement(px = 0.0))) {
+    	m = m.clip(shape)
+    }
+    var edge = 0.0
+    if ((s.borderWidth != Measurement(px = 0.0))) {
+    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
+    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    }
+    if ((paints && (s.background != Color()))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    }
+    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    }
+    return m
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -3956,12 +4834,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:61916972a03e7b7c6236cbef2d1c4963
+pass sha256:27562189ffe81a2637187874de1723d4
 -- run/go/fyne --
-pass sha256:ddcbf49ab37b341453433a40a0cc7476
+pass sha256:9bfac4129dfa066432effd8734747b2f
 -- run/go/gtk4 --
-pass sha256:4f724e1a155dfba98dd6f2669e45d8fb
+pass sha256:bf188dbd4d2b5de8a94cc6e1591a83d0
 -- run/kotlin/android --
-pass sha256:8b02775da601bb8e220c62b86a90aedc
+pass sha256:8bf42432fccf06a7e873f8b7938a7070
 -- run/none/html --
 pass sha256:37a5dbb4416b4b16c54ffd897933cac6

@@ -982,6 +982,11 @@ type Var struct {
 	// outside that component, so the inliner repoints the read at the one
 	// copy it splices. Copied with the var, so a clone says it too.
 	Cell bool `json:"-"`
+
+	// Provided marks the var passContext gives a component for a context it
+	// reads: its call site sets it, as it sets a prop, so it is no state of
+	// the instance.
+	Provided bool `json:"-"`
 }
 
 func (v *Var) SymName() string { return v.Name }

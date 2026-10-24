@@ -59,7 +59,7 @@ func (s *ReachScroll) check() {
 		return
 	}
 	s.OnReachEnd()
-	time.AfterFunc(reachRecheck, func() { fyne.Do(s.check) })
+	time.AfterFunc(reachRecheck, func() { Post(s.check) })
 }
 
 type reachRenderer struct{ s *ReachScroll }

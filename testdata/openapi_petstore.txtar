@@ -321,14 +321,12 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"duckfam.us/sngl/pkg/go/snglhttp"
 	"duckfam.us/sngl/pkg/go/sngljson"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -340,14 +338,6 @@ func snglSome[T any](v T) *T {
 type ErrorEvent struct {
 	Message string
 	Kind    string
-}
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Radius: 12}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
 }
 
 type Result__Response struct {
@@ -723,10 +713,9 @@ func (m *Model) __effect0_mount() {
 	var mine int = m.attempt__inst1
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
-		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPetSummaryList {
-			return PetListCall(k.Limit, k.Offset, "https://petstore.example")
-		}(__async_arg0)
+		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
 		__snglDo(func() {
 			if mine != m.attempt__inst1 {
 				return
@@ -802,8 +791,9 @@ func (m *Model) __effect1_mount() {
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2.Container)
 	__async_arg1 := m.__effect1_key.Key
+	_ = __async_arg1
 	go func() {
-		r := func(__ctxArg0 string) Result__PetDetail { return PetRetrieveCall(__ctxArg0, "https://mirror.example") }(__async_arg1)
+		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
 		__snglDo(func() {
 			if mine != m.attempt__inst0 {
 				return
@@ -1045,9 +1035,11 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 				m.__slot3 = append(m.__slot3, __n7__el)
 				for _, t := range (*(m.pet__inst0)).Tags {
 					__n8 := widget.NewLabel("")
+					__n8__box := fynelayout.NewBox(__n8)
 					__n8.SetText(t.Type.Name)
-					fynelayout.InsertBefore(__parent, m.__slot3_at, container.NewThemeOverride(__n8, _snglTheme0))
-					m.__slot3 = append(m.__slot3, __n8)
+					__n8__box.SetLook(fynelayout.Look{PaddingTop: 2.0, PaddingRight: 8.0, PaddingBottom: 2.0, PaddingLeft: 8.0, Radius: 12.0})
+					fynelayout.InsertBefore(__parent, m.__slot3_at, __n8__box)
+					m.__slot3 = append(m.__slot3, __n8__box)
 				}
 			}
 			for __inst1_i_d, _ := range m.__inst1_live {
@@ -1082,13 +1074,13 @@ func (m *Model) __n10_click_handler() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
-				var __lt0 string
+				var __lt7 string
 				if r.ParentBreed != nil {
-					__lt0 = (*(r.ParentBreed)).Name
+					__lt7 = (*(r.ParentBreed)).Name
 				} else {
-					__lt0 = "nothing"
+					__lt7 = "nothing"
 				}
-				m.from__inst0 = __lt0
+				m.from__inst0 = __lt7
 				m.__n3.SetText(m.from__inst0)
 			default:
 				r := __match0.Failed
@@ -1545,12 +1537,6 @@ var (
 	__cstr4 = C.CString("Petstore")
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 type Result__Response struct {
 	tag    int
 	Ok     Response
@@ -1912,10 +1898,9 @@ func (m *Model) __effect0_mount() {
 	var mine int = m.attempt__inst1
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
-		r := func(k __anon_limit_offset_7e7555) Result__PaginatedPetSummaryList {
-			return PetListCall(k.Limit, k.Offset, "https://petstore.example")
-		}(__async_arg0)
+		r := PetListCall(__async_arg0.Limit, __async_arg0.Offset, "https://petstore.example")
 		gtk4rt.Post(func() {
 			if mine != m.attempt__inst1 {
 				return
@@ -1991,8 +1976,9 @@ func (m *Model) __effect1_mount() {
 	m.loading__inst0 = true
 	m.__renderSlot1(m.__n2)
 	__async_arg1 := m.__effect1_key.Key
+	_ = __async_arg1
 	go func() {
-		r := func(__ctxArg0 string) Result__PetDetail { return PetRetrieveCall(__ctxArg0, "https://mirror.example") }(__async_arg1)
+		r := PetRetrieveCall(__async_arg1, "https://mirror.example")
 		gtk4rt.Post(func() {
 			if mine != m.attempt__inst0 {
 				return
@@ -2122,7 +2108,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				for _, p := range (*(m.page__inst0)).Results {
 					__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 					__ctmp1 := C.CString(p.Name)
-					C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), __ctmp1)
+					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n4)), __ctmp1)
 					C.free(unsafe.Pointer(__ctmp1))
 					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4)))
@@ -2238,8 +2224,9 @@ func (m *Model) __renderSlot3(parent *C.GtkBox) {
 				for _, t := range (*(m.pet__inst0)).Tags {
 					__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 					__ctmp2 := C.CString(t.Type.Name)
-					C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n8)), __ctmp2)
+					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n8)), __ctmp2)
 					C.free(unsafe.Pointer(__ctmp2))
+					gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n8)), gtk4rt.Look{Css: "padding-top: 2px; padding-right: 8px; padding-bottom: 2px; padding-left: 8px; border-radius: 12px; "})
 					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n8)))
 					m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n8)))
 				}
@@ -2275,21 +2262,21 @@ func (m *Model) __n10_clicked_handler() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
-				var __lt0 string
+				var __lt15 string
 				if r.ParentBreed != nil {
-					__lt0 = (*(r.ParentBreed)).Name
+					__lt15 = (*(r.ParentBreed)).Name
 				} else {
-					__lt0 = "nothing"
+					__lt15 = "nothing"
 				}
-				m.from__inst0 = __lt0
+				m.from__inst0 = __lt15
 				__ctmp3 := C.CString(m.from__inst0)
-				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp3)
+				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp3)
 				C.free(unsafe.Pointer(__ctmp3))
 			default:
 				r := __match0.Failed
 				m.from__inst0 = r.Message
 				__ctmp4 := C.CString(m.from__inst0)
-				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp4)
+				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp4)
 				C.free(unsafe.Pointer(__ctmp4))
 			}
 		})
@@ -2323,7 +2310,7 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c.__slot3 = nil
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp5 := C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp5)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp5)
 	C.free(unsafe.Pointer(__ctmp5))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
@@ -2333,7 +2320,7 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 func (c *__child0Instance) Set__p0(__v *Failure) {
 	c.__prop___p0 = __v
 	__ctmp6 := C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp6)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp6)
 	C.free(unsafe.Pointer(__ctmp6))
 }
 
@@ -2383,7 +2370,7 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c.__slot3 = nil
 	c.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp7 := C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp7)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp7)
 	C.free(unsafe.Pointer(__ctmp7))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n1))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
@@ -2393,7 +2380,7 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 func (c *__child1Instance) Set__p0(__v *PetDetail) {
 	c.__prop___p0 = __v
 	__ctmp8 := C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp8)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp8)
 	C.free(unsafe.Pointer(__ctmp8))
 }
 
@@ -2542,7 +2529,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
 	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp0 := C.CString(m.from__inst0)
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp0)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp0)
 	C.free(unsafe.Pointer(__ctmp0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__effects0_settle()
@@ -2575,11 +2562,17 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgeDefaults
+import androidx.compose.material3.contentColorFor
 
 data class Failure(
     var kind: SnglFailureKind = SnglFailureKind.TRANSPORT,
@@ -2739,11 +2732,7 @@ fun MainScreen() {
                     	attempt__inst1 += 1
                     	var mine = attempt__inst1
                     	pending__inst0 = true
-                    	var r: SnglResult__PaginatedPetSummaryList = run {
-	val __arg0 = k.key
-	val k = __arg0
-	return@run petListCall(k.limit, k.offset, "https://petstore.example")
-}
+                    	var r: SnglResult__PaginatedPetSummaryList = petListCall(k.key.limit, k.key.offset, "https://petstore.example")
                     	if ((mine != attempt__inst1)) {
                     		return@start
                     	}
@@ -2767,12 +2756,12 @@ fun MainScreen() {
             }
             if ((page__inst0 != null)) {
                 for (p in page__inst0!!.results) {
-                    Text(text = p.name, modifier = Modifier.safeDrawingPadding())
+                    Text(text = p.name, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
             Button(onClick = {
                 offset__inst0 += 20
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "More", modifier = Modifier)
             }
             DisposableEffect(__anon_key_n_a1dba7(key = "rex", n = refreshes__inst0)) {
@@ -2783,11 +2772,7 @@ fun MainScreen() {
                     	attempt__inst0 += 1
                     	var mine = attempt__inst0
                     	loading__inst0 = true
-                    	var r: SnglResult__PetDetail = run {
-	val __arg0 = k.key
-	val __ctxArg0 = __arg0
-	return@run petRetrieveCall(__ctxArg0, "https://mirror.example")
-}
+                    	var r: SnglResult__PetDetail = petRetrieveCall(k.key, "https://mirror.example")
                     	if ((mine != attempt__inst0)) {
                     		return@start
                     	}
@@ -2813,12 +2798,12 @@ fun MainScreen() {
                 CircularProgressIndicator(modifier = Modifier.safeDrawingPadding())
             }
             if ((failure__inst0 != null)) {
-                Text(text = ("Could not load rex: " + failure__inst0!!.message), modifier = Modifier.safeDrawingPadding())
+                Text(text = ("Could not load rex: " + failure__inst0!!.message), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             if ((pet__inst0 != null)) {
-                Text(text = ((("#" + pet__inst0!!.id.toString()) + " ") + pet__inst0!!.name), modifier = Modifier.safeDrawingPadding())
+                Text(text = ((("#" + pet__inst0!!.id.toString()) + " ") + pet__inst0!!.name), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 for (t in pet__inst0!!.tags) {
-                    Badge(modifier = Modifier.safeDrawingPadding()) {
+                    Badge(modifier = Modifier.safeDrawingPadding(), containerColor = BadgeDefaults.containerColor, contentColor = contentColorFor(BadgeDefaults.containerColor)) {
                         Text(text = t.type.name, modifier = Modifier)
                     }
                 }
@@ -2837,10 +2822,10 @@ fun MainScreen() {
                 		}
                 	}
                 }
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Bred from", modifier = Modifier)
             }
-            Text(text = from__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = from__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -3400,7 +3385,7 @@ body { font-family: system-ui, sans-serif; }
     state.attempt__inst1 += 1;
     let mine = state.attempt__inst1;
     state.pending__inst0 = true;
-    let r = await (async (k) => await petListCall(k.limit, k.offset, "https://petstore.example"))(__effect0_key.key);
+    let r = await petListCall(__effect0_key.key.limit, __effect0_key.key.offset, "https://petstore.example");
     if (mine !== state.attempt__inst1) {
       ;
       return;
@@ -3428,7 +3413,7 @@ body { font-family: system-ui, sans-serif; }
     let mine = state.attempt__inst0;
     state.loading__inst0 = true;
     __renderSlot1(__slotAnchor_1);
-    let r = await (async (__ctxArg0) => await petRetrieveCall(__ctxArg0, "https://mirror.example"))(__effect1_key.key);
+    let r = await petRetrieveCall(__effect1_key.key, "https://mirror.example");
     if (mine !== state.attempt__inst0) {
       ;
       return;
@@ -3572,7 +3557,7 @@ body { font-family: system-ui, sans-serif; }
     let __n3 = document.createElement("span");
     __n3.setAttribute("class", "sngl-badge");
     __n3.textContent = __prop___p0.type.name;
-    __n3.setAttribute("style", "border-radius:12px;display:inline-block;padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px");
+    __n3.setAttribute("style", "padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px;border-radius:12px;display:inline-block");
     __root.appendChild(__n3);
     return {
       __root,
@@ -4360,10 +4345,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:165e0b5938ad9ea1dedbc7c437d1064e
+pass sha256:50ba9451b0ad458a06b84ee6d6421492
 -- run/go/gtk4 --
-pass sha256:ef9bf69686a97b9d75d97aa9575bfd52
+pass sha256:0692efcfa7d58c6d129e0a0b214b2ba7
 -- run/kotlin/android --
-pass sha256:af35a1e4ecd6204d323aa003ed0dddaf
+pass sha256:a3d9ca76ff015475f5ce1ea3fef7c8e0
 -- run/none/html --
-pass sha256:687e1454864177fb1adab348e2100018
+pass sha256:9a2bab95efb9cdf1f95b9816c355bac1

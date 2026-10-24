@@ -138,7 +138,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
 	m.__n2 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n2__el = m.__n2.Root
 	m.__n8.Add(m.__n2__el)
@@ -184,7 +184,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n4 = container.NewVBox()
+	c.__n4 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("level " + fmt.Sprint(c.__prop___p0)))
 	c.__n4.Add(c.__n0)
@@ -297,7 +297,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__n6 = container.NewVBox()
+	c.__n6 = fynelayout.NewVBox()
 	__n7 := widget.NewLabel("")
 	__n7.SetText("top")
 	c.__n6.Add(__n7)
@@ -480,7 +480,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.BoxAppend(c.__n4, c.__n0)
 	c.__renderSlot0(c.__n4)
 	c.Root = c.__n4
@@ -500,7 +500,7 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 
 func (c *Frame__slot2Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
 }
 
 func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
@@ -609,7 +609,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
 	__n7 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n7, "top")
+	gtk4rt.LabelSetLabel(__n7, "top")
 	gtk4rt.BoxAppend(c.__n6, __n7)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
@@ -1007,8 +1007,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:3fd7865a4342297bd7fe0348030c51f7
+pass sha256:ec23c0467216e14e247048de3ea3a5d9
 -- run/go/gtk4 --
-pass sha256:33673c4c720dbe6c62bfc4687eb06611
+pass sha256:1e8bfd254993220f4186856daf079485
 -- run/none/html --
 pass sha256:13a0a9cb94ba9c64216fb2abe6bb511d

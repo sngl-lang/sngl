@@ -278,7 +278,7 @@ func (m *Model) __n4_clicked_handler() {
 			}
 			_ = e
 			m.a = "a caught"
-			gtk4rt.LabelSetText(m.__n1, m.a)
+			gtk4rt.LabelSetLabel(m.__n1, m.a)
 		}()
 		panic(ErrorEvent{Message: "x", Kind: "boom"})
 	}()
@@ -305,7 +305,7 @@ func (m *Model) __n5_clicked_handler() {
 			}
 			_ = e
 			m.b = "b caught"
-			gtk4rt.LabelSetText(m.__n3, m.b)
+			gtk4rt.LabelSetLabel(m.__n3, m.b)
 		}()
 		panic(ErrorEvent{Message: "y", Kind: "boom"})
 	}()
@@ -358,7 +358,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.a)
+	gtk4rt.LabelSetLabel(m.__n1, m.a)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 	m.__n2 = gtk4rt.ToplevelNew()
@@ -371,7 +371,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n5)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, m.b)
+	gtk4rt.LabelSetLabel(m.__n3, m.b)
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	gtk4rt.AppAttach(m.__n2)
 }
@@ -472,6 +472,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:e74eb2d084201287c095c3bae46977c5
 -- run/go/gtk4 --
-pass sha256:64c20d1740cc94546d4c4ad712ba3c88
+pass sha256:fef2880af88041af2e033f2e0be5a1f5
 -- run/none/html --
 pass sha256:e04fcd221a40373b10f1e666820f601e

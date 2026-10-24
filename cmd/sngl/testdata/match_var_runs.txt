@@ -118,7 +118,7 @@ func testView(t Test, c panel) {
     t.assert(c.named != null)
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:617e5284825ff512bd43657e9195a9a1
+sha256:abe5c17857fc6a9cd1cae005c10d55de
 {
   "results": [
     {
@@ -140,7 +140,7 @@ sha256:617e5284825ff512bd43657e9195a9a1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:b2e6b1b2dd8600a70b91c8a9cabee16f
+sha256:69370bf41358f985f1a08caefcf89be8
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:b2e6b1b2dd8600a70b91c8a9cabee16f
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:7c982c428aeb170458b85969225a052d
+sha256:ab131824e794c32e672064ea9a887239
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:7c982c428aeb170458b85969225a052d
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:1abafa8faf696f10e00e0d1f15ca14df
+sha256:e3c8bd9c951fcb81dbed6f76507d6071
 {
   "results": [
     {

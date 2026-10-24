@@ -49,7 +49,7 @@ body { display: flex; flex-direction: column; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;padding:8px">
+<div style="padding:8px;display:flex;flex-direction:column;flex:1;min-width:0;min-height:0">
   <span>items</span>
   <div style="flex:1;min-width:0;min-height:0;overflow:auto">
     <div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
@@ -207,4 +207,4 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c03c2a910b896afba4068a951249f43f
+pass sha256:4f5825bd9cc4a62825ee20a9284bd94f

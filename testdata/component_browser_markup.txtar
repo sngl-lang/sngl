@@ -150,12 +150,12 @@ body { font-family: system-ui, sans-serif; }
   <option disabled selected value="">pick</option>
   <span data-sngl-slot="0" style="display:contents"></span>
 </select>
-<fieldset style="border:none;display:flex;flex-direction:column;gap:8px" data-sngl-id="radio">
+<fieldset style="border:none;padding:0px;display:flex;flex-direction:column;gap:8px" data-sngl-id="radio">
   <span data-sngl-slot="1" style="display:contents"></span>
 </fieldset>
 <textarea id="$12" placeholder="" rows="3" data-sngl-id="area"></textarea>
 <div style="display:flex;flex-direction:column" data-sngl-id="tabs">
-  <div id="__n10" data-sngl-id="__n10" style="border-bottom:1px solid #ccc;display:flex;gap:4px" role="tablist">
+  <div id="__n10" data-sngl-id="__n10" style="display:flex;gap:4px;border-bottom:1px solid #ccc" role="tablist">
     <span data-sngl-slot="2" style="display:contents"></span>
   </div>
   <div id="__n11" data-sngl-id="__n11" role="tabpanel">
@@ -165,18 +165,18 @@ body { font-family: system-ui, sans-serif; }
 <table id="$14" style="border-collapse:collapse;width:100%" width="100%" data-sngl-id="table">
   <thead>
     <tr>
-      <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">A</th>
-      <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">B</th>
+      <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">A</th>
+      <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">B</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td style="border-bottom:1px solid #eee;padding:8px">1</td>
-      <td style="border-bottom:1px solid #eee;padding:8px">2</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">1</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">2</td>
     </tr>
     <tr>
-      <td style="border-bottom:1px solid #eee;padding:8px">3</td>
-      <td style="border-bottom:1px solid #eee;padding:8px">4</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">3</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">4</td>
     </tr>
   </tbody>
 </table>
@@ -184,14 +184,14 @@ body { font-family: system-ui, sans-serif; }
   <li style="padding-left:0px">root</li>
   <li style="padding-left:16px">child</li>
 </ul>
-<div id="$16" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;justify-content:center;position:fixed;z-index:1000" class="modal-overlay" data-sngl-id="modal">
-  <div class="modal-content" style="background-color:#fff;border-radius:8px;padding:24px" class="modal-content">
-    <h3 style="margin-bottom:16px">Dialog</h3>
+<div id="$16" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);bottom:0px;display:flex;justify-content:center;left:0px;position:fixed;right:0px;top:0px;z-index:1000" class="modal-overlay" data-sngl-id="modal">
+  <div class="modal-content" style="padding:24px;background-color:#ffffff;border-radius:8px" class="modal-content">
+    <h3 style="margin-left:0px;margin-right:0px;margin-bottom:16px;margin-top:0px">Dialog</h3>
     <span>body</span>
   </div>
 </div>
 <hr data-sngl-id="divider"/>
-<span class="sngl-badge" style="border-radius:12px;display:inline-block;padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px" class="sngl-badge" data-sngl-id="badge">3</span>
+<span class="sngl-badge" style="padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px;border-radius:12px;display:inline-block" class="sngl-badge" data-sngl-id="badge">3</span>
 <style>
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
@@ -398,13 +398,13 @@ window.__sngl_boot = () => {
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n4.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n4.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
       __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
       __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
     function __set___p2(__v) {
       __prop___p2 = __v;
-      __n4.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n4.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
       __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
       __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
@@ -414,7 +414,7 @@ window.__sngl_boot = () => {
     let __n4 = document.createElement("button");
     __n4.textContent = __prop___p0.label;
     __n4.disabled = __prop___p0.disabled;
-    __n4.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+    __n4.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
     __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
     __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     __n4.setAttribute("role", "tab");
@@ -701,12 +701,6 @@ window.__sngl_boot = () => {
       __rendering3 = false;
     }
   }
-  function _snglStyleLength(v) {
-    if (typeof v === "number") return v + "px";
-    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
-    if (t.length === 0) return "0px";
-    return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
-  }
   function _snglStyleKeyword(m) {
     return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
   }
@@ -772,9 +766,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:eb66bcccca45e146c162154070d98b88
+pass sha256:1f5d15a13b9020dfc02bf2dbb1786bc4
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:0027d05455c391cd01649f8efb74427b
+sha256:9356a44f954e2af5401c5d95249be4d7
 {
   "results": [
     {

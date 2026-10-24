@@ -311,7 +311,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n2_clicked_handler() {
 	m.n += 1
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	m.__effects0_settle()
 }
 
@@ -341,7 +341,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n2 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n2, "next")
@@ -360,4 +360,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:f7e114144a51e9b28c33d985fabd3e9d
 -- run/go/gtk4 --
-pass sha256:b7097079d7972c5d3f40a4f29dae01a5
+pass sha256:8e1f37d42ddfcccc45de1ac8328979ca

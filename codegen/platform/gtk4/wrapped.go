@@ -152,7 +152,7 @@ var rtSetterTable = map[string]struct {
 	fn   string
 	kind rtSetterKind
 }{
-	"gtk_label_set_text":             {"LabelSetText", rtStr},
+	"gtk_label_set_label":            {"LabelSetLabel", rtStr},
 	"gtk_button_set_label":           {"ButtonSetLabel", rtStr},
 	"gtk_check_button_set_label":     {"CheckButtonSetLabel", rtStr},
 	"gtk_check_button_set_active":    {"CheckButtonSetActive", rtBool},

@@ -38,12 +38,18 @@ run after the purity fixpoint, where `const(…)` assertions are judged:
   non-const `*ir.Var` and any non-const call. It skips an argument bound to a
   const prop, which the argument check already reports at the same place.
 - `const` on a base binds every override, reported at the override
-  (`checkOverrideConst`). **Every component and override a target package
-  declares must be const**, written or inherited (`checkTargetComponentsConst`);
-  an empty `{}` component (a build node) and a primitive are exempt. This
-  replaces what `passInlinePure`'s strict mode found at lowering with no
-  position, so its impure-wrapper branch is now unreachable from a checked
-  program. Every override in a target package (`lib/platform/*`, `lib/language/*`) says `const` for that reason.
+  (`checkOverrideConst`). **Every component a target package declares must
+  be const** (`checkTargetComponentsConst`); an empty `{}` component (a build
+  node) and a primitive are exempt. This replaces what `passInlinePure`'s
+  strict mode found at lowering with no position, so its impure-wrapper branch
+  is now unreachable from a checked program. **An override need not be**: one
+  that does not say `const` is a body like a program's, and may hold state its
+  render reads -- android's `ui.select` keeps whether its menu is open in a
+  `var`. The lowering already answers that for a library body as for a
+  program's: spliced once, one cell per copy under a `for` or a reactive `if`
+  (`testdata/override_holds_state.txtar`). An override that does say `const`
+  is held to the render rule, which is why most of `lib/platform/*` still
+  writes it.
 
 **The library says `const` where it means it.** There is no default-pure rule
 any more: a bodied library func is seeded pure for its own fixpoint, and a
@@ -766,6 +772,14 @@ own body, by symbol, after putting the content in the slot
 body only, so `tone(picked) { content }` left the content reading a `picked`
 the caller never declared, and the Go targets did not build
 (`cmd/sngl/testdata/context_slot_provider_reads_callee_state_runs.txt`).
+
+**A provided value goes into a spliced body after its props are bound.** A
+call site passing a rereadable value has it read in place of the hidden var
+(`providedContextVars`), and the value is the provider's expression. Put in
+before the props, which bind by name, a `style` it read became the spliced
+component's `style`: android's hbox provides a flex closure chosen by its own
+`alignItems`, and each child chose by the child's
+(`testdata/android_flex_aligned.txtar`).
 
 **A context a directory or scheme package declares is part of what it
 exports** (`mergePkgInto`), as a library's is: `p.server(v) { … }` provides

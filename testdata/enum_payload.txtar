@@ -122,9 +122,17 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
 
 type Result__int struct {
 	tag    int
@@ -146,6 +154,61 @@ type Size struct {
 type Failure struct {
 	Message string
 	Code    int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -207,6 +270,139 @@ func OrZero(r Result__int) int {
 		return r.Ok
 	}
 	return 0
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt0 int
+		if s.MaxLines == 0 {
+			__lt0 = 0
+		} else {
+			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt1 lipgloss.Position
+	switch a {
+	case "center":
+		__lt1 = lipgloss.Center
+	case "right":
+		__lt1 = lipgloss.Right
+	default:
+		__lt1 = lipgloss.Left
+	}
+	return __lt1
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt2 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt2 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt2 = tui.DashedBorder()
+	default:
+		var __lt3 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt3 = lipgloss.RoundedBorder()
+		} else {
+			__lt3 = lipgloss.NormalBorder()
+		}
+		__lt2 = __lt3
+	}
+	return __lt2
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt5 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt5 = own
+	} else {
+		var __lt4 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt4 = axis
+		} else {
+			__lt4 = all
+		}
+		__lt5 = __lt4
+	}
+	return CellsOf(__lt5)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt6 int
+	if px <= 0.0 {
+		__lt6 = 0
+	} else {
+		__lt6 = max(1, (int(px) / 8))
+	}
+	return __lt6
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt8 int
+	if height__r0 == 0 {
+		__lt8 = lines
+	} else {
+		var __lt7 int
+		if lines == 0 {
+			__lt7 = height__r0
+		} else {
+			__lt7 = min(height__r0, lines)
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
 }
 
 func (m *Model) __focusNext() {
@@ -324,16 +520,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			var __lt3 Shape
+			var __lt12 Shape
 			switch {
 			case (m.shape__inst0.tag == 0):
-				__lt3 = Shape{tag: 1, Circle: 1.0}
+				__lt12 = Shape{tag: 1, Circle: 1.0}
 			case (m.shape__inst0.tag == 1):
-				__lt3 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+				__lt12 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 			default:
-				__lt3 = Shape{tag: 0}
+				__lt12 = Shape{tag: 0}
 			}
-			m.shape__inst0 = __lt3
+			m.shape__inst0 = __lt12
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.result__inst0 = Half(3)
 		}
@@ -364,42 +560,42 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(Area(m.shape__inst0))))
+		contentPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(Area(m.shape__inst0))))
 		contentParts = append(contentParts, contentPart_0)
-		var __lt0 string
+		var __lt9 string
 		switch {
 		case (m.result__inst0.tag == 0):
-			__lt0 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+			__lt9 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 		default:
-			__lt0 = ("failed: " + m.result__inst0.Failed.Message)
+			__lt9 = ("failed: " + m.result__inst0.Failed.Message)
 		}
 		var contentPart_3 string
-		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+		contentPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt9))
 		contentParts = append(contentParts, contentPart_3)
-		var __lt1 string
+		var __lt10 string
 		switch {
 		case (m.shape__inst0.tag == 1):
-			__lt1 = "round"
+			__lt10 = "round"
 		default:
-			__lt1 = "not round"
+			__lt10 = "not round"
 		}
 		var contentPart_6 string
-		contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt1) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2})))))
+		contentPart_6 = BoxLook(Style{}, true).Render(fmt.Sprint(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt10) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2})))))
 		contentParts = append(contentParts, contentPart_6)
-		var __lt2 string
+		var __lt11 string
 		switch {
 		case (m.shape__inst0.tag == 1):
-			__lt2 = fmt.Sprint(m.shape__inst0.Circle)
+			__lt11 = fmt.Sprint(m.shape__inst0.Circle)
 		default:
-			__lt2 = "none"
+			__lt11 = "none"
 		}
 		var contentPart_9 string
-		contentPart_9 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+		contentPart_9 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 		contentParts = append(contentParts, contentPart_9)
 		var contentPart_10 string
 		switch {
 		case (m.shape__inst0.tag == 1):
-			contentPart_10 = lipgloss.NewStyle().Render(fmt.Sprint(("radius " + fmt.Sprint(m.shape__inst0.Circle))))
+			contentPart_10 = BoxLook(Style{}, true).Render(fmt.Sprint(("radius " + fmt.Sprint(m.shape__inst0.Circle))))
 		default:
 		}
 		if contentPart_10 != "" {
@@ -411,7 +607,7 @@ func (m Model) View() tea.View {
 		if contentPart_11Focused {
 			contentPart_11Prefix = ">"
 		}
-		contentPart_11 = lipgloss.NewStyle().Render(contentPart_11Prefix + " " + fmt.Sprint("Grow"))
+		contentPart_11 = BoxLook(Style{}, true).Render(contentPart_11Prefix + " " + fmt.Sprint("Grow"))
 		contentParts = append(contentParts, contentPart_11)
 		var contentPart_12 string
 		contentPart_12Focused := (m.__focusID == 1)
@@ -419,7 +615,7 @@ func (m Model) View() tea.View {
 		if contentPart_12Focused {
 			contentPart_12Prefix = ">"
 		}
-		contentPart_12 = lipgloss.NewStyle().Render(contentPart_12Prefix + " " + fmt.Sprint("Odd"))
+		contentPart_12 = BoxLook(Style{}, true).Render(contentPart_12Prefix + " " + fmt.Sprint("Odd"))
 		contentParts = append(contentParts, contentPart_12)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
@@ -600,50 +796,50 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) grow_click_handler() {
-	var __lt3 Shape
+	var __lt10 Shape
 	switch {
 	case (m.shape__inst0.tag == 0):
-		__lt3 = Shape{tag: 1, Circle: 1.0}
+		__lt10 = Shape{tag: 1, Circle: 1.0}
 	case (m.shape__inst0.tag == 1):
-		__lt3 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+		__lt10 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 	default:
-		__lt3 = Shape{tag: 0}
+		__lt10 = Shape{tag: 0}
 	}
-	m.shape__inst0 = __lt3
+	m.shape__inst0 = __lt10
 	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
-	var __lt4 string
+	var __lt11 string
 	if m.shape__inst0.tag == 1 {
-		__lt4 = "round"
+		__lt11 = "round"
 	} else {
-		__lt4 = "not round"
+		__lt11 = "not round"
 	}
-	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt4) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
-	var __lt5 string
+	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt11) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	var __lt12 string
 	if m.shape__inst0.tag == 1 {
-		__lt5 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt12 = fmt.Sprint(m.shape__inst0.Circle)
 	} else {
-		__lt5 = "none"
+		__lt12 = "none"
 	}
-	m.radius.SetText(__lt5)
+	m.radius.SetText(__lt12)
 	m.__renderSlot0(m.__n0.Container)
 }
 
 func (m *Model) odd_click_handler() {
 	m.result__inst0 = Half(3)
-	var __lt6 string
+	var __lt13 string
 	if m.result__inst0.tag == 0 {
-		__lt6 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt13 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt6 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt13 = ("failed: " + m.result__inst0.Failed.Message)
 	}
-	m.outcome.SetText(__lt6)
-	var __lt7 string
+	m.outcome.SetText(__lt13)
+	var __lt14 string
 	if m.shape__inst0.tag == 1 {
-		__lt7 = "round"
+		__lt14 = "round"
 	} else {
-		__lt7 = "not round"
+		__lt14 = "not round"
 	}
-	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt7) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt14) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 }
 
 // growClick invokes the OnTapped callback on the #grow widget; for tests.
@@ -705,32 +901,32 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.shownArea = widget.NewLabel("")
 	m.shownArea.SetText(fmt.Sprint(Area(m.shape__inst0)))
 	m.__n0.Add(m.shownArea)
-	var __lt0 string
+	var __lt7 string
 	if m.result__inst0.tag == 0 {
-		__lt0 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt7 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt0 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt7 = ("failed: " + m.result__inst0.Failed.Message)
 	}
 	m.outcome = widget.NewLabel("")
-	m.outcome.SetText(__lt0)
+	m.outcome.SetText(__lt7)
 	m.__n0.Add(m.outcome)
-	var __lt1 string
+	var __lt8 string
 	if m.shape__inst0.tag == 1 {
-		__lt1 = "round"
+		__lt8 = "round"
 	} else {
-		__lt1 = "not round"
+		__lt8 = "not round"
 	}
 	m.facts = widget.NewLabel("")
-	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt1) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	m.facts.SetText(((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt8) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	m.__n0.Add(m.facts)
-	var __lt2 string
+	var __lt9 string
 	if m.shape__inst0.tag == 1 {
-		__lt2 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt9 = fmt.Sprint(m.shape__inst0.Circle)
 	} else {
-		__lt2 = "none"
+		__lt9 = "none"
 	}
 	m.radius = widget.NewLabel("")
-	m.radius.SetText(__lt2)
+	m.radius.SetText(__lt9)
 	m.__n0.Add(m.radius)
 	m.__renderSlot0(m.__n0.Container)
 	m.grow = widget.NewButton("", nil)
@@ -956,50 +1152,50 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) grow_clicked_handler() {
-	var __lt3 Shape
+	var __lt18 Shape
 	switch {
 	case (m.shape__inst0.tag == 0):
-		__lt3 = Shape{tag: 1, Circle: 1.0}
+		__lt18 = Shape{tag: 1, Circle: 1.0}
 	case (m.shape__inst0.tag == 1):
-		__lt3 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+		__lt18 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 	default:
-		__lt3 = Shape{tag: 0}
+		__lt18 = Shape{tag: 0}
 	}
-	m.shape__inst0 = __lt3
-	gtk4rt.LabelSetText(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
-	var __lt4 string
+	m.shape__inst0 = __lt18
+	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
+	var __lt19 string
 	if m.shape__inst0.tag == 1 {
-		__lt4 = "round"
+		__lt19 = "round"
 	} else {
-		__lt4 = "not round"
+		__lt19 = "not round"
 	}
-	gtk4rt.LabelSetText(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt4) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
-	var __lt5 string
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt19) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	var __lt20 string
 	if m.shape__inst0.tag == 1 {
-		__lt5 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt20 = fmt.Sprint(m.shape__inst0.Circle)
 	} else {
-		__lt5 = "none"
+		__lt20 = "none"
 	}
-	gtk4rt.LabelSetText(m.radius, __lt5)
+	gtk4rt.LabelSetLabel(m.radius, __lt20)
 	m.__renderSlot0(m.__n0)
 }
 
 func (m *Model) odd_clicked_handler() {
 	m.result__inst0 = Half(3)
-	var __lt6 string
+	var __lt21 string
 	if m.result__inst0.tag == 0 {
-		__lt6 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt21 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt6 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt21 = ("failed: " + m.result__inst0.Failed.Message)
 	}
-	gtk4rt.LabelSetText(m.outcome, __lt6)
-	var __lt7 string
+	gtk4rt.LabelSetLabel(m.outcome, __lt21)
+	var __lt22 string
 	if m.shape__inst0.tag == 1 {
-		__lt7 = "round"
+		__lt22 = "round"
 	} else {
-		__lt7 = "not round"
+		__lt22 = "not round"
 	}
-	gtk4rt.LabelSetText(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt7) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt22) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -1019,7 +1215,7 @@ func new__child0Instance(__model *Model, __a___p0 Shape) *__child0Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.round = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.round, ("radius " + fmt.Sprint(c.__prop___p0.Circle)))
+	gtk4rt.LabelSetLabel(c.round, ("radius " + fmt.Sprint(c.__prop___p0.Circle)))
 	c.Root = c.round
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1027,7 +1223,7 @@ func new__child0Instance(__model *Model, __a___p0 Shape) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v Shape) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.round, ("radius " + fmt.Sprint(c.__prop___p0.Circle)))
+	gtk4rt.LabelSetLabel(c.round, ("radius " + fmt.Sprint(c.__prop___p0.Circle)))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1082,34 +1278,34 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.shownArea = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
+	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.shownArea)
-	var __lt0 string
+	var __lt15 string
 	if m.result__inst0.tag == 0 {
-		__lt0 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt15 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt0 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt15 = ("failed: " + m.result__inst0.Failed.Message)
 	}
 	m.outcome = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.outcome, __lt0)
+	gtk4rt.LabelSetLabel(m.outcome, __lt15)
 	gtk4rt.BoxAppend(m.__n0, m.outcome)
-	var __lt1 string
+	var __lt16 string
 	if m.shape__inst0.tag == 1 {
-		__lt1 = "round"
+		__lt16 = "round"
 	} else {
-		__lt1 = "not round"
+		__lt16 = "not round"
 	}
 	m.facts = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt1) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt16) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	gtk4rt.BoxAppend(m.__n0, m.facts)
-	var __lt2 string
+	var __lt17 string
 	if m.shape__inst0.tag == 1 {
-		__lt2 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt17 = fmt.Sprint(m.shape__inst0.Circle)
 	} else {
-		__lt2 = "none"
+		__lt17 = "none"
 	}
 	m.radius = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.radius, __lt2)
+	gtk4rt.LabelSetLabel(m.radius, __lt17)
 	gtk4rt.BoxAppend(m.__n0, m.radius)
 	m.__renderSlot0(m.__n0)
 	m.grow = gtk4rt.ButtonNew()
@@ -1155,10 +1351,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class Size(
     var w: Double = 0.0,
@@ -1204,25 +1404,25 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = _snglFloatStr(area(shape__inst0)), modifier = Modifier.testTag("shownArea").safeDrawingPadding())
-            Text(text = (when { (result__inst0 is Result__int.Ok) -> ("ok " + (result__inst0 as Result__int.Ok).value.toString()); else -> ("failed: " + (result__inst0 as Result__int.Failed).value.message) }), modifier = Modifier.testTag("outcome").safeDrawingPadding())
-            Text(text = ((((((_snglFloatStr(area(held)) + " ") + orZero(result__inst0).toString()) + " ") + (when { (shape__inst0 is Shape.Circle) -> "round"; else -> "not round" })) + " ") + (result__inst0 == Result__int.Ok(2)).toString()), modifier = Modifier.testTag("facts").safeDrawingPadding())
-            Text(text = (when { (shape__inst0 is Shape.Circle) -> _snglFloatStr((shape__inst0 as Shape.Circle).value); else -> "none" }), modifier = Modifier.testTag("radius").safeDrawingPadding())
+            Text(text = _snglFloatStr(area(shape__inst0)), modifier = Modifier.testTag("shownArea").safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (when { (result__inst0 is Result__int.Ok) -> ("ok " + (result__inst0 as Result__int.Ok).value.toString()); else -> ("failed: " + (result__inst0 as Result__int.Failed).value.message) }), modifier = Modifier.testTag("outcome").safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ((((((_snglFloatStr(area(held)) + " ") + orZero(result__inst0).toString()) + " ") + (when { (shape__inst0 is Shape.Circle) -> "round"; else -> "not round" })) + " ") + (result__inst0 == Result__int.Ok(2)).toString()), modifier = Modifier.testTag("facts").safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (when { (shape__inst0 is Shape.Circle) -> _snglFloatStr((shape__inst0 as Shape.Circle).value); else -> "none" }), modifier = Modifier.testTag("radius").safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             when {
                 (shape__inst0 is Shape.Circle) -> {
-                    Text(text = ("radius " + _snglFloatStr((shape__inst0 as Shape.Circle).value)), modifier = Modifier.testTag("round").safeDrawingPadding())
+                    Text(text = ("radius " + _snglFloatStr((shape__inst0 as Shape.Circle).value)), modifier = Modifier.testTag("round").safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 else -> {
                 }
             }
             Button(onClick = {
                 shape__inst0 = (when { (shape__inst0 is Shape.Empty) -> Shape.Circle(1.0); (shape__inst0 is Shape.Circle) -> Shape.Circle(((shape__inst0 as Shape.Circle).value + 1.0)); else -> Shape.Empty })
-            }, modifier = Modifier.testTag("grow").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("grow").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Grow", modifier = Modifier)
             }
             Button(onClick = {
                 result__inst0 = half(3)
-            }, modifier = Modifier.testTag("odd").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("odd").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Odd", modifier = Modifier)
             }
         }
@@ -1460,12 +1660,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:097d9fdb28ec3feb8205bfc469d1dc5f
+pass sha256:ad7c1ee95fbaf2e3c186dcf5f39bda80
 -- run/go/fyne --
-pass sha256:ea88a8ac422e27cc46a581016c3c6609
+pass sha256:06a1483e7e0f1e25bc61bb6b91bb4937
 -- run/go/gtk4 --
-pass sha256:896f7206c6bb8f805bf80756e49a4639
+pass sha256:8cb41a0e05613781e28bb4bb1e514bf7
 -- run/kotlin/android --
-pass sha256:0f2df182fd6b08c848cb581fadfdcba8
+pass sha256:5faa3d6b53c5f7838a062aeaa21ea061
 -- run/none/html --
 pass sha256:716af95d76afcae30f01afbcfb0870b8

@@ -1,0 +1,295 @@
+import ui "sngl:ui"
+
+// What a ui.Style becomes on Compose: a Modifier, a TextStyle, a Material
+// button's colors and its shape, each routed by the override to its argument.
+//
+// None of these reads a composable, since under `--lang go` each may stay a
+// function of its own; the theme's text style and a button's default colors
+// are read in the overrides.
+
+// What a child's `flex` is a share of. A vbox or an hbox provides a closure
+// written in its Column's or Row's content, where `weight` is in scope, so it
+// is the parent's share even where the child is a composable of its own,
+// called with the closure. Anywhere else it is the screen.
+context #flexShare(func(w float32) => modifier.fillMaxSize())
+
+const unset ui.Style = {}
+
+// What a Style may say that this platform does not answer:
+//
+//   - flexDirection: vbox and hbox are the axis.
+//   - position, top, bottom, left, right: Compose has no flow to take a node
+//     out of, nor CSS's offsets from one.
+//   - maxLines, whiteSpace: Text's own arguments, not passed yet.
+//   - border, borderBottom, borderLeft, borderCollapse: CSS shorthand text and
+//     table borders.
+//   - borderStyle: Compose draws a solid border only.
+//   - cursor: a touch screen shows no pointer.
+//   - display: a node is laid out by the composable it is.
+//   - overflow: scrolling is ui.scroll's, and clipping a shape's.
+//   - listStyleType: no widget here draws a list marker.
+const unstyled list[string] = [
+    "flexDirection",
+    "position",
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "maxLines",
+    "whiteSpace",
+    "border",
+    "borderBottom",
+    "borderLeft",
+    "borderCollapse",
+    "borderStyle",
+    "cursor",
+    "display",
+    "overflow",
+    "listStyleType",
+]
+
+// A length in dp, as codegen.MeasurementPx reads one: an em is 16, Material's
+// body text size.
+const func magnitude(m ui.measurement) => m.px + 16.0 * (m.em + m.rem)
+
+const func length(m ui.measurement) => dpOf(float32(magnitude(m)))
+
+// Compose's padding throws on a negative one, which CSS allows for a margin.
+const func inset(m ui.measurement, extra float) => dpOf(float32(nonNegative(magnitude(m)) + extra))
+
+const func nonNegative(v float) => v < 0.0 ? 0.0 : v
+
+const func fontSizeOf(m ui.measurement) TextUnit {
+    return m == unset.fontSize ? unspecifiedTextUnit : textUnitOf(float32(magnitude(m)), spUnit)
+}
+
+// One side of a margin or a padding: its own field, else its axis's, else the
+// whole box's, as CSS reads them.
+const func side(all ui.measurement, axis ui.measurement, own ui.measurement) ui.measurement {
+    return own != unset.margin ? own : axis != unset.margin ? axis : all
+}
+
+const func shapeOf(s ui.Style) Shape {
+    return s.borderRadius == unset.borderRadius ? rectangleShape : roundedCorners(length(s.borderRadius))
+}
+
+// The Modifier a Style asks for, outermost first: the margin, the box's size,
+// its outline and fill, and the padding inside them, as CSS's border-box lays
+// them out. A widget that paints its own surface takes the background through
+// its colors instead of a rectangle drawn behind it, which `paints` turns off.
+const func styleModifier(s ui.Style, paints bool) Modifier {
+    var m Modifier = modifier
+    var top = side(s.margin, s.marginY, s.marginTop)
+    var right = side(s.margin, s.marginX, s.marginRight)
+    var bottom = side(s.margin, s.marginY, s.marginBottom)
+    var left = side(s.margin, s.marginX, s.marginLeft)
+    if top != unset.margin || right != unset.margin || bottom != unset.margin || left != unset.margin {
+        m = m.paddingEach(inset(left, 0.0), inset(top, 0.0), inset(right, 0.0), inset(bottom, 0.0))
+    }
+    if s.zIndex != 0 {
+        m = m.zIndex(float32(s.zIndex))
+    }
+    // A bound before the size, since `width` fixes the constraints a later
+    // `widthIn` could only be clamped into.
+    if s.minWidth != unset.minWidth || s.maxWidth != unset.maxWidth {
+        m = m.widthIn(
+            s.minWidth != unset.minWidth ? length(s.minWidth) : unspecifiedDp,
+            s.maxWidth != unset.maxWidth ? length(s.maxWidth) : unspecifiedDp,
+        )
+    }
+    if s.maxHeight != unset.maxHeight {
+        m = m.heightIn(unspecifiedDp, length(s.maxHeight))
+    }
+    if s.width != unset.width {
+        m = m.width(length(s.width))
+    }
+    if s.height != unset.height {
+        m = m.height(length(s.height))
+    }
+    if s.opacity != 0.0 {
+        m = m.alpha(float32(s.opacity))
+    }
+    var shape = shapeOf(s)
+    if s.borderRadius != unset.borderRadius {
+        m = m.clip(shape)
+    }
+    // Compose draws a border over the content; CSS insets the content by it,
+    // so its width joins the padding below.
+    var edge = 0.0
+    if s.borderWidth != unset.borderWidth {
+        edge = magnitude(s.borderWidth)
+        m = m.border(length(s.borderWidth), composeOf(s.borderColor != unset.borderColor ? s.borderColor : s.color), shape)
+    }
+    if paints && s.background != unset.background {
+        m = m.background(composeOf(s.background), shape)
+    }
+    top = side(s.padding, s.paddingY, s.paddingTop)
+    right = side(s.padding, s.paddingX, s.paddingRight)
+    bottom = side(s.padding, s.paddingY, s.paddingBottom)
+    left = side(s.padding, s.paddingX, s.paddingLeft)
+    if edge != 0.0 || top != unset.padding || right != unset.padding || bottom != unset.padding || left != unset.padding {
+        m = m.paddingEach(inset(left, edge), inset(top, edge), inset(right, edge), inset(bottom, edge))
+    }
+    return m
+}
+
+// A Column's or a Row's children placed down or along it, as `gap` and
+// `justifyContent` say: Compose's Arrangement, which no Modifier says. A spread
+// of the free space leaves the gap to it, as CSS's minimum between children is
+// no more than what spreads them. `start` is Compose's default, and the zero
+// a Style leaves.
+const func columnArrangement(s ui.Style) VerticalArrangement {
+    return s.gap == unset.gap ? columnPlacement(s.justifyContent) : columnSpacing(s.justifyContent, length(s.gap))
+}
+
+const func columnPlacement(j ui.Justification) VerticalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenV
+        spaceAround => arrangeSpaceAroundV
+        spaceEvenly => arrangeSpaceEvenlyV
+        center => arrangeCenterV
+        end => arrangeBottom
+        start => arrangeTop
+    }
+}
+
+const func columnSpacing(j ui.Justification, gap Dp) VerticalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenV
+        spaceAround => arrangeSpaceAroundV
+        spaceEvenly => arrangeSpaceEvenlyV
+        center => spacedByAlignedV(gap, alignCenterVertically)
+        end => spacedByAlignedV(gap, alignBottom)
+        start => spacedByV(gap)
+    }
+}
+
+const func rowArrangement(s ui.Style) HorizontalArrangement {
+    return s.gap == unset.gap ? rowPlacement(s.justifyContent) : rowSpacing(s.justifyContent, length(s.gap))
+}
+
+const func rowPlacement(j ui.Justification) HorizontalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenH
+        spaceAround => arrangeSpaceAroundH
+        spaceEvenly => arrangeSpaceEvenlyH
+        center => arrangeCenterH
+        end => arrangeEnd
+        start => arrangeStart
+    }
+}
+
+const func rowSpacing(j ui.Justification, gap Dp) HorizontalArrangement {
+    return match j {
+        spaceBetween => arrangeSpaceBetweenH
+        spaceAround => arrangeSpaceAroundH
+        spaceEvenly => arrangeSpaceEvenlyH
+        center => spacedByAlignedH(gap, alignCenterHorizontally)
+        end => spacedByAlignedH(gap, alignHorizontalEnd)
+        start => spacedByH(gap)
+    }
+}
+
+// Where `alignItems` puts a Column's or a Row's children across it. `start`
+// is the zero a Style leaves as well as a value, so it is read as CSS's
+// default, stretch: Compose's own default is the start, and a child that
+// flexes fills the cross axis itself (stretches).
+const func columnAlignment(a ui.Alignment) HorizontalAlignment {
+    return match a {
+        center => alignCenterHorizontally
+        end => alignHorizontalEnd
+        start, stretch, baseline => alignStart
+    }
+}
+
+const func rowAlignment(a ui.Alignment) VerticalAlignment {
+    return match a {
+        center => alignCenterVertically
+        end => alignBottom
+        start, stretch, baseline => alignTop
+    }
+}
+
+// Whether a flex child fills its parent's cross axis, CSS's stretch. A parent
+// aligning its children otherwise gives the share alone: filling is the most
+// the parent may be, not the size of its largest child, which made a stats
+// bar in a centred row the whole screen.
+const func stretches(s ui.Style) => s.alignItems != ui.Alignment.center && s.alignItems != ui.Alignment.end
+
+const func flexed(m Modifier, flex float, share func(float32) Modifier) Modifier {
+    return flex == 0.0 ? m : chain(m, share(float32(flex)))
+}
+
+const func modifierOf(s ui.Style, share func(float32) Modifier) Modifier {
+    return flexed(s == unset ? modifier : styleModifier(s, true), s.flex, share)
+}
+
+// modifierOf for a widget that paints its own surface.
+const func surfaceModifierOf(s ui.Style, share func(float32) Modifier) Modifier {
+    return flexed(s == unset ? modifier : styleModifier(s, false), s.flex, share)
+}
+
+const func fontWeightOf(w ui.FontWeight) option[FontWeight] {
+    return match w {
+        normal => null
+        bold => weightBold
+        lighter => weightLight
+        bolder => weightExtraBold
+    }
+}
+
+// Compose has upright and italic and no third face, so `oblique` is italic,
+// which is what a font with no true italic is synthesized into anyway.
+const func fontStyleOf(st ui.FontStyle) option[FontStyle] {
+    return match st {
+        normal => null
+        italic, oblique => slantItalic
+    }
+}
+
+// Only the generic families are names Compose has; any other is a font
+// resource an application registers, which SNGL cannot name yet.
+const func fontFamilyOf(name string) option[FontFamily] {
+    return match name {
+        "" => null
+        "monospace" => familyMonospace
+        "serif" => familySerif
+        "sans-serif" => familySansSerif
+        "cursive" => familyCursive
+        else => familyDefault
+    }
+}
+
+const func textAlignOf(a ui.TextAlign) TextAlign {
+    return match a {
+        left => alignUnspecified
+        center => alignCenter
+        right => alignEnd
+        justify => alignJustify
+    }
+}
+
+const func colorOf(c color) ComposeColor {
+    return c == unset.color ? unspecifiedColor : composeOf(c)
+}
+
+const func typeset(s ui.Style) bool {
+    return s.color != unset.color || s.fontSize != unset.fontSize || s.fontWeight != unset.fontWeight || s.fontStyle != unset.fontStyle || s.fontFamily != unset.fontFamily || s.textAlign != unset.textAlign
+}
+
+const func textStyle(s ui.Style) TextStyle {
+    return !typeset(s) ? plainTextStyle : textStyleOf(
+        color = colorOf(s.color),
+        fontSize = fontSizeOf(s.fontSize),
+        fontWeight = fontWeightOf(s.fontWeight),
+        fontStyle = fontStyleOf(s.fontStyle),
+        fontFamily = fontFamilyOf(s.fontFamily),
+        textAlign = textAlignOf(s.textAlign),
+    )
+}
+
+// A Material button is a stadium -- its shape token is CornerFull, which no
+// theme changes -- unless the Style names its corners.
+const func buttonShapeOf(s ui.Style) Shape {
+    return s.borderRadius == unset.borderRadius ? circleShape : roundedCorners(length(s.borderRadius))
+}

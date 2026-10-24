@@ -4,6 +4,7 @@ package htmlutil
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -14,31 +15,66 @@ import (
 // (typically ir.NodeInst.Props). A `style={...}` struct prop has its fields
 // flattened into individual CSS declarations.
 func BuildCSSStyleIR(props []ir.Arg) string {
-	var parts []string
+	type group struct {
+		field string
+		css   string
+	}
+	var groups []group
+	styled := map[string]bool{}
+	add := func(field string, value ir.Expr) {
+		if css := StylePropToCSSIR(field, value); css != "" {
+			groups = append(groups, group{field, css})
+		}
+		styled[field] = true
+	}
 	for _, p := range props {
 		if p.Name == "" {
 			continue
 		}
-		if p.Name == "style" {
-			if sl, ok := p.Value.(*ir.StructLit); ok {
-				for _, f := range sl.Fields {
-					if f.Name == "" || f.Value == nil {
-						continue
-					}
-					if css := StylePropToCSSIR(f.Name, f.Value); css != "" {
-						parts = append(parts, css)
-					}
+		if sl, ok := p.Value.(*ir.StructLit); ok && p.Name == "style" {
+			for _, f := range sl.Fields {
+				if f.Name != "" && f.Value != nil {
+					add(f.Name, f.Value)
 				}
-				continue
 			}
+			continue
 		}
-		if css := StylePropToCSSIR(p.Name, p.Value); css != "" {
-			parts = append(parts, css)
-		}
+		add(p.Name, p.Value)
 	}
-	sort.Strings(parts)
+	sort.SliceStable(groups, func(i, j int) bool {
+		if ri, rj := CascadeRank(groups[i].field), CascadeRank(groups[j].field); ri != rj {
+			return ri < rj
+		}
+		return groups[i].css < groups[j].css
+	})
+	parts := make([]string, 0, len(groups))
+	for _, g := range groups {
+		if g.field == "borderWidth" && slices.ContainsFunc(BorderLineFields, func(f string) bool { return styled[f] }) {
+			g.css, _, _ = strings.Cut(g.css, ";border-style:")
+		}
+		parts = append(parts, g.css)
+	}
 	return strings.Join(parts, ";")
 }
+
+// CascadeRank orders a Style field's declarations among the others, so the
+// narrower is written later and wins: a whole box, an axis, the rest, then a
+// side's border shorthand, which would otherwise lose to borderWidth.
+func CascadeRank(field string) int {
+	switch field {
+	case "padding", "margin", "border":
+		return 0
+	case "paddingX", "paddingY", "marginX", "marginY":
+		return 1
+	case "borderBottom", "borderLeft":
+		return 3
+	}
+	return 2
+}
+
+// BorderLineFields are the fields that say which line a border is drawn in,
+// over the solid one borderWidth writes as a default.
+var BorderLineFields = []string{"borderStyle", "border"}
 
 // StylePropToCSSIR converts a SNGL style property and IR expression to a CSS
 // declaration string, mirroring StylePropToCSS.

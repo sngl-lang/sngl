@@ -118,15 +118,15 @@ func setEntryText(e gtk.GtkEntry, text string)
 func calendarDate(c gtk.GtkCalendar) option[time.date]
 
 const component ui.text[platform](value, style) {
-    gtk.GtkLabel(label=value, style={...style}) {}
+    gtk.GtkLabel(label=value, look=lookOf(style)) {}
 }
 
 const component ui.button[platform](text, style, @click) {
-    gtk.GtkButton(label=text, style={...style}, @clicked { click() }) {}
+    gtk.GtkButton(label=text, look=lookOf(style), @clicked { click() }) {}
 }
 
 const component ui.checkbox[platform](label, checked, style, @change) {
-    gtk.GtkCheckButton(label=label, active=checked, style={...style}, @toggled(b) {
+    gtk.GtkCheckButton(label=label, active=checked, look=lookOf(style), @toggled(b) {
         if checkActive(b) != checked {
             checked = checkActive(b)
             change(checked)
@@ -134,9 +134,10 @@ const component ui.checkbox[platform](label, checked, style, @change) {
     }) {}
 }
 
-const component ui.image[platform](fit, @click, @load, @error, src) {
+const component ui.image[platform](fit, style, @click, @load, @error, src) {
     Image(
         fit = string(fit),
+        look = lookOf(style),
         @click {
             click()
         },
@@ -157,7 +158,7 @@ const component ui.image[platform](fit, @click, @load, @error, src) {
 // overflowed. Only a value the entry does not already show is written.
 const component ui.input[platform](value, style, @input, @change) {
     gtk.GtkEntry #entry(
-        style = {...style},
+        look = lookOf(style),
         @changed(e) {
             if entryText(e) != value {
                 value = entryText(e)
@@ -181,7 +182,7 @@ const component ui.input[platform](value, style, @input, @change) {
 // multi-line GtkTextView support is a future enhancement.)
 const component ui.textarea[platform](value, style, @input, @change) {
     gtk.GtkEntry #entry(
-        style = {...style},
+        look = lookOf(style),
         @changed(e) {
             if entryText(e) != value {
                 value = entryText(e)
@@ -203,19 +204,19 @@ const component ui.textarea[platform](value, style, @input, @change) {
 // --- Container widgets ---
 
 const component ui.vbox[platform](style, children) {
-    gtk.GtkBox(orientation="vertical", spacing=6, style={...style}) {
+    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 6), look=lookOf(style)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    gtk.GtkBox(orientation="horizontal", spacing=6, style={...style}) {
+    gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 6), look=lookOf(style)) {
         children
     }
 }
 
 const component ui.scroll[platform](style, @reachEnd, content) {
-    Scroll(style={...style}, @reachEnd { reachEnd() }) {
+    Scroll(look=lookOf(style), @reachEnd { reachEnd() }) {
         content
     }
 }
@@ -234,14 +235,14 @@ const component ui.scroll[platform](style, @reachEnd, content) {
 // integer division.
 const component ui.progress[platform](style, value, max, label, showValue) {
     if value != null {
-        gtk.GtkProgressBar(fraction=value / max, text=label, showText=showValue, style={...style}) {}
+        gtk.GtkProgressBar(fraction=value / max, text=label, showText=showValue, look=lookOf(style)) {}
     } else {
-        gtk.GtkProgressBar(fraction=0.0, text=label, showText=showValue, style={...style}) {}
+        gtk.GtkProgressBar(fraction=0.0, text=label, showText=showValue, look=lookOf(style)) {}
     }
 }
 
 const component ui.spinner[platform](label, style) {
-    gtk.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
+    gtk.GtkSpinner(spinning=true, tooltipText=label, look=lookOf(style)) {}
 }
 
 // `direction` is not forwarded: orientation is a GtkOrientation, and the
@@ -250,17 +251,17 @@ const component ui.spinner[platform](label, style) {
 // member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
 const component ui.divider[platform](style) {
-    gtk.GtkSeparator(style={...style}) {}
+    gtk.GtkSeparator(look=lookOf(style)) {}
 }
 
 const component ui.link[platform](text, href, disabled, style, @click) {
-    gtk.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
+    gtk.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), look=lookOf(style), @clicked { click() }) {}
 }
 
 // A flip reaches the program through `notify::active`: GtkSwitch's own
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
 const component ui.toggle[platform](checked, disabled, style, @change) {
-    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive(s) {
+    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), look=lookOf(style), @notifyActive(s) {
         if switchActive(s) != checked {
             checked = switchActive(s)
             change(checked)
@@ -282,7 +283,7 @@ func selectDay(cal gtk.GtkCalendar, y int, m int, d int)
 // One calendar, which a bound date selects whenever it changes. With no date
 // it shows GTK's own, today: a calendar always has a day selected.
 const component ui.datepicker[platform](value, disabled, style, @change) {
-    gtk.GtkCalendar #cal(sensitive=(disabled == false), style={...style}, @daySelected(c) {
+    gtk.GtkCalendar #cal(sensitive=(disabled == false), look=lookOf(style), @daySelected(c) {
         value = calendarDate(c)
         change(value)
     }) {}
@@ -296,13 +297,13 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
 // --- Layout ---
 
 const component ui.spacer[platform](style) {
-    gtk.GtkBox(hexpand=true, vexpand=true, style={...style}) {}
+    gtk.GtkBox(hexpand=true, vexpand=true, look=lookOf(style)) {}
 }
 
 // The same shape html uses: a wrapper carrying the tooltip text, with the
 // wrapped content inside it.
 const component ui.tooltip[platform](style, text, trigger) {
-    gtk.GtkBox(tooltipText=text, style={...style}) {
+    gtk.GtkBox(tooltipText=text, look=lookOf(style)) {
         trigger
     }
 }
@@ -311,20 +312,20 @@ const component ui.tooltip[platform](style, text, trigger) {
 // the hover, the press and the focus stop a button has.
 const component ui.card[platform](style, clickable, @click, content) {
     if clickable {
-        gtk.GtkButton(hasFrame=false, style={...style}, @clicked { click() }) {
+        gtk.GtkButton(hasFrame=false, look=lookOf(style), @clicked { click() }) {
             gtk.GtkFrame {
                 content
             }
         }
     } else {
-        gtk.GtkFrame(style={...style}) {
+        gtk.GtkFrame(look=lookOf(style)) {
             content
         }
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    gtk.GtkStack(style={...style}) {
+    gtk.GtkStack(look=lookOf(style)) {
         layers
     }
 }
@@ -335,16 +336,14 @@ const component ui.stack[platform](style, layers) {
 // GtkPositionType, so it is unreachable for the same reason as divider's
 // orientation.
 const component ui.popover[platform](style, open, @close, content) {
-    gtk.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
+    gtk.GtkPopover(visible=open && shown(style), autohide=true, look=lookBesideVisible(style), @closed { close() }) {
         content
     }
 }
 
-// A widget's `style` sets nothing on this platform but an expand for its
-// `flex`, so nothing below can mark a selection with a font weight; a check
-// button's `active` marks it instead.
-// Clicking the selected one unchecks it on screen and changes nothing, since
-// GTK has no way here to refuse the toggle.
+// A check button's `active` marks a table's or a tree's selection. Clicking
+// the selected one unchecks it on screen and changes nothing, since GTK has no
+// way here to refuse the toggle.
 
 // A row per box, each homogeneous so every cell takes an equal share and the
 // columns line up. GtkColumnView is GTK's table, but it is fed through a list
@@ -352,7 +351,7 @@ const component ui.popover[platform](style, open, @close, content) {
 // leads each row with a check button that selects it; a sortable header's
 // cells are buttons reporting the column.
 const component ui.table[platform](style, columns, selectable, selected, sortable, @select, @sort, rows) {
-    gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
+    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 0), look=lookOf(style)) {
         gtk.GtkBox(orientation="horizontal", homogeneous=true) {
             if selectable {
                 gtk.GtkLabel(label="") {}
@@ -403,7 +402,7 @@ const func _treeRows(items list[ui.treeItem], indent string) list[_TreeRow] {
 // Every node is shown, expanded or not: a row cannot be hidden and shown by
 // its parent's state without a var, which a const component has none of.
 const component ui.tree[platform](style, selected, @select, items) {
-    gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
+    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 0), look=lookOf(style)) {
         for var row = _treeRows(items, "") {
             gtk.GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
                 if checkActive(b) && selected != row.label {
@@ -417,7 +416,7 @@ const component ui.tree[platform](style, selected, @select, items) {
 
 const component ui.radio[platform](value, disabled, direction, style, @change, options) {
     if direction == ui.Orientation.horizontal {
-        gtk.GtkBox(orientation="horizontal", spacing=6, sensitive=(disabled == false), style={...style}) {
+        gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 6), sensitive=(disabled == false), look=lookOf(style)) {
             for var opt = options {
                 gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
                     if checkActive(b) && value != opt.label {
@@ -428,7 +427,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
             }
         }
     } else {
-        gtk.GtkBox(orientation="vertical", spacing=6, sensitive=(disabled == false), style={...style}) {
+        gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 6), sensitive=(disabled == false), look=lookOf(style)) {
             for var opt = options {
                 gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
                     if checkActive(b) && value != opt.label {
@@ -458,7 +457,7 @@ func dropDownLabel(d gtk.GtkDropDown) string
 // selecting the bound value whenever it does. `placeholder`, `multiple` and
 // the focus events have nothing to reach.
 const component ui.select[platform](value, disabled, style, @change, options) {
-    gtk.GtkDropDown #drop(sensitive=(disabled == false), style={...style}, @notifySelected(d) {
+    gtk.GtkDropDown #drop(sensitive=(disabled == false), look=lookOf(style), @notifySelected(d) {
         var v = dropDownLabel(d)
         if v != "" && v != value {
             value = v
@@ -479,7 +478,7 @@ const component ui.select[platform](value, disabled, style, @change, options) {
 // A menu's top-level entries, as html shows them; a submenu has nowhere to
 // open without a var.
 const component ui.menubar[platform](style, items) {
-    gtk.GtkBox(orientation="horizontal", spacing=4, style={...style}) {
+    gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 4), look=lookOf(style)) {
         for var it = items {
             gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
         }
@@ -488,7 +487,7 @@ const component ui.menubar[platform](style, items) {
 
 const component ui.menu[platform](style, open, items) {
     if open {
-        gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
+        gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 0), look=lookOf(style)) {
             for var it = items {
                 gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
             }
@@ -497,7 +496,7 @@ const component ui.menu[platform](style, open, items) {
 }
 
 const component ui.toolbar[platform](style, controls) {
-    gtk.GtkBox(orientation="horizontal", spacing=4, style={...style}) {
+    gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 4), look=lookOf(style)) {
         controls
     }
 }
@@ -506,18 +505,18 @@ const component ui.toolbar[platform](style, controls) {
 // and `position` and its bounds have nothing to reach.
 const component ui.splitview[platform](style, direction, panes) {
     if direction == "vertical" {
-        gtk.GtkBox(orientation="vertical", homogeneous=true, style={...style}) {
+        gtk.GtkBox(orientation="vertical", homogeneous=true, look=lookOf(style)) {
             panes
         }
     } else {
-        gtk.GtkBox(orientation="horizontal", homogeneous=true, style={...style}) {
+        gtk.GtkBox(orientation="horizontal", homogeneous=true, look=lookOf(style)) {
             panes
         }
     }
 }
 
 const component ui.drawer[platform](style, open, content) {
-    gtk.GtkBox(orientation="vertical", spacing=6, visible=open, style={...style}) {
+    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 6), visible=open && shown(style), look=lookBesideVisible(style)) {
         content
     }
 }
@@ -525,7 +524,7 @@ const component ui.drawer[platform](style, open, content) {
 // Shown in place rather than in a window of its own, as html shows it in the
 // page.
 const component ui.modal[platform](style, open, title, closable, @close, content) {
-    gtk.GtkFrame(visible=open, style={...style}) {
+    gtk.GtkFrame(visible=open && shown(style), look=lookBesideVisible(style)) {
         gtk.GtkBox(orientation="vertical", spacing=6) {
             if title != "" || closable {
                 gtk.GtkBox(orientation="horizontal", spacing=6) {
@@ -894,6 +893,7 @@ const component shapes.canvasText[platform](x, y, content, style) {
 #[marks.intrinsic("gtk4:Image")]
 component Image(
     fit     string,
+    look    gtk.Look,
     @click(),
     @load(),
     @failed(message string),
@@ -906,7 +906,7 @@ component Image(
 // the vertical adjustment's changes are what answer it.
 #[marks.intrinsic("gtk4:Scroll")]
 component Scroll(
-    style   ui.Style,
+    look    gtk.Look,
     @reachEnd(),
     content ...component option[ui.node],
 ) ui.node
@@ -1024,7 +1024,7 @@ const component shapes.canvasImage[platform](x, y, w, h, src) {
 
 #[marks.intrinsic("gtk4:Flow")]
 component Flow(
-    style   ui.Style,
+    look    gtk.Look,
     content ...component markup.span,
 ) ui.node
 
@@ -1040,7 +1040,7 @@ component Span(
 ) markup.span
 
 const component markup.richText[platform](style, content) {
-    Flow(style={...style}) {
+    Flow(look=lookOf(style)) {
         content
     }
 }

@@ -50,9 +50,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -97,6 +160,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt2 int
+	if px <= 0.0 {
+		__lt2 = 0
+	} else {
+		__lt2 = max(1, (int(px) / 8))
+	}
+	return __lt2
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt3 int
+		if s.MaxLines == 0 {
+			__lt3 = 0
+		} else {
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt3))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt4 lipgloss.Position
+	switch a {
+	case "center":
+		__lt4 = lipgloss.Center
+	case "right":
+		__lt4 = lipgloss.Right
+	default:
+		__lt4 = lipgloss.Left
+	}
+	return __lt4
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt6 = lipgloss.RoundedBorder()
+		} else {
+			__lt6 = lipgloss.NormalBorder()
+		}
+		__lt5 = __lt6
+	}
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return CellsOf(__lt8)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusNext() {
@@ -222,21 +418,22 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("flip"))
+		content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("flip"))
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
-		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.greeting))
+		content_1 = BoxLook(Style{}, true).Render(fmt.Sprint(m.greeting))
 		contentChildren = append(contentChildren, content_1)
-		var __lt1 string
+		var __lt11 string
 		if m.on {
-			__lt1 = "x"
+			__lt11 = "x"
 		} else {
-			__lt1 = "y"
+			__lt11 = "y"
 		}
 		var content_4 string
-		content_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+		content_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 		contentChildren = append(contentChildren, content_4)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -260,7 +457,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -312,13 +508,13 @@ func (m *Model) home_visible_handler(__visible bool) {
 
 func (m *Model) __n3_click_handler() {
 	m.on = !m.on
-	var __lt1 string
+	var __lt8 string
 	if m.on {
-		__lt1 = "x"
+		__lt8 = "x"
 	} else {
-		__lt1 = "y"
+		__lt8 = "y"
 	}
-	m.__n1.SetText(__lt1)
+	m.__n1.SetText(__lt8)
 }
 
 // homeClosed invokes the OnClosed callback on the #home widget; for tests.
@@ -380,7 +576,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("flip")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -388,14 +584,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.greeting)
 	m.__n2.Add(m.__n0)
-	var __lt2 string
+	var __lt9 string
 	if m.on {
-		__lt2 = "x"
+		__lt9 = "x"
 	} else {
-		__lt2 = "y"
+		__lt9 = "y"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt2)
+	m.__n1.SetText(__lt9)
 	m.__n2.Add(m.__n1)
 	m.home.Add(m.__n2)
 	fynelayout.AppAttach(m.home)
@@ -476,13 +672,13 @@ func (m *Model) home_visible_handler(__visible bool) {
 
 func (m *Model) __n3_clicked_handler() {
 	m.on = !m.on
-	var __lt1 string
+	var __lt17 string
 	if m.on {
-		__lt1 = "x"
+		__lt17 = "x"
 	} else {
-		__lt1 = "y"
+		__lt17 = "y"
 	}
-	gtk4rt.LabelSetText(m.__n1, __lt1)
+	gtk4rt.LabelSetLabel(m.__n1, __lt17)
 }
 
 func (m *Model) On() bool {
@@ -535,16 +731,16 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.greeting)
+	gtk4rt.LabelSetLabel(m.__n0, m.greeting)
 	gtk4rt.BoxAppend(m.__n2, m.__n0)
-	var __lt2 string
+	var __lt18 string
 	if m.on {
-		__lt2 = "x"
+		__lt18 = "x"
 	} else {
-		__lt2 = "y"
+		__lt18 = "y"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, __lt2)
+	gtk4rt.LabelSetLabel(m.__n1, __lt18)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	gtk4rt.BoxAppend(m.home, m.__n2)
 	gtk4rt.AppAttach(m.home)
@@ -557,8 +753,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:7a4e112e96aa75a26f09195c2451d1d0
+pass sha256:fce9ec19204c57d7244ec6cdfc12e3a2
 -- run/go/fyne --
-pass sha256:3abeb1b560847f1578f5cfe7996bed85
+pass sha256:a83038ccbacc8be15baa51cfc3d1f578
 -- run/go/gtk4 --
-pass sha256:bc9c3edd43692f289467fbd544cfd657
+pass sha256:9e417ceb0f053212765bfe36871c63b4

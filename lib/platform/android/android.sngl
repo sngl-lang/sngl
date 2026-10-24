@@ -97,11 +97,10 @@ func install(dir string)
 // A prop's name is the Compose argument it is emitted as, in declaration
 // order, and its value is written as any SNGL value is -- a host value
 // Compose takes there, `Alignment.CenterVertically` or a `MaterialTheme`
-// shape, is a `#[kt.native]` const declared below. Four names are the
-// emitter's own: `modifier` takes a Style and becomes the `Modifier` chain
-// built from it, `then` appends further Modifier values to that chain, and
-// `colors` and `shape`, given a Style, are rendered as the widget's own colour
-// set and outline.
+// shape, is a `#[kt.native]` const declared below, and what a Style becomes --
+// a Modifier, a TextStyle, a button's colors -- is built by style.sngl's
+// functions. Two names are the emitter's own: a test build adds its tag to
+// `modifier`, and `then` appends further Modifier values to it.
 //
 // Nothing here is Kotlin written as text. Every name the screen writes is
 // imported through the file's import set, which aliases one a program's own
@@ -150,12 +149,6 @@ const func Modifier.fillMaxWidth() Modifier
 #[kt.native("fillMaxHeight", "androidx.compose.foundation.layout.fillMaxHeight", method)]
 const func Modifier.fillMaxHeight() Modifier
 
-// A share of the main axis of the Row or Column it is read in, which is where
-// it is in scope: Compose declares it on RowScope and ColumnScope, so it needs
-// no import. Unlike a Style's `flex`, it leaves the other axis to the content.
-#[kt.native("weight", "", method)]
-const func Modifier.weight(share float) Modifier
-
 #[kt.native("androidx.compose.foundation.ScrollState")]
 struct ScrollState {}
 
@@ -167,6 +160,14 @@ const func rememberScrollState() ScrollState
 
 #[kt.native("verticalScroll", "androidx.compose.foundation.verticalScroll", method)]
 const func Modifier.verticalScroll(state ScrollState) Modifier
+
+// The size of the Box it is read in, which is where it is in scope: Compose
+// declares it on BoxScope.
+#[kt.native("matchParentSize", "", method)]
+const func Modifier.matchParentSize() Modifier
+
+#[kt.native("clickable", "androidx.compose.foundation.clickable", method, named)]
+const func Modifier.clickable(enabled bool, onClick func()) Modifier
 
 #[kt.native("androidx.compose.ui.Alignment.Vertical")]
 struct VerticalAlignment {}
@@ -180,6 +181,75 @@ const alignCenterVertically VerticalAlignment
 #[kt.native("Alignment.Bottom", "androidx.compose.ui.Alignment")]
 const alignBottom VerticalAlignment
 
+#[kt.native("androidx.compose.ui.Alignment.Horizontal")]
+struct HorizontalAlignment {}
+
+#[kt.native("Alignment.Start", "androidx.compose.ui.Alignment")]
+const alignStart HorizontalAlignment
+
+#[kt.native("Alignment.CenterHorizontally", "androidx.compose.ui.Alignment")]
+const alignCenterHorizontally HorizontalAlignment
+
+#[kt.native("Alignment.End", "androidx.compose.ui.Alignment")]
+const alignHorizontalEnd HorizontalAlignment
+
+// Where a Column puts its children down its height, and a Row along its
+// width. Compose's Center and the spreads are both at once, declared here once
+// per axis.
+#[kt.native("androidx.compose.foundation.layout.Arrangement.Vertical")]
+struct VerticalArrangement {}
+
+#[kt.native("androidx.compose.foundation.layout.Arrangement.Horizontal")]
+struct HorizontalArrangement {}
+
+#[kt.native("Arrangement.Top", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeTop VerticalArrangement
+
+#[kt.native("Arrangement.Bottom", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeBottom VerticalArrangement
+
+#[kt.native("Arrangement.Center", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeCenterV VerticalArrangement
+
+#[kt.native("Arrangement.SpaceBetween", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeSpaceBetweenV VerticalArrangement
+
+#[kt.native("Arrangement.SpaceAround", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeSpaceAroundV VerticalArrangement
+
+#[kt.native("Arrangement.SpaceEvenly", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeSpaceEvenlyV VerticalArrangement
+
+#[kt.native("Arrangement.spacedBy", "androidx.compose.foundation.layout.Arrangement")]
+const func spacedByV(space Dp) VerticalArrangement
+
+#[kt.native("Arrangement.spacedBy", "androidx.compose.foundation.layout.Arrangement")]
+const func spacedByAlignedV(space Dp, alignment VerticalAlignment) VerticalArrangement
+
+#[kt.native("Arrangement.Start", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeStart HorizontalArrangement
+
+#[kt.native("Arrangement.End", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeEnd HorizontalArrangement
+
+#[kt.native("Arrangement.Center", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeCenterH HorizontalArrangement
+
+#[kt.native("Arrangement.SpaceBetween", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeSpaceBetweenH HorizontalArrangement
+
+#[kt.native("Arrangement.SpaceAround", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeSpaceAroundH HorizontalArrangement
+
+#[kt.native("Arrangement.SpaceEvenly", "androidx.compose.foundation.layout.Arrangement")]
+const arrangeSpaceEvenlyH HorizontalArrangement
+
+#[kt.native("Arrangement.spacedBy", "androidx.compose.foundation.layout.Arrangement")]
+const func spacedByH(space Dp) HorizontalArrangement
+
+#[kt.native("Arrangement.spacedBy", "androidx.compose.foundation.layout.Arrangement")]
+const func spacedByAlignedH(space Dp, alignment HorizontalAlignment) HorizontalArrangement
+
 // The theme's accent, read off MaterialTheme where it is drawn.
 #[kt.native("MaterialTheme.colorScheme.primary", "androidx.compose.material3.MaterialTheme")]
 const primaryColor ComposeColor
@@ -189,6 +259,173 @@ struct Shape {}
 
 #[kt.native("MaterialTheme.shapes.medium", "androidx.compose.material3.MaterialTheme")]
 const mediumShape Shape
+
+// --- What a Style becomes (style.sngl) ---
+
+#[kt.native("androidx.compose.ui.unit.Dp")]
+struct Dp {}
+
+#[kt.native("Dp", "androidx.compose.ui.unit.Dp")]
+const func dpOf(value float32) Dp
+
+#[kt.native("Dp.Unspecified", "androidx.compose.ui.unit.Dp")]
+const unspecifiedDp Dp
+
+#[kt.native("androidx.compose.ui.unit.TextUnit")]
+struct TextUnit {}
+
+#[kt.native("androidx.compose.ui.unit.TextUnitType")]
+struct TextUnitType {}
+
+#[kt.native("TextUnit", "androidx.compose.ui.unit.TextUnit")]
+const func textUnitOf(value float32, type TextUnitType) TextUnit
+
+#[kt.native("TextUnitType.Sp", "androidx.compose.ui.unit.TextUnitType")]
+const spUnit TextUnitType
+
+#[kt.native("TextUnit.Unspecified", "androidx.compose.ui.unit.TextUnit")]
+const unspecifiedTextUnit TextUnit
+
+// A function and not a method, as `mergeTextStyle` is: a method's parameter of
+// its receiver's own type is read as the receiver.
+#[kt.native("then", "", method)]
+const func chain(m Modifier, next Modifier) Modifier
+
+#[kt.native("padding", "androidx.compose.foundation.layout.padding", method)]
+const func Modifier.paddingEach(start Dp, top Dp, end Dp, bottom Dp) Modifier
+
+#[kt.native("width", "androidx.compose.foundation.layout.width", method)]
+const func Modifier.width(width Dp) Modifier
+
+#[kt.native("height", "androidx.compose.foundation.layout.height", method)]
+const func Modifier.height(height Dp) Modifier
+
+#[kt.native("widthIn", "androidx.compose.foundation.layout.widthIn", method)]
+const func Modifier.widthIn(min Dp, max Dp) Modifier
+
+#[kt.native("heightIn", "androidx.compose.foundation.layout.heightIn", method)]
+const func Modifier.heightIn(min Dp, max Dp) Modifier
+
+#[kt.native("background", "androidx.compose.foundation.background", method)]
+const func Modifier.background(color ComposeColor, shape Shape) Modifier
+
+#[kt.native("border", "androidx.compose.foundation.border", method)]
+const func Modifier.border(width Dp, color ComposeColor, shape Shape) Modifier
+
+#[kt.native("clip", "androidx.compose.ui.draw.clip", method)]
+const func Modifier.clip(shape Shape) Modifier
+
+#[kt.native("alpha", "androidx.compose.ui.draw.alpha", method)]
+const func Modifier.alpha(alpha float32) Modifier
+
+#[kt.native("zIndex", "androidx.compose.ui.zIndex", method)]
+const func Modifier.zIndex(z float32) Modifier
+
+// A member of RowScope and ColumnScope rather than an extension anyone may
+// import, so it names nothing to import and compiles only where a Row's or a
+// Column's content is the receiver.
+#[kt.native("weight", "", method)]
+const func Modifier.weight(weight float32) Modifier
+
+#[kt.native("RoundedCornerShape", "androidx.compose.foundation.shape.RoundedCornerShape")]
+const func roundedCorners(size Dp) Shape
+
+#[kt.native("RectangleShape", "androidx.compose.ui.graphics.RectangleShape")]
+const rectangleShape Shape
+
+#[kt.native("CircleShape", "androidx.compose.foundation.shape.CircleShape")]
+const circleShape Shape
+
+#[kt.native("androidx.compose.material3.ButtonColors")]
+struct ButtonColors {}
+
+#[kt.native("ButtonDefaults.buttonColors", "androidx.compose.material3.ButtonDefaults", named)]
+const func buttonColorsOf(containerColor ComposeColor, contentColor ComposeColor) ButtonColors
+
+#[kt.native("androidx.compose.ui.graphics.Color.Unspecified")]
+const unspecifiedColor ComposeColor
+
+#[kt.native("androidx.compose.ui.text.TextStyle")]
+struct TextStyle {}
+
+#[kt.native("androidx.compose.ui.text.font.FontWeight")]
+struct FontWeight {}
+
+#[kt.native("androidx.compose.ui.text.font.FontStyle")]
+struct FontStyle {}
+
+#[kt.native("androidx.compose.ui.text.font.FontFamily")]
+struct FontFamily {}
+
+#[kt.native("androidx.compose.ui.text.style.TextAlign")]
+struct TextAlign {}
+
+#[kt.native("TextStyle", "androidx.compose.ui.text.TextStyle", named)]
+const func textStyleOf(
+    color      ComposeColor,
+    fontSize   TextUnit,
+    fontWeight option[FontWeight],
+    fontStyle  option[FontStyle],
+    fontFamily option[FontFamily],
+    textAlign  TextAlign,
+) TextStyle
+
+// What a Badge paints its pill with where its Style names no background, and
+// the text color Material pairs with a pill's.
+#[kt.native("BadgeDefaults.containerColor", "androidx.compose.material3.BadgeDefaults")]
+const badgeContainerColor ComposeColor
+
+#[kt.native("contentColorFor", "androidx.compose.material3.contentColorFor")]
+const func contentColorFor(background ComposeColor) ComposeColor
+
+// The theme's text style, which a Text takes when it is handed none.
+#[kt.native("LocalTextStyle.current", "androidx.compose.material3.LocalTextStyle")]
+const localTextStyle TextStyle
+
+#[kt.native("TextStyle.Default", "androidx.compose.ui.text.TextStyle")]
+const plainTextStyle TextStyle
+
+#[kt.native("merge", "", method)]
+const func mergeTextStyle(base TextStyle, over TextStyle) TextStyle
+
+#[kt.native("FontWeight.Bold", "androidx.compose.ui.text.font.FontWeight")]
+const weightBold FontWeight
+
+#[kt.native("FontWeight.Light", "androidx.compose.ui.text.font.FontWeight")]
+const weightLight FontWeight
+
+#[kt.native("FontWeight.ExtraBold", "androidx.compose.ui.text.font.FontWeight")]
+const weightExtraBold FontWeight
+
+#[kt.native("FontStyle.Italic", "androidx.compose.ui.text.font.FontStyle")]
+const slantItalic FontStyle
+
+#[kt.native("FontFamily.Default", "androidx.compose.ui.text.font.FontFamily")]
+const familyDefault FontFamily
+
+#[kt.native("FontFamily.Monospace", "androidx.compose.ui.text.font.FontFamily")]
+const familyMonospace FontFamily
+
+#[kt.native("FontFamily.Serif", "androidx.compose.ui.text.font.FontFamily")]
+const familySerif FontFamily
+
+#[kt.native("FontFamily.SansSerif", "androidx.compose.ui.text.font.FontFamily")]
+const familySansSerif FontFamily
+
+#[kt.native("FontFamily.Cursive", "androidx.compose.ui.text.font.FontFamily")]
+const familyCursive FontFamily
+
+#[kt.native("TextAlign.Unspecified", "androidx.compose.ui.text.style.TextAlign")]
+const alignUnspecified TextAlign
+
+#[kt.native("TextAlign.Center", "androidx.compose.ui.text.style.TextAlign")]
+const alignCenter TextAlign
+
+#[kt.native("TextAlign.End", "androidx.compose.ui.text.style.TextAlign")]
+const alignEnd TextAlign
+
+#[kt.native("TextAlign.Justify", "androidx.compose.ui.text.style.TextAlign")]
+const alignJustify TextAlign
 
 // The screen: what a `ui.window` is on android, which shows one. It is not
 // a composable: MainScreen draws its content, and a program declares one
@@ -208,15 +445,17 @@ component Screen(
 #[gen.renders(identity)]
 #[kt.native("Column", "androidx.compose.foundation.layout.Column")]
 component Column(
-    modifier ui.Style,
-    then     list[Modifier],
-    children ...component,
+    modifier            Modifier,
+    then                list[Modifier],
+    verticalArrangement VerticalArrangement = arrangeTop,
+    horizontalAlignment HorizontalAlignment = alignStart,
+    children            ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("Box", "androidx.compose.foundation.layout.Box")]
 component Box(
-    modifier ui.Style,
+    modifier Modifier,
     then     list[Modifier],
     children ...component,
 ) ui.node
@@ -224,16 +463,17 @@ component Box(
 #[gen.renders(identity)]
 #[kt.native("Row", "androidx.compose.foundation.layout.Row")]
 component Row(
-    modifier          ui.Style,
-    then              list[Modifier],
-    verticalAlignment VerticalAlignment,
-    children          ...component,
+    modifier              Modifier,
+    then                  list[Modifier],
+    horizontalArrangement HorizontalArrangement = arrangeStart,
+    verticalAlignment     VerticalAlignment = alignTop,
+    children              ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("Spacer", "androidx.compose.foundation.layout.Spacer")]
 component Spacer(
-    modifier ui.Style,
+    modifier Modifier,
     then     list[Modifier],
 ) ui.node
 
@@ -241,23 +481,21 @@ component Spacer(
 #[kt.native("Text", "androidx.compose.material3.Text")]
 component Text(
     text     string,
-    modifier ui.Style,
-    // Typography, as Compose's own `style` argument: a TextStyle built from
-    // the Style's font and colour fields.
-    style    ui.Style,
+    modifier Modifier,
+    style    TextStyle,
     color    ComposeColor,
 ) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("HorizontalDivider", "androidx.compose.material3.HorizontalDivider")]
 component HorizontalDivider(
-    modifier ui.Style,
+    modifier Modifier,
 ) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("CircularProgressIndicator", "androidx.compose.material3.CircularProgressIndicator")]
 component CircularProgressIndicator(
-    modifier ui.Style,
+    modifier Modifier,
 ) ui.node
 
 // Compose splits determinate from indeterminate by whether the `progress`
@@ -269,19 +507,18 @@ component CircularProgressIndicator(
 #[kt.native("LinearProgressIndicator", "androidx.compose.material3.LinearProgressIndicator")]
 component LinearProgressIndicator(
     progress func() float32,
-    modifier ui.Style,
+    modifier Modifier,
 ) ui.node
 
-// `colors` is the same Style the modifier gets. A Button paints its own
-// surface, so a background in the modifier lands behind the pill rather than
-// on it -- the colour has to go through the widget's own colour set.
+// A Button paints its own surface, so a background in the modifier lands
+// behind the pill rather than on it -- the color goes through `colors`.
 #[gen.renders(identity)]
 #[kt.native("Button", "androidx.compose.material3.Button")]
 component Button(
     onClick  func(),
-    modifier ui.Style,
-    colors   ui.Style,
-    shape    ui.Style,
+    modifier Modifier,
+    colors   ButtonColors,
+    shape    Shape,
     children ...component,
 ) ui.node
 
@@ -290,9 +527,9 @@ component Button(
 // which Compose takes as the pill's and the text's.
 #[kt.native("Badge", "androidx.compose.material3.Badge")]
 component Badge(
-    modifier       ui.Style,
-    containerColor ui.Style,
-    contentColor   ui.Style,
+    modifier       Modifier,
+    containerColor ComposeColor,
+    contentColor   ComposeColor,
     children       ...component,
 ) ui.node
 
@@ -300,7 +537,7 @@ component Badge(
 #[kt.native("Card", "androidx.compose.material3.Card")]
 component Card(
     onClick  func(),
-    modifier ui.Style,
+    modifier Modifier,
     children ...component,
 ) ui.node
 
@@ -316,7 +553,7 @@ component TabRow(
 #[gen.renders(identity)]
 #[kt.native("Tab", "androidx.compose.material3.Tab")]
 component Tab(
-    modifier ui.Style,
+    modifier Modifier,
     selected bool,
     enabled  bool,
     onClick  func(),
@@ -354,16 +591,18 @@ component OutlinedTextField(
     value         string,
     minLines      int,
     readOnly      bool,
-    modifier      ui.Style,
+    enabled       bool,
+    singleLine    bool,
+    modifier      Modifier,
     // Compose passes the new text.
     onValueChange func(value string),
     label         option[component ui.node],
+    trailingIcon  option[component ui.node],
 ) ui.node
 
 // A field a date is typed into, with a button opening Material's date picker.
 // It is Kotlin the platform ships with the app (codegen/platform/android/
-// datefield.kt), since the half-typed text and whether the dialog is open are
-// state its render reads, and a const override has nowhere to hold that.
+// datefield.kt), which keeps the half-typed text and whether the dialog is open.
 // `onValueChange` is a date once one is typed or picked, or null when the
 // field is cleared.
 #[gen.renders(identity)]
@@ -372,7 +611,7 @@ component SnglDateField(
     value         option[time.date],
     label         string,
     enabled       bool,
-    modifier      ui.Style,
+    modifier      Modifier,
     onValueChange func(value option[time.date]),
 ) ui.node
 
@@ -385,27 +624,17 @@ component SnglDateField(
 #[gen.renders(identity)]
 #[intrinsic("android:SnglScroll")]
 component SnglScroll(
-    modifier   ui.Style,
+    modifier   Modifier,
     onReachEnd func(),
     children   ...component,
 ) ui.node
 
-// SnglSelect is a select: a read-only field showing the label chosen, which a
-// tap opens a menu of the choices from. It is Kotlin the platform ships with
-// the app (codegen/platform/android/select.kt), since whether the menu is open
-// is state its render reads. `onValueChange` is a label picked in the menu, or
-// a choice's label a test sets as the field's text, and never the value it
-// already has.
-#[gen.renders(identity)]
-#[intrinsic("android:SnglSelect")]
-component SnglSelect(
-    value         string,
-    options       list[string],
-    label         string,
-    enabled       bool,
-    modifier      ui.Style,
-    onValueChange func(value string),
-) ui.node
+// Makes a select's box a dropdown list that setting the text of chooses by:
+// `onText` is handed the text set, by a test or an accessibility service.
+// Kotlin the platform ships (codegen/platform/android/chooses.kt), since
+// Compose says it in a lambda with a receiver, which SNGL has no way to write.
+#[kt.native("snglChooses", "", method)]
+const func Modifier.snglChooses(onText func(string)) Modifier
 
 #[gen.renders(identity)]
 #[kt.native("Dialog", "androidx.compose.ui.window.Dialog")]
@@ -419,4 +648,19 @@ component Dialog(
 component Surface(
     shape    Shape,
     children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[kt.native("DropdownMenu", "androidx.compose.material3.DropdownMenu")]
+component DropdownMenu(
+    expanded         bool,
+    onDismissRequest func(),
+    children         ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[kt.native("DropdownMenuItem", "androidx.compose.material3.DropdownMenuItem")]
+component DropdownMenuItem(
+    onClick func(),
+    text    component ui.node,
 ) ui.node

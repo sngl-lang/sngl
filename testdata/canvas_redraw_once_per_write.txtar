@@ -62,7 +62,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -169,7 +168,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.__n2Ctx = snglcanvas.New(40, 40)
 	m._canvasDraw0(m.__n2Ctx)
 	m.__n2 = canvas.NewImageFromImage(m.__n2Ctx.Result())
@@ -193,4 +192,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:469c2753fb6877447599b4e9f8611f0e
+pass sha256:0d2f741da64e3491b63a9a405df3281b

@@ -57,7 +57,7 @@ func testSwitchingDropsTheFirstPanel(t test.Test, c main) {
     t.assert(c.flavor == null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:d53f95473eb700ba15e96cc5f0404ab7
+sha256:d66c43dd738e0aa209e0f004bb59011a
 {
   "results": [
     {
@@ -67,7 +67,7 @@ sha256:d53f95473eb700ba15e96cc5f0404ab7
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:967774e0a3967073bb91d4f0de5ed2c2
+sha256:a484c29f5c199e524d80a2dbf0a6e53a
 {
   "results": [
     {
@@ -77,7 +77,7 @@ sha256:967774e0a3967073bb91d4f0de5ed2c2
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:54d154ad625686daf02aaf90dd2204c0
+sha256:d3f7f8febb76da8be01430cbfe83a4e0
 {
   "results": [
     {
@@ -87,7 +87,7 @@ sha256:54d154ad625686daf02aaf90dd2204c0
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:0aa46c861b4f336122248b509d8d2174
+sha256:2e1b5ff051de8662b2534741c48e3a9b
 {
   "results": [
     {
@@ -97,7 +97,7 @@ sha256:0aa46c861b4f336122248b509d8d2174
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:b1956924901b9e71a3957c61b20a181e
+sha256:a82420fffd7a29b2076d6d7a2b63288f
 {
   "results": [
     {

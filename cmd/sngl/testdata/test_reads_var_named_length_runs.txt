@@ -36,7 +36,7 @@ window {
     box
 }
 -- testrun/bubbletea/go/app.sngl/box/1 --
-sha256:fe3308f58e716d0a616efe2d7c587c20
+sha256:2dd9a1d8c03cb2a4d9b2f1a0fc6e11f6
 {
   "results": [
     {
@@ -46,7 +46,7 @@ sha256:fe3308f58e716d0a616efe2d7c587c20
   ]
 }
 -- testrun/fyne/go/app.sngl/box/1 --
-sha256:5c10f710e160a9d9e98b36427c8ecd91
+sha256:020ef88a41879a8bd4efff6ab70c18cd
 {
   "results": [
     {
@@ -56,7 +56,7 @@ sha256:5c10f710e160a9d9e98b36427c8ecd91
   ]
 }
 -- testrun/gtk4/go/app.sngl/box/1 --
-sha256:93bb5c756679604ea3726b5101c81406
+sha256:641ca5a87726b240289d3ec1da0e90aa
 {
   "results": [
     {

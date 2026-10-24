@@ -65,14 +65,77 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
 type Card__record struct {
 	Label string
 	__id  int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -108,6 +171,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -311,7 +507,7 @@ func (m Model) View() tea.View {
 			if contentPart_0_0ItemFocused {
 				contentPart_0_0ItemPrefix = ">"
 			}
-			contentPart_0_0Item = lipgloss.NewStyle().Render(contentPart_0_0ItemPrefix + " " + fmt.Sprint(c.Label))
+			contentPart_0_0Item = BoxLook(Style{}, true).Render(contentPart_0_0ItemPrefix + " " + fmt.Sprint(c.Label))
 			__focusPos0++
 			contentPart_0_0Items = append(contentPart_0_0Items, contentPart_0_0Item)
 		}
@@ -320,6 +516,7 @@ func (m Model) View() tea.View {
 			contentPart_0Children = append(contentPart_0Children, contentPart_0_0)
 		}
 		contentPart_0 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_0Children...)
+		contentPart_0 = BoxLook(Style{}, true).Render(contentPart_0)
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		__focusPos1 := 0
@@ -331,7 +528,7 @@ func (m Model) View() tea.View {
 			var contentPart_1Item string
 			if k == m.shown {
 				if c.__id == 0 {
-					contentPart_1Item = lipgloss.NewStyle().Render(fmt.Sprint("first"))
+					contentPart_1Item = BoxLook(Style{}, true).Render(fmt.Sprint("first"))
 				} else {
 					if c.__id == 1 {
 						var contentPart_1ItemParts []string
@@ -341,11 +538,11 @@ func (m Model) View() tea.View {
 						if contentPart_1ItemPart_0Focused {
 							contentPart_1ItemPart_0Prefix = ">"
 						}
-						contentPart_1ItemPart_0 = lipgloss.NewStyle().Render(contentPart_1ItemPart_0Prefix + " " + fmt.Sprint("hit"))
+						contentPart_1ItemPart_0 = BoxLook(Style{}, true).Render(contentPart_1ItemPart_0Prefix + " " + fmt.Sprint("hit"))
 						__focusPos1++
 						contentPart_1ItemParts = append(contentPart_1ItemParts, contentPart_1ItemPart_0)
 						var contentPart_1ItemPart_1 string
-						contentPart_1ItemPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits)))
+						contentPart_1ItemPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(m.hits)))
 						contentPart_1ItemParts = append(contentPart_1ItemParts, contentPart_1ItemPart_1)
 						contentPart_1Item = lipgloss.JoinVertical(lipgloss.Left, contentPart_1ItemParts...)
 					}
@@ -438,15 +635,15 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 			__inst0_next := []*__child0Instance{}
 			var __inst0_i int = 0
-			for k, c__r0 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+			for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 				if k == m.shown {
-					if c__r0.__id == 0 {
+					if c__r1.__id == 0 {
 						__n2 := widget.NewLabel("")
 						__n2.SetText("first")
 						fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
 						m.__slot0 = append(m.__slot0, __n2)
 					} else {
-						if c__r0.__id == 1 {
+						if c__r1.__id == 1 {
 							__n3 := widget.NewButton("", nil)
 							__n3.SetText("hit")
 							__n3.OnTapped = func() {
@@ -539,10 +736,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n5 = container.NewHBox()
-	for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	m.__n5 = fynelayout.NewHBox()
+	for k, c__r2 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		m.__n6 = widget.NewButton("", nil)
-		m.__n6.SetText(c__r1.Label)
+		m.__n6.SetText(c__r2.Label)
 		m.__n6.OnTapped = func() {
 			m.shown = k
 			m.__renderSlot0(m.__n1.Container)
@@ -668,15 +865,15 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			__inst0_next := []*__child0Instance{}
 			var __inst0_i int = 0
-			for k, c__r0 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+			for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 				if k == m.shown {
-					if c__r0.__id == 0 {
+					if c__r1.__id == 0 {
 						__n2 := gtk4rt.LabelNew("")
-						gtk4rt.LabelSetText(__n2, "first")
+						gtk4rt.LabelSetLabel(__n2, "first")
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 						m.__slot0 = append(m.__slot0, __n2)
 					} else {
-						if c__r0.__id == 1 {
+						if c__r1.__id == 1 {
 							__n3 := gtk4rt.ButtonNew()
 							gtk4rt.ButtonSetLabel(__n3, "hit")
 							gtk4rt.Connect(__n3, "clicked", func() {
@@ -752,7 +949,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.__prop___p0))
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -760,7 +957,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.__prop___p0))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -809,9 +1006,9 @@ func (m *Model) buildWidgetTree() {
 	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(m.__n5, 6)
-	for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	for k, c__r2 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		m.__n6 = gtk4rt.ButtonNew()
-		gtk4rt.ButtonSetLabel(m.__n6, c__r1.Label)
+		gtk4rt.ButtonSetLabel(m.__n6, c__r2.Label)
 		gtk4rt.Connect(m.__n6, "clicked", func() {
 			m.shown = k
 			m.__renderSlot0(m.__n1)
@@ -845,11 +1042,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Card__record(
     var label: String = "",
@@ -882,7 +1082,7 @@ fun MainScreen() {
                 for ((k, c) in listOf(Card__record(label = "one", __id = 0), Card__record(label = "two", __id = 1)).withIndex()) {
                     Button(onClick = {
                         shown = k
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = c.label, modifier = Modifier)
                     }
                 }
@@ -890,15 +1090,15 @@ fun MainScreen() {
             for ((k, c) in listOf(Card__record(label = "one", __id = 0), Card__record(label = "two", __id = 1)).withIndex()) {
                 if ((k == shown)) {
                     if ((c.__id == 0)) {
-                        Text(text = "first", modifier = Modifier.safeDrawingPadding())
+                        Text(text = "first", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                     } else {
                         if ((c.__id == 1)) {
                             Button(onClick = {
                                 hits = (hits + 1)
-                            }, modifier = Modifier.safeDrawingPadding()) {
+                            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                                 Text(text = "hit", modifier = Modifier)
                             }
-                            Text(text = hits.toString(), modifier = Modifier.safeDrawingPadding())
+                            Text(text = hits.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                         }
                     }
                 }
@@ -1085,12 +1285,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bdd02ae07bf076dfda0dbf716850457c
+pass sha256:ecd76b5fd847e8132d522362bbc1d5ff
 -- run/go/fyne --
-pass sha256:f9c82b09bbae86080ad268e841a06cfe
+pass sha256:e043e88fd37fb17c3d5b86d181ba8e84
 -- run/go/gtk4 --
-pass sha256:b1534841f6d372c1e8ee52433e18f89f
+pass sha256:71e3849f6f0cf4d035c737c3b3f4d713
 -- run/kotlin/android --
-pass sha256:6142d0a2a1dd02fcfd0433a6dd3d4bf0
+pass sha256:0d149794264a32c4a0396e7591162bfc
 -- run/none/html --
 pass sha256:372c8a2da610cb914374c00c742cf479

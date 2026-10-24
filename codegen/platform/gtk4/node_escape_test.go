@@ -5,12 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
-	"duckfam.us/sngl/internal/checker"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/internal/parser"
-	"duckfam.us/sngl/ir"
 )
 
 // recursiveTreeSrc is the repro: a recursive TreeView component that
@@ -41,38 +36,6 @@ window {
 }
 `
 
-func generateGTK4Model(t *testing.T, src string) string {
-	t.Helper()
-	doc, err := parser.Parse("t.sngl", []byte(src))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s", d.Msg)
-		}
-	}
-	g := &Generator{}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
-	if !ok {
-		t.Fatal("model.go not found in generated files")
-	}
-	return string(modelSrc)
-}
-
 // renderTreeViewBody extracts the body of TreeView's instance ctor from the
 // generated model.go source.
 func renderTreeViewBody(t *testing.T, src string) string {
@@ -100,7 +63,7 @@ func renderTreeViewBody(t *testing.T, src string) string {
 // is `c.__nX` on a record the frame allocated for itself, or a bare local.
 // `m.__nX` is the one spelling that is not.
 func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
-	model := generateGTK4Model(t, recursiveTreeSrc)
+	model := generateGTK4ModelBuilt(t, recursiveTreeSrc)
 	body := renderTreeViewBody(t, model)
 
 	// The internal vbox/text temps must NOT be Model fields inside the

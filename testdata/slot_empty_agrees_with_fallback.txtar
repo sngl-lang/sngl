@@ -70,10 +70,73 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -126,6 +189,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __effect0_mount() {
@@ -317,48 +513,49 @@ func (m Model) View() tea.View {
 	var part0 string
 	if m.visible__inst0 {
 		var part0Parts []string
-		var __lt0 string
+		var __lt10 string
 		if !m.a__inst0 && !m.b__inst0 {
-			__lt0 = "asks: empty"
+			__lt10 = "asks: empty"
 		} else {
-			__lt0 = "asks: full"
+			__lt10 = "asks: full"
 		}
 		var part0Part_2 string
-		part0Part_2 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+		part0Part_2 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
 		part0Parts = append(part0Parts, part0Part_2)
 		var part0Part_3 string
 		var part0Part_3Children []string
 		var part0Part_3_0 string
 		if m.a__inst0 {
-			part0Part_3_0 = lipgloss.NewStyle().Render(fmt.Sprint("a"))
+			part0Part_3_0 = BoxLook(Style{}, true).Render(fmt.Sprint("a"))
 		}
 		if part0Part_3_0 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_0)
 		}
 		var part0Part_3_1 string
 		if m.b__inst0 {
-			part0Part_3_1 = lipgloss.NewStyle().Render(fmt.Sprint("b"))
+			part0Part_3_1 = BoxLook(Style{}, true).Render(fmt.Sprint("b"))
 		}
 		if part0Part_3_1 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_1)
 		}
 		var part0Part_3_2 string
 		if !m.a__inst0 && !m.b__inst0 {
-			part0Part_3_2 = lipgloss.NewStyle().Render(fmt.Sprint("fallback"))
+			part0Part_3_2 = BoxLook(Style{}, true).Render(fmt.Sprint("fallback"))
 		}
 		if part0Part_3_2 != "" {
 			part0Part_3Children = append(part0Part_3Children, part0Part_3_2)
 		}
 		part0Part_3 = lipgloss.JoinVertical(lipgloss.Left, part0Part_3Children...)
+		part0Part_3 = BoxLook(Style{}, true).Render(part0Part_3)
 		part0Parts = append(part0Parts, part0Part_3)
-		var __lt1 string
+		var __lt11 string
 		if len(m.xs__inst0) == 0 {
-			__lt1 = "asks: empty"
+			__lt11 = "asks: empty"
 		} else {
-			__lt1 = "asks: full"
+			__lt11 = "asks: full"
 		}
 		var part0Part_6 string
-		part0Part_6 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+		part0Part_6 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 		part0Parts = append(part0Parts, part0Part_6)
 		var part0Part_7 string
 		var part0Part_7Children []string
@@ -367,7 +564,7 @@ func (m Model) View() tea.View {
 		for _, x := range m.xs__inst0 {
 			_ = x
 			var part0Part_7_0Item string
-			part0Part_7_0Item = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(x)))
+			part0Part_7_0Item = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(x)))
 			part0Part_7_0Items = append(part0Part_7_0Items, part0Part_7_0Item)
 		}
 		part0Part_7_0 = strings.Join(part0Part_7_0Items, "\n")
@@ -376,26 +573,28 @@ func (m Model) View() tea.View {
 		}
 		var part0Part_7_1 string
 		if len(m.xs__inst0) == 0 {
-			part0Part_7_1 = lipgloss.NewStyle().Render(fmt.Sprint("fallback"))
+			part0Part_7_1 = BoxLook(Style{}, true).Render(fmt.Sprint("fallback"))
 		}
 		if part0Part_7_1 != "" {
 			part0Part_7Children = append(part0Part_7Children, part0Part_7_1)
 		}
 		part0Part_7 = lipgloss.JoinVertical(lipgloss.Left, part0Part_7Children...)
+		part0Part_7 = BoxLook(Style{}, true).Render(part0Part_7)
 		part0Parts = append(part0Parts, part0Part_7)
-		__lt2 := "asks: empty"
+		__lt12 := "asks: empty"
 		var part0Part_9 string
-		part0Part_9 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+		part0Part_9 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
 		part0Parts = append(part0Parts, part0Part_9)
 		var part0Part_10 string
 		var part0Part_10Children []string
 		var part0Part_10_0 string
-		part0Part_10_0 = lipgloss.NewStyle().Render(fmt.Sprint("fallback"))
+		part0Part_10_0 = BoxLook(Style{}, true).Render(fmt.Sprint("fallback"))
 		part0Part_10Children = append(part0Part_10Children, part0Part_10_0)
 		part0Part_10 = lipgloss.JoinVertical(lipgloss.Left, part0Part_10Children...)
+		part0Part_10 = BoxLook(Style{}, true).Render(part0Part_10)
 		part0Parts = append(part0Parts, part0Part_10)
 		var part0Part_11 string
-		part0Part_11 = lipgloss.NewStyle().Render(fmt.Sprint(("mounted " + fmt.Sprint(m.mounted__inst0))))
+		part0Part_11 = BoxLook(Style{}, true).Render(fmt.Sprint(("mounted " + fmt.Sprint(m.mounted__inst0))))
 		part0Parts = append(part0Parts, part0Part_11)
 		var part0Part_12 string
 		part0Part_12Focused := (m.__focusID == 0)
@@ -403,7 +602,7 @@ func (m Model) View() tea.View {
 		if part0Part_12Focused {
 			part0Part_12Prefix = ">"
 		}
-		part0Part_12 = lipgloss.NewStyle().Render(part0Part_12Prefix + " " + fmt.Sprint("show"))
+		part0Part_12 = BoxLook(Style{}, true).Render(part0Part_12Prefix + " " + fmt.Sprint("show"))
 		part0Parts = append(part0Parts, part0Part_12)
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
 	}
@@ -432,7 +631,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -701,23 +899,23 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_click_handler() {
 	m.b__inst0 = true
-	var __lt3 string
+	var __lt10 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt3 = "asks: empty"
+		__lt10 = "asks: empty"
 	} else {
-		__lt3 = "asks: full"
+		__lt10 = "asks: full"
 	}
-	m.two.SetText(__lt3)
+	m.two.SetText(__lt10)
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	m.xs__inst0 = []int{7}
-	var __lt4 string
+	var __lt11 string
 	if len(m.xs__inst0) == 0 {
-		__lt4 = "asks: empty"
+		__lt11 = "asks: empty"
 	} else {
-		__lt4 = "asks: full"
+		__lt11 = "asks: full"
 	}
-	m.loop.SetText(__lt4)
+	m.loop.SetText(__lt11)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 }
@@ -779,38 +977,38 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	var __lt0 string
+	var __lt7 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt0 = "asks: empty"
+		__lt7 = "asks: empty"
 	} else {
-		__lt0 = "asks: full"
+		__lt7 = "asks: full"
 	}
 	m.two = widget.NewLabel("")
-	m.two.SetText(__lt0)
+	m.two.SetText(__lt7)
 	m.__n0.Add(m.two)
-	m.__n7 = container.NewVBox()
+	m.__n7 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n7)
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	m.__n0.Add(m.__n7)
-	var __lt1 string
+	var __lt8 string
 	if len(m.xs__inst0) == 0 {
-		__lt1 = "asks: empty"
+		__lt8 = "asks: empty"
 	} else {
-		__lt1 = "asks: full"
+		__lt8 = "asks: full"
 	}
 	m.loop = widget.NewLabel("")
-	m.loop.SetText(__lt1)
+	m.loop.SetText(__lt8)
 	m.__n0.Add(m.loop)
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 	m.__n0.Add(m.__n8)
-	__lt2 := "asks: empty"
+	__lt9 := "asks: empty"
 	m.lifetime = widget.NewLabel("")
-	m.lifetime.SetText(__lt2)
+	m.lifetime.SetText(__lt9)
 	m.__n0.Add(m.lifetime)
-	m.__n9 = container.NewVBox()
+	m.__n9 = fynelayout.NewVBox()
 	m.__n10 = widget.NewLabel("")
 	m.__n10.SetText("fallback")
 	m.__n9.Add(m.__n10)
@@ -948,7 +1146,7 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	m.mounted__inst0 = (m.mounted__inst0 + 1)
-	gtk4rt.LabelSetText(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
 }
 
 func (m *Model) __effect0_down() {
@@ -1006,7 +1204,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			if m.a__inst0 {
 				__n2 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n2, "a")
+				gtk4rt.LabelSetLabel(__n2, "a")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
 			}
@@ -1030,7 +1228,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 			if m.b__inst0 {
 				__n3 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n3, "b")
+				gtk4rt.LabelSetLabel(__n3, "b")
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 				m.__slot1 = append(m.__slot1, __n3)
 			}
@@ -1054,7 +1252,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
 			if !m.a__inst0 && !m.b__inst0 {
 				__n4 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n4, "fallback")
+				gtk4rt.LabelSetLabel(__n4, "fallback")
 				gtk4rt.InsertBefore(parent, m.__slot2_at, __n4)
 				m.__slot2 = append(m.__slot2, __n4)
 			}
@@ -1078,7 +1276,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 			m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
 			for _, x := range m.xs__inst0 {
 				__n5 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n5, fmt.Sprint(x))
+				gtk4rt.LabelSetLabel(__n5, fmt.Sprint(x))
 				gtk4rt.InsertBefore(parent, m.__slot3_at, __n5)
 				m.__slot3 = append(m.__slot3, __n5)
 			}
@@ -1102,7 +1300,7 @@ func (m *Model) __renderSlot4(parent gtk4rt.Handle) {
 			m.__slot4_at = gtk4rt.SlotAnchor(parent, m.__slot4_at)
 			if len(m.xs__inst0) == 0 {
 				__n6 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n6, "fallback")
+				gtk4rt.LabelSetLabel(__n6, "fallback")
 				gtk4rt.InsertBefore(parent, m.__slot4_at, __n6)
 				m.__slot4 = append(m.__slot4, __n6)
 			}
@@ -1121,23 +1319,23 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_clicked_handler() {
 	m.b__inst0 = true
-	var __lt3 string
+	var __lt19 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt3 = "asks: empty"
+		__lt19 = "asks: empty"
 	} else {
-		__lt3 = "asks: full"
+		__lt19 = "asks: full"
 	}
-	gtk4rt.LabelSetText(m.two, __lt3)
+	gtk4rt.LabelSetLabel(m.two, __lt19)
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	m.xs__inst0 = []int{7}
-	var __lt4 string
+	var __lt20 string
 	if len(m.xs__inst0) == 0 {
-		__lt4 = "asks: empty"
+		__lt20 = "asks: empty"
 	} else {
-		__lt4 = "asks: full"
+		__lt20 = "asks: full"
 	}
-	gtk4rt.LabelSetText(m.loop, __lt4)
+	gtk4rt.LabelSetLabel(m.loop, __lt20)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 }
@@ -1191,14 +1389,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	var __lt0 string
+	var __lt16 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt0 = "asks: empty"
+		__lt16 = "asks: empty"
 	} else {
-		__lt0 = "asks: full"
+		__lt16 = "asks: full"
 	}
 	m.two = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.two, __lt0)
+	gtk4rt.LabelSetLabel(m.two, __lt16)
 	gtk4rt.BoxAppend(m.__n0, m.two)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
@@ -1207,14 +1405,14 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
-	var __lt1 string
+	var __lt17 string
 	if len(m.xs__inst0) == 0 {
-		__lt1 = "asks: empty"
+		__lt17 = "asks: empty"
 	} else {
-		__lt1 = "asks: full"
+		__lt17 = "asks: full"
 	}
 	m.loop = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.loop, __lt1)
+	gtk4rt.LabelSetLabel(m.loop, __lt17)
 	gtk4rt.BoxAppend(m.__n0, m.loop)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
@@ -1222,19 +1420,19 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
-	__lt2 := "asks: empty"
+	__lt18 := "asks: empty"
 	m.lifetime = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.lifetime, __lt2)
+	gtk4rt.LabelSetLabel(m.lifetime, __lt18)
 	gtk4rt.BoxAppend(m.__n0, m.lifetime)
 	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n9, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n9, 6)
 	m.__n10 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n10, "fallback")
+	gtk4rt.LabelSetLabel(m.__n10, "fallback")
 	gtk4rt.BoxAppend(m.__n9, m.__n10)
 	gtk4rt.BoxAppend(m.__n0, m.__n9)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.show = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.show, "show")
@@ -1272,12 +1470,15 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Button
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1303,41 +1504,41 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (if ((!a__inst0 && !b__inst0)) "asks: empty" else "asks: full"), modifier = Modifier.testTag("two").safeDrawingPadding())
+            Text(text = (if ((!a__inst0 && !b__inst0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
                 if (a__inst0) {
-                    Text(text = "a", modifier = Modifier)
+                    Text(text = "a", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 if (b__inst0) {
-                    Text(text = "b", modifier = Modifier)
+                    Text(text = "b", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 if ((!a__inst0 && !b__inst0)) {
-                    Text(text = "fallback", modifier = Modifier)
+                    Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = (if ((xs__inst0.size == 0)) "asks: empty" else "asks: full"), modifier = Modifier.testTag("loop").safeDrawingPadding())
+            Text(text = (if ((xs__inst0.size == 0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
                 for (x in xs__inst0) {
-                    Text(text = x.toString(), modifier = Modifier)
+                    Text(text = x.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 if ((xs__inst0.size == 0)) {
-                    Text(text = "fallback", modifier = Modifier)
+                    Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = "asks: empty", modifier = Modifier.testTag("lifetime").safeDrawingPadding())
+            Text(text = "asks: empty", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
                 DisposableEffect(Unit) {
                     mounted__inst0 = (mounted__inst0 + 1)
                     onDispose {
                     }
                 }
-                Text(text = "fallback", modifier = Modifier)
+                Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Text(text = ("mounted " + mounted__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("mounted " + mounted__inst0.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 b__inst0 = true
                 (listOf(7)).let { __v -> xs__inst0.clear(); xs__inst0.addAll(__v) }
-            }, modifier = Modifier.testTag("show").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("show").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "show", modifier = Modifier)
             }
         }
@@ -1711,12 +1912,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5363e0241a756630d94414ee43623860
+pass sha256:fdf3995b2eea50a9aceac7e00d4f6d43
 -- run/go/fyne --
-pass sha256:4020ddb527a34ca6a85972f87decd48b
+pass sha256:9fd64bebb2aeee506aca9ea426fc222f
 -- run/go/gtk4 --
-pass sha256:c44dfac1f38087b059eac01e5aed9e2f
+pass sha256:52769bc4dfd9eaa7f1cc1665fa4f50a5
 -- run/kotlin/android --
-pass sha256:b59f31e656575919b64c3a3a0297d659
+pass sha256:caff83eee833d3fb1dfdad8e584724c7
 -- run/none/html --
 pass sha256:30e1efc84efdd05ca28fd3af051a14f2

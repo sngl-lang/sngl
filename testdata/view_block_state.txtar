@@ -81,10 +81,18 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
 
 type __anon_e3b0c4 struct {
 }
@@ -98,6 +106,61 @@ type _page__value struct {
 
 type Pages__entry struct {
 	Page _page__value
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 type ErrorEvent struct {
@@ -163,6 +226,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __effect0_enter() {
@@ -465,10 +661,10 @@ func (m Model) View() tea.View {
 		if part0_0Focused {
 			part0_0Prefix = ">"
 		}
-		part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("open"))
+		part0_0 = BoxLook(Style{}, true).Render(part0_0Prefix + " " + fmt.Sprint("open"))
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
-		part0_1 = lipgloss.NewStyle().Render(fmt.Sprint(((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits))))
+		part0_1 = BoxLook(Style{}, true).Render(fmt.Sprint(((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits))))
 		part0Children = append(part0Children, part0_1)
 		var part0_2 string
 		__focusPos1 := 0
@@ -485,11 +681,11 @@ func (m Model) View() tea.View {
 			if part0_2Item_0Focused {
 				part0_2Item_0Prefix = ">"
 			}
-			part0_2Item_0 = lipgloss.NewStyle().Render(part0_2Item_0Prefix + " " + fmt.Sprint(it))
+			part0_2Item_0 = BoxLook(Style{}, true).Render(part0_2Item_0Prefix + " " + fmt.Sprint(it))
 			__focusPos1++
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_0)
 			var part0_2Item_1 string
-			part0_2Item_1 = lipgloss.NewStyle().Render(fmt.Sprint(((it + " ") + fmt.Sprint(func() int {
+			part0_2Item_1 = BoxLook(Style{}, true).Render(fmt.Sprint(((it + " ") + fmt.Sprint(func() int {
 				if __v, __ok := m.n__inst0[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
@@ -497,6 +693,7 @@ func (m Model) View() tea.View {
 			}()))))
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_1)
 			part0_2Item = lipgloss.JoinHorizontal(lipgloss.Top, part0_2ItemChildren...)
+			part0_2Item = BoxLook(Style{}, true).Render(part0_2Item)
 			part0_2Items = append(part0_2Items, part0_2Item)
 		}
 		part0_2 = strings.Join(part0_2Items, "\n")
@@ -504,7 +701,7 @@ func (m Model) View() tea.View {
 			part0Children = append(part0Children, part0_2)
 		}
 		var part0_3 string
-		part0_3 = lipgloss.NewStyle().Render(fmt.Sprint(("total " + fmt.Sprint(m.total__inst0))))
+		part0_3 = BoxLook(Style{}, true).Render(fmt.Sprint(("total " + fmt.Sprint(m.total__inst0))))
 		part0Children = append(part0Children, part0_3)
 		var part0_4 string
 		if m.pages__current.Id == 0 {
@@ -515,15 +712,15 @@ func (m Model) View() tea.View {
 			if part0_4Part_0Focused {
 				part0_4Part_0Prefix = ">"
 			}
-			part0_4Part_0 = lipgloss.NewStyle().Render(part0_4Part_0Prefix + " " + fmt.Sprint("hit"))
+			part0_4Part_0 = BoxLook(Style{}, true).Render(part0_4Part_0Prefix + " " + fmt.Sprint("hit"))
 			part0_4Parts = append(part0_4Parts, part0_4Part_0)
 			var part0_4Part_1 string
-			part0_4Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst0))))
+			part0_4Part_1 = BoxLook(Style{}, true).Render(fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst0))))
 			part0_4Parts = append(part0_4Parts, part0_4Part_1)
 			part0_4 = lipgloss.JoinVertical(lipgloss.Left, part0_4Parts...)
 		} else {
 			if m.pages__current.Id == 1 {
-				part0_4 = lipgloss.NewStyle().Render(fmt.Sprint("about"))
+				part0_4 = BoxLook(Style{}, true).Render(fmt.Sprint("about"))
 			}
 		}
 		if part0_4 != "" {
@@ -535,9 +732,10 @@ func (m Model) View() tea.View {
 		if part0_5Focused {
 			part0_5Prefix = ">"
 		}
-		part0_5 = lipgloss.NewStyle().Render(part0_5Prefix + " " + fmt.Sprint("about"))
+		part0_5 = BoxLook(Style{}, true).Render(part0_5Prefix + " " + fmt.Sprint("about"))
 		part0Children = append(part0Children, part0_5)
 		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+		part0 = BoxLook(Style{}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -839,7 +1037,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4.SetVisible(m.visible__inst0)
 	m.__n4.OnClosed = m.__n4_closed_handler
 	m.__n4.OnVisible = m.__n4_visible_handler
-	m.__n10 = container.NewVBox()
+	m.__n10 = fynelayout.NewVBox()
 	m.__n13 = widget.NewButton("", nil)
 	m.__n13.SetText("open")
 	m.__n13.OnTapped = m.__n13_click_handler
@@ -977,7 +1175,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int, __a___on
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n12 := container.NewHBox()
+	__n12 := fynelayout.NewHBox()
 	c.__n3 = new__block_state1Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 int) {
 		c.__prop___on0(__on0_0)
 	})
@@ -1126,7 +1324,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					__n7 = m.__inst0_live[__inst0_i]
 					__n7.Set__on0(func(__total int) {
 						m.total__inst0 = __total
-						gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+						gtk4rt.LabelSetLabel(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
 						for __inst0_live_ui, _ := range m.__inst0_live {
 							m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
 						}
@@ -1139,7 +1337,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					}
 					__n7__new := new__child0Instance(m, it, m.total__inst0, func(__total int) {
 						m.total__inst0 = __total
-						gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+						gtk4rt.LabelSetLabel(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
 						for __inst0_live_ui, _ := range m.__inst0_live {
 							m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
 						}
@@ -1198,7 +1396,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			} else {
 				if m.pages__current.Id == 1 {
 					__n9 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n9, "about")
+					gtk4rt.LabelSetLabel(__n9, "about")
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n9)
 					m.__slot1 = append(m.__slot1, __n9)
 				}
@@ -1238,7 +1436,7 @@ func (m *Model) __n4_visible_handler(__visible bool) {
 
 func (m *Model) __n13_clicked_handler() {
 	m.opened += 1
-	gtk4rt.LabelSetText(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	gtk4rt.LabelSetLabel(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
 }
 
 func (m *Model) __n14_clicked_handler() {
@@ -1271,12 +1469,12 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	gtk4rt.ButtonSetLabel(__n11, "hit")
 	gtk4rt.Connect(__n11, "clicked", func() {
 		c.hits += 1
-		gtk4rt.LabelSetText(c.__n0, ("hits " + fmt.Sprint(c.hits)))
+		gtk4rt.LabelSetLabel(c.__n0, ("hits " + fmt.Sprint(c.hits)))
 		c.__model.visits += 1
-		gtk4rt.LabelSetText(c.__model.__n5, ((("opened " + fmt.Sprint(c.__model.opened)) + " visits ") + fmt.Sprint(c.__model.visits)))
+		gtk4rt.LabelSetLabel(c.__model.__n5, ((("opened " + fmt.Sprint(c.__model.opened)) + " visits ") + fmt.Sprint(c.__model.visits)))
 	})
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("hits " + fmt.Sprint(c.hits)))
+	gtk4rt.LabelSetLabel(c.__n0, ("hits " + fmt.Sprint(c.hits)))
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, __n11)
 	gtk4rt.BoxAppend(__box, c.__n0)
@@ -1328,11 +1526,11 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 	gtk4rt.ButtonSetLabel(c.__n1, c.__prop_it)
 	gtk4rt.Connect(c.__n1, "clicked", func() {
 		c.n += 1
-		gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+		gtk4rt.LabelSetLabel(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
 		c.__prop___on_total((c.__prop_total + 1))
 	})
 	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+	gtk4rt.LabelSetLabel(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, c.__n1)
 	gtk4rt.BoxAppend(__box, c.__n2)
@@ -1344,7 +1542,7 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 func (c *__block_state1Instance) SetIt(__v string) {
 	c.__prop_it = __v
 	gtk4rt.ButtonSetLabel(c.__n1, c.__prop_it)
-	gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+	gtk4rt.LabelSetLabel(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
 }
 
 func (c *__block_state1Instance) SetTotal(__v int) {
@@ -1502,11 +1700,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n13, "clicked", m.__n13_clicked_handler)
 	gtk4rt.BoxAppend(m.__n10, m.__n13)
 	m.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	gtk4rt.LabelSetLabel(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
 	gtk4rt.BoxAppend(m.__n10, m.__n5)
 	m.__renderSlot0(m.__n10)
 	m.__n6 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+	gtk4rt.LabelSetLabel(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
 	gtk4rt.BoxAppend(m.__n10, m.__n6)
 	m.__renderSlot1(m.__n10)
 	m.__n14 = gtk4rt.ButtonNew()
@@ -1544,15 +1742,20 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.navigation.compose.NavHost
 import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.composable
+import androidx.compose.foundation.layout.fillMaxWidth
 
 class __anon_e3b0c4 {
     override fun equals(other: Any?) = other is __anon_e3b0c4
@@ -1614,29 +1817,29 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
                 opened += 1
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "open", modifier = Modifier)
             }
-            Text(text = ((("opened " + opened.toString()) + " visits ") + visits.toString()), modifier = Modifier)
+            Text(text = ((("opened " + opened.toString()) + " visits ") + visits.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             for (it in items) {
                 Row(modifier = Modifier) {
-                    __block_state1(it = it, total = total__inst0, onTotal = { __total ->
+                    __block_state1(it = it, total = total__inst0, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxHeight() }, onTotal = { __total ->
                         total__inst0 = __total
                     })
                 }
             }
-            Text(text = ("total " + total__inst0.toString()), modifier = Modifier)
+            Text(text = ("total " + total__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             NavHost(navController = pages__nav, startDestination = _page__valueRoute0(), modifier = Modifier.testTag("pages")) {
                 composable<_page__valueRoute0> {
-                    __block_state0()
+                    __block_state0(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
                 }
                 composable<_page__valueRoute1> {
-                    Text(text = "about", modifier = Modifier)
+                    Text(text = "about", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute1())
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "about", modifier = Modifier)
             }
         }
@@ -1644,29 +1847,29 @@ fun MainScreen() {
 }
 
 @Composable
-fun __block_state0() {
+fun __block_state0(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits += 1
         visits += 1
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = "hit", modifier = Modifier)
     }
-    Text(text = ("hits " + hits.toString()), modifier = Modifier)
+    Text(text = ("hits " + hits.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
 }
 
 @Composable
-fun __block_state1(it: String, total: Int, onTotal: ((Int) -> Unit)? = null) {
+fun __block_state1(it: String, total: Int, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onTotal: ((Int) -> Unit)? = null) {
     var n by remember { mutableStateOf(0) }
 
     Button(onClick = {
         n += 1
         onTotal?.invoke((total + 1))
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = it, modifier = Modifier)
     }
-    Text(text = ((it + " ") + n.toString()), modifier = Modifier)
+    Text(text = ((it + " ") + n.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
 }
 -- out/none/html/about/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -2151,12 +2354,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3ea6f45279ae148a9fe77635ffebc3e8
+pass sha256:1fa5788ae224c26c1ded112a1aeb0c9a
 -- run/go/fyne --
-pass sha256:a1a711b0f056f7295cee4ff6d0a9a3f0
+pass sha256:9df8d48ce5cbf00d3c37d89ffd0fd5a3
 -- run/go/gtk4 --
-pass sha256:ee20949960222dc622ab11aaa6804962
+pass sha256:31d7d259c2893bab370164634efd4932
 -- run/kotlin/android --
-pass sha256:859713184b186410eaae7db4af2aeb79
+pass sha256:e84239efdf02ba679dd11fd266482939
 -- run/none/html --
 pass sha256:a086aa501288e0ece98b70a38f0358c8

@@ -50,7 +50,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -154,7 +153,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
 	m.__n0.Add(m.__n3)
 	m.__n1 = widget.NewLabel("")
@@ -238,7 +237,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				gtk4rt.ButtonSetLabel(__n2, it)
 				gtk4rt.Connect(__n2, "clicked", func() {
 					m.picked__inst0 = it
-					gtk4rt.LabelSetText(m.__n1, m.picked__inst0)
+					gtk4rt.LabelSetLabel(m.__n1, m.picked__inst0)
 				})
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
@@ -295,7 +294,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n3)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.picked__inst0)
+	gtk4rt.LabelSetLabel(m.__n1, m.picked__inst0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -307,6 +306,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:821ca36dc166a911a88e3e3f3032beeb
+pass sha256:0dc40c924881cf39b8a7c52344a2a832
 -- run/go/gtk4 --
-pass sha256:d09ed609be376bd9c305bb90aaab7c8b
+pass sha256:688a180bcc2e3e749b9215ce9a36fd53

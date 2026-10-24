@@ -1,193 +1,84 @@
-// Package fynelayout is the fyne.Layout behind SNGL's `style.flex`, and the
-// anchor a render slot keeps its place in its container by.
+// Package fynelayout is the fyne.Layout behind SNGL's vbox and hbox, the Box
+// a styled node is shown in, and the anchor a render slot keeps its place in
+// its container by.
 //
 // Fyne's own boxes pack children at their minimum size, so a child asking for
 // a share of the box has nowhere to say it. Weighted distributes what the box
-// has left over after its fixed children in proportion to the weights, which
-// is what `flex` means everywhere else in SNGL.
-//
-// The generated code constructs one per container, so the padding and gap the
-// container's own style asked for, and each child's margin, are carried here
-// too: they are the same measurement, and inset by a separate wrapper widget
-// they would each cost a node in the tree.
+// has left over after its fixed children in proportion to what each child's
+// Box asks for, which is what `flex` means everywhere else in SNGL.
 package fynelayout
 
 import (
 	"reflect"
-	"runtime"
-	"sync"
-	"unsafe"
-	"weak"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 )
 
-// Weighted lays children along one axis. A child whose weight is zero keeps
-// its minimum size on that axis; the rest share what is left in proportion to
-// theirs. On the cross axis every child fills the box.
-//
-// A child's weight and margin are its own, set by Share where it is built,
-// rather than a position in the box: a render slot inserts its content and
-// its anchor among the children the box was built with, so the i'th object
-// Layout is handed is not the i'th child the source wrote.
+// Weighted lays children along one axis. A child that is not a Box with a
+// Grow keeps its minimum size on that axis; the rest share what is left in
+// proportion to theirs.
 type Weighted struct {
 	Horizontal bool
-	// Gap is the space between two children, Padding the inset around all of
-	// them.
+	// Gap is the space between two children; zero is the theme's padding.
 	Gap     float32
-	Padding float32
+	Cross   int
+	Justify int
+	c       *fyne.Container
 }
 
-// New returns the layout as the interface, which is what the generated
-// `container.New(...)` call takes.
-func New(horizontal bool, gap, padding float32) fyne.Layout {
-	return Weighted{Horizontal: horizontal, Gap: gap, Padding: padding}
+func NewVBox(objects ...fyne.CanvasObject) *fyne.Container {
+	return newBox(&Weighted{}, objects)
 }
 
-// share is what one child asked of the box holding it: a weight and a margin,
-// and a width and a height where its style gave one, zero where it did not.
-type share struct {
-	weight, margin float32
-	width, height  float32
-	// self is the child, held weakly: the address is the key, and a key
-	// outliving its object must not hand its share to whatever is allocated
-	// there next.
-	self weak.Pointer[byte]
+func NewHBox(objects ...fyne.CanvasObject) *fyne.Container {
+	return newBox(&Weighted{Horizontal: true}, objects)
 }
 
-var (
-	sharesMu sync.Mutex
-	shares   = map[uintptr]share{}
-)
-
-// address is where o's object starts, or nil where o is not a pointer.
-func address(o fyne.CanvasObject) unsafe.Pointer {
-	v := reflect.ValueOf(o)
-	if v.Kind() != reflect.Pointer || v.IsNil() {
-		return nil
-	}
-	return v.UnsafePointer()
+func newBox(l *Weighted, objects []fyne.CanvasObject) *fyne.Container {
+	l.c = container.New(l, objects...)
+	return l.c
 }
 
-// Share records that o asks the box it is in for weight shares of its spare
-// room, inset by margin on every side. It is said where o is built, which is
-// before -- and wherever -- o is put in a box. A box that packs at minimum
-// size is made a Weighted one when a child with a weight arrives in it. It
-// returns o, so a wrapper built where it is appended can say it in place.
-func Share(o fyne.CanvasObject, weight, margin float32) fyne.CanvasObject {
-	return ShareSized(o, weight, margin, 0, 0)
+// grow is the share o takes: its Box's, or one for a spacer that expands
+// along this axis, as Fyne's own boxes give it.
+func (l *Weighted) grow(o fyne.CanvasObject) float32 {
+	if b, ok := o.(*Box); ok {
+		if g := b.Grow(); g > 0 {
+			return g
+		}
+		o = b.Content
+	}
+	if s, ok := o.(layout.SpacerObject); ok && (l.Horizontal && s.ExpandHorizontal() || !l.Horizontal && s.ExpandVertical()) {
+		return 1
+	}
+	return 0
 }
 
-// ShareSized is Share for a child whose style gave it a width or a height,
-// which the box lays it out at in place of its own minimum: Fyne asks no
-// widget to be a size.
-func ShareSized(o fyne.CanvasObject, weight, margin, width, height float32) fyne.CanvasObject {
-	p := address(o)
-	if p == nil {
-		return o
+func (l *Weighted) gap() float32 {
+	if l.Gap > 0 {
+		return l.Gap
 	}
-	key := uintptr(p)
-	sharesMu.Lock()
-	defer sharesMu.Unlock()
-	old, had := shares[key]
-	if weight == 0 && margin == 0 && width == 0 && height == 0 {
-		delete(shares, key)
-		return o
-	}
-	shares[key] = share{weight: weight, margin: margin, width: width, height: height, self: weak.Make((*byte)(p))}
-	if !had || old.self.Value() != (*byte)(p) {
-		runtime.AddCleanup((*byte)(p), forget, key)
-	}
-	return o
+	return theme.Padding()
 }
 
-// forget drops the share of an object the collector has taken, unless the
-// address already holds a newer one's.
-func forget(key uintptr) {
-	sharesMu.Lock()
-	defer sharesMu.Unlock()
-	if s, ok := shares[key]; ok && s.self.Value() == nil {
-		delete(shares, key)
-	}
-}
-
-// shareOf is what o asked for, or nothing.
-func shareOf(o fyne.CanvasObject) (weight, margin float32) {
-	s := askOf(o)
-	return s.weight, s.margin
-}
-
-// askOf is o's whole share, the zero one where it asked for nothing.
-func askOf(o fyne.CanvasObject) share {
-	p := address(o)
-	if p == nil {
-		return share{}
-	}
-	sharesMu.Lock()
-	s, ok := shares[uintptr(p)]
-	sharesMu.Unlock()
-	if !ok || s.self.Value() != (*byte)(p) {
-		return share{}
-	}
-	return s
-}
-
-// minSizeOf is o's minimum, with the width and height its style gave in place
-// of its own.
-func minSizeOf(o fyne.CanvasObject) fyne.Size {
-	min := o.MinSize()
-	s := askOf(o)
-	if s.width > 0 {
-		min.Width = s.width
-	}
-	if s.height > 0 {
-		min.Height = s.height
-	}
-	return min
-}
-
-// Adopt makes c lay o out by its share when o has one and c is one of Fyne's
-// own boxes, which would pack it at its minimum: a box the source wrote with
-// no flexing child of its own may still be handed one -- a page a navigation
-// stack shows, a slot's content -- and the generated code built it as Fyne's
-// box. The gap Fyne's box puts between children is kept.
-func Adopt(c *fyne.Container, o fyne.CanvasObject) {
-	if c == nil {
-		return
-	}
-	if s := askOf(o); s.weight == 0 && s.width == 0 && s.height == 0 {
-		return
-	}
-	switch reflect.TypeOf(c.Layout) {
-	case vboxType:
-		c.Layout = New(false, theme.Padding(), 0)
-	case hboxType:
-		c.Layout = New(true, theme.Padding(), 0)
-	}
-}
-
-var (
-	vboxType = reflect.TypeOf(layout.NewVBoxLayout())
-	hboxType = reflect.TypeOf(layout.NewHBoxLayout())
-)
-
-func (l Weighted) axes(s fyne.Size) (main, cross float32) {
+func (l *Weighted) axes(s fyne.Size) (main, cross float32) {
 	if l.Horizontal {
 		return s.Width, s.Height
 	}
 	return s.Height, s.Width
 }
 
-func (l Weighted) size(main, cross float32) fyne.Size {
+func (l *Weighted) size(main, cross float32) fyne.Size {
 	if l.Horizontal {
 		return fyne.NewSize(main, cross)
 	}
 	return fyne.NewSize(cross, main)
 }
 
-func (l Weighted) pos(main, cross float32) fyne.Position {
+func (l *Weighted) pos(main, cross float32) fyne.Position {
 	if l.Horizontal {
 		return fyne.NewPos(main, cross)
 	}
@@ -195,84 +86,141 @@ func (l Weighted) pos(main, cross float32) fyne.Position {
 }
 
 // MinSize is what the box needs with every child at its own minimum -- a
-// weighted child included, since a weight asks for a share of the surplus and
-// says nothing about the floor.
-func (l Weighted) MinSize(objects []fyne.CanvasObject) fyne.Size {
+// growing child included, since a share of the surplus says nothing about the
+// floor.
+func (l *Weighted) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	var main, cross float32
 	visible := 0
 	for _, o := range objects {
 		if !o.Visible() {
 			continue
 		}
-		_, margin := shareOf(o)
-		m := margin * 2
-		omain, ocross := l.axes(minSizeOf(o))
-		main += omain + m
-		if ocross+m > cross {
-			cross = ocross + m
-		}
+		omain, ocross := l.axes(o.MinSize())
+		main += omain
+		cross = max(cross, ocross)
 		visible++
 	}
 	if visible > 1 {
-		main += l.Gap * float32(visible-1)
+		main += l.gap() * float32(visible-1)
 	}
-	return l.size(main+l.Padding*2, cross+l.Padding*2)
+	return l.size(main, cross)
 }
 
-func (l Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+func (l *Weighted) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 	main, cross := l.axes(size)
 
-	visible := 0
-	var fixed, totalWeight float32
+	var shown []fyne.CanvasObject
 	for _, o := range objects {
-		if !o.Visible() {
-			continue
+		if o.Visible() {
+			shown = append(shown, o)
 		}
-		visible++
-		w, margin := shareOf(o)
-		m := margin * 2
-		if w > 0 {
-			totalWeight += w
-			fixed += m
-			continue
+	}
+	if len(shown) == 0 {
+		return
+	}
+	extent := make([]float32, len(shown))
+	grows := make([]float32, len(shown))
+	var fixed, totalGrow float32
+	growing := 0
+	for i, o := range shown {
+		if b, ok := o.(*Box); ok {
+			b.in = l
 		}
-		omain, _ := l.axes(minSizeOf(o))
-		fixed += omain + m
-	}
-
-	avail := main - l.Padding*2
-	if visible > 1 {
-		avail -= l.Gap * float32(visible-1)
-	}
-	free := avail - fixed
-	if free < 0 {
-		free = 0
-	}
-
-	offset := l.Padding
-	for _, o := range objects {
-		if !o.Visible() {
-			continue
-		}
-		w, margin := shareOf(o)
-		slot := float32(0)
-		if w > 0 && totalWeight > 0 {
-			slot = free * w / totalWeight
+		omain, _ := l.axes(o.MinSize())
+		extent[i] = omain
+		if g := l.grow(o); g > 0 {
+			grows[i] = g
+			totalGrow += g
+			growing++
 		} else {
-			slot, _ = l.axes(minSizeOf(o))
+			fixed += omain
 		}
-		ocross := cross - l.Padding*2 - margin*2
-		if ocross < 0 {
-			ocross = 0
+	}
+	gap := l.gap()
+	free := max(main-fixed-gap*float32(len(shown)-1), 0)
+	// A share below a child's own minimum is the minimum, as CSS clamps a
+	// flex item, and what is left is shared again among the rest.
+	for clamped := true; clamped && growing > 0; {
+		clamped = false
+		for i, g := range grows {
+			if g > 0 && free*g/totalGrow < extent[i] {
+				free, totalGrow = max(free-extent[i], 0), totalGrow-g
+				grows[i] = 0
+				growing--
+				clamped = true
+			}
 		}
-		// A child whose style gave its cross size keeps it, at the start.
-		if a := askOf(o); l.Horizontal && a.height > 0 && a.height < ocross {
-			ocross = a.height
-		} else if !l.Horizontal && a.width > 0 && a.width < ocross {
-			ocross = a.width
+	}
+	for i, g := range grows {
+		if g > 0 {
+			extent[i] = free * g / totalGrow
 		}
-		o.Move(l.pos(offset+margin, l.Padding+margin))
-		o.Resize(l.size(slot, ocross))
-		offset += slot + margin*2 + l.Gap
+	}
+
+	used := gap * float32(len(shown)-1)
+	for _, e := range extent {
+		used += e
+	}
+	slack := max(main-used, 0)
+	offset, between := float32(0), gap
+	if growing == 0 {
+		n := float32(len(shown))
+		switch l.Justify {
+		case JustifyCenter:
+			offset = slack / 2
+		case JustifyEnd:
+			offset = slack
+		case JustifyBetween:
+			if len(shown) > 1 {
+				between += slack / (n - 1)
+			}
+		case JustifyAround:
+			offset = slack / n / 2
+			between += slack / n
+		case JustifyEvenly:
+			offset = slack / (n + 1)
+			between += offset
+		}
+	}
+
+	for i, o := range shown {
+		_, ocross := l.axes(o.MinSize())
+		at := float32(0)
+		switch l.Cross {
+		case CrossStart:
+		case CrossCenter:
+			at = (cross - ocross) / 2
+		case CrossEnd:
+			at = cross - ocross
+		default:
+			ocross = cross
+		}
+		o.Move(l.pos(offset, at))
+		o.Resize(l.size(extent[i], ocross))
+		offset += extent[i] + between
 	}
 }
+
+// Adopt makes c a Weighted box when o asks it for a share and c is one of
+// Fyne's own boxes, which would pack o at its minimum: a box the generated
+// code built as Fyne's may still be handed a growing child -- a page a
+// navigation stack shows, a slot's content.
+func Adopt(c *fyne.Container, o fyne.CanvasObject) {
+	if c == nil {
+		return
+	}
+	if b, ok := o.(*Box); !ok || b.Grow() == 0 {
+		return
+	}
+	switch reflect.TypeOf(c.Layout) {
+	case vboxType:
+		c.Layout = &Weighted{c: c}
+	case hboxType:
+		c.Layout = &Weighted{Horizontal: true, c: c}
+	}
+}
+
+var (
+	vboxType = reflect.TypeOf(layout.NewVBoxLayout())
+	hboxType = reflect.TypeOf(layout.NewHBoxLayout())
+)

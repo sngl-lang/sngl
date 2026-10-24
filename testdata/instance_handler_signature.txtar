@@ -161,7 +161,7 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n5 = container.NewVBox()
+	m.__n5 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n5)
 	content := fyne.CanvasObject(m.__n5)
 	return content
@@ -197,7 +197,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.value__inst0 = c.typed
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n6 := container.NewHBox()
+	__n6 := fynelayout.NewHBox()
 	c.__n0 = widget.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked__inst0)
@@ -447,7 +447,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 			c.checked__inst0 = gtk4rt.CheckButtonGetActive(c.__n0)
 			gtk4rt.CheckButtonSetActive(c.__n0, c.checked__inst0)
 			c.on = !c.on
-			gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+			gtk4rt.LabelSetLabel(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 		}
 	})
 	gtk4rt.BoxAppend(__n5, c.__n0)
@@ -466,7 +466,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst0 {
 			c.value__inst0 = gtk4rt.EditableGetText(c.entry)
 			c.typed = c.value__inst0
-			gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+			gtk4rt.LabelSetLabel(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 		}
 		c.__effects0_settle()
 	})
@@ -476,7 +476,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	})
 	gtk4rt.BoxAppend(__n5, c.entry)
 	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+	gtk4rt.LabelSetLabel(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 	gtk4rt.BoxAppend(__n5, c.__n2)
 	c.__effects0_settle()
 	c.Root = __n5
@@ -535,7 +535,7 @@ func (c *RowInstance) __effects0_settle() {
 
 func (c *RowInstance) SetLabel(__v string) {
 	c.__prop_label = __v
-	gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+	gtk4rt.LabelSetLabel(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 }
 
 func (c *RowInstance) Destroy() {
@@ -589,6 +589,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:83f0b73cdc031d9b8952276c473dd503
+pass sha256:759242c914155d249d11e38ddedd4540
 -- run/go/gtk4 --
-pass sha256:84cdb5df7481944732ffcf9141e0e48b
+pass sha256:9872a8692072f834aee9f00a6d68c810

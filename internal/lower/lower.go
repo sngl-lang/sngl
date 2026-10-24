@@ -488,7 +488,8 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 // State, or a context read, and not merely an override: a stateless override
 // always inlines into its caller, and widening every overridden component in
 // lowers bodies nothing renders. A read counts because passContext rewrites
-// reads only in listed components, and one it missed panicked the emitter.
+// reads only in listed components, and one it missed panicked the emitter; so
+// does a provider, which it splices out of the same bodies.
 func overrideNeedsDeclFor(c *ir.Component, platform string) bool {
 	if c == nil || platform == "" || c.PlatformOverrides == nil {
 		return false
@@ -502,7 +503,7 @@ func overrideNeedsDeclFor(c *ir.Component, platform string) bool {
 	}
 	reads := map[*ir.Context]bool{}
 	collectContextReads(ov.Stmts, reads)
-	return len(reads) > 0
+	return len(reads) > 0 || providesContext(ov.Stmts)
 }
 
 // reachableForeignComponents collects, in first-seen order, every component an
@@ -596,4 +597,16 @@ func EnabledPasses(feats Features) []string {
 		}
 	}
 	return out
+}
+
+func providesContext(stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if _, ok := n.(*ir.ContextProvider); ok {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

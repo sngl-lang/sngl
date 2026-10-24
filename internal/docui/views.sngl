@@ -20,7 +20,7 @@ component SummaryRow(name = "", doc = "", href = "", active = false) node {
                 value = active ? "> " + name : "  " + name,
                 style = {fontWeight=active ? bold : normal, minWidth=140px},
             )
-            text(value=doc, style={color="#888"})
+            text(value=doc, style={color=#888})
         }
     }
 }
@@ -64,12 +64,12 @@ component PackagePageView(view lookup.PackageView, baseHref = "") node {
             text(value=view.title, style={fontSize=20px, fontWeight=bold})
         }
         if view.description != "" {
-            text(value=view.description, style={color="#888"})
+            text(value=view.description, style={color=#888})
         }
         if view.isNative && view.nativeImportPath != "" {
             text(
                 value = "Import path: " + view.nativeImportPath,
-                style = {color="#888", fontFamily="monospace"},
+                style = {color=#888, fontFamily="monospace"},
             )
         }
         KindSection(title="Components", items=view.components, hrefPrefix=baseHref)
@@ -108,12 +108,12 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
             text(value=view.title, style={fontSize=20px, fontWeight=bold})
         }
         if view.description != "" {
-            text(value=view.description, style={color="#888"})
+            text(value=view.description, style={color=#888})
         }
         if view.isNative && view.nativeImportPath != "" {
             text(
                 value = "Import path: " + view.nativeImportPath,
-                style = {color="#888", fontFamily="monospace"},
+                style = {color=#888, fontFamily="monospace"},
             )
         }
 
@@ -157,7 +157,7 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
             }
         }
         if view.overrides.length() > 0 {
-            text(value="Platform Overrides", style={fontWeight=bold, paddingTop=8px, color="#888"})
+            text(value="Platform Overrides", style={fontWeight=bold, paddingTop=8px, color=#888})
             for var o = view.overrides {
                 SummaryRow(name=o.name, doc=o.doc, href=hrefPrefix + o.name, active=o.name == activeName)
             }
@@ -174,15 +174,15 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             text(value=detail.doc)
         }
         if detail.children != "" && detail.children != "none" {
-            text(value="Children: " + detail.children, style={color="#888"})
+            text(value="Children: " + detail.children, style={color=#888})
         }
         if detail.props.length() > 0 {
             text(value="Properties", style={fontWeight=bold, paddingTop=8px})
             for var p = detail.props {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value=p.name, style={fontFamily="monospace", minWidth=120px})
-                    text(value=p.type, style={color="#58a6ff", minWidth=100px})
-                    text(value=p.doc, style={color="#aaa"})
+                    text(value=p.type, style={color=#58a6ff, minWidth=100px})
+                    text(value=p.doc, style={color=#aaa})
                 }
             }
         }
@@ -191,8 +191,8 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             for var sl = detail.slots {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value=sl.name, style={fontFamily="monospace", minWidth=120px})
-                    text(value=sl.type, style={color="#58a6ff", minWidth=100px})
-                    text(value=sl.doc, style={color="#aaa"})
+                    text(value=sl.type, style={color=#58a6ff, minWidth=100px})
+                    text(value=sl.doc, style={color=#aaa})
                 }
             }
         }
@@ -201,15 +201,15 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             for var e = detail.events {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value="@" + e.name, style={fontFamily="monospace", minWidth=120px})
-                    text(value=e.payload, style={color="#58a6ff", minWidth=100px})
-                    text(value=e.doc, style={color="#aaa"})
+                    text(value=e.payload, style={color=#58a6ff, minWidth=100px})
+                    text(value=e.doc, style={color=#aaa})
                 }
             }
         }
         if detail.examples.length() > 0 {
             text(value="Example", style={fontWeight=bold, paddingTop=8px})
             for var src = detail.examples {
-                text(value=src, style={fontFamily="monospace", padding=12px, background="#1e1e1e", color="#d4d4d4"})
+                text(value=src, style={fontFamily="monospace", padding=12px, background=#1e1e1e, color=#d4d4d4})
                 if PLATFORM == html.platform {
                     html.pre { html.code(class="language-sngl", innerText=src) }
                 }
@@ -226,7 +226,7 @@ component TypeView(detail lookup.TypeDetailView) node {
         if detail.isNative && detail.nativeName != "" {
             text(
                 value = "Native: " + detail.nativeName,
-                style = {color="#888", fontFamily="monospace"},
+                style = {color=#888, fontFamily="monospace"},
             )
         }
         if detail.doc != "" {
@@ -237,7 +237,7 @@ component TypeView(detail lookup.TypeDetailView) node {
             for var f = detail.fields {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value=f.name, style={fontFamily="monospace", minWidth=120px})
-                    text(value=f.type, style={color="#58a6ff"})
+                    text(value=f.type, style={color=#58a6ff})
                 }
             }
         }
@@ -246,7 +246,7 @@ component TypeView(detail lookup.TypeDetailView) node {
             for var m = detail.methods {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value=m.short, style={fontFamily="monospace", minWidth=120px})
-                    text(value=m.doc, style={color="#aaa"})
+                    text(value=m.doc, style={color=#aaa})
                 }
             }
         }
@@ -274,12 +274,12 @@ component FuncView(detail lookup.FuncDetailView) node {
     vbox(style={gap=8px, padding=8px}) {
         text(value=detail.name, style={fontSize=22px, fontWeight=bold})
         if detail.signature != "" {
-            text(value=detail.signature, style={fontFamily="monospace", padding=12px, background="#1e1e1e", color="#d4d4d4"})
+            text(value=detail.signature, style={fontFamily="monospace", padding=12px, background=#1e1e1e, color=#d4d4d4})
         }
         if detail.isNative && detail.nativeName != "" {
             text(
                 value = "Native: " + detail.nativeName,
-                style = {color="#888", fontFamily="monospace"},
+                style = {color=#888, fontFamily="monospace"},
             )
         }
         if detail.doc != "" {
@@ -290,12 +290,12 @@ component FuncView(detail lookup.FuncDetailView) node {
             for var p = detail.params {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value=p.name, style={fontFamily="monospace", minWidth=120px})
-                    text(value=p.type, style={color="#58a6ff"})
+                    text(value=p.type, style={color=#58a6ff})
                 }
             }
         }
         if detail.returnType != "" {
-            text(value="Returns: " + detail.returnType, style={color="#888", paddingTop=4px})
+            text(value="Returns: " + detail.returnType, style={color=#888, paddingTop=4px})
         }
     }
 }
@@ -308,12 +308,12 @@ component ValueView(detail lookup.ValueDetailView) node {
             style = {fontSize=22px, fontWeight=bold},
         )
         if detail.type != "" {
-            text(value="Type: " + detail.type, style={color="#888", fontFamily="monospace"})
+            text(value="Type: " + detail.type, style={color=#888, fontFamily="monospace"})
         }
         if detail.isNative && detail.nativeName != "" {
             text(
                 value = "Native: " + detail.nativeName,
-                style = {color="#888", fontFamily="monospace"},
+                style = {color=#888, fontFamily="monospace"},
             )
         }
         if detail.doc != "" {
@@ -330,10 +330,10 @@ component PropDocView(detail lookup.PropDetailView) node {
             style = {fontSize=22px, fontWeight=bold},
         )
         if detail.type != "" {
-            text(value="Type: " + detail.type, style={color="#58a6ff"})
+            text(value="Type: " + detail.type, style={color=#58a6ff})
         }
         if detail.isEvent && detail.payload != "" {
-            text(value="Payload: " + detail.payload, style={color="#58a6ff"})
+            text(value="Payload: " + detail.payload, style={color=#58a6ff})
         }
         if detail.enumValues.length() > 0 {
             text(value="Values:", style={fontWeight=bold, paddingTop=8px})
@@ -355,7 +355,7 @@ component FieldDocView(detail lookup.FieldDetailView) node {
             style = {fontSize=22px, fontWeight=bold},
         )
         if detail.expr != "" {
-            text(value="Type: " + detail.expr, style={color="#58a6ff"})
+            text(value="Type: " + detail.expr, style={color=#58a6ff})
         }
         if detail.doc != "" {
             text(value=detail.doc)
@@ -400,7 +400,7 @@ component EntryViewInner(entry lookup.Entry, hrefPrefix = "", activeName = "") n
     if !entry.found && entry.error != "" {
         vbox(style={padding=8px, gap=8px}) {
             text(value="Not found", style={fontWeight=bold})
-            text(value=entry.error, style={color="#888"})
+            text(value=entry.error, style={color=#888})
         }
     }
     if entry.kind == "index" {

@@ -229,21 +229,21 @@ func New() *Model {
 func (m *Model) entry() Entry {
 	return Entry{Label: "a", Click: func() {
 		m.n = (m.n + 1)
-		gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+		gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	}}
 }
 
 func (m *Model) entries() map[string]func() {
 	return map[string]func(){"b": func() {
 		m.n = (m.n + 2)
-		gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+		gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	}}
 }
 
 func (m *Model) held() func() {
 	return func() {
 		m.n = (m.n + 3)
-		gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+		gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	}
 }
 
@@ -289,7 +289,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n2 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n2, "go")
@@ -307,4 +307,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:ccb24dff5f1493db5468576113bef1b3
 -- run/go/gtk4 --
-pass sha256:b32da281acbdd819a5972d06f6ae5c79
+pass sha256:50e6ed9cfd189ece6d0f2e6fb6ca164d

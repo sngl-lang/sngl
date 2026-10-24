@@ -445,6 +445,7 @@ func addHiddenParams(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func) {
 				Type:        ctx.Typ,
 				Init:        ctx.Default,
 				Synthesized: true,
+				Provided:    true,
 			}
 			comp.Vars = append([]*ir.Var{hidden}, comp.Vars...)
 		}

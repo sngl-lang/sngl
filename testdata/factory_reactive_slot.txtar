@@ -575,7 +575,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ("body of " + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ("body of " + c.__prop___p0))
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -583,7 +583,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ("body of " + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ("body of " + c.__prop___p0))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -637,4 +637,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:277ad55b6c1fcb96528204c19f096f3c
 -- run/go/gtk4 --
-pass sha256:5f3227c1d48d33f6823ba91d8f8ad3c2
+pass sha256:f607450812d6fef4cff49d5fedb409cd

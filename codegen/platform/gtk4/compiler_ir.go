@@ -571,6 +571,7 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 	for _, sd := range c.info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
 		for _, f := range sd.Fields {
+			td.Imports = append(td.Imports, golang.TypeImports(f.Type)...)
 			s.Fields = append(s.Fields, structFieldData{
 				Name: golang.ExportName(f.Name),
 				Type: golang.IRTypeToGo(f.Type),

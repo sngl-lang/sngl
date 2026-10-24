@@ -36,7 +36,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -82,7 +81,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			m.__slot0 = nil
 			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 			for _, it := range m.items {
-				__n1 := container.NewHBox()
+				__n1 := fynelayout.NewHBox()
 				__n2 := widget.NewLabel("")
 				__n2.SetText(("row " + it))
 				__n1.Add(__n2)
@@ -133,7 +132,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.__n4 = widget.NewButton("", nil)
 	m.__n4.SetText("add")
 	m.__n4.OnTapped = m.__n4_click_handler
@@ -152,4 +151,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:df3168a9e5b06e439b13646f1d555569
+pass sha256:1b63e2e5b21b4722d7bf97d820e77847

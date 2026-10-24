@@ -6,10 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/ir"
 )
 
 // constructComponentSrc is loopComponentSrc with a #[construct] prop the row's
@@ -67,7 +64,7 @@ func TestAConstructPropRebuildsTheRowItBuilt(t *testing.T) {
 	}
 
 	// A render describing the same seed keeps the row, counter and all.
-	m.__renderSlot0(m.__root)
+	m.__renderSlot0(m.__n1.Container)
 	if m.__inst0_live[0] != first {
 		t.Error("an unchanged construct prop should keep the instance")
 	}
@@ -93,24 +90,7 @@ func TestAConstructPropRebuildsTheRowItBuilt(t *testing.T) {
 // RUNS it. The fyne half of the html browser tests, for the same reason: a
 // platform harness only asks whether a fixture generates.
 func TestConstructPropRebuildsTheInstance(t *testing.T) {
-	pkg := checkForFyne(t, constructComponentSrc)
-	g := &Generator{}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
-	if !ok {
-		t.Fatal("model.go not found in generated files")
-	}
+	modelSrc := generateForFyne(t, constructComponentSrc)
 
 	// Under the main module, so the fyne imports resolve through the project's
 	// own go.mod.

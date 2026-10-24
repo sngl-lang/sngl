@@ -49,6 +49,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 			}
 			return foldExpr(inlined, ctx)
 		}
+		if inlined := inlineLambdaCall(call); inlined != nil {
+			return foldExpr(inlined, ctx)
+		}
 	}
 
 	// Recursive sub-expression folding.

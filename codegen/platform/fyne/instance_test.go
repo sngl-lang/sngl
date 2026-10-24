@@ -6,10 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/ir"
 )
 
 // loopComponentSrc is testdata/test_html_loop_component.sngl without the test
@@ -95,24 +92,7 @@ func TestEachRowHoldsItsOwnState(t *testing.T) {
 // this repository would say so. This one runs the output and reads the two
 // counters.
 func TestInstanceRecordsRunIndependently(t *testing.T) {
-	pkg := checkForFyne(t, loopComponentSrc)
-	g := &Generator{}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
-	if !ok {
-		t.Fatal("model.go not found in generated files")
-	}
+	modelSrc := generateForFyne(t, loopComponentSrc)
 
 	// Under the main module, so the fyne imports resolve through the
 	// project's own go.mod -- the same trick the intrinsic integration test

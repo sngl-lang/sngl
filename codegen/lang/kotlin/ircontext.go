@@ -654,8 +654,12 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 			}
 		}
 		// A variant's class is narrower than the sealed class a later write
-		// may hold another variant of, and `null` alone infers `Nothing?`.
-		if ir.PayloadEnum(n.Type) != nil || n.Type != nil && n.Type.Kind == ir.TypeOption && n.Init.ExprType() != nil && n.Init.ExprType().Kind == ir.TypeNull {
+		// may hold another variant of, `null` alone infers `Nothing?`, and a
+		// host value may be narrower than the type SNGL declared -- Compose's
+		// empty `Modifier` is its companion object.
+		sd, host := hostStruct(n.Type)
+		nullInit := n.Type != nil && n.Type.Kind == ir.TypeOption && n.Init.ExprType() != nil && n.Init.ExprType().Kind == ir.TypeNull
+		if ir.PayloadEnum(n.Type) != nil || nullInit || host && sd.Foreign.Scheme == "kotlin" {
 			return "var " + n.Name + ": " + IRTypeToKt(n.Type) + " = " + kc.valueCopyFor(n, initStr)
 		}
 		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
@@ -940,7 +944,17 @@ func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
 	name := kc.NativeName(n.Func.Foreign.Path, n.Func.Foreign.Name)
 	args := kc.evalCallArgs(n.Args)
 	if n.Func.NativeMethod && len(args) > 0 {
-		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
+		rest := args[1:]
+		if n.Func.NativeNamedArgs {
+			// The receiver is args[0], declared as the first parameter or
+			// as the method's receiver.
+			params := n.Func.Params
+			if len(params) == len(args) {
+				params = params[1:]
+			}
+			rest = ktNameArgs(params, rest)
+		}
+		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(rest, ", ") + ")", true
 	}
 	if n.Func.NativeNamedArgs {
 		args = ktNameArgs(n.Func.Params, args)
@@ -1380,6 +1394,13 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	if _, dst, ok := ir.NumericListConversion(n); ok {
 		return operand + ".map { it." + ktNumberConvMethod(dst.Elems[0]) + " }"
+	}
+	// The checker lets only a literal 0 become a unit; one of several bases
+	// is a data class, and its zero is the one built with none.
+	if isMultiBaseUnitKt(n.Type) {
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeInt {
+			return exportName(ir.UnitDeclOf(n.Type).Name) + "()"
+		}
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {
@@ -2068,6 +2089,14 @@ func (kc *KtIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 		return "", false
 	}
 	return kc.NativeName(v.Foreign.Path, v.Foreign.Name), true
+}
+
+func hostStruct(t *ir.Type) (*ir.StructDef, bool) {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil, false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return sd, ok && sd != nil
 }
 
 // Match writes a match statement as a when. The last arm of an exhaustive

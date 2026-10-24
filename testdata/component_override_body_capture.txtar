@@ -103,9 +103,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -144,6 +207,219 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func (m *Model) bump__inst0() {
 	m.count__inst0 = (m.count__inst0 + 100)
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		var __lt2 lipgloss.Position
+		switch s.TextAlign {
+		case "center":
+			__lt2 = lipgloss.Center
+		case "right":
+			__lt2 = lipgloss.Right
+		default:
+			__lt2 = lipgloss.Left
+		}
+		l = l.AlignHorizontal(__lt2)
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		var __lt3 lipgloss.Border
+		switch s.BorderStyle {
+		case "double":
+			__lt3 = lipgloss.DoubleBorder()
+		case "dashed", "dotted":
+			__lt3 = tui.DashedBorder()
+		default:
+			var __lt4 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt4 = lipgloss.RoundedBorder()
+			} else {
+				__lt4 = lipgloss.NormalBorder()
+			}
+			__lt3 = __lt4
+		}
+		l = l.Border(__lt3)
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	var __lt6 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt6 = s.MarginTop
+	} else {
+		var __lt5 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt5 = s.MarginY
+		} else {
+			__lt5 = s.Margin
+		}
+		__lt6 = __lt5
+	}
+	l = l.MarginTop(CellsOf(__lt6))
+	var __lt8 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt8 = s.MarginRight
+	} else {
+		var __lt7 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt7 = s.MarginX
+		} else {
+			__lt7 = s.Margin
+		}
+		__lt8 = __lt7
+	}
+	l = l.MarginRight(CellsOf(__lt8))
+	var __lt10 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt10 = s.MarginBottom
+	} else {
+		var __lt9 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt9 = s.MarginY
+		} else {
+			__lt9 = s.Margin
+		}
+		__lt10 = __lt9
+	}
+	l = l.MarginBottom(CellsOf(__lt10))
+	var __lt12 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt12 = s.MarginLeft
+	} else {
+		var __lt11 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt11 = s.MarginX
+		} else {
+			__lt11 = s.Margin
+		}
+		__lt12 = __lt11
+	}
+	l = l.MarginLeft(CellsOf(__lt12))
+	var __lt14 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt14 = s.PaddingTop
+	} else {
+		var __lt13 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt13 = s.PaddingY
+		} else {
+			__lt13 = s.Padding
+		}
+		__lt14 = __lt13
+	}
+	l = l.PaddingTop(CellsOf(__lt14))
+	var __lt16 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt16 = s.PaddingRight
+	} else {
+		var __lt15 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt15 = s.PaddingX
+		} else {
+			__lt15 = s.Padding
+		}
+		__lt16 = __lt15
+	}
+	l = l.PaddingRight(CellsOf(__lt16))
+	var __lt18 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt18 = s.PaddingBottom
+	} else {
+		var __lt17 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt17 = s.PaddingY
+		} else {
+			__lt17 = s.Padding
+		}
+		__lt18 = __lt17
+	}
+	l = l.PaddingBottom(CellsOf(__lt18))
+	var __lt20 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt20 = s.PaddingLeft
+	} else {
+		var __lt19 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt19 = s.PaddingX
+		} else {
+			__lt19 = s.Padding
+		}
+		__lt20 = __lt19
+	}
+	l = l.PaddingLeft(CellsOf(__lt20))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt25 int
+		if CellsOf(s.MaxHeight) == 0 {
+			var __lt21 int
+			if s.MaxLines == 0 {
+				__lt21 = 0
+			} else {
+				__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
+			}
+			__lt25 = __lt21
+		} else {
+			var __lt22 int
+			if s.MaxLines == 0 {
+				__lt22 = 0
+			} else {
+				__lt22 = (s.MaxLines + l.GetVerticalFrameSize())
+			}
+			var __lt24 int
+			if __lt22 == 0 {
+				__lt24 = CellsOf(s.MaxHeight)
+			} else {
+				var __lt23 int
+				if s.MaxLines == 0 {
+					__lt23 = 0
+				} else {
+					__lt23 = (s.MaxLines + l.GetVerticalFrameSize())
+				}
+				__lt24 = min(CellsOf(s.MaxHeight), __lt23)
+			}
+			__lt25 = __lt24
+		}
+		l = l.MaxHeight(__lt25)
+	}
+	return l
 }
 
 func (m *Model) __focusNext() {
@@ -299,7 +575,7 @@ func (m Model) View() tea.View {
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
+		content_0_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		content_0_1Focused := (m.__focusID == 0)
@@ -307,14 +583,15 @@ func (m Model) View() tea.View {
 		if content_0_1Focused {
 			content_0_1Prefix = ">"
 		}
-		content_0_1 = lipgloss.NewStyle().Render(content_0_1Prefix + " " + fmt.Sprint("+"))
+		content_0_1 = BoxLook(Style{}, true).Render(content_0_1Prefix + " " + fmt.Sprint("+"))
 		content_0Children = append(content_0Children, content_0_1)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		content_0 = BoxLook(Style{}, true).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
+		content_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		content_1_1Focused := (m.__focusID == 1)
@@ -322,11 +599,13 @@ func (m Model) View() tea.View {
 		if content_1_1Focused {
 			content_1_1Prefix = ">"
 		}
-		content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("+"))
+		content_1_1 = BoxLook(Style{}, true).Render(content_1_1Prefix + " " + fmt.Sprint("+"))
 		content_1Children = append(content_1Children, content_1_1)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		content_1 = BoxLook(Style{}, true).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -418,6 +697,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:601431fedb50e47a032e2b87818bf0a4
+pass sha256:742e572d03e6822597b6eaa047fbf2a2
 -- run/none/html --
 pass sha256:c0e027384958b52ee1282ec734416397

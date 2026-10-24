@@ -38,7 +38,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -52,12 +51,14 @@ type Model struct {
 	__rendering0   bool
 	__renderAgain0 bool
 
-	__n0    *fynelayout.Toplevel
-	__n2    *fyne.Container
-	__n3    *widget.Button
-	__n4    *fynelayout.ReachScroll
-	__n5    *widget.Label
-	__built bool
+	__n0      *fynelayout.Toplevel
+	__n2      *fyne.Container
+	__n2__box *fynelayout.Box
+	__n3      *widget.Button
+	__n4      *fynelayout.ReachScroll
+	__n4__box *fynelayout.Box
+	__n5      *widget.Label
+	__built   bool
 }
 
 // New creates a Model with default values.
@@ -138,21 +139,23 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.New(fynelayout.New(false, 0, 0))
-	fynelayout.Share(m.__n2, 1, 0)
+	m.__n2 = fynelayout.NewVBox()
+	m.__n2__box = fynelayout.NewBox(m.__n2)
+	m.__n2__box.SetLook(fynelayout.Look{Grow: 1.0})
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("toggle")
 	m.__n3.OnTapped = m.__n3_click_handler
 	m.__n2.Add(m.__n3)
 	m.__renderSlot0(m.__n2)
 	m.__n4 = fynelayout.NewReachScroll()
-	fynelayout.Share(m.__n4, 1, 0)
+	m.__n4__box = fynelayout.NewBox(m.__n4)
+	m.__n4__box.SetLook(fynelayout.Look{Grow: 1.0})
 	m.__n4.OnReachEnd = m.__n4_reachEnd_handler
 	m.__n5 = widget.NewLabel("")
 	m.__n5.SetText("rows")
 	m.__n4.Content = m.__n5
-	m.__n2.Add(m.__n4)
-	m.__n0.Add(m.__n2)
+	m.__n2.Add(m.__n4__box)
+	m.__n0.Add(m.__n2__box)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
 }
@@ -461,10 +464,10 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
+	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
-	gtk4rt.Flex(gtk4rt.Handle(unsafe.Pointer(m.__n2)))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Look{Grow: 1.0})
 	m.__n3 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr0)
 	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
@@ -472,10 +475,10 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__renderSlot0(m.__n2)
 	m.__n4 = (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
-	gtk4rt.Flex(gtk4rt.Handle(unsafe.Pointer(m.__n4)))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n4)), gtk4rt.Look{Grow: 1.0})
 	gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(m.__n4)), m.__n4_reachEnd_handler)
 	m.__n5 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n5)), __cstr2)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n5)), __cstr2)
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -491,6 +494,6 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/fyne --
-pass sha256:ee48b981604b2b663f9abdc65535ef44
+pass sha256:ba219602faaab755efeb30faa0474c31
 -- run/go/gtk4 --
-pass sha256:067e173c7c2ed7fc943299d158fa0d12
+pass sha256:ed604a241ff5ed737f65107ad7a66a21

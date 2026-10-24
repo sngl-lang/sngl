@@ -6,10 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/ir"
 )
 
 // A row that reports upward, under a dynamic `for` so the build cannot inline
@@ -77,24 +74,7 @@ func TestTheParentHandlerRepaintsTheModelsWidget(t *testing.T) {
 // and runs rather than matching on the source. The run then checks the write
 // actually lands: `m.__n1.Text` is the widget the parent's handler repaints.
 func TestInstanceEventReachesTheModelsWidget(t *testing.T) {
-	pkg := checkForFyne(t, instanceEventSrc)
-	g := &Generator{}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
-	if !ok {
-		t.Fatal("model.go not found in generated files")
-	}
+	modelSrc := generateForFyne(t, instanceEventSrc)
 
 	tmp, err := os.MkdirTemp(".", "_fyne-event-")
 	if err != nil {

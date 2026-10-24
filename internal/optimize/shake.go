@@ -3,7 +3,10 @@ package optimize
 import (
 	"fmt"
 	"log/slog"
+	"path"
 	"slices"
+	"strings"
+	"unicode"
 
 	"duckfam.us/sngl/ir"
 )
@@ -184,9 +187,13 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			continue
 		}
 		for _, p := range fn.Params {
-			want(p.Type)
+			if !namesBuiltinStruct(p.Type) {
+				want(p.Type)
+			}
 		}
-		want(fn.Return)
+		if !namesBuiltinStruct(fn.Return) {
+			want(fn.Return)
+		}
 	}
 	// A data component's record (Component.Data) is built at each call site,
 	// where nothing else may name its type, and a literal spells it.
@@ -214,15 +221,26 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	// Promotion is keyed by declaration and every backend emits by name, so a
 	// promoted library struct whose name the program also declares would be a
 	// second `type Point struct` in one file -- Go refuses it, and JS takes
-	// whichever came last. Renaming is the fix this wants, and it is not a
-	// rename this pass can make: the declaration is shared with the memoized
-	// library package, so writing to it would reach every other build in the
-	// process, and the types that point at it are shared too.
+	// whichever came last. Two library structs are renamed on the build's copy,
+	// the later package's taking its last segment (draw.Style is Style__draw
+	// beside ui.Style), so the pair is the same whichever was promoted first.
 	//
-	// So it is reported. A build that stops naming both declarations is worth
-	// more than emitted code that does not compile, or silently uses the wrong
-	// type.
+	// The program's own, or a directory's, is reported rather than renamed: it
+	// is the author's name, and the one a test or a host reads it by.
 	for _, sd := range added {
+		if other, clash := byName[sd.Name]; clash && fromLibrary(other) && fromLibrary(sd) {
+			later, kept := sd, other
+			if other.PkgPath() > sd.PkgPath() {
+				later, kept = other, sd
+			}
+			_, rest, _ := strings.Cut(later.PkgPath(), ":")
+			renamed := sd.Name + "__" + strings.Map(identRune, path.Base(rest))
+			if _, taken := byName[renamed]; !taken {
+				later.Name = renamed
+				byName[sd.Name], byName[renamed] = kept, later
+				continue
+			}
+		}
 		if other, clash := byName[sd.Name]; clash {
 			return fmt.Errorf("%s declares struct %q and so does %s, which this build has to declare; "+
 				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
@@ -779,4 +797,15 @@ func walkNodeRefs(n *ir.NodeInst, walk func(ir.Symbol)) {
 	if n.Params != nil {
 		walkType(n.Params.Type, nil, walk)
 	}
+}
+
+func identRune(r rune) rune {
+	if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return r
+	}
+	return '_'
+}
+
+func fromLibrary(sd *ir.StructDef) bool {
+	return strings.HasPrefix(sd.PkgPath(), "sngl:") && !sd.Frozen
 }

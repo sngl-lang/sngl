@@ -271,6 +271,7 @@ func (m *Model) __effect0_mount() {
 	var mine int = m.attempt__inst0
 	m.pending__inst0 = true
 	__async_arg0 := m.__effect0_key.Key
+	_ = __async_arg0
 	go func() {
 		r := Lookup(__async_arg0)
 		__snglDo(func() {
@@ -282,18 +283,18 @@ func (m *Model) __effect0_mount() {
 			case (r.tag == 0):
 				got := r.Ok
 				m.answer__inst0 = snglSome(got)
-				var __lt0 string
+				var __lt7 string
 				if m.answer__inst0 != nil {
-					__lt0 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
+					__lt7 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 						c0 := &sngljson.Codec{Kind: sngljson.Struct}
 						c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 						c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 						return c0
 					}())
 				} else {
-					__lt0 = "-"
+					__lt7 = "-"
 				}
-				m.__n1.SetText(__lt0)
+				m.__n1.SetText(__lt7)
 				m.failure__inst0 = nil
 			default:
 				got := r.Failed
@@ -390,14 +391,18 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n2_click_handler() {
 	__async_arg1 := "post"
+	_ = __async_arg1
 	__async_arg2 := __anon_e3b0c4{}
+	_ = __async_arg2
 	__async_arg3 := map[string]string{"X-Sngl": "on"}
+	_ = __async_arg3
 	__async_arg4 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Query: nil, Kind: "hardcover"}, func() *sngljson.Codec {
 		c0 := &sngljson.Codec{Kind: sngljson.Struct}
 		c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 		c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 		return c0
 	}()))
+	_ = __async_arg4
 	go func() {
 		__match2 := func() Result__Response {
 			_ = __async_arg2
@@ -496,19 +501,19 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	var __lt1 string
+	var __lt8 string
 	if m.answer__inst0 != nil {
-		__lt1 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
+		__lt8 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 			c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 			return c0
 		}())
 	} else {
-		__lt1 = "-"
+		__lt8 = "-"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt1)
+	m.__n1.SetText(__lt8)
 	m.__n0.Add(m.__n1)
 	m.__n2 = widget.NewButton("", nil)
 	m.__n2.SetText("Send")
@@ -544,9 +549,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class Echo(
     var method: String = "",
@@ -672,7 +681,7 @@ fun MainScreen() {
                     attempt__inst0 += 1
                 }
             }
-            Text(text = (if ((answer__inst0 != null)) SnglCodec.encode(answer__inst0!!, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }) else "-"), modifier = Modifier.safeDrawingPadding())
+            Text(text = (if ((answer__inst0 != null)) SnglCodec.encode(answer__inst0!!, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }) else "-"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 SnglCodec.start {
                 	var __match2: SnglResult__Response = run { val __r = SnglCodec.send(SnglMethod.POST.toString(), "http://127.0.0.1:47819/echo", mapOf("X-Sngl" to "on"), SnglCodec.encode(Echo(method = "m", query = null, kind = Kind.HARDCOVER), run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 })); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
@@ -686,7 +695,7 @@ fun MainScreen() {
                 		}
                 	}
                 }
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Send", modifier = Modifier)
             }
         }
@@ -1471,8 +1480,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b3554eb633885dade749c529d0e43bea
+pass sha256:20c07e439f3eddc1928481e22626771e
 -- run/kotlin/android --
-pass sha256:3a1c292260219f9c811179c7078ccaff
+pass sha256:e084177ca8fbdedf1e22856218f2bd6f
 -- run/none/html --
 pass sha256:a1dcb90f3139929f5515a43f059ea69b

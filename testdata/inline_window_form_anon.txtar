@@ -44,7 +44,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -114,7 +113,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.w.SetVisible(m.visible__inst0)
 	m.w.OnClosed = m.w_closed_handler
 	m.w.OnVisible = m.w_visible_handler
-	m.__n0 = container.NewVBox()
+	m.__n0 = fynelayout.NewVBox()
 	for _, r := range []Row{Row{Title: "alpha"}} {
 		m.__n1 = widget.NewLabel("")
 		m.__n1.SetText(r.Title)
@@ -136,4 +135,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:88081240e91cd55b8d746f9ce5854520
+pass sha256:148649d3389b6a7b7bdc595abab58d52

@@ -62,12 +62,6 @@ import (
 	"os"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	__ctx_listDepth int
@@ -83,9 +77,10 @@ type Model struct {
 	__rendering1    bool
 	__renderAgain1  bool
 
-	__n7 *fyne.Container
-	__n8 *fyne.Container
-	more *widget.Button
+	__n7      *fyne.Container
+	__n8      *fyne.Container
+	__n8__box *fynelayout.Box
+	more      *widget.Button
 }
 
 // New creates a Model with default values.
@@ -120,7 +115,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			m.__slot0 = nil
 			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 			for _, it := range m.items {
-				__n1 := container.NewHBox()
+				__n1 := fynelayout.NewHBox()
 				__n2 := widget.NewLabel("")
 				__n2.SetText(it)
 				__n1.Add(__n2)
@@ -148,7 +143,9 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			__inst0_next := []*__checkbox_state0Instance{}
 			var __inst0_i int = 0
 			for _, it := range m.items {
-				__n3 := container.NewHBox()
+				__n3 := fynelayout.NewHBox()
+				__n3__box := fynelayout.NewBox(__n3)
+				__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
 				var __n4 *__checkbox_state0Instance
 				if len(m.__inst0_live) > __inst0_i {
 					__n4 = m.__inst0_live[__inst0_i]
@@ -165,13 +162,13 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				__inst0_i = (__inst0_i + 1)
 				__n4__el := __n4.Root
 				__n3.Add(__n4__el)
-				__n5 := container.NewVBox()
+				__n5 := fynelayout.NewVBox()
 				__n6 := widget.NewLabel("")
 				__n6.SetText(it)
 				__n5.Add(__n6)
 				__n3.Add(__n5)
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
-				m.__slot1 = append(m.__slot1, __n3)
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
+				m.__slot1 = append(m.__slot1, __n3__box)
 			}
 			for __inst0_i_d, _ := range m.__inst0_live {
 				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -216,11 +213,13 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n7 = container.NewVBox()
+	m.__n7 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n7)
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
+	m.__n8__box = fynelayout.NewBox(m.__n8)
+	m.__n8__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0})
 	m.__renderSlot1(m.__n8)
-	m.__n7.Add(m.__n8)
+	m.__n7.Add(m.__n8__box)
 	m.more = widget.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
@@ -333,12 +332,6 @@ package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	__ctx_listDepth int
@@ -395,7 +388,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
 				gtk4rt.BoxSetSpacing(__n1, 6)
 				__n2 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n2, it)
+				gtk4rt.LabelSetLabel(__n2, it)
 				gtk4rt.BoxAppend(__n1, __n2)
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 				m.__slot0 = append(m.__slot0, __n1)
@@ -423,7 +416,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			for _, it := range m.items {
 				__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 				gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
-				gtk4rt.BoxSetSpacing(__n3, 6)
+				gtk4rt.BoxSetSpacing(__n3, 8)
 				var __n4 *__checkbox_state0Instance
 				if len(m.__inst0_live) > __inst0_i {
 					__n4 = m.__inst0_live[__inst0_i]
@@ -444,7 +437,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
 				gtk4rt.BoxSetSpacing(__n5, 6)
 				__n6 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n6, it)
+				gtk4rt.LabelSetLabel(__n6, it)
 				gtk4rt.BoxAppend(__n5, __n6)
 				gtk4rt.BoxAppend(__n3, __n5)
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
@@ -553,7 +546,8 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n7)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n8, 6)
+	gtk4rt.BoxSetSpacing(m.__n8, 4)
+	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Css: "padding-left: 20px; "})
 	m.__renderSlot1(m.__n8)
 	gtk4rt.BoxAppend(m.__n7, m.__n8)
 	m.more = gtk4rt.ButtonNew()
@@ -577,6 +571,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:19e1965e0d01bface9cafbc899fc094b
+pass sha256:a3f2e9c178f4bda99e04eb57f8edf193
 -- run/go/gtk4 --
-pass sha256:2ec3ae418f60be1a4eaaa86421667bed
+pass sha256:150b53b02bdb5e7dea17e3547b5253ce

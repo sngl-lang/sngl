@@ -170,7 +170,7 @@ func (m *Model) SetLoud(v bool) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n7 = container.NewVBox()
+	m.__n7 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n7)
 	m.flip = widget.NewButton("", nil)
 	m.flip.SetText("flip")
@@ -441,7 +441,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:c279eadeb686cb3add99ff39ec756986
+pass sha256:df398847b058857287609eb634cd138d
 -- run/go/gtk4 --
 pass sha256:bbb721e56a4ab7c650da576a4f3819f8
 -- run/none/html --

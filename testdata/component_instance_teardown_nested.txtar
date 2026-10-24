@@ -534,7 +534,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					__n3 = m.__inst1_live[__inst1_i]
 					__n3.SetNote(func(s string) {
 						m.log = ((m.log + s) + ";")
-						gtk4rt.LabelSetText(m.__n1, ("log=" + m.log))
+						gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
 					})
 					__n3.SetTag(r)
 					__n3.SetDepth(1)
@@ -545,7 +545,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					}
 					__n3__new := newNestInstance(m, r, 1, func(s string) {
 						m.log = ((m.log + s) + ";")
-						gtk4rt.LabelSetText(m.__n1, ("log=" + m.log))
+						gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
 					}, 0)
 					__n3 = __n3__new
 				}
@@ -635,7 +635,7 @@ func newNestInstance(__model *Model, __a_tag string, __a_depth int, __a_note fun
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, (("[" + c.__prop_tag) + "]"))
+	gtk4rt.LabelSetLabel(c.__n0, (("[" + c.__prop_tag) + "]"))
 	gtk4rt.BoxAppend(c.__root, c.__n0)
 	c.__renderSlot0(c.__root)
 	c.__effects0_settle()
@@ -711,7 +711,7 @@ func (c *NestInstance) teardown() {
 
 func (c *NestInstance) SetTag(__v string) {
 	c.__prop_tag = __v
-	gtk4rt.LabelSetText(c.__n0, (("[" + c.__prop_tag) + "]"))
+	gtk4rt.LabelSetLabel(c.__n0, (("[" + c.__prop_tag) + "]"))
 	c.__effects0_settle()
 }
 
@@ -826,7 +826,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.drop, "drop")
 	gtk4rt.Connect(m.drop, "clicked", m.drop_clicked_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("log=" + m.log))
+	gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
 	m.__renderSlot1(m.__root)
 	gtk4rt.BoxAppend(m.__root, m.drop)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
@@ -850,19 +850,24 @@ func (m *Model) dropClick() {
 
 package test.sngl.app
 
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.DisposableEffect
 
@@ -877,6 +882,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val rows = mutableStateListOf("a", "b")
     var log by mutableStateOf("")
 }
@@ -888,20 +894,20 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column {
         Button(onClick = {
             (listOf("a")).let { __v -> state.rows.clear(); state.rows.addAll(__v) }
-        }, modifier = Modifier.testTag("drop").safeDrawingPadding()) {
+        }, modifier = Modifier.testTag("drop").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "drop", modifier = Modifier)
         }
-        Text(text = ("log=" + state.log), modifier = Modifier.safeDrawingPadding())
+        Text(text = ("log=" + state.log), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         for (r in state.rows) {
             Nest(tag = r, depth = 1, note = { s: String ->
     state.log = ((state.log + s) + ";")
-}, __depth = 0)
+}, __ctx_flexShare = state.__ctx_flexShare, __depth = 0)
         }
     }
 }
 
 @Composable
-fun Nest(tag: String = "", depth: Int = 0, note: (String) -> Unit, __depth: Int = 0) {
+fun Nest(tag: String = "", depth: Int = 0, note: (String) -> Unit, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0) {
     val kids = remember { ((if ((depth > 0)) listOf((tag + "-")) else listOf<String>())).toMutableList().toMutableStateList() }
 
     DisposableEffect(tag) {
@@ -909,11 +915,11 @@ fun Nest(tag: String = "", depth: Int = 0, note: (String) -> Unit, __depth: Int 
             note(tag)
         }
     }
-    Text(text = (("[" + tag) + "]"), modifier = Modifier)
+    Text(text = (("[" + tag) + "]"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     for (k in kids) {
         if ((__depth >= 512)) {
         } else {
-            Nest(tag = k, depth = (depth - 1), note = note, __depth = (__depth + 1))
+            Nest(tag = k, depth = (depth - 1), note = note, __ctx_flexShare = __ctx_flexShare, __depth = (__depth + 1))
         }
     }
 }
@@ -1281,9 +1287,9 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:a06ab3467e1040130adc725a94ae7e7e
 -- run/go/gtk4 --
-pass sha256:2385fc06cc1fbab8710f01cf6022f7b1
+pass sha256:43ec52cee8e2630add457a12b86f450c
 -- run/kotlin/android --
-pass sha256:09c34b2582a92eb67944bf4cf0ad6a2b
+pass sha256:80d84c56bfd055cc695163df81575a9c
 -- run/none/html --
 pass sha256:2ef84fd5dc1df78246e0ac6b02222518
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --

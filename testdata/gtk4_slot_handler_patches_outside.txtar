@@ -99,13 +99,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.off.OnTapped = func() {
 					m.on = false
 					m.__n0.SetText(fmt.Sprint(m.on))
-					var __lt0 string
+					var __lt7 string
 					if m.on {
-						__lt0 = "yes"
+						__lt7 = "yes"
 					} else {
-						__lt0 = "no"
+						__lt7 = "no"
 					}
-					m.__n1.SetText(__lt0)
+					m.__n1.SetText(__lt7)
 				}
 				fynelayout.InsertBefore(__parent, m.__slot0_at, m.off)
 				m.__slot0 = append(m.__slot0, m.off)
@@ -165,14 +165,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot0(m.__root)
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.on))
-	var __lt1 string
+	var __lt8 string
 	if m.on {
-		__lt1 = "yes"
+		__lt8 = "yes"
 	} else {
-		__lt1 = "no"
+		__lt8 = "no"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt1)
+	m.__n1.SetText(__lt8)
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.__n0)
 	parts = append(parts, m.__n1)
@@ -283,14 +283,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__list_off(fmt.Sprint(__copy0), m.off)
 				gtk4rt.Connect(m.off, "clicked", func() {
 					m.on = false
-					gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.on))
-					var __lt0 string
+					gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.on))
+					var __lt15 string
 					if m.on {
-						__lt0 = "yes"
+						__lt15 = "yes"
 					} else {
-						__lt0 = "no"
+						__lt15 = "no"
 					}
-					gtk4rt.LabelSetText(m.__n1, __lt0)
+					gtk4rt.LabelSetLabel(m.__n1, __lt15)
 				})
 				gtk4rt.InsertBefore(parent, m.__slot0_at, m.off)
 				m.__slot0 = append(m.__slot0, m.off)
@@ -323,15 +323,15 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__renderSlot0(m.__root)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.on))
-	var __lt1 string
+	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.on))
+	var __lt16 string
 	if m.on {
-		__lt1 = "yes"
+		__lt16 = "yes"
 	} else {
-		__lt1 = "no"
+		__lt16 = "no"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, __lt1)
+	gtk4rt.LabelSetLabel(m.__n1, __lt16)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 }
@@ -370,6 +370,6 @@ func (m *Model) __list_off(key string, w gtk4rt.Handle) {
 	m.__copies_off[key] = w
 }
 -- run/go/fyne --
-pass sha256:19f565e0792560c026caed071353c715
+pass sha256:c93fde257db48a2ee1da99c904d272c8
 -- run/go/gtk4 --
-pass sha256:2ff25f380290b3c1eb9dc1322f3adcbb
+pass sha256:77c07033d59ce6c5896aa9894954e3a8

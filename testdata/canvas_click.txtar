@@ -234,7 +234,7 @@ func (m *Model) SetXs(v []int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 	m.__n2.Add(m.__n0)
@@ -632,13 +632,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	hits           int
@@ -733,7 +726,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					__n1.Set__on0(func() {
 						m.hits += x
 						__ctmp1 := C.CString(("hits " + fmt.Sprint(m.hits)))
-						C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp1)
+						C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp1)
 						C.free(unsafe.Pointer(__ctmp1))
 					})
 					__n1.Set__p0(x)
@@ -744,7 +737,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					__n1__new := new__canvas0Instance(m, x, func() {
 						m.hits += x
 						__ctmp2 := C.CString(("hits " + fmt.Sprint(m.hits)))
-						C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp2)
+						C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp2)
 						C.free(unsafe.Pointer(__ctmp2))
 					})
 					__n1 = __n1__new
@@ -778,7 +771,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) board_click_handler() {
 	m.hits += 1
 	__ctmp3 := C.CString(("hits " + fmt.Sprint(m.hits)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp3)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp3)
 	C.free(unsafe.Pointer(__ctmp3))
 }
 
@@ -876,12 +869,12 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
+	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(6))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp0 := C.CString(("hits " + fmt.Sprint(m.hits)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp0)
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp0)
 	C.free(unsafe.Pointer(__ctmp0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	m.board = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
@@ -1151,8 +1144,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:48915c331d1c7998482800fbee8f80ee
+pass sha256:e0512c7612dadf9b28ea010b3d472e1a
 -- run/go/gtk4 --
-pass sha256:357e97ba3a7ee16e3630e8b7388ee667
+pass sha256:a8fb6099488dc6aff62cf187e651ec38
 -- run/none/html --
 pass sha256:a39c641cb11a4782be3281b478ca4e8b

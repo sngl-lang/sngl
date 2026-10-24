@@ -94,7 +94,7 @@ func TestTypingUpdatesOnce(t *testing.T) {
 // itself until the stack overflowed.
 func TestTypingIntoATwoWayEntryDoesNotRecurse(t *testing.T) {
 	files := goFiles(generateGTK4FilesBuilt(t, entryEchoSrc))
-	if strings.Contains(files["model.go"], "gtk4rt.") {
+	if !strings.Contains(files["model.go"], "C.gtk_entry_new") {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])
 	}
 	files["entry.go"] = "package main\n\nfunc main() {}\n"

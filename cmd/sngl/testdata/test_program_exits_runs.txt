@@ -51,7 +51,7 @@ func testTheProgramGoesAway(t test.Test, c page) {
     t.assert(depth(1000000000) > 0)
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:b947503db908406c13dfa5ded03581b1
+sha256:397195cd18a59a9f2062f80cbe9b766d
 {
   "results": [
     {
@@ -67,7 +67,7 @@ sha256:b947503db908406c13dfa5ded03581b1
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:91c0d1f34836a61933e47899e660cac7
+sha256:2eb51bdcebefdd211f8e51d31b77b0dd
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:91c0d1f34836a61933e47899e660cac7
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:07d2c63cb23a47f35a02df34983017f8
+sha256:36052bf96c0b2f29acd172c5d47e45c3
 {
   "results": [
     {
@@ -105,7 +105,7 @@ sha256:07d2c63cb23a47f35a02df34983017f8
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:85aca13c4eb13c8b88b223e6ee63b2bc
+sha256:3e3ba8ce1f31e92e51ea8e0675edb383
 {
   "results": [
     {

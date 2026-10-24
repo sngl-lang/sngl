@@ -16,6 +16,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/testharness"
+	"duckfam.us/sngl/internal/gradle"
 	"duckfam.us/sngl/internal/jdk"
 	"duckfam.us/sngl/ir"
 )
@@ -65,11 +66,9 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 		return nil, nil, &codegen.SkipError{Reason: "ANDROID_HOME / ANDROID_SDK_ROOT not set"}
 	}
 
-	gradlew := filepath.Join(dir, "gradlew")
-	if _, err := os.Stat(gradlew); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, "gradlew")); err != nil {
 		return nil, nil, &codegen.SkipError{Reason: "gradle wrapper not in emitted scaffold (expected gradlew)"}
 	}
-	_ = os.Chmod(gradlew, 0o755)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -81,17 +80,17 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 	// back — we surface the build log to the driver caller on accept
 	// timeout to make diagnosis tractable.
 	var buildLog bytes.Buffer
-	cmd := exec.CommandContext(ctx, gradlew,
+	cmd := gradle.Command(ctx, dir,
 		":app:testDebugUnitTest",
-		"--no-daemon", "--console=plain",
 		"-Dsngl.agent.port="+strconv.Itoa(port),
 		"--tests", "*.MainScreenAgentTest",
 	)
-	cmd.Dir = dir
 	cmd.Env = jdk.Env(jdkHome)
 	cmd.Stdout = &buildLog
 	cmd.Stderr = &buildLog
+	unlock := gradle.Lock()
 	if err := cmd.Start(); err != nil {
+		unlock()
 		listener.Close()
 		return nil, nil, fmt.Errorf("gradle start: %w", err)
 	}
@@ -101,6 +100,7 @@ func (g *Generator) launchRobolectric(ctx context.Context, dir string, _ codegen
 	gradleDone := make(chan struct{})
 	go func() {
 		_ = cmd.Wait()
+		unlock()
 		close(gradleDone)
 	}()
 
@@ -182,24 +182,24 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 	// Prefer the emitted gradle wrapper if present — it's a
 	// self-bootstrapping shell script that downloads and caches a known
 	// gradle distribution, so the host doesn't need system gradle.
-	gradleBin := ""
-	gradlew := filepath.Join(dir, "gradlew")
-	if _, statErr := os.Stat(gradlew); statErr == nil {
-		_ = os.Chmod(gradlew, 0o755)
-		gradleBin = gradlew
+	var bld *exec.Cmd
+	if _, statErr := os.Stat(filepath.Join(dir, "gradlew")); statErr == nil {
+		bld = gradle.Command(ctx, dir, ":app:assembleDebug")
 	} else if sys, lookErr := exec.LookPath("gradle"); lookErr == nil {
-		gradleBin = sys
+		bld = exec.CommandContext(ctx, sys, ":app:assembleDebug", "--no-daemon", "--console=plain")
+		bld.Dir = dir
 	} else {
 		return nil, nil, &codegen.SkipError{Reason: "gradle not on PATH and no gradlew in scaffold"}
 	}
 
 	var buildOut bytes.Buffer
-	bld := exec.CommandContext(ctx, gradleBin, ":app:assembleDebug", "--no-daemon", "--console=plain")
-	bld.Dir = dir
 	bld.Env = jdk.Env(jdkHome)
 	bld.Stdout = &buildOut
 	bld.Stderr = &buildOut
-	if err := bld.Run(); err != nil {
+	unlock := gradle.Lock()
+	err = bld.Run()
+	unlock()
+	if err != nil {
 		out := buildOut.String()
 		fmt.Fprint(os.Stderr, out)
 		return nil, nil, fmt.Errorf("gradle :app:assembleDebug: %w", err)

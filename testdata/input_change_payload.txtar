@@ -191,7 +191,7 @@ func (m *Model) SetValue__inst0(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n6 = container.NewVBox()
+	m.__n6 = fynelayout.NewVBox()
 	m.__n3 = widget.NewEntry()
 	m.__n3.SetText(m.value__inst0)
 	m.__n3.SetPlaceHolder("")
@@ -231,7 +231,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.value__inst2 = ""
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n7 := container.NewVBox()
+	__n7 := fynelayout.NewVBox()
 	c.__n0 = widget.NewEntry()
 	c.__n0.SetText(c.value__inst1)
 	c.__n0.SetPlaceHolder("")
@@ -497,7 +497,7 @@ func (m *Model) entry_changed_handler() {
 func (m *Model) entry_activate_handler() {
 	m.value__inst0 = gtk4rt.EditableGetText(m.entry)
 	m.last = ("got " + m.value__inst0)
-	gtk4rt.LabelSetText(m.__n1, m.last)
+	gtk4rt.LabelSetLabel(m.__n1, m.last)
 	m.__effects1_settle()
 }
 
@@ -558,7 +558,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.Connect(c.entry, "activate", func() {
 		c.value__inst1 = gtk4rt.EditableGetText(c.entry)
 		c.committed = c.value__inst1
-		gtk4rt.LabelSetText(c.__n0, c.committed)
+		gtk4rt.LabelSetLabel(c.__n0, c.committed)
 		c.__effects0_settle()
 	})
 	gtk4rt.BoxAppend(__n4, c.entry)
@@ -572,12 +572,12 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.Connect(c.entry__1, "activate", func() {
 		c.value__inst2 = gtk4rt.EditableGetText(c.entry__1)
 		c.committed = ((c.__prop_label + ":") + c.value__inst2)
-		gtk4rt.LabelSetText(c.__n0, c.committed)
+		gtk4rt.LabelSetLabel(c.__n0, c.committed)
 		c.__effects0_settle()
 	})
 	gtk4rt.BoxAppend(__n4, c.entry__1)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, c.committed)
+	gtk4rt.LabelSetLabel(c.__n0, c.committed)
 	gtk4rt.BoxAppend(__n4, c.__n0)
 	c.__effects0_settle()
 	c.Root = __n4
@@ -714,7 +714,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
 	gtk4rt.BoxAppend(__n3, m.entry)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.last)
+	gtk4rt.LabelSetLabel(m.__n1, m.last)
 	gtk4rt.BoxAppend(__n3, m.__n1)
 	m.__renderSlot0(__n3)
 	m.__effects1_settle()
@@ -754,6 +754,6 @@ func (m *Model) entry__1Change(v string) {
 	gtk4rt.Emit(m.__named_entry__1, "activate")
 }
 -- run/go/fyne --
-pass sha256:dd14f8bbc27ed6199412804088172793
+pass sha256:4e5771d220e22c7b843e0762e271b10c
 -- run/go/gtk4 --
-pass sha256:a1bfc0e39d7f24e95c3febd75ba38366
+pass sha256:b77b26ce72cea47893a99487d7a7c032

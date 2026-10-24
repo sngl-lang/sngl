@@ -125,15 +125,15 @@ func TestColorToComposeColor(t *testing.T) {
 import ui "sngl:ui"
 ui.window {
     vbox {
-        text(value="hi", style={color="#216"})
+        text(value="hi", style={color=#216})
     }
 }`
 	out := compileSrc(t, src, false)
 	if strings.Contains(out, "parseColor") {
 		t.Errorf("parseColor should not appear:\n%s", out)
 	}
-	if !strings.Contains(out, "ComposeColor(red = ") {
-		t.Errorf("expected ComposeColor(red = ...) form:\n%s", out)
+	if !strings.Contains(out, "Color(red = ") {
+		t.Errorf("expected Color(red = ...) form:\n%s", out)
 	}
 }
 
@@ -215,10 +215,10 @@ ui.window {
 	if strings.Contains(out, "TODO") {
 		t.Errorf("widget rendered as a TODO stub:\n%s", out)
 	}
-	// select: SnglSelect, handed the bound value and its choices' labels,
-	// writing a choice back to the value.
-	if !strings.Contains(out, "SnglSelect(value = fruit") || !strings.Contains(out, "fruit = v") {
-		t.Errorf("select not rendered as a value-bound SnglSelect:\n%s", out)
+	// select: a read-only field showing the bound value, which a choice --
+	// picked, or set as the box's text -- writes back.
+	if !strings.Contains(out, "OutlinedTextField(value = fruit, readOnly = `true`") || !strings.Contains(out, "fruit = v") || !strings.Contains(out, ".snglChooses(") {
+		t.Errorf("select not rendered as a value-bound read-only field:\n%s", out)
 	}
 	// radio: a RadioButton per option, selected reflects the bound value.
 	if !strings.Contains(out, "RadioButton(selected = (size == opt.label)") {
@@ -259,9 +259,9 @@ ui.window {
 }`
 	out := compileSrc(t, src, false)
 	for _, want := range []string{
-		"HorizontalDivider(modifier = Modifier)",
-		"CircularProgressIndicator(modifier = Modifier)",
-		"Card(modifier = Modifier) {",
+		"HorizontalDivider(modifier = ",
+		"CircularProgressIndicator(modifier = ",
+		"Card(modifier = ",
 		"TabRow(selectedTabIndex = idx) {",
 		"Tab(modifier = Modifier, selected = ",
 	} {

@@ -249,7 +249,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(fmt.Sprint(m.total__inst0))
@@ -329,6 +329,7 @@ func (c *__query_state1Instance) __effect0_mount() {
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := c.__effect0_key.Key
+	_ = __async_arg1
 	go func() {
 		r := __async_arg0(__async_arg1)
 		__snglDo(func() {
@@ -573,7 +574,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					__n2.SetFetch(Lookup)
 					__n2.SetLoad(func(got int) {
 						m.total__inst0 += got
-						gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total__inst0))
+						gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
 					})
 					__n2.SetOn(n)
 					__n2.Set__start_value(nil)
@@ -585,7 +586,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					}
 					__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
 						m.total__inst0 += got
-						gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total__inst0))
+						gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
 					})
 					__n2 = __n2__new
 				}
@@ -694,6 +695,7 @@ func (c *__query_state1Instance) __effect0_mount() {
 	c.pending = true
 	__async_arg0 := c.__prop_fetch
 	__async_arg1 := c.__effect0_key.Key
+	_ = __async_arg1
 	go func() {
 		r := __async_arg0(__async_arg1)
 		gtk4rt.Post(func() {
@@ -868,7 +870,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.__renderSlot0(m.__n3)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total__inst0))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
 	gtk4rt.BoxAppend(m.__n3, m.__n1)
 	m.__n4 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n4, "add")
@@ -885,6 +887,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:bfb6f7f2de14603b7b40ca75c37bc1db
+pass sha256:962d34c5e5ddd85970e46b34b57f241e
 -- run/go/gtk4 --
-pass sha256:b51661e54c9682eee614d6c1afb742aa
+pass sha256:ba0c3e5383e0825dee637190efa12395

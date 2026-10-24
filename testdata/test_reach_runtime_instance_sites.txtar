@@ -104,10 +104,73 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 type ErrorEvent struct {
 	Message string
@@ -174,6 +237,139 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func CellsOf(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt1 int
+	if px <= 0.0 {
+		__lt1 = 0
+	} else {
+		__lt1 = max(1, (int(px) / 8))
+	}
+	return __lt1
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(CellsOf(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(CellsOf(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt2 int
+		if s.MaxLines == 0 {
+			__lt2 = 0
+		} else {
+			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt3 lipgloss.Position
+	switch a {
+	case "center":
+		__lt3 = lipgloss.Center
+	case "right":
+		__lt3 = lipgloss.Right
+	default:
+		__lt3 = lipgloss.Left
+	}
+	return __lt3
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt5 = lipgloss.RoundedBorder()
+		} else {
+			__lt5 = lipgloss.NormalBorder()
+		}
+		__lt4 = __lt5
+	}
+	return __lt4
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return CellsOf(__lt7)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __effect0_enter() {
@@ -618,7 +814,7 @@ func (m Model) View() tea.View {
 	if m.show {
 		var part0_0Parts []string
 		var part0_0Part_0 string
-		part0_0Part_0 = lipgloss.NewStyle().Render(fmt.Sprint((("[one:" + fmt.Sprint(m.hits__inst0)) + "]")))
+		part0_0Part_0 = BoxLook(Style{}, true).Render(fmt.Sprint((("[one:" + fmt.Sprint(m.hits__inst0)) + "]")))
 		part0_0Parts = append(part0_0Parts, part0_0Part_0)
 		var part0_0Part_1 string
 		part0_0Part_1Focused := (m.__focusID == 0)
@@ -626,11 +822,11 @@ func (m Model) View() tea.View {
 		if part0_0Part_1Focused {
 			part0_0Part_1Prefix = ">"
 		}
-		part0_0Part_1 = lipgloss.NewStyle().Render(part0_0Part_1Prefix + " " + fmt.Sprint("hit"))
+		part0_0Part_1 = BoxLook(Style{}, true).Render(part0_0Part_1Prefix + " " + fmt.Sprint("hit"))
 		part0_0Parts = append(part0_0Parts, part0_0Part_1)
 		var part0_0Part_2 string
 		if m.hits__inst0 >= 2 {
-			part0_0Part_2 = lipgloss.NewStyle().Render(fmt.Sprint("done"))
+			part0_0Part_2 = BoxLook(Style{}, true).Render(fmt.Sprint("done"))
 		}
 		if part0_0Part_2 != "" {
 			part0_0Parts = append(part0_0Parts, part0_0Part_2)
@@ -648,7 +844,7 @@ func (m Model) View() tea.View {
 		_ = __copy0
 		_ = n
 		var part0_1Item_0 string
-		part0_1Item_0 = lipgloss.NewStyle().Render(fmt.Sprint((((("[" + n) + ":") + fmt.Sprint(func() int {
+		part0_1Item_0 = BoxLook(Style{}, true).Render(fmt.Sprint((((("[" + n) + ":") + fmt.Sprint(func() int {
 			if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
@@ -661,7 +857,7 @@ func (m Model) View() tea.View {
 		if part0_1Item_1Focused {
 			part0_1Item_1Prefix = ">"
 		}
-		part0_1Item_1 = lipgloss.NewStyle().Render(part0_1Item_1Prefix + " " + fmt.Sprint("hit"))
+		part0_1Item_1 = BoxLook(Style{}, true).Render(part0_1Item_1Prefix + " " + fmt.Sprint("hit"))
 		__focusPos1++
 		part0_1Items = append(part0_1Items, part0_1Item_1)
 		var part0_1Item_2 string
@@ -671,7 +867,7 @@ func (m Model) View() tea.View {
 			}
 			return 0
 		}() >= 2 {
-			part0_1Item_2 = lipgloss.NewStyle().Render(fmt.Sprint("done"))
+			part0_1Item_2 = BoxLook(Style{}, true).Render(fmt.Sprint("done"))
 		}
 		if part0_1Item_2 != "" {
 			part0_1Items = append(part0_1Items, part0_1Item_2)
@@ -687,7 +883,7 @@ func (m Model) View() tea.View {
 	if m.open__inst0 {
 		var part0_2_0Parts []string
 		var part0_2_0Part_0 string
-		part0_2_0Part_0 = lipgloss.NewStyle().Render(fmt.Sprint((("[in:" + fmt.Sprint(m.hits__inst2)) + "]")))
+		part0_2_0Part_0 = BoxLook(Style{}, true).Render(fmt.Sprint((("[in:" + fmt.Sprint(m.hits__inst2)) + "]")))
 		part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_0)
 		var part0_2_0Part_1 string
 		part0_2_0Part_1Focused := (m.__focusID == 2)
@@ -695,11 +891,11 @@ func (m Model) View() tea.View {
 		if part0_2_0Part_1Focused {
 			part0_2_0Part_1Prefix = ">"
 		}
-		part0_2_0Part_1 = lipgloss.NewStyle().Render(part0_2_0Part_1Prefix + " " + fmt.Sprint("hit"))
+		part0_2_0Part_1 = BoxLook(Style{}, true).Render(part0_2_0Part_1Prefix + " " + fmt.Sprint("hit"))
 		part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_1)
 		var part0_2_0Part_2 string
 		if m.hits__inst2 >= 2 {
-			part0_2_0Part_2 = lipgloss.NewStyle().Render(fmt.Sprint("done"))
+			part0_2_0Part_2 = BoxLook(Style{}, true).Render(fmt.Sprint("done"))
 		}
 		if part0_2_0Part_2 != "" {
 			part0_2_0Parts = append(part0_2_0Parts, part0_2_0Part_2)
@@ -710,7 +906,7 @@ func (m Model) View() tea.View {
 		part0_2Children = append(part0_2Children, part0_2_0)
 	}
 	var part0_2_1 string
-	part0_2_1 = lipgloss.NewStyle().Render(fmt.Sprint((("[fixed:" + fmt.Sprint(m.hits__inst3)) + "]")))
+	part0_2_1 = BoxLook(Style{}, true).Render(fmt.Sprint((("[fixed:" + fmt.Sprint(m.hits__inst3)) + "]")))
 	part0_2Children = append(part0_2Children, part0_2_1)
 	var part0_2_2 string
 	part0_2_2Focused := (m.__focusID == 3)
@@ -718,18 +914,20 @@ func (m Model) View() tea.View {
 	if part0_2_2Focused {
 		part0_2_2Prefix = ">"
 	}
-	part0_2_2 = lipgloss.NewStyle().Render(part0_2_2Prefix + " " + fmt.Sprint("hit"))
+	part0_2_2 = BoxLook(Style{}, true).Render(part0_2_2Prefix + " " + fmt.Sprint("hit"))
 	part0_2Children = append(part0_2Children, part0_2_2)
 	var part0_2_3 string
 	if m.hits__inst3 >= 2 {
-		part0_2_3 = lipgloss.NewStyle().Render(fmt.Sprint("done"))
+		part0_2_3 = BoxLook(Style{}, true).Render(fmt.Sprint("done"))
 	}
 	if part0_2_3 != "" {
 		part0_2Children = append(part0_2Children, part0_2_3)
 	}
 	part0_2 = lipgloss.JoinVertical(lipgloss.Left, part0_2Children...)
+	part0_2 = BoxLook(Style{}, true).Render(part0_2)
 	part0Children = append(part0Children, part0_2)
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = BoxLook(Style{}, true).Render(part0)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -1247,10 +1445,10 @@ func (m *Model) SetHits__inst0(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
+	m.__n0 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n0)
 	m.__renderSlot1(m.__n0)
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.__renderSlot2(m.__n1)
 	m.shown = widget.NewLabel("")
 	m.shown.SetText((("[fixed:" + fmt.Sprint(m.hits__inst0)) + "]"))
@@ -1999,7 +2197,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 			m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
 			if m.hits__inst0 >= 2 {
 				m.done = gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(m.done, "done")
+				gtk4rt.LabelSetLabel(m.done, "done")
 				gtk4rt.InsertBefore(parent, m.__slot3_at, m.done)
 				m.__slot3 = append(m.__slot3, m.done)
 			}
@@ -2028,7 +2226,7 @@ func (m *Model) __snglTeardown() {
 
 func (m *Model) hit__reach3_clicked_handler() {
 	m.hits__inst0 = (m.hits__inst0 + 1)
-	gtk4rt.LabelSetText(m.shown, (("[fixed:" + fmt.Sprint(m.hits__inst0)) + "]"))
+	gtk4rt.LabelSetLabel(m.shown, (("[fixed:" + fmt.Sprint(m.hits__inst0)) + "]"))
 	m.__renderSlot3(m.__n1)
 }
 
@@ -2076,12 +2274,12 @@ func newBadge__site0Instance(__model *Model, __a_label string) *Badge__site0Inst
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.shown = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.hit__reach0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.hit__reach0, "hit")
 	gtk4rt.Connect(c.hit__reach0, "clicked", func() {
 		c.hits = (c.hits + 1)
-		gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+		gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 		c.__renderSlot4(c.__root)
 	})
 	gtk4rt.BoxAppend(c.__root, c.shown)
@@ -2095,7 +2293,7 @@ func newBadge__site0Instance(__model *Model, __a_label string) *Badge__site0Inst
 
 func (c *Badge__site0Instance) SetLabel(__v string) {
 	c.__prop_label = __v
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
 
 func (c *Badge__site0Instance) __renderSlot4(parent gtk4rt.Handle) {
@@ -2117,7 +2315,7 @@ func (c *Badge__site0Instance) __renderSlot4(parent gtk4rt.Handle) {
 			if c.hits >= 2 {
 				c.done__reach1 = gtk4rt.LabelNew("")
 				c.__model.__named_done__reach1 = c.done__reach1
-				gtk4rt.LabelSetText(c.done__reach1, "done")
+				gtk4rt.LabelSetLabel(c.done__reach1, "done")
 				gtk4rt.InsertBefore(parent, c.__slot4_at, c.done__reach1)
 				c.__slot4 = append(c.__slot4, c.done__reach1)
 			}
@@ -2207,13 +2405,13 @@ func newBadge__site1Instance(__model *Model, __a_label string, __a___copy string
 	c.__renderAgain5 = false
 	c.__slot6 = nil
 	c.shown = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.hit__reach1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.hit__reach1, "hit")
 	c.__model.__list_hit__reach1(c.__prop___copy, c.hit__reach1)
 	gtk4rt.Connect(c.hit__reach1, "clicked", func() {
 		c.hits = (c.hits + 1)
-		gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+		gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 		c.__renderSlot5(c.__root)
 	})
 	gtk4rt.BoxAppend(c.__root, c.shown)
@@ -2227,7 +2425,7 @@ func newBadge__site1Instance(__model *Model, __a_label string, __a___copy string
 
 func (c *Badge__site1Instance) SetLabel(__v string) {
 	c.__prop_label = __v
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
 
 func (c *Badge__site1Instance) Set__copy(__v string) {
@@ -2375,12 +2573,12 @@ func newBadge__site2Instance(__model *Model, __a_label string) *Badge__site2Inst
 	c.__rendering6 = false
 	c.__renderAgain6 = false
 	c.shown = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.hit__reach2 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.hit__reach2, "hit")
 	gtk4rt.Connect(c.hit__reach2, "clicked", func() {
 		c.hits = (c.hits + 1)
-		gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+		gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 		c.__renderSlot6(c.__root)
 	})
 	gtk4rt.BoxAppend(c.__root, c.shown)
@@ -2394,7 +2592,7 @@ func newBadge__site2Instance(__model *Model, __a_label string) *Badge__site2Inst
 
 func (c *Badge__site2Instance) SetLabel(__v string) {
 	c.__prop_label = __v
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
 
 func (c *Badge__site2Instance) __renderSlot6(parent gtk4rt.Handle) {
@@ -2412,7 +2610,7 @@ func (c *Badge__site2Instance) __renderSlot6(parent gtk4rt.Handle) {
 			c.__slot6_at = gtk4rt.SlotAnchor(parent, c.__slot6_at)
 			if c.hits >= 2 {
 				c.done = gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(c.done, "done")
+				gtk4rt.LabelSetLabel(c.done, "done")
 				gtk4rt.InsertBefore(parent, c.__slot6_at, c.done)
 				c.__slot6 = append(c.__slot6, c.done)
 			}
@@ -2487,7 +2685,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.done__reach0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.done__reach0, "done")
+	gtk4rt.LabelSetLabel(c.done__reach0, "done")
 	c.__model.__list_done__reach0(c.__prop___p0, c.done__reach0)
 	c.Root = c.done__reach0
 	gtk4rt.Retain(c.Root)
@@ -2579,7 +2777,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__renderSlot2(m.__n1)
 	m.shown = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.shown, (("[fixed:" + fmt.Sprint(m.hits__inst0)) + "]"))
+	gtk4rt.LabelSetLabel(m.shown, (("[fixed:" + fmt.Sprint(m.hits__inst0)) + "]"))
 	gtk4rt.BoxAppend(m.__n1, m.shown)
 	m.hit__reach3 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.hit__reach3, "hit")
@@ -2737,6 +2935,8 @@ package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -2745,12 +2945,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.semantics.semantics
 
@@ -2769,6 +2972,7 @@ val SnglInstances = mutableMapOf<String, Map<String, (List<Any?>) -> Any?>>()
 class MainScreenState {
     init { SnglPresent.clear() }
     init { SnglInstances.clear() }
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var show by mutableStateOf(true)
     val names = mutableStateListOf("a", "b")
     var open__inst0 by mutableStateOf(true)
@@ -2781,30 +2985,30 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         if (state.show) {
-            Badge__site0(label = "one", __sngl = "b")
+            Badge__site0(label = "one", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __sngl = "b")
         }
         for ((__copy0, n) in state.names.withIndex()) {
-            Badge__site1(label = n, __copy = __copy0.toString(), __sngl = "r[" + __copy0.toString() + "]")
+            Badge__site1(label = n, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __copy = __copy0.toString(), __sngl = "r[" + __copy0.toString() + "]")
         }
         Column(modifier = Modifier) {
             if (state.open__inst0) {
-                Badge__site2(label = "in", __sngl = "inner")
+                Badge__site2(label = "in", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __sngl = "inner")
             }
-            Text(text = (("[fixed:" + state.hits__inst0.toString()) + "]"), modifier = Modifier.testTag("shown"))
+            Text(text = (("[fixed:" + state.hits__inst0.toString()) + "]"), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 state.hits__inst0 = (state.hits__inst0 + 1)
-            }, modifier = Modifier.testTag("hit__reach3")) {
+            }, modifier = Modifier.testTag("hit__reach3"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "hit", modifier = Modifier)
             }
             if ((state.hits__inst0 >= 2)) {
-                Text(text = "done", modifier = Modifier.testTag("done"))
+                Text(text = "done", modifier = Modifier.testTag("done"), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
 }
 
 @Composable
-fun Badge__site0(label: String = "", __sngl: String = "") {
+fun Badge__site0(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __sngl: String = "") {
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
@@ -2814,19 +3018,19 @@ fun Badge__site0(label: String = "", __sngl: String = "") {
         onDispose { SnglInstances.remove(__sngl) }
     }
 
-    Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"))
+    Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = Modifier.testTag("hit__reach0")) {
+    }, modifier = Modifier.testTag("hit__reach0"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = "hit", modifier = Modifier)
     }
     if ((hits >= 2)) {
-        Text(text = "done", modifier = Modifier.testTag("done__reach1"))
+        Text(text = "done", modifier = Modifier.testTag("done__reach1"), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 
 @Composable
-fun Badge__site1(label: String = "", __copy: String = "", __sngl: String = "") {
+fun Badge__site1(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __copy: String = "", __sngl: String = "") {
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
@@ -2836,19 +3040,19 @@ fun Badge__site1(label: String = "", __copy: String = "", __sngl: String = "") {
         onDispose { SnglInstances.remove(__sngl) }
     }
 
-    Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"))
+    Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = Modifier.testTag("hit__reach1").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+    }, modifier = Modifier.testTag("hit__reach1").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = "hit", modifier = Modifier)
     }
     if ((hits >= 2)) {
-        Text(text = "done", modifier = Modifier.testTag("done__reach0").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }))
+        Text(text = "done", modifier = Modifier.testTag("done__reach0").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 
 @Composable
-fun Badge__site2(label: String = "", __sngl: String = "") {
+fun Badge__site2(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __sngl: String = "") {
     var hits by remember { mutableStateOf(0) }
 
     DisposableEffect(__sngl) {
@@ -2858,14 +3062,14 @@ fun Badge__site2(label: String = "", __sngl: String = "") {
         onDispose { SnglInstances.remove(__sngl) }
     }
 
-    Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"))
+    Text(text = (((("[" + label) + ":") + hits.toString()) + "]"), modifier = Modifier.testTag("shown"), style = LocalTextStyle.current.merge(TextStyle.Default))
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = Modifier.testTag("hit__reach2")) {
+    }, modifier = Modifier.testTag("hit__reach2"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = "hit", modifier = Modifier)
     }
     if ((hits >= 2)) {
-        Text(text = "done", modifier = Modifier.testTag("done"))
+        Text(text = "done", modifier = Modifier.testTag("done"), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
@@ -3626,12 +3830,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ca0623b7a4c79f7a876ae5673c3ffa56
+pass sha256:39beed510a477a20221a620c2f700647
 -- run/go/fyne --
-pass sha256:bb8557df52a0b539a0c0fdb89e09b3cc
+pass sha256:d7872106b92ee051678af6c5b3de1855
 -- run/go/gtk4 --
-pass sha256:866482fde5971465e7887139c31d1762
+pass sha256:b2701ae5fa633aa98aebac9f03654dac
 -- run/kotlin/android --
-pass sha256:da0ad6835811f53fde0e26035bb6b952
+pass sha256:60f63acafb2d8a4ae23587a392ad32af
 -- run/none/html --
 pass sha256:ba90838bf6e78f6e603a0d2c637b009d

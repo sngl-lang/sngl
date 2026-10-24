@@ -38,6 +38,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/gradle"
 	"duckfam.us/sngl/internal/headless"
 	"duckfam.us/sngl/internal/jdk"
 )
@@ -402,13 +403,12 @@ func gradleTest(ctx context.Context, dir string) (string, error) {
 	if reason != "" {
 		return "", &SkipError{Reason: reason}
 	}
-	gradlew := dir + "/gradlew"
-	if _, err := os.Stat(gradlew); err != nil {
+	if _, err := os.Stat(dir + "/gradlew"); err != nil {
 		return "", &SkipError{Reason: "no gradle wrapper in scaffold"}
 	}
-	_ = os.Chmod(gradlew, 0o755)
-	cmd := exec.CommandContext(ctx, gradlew, ":app:testDebugUnitTest", "--no-daemon", "--console=plain")
-	cmd.Dir = dir
+	unlock := gradle.Lock()
+	defer unlock()
+	cmd := gradle.Command(ctx, dir, ":app:testDebugUnitTest")
 	cmd.Env = jdk.Env(home)
 	b, err := cmd.CombinedOutput()
 	if err != nil {

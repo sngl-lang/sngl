@@ -148,6 +148,12 @@ func UnitLiteralValue(lit *ir.Literal, tables *UnitTables) (any, bool) {
 	return newUnitValue(tables.of(ud), lit.Suffix, amounts), true
 }
 
+// UnitZero is the zero of a multi-base unit, what the literal 0 the checker
+// lets stand for one means.
+func UnitZero(ud *ir.UnitDef, tables *UnitTables) any {
+	return newUnitValue(tables.of(ud), "", map[string]float64{})
+}
+
 // UnitTables holds the table of each unit declaration a caller has read a
 // literal of, which UnitLiteralValue would otherwise build per literal.
 type UnitTables struct {

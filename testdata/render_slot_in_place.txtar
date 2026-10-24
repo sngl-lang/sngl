@@ -192,7 +192,7 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewLabel("")
 	m.__n3.SetText("head")
 	m.__n2.Add(m.__n3)
@@ -317,7 +317,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			if m.a {
 				__n0 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n0, "A")
+				gtk4rt.LabelSetLabel(__n0, "A")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
 				m.__slot0 = append(m.__slot0, __n0)
 			}
@@ -341,7 +341,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 			for _, it := range m.items {
 				__n1 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n1, it)
+				gtk4rt.LabelSetLabel(__n1, it)
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n1)
 				m.__slot1 = append(m.__slot1, __n1)
 			}
@@ -385,12 +385,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	__n3 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n3, "head")
+	gtk4rt.LabelSetLabel(__n3, "head")
 	gtk4rt.BoxAppend(m.__n2, __n3)
 	m.__renderSlot0(m.__n2)
 	m.__renderSlot1(m.__n2)
 	__n4 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n4, "tail")
+	gtk4rt.LabelSetLabel(__n4, "tail")
 	gtk4rt.BoxAppend(m.__n2, __n4)
 	m.flip = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
@@ -422,6 +422,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:8f588aa487a890060783046ff4c9ff73
+pass sha256:4c87778a78156aae706acdb7499da03d
 -- run/go/gtk4 --
-pass sha256:f9b7fd7047f1a17316c2a38287330d07
+pass sha256:33360076cee87fba4570c85c45d36cf3

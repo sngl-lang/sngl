@@ -6,12 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
-	"duckfam.us/sngl/internal/checker"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/internal/parser"
-	"duckfam.us/sngl/ir"
 )
 
 // nameCollisionSrc is testdata/func_nested_name_taken.txtar's program: a func
@@ -56,42 +51,7 @@ window {
 // redeclaration, and a redeclaration parses. The golden shows the two names are
 // distinct; only a compiler says they have to be.
 func TestGeneratedGoWithACollidingNestedFuncCompiles(t *testing.T) {
-	doc, err := parser.Parse("t.sngl", []byte(nameCollisionSrc))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	var plats []ir.Platform
-	if p := codegen.LookupPlatform("bubbletea"); p != nil {
-		plats = append(plats, p)
-	}
-	pkg, diags := checker.Check(doc, &checker.Config{
-		IsMain:    true,
-		Platforms: plats,
-		Languages: []ir.Language{lang},
-		Targets:   []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}},
-	})
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			t.Fatalf("check: %s: %s", d.Pos, d.Msg)
-		}
-	}
-	g := &Generator{}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
-	if !ok {
-		t.Fatalf("model.go not among generated files %v", mem.Files())
-	}
+	modelSrc := []byte(generateBubbleteaModel(t, nameCollisionSrc))
 
 	// Under the main module, so charm.land/bubbletea resolves through the
 	// project's own go.mod.

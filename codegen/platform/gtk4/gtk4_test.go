@@ -3,13 +3,16 @@ package gtk4_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/platform/gtk4"
+	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/snapshot"
 )
 
 func TestPlatformRegistered(t *testing.T) {
@@ -45,12 +48,14 @@ func TestConfigureGIR_ProvidesDeclarations(t *testing.T) {
 	t.Cleanup(func() { _ = cfg.Configure(map[string]string{}) })
 
 	// The declarations are the gir: scheme's package, resolved here with no
-	// build around the check as `sngl doc` resolves it.
+	// build around the check as `sngl doc` resolves it, against the languages
+	// the binary links: the package's Look is a `go.native` struct.
 	doc, err := parser.Parse("t.sngl", []byte("import gtk \"gir:Gtk-4.0\"\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{})
+	langs, _ := build.RegisteredTargets()
+	pkg, diags := checker.Check(doc, &checker.Config{Languages: langs})
 	for _, d := range diags {
 		t.Errorf("%s: %s", d.Pos, d.Msg)
 	}
@@ -81,3 +86,10 @@ const minimalGIR = `<?xml version="1.0"?>
     </class>
   </namespace>
 </repository>`
+
+func TestSnapshotTakesALanguageGtk4Supports(t *testing.T) {
+	lang := snapshot.LangForPlatform("gtk4")
+	if !slices.Contains(codegen.LookupPlatform("gtk4").SupportedLangs(), lang) {
+		t.Errorf("sngl snapshot builds gtk4 under %q, which it does not support", lang)
+	}
+}

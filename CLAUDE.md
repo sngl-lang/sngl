@@ -57,7 +57,7 @@ paragraph here per change: this file is loaded into every session.
 ## Rules that hold everywhere
 
 - **`ir.IsConst` asks the declaration, never the inferred purity.** Every
-  component and override a target package declares must be const.
+  component a target package declares must be const; an override need not be.
 - **Built-ins are declared, not hardcoded.** The compiler finds a built-in by
   its `#[builtin("kind")]` mark, never by name, so every one is shadowable.
 - **Every phase after the check works on a copy** (`ir.ClonePackage`); the

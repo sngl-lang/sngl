@@ -244,6 +244,10 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 	if strings.HasSuffix(bind.ktType, "?") || bind.sealed {
 		return "<" + bind.ktType + ">"
 	}
+	// A lambda's parameter types are not inferred from the cell it starts.
+	if strings.Contains(bind.ktType, "->") {
+		return "<" + bind.ktType + ">"
+	}
 	if strings.TrimSpace(initVal) == "null" {
 		t := bind.ktType
 		if t == "" {
@@ -576,10 +580,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			kc.IdentRewrites = map[string]string{}
 		}
 		for _, fn := range ctx.AllFuncs() {
-			if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
-				continue
-			}
-			if fn.Return == nil {
+			if !inGoLib(fn) {
 				continue
 			}
 			kc.IdentRewrites[fn.Name] = "golib.Golib." + exportName(fn.Name)
@@ -988,44 +989,41 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// on a value of a user type has nothing to do with it. Skipped in both
 	// places, `Calc.pending` was declared by nobody while every call site
 	// spelled it.
-	if !cfg.GoLib {
-		allFuncs := ctx.AllFuncs()
-		for _, fn := range allFuncs {
-			if fn.IsTest || codegen.IsComputed(fn) {
-				continue
-			}
-			if testMode && stateMembers[fn] {
-				continue
-			}
-			// A method on a user type is called as one -- `state.pending()` --
-			// so it is an extension function, and the receiver passNoImplicitRecv
-			// put in front of the parameters is Kotlin's own `this`. A
-			// component's own func is not that: it is called by bare name from
-			// the composable, and the component is no Kotlin type to extend.
-			if fn.OnType() {
-				emitIRKtMethod(&body, fn, kc)
-				continue
-			}
-			// A component's func reads and writes the component's state, and
-			// on Compose that state is a `remember`ed local of the composable.
-			// So it is a local fun of the composable too; emitted at top level
-			// it named a `state` nothing had declared.
-			//
-			// One that touches no such state is not that, and putting it there
-			// anyway is not free: a method on a user type is an extension
-			// function at top level, so `Calc.pending` calling the pure
-			// `format` found it only inside the composable, or as
-			// `state.format` in test mode.
-			if componentOwnFuncs[fn] && scoped[fn] {
-				continue
-			}
-			emitIRKtFunc(&body, fn, kc)
+	allFuncs := ctx.AllFuncs()
+	for _, fn := range allFuncs {
+		if fn.IsTest || codegen.IsComputed(fn) || cfg.GoLib && !composeSide(fn) {
+			continue
 		}
+		if testMode && stateMembers[fn] {
+			continue
+		}
+		// A method on a user type is called as one -- `state.pending()` --
+		// so it is an extension function, and the receiver passNoImplicitRecv
+		// put in front of the parameters is Kotlin's own `this`. A
+		// component's own func is not that: it is called by bare name from
+		// the composable, and the component is no Kotlin type to extend.
+		if fn.OnType() {
+			emitIRKtMethod(&body, fn, kc)
+			continue
+		}
+		// A component's func reads and writes the component's state, and
+		// on Compose that state is a `remember`ed local of the composable.
+		// So it is a local fun of the composable too; emitted at top level
+		// it named a `state` nothing had declared.
+		//
+		// One that touches no such state is not that, and putting it there
+		// anyway is not free: a method on a user type is an extension
+		// function at top level, so `Calc.pending` calling the pure
+		// `format` found it only inside the composable, or as
+		// `state.format` in test mode.
+		if componentOwnFuncs[fn] && scoped[fn] {
+			continue
+		}
+		emitIRKtFunc(&body, fn, kc)
 	}
 
 	// The imports were collected during pass 1 and dynamically during pass 2;
 	// the FileEmitter puts them and the package clause above the body.
-	body.WriteString(heldStyleDecls(kc, body.String(), info.Structs))
 	return ktSource{
 		pkg:     cfg.Package,
 		imports: kc.Imports(),
@@ -1042,6 +1040,10 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		if p.Default != nil {
 			if _, ok := p.Default.(*ir.Literal); ok {
 				def = " = " + kotlin.IRLiteralToKt(p.Default)
+			} else if ir.IsConst(p.Default) && !namesParam(p.Default) {
+				// A bodyless declaration's call site omits a defaulted prop and
+				// leaves its default to the body, which is this composable.
+				def = " = " + kc.EvalExpr(p.Default)
 			}
 		}
 		params = append(params, p.Name+": "+ktType+def)
@@ -1051,6 +1053,9 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	own := readsOf(reads, cc.Component)
 	if len(own) > 0 {
 		params = append(params, kotlin.InstanceKeyParam+`: String = ""`)
+	}
+	if takesTestTag(cc.Component) {
+		params = append(params, testTagParam+`: String = ""`)
 	}
 	fmt.Fprintf(b, "fun %s(%s) {\n", exportName(cc.Component.Name), strings.Join(params, ", "))
 
@@ -1123,7 +1128,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		combo:   combo,
 		// The window, where it is under a reactive `if` and so in a
 		// composable of its own.
-		screen: screen,
+		screen:     screen,
+		rootTagged: takesTestTag(cc.Component),
 	}
 
 	for _, s := range cc.Body {
@@ -1728,4 +1734,20 @@ func calleesFirst(fns []*ir.Func) []*ir.Func {
 		visit(fn)
 	}
 	return out
+}
+
+// namesParam reports whether e names a parameter, which a Kotlin default may
+// do only of one declared before it.
+func namesParam(e ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok {
+			if _, ok := id.Sym.(*ir.Param); ok {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
 }

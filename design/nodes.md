@@ -438,7 +438,7 @@ key reaches -- runs the handler directly (`emitBtDirectInvokers`)
 **A select is one control on every target**, so its `#id` names the widget a
 test's `c.pick.change("Banana")` chooses through, as a user does: html's
 `<select>`, fyne's Select, gtk4's GtkDropDown, bubbletea's `tui.Select`,
-android's `SnglSelect` and the interpreter's own
+android's read-only field and the interpreter's own
 (`cmd/sngl/testdata/select_change_runs.txt`). A select laid out as one widget
 per choice leaves the id on the box around them, which no trigger reaches,
 and a menu the trigger cannot type into is no input path a test has. Each
@@ -474,10 +474,12 @@ value is reported as a choice:
   (`tui.Table`): built once from the rows it started with, it showed
   headings alone where the rows were a request's answer
   (`cmd/sngl/testdata/table_rows_runs.txt`).
-- **android**'s `SnglSelect` is a read-only field a tap opens a menu from,
-  Kotlin the platform ships as it does `SnglDateField`. A user cannot type
-  into it -- an editable field took any text -- but its semantics answer
-  `SetText` with a choice's label as a pick. A trigger's `change` runs that
+- **android**'s select is a read-only field a tap opens a menu from, an
+  override holding whether the menu is open. A user cannot type into it --
+  an editable field took any text -- but its box's semantics answer
+  `SetText` with a choice's label as a pick (`snglChooses`, a Kotlin modifier
+  the platform ships, since Compose spells semantics as a lambda with a
+  receiver). A trigger's `change` runs that
   action rather than `performTextReplacement`, which refuses a field that is
   not editable, as its `click` runs `OnClick` rather than a touch.
 

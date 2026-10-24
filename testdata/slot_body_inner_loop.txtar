@@ -194,7 +194,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n4 = container.NewVBox()
+	m.__n4 = fynelayout.NewVBox()
 	m.bump = widget.NewButton("", nil)
 	m.bump.SetText("bump")
 	m.bump.OnTapped = m.bump_click_handler
@@ -231,7 +231,7 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n2 = container.NewHBox()
+	c.__n2 = fynelayout.NewHBox()
 	c.__renderSlot0(c.__n2)
 	c.Root = c.__n2
 	return c
@@ -464,7 +464,7 @@ func (c *__child0Instance) __renderSlot0(parent gtk4rt.Handle) {
 			c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 			for _, cell := range c.__prop___p0 {
 				__n1 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
+				gtk4rt.LabelSetLabel(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
 				gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
 				c.__slot0 = append(c.__slot0, __n1)
 			}
@@ -722,8 +722,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7265509450e51aa92c8936e0344a58c3
+pass sha256:4c2664f520ac6cba76c8d19280f0850c
 -- run/go/gtk4 --
-pass sha256:98ee158f91327b767d8b4f93e9aeeb5e
+pass sha256:c4ad3933018ca14672b7597ccd1ab7f4
 -- run/none/html --
 pass sha256:3d896236bcf597b614421224f0c7318d

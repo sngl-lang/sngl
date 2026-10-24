@@ -54,6 +54,14 @@ The digest does not cover `pkg/<lang>/` runtimes, which the generated program
 imports from the checkout -- a change there wants a `-verify` the digest will
 not ask for, the same gap a golden's record has.
 
+**Every Gradle build the compiler runs takes turns in one daemon**
+(`internal/gradle`): a file lock lets one build run at a time across every
+test binary, the first starts the daemon, and it exits five minutes after the
+last. Kotlin compiles inside it. With `--no-daemon` each build was a Gradle
+JVM and a Kotlin daemon of 2 GB each, the Kotlin one outliving the build, and
+the script and golden harnesses running several at once ran the machine out of
+memory.
+
 **verify launches nothing a record answers.** It runs no `sngl test` of its
 own: the examples are all `./...` reaches, and `examples_runs.txt` runs them
 on every target from its records. Run unrecorded in verify, every launch

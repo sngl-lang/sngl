@@ -139,7 +139,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n15 = container.NewVBox()
+	m.__n15 = fynelayout.NewVBox()
 	m.__n1 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n1__el = m.__n1.Root
 	m.__n15.Add(m.__n1__el)
@@ -191,7 +191,7 @@ func newFrame__slot4Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n4 = container.NewVBox()
+	c.__n4 = fynelayout.NewVBox()
 	__n11 := widget.NewLabel("")
 	__n11.SetText("BETA")
 	c.__n4.Add(__n11)
@@ -304,7 +304,7 @@ func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n6 = container.NewVBox()
+	c.__n6 = fynelayout.NewVBox()
 	__n12 := widget.NewLabel("")
 	__n12.SetText("ALPHA")
 	c.__n6.Add(__n12)
@@ -417,7 +417,7 @@ func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__rendering2 = false
 	c.__renderAgain2 = false
 	c.__slot3 = nil
-	c.__n8 = container.NewVBox()
+	c.__n8 = fynelayout.NewVBox()
 	__n13 := widget.NewLabel("")
 	__n13.SetText("BETA")
 	c.__n8.Add(__n13)
@@ -530,7 +530,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst3_live = []*Frame__slot3Instance{}
 	c.__rendering3 = false
 	c.__renderAgain3 = false
-	c.__n10 = container.NewVBox()
+	c.__n10 = fynelayout.NewVBox()
 	__n14 := widget.NewLabel("")
 	__n14.SetText("ALPHA")
 	c.__n10.Add(__n14)
@@ -715,7 +715,7 @@ func newFrame__slot4Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
 	__n11 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n11, "BETA")
+	gtk4rt.LabelSetLabel(__n11, "BETA")
 	gtk4rt.BoxAppend(c.__n4, __n11)
 	c.__renderSlot0(c.__n4)
 	c.Root = c.__n4
@@ -850,7 +850,7 @@ func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
 	__n12 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n12, "ALPHA")
+	gtk4rt.LabelSetLabel(__n12, "ALPHA")
 	gtk4rt.BoxAppend(c.__n6, __n12)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
@@ -985,7 +985,7 @@ func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n8, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n8, 6)
 	__n13 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n13, "BETA")
+	gtk4rt.LabelSetLabel(__n13, "BETA")
 	gtk4rt.BoxAppend(c.__n8, __n13)
 	c.__renderSlot2(c.__n8)
 	c.Root = c.__n8
@@ -1120,7 +1120,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n10, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n10, 6)
 	__n14 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n14, "ALPHA")
+	gtk4rt.LabelSetLabel(__n14, "ALPHA")
 	gtk4rt.BoxAppend(c.__n10, __n14)
 	c.__renderSlot3(c.__n10)
 	c.Root = c.__n10
@@ -1741,8 +1741,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:463844bd484b145ed891ce8946408517
+pass sha256:166780ba538078f3a1d34564a783b85f
 -- run/go/gtk4 --
-pass sha256:dc0b48a5c96410772a6512f3c7671481
+pass sha256:ded4d8371dcc8623de68e7ca8335855e
 -- run/none/html --
 pass sha256:20e974bc55f3733e9ebaccee6ccb4dd5

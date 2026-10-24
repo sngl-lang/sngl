@@ -12,6 +12,6 @@ import "testing"
 // effect_in_loop index their key out of the live list on the next line, so the
 // variable is read there.
 func TestUnkeyedTeardownLoopBindsNoOrdinal(t *testing.T) {
-	model := compileBubbletea(t, fixtureSource(t, "effect_tree_lifetime.sngl"))
+	model := generateBubbleteaModel(t, fixtureSource(t, "effect_tree_lifetime.sngl"))
 	buildGeneratedGo(t, "bt-teardown-", model)
 }
