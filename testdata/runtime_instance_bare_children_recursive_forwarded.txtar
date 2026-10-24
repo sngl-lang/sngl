@@ -712,7 +712,7 @@ func newFrame__slot4Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
 	__n11 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(__n11, "BETA")
@@ -847,7 +847,7 @@ func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n6, 1)
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
 	__n12 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(__n12, "ALPHA")
@@ -982,7 +982,7 @@ func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__renderAgain2 = false
 	c.__slot3 = nil
 	c.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n8, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n8, 1)
 	gtk4rt.BoxSetSpacing(c.__n8, 6)
 	__n13 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(__n13, "BETA")
@@ -1117,7 +1117,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__rendering3 = false
 	c.__renderAgain3 = false
 	c.__n10 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n10, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n10, 1)
 	gtk4rt.BoxSetSpacing(c.__n10, 6)
 	__n14 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(__n14, "ALPHA")
@@ -1242,7 +1242,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n15 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n15, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n15, 1)
 	gtk4rt.BoxSetSpacing(m.__n15, 6)
 	m.__n1 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n1__el = m.__n1.Root
@@ -1743,6 +1743,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:166780ba538078f3a1d34564a783b85f
 -- run/go/gtk4 --
-pass sha256:ded4d8371dcc8623de68e7ca8335855e
+pass sha256:25332a6070e163966687ff07b2fb7df6
 -- run/none/html --
 pass sha256:20e974bc55f3733e9ebaccee6ccb4dd5

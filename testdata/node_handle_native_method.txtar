@@ -362,8 +362,8 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 6)
 	m.bar = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
 	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.bar)), C.double(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.bar)))
@@ -381,4 +381,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:6b493e691e00408769d591c933a27b71
+pass sha256:3cc13da884ff3fce2955d06f1b707002

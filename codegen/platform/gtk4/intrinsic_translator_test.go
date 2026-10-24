@@ -173,19 +173,22 @@ func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 	}
 }
 
-func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
+// A write of a prop its package declares no set for is refused: the
+// translator builds no setter of its own, since every write the build makes
+// carries the call the declared set makes (testdata/gtk4_declared_set.txtar).
+func TestGtk4Translator_OnPropAssign_RefusesAPropWithNoSet(t *testing.T) {
 	gc := stubGC()
-	tr := newGtk4Translator(gc, func(_, _ string) {})
+	shared := &emitShared{}
+	tr := newGtk4Translator(gc, func(_, _ string) {}).withShared(shared)
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
 	_ = makeWidget(tr, "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypString, Value: "hi"}
-	got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "label", val))
-	if !strings.Contains(got, "C.gtk_label_set_label(") {
-		t.Errorf("expected GIR's gtk_label_set_label; got: %s", got)
+	if got := renderStmts(gc, tr.OnPropAssign(context.Background(), node, "label", val)); got != "" {
+		t.Errorf("emitted a setter the package declares no set for: %s", got)
 	}
-	if !strings.Contains(got, "C.CString") {
-		t.Errorf("expected C.CString conversion; got: %s", got)
+	if len(shared.errs) != 1 || !strings.Contains(shared.errs[0].Error(), "GtkLabel.label is written, and its package declares no #[gen.protocol(set)] for it") {
+		t.Errorf("expected one diagnostic naming GtkLabel.label; got %v", shared.errs)
 	}
 }
 

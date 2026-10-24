@@ -582,23 +582,11 @@ import (
 	"unsafe"
 )
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-var (
-	__cstr0 = C.CString("https://example.com")
-	__cstr1 = C.CString("Example")
-	__cstr2 = C.CString("New tab")
-)
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__rel0         *C.char
+	__rel1         *C.char
 	__n0           *C.GtkBox
 	__n1           *C.GtkBox
 	__n2           *C.GtkLinkButton
@@ -612,6 +600,7 @@ func New() *Model {
 	m := &Model{}
 	m.visible__inst0 = true
 	m.__rel0 = C.CString("")
+	m.__rel1 = C.CString("https://example.com")
 	return m
 }
 
@@ -630,6 +619,7 @@ func (m *Model) __n3_clicked_handler() {
 
 func (m *Model) __snglTeardown() {
 	Free(m.__rel0)
+	Free(m.__rel1)
 }
 
 func Free(s *C.char) {
@@ -651,18 +641,18 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 0)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 6)
 	m.__n2 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(m.__rel0)))
-	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n2)), __cstr0)
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __cstr1)
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
+	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n2)), m.__rel1)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "Example")
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(C.int(func() int { return 1 }())))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(m.__rel0)))
-	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n3)), __cstr0)
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr2)
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
+	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n3)), m.__rel1)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n3)), "New tab")
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(C.int(func() int { return 1 }())))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n3)), "clicked", m.__n3_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
@@ -758,7 +748,7 @@ pass sha256:b7d6205575c552c00b8b3db3ba7b4210
 -- run/go/fyne --
 pass sha256:7648943300fac076996bf13168af1215
 -- run/go/gtk4 --
-pass sha256:980c0fd03c79dce4a15dfdc39652f2fc
+pass sha256:6cf635389b796f091f7891e9674c1b04
 -- run/kotlin/android --
 pass sha256:ad3e07787c4745b677df71a05bc3737a
 -- run/none/html --

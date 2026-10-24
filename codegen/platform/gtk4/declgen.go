@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -61,7 +62,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	b.WriteString(lookDecl)
 	declared := map[string]bool{}
 	casts := map[string]string{}
-	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}}
+	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
@@ -76,6 +77,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// construction, the GIR classes this platform wraps.
 		fmt.Fprintf(&b, "\n#[gen.renders(identity)]\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
 		taken := map[string]bool{lookPropName: true, restSlotName: true}
+		var props []setProp
 		for _, p := range info.Props {
 			// A construct-only property is not declared: the widget exists
 			// before any prop is assigned, and GObject refuses the write
@@ -95,13 +97,14 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			typ, ok := snglTypeName(p.IRType)
 			if !ok && reg.Enums[p.GIRType] != nil {
 				// An enumeration is written as its member's name, which the
-				// emitter turns into the C constant (girEnumMember).
+				// prop's set matches to the member's value (enumMatch).
 				typ, ok = "string", true
 			}
 			if !ok {
 				continue
 			}
 			taken[n] = true
+			props = append(props, setProp{prop: p, name: n})
 			fmt.Fprintf(&b, "    %s %s,\n", n, typ)
 		}
 		fmt.Fprintf(&b, "    %s Look = Look{},\n", lookPropName)
@@ -141,6 +144,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
 		writeCreate(&b, reg, info, casts)
 		children.write(&b, info)
+		children.writeSets(&b, reg, info, props, casts)
 		// Each action is a method reached through a `#id` on the widget,
 		// declared as the C identifier it is: `bar.pulse()` is
 		// gtk_progress_bar_pulse(bar). One whose name a prop, an event or the
@@ -225,6 +229,8 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 type childOps struct {
 	natives map[string]bool
 	ptrs    map[string]bool
+	// classPtrs is each class a `_ptr_` cast is declared for.
+	classPtrs map[string]bool
 }
 
 // write declares info's append, and its remove where the class accumulates
@@ -238,8 +244,17 @@ func (o *childOps) write(b *strings.Builder, info *gir.ClassInfo) {
 	if rm := info.ChildRemove; rm.Func != "" && !add.Single {
 		o.op(b, info, "remove", rm)
 	}
-	// Taking the class itself: handed a family value, Go would box it.
-	fmt.Fprintf(b, "\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _ptr_%s(w %s) c.pointer\n", info.CType, info.CType)
+	o.classPtr(b, info.CType)
+}
+
+// classPtr declares the cast of a class to its untyped pointer, taking the
+// class itself: handed a family value, Go would box it.
+func (o *childOps) classPtr(b *strings.Builder, cType string) {
+	if o.classPtrs[cType] {
+		return
+	}
+	o.classPtrs[cType] = true
+	fmt.Fprintf(b, "\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _ptr_%s(w %s) c.pointer\n", cType, cType)
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
@@ -266,6 +281,148 @@ func (o *childOps) writeCasts(b *strings.Builder) {
 		fmt.Fprintf(b, "\n#[macro.cnative(\"*C.%s\")]\nstruct %s {}\n", cType, ptrType(cType))
 		fmt.Fprintf(b, "\n#[macro.cnative(\"(*C.%s)\")]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
 	}
+}
+
+// setProp is a prop a class declares, under its SNGL name.
+type setProp struct {
+	prop gir.Prop
+	name string
+}
+
+// writeSets declares, for each prop of info a value can be written to, the
+// #[gen.protocol(set)] function lowering splices wherever the program writes
+// it. The call is gtk4rt's where gtk4rt wraps the setter (rtSetterTable), so
+// a program writing only those stays one with no cgo, as the connect does;
+// GIR's setter otherwise, its receiver cast to the class or interface that
+// declares it; and where GTK ships none, the preamble's sngl_set_prop_* by
+// the property's name, which GObject converts to the type its GParamSpec
+// declares. A string is handed to C as a string, which CMarshal converts and
+// ReleaseTemps frees; an enumeration's member is written as its name, which a
+// match turns into the member's value and which folds where it is spliced.
+func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, props []setProp, casts map[string]string) {
+	for _, sp := range props {
+		p, n := sp.prop, sp.name
+		kind := propKind(reg, p)
+		if kind == propUnsettable {
+			continue
+		}
+		var call string
+		if rt, ok := rtSetterTable[p.Setter]; ok && p.Setter != "" {
+			call = o.rtSet(b, reg, p, n, rt.fn, rt.kind)
+		} else if p.Setter != "" {
+			call = o.cSet(b, reg, info, p, n, casts)
+		} else {
+			call = o.propSet(b, reg, info, p, n, kind)
+		}
+		fmt.Fprintf(b, "\n#[gen.protocol(set)]\nfunc _set_%s_%s(self %s, %s %s) {\n    %s\n}\n", info.CType, n, info.CType, n, propTypeName(p), call)
+	}
+}
+
+// propTypeName is the SNGL type a prop is declared as.
+func propTypeName(p gir.Prop) string {
+	if typ, ok := snglTypeName(p.IRType); ok {
+		return typ
+	}
+	return "string"
+}
+
+func (o *childOps) native(b *strings.Builder, name, decl string) {
+	if !o.natives[name] {
+		o.natives[name] = true
+		b.WriteString(decl)
+	}
+}
+
+// rtSet is the call of gtk4rt's wrapper of p's setter, which takes the
+// widget as a Handle and the value as Go holds it.
+func (o *childOps) rtSet(b *strings.Builder, reg *gir.TypeRegistry, p gir.Prop, n, fn string, kind rtSetterKind) string {
+	typ, value := map[rtSetterKind]string{rtStr: "string", rtBool: "bool", rtInt: "int", rtOrient: "int"}[kind], n
+	if kind == rtOrient {
+		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
+	}
+	native := "_rt" + fn
+	o.native(b, native, fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.%s\")]\nfunc %s(w ui.node, v %s)\n", gtk4rtPkg, fn, native, typ))
+	return fmt.Sprintf("%s(self, %s)", native, value)
+}
+
+// cSet is the call of p's GIR setter.
+func (o *childOps) cSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, p gir.Prop, n string, casts map[string]string) string {
+	recv := info.CType
+	if r := girSetter(info, p).RecvType; r != "" {
+		recv = r
+	}
+	o.ptrs[recv] = true
+	o.classPtr(b, info.CType)
+	var typ, value string
+	switch propKind(reg, p) {
+	case propString:
+		typ, value = "string", n
+		if p.SetterNullable {
+			typ = "option[string]"
+		}
+	case propBool:
+		cType := girScalarCast(p)
+		casts[cType] = "int"
+		typ, value = castType(cType), fmt.Sprintf("%s(%s ? 1 : 0)", castFunc(cType), n)
+	case propInt:
+		sp := numberParam(girScalarCast(p), "int", "int", n)
+		if sp.cast != "" {
+			casts[sp.cast] = sp.castFrom
+		}
+		typ, value = sp.typ, sp.zero
+	case propFloat:
+		sp := numberParam(girScalarCast(p), "double", "float", n)
+		if sp.cast != "" {
+			casts[sp.cast] = sp.castFrom
+		}
+		typ, value = sp.typ, sp.zero
+	case propEnum:
+		e := reg.Enums[p.GIRType]
+		casts[e.CType] = "int"
+		typ = castType(e.CType)
+		value = enumMatch(e, n, func(v int) string { return fmt.Sprintf("%s(%d)", castFunc(e.CType), v) })
+	}
+	native := "_" + p.Setter
+	o.native(b, native, fmt.Sprintf("\n#[macro.cnative(%q)]\nfunc %s(w %s, v %s)\n", p.Setter, native, ptrType(recv), typ))
+	return fmt.Sprintf("%s(%s(_ptr_%s(self)), %s)", native, ptrFunc(recv), info.CType, value)
+}
+
+// propSet is the call of the preamble helper that sets p by its name,
+// for a property GTK ships no setter for.
+func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, p gir.Prop, n string, kind propValueKind) string {
+	fn := gObjectSetFn[kind]
+	typ, value := map[propValueKind]string{propString: "string", propBool: "int", propInt: "int", propFloat: "float", propEnum: "int"}[kind], n
+	switch kind {
+	case propBool:
+		value = n + " ? 1 : 0"
+	case propEnum:
+		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
+	}
+	o.classPtr(b, info.CType)
+	native := "_" + fn
+	o.native(b, native, fmt.Sprintf("\n#[macro.cnative(%q)]\nfunc %s(w c.pointer, name string, v %s)\n", fn, native, typ))
+	return fmt.Sprintf("%s(_ptr_%s(self), %q, %s)", native, info.CType, p.Name, value)
+}
+
+// enumMatch is a match of n, a member's name, to the member's value as
+// spelled: a member GIR names with an underscore is written with a hyphen
+// too, as a GTK property's own name is.
+func enumMatch(e *gir.EnumInfo, n string, spell func(int) string) string {
+	names := slices.Sorted(maps.Keys(e.Values))
+	slices.SortStableFunc(names, func(a, b string) int { return e.Values[a] - e.Values[b] })
+	var arms strings.Builder
+	for _, m := range names {
+		pats := []string{strconv.Quote(m)}
+		if h := strings.ReplaceAll(m, "_", "-"); h != m {
+			pats = append(pats, strconv.Quote(h))
+		}
+		fmt.Fprintf(&arms, "        %s => %s\n", strings.Join(pats, ", "), spell(e.Values[m]))
+	}
+	fallback := 0
+	if len(names) > 0 {
+		fallback = e.Values[names[0]]
+	}
+	return fmt.Sprintf("(match %s {\n%s        else => %s\n    })", n, arms.String(), spell(fallback))
 }
 
 // ptrType and ptrFunc name a C pointer type and the cast to it, prefixed as
@@ -517,13 +674,13 @@ func girProp(info *gir.ClassInfo, snglProp string) (gir.Prop, bool) {
 	return gir.Prop{}, false
 }
 
-// girSetter is the C setter GIR names for one property of one class, with the
-// casts a call to it needs. An interface-inherited property binds to the
-// interface's setter (gtk_orientable_set_orientation) and takes the interface
-// as its receiver, not the class; a superclass-inherited one binds to that
-// ancestor's setter (gtk_widget_set_visible) and takes the ancestor. Setter is
-// empty for a property GIR names no setter for; there is no derived spelling
-// to fall back on.
+// girSetter is the C setter GIR names for one property of one class, with
+// the receiver a call to it is cast to. An interface-inherited property binds
+// to the interface's setter (gtk_orientable_set_orientation) and takes the
+// interface as its receiver, not the class; a superclass-inherited one binds
+// to that ancestor's setter (gtk_widget_set_visible) and takes the ancestor.
+// Setter is empty for a property GIR names no setter for; there is no derived
+// spelling to fall back on.
 func girSetter(info *gir.ClassInfo, p gir.Prop) gtkSetterEntry {
 	e := gtkSetterEntry{Setter: p.Setter}
 	switch {
@@ -531,9 +688,6 @@ func girSetter(info *gir.ClassInfo, p gir.Prop) gtkSetterEntry {
 		e.RecvType = "Gtk" + p.InterfaceName
 	case p.OwnerCType != "":
 		e.RecvType = p.OwnerCType
-	}
-	if gt := p.GIRType; girTypeIsNamedNonPrimitive(gt) {
-		e.ValType = "Gtk" + gt
 	}
 	return e
 }
@@ -595,24 +749,6 @@ func girScalarCast(p gir.Prop) string {
 		return "double"
 	}
 	return p.GIRType
-}
-
-// girEnumMember is the cgo spelling of the enum member a SNGL string names —
-// `C.GTK_ORIENTATION_VERTICAL` for "vertical" on a GtkOrientation property.
-// Empty when the type is not an enumeration or names no such member.
-func girEnumMember(reg *gir.TypeRegistry, girType, value string) string {
-	if reg == nil {
-		return ""
-	}
-	e := reg.Enums[girType]
-	if e == nil {
-		return ""
-	}
-	ident := e.Members[strings.ReplaceAll(value, "-", "_")]
-	if ident == "" {
-		return ""
-	}
-	return "C." + ident
 }
 
 // girSignal returns the GLib signal behind a SNGL event name. The registry

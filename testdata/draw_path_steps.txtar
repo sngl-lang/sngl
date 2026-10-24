@@ -937,10 +937,6 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
 
-var (
-	__cstr0 = C.CString("close")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1179,7 +1175,7 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __cstr0)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "close")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -1705,7 +1701,7 @@ pass sha256:32cc86e75d8f64d3383527ba229234fe
 -- run/go/fyne --
 pass sha256:e23a0966eee6cc3500d750365b598d04
 -- run/go/gtk4 --
-pass sha256:465b168a12b8e2a8de1d4d8ee10480a7
+pass sha256:23bb4739d9247fa9980754eae1f5e695
 -- run/kotlin/android --
 pass sha256:14498a9a2d8878adfb2fa243e11ee351
 -- run/none/html --

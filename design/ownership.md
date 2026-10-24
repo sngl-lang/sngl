@@ -445,9 +445,8 @@ declares: gtk4's preamble includes it, and fyne's and bubbletea's
 those targets make is freed.
 
 **A call the gtk4 translator builds releases its own strings.** The
-inline-cgo translator writes `C.CString` into a setter, a
-`g_object_set_property` helper, a flow's markup, the window title and the
-entry-text write after lowering, so no pass
+inline-cgo translator writes `C.CString` into a flow's markup and the window
+title after lowering, so no pass
 sees the allocation. `emitShared.ownCStrings` (`intrinsic_translator.go`) is
 run over the statements each of those sites returns and writes the release
 `ReleaseTemps` would have: a literal's copy becomes a package-level `var`
@@ -469,7 +468,12 @@ refusing NULL is handed one application-lifetime `""` that `ReleaseTemps`
 frees at teardown, where the translator's copy was never freed. A signal name
 was the second, and makes no C string in the program at all: the declared
 connect is `gtk4rt.Connect`, which copies the name into C and frees it itself,
-so a wrapped build stays one with no cgo (`design/architecture.md`).
+so a wrapped build stays one with no cgo (`design/architecture.md`). The
+setters, `g_object_set_property` and the entry's quiet write were the third:
+a prop write is its declared set's call, so a string it hands C is a temp
+`ReleaseTemps` frees after the write or, for a literal, an
+application-lifetime value freed at teardown, where the translator's `__cstr` was never freed, and a setter gtk4rt wraps, the entry's among them,
+copies the string itself.
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective

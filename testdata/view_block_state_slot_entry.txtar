@@ -477,10 +477,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.__n4 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n4, "tap")
@@ -546,6 +546,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9671088548f55885031c96d53beca36d
 -- run/go/gtk4 --
-pass sha256:42605d224963a46fa26b835dcabf24aa
+pass sha256:ef5d7ad4356210f3d0b0d1fdcf75af6d
 -- run/none/html --
 pass sha256:fb9ced09058f325718fe74dea9408b47

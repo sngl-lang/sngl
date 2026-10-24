@@ -477,7 +477,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
@@ -606,7 +606,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__rendering1 = false
 	c.__renderAgain1 = false
 	c.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n6, 1)
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
 	__n7 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(__n7, "top")
@@ -726,7 +726,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n8, 1)
 	gtk4rt.BoxSetSpacing(m.__n8, 6)
 	m.__n2 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n2__el = m.__n2.Root
@@ -1009,6 +1009,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:ec23c0467216e14e247048de3ea3a5d9
 -- run/go/gtk4 --
-pass sha256:1e8bfd254993220f4186856daf079485
+pass sha256:bd0630ca67fb25af6d21cb400ded9f26
 -- run/none/html --
 pass sha256:13a0a9cb94ba9c64216fb2abe6bb511d

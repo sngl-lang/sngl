@@ -2768,12 +2768,12 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n0 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n0, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n0, 1)
 	gtk4rt.BoxSetSpacing(__n0, 6)
 	m.__renderSlot0(__n0)
 	m.__renderSlot1(__n0)
 	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__renderSlot2(m.__n1)
 	m.shown = gtk4rt.LabelNew("")
@@ -3834,7 +3834,7 @@ pass sha256:39beed510a477a20221a620c2f700647
 -- run/go/fyne --
 pass sha256:d7872106b92ee051678af6c5b3de1855
 -- run/go/gtk4 --
-pass sha256:b2701ae5fa633aa98aebac9f03654dac
+pass sha256:72a1115c9c1913c59fc535c5399a03a0
 -- run/kotlin/android --
 pass sha256:60f63acafb2d8a4ae23587a392ad32af
 -- run/none/html --

@@ -221,7 +221,7 @@ sha256:52b8fece8aa76d21a8ce5692bc8e2c82
   ]
 }
 -- testrun/gtk4/go/fallback.sngl/main/1 --
-sha256:d013ff6025dc276abdfe823441b319e3
+sha256:9828908a4b7ed38b0573a1b7b77499ca
 {
   "results": [
     {

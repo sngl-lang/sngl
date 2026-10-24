@@ -267,7 +267,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.__n4 = gtk4rt.ImageFrameNew()
 	gtk4rt.ImageFrameSetFit(m.__n4, "contain")
@@ -303,4 +303,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:52187455e4d7c8374e7561bea72fb8bc
+pass sha256:39e8b4de9b775b42b653ae3184ea92ff

@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"slices"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -24,7 +26,10 @@ func (c *checker) bindProtocols() {
 			continue
 		}
 		served, verb := fn.Return, "returns"
-		if op != ir.ProtocolCreate {
+		switch op {
+		case ir.ProtocolSet:
+			served, verb = fn.Params[0].Type, "sets"
+		case ir.ProtocolAppend, ir.ProtocolRemove:
 			served, verb = fn.Params[0].Type, "adds to"
 		}
 		comp, _ := served.Decl.(*ir.Component)
@@ -42,6 +47,10 @@ func (c *checker) bindProtocols() {
 		}
 		if comp.Protocol == nil {
 			comp.Protocol = &ir.NodeProtocol{}
+		}
+		if op == ir.ProtocolSet {
+			c.bindSet(pm, comp)
+			continue
 		}
 		if prev := comp.Protocol.Op(op); prev != nil {
 			c.error(pm.pos, "#[gen.protocol(%s)]: %s already has %s", op, comp.Name, prev.Name)
@@ -81,4 +90,22 @@ func (c *checker) bindConnect(pm protocolMark) {
 		return
 	}
 	node.Protocol.Connect = pm.fn
+}
+
+// bindSet gives a #[gen.protocol(set)] function to the prop of comp its value
+// parameter is named as.
+func (c *checker) bindSet(pm protocolMark, comp *ir.Component) {
+	prop := pm.fn.Params[1].Name
+	if !slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Name == prop }) {
+		c.error(pm.pos, "#[gen.protocol(set)] sets the prop its value parameter is named as, and %s has no prop %s", comp.Name, prop)
+		return
+	}
+	if prev := comp.Protocol.Setter(prop); prev != nil {
+		c.error(pm.pos, "#[gen.protocol(set)]: %s already sets %s with %s", comp.Name, prop, prev.Name)
+		return
+	}
+	if comp.Protocol.Set == nil {
+		comp.Protocol.Set = map[string]*ir.Func{}
+	}
+	comp.Protocol.Set[prop] = pm.fn
 }

@@ -129,8 +129,8 @@ window {
 		// link
 		"C.gtk_link_button_set_uri(",
 		// label is GtkButton's, two links up the chain from GtkLinkButton,
-		// and its setter takes the GtkButton the cast names.
-		"C.gtk_button_set_label((*C.GtkButton)",
+		// whose setter gtk4rt wraps and takes the link button as a Handle.
+		"gtk4rt.ButtonSetLabel(gtk4rt.Handle(",
 		// toggle
 		"C.gtk_switch_set_active(",
 		// datepicker: the calendar, and its one connectable signal
@@ -151,7 +151,7 @@ window {
 		"C.gtk_box_set_homogeneous(",
 		"C.gtk_label_set_xalign(",
 		// table, tree, radio and select mark a selection with a check button
-		"C.gtk_check_button_set_active(",
+		"gtk4rt.CheckButtonSetActive(",
 		`"toggled", func() {`,
 		// drawer, menu and modal show while open
 		"C.gtk_widget_set_visible(",

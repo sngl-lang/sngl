@@ -135,8 +135,7 @@ func rtCtorForCType(cType string) (ir.Expr, bool) {
 	return nil, false
 }
 
-// rtSetterKind classifies how a C setter's value argument is adapted for the
-// wrapped API (which takes Go-native types rather than cgo-coerced ones).
+// rtSetterKind is the Go type a gtk4rt setter takes its value as.
 type rtSetterKind int
 
 const (
@@ -146,8 +145,8 @@ const (
 	rtOrient
 )
 
-// rtSetterTable maps a resolved GTK setter name to its gtk4rt wrapper and the
-// value-argument kind. Setters absent here trigger fallback.
+// rtSetterTable maps a GTK setter to the gtk4rt function wrapping it, which
+// the set declgen writes calls in its place (writeSets).
 var rtSetterTable = map[string]struct {
 	fn   string
 	kind rtSetterKind
@@ -160,22 +159,6 @@ var rtSetterTable = map[string]struct {
 	"gtk_image_set_from_file":        {"ImageSetFromFile", rtStr},
 	"gtk_box_set_spacing":            {"BoxSetSpacing", rtInt},
 	"gtk_orientable_set_orientation": {"OrientableSetOrientation", rtOrient},
-}
-
-// rtSetterValue adapts an OnPropAssign value expression to the wrapped setter's
-// Go-native argument. String/bool/int values pass through unchanged (the golang
-// IR context renders them as Go string/bool/int); orientation maps a string
-// literal to the gtk4rt constant. ok=false → not adaptable, fall back.
-func rtSetterValue(kind rtSetterKind, value ir.Expr) (ir.Expr, bool) {
-	switch kind {
-	case rtStr, rtBool, rtInt:
-		return value, true
-	case rtOrient:
-		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-			return rtOrientationConst(lit.Value)
-		}
-	}
-	return nil, false
 }
 
 // rtChildAppendCall returns the gtk4rt container call for adding child to a
@@ -226,28 +209,6 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		return rtCall("DropDownLabel", ir.TypString, widgetRef)
 	}
 	return nil
-}
-
-// rtEventSetterExpr is the wrapped write of widgetWrites, the twin of
-// rtEventGetterExpr.
-func rtEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
-	switch cType {
-	case "GtkEntry":
-		return rtCall("EditableSetTextQuiet", ir.TypVoid, widgetRef, value)
-	}
-	return nil
-}
-
-// rtOrientationConst maps a SNGL orientation string literal to the gtk4rt
-// constant ident, and ok=false for anything unrecognised.
-func rtOrientationConst(value string) (ir.Expr, bool) {
-	switch value {
-	case "vertical":
-		return rtConst("OrientationVertical", rtOrientation()), true
-	case "horizontal":
-		return rtConst("OrientationHorizontal", rtOrientation()), true
-	}
-	return nil, false
 }
 
 // emitBuildUIWrapped is the wrapped-mode analogue of emitBuildUI: it emits the

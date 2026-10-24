@@ -739,30 +739,24 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	c.__effects0_steps = 0
 	c.__slot0 = nil
 	__n4 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n4)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n4)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n4)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(__n4)), 6)
 	c.box = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "changed", func() {
 		if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.search {
 			c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
-			__ctmp0 := C.CString(c.search)
-			C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp0)
-			C.free(unsafe.Pointer(__ctmp0))
+			gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 		}
 		c.__effects0_settle()
 	})
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "activate", func() {
 		c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
-		__ctmp1 := C.CString(c.search)
-		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp1)
-		C.free(unsafe.Pointer(__ctmp1))
+		gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 		c.__effects0_settle()
 	})
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(c.box)))
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	__ctmp2 := C.CString(c.search)
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp2)
-	C.free(unsafe.Pointer(__ctmp2))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.search)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
 	c.__effects0_settle()
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n4))
@@ -773,9 +767,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 
 func (c *SearchInstance) __effect0_mount() {
 	if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.__effect0_key {
-		__ctmp3 := C.CString(c.__effect0_key)
-		C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(c.box)), __ctmp3)
-		C.free(unsafe.Pointer(__ctmp3))
+		gtk4rt.EditableSetTextQuiet(gtk4rt.Handle(unsafe.Pointer(c.box)), c.__effect0_key)
 	}
 }
 
@@ -846,8 +838,8 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n3 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n3)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n3)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n3)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n3)), 6)
 	m.__n5 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n5, C.int(10))
 	C.gtk_drawing_area_set_content_height(m.__n5, C.int(10))
@@ -891,4 +883,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:0b54ebeba37f3ce80b61cb1da36aa463
+pass sha256:35d60c840c5ca442291c2236f865e9b1

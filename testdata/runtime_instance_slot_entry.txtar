@@ -1189,10 +1189,10 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a_rep
 	c.__effects0_steps = 0
 	c.__slot0 = nil
 	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n5, 1)
 	gtk4rt.BoxSetSpacing(__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n0, ((("head " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
@@ -1339,7 +1339,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.add = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.add, "add")
@@ -1761,7 +1761,7 @@ pass sha256:751afb2d0713226791af4313de4ef325
 -- run/go/fyne --
 pass sha256:8b0dfb7773b7ed32f5127d40abeb7101
 -- run/go/gtk4 --
-pass sha256:f65d5fcfcd37b8f0f572c293b7519d3a
+pass sha256:dc945798bca73e1a7f6f2ed30d08d9d8
 -- run/kotlin/android --
 pass sha256:51681fcc44bf5d782a28438a8cf0f957
 -- run/none/html --

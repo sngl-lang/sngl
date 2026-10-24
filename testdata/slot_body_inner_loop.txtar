@@ -431,7 +431,7 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n2, gtk4rt.OrientationHorizontal)
+	gtk4rt.OrientableSetOrientation(c.__n2, 0)
 	gtk4rt.BoxSetSpacing(c.__n2, 6)
 	c.__renderSlot0(c.__n2)
 	c.Root = c.__n2
@@ -520,7 +520,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
 	m.bump = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
@@ -724,6 +724,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:4c2664f520ac6cba76c8d19280f0850c
 -- run/go/gtk4 --
-pass sha256:c4ad3933018ca14672b7597ccd1ab7f4
+pass sha256:e81be542adbbea2dbc11b27e9ba799fd
 -- run/none/html --
 pass sha256:3d896236bcf597b614421224f0c7318d

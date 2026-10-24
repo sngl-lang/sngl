@@ -1522,18 +1522,8 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 var (
-	__cstr0 = C.CString("More")
-	__cstr1 = C.CString("Bred from")
-	__cstr2 = C.CString("")
-	__cstr3 = C.CString("Petstore")
+	__cstr0 = C.CString("Petstore")
 )
 
 type Result__Response struct {
@@ -1690,6 +1680,7 @@ type Model struct {
 	__inst1_live        []*__child1Instance
 	__rendering3        bool
 	__renderAgain3      bool
+	__rel0              *C.char
 	__n2                *C.GtkBox
 	__n9                *C.GtkButton
 	__n10               *C.GtkButton
@@ -1742,6 +1733,7 @@ func New() *Model {
 	m.__inst1_live = []*__child1Instance{}
 	m.__rendering3 = false
 	m.__renderAgain3 = false
+	m.__rel0 = C.CString("")
 	return m
 }
 
@@ -2088,6 +2080,7 @@ func (m *Model) __snglTeardown() {
 	m.__effects0_torn = true
 	m.__effect1_teardown()
 	m.__effect0_teardown()
+	Free(m.__rel0)
 }
 
 func (m *Model) __renderSlot0(parent *C.GtkBox) {
@@ -2106,9 +2099,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			if m.page__inst0 != nil {
 				for _, p := range (*(m.page__inst0)).Results {
 					__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-					__ctmp1 := C.CString(p.Name)
-					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n4)), __ctmp1)
-					C.free(unsafe.Pointer(__ctmp1))
+					gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n4)), p.Name)
 					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 				}
@@ -2133,8 +2124,8 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 			m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
 			if m.loading__inst0 {
 				__n5 := (*C.GtkSpinner)(unsafe.Pointer(C.gtk_spinner_new()))
-				C.gtk_spinner_set_spinning((*C.GtkSpinner)(unsafe.Pointer(__n5)), C.gboolean(boolToInt(true)))
-				C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n5)), __cstr2)
+				C.gtk_spinner_set_spinning((*C.GtkSpinner)(unsafe.Pointer(__n5)), C.gboolean(C.int(1)))
+				C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n5)), m.__rel0)
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n5)))
 				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n5)))
 			}
@@ -2222,9 +2213,7 @@ func (m *Model) __renderSlot3(parent *C.GtkBox) {
 				m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
 				for _, t := range (*(m.pet__inst0)).Tags {
 					__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-					__ctmp2 := C.CString(t.Type.Name)
-					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n8)), __ctmp2)
-					C.free(unsafe.Pointer(__ctmp2))
+					gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n8)), t.Type.Name)
 					gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n8)), gtk4rt.Look{Css: "padding-top: 2px; padding-right: 8px; padding-bottom: 2px; padding-left: 8px; border-radius: 12px; "})
 					C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot3_at, (*C.GtkWidget)(unsafe.Pointer(__n8)))
 					m.__slot3 = append(m.__slot3, (*C.GtkWidget)(unsafe.Pointer(__n8)))
@@ -2268,18 +2257,18 @@ func (m *Model) __n10_clicked_handler() {
 					__lt15 = "nothing"
 				}
 				m.from__inst0 = __lt15
-				__ctmp3 := C.CString(m.from__inst0)
-				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp3)
-				C.free(unsafe.Pointer(__ctmp3))
+				gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.from__inst0)
 			default:
 				r := __match0.Failed
 				m.from__inst0 = r.Message
-				__ctmp4 := C.CString(m.from__inst0)
-				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp4)
-				C.free(unsafe.Pointer(__ctmp4))
+				gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.from__inst0)
 			}
 		})
 	}()
+}
+
+func Free(s *C.char) {
+	C.free(unsafe.Pointer(s))
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -2308,9 +2297,7 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	__ctmp5 := C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp5)
-	C.free(unsafe.Pointer(__ctmp5))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), ("Could not load rex: " + (*(c.__prop___p0)).Message))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -2318,9 +2305,7 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v *Failure) {
 	c.__prop___p0 = __v
-	__ctmp6 := C.CString(("Could not load rex: " + (*(c.__prop___p0)).Message))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp6)
-	C.free(unsafe.Pointer(__ctmp6))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), ("Could not load rex: " + (*(c.__prop___p0)).Message))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -2368,9 +2353,7 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	__ctmp7 := C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp7)
-	C.free(unsafe.Pointer(__ctmp7))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n1)), ((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n1))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -2378,9 +2361,7 @@ func new__child1Instance(__model *Model, __a___p0 *PetDetail) *__child1Instance 
 
 func (c *__child1Instance) Set__p0(__v *PetDetail) {
 	c.__prop___p0 = __v
-	__ctmp8 := C.CString(((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n1)), __ctmp8)
-	C.free(unsafe.Pointer(__ctmp8))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n1)), ((("#" + fmt.Sprint((*(c.__prop___p0)).Id)) + " ") + (*(c.__prop___p0)).Name))
 }
 
 func (c *__child1Instance) Destroy() {
@@ -2514,20 +2495,18 @@ func (m *Model) buildWidgetTree() {
 	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__renderSlot0(m.__n2)
 	m.__n9 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n9)), __cstr0)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n9)), "More")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n9)), "clicked", m.__n9_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
 	m.__renderSlot1(m.__n2)
 	m.__renderSlot2(m.__n2)
 	m.__renderSlot3(m.__n2)
 	m.__n10 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n10)), __cstr1)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "Bred from")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "clicked", m.__n10_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
 	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	__ctmp0 := C.CString(m.from__inst0)
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp0)
-	C.free(unsafe.Pointer(__ctmp0))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.from__inst0)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
@@ -2538,7 +2517,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr3)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr0)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -4344,7 +4323,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:50ba9451b0ad458a06b84ee6d6421492
 -- run/go/gtk4 --
-pass sha256:abb6a2eab176ca56bfa348c2006a0002
+pass sha256:88c19e06e25af0e7622b38e7c047b17b
 -- run/kotlin/android --
 pass sha256:a3d9ca76ff015475f5ce1ea3fef7c8e0
 -- run/none/html --

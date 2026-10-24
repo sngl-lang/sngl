@@ -526,7 +526,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	for _, x := range []string{"a", "b"} {
 		m.__n4 = gtk4rt.LabelNew("")
@@ -645,6 +645,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:22d1a07ccff25fa8a3f0f8ecc41fcafb
 -- run/go/gtk4 --
-pass sha256:f6dee1d8533e3f9fa88f4cd1903a1023
+pass sha256:553184eb5bdc4cd0938aa07b5d2fa31e
 -- run/none/html --
 pass sha256:580b6e37ec7c19d8180c0a1eb1faa1d1

@@ -1331,7 +1331,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n6, 1)
 	gtk4rt.BoxSetSpacing(__n6, 6)
 	m.__renderSlot0(__n6)
 	m.__renderSlot1(__n6)
@@ -1919,7 +1919,7 @@ pass sha256:64db23ee7d96856124e420fe0ec02c31
 -- run/go/fyne --
 pass sha256:2f4cdb614925f9dbd1acf59b2eb7a03a
 -- run/go/gtk4 --
-pass sha256:4b1a98dbadd49c768aefd3c1e1ea6577
+pass sha256:68d0f6b752e1a6b0a646b78684edb5c5
 -- run/kotlin/android --
 pass sha256:73203767ae35587f453bbaf2ede2e189
 -- run/none/html --

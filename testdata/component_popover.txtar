@@ -625,17 +625,6 @@ import (
 	"unsafe"
 )
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-var (
-	__cstr0 = C.CString("toggle")
-)
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible bool
@@ -670,11 +659,17 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	__n0 := (*C.GtkPopover)(unsafe.Pointer(C.gtk_popover_new()))
-	C.gtk_widget_set_visible((*C.GtkWidget)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(m.visible)))
-	C.gtk_popover_set_autohide((*C.GtkPopover)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(true)))
+	C.gtk_widget_set_visible((*C.GtkWidget)(unsafe.Pointer(__n0)), C.gboolean(C.int(func() int {
+		if m.visible {
+			return 1
+		} else {
+			return 0
+		}
+	}())))
+	C.gtk_popover_set_autohide((*C.GtkPopover)(unsafe.Pointer(__n0)), C.gboolean(C.int(1)))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(__n0)), "closed", m.__n0_closed_handler)
 	__n1 := (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(__n1)), __cstr0)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(__n1)), "toggle")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(__n1)), "clicked", m.__n1_clicked_handler)
 	C.gtk_popover_set_child((*C.GtkPopover)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
@@ -818,7 +813,7 @@ pass sha256:33708f280e01e24166e0abc2f43e9cc9
 -- run/go/fyne --
 pass sha256:8548311c87cca07750338296280074a1
 -- run/go/gtk4 --
-pass sha256:645f809a52245c5d75cbf3a2057631fd
+pass sha256:609f5305824ae7517d5ea6b654679743
 -- run/kotlin/android --
 pass sha256:7fdf7b727b912fb2263a465d0250d791
 -- run/none/html --

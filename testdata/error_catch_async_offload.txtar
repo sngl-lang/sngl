@@ -344,7 +344,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__n3 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n3, "go")
@@ -369,4 +369,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:fe280b6168bbe2ebc7d2d758e36f1018
 -- run/go/gtk4 --
-pass sha256:fa657b3c362579610adceb9dbc74106e
+pass sha256:a79a902af76216f69fbb3b8e429f90c9

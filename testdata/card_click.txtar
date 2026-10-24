@@ -972,13 +972,6 @@ import (
 	"unsafe"
 )
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	opened         string
@@ -1078,9 +1071,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	__ctmp1 := C.CString(("opened " + c.__prop___p0))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp1)
-	C.free(unsafe.Pointer(__ctmp1))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), ("opened " + c.__prop___p0))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
@@ -1088,9 +1079,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	__ctmp2 := C.CString(("opened " + c.__prop___p0))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp2)
-	C.free(unsafe.Pointer(__ctmp2))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), ("opened " + c.__prop___p0))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1117,11 +1106,11 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	__n3 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n3)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n3)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n3)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(__n3)), 6)
 	for __copy0, name := range []string{"one", "two"} {
 		m.row = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-		C.gtk_button_set_has_frame((*C.GtkButton)(unsafe.Pointer(m.row)), C.gboolean(boolToInt(false)))
+		C.gtk_button_set_has_frame((*C.GtkButton)(unsafe.Pointer(m.row)), C.gboolean(C.int(func() int { return 0 }())))
 		m.__list_row(fmt.Sprint(__copy0), m.row)
 		gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.row)), "clicked", func() {
 			m.opened = name
@@ -1133,9 +1122,7 @@ func (m *Model) buildWidgetTree() {
 		})
 		__n4 := (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
 		__n5 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		__ctmp0 := C.CString(name)
-		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n5)), __ctmp0)
-		C.free(unsafe.Pointer(__ctmp0))
+		gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n5)), name)
 		C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(__n5)))
 		C.gtk_button_set_child((*C.GtkButton)(unsafe.Pointer(m.row)), (*C.GtkWidget)(unsafe.Pointer(__n4)))
 		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(m.row)))
@@ -1438,7 +1425,7 @@ pass sha256:6bd8e5b7d9738f0116cf6bcf32fe3ed0
 -- run/go/fyne --
 pass sha256:e9452f5e3e3b4149bf1f81000838f3ad
 -- run/go/gtk4 --
-pass sha256:07a70ce75a6d7d9b4009d10e4c1321c4
+pass sha256:e0307900d1af888e3417d080d2af77aa
 -- run/kotlin/android --
 pass sha256:457965dbd9c5e9b8cefff8019a32d9e1
 -- run/none/html --

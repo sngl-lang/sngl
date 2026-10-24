@@ -1733,7 +1733,7 @@ func newPanelInstance(__model *Model) *PanelInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n1, 1)
 	gtk4rt.BoxSetSpacing(__n1, 6)
 	c.__renderSlot0(__n1)
 	c.Root = __n1
@@ -2005,7 +2005,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
 	m.ts = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.ts, "s")
@@ -2749,7 +2749,7 @@ pass sha256:62e8a10a260eb7aba51335b668b56ffa
 -- run/go/fyne --
 pass sha256:40a7726bc9a7f6f979f9165777aa0b8f
 -- run/go/gtk4 --
-pass sha256:bfba35febac77203bde4130a95277177
+pass sha256:b6a9045e9ccec6aad4037f8fdc11d3be
 -- run/kotlin/android --
 pass sha256:b0b741b8d3e37c1fb77081019338c177
 -- run/none/html --

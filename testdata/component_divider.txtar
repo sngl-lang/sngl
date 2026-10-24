@@ -596,12 +596,9 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-import "unsafe"
-
-var (
-	__cstr0 = C.CString("Section 1")
-	__cstr1 = C.CString("Section 2")
-	__cstr2 = C.CString("Section 3")
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"unsafe"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -647,20 +644,20 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 6)
 	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n2)), __cstr0)
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "Section 1")
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkSeparator)(unsafe.Pointer(C.gtk_separator_new(C.GtkOrientation(C.int(0)))))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n4)), __cstr1)
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n4)), "Section 2")
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	m.__n5 = (*C.GtkSeparator)(unsafe.Pointer(C.gtk_separator_new(C.GtkOrientation(C.int(0)))))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
 	m.__n6 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n6)), __cstr2)
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n6)), "Section 3")
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -757,7 +754,7 @@ pass sha256:c9816802fe65e6f0c880625ec1370f0c
 -- run/go/fyne --
 pass sha256:94e33d855d087a1eaed99c68f6e5b1fd
 -- run/go/gtk4 --
-pass sha256:bc2b69a2bc83a11298041714e579ebed
+pass sha256:6180d28027f02c16a5ea8f3bd3cca0bc
 -- run/kotlin/android --
 pass sha256:aa9ac985728271166fd422e7fd109fae
 -- run/none/html --

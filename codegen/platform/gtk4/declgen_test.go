@@ -228,7 +228,7 @@ func propNamed(c *ir.Component, name string) *ir.Prop {
 }
 
 // TestGirSetter_ReadsMetadataBack pins the half a declaration cannot carry: the
-// C setter, and the casts a call to it needs. The emitter recovers these from
+// C setter, and the receiver a call to it is cast to. The emitter recovers these from
 // the registry keyed by the C type the intrinsic id names.
 func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 	box := girClassInfoFor(t, "GtkBox")
@@ -236,8 +236,8 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 	if !ok {
 		t.Fatal("girProp(GtkBox, spacing) not found")
 	}
-	if got := girSetter(box, p); got.Setter != "gtk_box_set_spacing" || got.RecvType != "" || got.ValType != "" {
-		t.Errorf("girSetter(GtkBox.spacing) = %+v; want gtk_box_set_spacing with no casts", got)
+	if got := girSetter(box, p); got.Setter != "gtk_box_set_spacing" || got.RecvType != "" {
+		t.Errorf("girSetter(GtkBox.spacing) = %+v; want gtk_box_set_spacing with no cast", got)
 	}
 	// An interface-inherited property binds to the interface's setter and
 	// takes the interface as its receiver.
@@ -246,15 +246,15 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 		t.Fatal("girProp(GtkBox, orientation) not found")
 	}
 	got := girSetter(box, p)
-	if got.Setter != "gtk_orientable_set_orientation" || got.RecvType != "GtkOrientable" || got.ValType != "GtkOrientation" {
-		t.Errorf("girSetter(GtkBox.orientation) = %+v; want the GtkOrientable setter with both casts", got)
+	if got.Setter != "gtk_orientable_set_orientation" || got.RecvType != "GtkOrientable" {
+		t.Errorf("girSetter(GtkBox.orientation) = %+v; want the GtkOrientable setter on the interface", got)
 	}
 	// girSetter is a projection of what the parse recorded, so what is worth
 	// asserting is its rules rather than any particular setter's name. Every
 	// property of every class in the fixture goes through them, and each rule
 	// must be exercised by at least one -- a sweep that classified nothing
 	// would otherwise pass on an empty registry.
-	var sawInterface, sawAncestor, sawOwn, sawNamedType int
+	var sawInterface, sawAncestor, sawOwn int
 	for _, info := range bundledGIR(t).ByCType {
 		for _, p := range info.Props {
 			got := girSetter(info, p)
@@ -278,14 +278,6 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 					t.Errorf("%s.%s is the class's own; RecvType = %q, want no cast", info.CType, p.Name, got.RecvType)
 				}
 			}
-			if girTypeIsNamedNonPrimitive(p.GIRType) {
-				sawNamedType++
-				if want := "Gtk" + p.GIRType; got.ValType != want {
-					t.Errorf("%s.%s: ValType = %q, want %q", info.CType, p.Name, got.ValType, want)
-				}
-			} else if got.ValType != "" {
-				t.Errorf("%s.%s is a primitive; ValType = %q, want none", info.CType, p.Name, got.ValType)
-			}
 			if got.Setter != p.Setter {
 				t.Errorf("%s.%s: Setter = %q, want the recorded %q", info.CType, p.Name, got.Setter, p.Setter)
 			}
@@ -298,7 +290,6 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 		{sawInterface, "an interface-inherited property"},
 		{sawAncestor, "an ancestor-inherited property"},
 		{sawOwn, "a class's own property"},
-		{sawNamedType, "a property of a named GIR type"},
 	} {
 		if c.n == 0 {
 			t.Errorf("the fixture contains no %s; that rule went unasserted", c.what)
@@ -548,7 +539,8 @@ func componentDecl(t *testing.T, src, name string) string {
 // carries: a GIR method returning nothing is an action a program calls through
 // a `#id` -- `bar.pulse()` -- declared as the C identifier it is. A property's
 // setter is reached through the prop, and one returning a value is a query
-// nothing here reads, so neither is declared.
+// nothing here reads, so neither is declared as an action: the setter is the
+// fraction prop's set.
 func TestWidgetSource_DeclaresActions(t *testing.T) {
 	src := string(widgetSource(bundledGIR(t)))
 	for _, want := range []string{
@@ -559,8 +551,8 @@ func TestWidgetSource_DeclaresActions(t *testing.T) {
 		}
 	}
 	for _, deny := range []string{
-		"gtk_progress_bar_set_fraction", // takes a value: the fraction prop's setter
-		"gtk_progress_bar_get_fraction", // returns one
+		"func GtkProgressBar.setFraction(", // takes a value: the fraction prop's setter
+		"gtk_progress_bar_get_fraction",    // returns one
 	} {
 		if strings.Contains(src, deny) {
 			t.Errorf("generated source declares %s", deny)

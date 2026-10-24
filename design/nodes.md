@@ -62,9 +62,29 @@ carries the mark. The handler parameter is the one left unbound: the op
 already carries the handler, and a copy in the splice would be a second body
 every later pass rewrites, the two sharing whatever the body declares. The
 platform puts the walked handler there, shaped as its trampoline calls it
-(`codegen.HandlerConnector`). gtk4's GIR classes are the first users
-(`design/architecture.md`), and the plan for the rest of gtk4's protocol is
-#293's.
+(`codegen.HandlerConnector`).
+
+`set` writes one prop: a function of the widget, typed as the component, and
+the value, whose parameter is named as the prop it sets (`bindSet`,
+`testdata/error_gen_protocol_set.sngl`, `TestGenProtocolPlacement`), at most
+one per prop. It is spliced into every write of the prop, not only the
+view's first: an updater and a handler write a node's prop as well, and
+`passReactivity` made both before `passDeclarative` runs, so `spliceSets`
+walks the whole package once the view is flattened and makes the write's
+value the set's call, with the node and the written value bound. A write that
+two blocks share is spliced once. `ReleaseTemps` visits an assignment's
+value, so a string the call hands C is bound before the write and freed after
+it, or made once for the application where it is a literal. The passes that
+lower a ternary and a match ran before the op existed: a match in a set
+folds where it is spliced, which takes the arm its literal subject names and
+refuses a value no arm names or one that is no literal (`foldSplice`), since
+a set's match maps a word the program writes to the host's own value and its
+`else` is there only because a match over a string must have one; a ternary
+folds on a literal head and is otherwise a call in place on a target without
+ternaries. The platform puts the node where its scope holds it (gtk4's
+`OnPropAssign`), and refuses a write of a prop no set answers. gtk4's GIR classes
+are the first users (`design/architecture.md`), and the plan for the rest of
+gtk4's protocol is #293's.
 
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
@@ -407,8 +427,9 @@ not guarded, since pressing Enter commits whatever the value. A host whose
 write fires its signal more than once is written quietly instead: gtk4's entry
 overrides do not bind `text` but push it from
 `effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
-`gtk4.setEntryText` (a `widgetWrites` intrinsic beside the `widgetReads`
-getters) blocking "changed", because gtk_editable_set_text deletes and
+`setEntryText` (`gtk4rt.EditableSetTextQuiet` as a `#[go.native]`, which
+`readWidgets` hands the entry as a `Handle` in either mode) blocking
+"changed", because gtk_editable_set_text deletes and
 reinserts and a runtime instance's handler writing the text back re-entered
 itself until the stack overflowed (`codegen/platform/gtk4/entry_echo_test.go`).
 `sngl_calendar_select` blocks "day-selected" the same way; a test's invoker

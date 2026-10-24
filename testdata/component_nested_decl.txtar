@@ -527,16 +527,16 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "row a")
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
 	m.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n5, "row b")
@@ -642,7 +642,7 @@ pass sha256:7e0397d20e4bd03a535541df24aa26af
 -- run/go/fyne --
 pass sha256:9fdea091ffac25ec17ec3c820d111657
 -- run/go/gtk4 --
-pass sha256:fc27b10608776741ab4fe226067fc3df
+pass sha256:905c3a1713928561ba4104f4c3a22ef0
 -- run/kotlin/android --
 pass sha256:3622fc792522b1069c256506974de74f
 -- run/none/html --

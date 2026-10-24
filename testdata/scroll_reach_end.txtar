@@ -627,7 +627,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(m.list, gtk4rt.Look{Grow: 1.0})
 	gtk4rt.ScrollOnReachEnd(m.list, m.list_reachEnd_handler)
 	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__renderSlot0(m.__n1)
 	gtk4rt.ScrolledWindowSetChild(m.list, m.__n1)
@@ -1221,7 +1221,7 @@ pass sha256:6eeff4fc804d39e1c8129fa91e9f89d2
 -- run/go/fyne --
 pass sha256:4de3733219d2ad09ca4ac20ec4a48591
 -- run/go/gtk4 --
-pass sha256:73eabfa723b94de125e1e90a957546a2
+pass sha256:c877970a0412ed597b9a5b788be9d579
 -- run/kotlin/android --
 pass sha256:a12d9222f3396a706de306a5f0224865
 -- run/none/html --

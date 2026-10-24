@@ -784,13 +784,6 @@ func snglCalendarSelect(c *C.GtkCalendar, t *time.Time) {
 	C.sngl_calendar_select(c, C.int(t.Year()), C.int(t.Month()), C.int(t.Day()))
 }
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1142,9 +1135,7 @@ func (m *Model) d_daySelected_handler() {
 	} else {
 		__lt16 = "none"
 	}
-	__ctmp1 := C.CString(__lt16)
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n1)), __ctmp1)
-	C.free(unsafe.Pointer(__ctmp1))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n1)), __lt16)
 	m.changes__inst0 += 1
 	m.__effects0_settle()
 }
@@ -1180,10 +1171,10 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n2)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n2)), 6)
 	m.d = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.d)), C.gboolean(boolToInt(true)))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.d)), C.gboolean(C.int(func() int { return 1 }())))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.d)), "day-selected", m.d_daySelected_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.d)))
 	var __lt17 string
@@ -1193,9 +1184,7 @@ func (m *Model) buildWidgetTree() {
 		__lt17 = "none"
 	}
 	m.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	__ctmp0 := C.CString(__lt17)
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n1)), __ctmp0)
-	C.free(unsafe.Pointer(__ctmp0))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n1)), __lt17)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__effects0_settle()
@@ -1405,7 +1394,7 @@ pass sha256:7c14c23a1cf0ee0f1489081a805bbb7f
 -- run/go/fyne --
 pass sha256:8b7419ba33ac57aafc723c8230965e7a
 -- run/go/gtk4 --
-pass sha256:340ea493f984f95f3a4fe6c3c8874915
+pass sha256:89ecb0ef755be14abae3b93b2dcfd502
 -- run/kotlin/android --
 pass sha256:f732a6dd828003a2a53b787a0cf89e11
 -- run/none/html --

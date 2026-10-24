@@ -1590,7 +1590,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int, __a___on
 	c.__slot0 = nil
 	c.__slot1 = nil
 	__n12 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n12, gtk4rt.OrientationHorizontal)
+	gtk4rt.OrientableSetOrientation(__n12, 0)
 	gtk4rt.BoxSetSpacing(__n12, 6)
 	c.__n3 = new__block_state1Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 int) {
 		c.__prop___on0(__on0_0)
@@ -1693,7 +1693,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n4, m.__n4_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n4, m.__n4_visible_handler)
 	m.__n10 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n10, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n10, 1)
 	gtk4rt.BoxSetSpacing(m.__n10, 6)
 	m.__n13 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n13, "open")
@@ -2358,7 +2358,7 @@ pass sha256:1fa5788ae224c26c1ded112a1aeb0c9a
 -- run/go/fyne --
 pass sha256:9df8d48ce5cbf00d3c37d89ffd0fd5a3
 -- run/go/gtk4 --
-pass sha256:31d7d259c2893bab370164634efd4932
+pass sha256:4ddcb2f8cfc47f95264a9321ad527621
 -- run/kotlin/android --
 pass sha256:e84239efdf02ba679dd11fd266482939
 -- run/none/html --

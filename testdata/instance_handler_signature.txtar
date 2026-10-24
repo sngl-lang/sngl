@@ -437,7 +437,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__effects0_steps = 0
 	c.__slot0 = nil
 	__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationHorizontal)
+	gtk4rt.OrientableSetOrientation(__n5, 0)
 	gtk4rt.BoxSetSpacing(__n5, 6)
 	c.__n0 = gtk4rt.CheckButtonNew()
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
@@ -562,7 +562,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	m.__renderSlot0(__n4)
 	gtk4rt.BoxAppend(m.__root, __n4)
@@ -591,4 +591,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:759242c914155d249d11e38ddedd4540
 -- run/go/gtk4 --
-pass sha256:9872a8692072f834aee9f00a6d68c810
+pass sha256:16ca2dc2e0e64942c3f88110973e09c4

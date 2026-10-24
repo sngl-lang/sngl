@@ -84,7 +84,7 @@ sha256:c81e8987e896b906104b4b5e12867a95
   ]
 }
 -- testrun/gtk4/go/app.sngl/held/1 --
-sha256:0fa308fd57ab00184374037b951ad4aa
+sha256:e8d349ee366c7fab89b65c0e921b51f3
 {
   "results": [
     {

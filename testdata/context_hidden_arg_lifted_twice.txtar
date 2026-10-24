@@ -1443,7 +1443,7 @@ func newPageInstance(__model *Model, __a___ctx_label string) *PageInstance {
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	__n8 := gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(__n8, "flip")
@@ -1585,7 +1585,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	__n9 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n9, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n9, 1)
 	gtk4rt.BoxSetSpacing(__n9, 6)
 	c.__n1 = newShowInstance(c.__model, 1, c.__prop___p0)
 	__n1__el := c.__n1.Root
@@ -1638,7 +1638,7 @@ func new__child1Instance(__model *Model, __a___p0 string) *__child1Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	__n10 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n10, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n10, 1)
 	gtk4rt.BoxSetSpacing(__n10, 6)
 	c.__n2 = newShowInstance(c.__model, 2, c.__prop___p0)
 	__n2__el := c.__n2.Root
@@ -1706,7 +1706,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
 	m.__n11 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n11, "flip")
@@ -2073,6 +2073,6 @@ pass sha256:5b4d72719ad6158a6922fb1e68b2d63a
 -- run/go/fyne --
 pass sha256:af4f1eca932da42558c459b3d9dbbe47
 -- run/go/gtk4 --
-pass sha256:9559b5b0990b5d726487dfa9755160ad
+pass sha256:727028c4dd2ff3222aa3cae574313230
 -- run/none/html --
 pass sha256:444a4f3ef4586c3b65207365e1faf469

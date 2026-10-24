@@ -14,7 +14,8 @@ import (
 // a library can break since only a library declares an #[intrinsic]
 // component: it is one, it is the function's package's own, and it has one of
 // each operation. testdata/error_gen_protocol_create.sngl and
-// error_gen_protocol_append.sngl hold the rules a program can break.
+// error_gen_protocol_append.sngl hold the rules a program can break, as do
+// the connect and set fixtures.
 func TestGenProtocolPlacement(t *testing.T) {
 	const otherSrc = "import sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\n\n#[marks.intrinsic(\"other:Other\")]\ncomponent Other() sngl.node\n"
 	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport other \"sngl:x/protocolother\"\n\n" +
@@ -38,6 +39,10 @@ func TestGenProtocolPlacement(t *testing.T) {
 		{"remove twice", "#[gen.protocol(remove)]\nfunc _a(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n\n#[gen.protocol(remove)]\nfunc _b(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n", "#[gen.protocol(remove)]: Thing already has _a"},
 		{"a connect beside the target", "#[gen.protocol(connect)]\nfunc _connect(w sngl.node, event string, handler func()) {}\n", ""},
 		{"connect twice", "#[gen.protocol(connect)]\nfunc _a(w sngl.node, event string, handler func()) {}\n\n#[gen.protocol(connect)]\nfunc _b(w sngl.node, event string, handler func()) {}\n", "#[gen.protocol(connect)]: extstub already has _a"},
+		{"a set of a prop", "#[gen.protocol(set)]\nfunc _set_x(w Thing, x int) {\n    thingAdd(w, w)\n}\n", ""},
+		{"a set of no prop", "#[gen.protocol(set)]\nfunc _set_y(w Thing, y int) {}\n", "#[gen.protocol(set)] sets the prop its value parameter is named as, and Thing has no prop y"},
+		{"a set twice", "#[gen.protocol(set)]\nfunc _a(w Thing, x int) {}\n\n#[gen.protocol(set)]\nfunc _b(w Thing, x int) {}\n", "#[gen.protocol(set)]: Thing already sets x with _a"},
+		{"a set of another package's", "#[gen.protocol(set)]\nfunc _set_x(w other.Other, x int) {}\n", "#[gen.protocol(set)]: Other is declared by"},
 		{"connects on an event", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"button-press\")]\n    @pressed,\n) sngl.node\n", ""},
 		{"connects on a prop", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"press\")]\n    x int,\n) sngl.node\n", "#[gen.connects] cannot mark a parameter; it marks an event"},
 	} {

@@ -1592,7 +1592,7 @@ func newCardInstance(__model *Model, __a_start int) *CardInstance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n2, 1)
 	gtk4rt.BoxSetSpacing(c.__n2, 6)
 	__n8 := gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(__n8, "more")
@@ -1706,7 +1706,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
 	__n9 := gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(__n9, "more")
@@ -1947,7 +1947,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
 	m.add = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.add, "add")
@@ -2630,7 +2630,7 @@ pass sha256:3ff1906fdb84d778aa02fb0024f7ef61
 -- run/go/fyne --
 pass sha256:7a7a64d5d8467da3174d21d57f34203f
 -- run/go/gtk4 --
-pass sha256:62b27c72e9bc0b26bc6e603068a218a5
+pass sha256:91343b9718917d41924e999428b05220
 -- run/kotlin/android --
 pass sha256:769e08446a89cfbe24a1540314f7c6bf
 -- run/none/html --

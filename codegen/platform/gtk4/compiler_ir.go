@@ -710,19 +710,12 @@ var widgetReads = map[string]string{
 	"gtk4.dropDownLabel": "GtkDropDown",
 }
 
-// widgetWrites are the setters gtk4.sngl declares for an override to write
-// what a control holds when it decides to, by intrinsic id, and the widget
-// each writes.
-var widgetWrites = map[string]string{
-	"gtk4.setEntryText": "GtkEntry",
-}
-
-// widgetAccess spells widgetReads and widgetWrites calls for one scope.
+// widgetAccess spells widgetReads calls, and the widgets a gtk4rt native is
+// handed, for one scope.
 type widgetAccess struct {
-	read  func(cType string, ref ir.Expr) ir.Expr
-	write func(cType string, ref, value ir.Expr) ir.Expr
-	// shared releases the C strings a write makes (ownCStrings).
-	shared *emitShared
+	read func(cType string, ref ir.Expr) ir.Expr
+	// handle is the widget as the Handle a gtk4rt native takes.
+	handle func(cType string, ref ir.Expr) ir.Expr
 }
 
 // selfIsNode is a signal handler's body with its parameters read as the node
@@ -748,14 +741,14 @@ func selfIsNode(stmts []ir.Stmt, params []*ir.Param, node ir.Expr) []ir.Stmt {
 	return stmts
 }
 
-// readWidgets rewrites each widgetReads and widgetWrites call in stmts to the
-// getter or setter access answers for the widget it is handed. The statements
-// are copied first: a body is the lowered IR's, shared with every other reader
-// of it.
+// readWidgets rewrites each widgetReads call in stmts to the getter access
+// answers for the widget it is handed, and hands each gtk4rt native the
+// widgets it takes as Handles. The statements are copied first: a body is the
+// lowered IR's, shared with every other reader of it.
 func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 	found := false
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && (widgetReads[c.Func.Intrinsic] != "" || widgetWrites[c.Func.Intrinsic] != "") {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && (widgetReads[c.Func.Intrinsic] != "" || takesWidget(c.Func)) {
 			found = true
 			return ir.SkipAll
 		}
@@ -791,11 +784,15 @@ func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 				}
 			}
 		}
-		if cType := widgetWrites[c.Func.Intrinsic]; cType != "" && len(c.Args) == 2 {
-			if w := access.write(cType, c.Args[0].Value, c.Args[1].Value); w != nil {
-				return w, ir.SkipDir
+		if takesWidget(c.Func) {
+			cp := *c
+			cp.Args = slices.Clone(c.Args)
+			for i, p := range c.Func.Params {
+				if cType := widgetCType(paramComponent(p)); cType != "" && i < len(cp.Args) {
+					cp.Args[i].Value = access.handle(cType, cp.Args[i].Value)
+				}
 			}
-			return e, nil
+			return &cp, nil
 		}
 		cType := widgetReads[c.Func.Intrinsic]
 		if cType == "" || len(c.Args) != 1 {
@@ -806,7 +803,24 @@ func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 		}
 		return e, nil
 	})
-	return access.shared.ownCStrings(stmts)
+	return stmts
+}
+
+// takesWidget reports whether fn is a gtk4rt native taking a widget, which it
+// takes as a Handle whichever mode the file is emitted in.
+func takesWidget(fn *ir.Func) bool {
+	if fn.Foreign.Path != gtk4rtPkg {
+		return false
+	}
+	return slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return widgetCType(paramComponent(p)) != "" })
+}
+
+func paramComponent(p *ir.Param) *ir.Component {
+	if p == nil || p.Type == nil {
+		return nil
+	}
+	c, _ := p.Type.Decl.(*ir.Component)
+	return c
 }
 
 // widgetReader is readWidgets' read for one scope, which qualify spells a
@@ -828,7 +842,7 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 		}
 		return ref
 	}
-	return widgetAccess{shared: shared, read: func(cType string, ref ir.Expr) ir.Expr {
+	return widgetAccess{read: func(cType string, ref ir.Expr) ir.Expr {
 		w := spell(cType, ref)
 		if wrapped {
 			if g := rtEventGetterExpr(cType, w); g != nil {
@@ -836,23 +850,13 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 			}
 		}
 		return shared.cgoEventGetter(cType, w)
-	}, write: func(cType string, ref, value ir.Expr) ir.Expr {
+	}, handle: func(cType string, ref ir.Expr) ir.Expr {
 		w := spell(cType, ref)
 		if wrapped {
-			return rtEventSetterExpr(cType, w, value)
+			return w
 		}
-		return cgoEventSetterExpr(cType, w, value)
+		return &ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", w)}
 	}}
-}
-
-// cgoEventSetterExpr is the inline-cgo write of widgetWrites, the twin of
-// cgoEventGetterExpr.
-func cgoEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
-	switch cType {
-	case "GtkEntry":
-		return nativeCall("sngl_set_entry_text_quiet", ir.TypVoid, cgoCast("GtkEditable", widgetRef), cString(value))
-	}
-	return nil
 }
 
 // isNodeRef reports whether id names a node: one a lowering synthesized, or a

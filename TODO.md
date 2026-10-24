@@ -97,7 +97,9 @@ on 2026-10-23; seven is the count on this branch): the constructor
 (`OnAttachHandler`), the entry-text write and the window title
 (`compiler_ir.go`), and a flow's markup (`markup.go`). The parts take them in
 that order, after the child adder, which makes no string but is the protocol
-all the same. Parts 1 and 3 retired the constructor and `sngl_connect`.
+all the same. Parts 1, 3 and 4 retired the constructor, `sngl_connect`, the
+setter, `g_object_set_property` and the entry-text write; the window title
+and a flow's markup are left, for Part 5.
 
 **Wrapped mode is kept by what a declared op calls.** Part 3 found that a
 string marshaled in IR leaves a `C.` that sends the program down the cgo
@@ -219,36 +221,46 @@ each fails: no splice and the build panics at the translator; no
 
 ### Part 4: the setters and `g_object_set_property`
 
-The largest site: every prop write.
+The largest site: every prop write. Done, with three departures from the
+plan: there is no `gtkSetterTable` (the setter is GIR's, `girSetter`), the
+bundled GIR does carry `gtk_entry_set_placeholder_text`, so the
+`sngl_set_prop_*` path is pinned over `rules.gir` in
+`TestGObjectPropSet_EmitsGenericPath` rather than in the golden, and
+`setEntryText` is gtk4rt's, not a `#[cnative]`.
 
-- [ ] `Protocol` gains `set`: `(w W, v T)`, the prop named by the second
-  parameter's name. `declgen` writes one per settable prop: GIR's setter, or
-  `gtkSetterTable`'s where it has an entry (the table stays Go data
-  `declgen` reads, since it is per C type and the `gir:` package is where
-  every `set` lives), or a `sngl_set_prop_*` helper by the property's name
-  where GTK ships no setter. An enumeration's string member is a `match`
-  over the member names GIR lists, to the member's value through the enum's
-  cast, which folds for a literal; an `int` passes through. Where gtk4rt
-  wraps the setter (`wrapped.go`'s `rt*` tables), the `set` calls it as a
-  `#[go.native]` in both modes, as Part 3's connect does, so a label's text
-  keeps a program wrapped; count the goldens that would flip before choosing
-  otherwise.
-- [ ] A nullable string prop is `option[string]`; `CMarshal` learns that
-  conversion (`null` to `NULL`, a value to `cstring`) here, since Part 1 only
-  ever passes `null`.
-- [ ] `setEntryText` (`compiler_ir.go`'s entry-text write) becomes a SNGL
-  body in `gtk4.sngl` calling `sngl_set_entry_text_quiet` as a
-  `#[cnative]`, and stops being a `widgetWrites` intrinsic.
-- [ ] `OnPropAssign` keeps `look` (`gtk4rt.SetLook`), `CopyProp`, instance roots,
-  and the refusals (construct-only, unsettable, no such prop), which move
-  to where the op finds no `set`; `coerceSetterValue` goes.
+- [X] `Protocol` gains `set`: `(w W, v T)`, the prop named by the second
+  parameter's name (`bindSet`, `NodeProtocol.Set`). `declgen` writes one
+  per settable prop (`writeSets`): gtk4rt's wrapper as a `#[go.native]`
+  where `rtSetterTable` has the setter, GIR's setter as a `#[cnative]`
+  otherwise, or `sngl_set_prop_*` by the property's name where GTK ships
+  none. An enumeration's member is a `match` over GIR's member names, to
+  the value (`gir.EnumInfo.Values`) through the enum's cast; `foldSplice`
+  folds it for a literal and refuses any other value. A bool is
+  `v ? 1 : 0`, folded for a literal and a call in place otherwise.
+  `spliceSets` makes every prop write's value the set's call -- updaters'
+  and handlers' too, which `passReactivity` made first -- once per shared
+  `Assign`. No wrapped golden flipped to cgo.
+- [X] A nullable string parameter is `option[string]`; `CMarshal` hands a
+  string as `cstring` and `null` as NULL, and refuses an option value
+  (`testdata/c_option_string.txtar`).
+- [X] `setEntryText` is `gtk4rt.EditableSetTextQuiet` as a `#[go.native]`,
+  not a `widgetWrites` intrinsic: a `#[cnative]` would have sent every
+  wrapped program with a `ui.input` to cgo. `readWidgets` hands any gtk4rt
+  native taking a widget the widget as a `Handle`, and no longer calls
+  `ownCStrings`.
+- [X] `OnPropAssign` keeps `look`, `CopyProp`, instance roots, the non-GIR
+  tags and the refusals; `emitSetterCall`, `emitGObjectPropSet`,
+  `coerceSetterValue`, `setterValueArg`, `enumValueArg`, `rtSetterValue`
+  and `rtEventSetterExpr` went. A handler closure in a `for` row now
+  writes the label the translator used to drop
+  (`testdata/indexed_trigger_nested.txtar`).
 
-Fixture: `testdata/error_gen_protocol_set.sngl`. Golden:
-`testdata/gtk4_declared_set.txtar`, a reactive label text, a check
-button's `active`, a box's `orientation` from a literal, an entry's
-`placeholderText` with no GIR setter in the bundled set, and a
-`setEntryText` in a handler, asserting each setter and each release.
-Revert: drop the resolution and the golden shows `ownCStrings`'s `__ctmp`.
+Fixture: `testdata/error_gen_protocol_set.sngl`, and
+`TestGenProtocolPlacement` (a set of no prop, twice, another package's).
+Golden: `testdata/gtk4_declared_set.txtar`. Reverted, each fails: no splice
+and the translator panics on a write that is no call; no `option[string]`
+conversion and `c_option_string` differs; no `bindSet` and the placement
+cases go unrefused.
 
 ### Part 5: the tags no GIR class is behind
 

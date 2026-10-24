@@ -81,7 +81,7 @@ sha256:491b5bc5c70984b48ff975748abfe31d
   ]
 }
 -- testrun/gtk4/go/scroll.sngl/main/1 --
-sha256:b950c409f6815b2720d8871f8c5e929e
+sha256:a9c6bb5bf4215484fda9109984757087
 {
   "results": [
     {

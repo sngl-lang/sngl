@@ -27,30 +27,6 @@ func pickPrimaryConstructorInfo(info *gir.ClassInfo) gir.ConstructorInfo {
 	return info.Constructors[0]
 }
 
-// girTypeIsNamedNonPrimitive reports whether the GIR raw type name
-// refers to a non-primitive declared type (enum, class, struct) rather
-// than a built-in scalar. Used to map GIR property types like
-// "Orientation" → cgo "GtkOrientation".
-func girTypeIsNamedNonPrimitive(name string) bool {
-	if name == "" {
-		return false
-	}
-	switch name {
-	case "utf8", "filename", "gchararray",
-		"gboolean",
-		"gint", "gint32", "gint64",
-		"guint", "guint32", "guint64", "gsize",
-		"gdouble", "gfloat",
-		"none":
-		return false
-	}
-	// Heuristic: GIR enum/class names within the current namespace are
-	// bare CamelCase identifiers (no namespace dot). Cross-namespace
-	// names contain a "." (e.g. "Gio.File") and need different handling
-	// — return false there so the codegen falls back to defaults.
-	return !strings.Contains(name, ".") && name[0] >= 'A' && name[0] <= 'Z'
-}
-
 // girAutoPaths are the standard locations checked when --opt gir= is not set.
 var girAutoPaths = []string{
 	"/usr/share/gir-1.0/Gtk-4.0.gir",

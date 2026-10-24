@@ -150,12 +150,22 @@ enum Protocol {
     // is handed a handler. The platform puts the handler in place, since
     // whether it is a method or a closure is the shape of the code it writes.
     connect
+    // Writes one prop of the widget: a function of the widget, typed as the
+    // component, and the value, whose parameter is named as the prop it sets,
+    // declared in the component's package, at most one per prop. The build
+    // calls it wherever the program writes the prop of a node of the
+    // component, at its first render and every write after. A `match` in its
+    // body is folded where it is called, so the value it reads there is a
+    // literal one of whose arms names: it maps a word the program writes to
+    // the host's own value, and a word no arm names is refused.
+    set
 }
 
 // Says the function is the named operation of its component's protocol.
 // Nothing calls one by name: the build finds it by this mark, through the
 // component its signature names, or for `connect`, the build-target node
-// declared beside it.
+// declared beside it, and for `set`, the prop its value parameter is named
+// as.
 func protocol(op Protocol) ir.Macro
 
 // Names an event as its host knows it, where that is no SNGL name: GTK's

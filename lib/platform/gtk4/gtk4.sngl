@@ -17,8 +17,8 @@ import gtk "gir:Gtk-4.0"
 // call can be moved off it and its answer written back.
 #[gen.can(asyncPost, instanceState)]
 // Withholding reactivity is what asks for the explicit `nID.<prop> = <expr>`
-// after every mutation of a tracked var, which this platform translates to
-// `gtk_<widget>_set_<prop>(...)`; withholding declarative flattens the tree
+// after every mutation of a tracked var, which the prop's declared set makes a
+// call (`#[gen.protocol(set)]`); withholding declarative flattens the tree
 // into the calls that build it. The same pair fyne takes, and for the same
 // reason: GTK owns its widgets and diffs nothing.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
@@ -108,8 +108,9 @@ func switchActive(s gtk.GtkSwitch) bool
 func entryText(e gtk.GtkEntry) string
 
 // Writes an entry's text, which an override does itself rather than binding
-// `text`: see ui.input.
-#[marks.intrinsic("gtk4.setEntryText")]
+// `text`: see ui.input. gtk4rt blocks "changed" around the write and copies
+// the text into C itself, so neither mode's generated file calls C for it.
+#[go.native(_rtPkg, "gtk4rt.EditableSetTextQuiet")]
 func setEntryText(e gtk.GtkEntry, text string)
 
 // The day a calendar has selected. A calendar always has one, so this is null
@@ -247,8 +248,8 @@ const component ui.spinner[platform](label, style) {
 
 // `direction` is not forwarded: orientation is a GtkOrientation, and the
 // only SNGL value that reaches a GTK enum is a string literal naming one of
-// its members (see enumValueArg) — a prop reference has no compile-time
-// member to name. A separator is therefore horizontal, which is what
+// its members, which the prop's set folds to the member's value where it is
+// written — a prop reference has no compile-time member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
 const component ui.divider[platform](style) {
     gtk.GtkSeparator(look=lookOf(style)) {}

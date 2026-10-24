@@ -339,8 +339,7 @@ type ErrorEvent struct {
 }
 
 var (
-	__cstr0 = C.CString("next")
-	__cstr1 = C.CString("t")
+	__cstr0 = C.CString("t")
 )
 
 type Measurement struct {
@@ -757,8 +756,8 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n5 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n5)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n5)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n5)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n5)), 6)
 	m.__n6 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n6)), "contain")
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n6)), m.__n6_click_handler)
@@ -779,7 +778,7 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n7), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n7)))
 	m.__n8 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n8)), __cstr0)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n8)), "next")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n8)), "clicked", m.__n8_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
@@ -792,9 +791,9 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr1)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr0)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:b73b380dfb5531ecc0da4646196211b7
+pass sha256:8142064dc1ba3e947b2207b069655d16

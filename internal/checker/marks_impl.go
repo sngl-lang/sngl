@@ -979,6 +979,13 @@ func markGenProtocol(m *mark) error {
 		if t := fn.Params[2].Type; t == nil || t.Kind != ir.TypeFunc {
 			return fmt.Errorf("#[gen.protocol(connect)] is handed the handler, a function, as its third parameter")
 		}
+	case ir.ProtocolSet:
+		if len(fn.Params) != 2 {
+			return fmt.Errorf("#[gen.protocol(set)] takes the widget and the value, named as the prop it sets: func f(w W, label string)")
+		}
+		if t := fn.Params[0].Type; t == nil || t.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(set)] declares the #[intrinsic] component it sets as its first parameter")
+		}
 	default:
 		return fmt.Errorf("#[gen.protocol(%s)]: the compiler implements no such operation", op)
 	}

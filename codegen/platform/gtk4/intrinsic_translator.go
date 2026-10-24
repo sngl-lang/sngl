@@ -1214,38 +1214,15 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if tag := t.imageTagOf(bare); tag != "" {
 		return t.imagePropAssign(node, tag, prop, value)
 	}
+	if setterOf(node, prop) != nil {
+		return t.setThrough(value)
+	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
 		return nil
 	}
 	info := t.classFor(cType)
 	p, hasProp := girProp(info, prop)
-
-	// A construct-only property has no reachable write — the widget exists by
-	// the time any prop is assigned, and GObject answers with a g_critical.
-	// declgen withholds these, so reaching here means the prop arrived some
-	// other way; refuse rather than emit a call that silently does nothing.
-	if hasProp && p.ConstructOnly {
-		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
-		return nil
-	}
-	var entry gtkSetterEntry
-	if hasProp {
-		entry = girSetter(info, p)
-	}
-	// Before anything cgo-shaped is built: a coercion records that its helper
-	// is needed, and here nothing would use it.
-	if t.wrapped && entry.Setter != "" {
-		if rt, ok := rtSetterTable[entry.Setter]; ok {
-			if arg, ok := rtSetterValue(rt.kind, value); ok {
-				return []ir.Stmt{&ir.CallStmt{Call: rtCall(rt.fn, ir.TypVoid, t.qualifyNodeExpr(node), arg)}}
-			}
-		}
-	}
-	recvType := cType
-	if entry.RecvType != "" {
-		recvType = entry.RecvType
-	}
 	if !hasProp {
 		if t.canvasMetaForID(bare) != nil {
 			// A canvas's own width and height, which emitCanvasCreate already
@@ -1259,25 +1236,67 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		t.shared.fail(fmt.Errorf("gtk4: %s has no property named %q: GIR describes none for the class, so the value reaches the widget not at all", cType, prop))
 		return nil
 	}
-	kind := propKind(t.registry, p)
-	if kind == propUnsettable {
+	// A construct-only property has no reachable write — the widget exists by
+	// the time any prop is assigned, and GObject answers with a g_critical.
+	// declgen withholds these, so reaching here means the prop arrived some
+	// other way; refuse rather than emit a call that silently does nothing.
+	if p.ConstructOnly {
+		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
+		return nil
+	}
+	if propKind(t.registry, p) == propUnsettable {
 		t.shared.fail(fmt.Errorf("gtk4: %s.%s: no SNGL value can produce %s, which is what this GTK property takes", cType, p.Name, girTypeLabel(p)))
 		return nil
 	}
-	if entry.Setter == "" {
-		return t.emitGObjectPropSet(node, p, kind, value)
-	}
-	valArg, err := t.setterValueArg(kind, p, entry.ValType, value)
-	if err != nil {
-		t.shared.fail(fmt.Errorf("gtk4: %s.%s: %w", cType, p.Name, err))
-		return nil
-	}
-	return t.emitSetterCall(node, recvType, entry.Setter, valArg)
+	t.shared.fail(fmt.Errorf("gtk4: %s.%s is written, and its package declares no #[gen.protocol(set)] for it", cType, p.Name))
+	return nil
 }
 
-func (t *gtk4Translator) emitSetterCall(node ir.Expr, recvType, setter string, valArg ir.Expr) []ir.Stmt {
-	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
-	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, ir.TypVoid, cast, valArg)}})
+// setterOf is the #[gen.protocol(set)] node's component declares for prop,
+// whose call lowering made the value of every write of it.
+func setterOf(node ir.Expr, prop string) *ir.Func {
+	if t := node.ExprType(); t != nil {
+		if c, ok := t.Decl.(*ir.Component); ok {
+			return c.Protocol.Setter(prop)
+		}
+	}
+	return nil
+}
+
+// setThrough is a prop write as the call its declared set makes, with the
+// node put where this scope holds it: as a Handle where the call is gtk4rt's.
+func (t *gtk4Translator) setThrough(call ir.Expr) []ir.Stmt {
+	c, ok := ir.CloneExprSharingDecls(call).(*ir.Call)
+	if !ok {
+		panic(fmt.Sprintf("gtk4: a declared set made %T, not a call", call))
+	}
+	if strings.HasPrefix(nativeName(c), "sngl_set_prop_") {
+		t.shared.needGObjectSet()
+	}
+	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
+		switch x := n.(type) {
+		case *ir.Call:
+			if x.Func != nil && x.Func.Foreign.Path == gtk4rtPkg {
+				for i, a := range x.Args {
+					// The class handed to a gtk4rt native's ui.node arrives
+					// widened to it, which Go would box in an any.
+					v := a.Value
+					if conv, ok := v.(*ir.Conversion); ok {
+						v = conv.Operand
+					}
+					if id, ok := v.(*ir.Ident); ok && id.IsElementRef {
+						x.Args[i].Value = t.rtHandle(t.qualifyNodeExpr(id))
+					}
+				}
+			}
+		case *ir.Ident:
+			if x.IsElementRef {
+				return t.qualifyNodeExpr(x), ir.SkipDir
+			}
+		}
+		return n, nil
+	})
+	return []ir.Stmt{&ir.CallStmt{Call: c}}
 }
 
 // gObjectSetFn is the preamble helper that carries each kind of value through
@@ -1291,88 +1310,6 @@ var gObjectSetFn = map[propValueKind]string{
 	propEnum:   "sngl_set_prop_int",
 }
 
-// emitGObjectPropSet sets a property GTK ships no setter for by name, through
-// g_object_set_property. The property's GIR name is the GObject property name;
-// the helper transforms the primitive value into whatever GType the class's
-// GParamSpec declares, which is how an enum-, float- or unsigned-typed
-// property is reached from one of four helpers.
-func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propValueKind, value ir.Expr) []ir.Stmt {
-	fn, ok := gObjectSetFn[kind]
-	if !ok {
-		return nil
-	}
-	valArg, err := t.gObjectValueArg(kind, p, value)
-	if err != nil {
-		t.shared.fail(fmt.Errorf("gtk4: %s: %w", p.Name, err))
-		return nil
-	}
-	t.shared.needGObjectSet()
-	obj := cgoCast("", t.qualifyNodeExpr(node))
-	name := cString(&ir.Literal{Type: ir.TypString, Value: p.Name})
-	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, obj, name, valArg)}})
-}
-
-func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType string, value ir.Expr) (ir.Expr, error) {
-	switch kind {
-	case propString:
-		return cString(value), nil
-	case propBool:
-		return cScalar("gboolean", t.boolToGoInt(value)), nil
-	case propInt, propFloat:
-		return cScalar(girScalarCast(p), value), nil
-	case propEnum:
-		member, isMember, err := t.enumValueArg(p, value)
-		if err != nil {
-			return nil, err
-		}
-		if isMember {
-			return member, nil
-		}
-		return cScalar(valType, member), nil
-	}
-	return nil, fmt.Errorf("no value of this type can be set")
-}
-
-func (t *gtk4Translator) gObjectValueArg(kind propValueKind, p gir.Prop, value ir.Expr) (ir.Expr, error) {
-	switch kind {
-	case propString:
-		return cString(value), nil
-	case propBool:
-		return cScalar("int", t.boolToGoInt(value)), nil
-	case propInt:
-		return cScalar("int", value), nil
-	case propFloat:
-		return cScalar("double", value), nil
-	case propEnum:
-		member, _, err := t.enumValueArg(p, value)
-		if err != nil {
-			return nil, err
-		}
-		return cScalar("int", member), nil
-	}
-	return nil, fmt.Errorf("no value of this type can be set")
-}
-
-// enumValueArg resolves the value bound to an enum- or bitfield-typed
-// property: a string literal names one of its members, and an int is the
-// member's own number. isMember reports the former, whose cgo spelling is
-// already typed and needs no cast.
-func (t *gtk4Translator) enumValueArg(p gir.Prop, value ir.Expr) (arg ir.Expr, isMember bool, err error) {
-	if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
-		cst := girEnumMember(t.registry, p.GIRType, lit.Value)
-		if cst == "" {
-			return nil, false, fmt.Errorf("%q names no member of the %s enumeration", lit.Value, p.GIRType)
-		}
-		// A member of the GIR enumeration, as cgo spells its constant, of
-		// the enumeration's C type.
-		return &ir.Ident{Name: cst, Type: ir.NativeGoNamed("C." + t.registry.Enums[p.GIRType].CType)}, true, nil
-	}
-	if vt := exprIRType(value); vt != nil && vt.Kind == ir.TypeInt {
-		return value, false, nil
-	}
-	return nil, false, fmt.Errorf("a %s value is a string literal naming one of its members, or an int", p.GIRType)
-}
-
 // girTypeLabel names the type a property takes, for an error a reader can act
 // on. An array property carries no GIR type of its own — its inner <type>
 // names the element.
@@ -1381,51 +1318,6 @@ func girTypeLabel(p gir.Prop) string {
 		return "an array"
 	}
 	return "a " + p.GIRType
-}
-
-// coerceSetterValue wraps the SNGL value expression so its Go-side
-// representation matches the cgo type the C setter expects. This is the path
-// for a prop the loaded GIR does not describe, where the SNGL value's own type
-// is all there is to go on:
-//   - Booleans → C.gboolean(v)
-//   - Integers / Floats → C.int(v) / C.double(v)
-//   - anything else → C.CString(v)
-func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr) ir.Expr {
-	// A boolean setter whose property the GIR did not carry: the value may be
-	// one exprIRType cannot type (a `!x`), and the fallback below would make a
-	// string of it.
-	if setter == "gtk_check_button_set_active" {
-		return cScalar("gboolean", t.boolToGoInt(value))
-	}
-	if vt := exprIRType(value); vt != nil {
-		switch vt.Kind {
-		case ir.TypeBool:
-			return cScalar("gboolean", t.boolToGoInt(value))
-		case ir.TypeInt:
-			return cScalar("int", value)
-		case ir.TypeFloat:
-			return cScalar("double", value)
-		}
-	}
-	return cString(value)
-}
-
-func exprIRType(e ir.Expr) *ir.Type {
-	switch n := e.(type) {
-	case *ir.Literal:
-		return n.Type
-	case *ir.Ident:
-		return n.Type
-	case *ir.Select:
-		return n.Type
-	case *ir.Call:
-		return n.Type
-	case *ir.Binary:
-		return n.Type
-	case *ir.Conversion:
-		return n.Type
-	}
-	return nil
 }
 
 func gtk4SignalFor(cType, event string) string {

@@ -1062,7 +1062,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.t = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.t, "p")
@@ -1524,7 +1524,7 @@ pass sha256:94943e226cd53568764655f15c230ecd
 -- run/go/fyne --
 pass sha256:5e2c4eb946b5dd9f1310d82a7b02c84a
 -- run/go/gtk4 --
-pass sha256:555a074a7ae384e1a80f365df2869152
+pass sha256:63c531967bf97bebda980e6f4087e5c9
 -- run/kotlin/android --
 pass sha256:6ae7d9badf4692fe0523f62647b68c98
 -- run/none/html --

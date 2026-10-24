@@ -41,7 +41,10 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	// attached to it (ir.AppParent), and what that means is the platform's.
 	st.hosted = nil
 	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, appRef())
-	return st.err
+	if st.err != nil {
+		return st.err
+	}
+	return spliceSets(pkg, caps)
 }
 
 type declarativeState struct {

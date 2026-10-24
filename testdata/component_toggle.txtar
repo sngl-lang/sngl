@@ -621,13 +621,6 @@ import (
 	"unsafe"
 )
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	on     bool
@@ -646,7 +639,13 @@ func New() *Model {
 func (m *Model) __n0_notifyActive_handler() {
 	if (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0))) != 0) != m.on {
 		m.on = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0))) != 0)
-		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.on)))
+		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(C.int(func() int {
+			if m.on {
+				return 1
+			} else {
+				return 0
+			}
+		}())))
 	}
 }
 
@@ -664,8 +663,14 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
-	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.on)))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
+	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(C.int(func() int {
+		if m.on {
+			return 1
+		} else {
+			return 0
+		}
+	}())))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(C.int(func() int { return 1 }())))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "notify::active", m.__n0_notifyActive_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -816,7 +821,7 @@ pass sha256:473b3a64e17d3680a11ccdc3123f964e
 -- run/go/fyne --
 pass sha256:378dc747678c3dece285ec5ec7cc108c
 -- run/go/gtk4 --
-pass sha256:213a5724c1bf79f73cf4ad724cad41cd
+pass sha256:286d72ef050317bc1b57efa13c078b4f
 -- run/kotlin/android --
 pass sha256:d6a03f79a8a86bcad9a9fa758d094ec9
 -- run/none/html --

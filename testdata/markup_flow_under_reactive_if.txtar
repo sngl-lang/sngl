@@ -258,7 +258,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__renderSlot0(m.__n2)
 	m.flip = gtk4rt.ButtonNew()
@@ -284,4 +284,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:27be964e185f593357379c61342cf108
 -- run/go/gtk4 --
-pass sha256:11cedafa46db71a87360412be76df2fe
+pass sha256:f9e4c4793a9ff6dc92102c87d85074ad

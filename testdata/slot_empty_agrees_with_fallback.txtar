@@ -1399,7 +1399,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetLabel(m.two, __lt16)
 	gtk4rt.BoxAppend(m.__n0, m.two)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
 	m.__renderSlot0(m.__n7)
 	m.__renderSlot1(m.__n7)
@@ -1415,7 +1415,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetLabel(m.loop, __lt17)
 	gtk4rt.BoxAppend(m.__n0, m.loop)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n8, 1)
 	gtk4rt.BoxSetSpacing(m.__n8, 6)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
@@ -1425,7 +1425,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetLabel(m.lifetime, __lt18)
 	gtk4rt.BoxAppend(m.__n0, m.lifetime)
 	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n9, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n9, 1)
 	gtk4rt.BoxSetSpacing(m.__n9, 6)
 	m.__n10 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n10, "fallback")
@@ -1916,7 +1916,7 @@ pass sha256:fdf3995b2eea50a9aceac7e00d4f6d43
 -- run/go/fyne --
 pass sha256:9fd64bebb2aeee506aca9ea426fc222f
 -- run/go/gtk4 --
-pass sha256:52769bc4dfd9eaa7f1cc1665fa4f50a5
+pass sha256:6e5d7d27ff4c6fcc5866fa8f3b8ca169
 -- run/kotlin/android --
 pass sha256:caff83eee833d3fb1dfdad8e584724c7
 -- run/none/html --

@@ -488,9 +488,12 @@ func gtkPost(fn func()) {
 	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -504,6 +507,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -608,22 +614,15 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 import "C"
 import "unsafe"
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 var (
-	__cstr0 = C.CString("")
-	__cstr1 = C.CString("working")
-	__cstr2 = C.CString("t")
+	__cstr0 = C.CString("t")
 )
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
+	__rel0         *C.char
+	__rel1         *C.char
 	__n0           *C.GtkBox
 	__n1           *C.GtkProgressBar
 	__n4           *C.GtkProgressBar
@@ -635,6 +634,8 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.visible__inst0 = true
+	m.__rel0 = C.CString("")
+	m.__rel1 = C.CString("working")
 	return m
 }
 
@@ -643,6 +644,15 @@ func (m *Model) __n0_closed_handler() {
 
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+}
+
+func (m *Model) __snglTeardown() {
+	Free(m.__rel0)
+	Free(m.__rel1)
+}
+
+func Free(s *C.char) {
+	C.free(unsafe.Pointer(s))
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -661,13 +671,13 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
 	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.double(0.2))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), __cstr0)
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.gboolean(boolToInt(false)))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), m.__rel0)
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.gboolean(C.int(0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n4 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
 	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.double(0.0))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), __cstr1)
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.gboolean(boolToInt(false)))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), m.__rel1)
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.gboolean(C.int(0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -677,7 +687,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr2)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr0)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -758,7 +768,7 @@ pass sha256:839559420a057422e9846b7acbe3bed4
 -- run/go/fyne --
 pass sha256:59abfe38f664f8b16684ba4fce7475e2
 -- run/go/gtk4 --
-pass sha256:1785c3db73b802b53b97fa662f16b6bb
+pass sha256:388fc84a77a2737430156071000e08fd
 -- run/kotlin/android --
 pass sha256:cf58e6be05c0e893f825b4616e7bf80f
 -- run/none/html --

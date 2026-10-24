@@ -687,7 +687,7 @@ func newRowInstance(__model *Model, __a_container string) *RowInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n3, gtk4rt.OrientationHorizontal)
+	gtk4rt.OrientableSetOrientation(c.__n3, 0)
 	gtk4rt.BoxSetSpacing(c.__n3, 6)
 	c.__renderSlot0(c.__n3)
 	__n7 := gtk4rt.ButtonNew()
@@ -903,7 +903,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n6, 1)
 	gtk4rt.BoxSetSpacing(m.__n6, 6)
 	m.__renderSlot1(m.__n6)
 	m.bump = gtk4rt.ButtonNew()
@@ -930,4 +930,4 @@ func (m *Model) bumpClick() {
 -- run/go/fyne --
 pass sha256:50719fc79565dce598a7212c14aa17cb
 -- run/go/gtk4 --
-pass sha256:ba2632b553db959b5dcaec9d063d2ede
+pass sha256:f837f2a20ddcfad3547050c4549e85f1

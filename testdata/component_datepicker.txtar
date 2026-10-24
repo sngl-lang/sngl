@@ -721,13 +721,6 @@ func snglCalendarSelect(c *C.GtkCalendar, t *time.Time) {
 	C.sngl_calendar_select(c, C.int(t.Year()), C.int(t.Month()), C.int(t.Day()))
 }
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	d                   time.Time
@@ -843,7 +836,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.cal = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.cal)), C.gboolean(boolToInt(true)))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.cal)), C.gboolean(C.int(func() int { return 1 }())))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.cal)), "day-selected", m.cal_daySelected_handler)
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.cal)))
@@ -1080,7 +1073,7 @@ pass sha256:09a0dc03c34760a67dfd9b4060e56ba7
 -- run/go/fyne --
 pass sha256:95eb24ffec20a57a93b8c2be1eeb39c4
 -- run/go/gtk4 --
-pass sha256:10b86034e64e0ac4cfb2d08f3a720f8f
+pass sha256:11ac7315cce352a7c1a9170037841a0c
 -- run/kotlin/android --
 pass sha256:ed8576050f45cf82f13dc843da0561b1
 -- run/none/html --

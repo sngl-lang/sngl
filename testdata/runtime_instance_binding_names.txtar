@@ -1577,7 +1577,7 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__n16 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n16, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n16, 1)
 	gtk4rt.BoxSetSpacing(c.__n16, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n0, c.__prop_m)
@@ -1750,7 +1750,7 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__n18 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n18, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n18, 1)
 	gtk4rt.BoxSetSpacing(c.__n18, 6)
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n2, c.__prop_m)
@@ -1923,7 +1923,7 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__n20 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n20, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n20, 1)
 	gtk4rt.BoxSetSpacing(c.__n20, 6)
 	c.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n4, c.__prop_m)
@@ -2096,7 +2096,7 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__n22 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n22, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n22, 1)
 	gtk4rt.BoxSetSpacing(c.__n22, 6)
 	c.__n6 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n6, c.__prop_m)
@@ -2269,7 +2269,7 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__renderAgain4 = false
 	c.__slot5 = nil
 	c.__n24 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n24, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n24, 1)
 	gtk4rt.BoxSetSpacing(c.__n24, 6)
 	c.__n8 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n8, c.__prop_m)
@@ -2442,7 +2442,7 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__rendering5 = false
 	c.__renderAgain5 = false
 	c.__n26 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n26, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(c.__n26, 1)
 	gtk4rt.BoxSetSpacing(c.__n26, 6)
 	c.__n10 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n10, c.__prop_m)
@@ -2591,7 +2591,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n27 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n27, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(__n27, 1)
 	gtk4rt.BoxSetSpacing(__n27, 6)
 	__n12 := newFrame__slot0Instance(m, m.depth, "top", 0, m.mark)
 	__n12__el := __n12.Root
@@ -3594,7 +3594,7 @@ pass sha256:8969573366c236c3176fe0472e2762a3
 -- run/go/fyne --
 pass sha256:78d70b6f2606053ae9f97f1ca400a72b
 -- run/go/gtk4 --
-pass sha256:3638c4413dae289e265004a044f82dac
+pass sha256:68fbcbafb2340890e4fda8fa7b40f7a6
 -- run/kotlin/android --
 pass sha256:cec96adda10ef28af22c9246c8d766d5
 -- run/none/html --

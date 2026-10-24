@@ -875,17 +875,6 @@ func snglDropDownOffer(d *C.GtkDropDown, labels, chosen string) {
 	C.sngl_drop_down_offer(d, l, c)
 }
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-var (
-	__cstr0 = C.CString("more")
-)
-
 type Choice__record struct {
 	Label string
 }
@@ -1101,15 +1090,15 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 6)
 	m.drop = (*C.GtkDropDown)(unsafe.Pointer(C.gtk_drop_down_new(nil, nil)))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.drop)), C.gboolean(boolToInt(true)))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.drop)), C.gboolean(C.int(func() int { return 1 }())))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.drop)), "notify::selected", m.drop_notifySelected_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.drop)))
 	m.__effect0_rebuilt()
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __cstr0)
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "more")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
@@ -1398,7 +1387,7 @@ pass sha256:ad79957662d05cc808713754131f0d5f
 -- run/go/fyne --
 pass sha256:b5aa80684dbe5059c7b08f51ef9e5306
 -- run/go/gtk4 --
-pass sha256:1aed072f5af6b288cf854e28e1efde42
+pass sha256:793ff368c83ab662777e3bbe4c0cee5b
 -- run/kotlin/android --
 pass sha256:9158ece4b97314c15f0fe303536b2b7f
 -- run/none/html --

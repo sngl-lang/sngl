@@ -690,17 +690,6 @@ import (
 	"unsafe"
 )
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-var (
-	__cstr0 = C.CString("")
-)
-
 type TableRow__record struct {
 	Cells []string
 }
@@ -835,10 +824,10 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 	c.__rendering1 = false
 	c.__renderAgain1 = false
 	c.__n4 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(c.__n4)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(c.__n4)), C.gboolean(boolToInt(true)))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(c.__n4)), 0)
+	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(c.__n4)), C.gboolean(C.int(1)))
 	c.__n0 = (*C.GtkCheckButton)(unsafe.Pointer(C.gtk_check_button_new()))
-	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.__prop___p0 == c.__prop___p1))))
+	gtk4rt.CheckButtonSetActive(gtk4rt.Handle(unsafe.Pointer(c.__n0)), (c.__prop___p0 == c.__prop___p1))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.__n0)), "toggled", func() {
 		c.__prop___on0(c.__n0)
 	})
@@ -851,12 +840,12 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 Ta
 
 func (c *__child0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.__prop___p0 == c.__prop___p1))))
+	gtk4rt.CheckButtonSetActive(gtk4rt.Handle(unsafe.Pointer(c.__n0)), (c.__prop___p0 == c.__prop___p1))
 }
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.__prop___p0 == c.__prop___p1))))
+	gtk4rt.CheckButtonSetActive(gtk4rt.Handle(unsafe.Pointer(c.__n0)), (c.__prop___p0 == c.__prop___p1))
 }
 
 func (c *__child0Instance) Set__p2(__v TableRow__record) {
@@ -883,10 +872,8 @@ func (c *__child0Instance) __renderSlot1(parent *C.GtkBox) {
 			c.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at)
 			for _, cell := range c.__prop___p2.Cells {
 				__n3 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				__ctmp1 := C.CString(cell)
-				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n3)), __ctmp1)
-				C.free(unsafe.Pointer(__ctmp1))
-				C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n3)), C.float(0.0))
+				gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n3)), cell)
+				C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n3)), C.float(C.double(0.0)))
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n3)))
 				c.__slot1 = append(c.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n3)))
 			}
@@ -922,20 +909,18 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(0))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n2)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(__n2)), 0)
 	__n5 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n5)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(__n5)), C.gboolean(boolToInt(true)))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n5)), 0)
+	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(__n5)), C.gboolean(C.int(1)))
 	__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr0)
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n6)), "")
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(__n6)))
 	for _, col := range []string{"Name", "Role"} {
 		__n7 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		__ctmp0 := C.CString(col)
-		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n7)), __ctmp0)
-		C.free(unsafe.Pointer(__ctmp0))
-		C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n7)), C.float(0.0))
+		gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n7)), col)
+		C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n7)), C.float(C.double(0.0)))
 		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(__n7)))
 	}
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(__n5)))
@@ -1118,7 +1103,7 @@ pass sha256:3b7767f1d278a951c2767252c9e57ca3
 -- run/go/fyne --
 pass sha256:1cc0fddc700ab0fbddeef0b72f170f1c
 -- run/go/gtk4 --
-pass sha256:101159bbfe20829fd98255e08143d789
+pass sha256:e19a191512537ce2fbd98c2274ca7c39
 -- run/kotlin/android --
 pass sha256:f62528a1eab512530f0054b19ed1c4f2
 -- run/none/html --

@@ -229,13 +229,13 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, m.picked__inst0)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationHorizontal)
+	gtk4rt.OrientableSetOrientation(m.__n3, 0)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	for _, a := range []Action__record{Action__record{Label: "One", Run: func() {
 		m.picked__inst0 = "one"
@@ -317,6 +317,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:4b8a74b47cf38ff333040de5f3a71201
 -- run/go/gtk4 --
-pass sha256:0135e4edd23869554a1efccf6dd4c725
+pass sha256:e897dff2873ea03df3fcffe2dd9878a6
 -- run/none/html --
 pass sha256:01483a03a0f47cd1bcfba782f2220d84

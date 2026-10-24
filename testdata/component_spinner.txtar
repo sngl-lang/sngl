@@ -445,9 +445,12 @@ func gtkPost(fn func()) {
 	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -461,6 +464,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -565,20 +571,10 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 import "C"
 import "unsafe"
 
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-var (
-	__cstr0 = C.CString("Loading...")
-)
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
+	__rel0         *C.char
 	__n0           *C.GtkBox
 	__n1           *C.GtkSpinner
 	__root         *C.GtkBox
@@ -589,6 +585,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.visible__inst0 = true
+	m.__rel0 = C.CString("Loading...")
 	return m
 }
 
@@ -597,6 +594,14 @@ func (m *Model) __n0_closed_handler() {
 
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+}
+
+func (m *Model) __snglTeardown() {
+	Free(m.__rel0)
+}
+
+func Free(s *C.char) {
+	C.free(unsafe.Pointer(s))
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -614,8 +619,8 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n1 = (*C.GtkSpinner)(unsafe.Pointer(C.gtk_spinner_new()))
-	C.gtk_spinner_set_spinning((*C.GtkSpinner)(unsafe.Pointer(m.__n1)), C.gboolean(boolToInt(true)))
-	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(m.__n1)), __cstr0)
+	C.gtk_spinner_set_spinning((*C.GtkSpinner)(unsafe.Pointer(m.__n1)), C.gboolean(C.int(1)))
+	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(m.__n1)), m.__rel0)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -699,7 +704,7 @@ pass sha256:4649c2ac9717213af69c29c2526f954f
 -- run/go/fyne --
 pass sha256:31c6a0e68080b0c3fb4660295623f912
 -- run/go/gtk4 --
-pass sha256:ddf033ca65d3eaa8a391193d0737be31
+pass sha256:20829743b73453d7647e0899dfa6aaef
 -- run/kotlin/android --
 pass sha256:a59c086bb4b6633fd55bf4a10a82bd87
 -- run/none/html --

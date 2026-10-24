@@ -505,7 +505,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
 	m.__renderSlot0(m.__n4)
 	m.__n2 = gtk4rt.LabelNew("")
@@ -704,6 +704,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:bbd6c4992518be205133eddb805eb992
 -- run/go/gtk4 --
-pass sha256:05cc09cd9d0c133a5b907101718c33a7
+pass sha256:70799867d3a8eb6501c7b9851d778870
 -- run/none/html --
 pass sha256:38a064f11e287f07364a282d6f0e9b9b

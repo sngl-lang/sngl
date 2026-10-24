@@ -113,35 +113,32 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 		// The helper definitions, emitted only when something needs them.
 		"static void sngl_set_prop(void *obj, const char *name, GValue *src)",
 		"g_object_set_property(o, name, &dst);",
-		// The property's GObject name is its GIR name, hyphens and all, a C
-		// string made once for the application's lifetime (ownCStrings).
-		`= C.CString("primary-icon-name")`,
-		`= C.CString("edit-find")`,
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n1), __cstr`,
-		`= C.CString("enable-emoji-completion")`,
-		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), __cstr`,
-		`C.int(boolToInt(true)))`,
-		// An enum-typed property with no setter takes its member's C
-		// constant through the int helper.
-		`= C.CString("accessible-role")`,
-		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), __cstr`,
-		`C.int(C.GTK_ACCESSIBLE_ROLE_BUTTON))`,
+		// The property's GObject name is its GIR name, hyphens and all, and
+		// it and a literal value are C strings made once for the application
+		// and freed at teardown (ReleaseTemps).
+		`m.__rel0 = C.CString("primary-icon-name")`,
+		`m.__rel1 = C.CString("edit-find")`,
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n1), m.__rel0, m.__rel1)`,
+		`Free(m.__rel1)`,
+		`m.__rel2 = C.CString("enable-emoji-completion")`,
+		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), m.__rel2, C.int(1))`,
+		// An enum-typed property with no setter takes its member's value,
+		// which the set's match folds to, through the int helper.
+		`m.__rel3 = C.CString("accessible-role")`,
+		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), m.__rel3, C.int(3))`,
 		// A property whose GIR setter takes two values takes the generic
 		// path, and its object-pointer constructor parameter is nil rather
 		// than a bare 0 no cgo pointer type accepts.
-		`= C.CString("text")`,
-		`= C.CString("hi")`,
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), __cstr`,
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), m.__rel4, m.__rel5)`,
 		`C.gtk_text_buffer_new(nil)`,
-		`= C.CString("scale")`,
-		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), __cstr`,
-		`C.double(0.25))`,
+		`m.__rel7 = C.CString("scale")`,
+		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), m.__rel7, C.double(0.25))`,
 		// A property that does have a setter still calls it directly.
 		`C.gtk_entry_set_max_length((*C.GtkEntry)(unsafe.Pointer(m.__n1)), C.int(12))`,
 		// The value is cast to what the setter's parameter is declared as,
 		// which GIR does not promise is the property's own type: a gint
 		// property whose setter takes a guint.
-		`C.gtk_grid_set_column_spacing((*C.GtkGrid)(unsafe.Pointer(m.__n5)), C.guint(4))`,
+		`C.gtk_grid_set_column_spacing((*C.GtkGrid)(unsafe.Pointer(m.__n5)), C.guint(C.int(4)))`,
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("model.go is missing:\n\t%s", want)
@@ -214,10 +211,11 @@ window(title="t") {
 }
 
 // TestEnumProp_RejectsUnknownMember pins that an enum member is resolved from
-// GIR and not guessed: a string naming no member fails the build.
+// GIR and not guessed: a string naming no member fails the build, where the
+// set's match is folded.
 func TestEnumProp_RejectsUnknownMember(t *testing.T) {
 	rulesGIR(t)
-	_, err := generateGtk4(t, `
+	_, err := lowerGtk4(t, `
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
 
@@ -228,8 +226,8 @@ window(title="t") {
 	if err == nil {
 		t.Fatal("generate succeeded; GtkJustification has no member named middle")
 	}
-	if !strings.Contains(err.Error(), "middle") || !strings.Contains(err.Error(), "Justification") {
-		t.Errorf("error %q does not name the value and its enumeration", err)
+	if !strings.Contains(err.Error(), `GtkLabel.justify: "middle" is none of the values`) {
+		t.Errorf("error %q does not name the prop and the value", err)
 	}
 }
 
