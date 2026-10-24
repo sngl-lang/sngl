@@ -51,7 +51,7 @@ func testTheProgramGoesAway(t test.Test, c page) {
     t.assert(depth(1000000000) > 0)
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:9567ed511b9847199001fc0b0976664a
+sha256:397195cd18a59a9f2062f80cbe9b766d
 {
   "results": [
     {

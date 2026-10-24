@@ -102,7 +102,7 @@ ui.window {
     pickAgain()
 }
 -- testrun/android/kotlin/app.sngl/pick/1 --
-sha256:8e56d66dd464fa02218779f831c795c1
+sha256:7941c0ce1e3414548666a1ad89c304bd
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:8e56d66dd464fa02218779f831c795c1
   ]
 }
 -- testrun/android/kotlin/app.sngl/pickAgain/1 --
-sha256:7798cb758c7d1732d0f877b43e8b5a17
+sha256:2e01a06614ef0c5a84795e3b549b9d26
 {
   "results": [
     {

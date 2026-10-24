@@ -71,7 +71,7 @@ func testASelectInASlotChooses(t test.Test, c form) {
     t.assert(c.extra == "Yes")
 }
 -- testrun/android/kotlin/app.sngl/form/1 --
-sha256:b4334278923bb80d1c39108862aaa04a
+sha256:b054dc591d21b276804d1494fb5a0975
 {
   "results": [
     {
@@ -85,7 +85,7 @@ sha256:b4334278923bb80d1c39108862aaa04a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/form/1 --
-sha256:6e90baed4ed74f8f6e7ee59b13566880
+sha256:47cd801066e5c153d3bf61e2f5526c8e
 {
   "results": [
     {
@@ -113,7 +113,7 @@ sha256:ab16578a9f31d32140a5ef06f8f6df7d
   ]
 }
 -- testrun/gtk4/go/app.sngl/form/1 --
-sha256:8b4a15fb3830ad8ab81add218fea1a61
+sha256:861816c45843af38a24bc158e3f5b3fc
 {
   "results": [
     {

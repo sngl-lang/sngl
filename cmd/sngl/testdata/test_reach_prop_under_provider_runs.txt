@@ -88,7 +88,7 @@ ui.window {
     probe()
 }
 -- testrun/android/kotlin/app.sngl/probe/1 --
-sha256:5df08068c4e140c98578ba1ccf1b34ef
+sha256:f95bddf85db4b38e464757424f9c5770
 {
   "results": [
     {

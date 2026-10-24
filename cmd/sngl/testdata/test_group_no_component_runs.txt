@@ -86,7 +86,7 @@ func testNoComponent(t test.Test) {
     t.assert(double(2) == 4)
 }
 -- testrun/android/kotlin/built.sngl/_/1 --
-sha256:a54af9e842795b2faea550331959ceae
+sha256:7eab10288d69a2fcf2988f1418170948
 {
   "results": [
     {
@@ -96,7 +96,7 @@ sha256:a54af9e842795b2faea550331959ceae
   ]
 }
 -- testrun/android/kotlin/focus.sngl/_/1 --
-sha256:a54af9e842795b2faea550331959ceae
+sha256:7eab10288d69a2fcf2988f1418170948
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:a54af9e842795b2faea550331959ceae
   ]
 }
 -- testrun/android/kotlin/focus.sngl/panel/1 --
-sha256:d80ce90d6830484a32777e73ef975571
+sha256:6c0f36652b964f2f0315ca2289ed7a4e
 {
   "results": [
     {

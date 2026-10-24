@@ -43,7 +43,7 @@ func testALiteralInAPanelBindsItsOwn(t test.Test, c shelf) {
     t.assert(c.joined != null && c.joined.value == "<1><2>")
 }
 -- testrun/android/kotlin/app.sngl/shelf/1 --
-sha256:253bf8f62025194f8d24b317ec402dbe
+sha256:dfdfc6b238b5d78caf7536bbed9d1a31
 {
   "results": [
     {

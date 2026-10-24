@@ -72,7 +72,7 @@ ui.window {
     rows()
 }
 -- testrun/android/kotlin/app.sngl/one/1 --
-sha256:9f07b012bd1fb81e9347d4b8a921c238
+sha256:658d8a6b13eda90401eb1b00ef7ec401
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:9f07b012bd1fb81e9347d4b8a921c238
   ]
 }
 -- testrun/android/kotlin/app.sngl/rows/1 --
-sha256:eb9f9af7b6ec62b840e24f514ff91e2c
+sha256:182fad3ccf8d6d476646a46edae6ccaa
 {
   "results": [
     {
