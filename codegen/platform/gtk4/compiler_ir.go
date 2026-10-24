@@ -545,7 +545,6 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 		Main:              c.cfg.Main,
 		FunctionCode:      functionCode,
 		NeedsBoolToInt:    c.shared.boolToInt,
-		CStrings:          c.shared.cStrings,
 		NeedsGObjectSet:   c.shared.gObjectSet,
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,

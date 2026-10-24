@@ -347,17 +347,25 @@ Part 6 made the per-class protocol, whose strings `ReleaseTemps` frees, the
 it, and the fixture below says `gtk4(cgo=true)`. By default the protocol's
 calls are gtk4rt `#[go.native]`s, which `--simulate gtk4` has to stub.
 
-- [ ] `ownCStrings`, `constCString`, `cTempName`, `scaffoldData.CStrings`
+- [X] `ownCStrings`, `constCString`, `cTempName`, `scaffoldData.CStrings`
   and their state on `emitShared` go; nothing is left calling them.
-- [ ] `testdata/gtk4_translator_strings.txtar` asserts the lowered calls
+- [X] `testdata/gtk4_translator_strings.txtar` asserts the lowered calls
   instead of denying `C.CString`: each string handed to C is a
   `ReleaseTemps` temp or an application-lifetime literal, and no
   `__cstr`/`__ctmp` name is left.
-- [ ] The interpreter under `--simulate gtk4` makes, fills and connects a
+- [X] The interpreter under `--simulate gtk4` makes, fills and connects a
   node with a declared protocol through it (`interp.PrepareFor` already
   runs `CMarshal`; it now also runs the protocol functions where it mounts
   an intrinsic, writes its prop and attaches its handler), so the tracker
-  sees each `c.str`.
+  sees each `c.str`. It does so as a host would, after each settle where
+  it paints (`Env.hostProtocols`): a mount re-evaluates the tree, so a
+  node is made the first time its key appears and its set runs when a
+  prop's value changes. The gtk4rt natives needed no stub of their own:
+  `isCNative` already answers every `#[go.native]` with no body.
+
+An output block's `cgo=true` reached no platform: `literalOption` read only
+literals, and `true` is a declared name, so only `--opt cgo=true` selected
+the per-class protocol; it is read by name now.
 
 Fixture: `cmd/sngl/testdata/simulate_gtk4_widget_strings.txt`, a `sngl test --simulate gtk4` over a reactive label, a link button and a switch's notify
 (whose connect makes no `c.str`), passing. Revert: stop `ReleaseTemps` releasing a spliced temp and the

@@ -480,7 +480,12 @@ where the translator's `__cstr` was kept for the application. A flow's markup
 was the last: the label is written by its `markup` prop's declared set,
 `gtk4rt.LabelSetMarkup`, which copies the Pango string into C and frees it,
 where the translator bound a `__ctmp` around `gtk_label_set_markup`
-(`testdata/gtk4_declared_flow.txtar`). `ownCStrings` has no caller. What
+(`testdata/gtk4_declared_flow.txtar`). With no caller left, `ownCStrings`
+went, and `constCString`, `cTempName` and the `__cstrN` vars with it: the
+golden that pinned it now records, under `gtk4(cgo=true)`, a reactive
+label's `c.str` as a temp freed after its setter and each literal as an
+application-lifetime value freed at teardown
+(`testdata/gtk4_translator_strings.txtar`). What
 `ReleaseTemps` frees in a GIR class's create and sets is the `cgo` option's
 since: by default declgen writes them over gtk4rt's calls by name, which take
 a Go string and copy it into C themselves, so a program's temps are only what
@@ -685,10 +690,15 @@ source's own value and no allocation of the host's (`hostPayload`). With a
 zero payload, `canvasImage`'s `@enter` divided by the drawing's size. Leaks from one site are one
 line with a count, because a frame repeats them. `sngl run` takes no
 `--simulate`: a run on the interpreter (`interprun`) ends with its process
-and has no teardown to leak check at. What the tracker cannot see is a call
-the gtk4 translator builds after lowering, which releases its own strings
-(`ownCStrings`); resolving those calls in lowering (#293) is what brings them
-under it (`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
+and has no teardown to leak check at. A node whose component declares its
+protocol is made, filled and connected through it after every settle
+(`Env.hostProtocols`): its create once, its sets for each prop written and
+again when the value changes, its connect once per handler, the stubbed
+natives handed what the target hands them. Under `gtk4(cgo=true)` that is
+each `c.str` a widget is handed, which the tracker follows; by default the
+protocol is gtk4rt's `#[go.native]`s, which copy a Go string themselves
+(`cmd/sngl/testdata/simulate_gtk4_widget_strings.txt`,
+`cmd/sngl/testdata/simulate_cnative_owned.txt`).
 
 ## What ASan saw on gtk4
 

@@ -1,0 +1,51 @@
+# gtk4's widgets under --simulate with the per-class protocol: the interpreter
+# makes, fills and connects each node through the #[gen.protocol] functions
+# lowering splices into the target's node ops, so the GTK natives they call are
+# stubbed and handed the `c.str`s CMarshal converts their strings to. Each is
+# freed by ReleaseTemps after the call that read it -- a reactive label's text
+# on every write, a link button's uri and its constructor's "" -- and a
+# switch's notify is connected through gtk4rt, which makes none.
+
+env PATH=
+
+sngl test --simulate gtk4 app.sngl
+stdout '^ok   1 tests, 0 failures$'
+! stdout 'leak'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+import go "sngl:language/go"
+import gtk "gir:Gtk-4.0"
+
+output {
+    go {
+        gtk4(gir="builtin", cgo=true)
+    }
+}
+
+component page ui.node {
+    var n = 0
+    var on = false
+
+    ui.vbox {
+        ui.text("{n}")
+        gtk.GtkLinkButton(uri="https://example.com", label="site")
+        gtk.GtkSwitch(@notifyActive {
+            on = !on
+        })
+        ui.button(text="more", @click {
+            n = n + 1
+        })
+    }
+}
+
+func testCounts(t test.Test, c page) {
+    c.n = 2
+    c.n = 3
+    t.assert(c.n == 3)
+}
+
+ui.window(title="t") {
+    page
+}

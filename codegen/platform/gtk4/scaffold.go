@@ -42,9 +42,6 @@ type scaffoldData struct {
 	FunctionCode   string
 	Imports        []string // model.go's; repeats are fine, the FileEmitter dedupes
 	NeedsBoolToInt bool     // emit boolToInt helper only when boolToGoInt was used
-	// CStrings are the literals the inline-cgo code hands to C, each a
-	// package-level var holding its C copy for the application's lifetime.
-	CStrings []cStringDecl
 	// NeedsGObjectSet emits the g_object_set_property helpers, for the GTK
 	// properties that have no C setter of their own.
 	NeedsGObjectSet bool
