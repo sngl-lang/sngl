@@ -2375,7 +2375,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		// bindings are renamed.
 		var names []string
 		for _, fn := range funcs {
-			if len(fn.Block) == 0 {
+			if !codegen.HasBody(fn) {
 				continue
 			}
 			names = append(names, jsFuncName(fn))
@@ -3505,7 +3505,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 			return
 		}
 	}
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fmt.Fprintf(b, "%s %s(%s) {\n", keyword, jsName, paramStr)

@@ -101,13 +101,17 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
 
 type Look struct {
 	Weight string
+}
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -117,14 +121,20 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	mood           string
-	w              string
-	look           Look
-	none           []string
-	open           bool
-	taps__inst0    int
-	visible__inst0 bool
-	__focusID      int
+	mood                string
+	w                   string
+	look                Look
+	none                []string
+	open                bool
+	taps__inst0         int
+	visible__inst0      bool
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__focusID           int
 
 	width, height int
 }
@@ -139,7 +149,14 @@ func New() Model {
 	m.open = false
 	m.taps__inst0 = 0
 	m.visible__inst0 = true
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -170,6 +187,42 @@ func Shape(n int) string {
 		__lt0 = "block"
 	}
 	return (out + __lt0)
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []bool{}
+	if m.open {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != true)
+		}
+		if __effect0_fresh {
+			m.taps__inst0 = 0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, true)
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusNext() {
@@ -341,6 +394,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.mood = Flip(m.mood)
 			m.w = "normal"
 			m.open = !m.open
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.taps__inst0 = (m.taps__inst0 + 1)
 		}
@@ -349,41 +403,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentParts []string
-		var contentPart_0 string
-		contentPart_0Focused := (m.__focusID == 0)
-		contentPart_0Prefix := " "
-		if contentPart_0Focused {
-			contentPart_0Prefix = ">"
+		var part0Parts []string
+		var part0Part_0 string
+		part0Part_0Focused := (m.__focusID == 0)
+		part0Part_0Prefix := " "
+		if part0Part_0Focused {
+			part0Part_0Prefix = ">"
 		}
-		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("next"))
-		contentParts = append(contentParts, contentPart_0)
-		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((m.mood + " ") + m.mood) + " ") + m.w) + " ") + m.look.Weight) + " ") + Shape(len(m.none)))))
-		contentParts = append(contentParts, contentPart_1)
-		var contentPart_2 string
+		part0Part_0 = lipgloss.NewStyle().Render(part0Part_0Prefix + " " + fmt.Sprint("next"))
+		part0Parts = append(part0Parts, part0Part_0)
+		var part0Part_1 string
+		part0Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((m.mood + " ") + m.mood) + " ") + m.w) + " ") + m.look.Weight) + " ") + Shape(len(m.none)))))
+		part0Parts = append(part0Parts, part0Part_1)
+		var part0Part_2 string
 		if m.open {
-			var contentPart_2Parts []string
-			var contentPart_2Part_0 string
-			contentPart_2Part_0Focused := (m.__focusID == 1)
-			contentPart_2Part_0Prefix := " "
-			if contentPart_2Part_0Focused {
-				contentPart_2Part_0Prefix = ">"
+			var part0Part_2Parts []string
+			var part0Part_2Part_0 string
+			part0Part_2Part_0Focused := (m.__focusID == 1)
+			part0Part_2Part_0Prefix := " "
+			if part0Part_2Part_0Focused {
+				part0Part_2Part_0Prefix = ">"
 			}
-			contentPart_2Part_0 = lipgloss.NewStyle().Render(contentPart_2Part_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.taps__inst0)))
-			contentPart_2Parts = append(contentPart_2Parts, contentPart_2Part_0)
-			var contentPart_2Part_1 string
-			contentPart_2Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("left"))
-			contentPart_2Parts = append(contentPart_2Parts, contentPart_2Part_1)
-			contentPart_2 = tui.Column(0, contentPart_2Parts...)
+			part0Part_2Part_0 = lipgloss.NewStyle().Render(part0Part_2Part_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.taps__inst0)))
+			part0Part_2Parts = append(part0Part_2Parts, part0Part_2Part_0)
+			var part0Part_2Part_1 string
+			part0Part_2Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("left"))
+			part0Part_2Parts = append(part0Part_2Parts, part0Part_2Part_1)
+			part0Part_2 = lipgloss.JoinVertical(lipgloss.Left, part0Part_2Parts...)
 		}
-		if contentPart_2 != "" {
-			contentParts = append(contentParts, contentPart_2)
+		if part0Part_2 != "" {
+			part0Parts = append(part0Parts, part0Part_2)
 		}
-		content = tui.Column(0, contentParts...)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
 	}
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -628,55 +685,52 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      try {
-        while (__renderAgain0) {
-          __renderAgain0 = false;
-          let __place0_prev = __slot0;
-          let __place0_i = 0;
-          __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          if (state.open) {
-            let __n3 = null;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        if (state.open) {
+          let __n3 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n3 = __inst1_live[__inst1_i];
+          } else {
             if (__inst1_live.length > __inst1_i) {
-              __n3 = __inst1_live[__inst1_i];
-            } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
-              }
-              let __n3__new = __cf_row__slot0({});
-              __n3 = __n3__new;
+              __inst1_live[__inst1_i].__destroy();
             }
-            __inst1_next.push(__n3);
-            __inst1_i = __inst1_i + 1;
-            let __n3__el = __n3.__root;
-            let __place0_i_ref0 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref0 = __place0_prev[__place0_i];
-            }
-            if (__place0_i_ref0 === __n3__el) {
-              __place0_i = __place0_i + 1;
-            } else {
-              parent.insertBefore(__n3__el, __place0_i_ref0);
-            }
-            __slot0.push(__n3__el);
+            let __n3__new = __cf_row__slot0({});
+            __n3 = __n3__new;
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
-            }
+          __inst1_next.push(__n3);
+          __inst1_i = __inst1_i + 1;
+          let __n3__el = __n3.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
           }
-          __inst1_live = __inst1_next;
-          for (const __place0_prev_e of __place0_prev) {
-            if (__slot0.indexOf(__place0_prev_e) < 0) {
-              parent.removeChild(__place0_prev_e);
-            }
+          if (__place0_i_ref0 === __n3__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n3__el, __place0_i_ref0);
+          }
+          __slot0.push(__n3__el);
+        }
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
           }
         }
-      } finally {
-        __rendering0 = false;
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
+      __rendering0 = false;
     }
   }
   function String(v) {
@@ -702,8 +756,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5aed967f3b8a02c80e24fe86fc1f3c1c
+pass sha256:c60a44ffd528f27f42b008fd011a3b5e
 -- run/kotlin/android --
 pass sha256:b068d326e55c52036385dfbcf0617aec
 -- run/none/html --
-pass sha256:b0ee84c5008ea6f7c01e4540367d7c43
+pass sha256:5a09015a5de14556db9c18ca3cec06c6

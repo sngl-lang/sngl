@@ -8,20 +8,46 @@ import "app/foo"
 
 (source_file
   (import_declaration
-    (string_literal)))
+    path: (string_literal)))
 
 ================
 Import declaration with alias
 ================
 
-import foo => "app/foo"
+import foo "app/foo"
 
 ---
 
 (source_file
   (import_declaration
-    (identifier)
-    (string_literal)))
+    alias: (identifier)
+    path: (string_literal)))
+
+================
+Dot import
+================
+
+import . "sngl:ui"
+
+---
+
+(source_file
+  (import_declaration
+    path: (string_literal)))
+
+================
+Import with a replacement
+================
+
+import ui "sngl:ui" => "./ui"
+
+---
+
+(source_file
+  (import_declaration
+    alias: (identifier)
+    path: (string_literal)
+    replacement: (string_literal)))
 
 ================
 Struct declaration
@@ -75,9 +101,12 @@ enum Color { Red, Green, Blue }
 (source_file
   (enum_declaration
     (identifier)
-    (identifier)
-    (identifier)
-    (identifier)))
+    (enum_member
+      (identifier))
+    (enum_member
+      (identifier))
+    (enum_member
+      (identifier))))
 
 ================
 Unit declaration
@@ -412,4 +441,118 @@ context[option[User]] #who(null)
       (identifier)
       (identifier))
     (element_ref)
-    (null)))
+    (identifier)))
+
+================
+A mark on a declaration
+================
+
+#[builtin("kind")]
+func greet(#[marks.pure] n int) string
+
+---
+
+(source_file
+  (attribute
+    (identifier)
+    (string_literal))
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (attribute
+        (qualified_name
+          (identifier)
+          (identifier)))
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))))
+
+================
+An enum's payloads, values and methods
+================
+
+enum Shape[T any] {
+    circle float
+    sized int = 3
+    none
+    func area() => 0
+}
+
+---
+
+(source_file
+  (enum_declaration
+    (identifier)
+    (type_param_list
+      (type_param
+        (identifier)
+        (type_identifier
+          (identifier))))
+    (enum_member
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (enum_member
+      (identifier)
+      (type_identifier
+        (identifier))
+      (integer_literal))
+    (enum_member
+      (identifier))
+    (func_declaration
+      (func_name
+        (identifier))
+      (integer_literal))))
+
+================
+A struct's methods and field lists
+================
+
+struct Point {
+    x, y int
+    func len() => x + y
+}
+
+---
+
+(source_file
+  (struct_declaration
+    (identifier)
+    (struct_field
+      (identifier)
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (func_declaration
+      (func_name
+        (identifier))
+      (binary_expression
+        (identifier)
+        (identifier)))))
+
+================
+true, false and null are names
+================
+
+const (
+    true = 0 == 0
+    null = 1
+)
+
+---
+
+(source_file
+  (const_declaration
+    (const_spec
+      (identifier_list
+        (identifier))
+      (binary_expression
+        (integer_literal)
+        (integer_literal)))
+    (const_spec
+      (identifier_list
+        (identifier))
+      (integer_literal))))

@@ -1,6 +1,7 @@
 package gir_test
 
 import (
+	"reflect"
 	"testing"
 
 	"duckfam.us/sngl/codegen/platform/gtk4/gir"
@@ -571,5 +572,92 @@ func TestParseGIR_ConstructorParamCType(t *testing.T) {
 	}
 	if got := ctor.Params[0].GIRType; got != "TextTagTable" {
 		t.Errorf("table param GIR type = %q; want TextTagTable", got)
+	}
+}
+
+const actionsGIR = `<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <namespace name="Gtk" version="4.0">
+    <class name="Label" c:type="GtkLabel">
+      <property name="label" writable="1" setter="set_label">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <method name="set_label" c:identifier="gtk_label_set_label">
+        <parameters>
+          <instance-parameter name="self"><type name="Label" c:type="GtkLabel*"/></instance-parameter>
+          <parameter name="str" transfer-ownership="none"><type name="utf8" c:type="const char*"/></parameter>
+        </parameters>
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </method>
+      <method name="set_markup" c:identifier="gtk_label_set_markup">
+        <parameters>
+          <instance-parameter name="self"><type name="Label" c:type="GtkLabel*"/></instance-parameter>
+          <parameter name="str" transfer-ownership="none"><type name="utf8" c:type="const char*"/></parameter>
+        </parameters>
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </method>
+      <method name="take_text" c:identifier="gtk_label_take_text">
+        <parameters>
+          <instance-parameter name="self"><type name="Label" c:type="GtkLabel*"/></instance-parameter>
+          <parameter name="str" transfer-ownership="full"><type name="utf8" c:type="char*"/></parameter>
+        </parameters>
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </method>
+      <method name="select_region" c:identifier="gtk_label_select_region">
+        <parameters>
+          <instance-parameter name="self"><type name="Label" c:type="GtkLabel*"/></instance-parameter>
+          <parameter name="start_offset" transfer-ownership="none"><type name="gint" c:type="int"/></parameter>
+          <parameter name="end_offset" transfer-ownership="none"><type name="gint" c:type="int"/></parameter>
+        </parameters>
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </method>
+      <method name="mark_day" c:identifier="gtk_label_mark_day">
+        <parameters>
+          <instance-parameter name="self"><type name="Label" c:type="GtkLabel*"/></instance-parameter>
+          <parameter name="day" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+        </parameters>
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </method>
+      <method name="get_layout_offsets" c:identifier="gtk_label_get_layout_offsets">
+        <parameters>
+          <instance-parameter name="self"><type name="Label" c:type="GtkLabel*"/></instance-parameter>
+          <parameter name="x" direction="out" caller-allocates="0" transfer-ownership="full"><type name="gint" c:type="int*"/></parameter>
+        </parameters>
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </method>
+      <method name="set_lines" c:identifier="gtk_label_set_lines">
+        <parameters>
+          <instance-parameter name="self"><type name="Label" c:type="GtkLabel*"/></instance-parameter>
+          <parameter name="lines" transfer-ownership="none"><array c:type="char**"><type name="utf8"/></array></parameter>
+        </parameters>
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      </method>
+    </class>
+  </namespace>
+</repository>`
+
+// TestParseGIR_ActionParams pins which methods are actions and what each of
+// their values says: a property's setter is the prop's, and a value is taken
+// only where the conversion a C call makes of a SNGL scalar is what cgo
+// accepts -- a C.int is no guint, an out parameter is a result, an array is
+// no scalar. transfer-ownership="full" is what makes an argument the callee's.
+func TestParseGIR_ActionParams(t *testing.T) {
+	reg, err := gir.ParseGIRBytes([]byte(actionsGIR))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got := map[string][]gir.ActionParam{}
+	for _, a := range reg.Classes["Label"].Actions {
+		got[a.Name] = a.Params
+	}
+	want := map[string][]gir.ActionParam{
+		"set_markup":    {{Name: "str", GIRType: "utf8"}},
+		"take_text":     {{Name: "str", GIRType: "utf8", Moves: true}},
+		"select_region": {{Name: "start_offset", GIRType: "gint"}, {Name: "end_offset", GIRType: "gint"}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("actions = %+v\nwant %+v", got, want)
 	}
 }

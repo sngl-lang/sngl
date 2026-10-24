@@ -292,6 +292,9 @@ updates widgets that exist; then calls the function with the command line and
 a `run` that presents the window and runs the loop. A handler that never calls
 it gets the loop with no window presented (`RunWindows(false)` in
 `gtk4rt` and `fynelayout`), which is how a status bar launched by i3 starts.
+The application tears down before `run` returns, and a second `run` is
+refused (design/ownership.md, *The application ends before the process
+does*; `golang.EmitAppStart` writes both hosts' part of `main`).
 `golang.ModelCallee` spells the call, since a handler that touches no state is
 emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 `testdata/platform_run_handler.txtar` is the code and

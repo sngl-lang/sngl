@@ -102,6 +102,13 @@ func boolToInt(b bool) int {
 }
 `)
 	}
+	if len(d.CStrings) > 0 {
+		io.WriteString(w, "\nvar (\n")
+		for _, c := range d.CStrings {
+			fmt.Fprintf(w, "\t%s = C.CString(%q)\n", c.Name, c.Text)
+		}
+		io.WriteString(w, ")\n")
+	}
 	io.WriteString(w, "\n\n")
 	io.WriteString(w, d.UnitDecls)
 	for _, s := range d.Structs {

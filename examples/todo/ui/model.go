@@ -21,6 +21,11 @@ type Todo struct {
 	Done bool
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -32,6 +37,12 @@ type modelState struct {
 	todos               []Todo
 	checked__inst0      map[string]bool
 	visible__inst0      bool
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop2_cursor int
 
@@ -47,6 +58,12 @@ func New() Model {
 	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
 	m.checked__inst0 = map[string]bool{}
 	m.visible__inst0 = true
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
 	m.widget0 = textinput.New()
@@ -54,6 +71,7 @@ func New() Model {
 	m.widget0.SetValue(m.newTodo)
 	m.widget0.Focus()
 	m.resizeWidgets()
+	m.__effects0_settle()
 	return m
 }
 
@@ -71,6 +89,49 @@ func (m *Model) resizeWidgets() {
 
 func (m Model) status() string {
 	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for index, item := range m.todos {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(index))
+		}
+		if __effect0_fresh {
+			__cell1_checked__inst0 := func() bool {
+				if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+					return __v
+				}
+				return false
+			}()
+			__cell1_checked__inst0 = item.Done
+			m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(index))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop2_len() int {
@@ -238,6 +299,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
 			m.newTodo = ""
+			m.__effects0_settle()
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
 			func() {
 				__focusPos2 := 0
@@ -245,20 +307,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = index
 					_ = item
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__cell1_checked__inst0 := func() bool {
+						__cell2_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
 								return __v
 							}
-							return item.Done
+							return false
 						}()
-						__cell1_checked__inst0 = !func() bool {
+						__cell2_checked__inst0 = !func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
 								return __v
 							}
-							return item.Done
+							return false
 						}()
-						m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
+						m.checked__inst0[fmt.Sprint(index)] = __cell2_checked__inst0
 						m.todos[index].Done = !m.todos[index].Done
+						m.__effects0_settle()
 						return
 					}
 					__focusPos2++
@@ -268,6 +331,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if __i := (len(m.todos) - 1); __i >= 0 && __i < len(m.todos) {
 				m.todos = append(m.todos[:__i], m.todos[__i+1:]...)
 			}
+			m.__effects0_settle()
 		}
 	}
 	if m.__focusID == 0 {
@@ -279,67 +343,70 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentChildren []string
-		var content_0 string
-		content_0 = lipgloss.NewStyle().
+		var part0Children []string
+		var part0_0 string
+		part0_0 = lipgloss.NewStyle().
 			Bold(true).Render(fmt.Sprint(m.status()))
-		contentChildren = append(contentChildren, content_0)
-		var content_1 string
-		var content_1Children []string
-		var content_1_0 string
-		content_1_0 = m.widget0.View()
-		content_1Children = append(content_1Children, content_1_0)
-		var content_1_1 string
-		content_1_1Focused := (m.__focusID == 1)
-		content_1_1Prefix := " "
-		if content_1_1Focused {
-			content_1_1Prefix = ">"
+		part0Children = append(part0Children, part0_0)
+		var part0_1 string
+		var part0_1Children []string
+		var part0_1_0 string
+		part0_1_0 = m.widget0.View()
+		part0_1Children = append(part0_1Children, part0_1_0)
+		var part0_1_1 string
+		part0_1_1Focused := (m.__focusID == 1)
+		part0_1_1Prefix := " "
+		if part0_1_1Focused {
+			part0_1_1Prefix = ">"
 		}
-		content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("Add"))
-		content_1Children = append(content_1Children, content_1_1)
-		content_1 = tui.RowAt(lipgloss.Center, 1, content_1Children...)
-		content_1 = lipgloss.NewStyle().
-			AlignHorizontal(lipgloss.Center).AlignVertical(lipgloss.Center).Render(content_1)
-		contentChildren = append(contentChildren, content_1)
-		var content_2 string
-		var content_2Children []string
-		var content_2_0 string
+		part0_1_1 = lipgloss.NewStyle().Render(part0_1_1Prefix + " " + fmt.Sprint("Add"))
+		part0_1Children = append(part0_1Children, part0_1_1)
+		part0_1 = tui.RowAt(lipgloss.Center, 1, part0_1Children...)
+		part0_1 = lipgloss.NewStyle().
+			AlignHorizontal(lipgloss.Center).AlignVertical(lipgloss.Center).Render(part0_1)
+		part0Children = append(part0Children, part0_1)
+		var part0_2 string
+		var part0_2Children []string
+		var part0_2_0 string
 		__focusPos2 := 0
 		_ = __focusPos2
-		var content_2_0Items []string
+		var part0_2_0Items []string
 		for index, item := range m.todos {
 			_ = index
 			_ = item
-			var content_2_0Item string
-			content_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
-			content_2_0ItemPrefix := " "
-			if content_2_0ItemFocused {
-				content_2_0ItemPrefix = ">"
+			var part0_2_0Item string
+			part0_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+			part0_2_0ItemPrefix := " "
+			if part0_2_0ItemFocused {
+				part0_2_0ItemPrefix = ">"
 			}
-			content_2_0Item = lipgloss.NewStyle().Render(content_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
+			part0_2_0Item = lipgloss.NewStyle().Render(part0_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
 			__focusPos2++
-			content_2_0Items = append(content_2_0Items, content_2_0Item)
+			part0_2_0Items = append(part0_2_0Items, part0_2_0Item)
 		}
-		content_2_0 = tui.Column(0, content_2_0Items...)
-		if content_2_0 != "" {
-			content_2Children = append(content_2Children, content_2_0)
+		part0_2_0 = tui.Column(0, part0_2_0Items...)
+		if part0_2_0 != "" {
+			part0_2Children = append(part0_2Children, part0_2_0)
 		}
-		content_2 = tui.Column(0, content_2Children...)
-		contentChildren = append(contentChildren, content_2)
-		var content_3 string
-		content_3Focused := (m.__focusID == 3)
-		content_3Prefix := " "
-		if content_3Focused {
-			content_3Prefix = ">"
+		part0_2 = tui.Column(0, part0_2Children...)
+		part0Children = append(part0Children, part0_2)
+		var part0_3 string
+		part0_3Focused := (m.__focusID == 3)
+		part0_3Prefix := " "
+		if part0_3Focused {
+			part0_3Prefix = ">"
 		}
-		content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + fmt.Sprint("Remove"))
-		contentChildren = append(contentChildren, content_3)
-		content = tui.Column(0, contentChildren...)
-		content = lipgloss.NewStyle().
-			Padding(2).Render(content)
+		part0_3 = lipgloss.NewStyle().Render(part0_3Prefix + " " + fmt.Sprint("Remove"))
+		part0Children = append(part0Children, part0_3)
+		part0 = tui.Column(0, part0Children...)
+		part0 = lipgloss.NewStyle().
+			Padding(2).Render(part0)
 	}
+	parts = append(parts, part0)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v

@@ -112,26 +112,9 @@ func emitIRAppMain(b *strings.Builder, pkg *ir.Package) {
 	b.WriteString("\ta := app.New()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.BuildUI()\n")
-	switch {
-	case pkg.Run == nil:
-		b.WriteString("\tfynelayout.RunWindows(a, true)\n")
-	case len(pkg.Run.Block) == 0:
-		// An empty handler is emitted as no function at all, and never calls
-		// run.
-		b.WriteString("\tfynelayout.RunWindows(a, false)\n")
-	default:
-		b.WriteString("\tran := false\n")
-		fmt.Fprintf(b, "\t%s(os.Args[1:], func() {\n", golang.ModelCallee(pkg, pkg.Run, "m"))
-		b.WriteString("\t\tran = true\n")
-		b.WriteString("\t\tfynelayout.RunWindows(a, true)\n")
-		b.WriteString("\t})\n")
-		b.WriteString("\tif !ran {\n")
-		b.WriteString("\t\tfynelayout.RunWindows(a, false)\n")
-		b.WriteString("\t}\n")
-	}
-	if pkg.Teardown != nil {
-		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
-	}
+	golang.EmitAppStart(b, pkg, "os.Args[1:]", func(show bool) string {
+		return fmt.Sprintf("fynelayout.RunWindows(a, %t)", show)
+	}, "fynelayout.RefuseRunAgain")
 	b.WriteString("\t_ = os.Stderr\n")
 	b.WriteString("}\n")
 }

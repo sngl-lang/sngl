@@ -40,6 +40,13 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if f.Purity != ir.PurityPure && f.PkgPath() == "" {
 		return nil
 	}
+	// An owned derived value allocates, and lowering makes it state of the
+	// component made once per key (lower.OwnedState); inlined into each read it
+	// would allocate per read, and a library override's -- gtk4's picture --
+	// is pure by inference, its native having no body to say otherwise.
+	if ir.IsOwnedDerived(f) {
+		return nil
+	}
 	// A foreign declaration's body describes the function rather than
 	// implementing it, so splicing it into the program says something that is
 	// not true -- `#[foreign("js:./api", "add")] func add(a, b) => 0` answers 0

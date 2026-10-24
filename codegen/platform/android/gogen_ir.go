@@ -193,7 +193,7 @@ func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
 }
 
 func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	// Go-lib funcs are free, exported functions. Defer signature/body emission

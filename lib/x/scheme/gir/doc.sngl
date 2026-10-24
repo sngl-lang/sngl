@@ -4,12 +4,16 @@
 // `import gtk "gir:Gtk-4.0"` is a package holding one component per class
 // the GIR describes -- named by its C type, `gtk.GtkLabel` -- with a prop
 // per writable property, an event per signal a handler can be connected to,
-// and a method per action: a GIR method taking nothing beyond its instance
-// and returning nothing, `bar.pulse()`. Each is an `#[intrinsic]` primitive
-// the gtk4 platform renders, so a program naming one builds for gtk4 alone.
+// and a method per action: a GIR method returning nothing whose values are
+// each a `string`, `bool`, `int` or `float`, and which no property names as
+// its setter -- `bar.pulse()`, `label.setMarkup("<b>x</b>")`. A string GIR
+// says the method takes (transfer-ownership="full") is `#[macro.moves]`, so
+// the program does not free it. Each is an `#[intrinsic]` primitive the gtk4
+// platform renders, so a program naming one builds for gtk4 alone.
 // sngl:platform/gtk4's own wrappers are written against it.
 //
-// Which introspection data is read is gtk4's `gir` option: unset, the system
-// locations are probed and the bundled subset is the fallback; `builtin` is
-// the bundled subset; anything else is a path. What the import wrote is
+// Which introspection data is read is gtk4's `gir` option, from the command
+// line or the program's `output` block: unset, the system locations are
+// probed and the bundled subset is the fallback; `builtin` is the bundled
+// subset; anything else is a path. What the import wrote is
 // stored, and written again when the option or the file it names changes.

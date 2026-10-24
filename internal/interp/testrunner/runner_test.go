@@ -72,8 +72,16 @@ func TestRunFixtures(t *testing.T) {
 				t.Fatalf("run: %v", err)
 			}
 
+			hit := map[int]bool{}
 			for _, r := range results {
-				checkResult(t, r, testDirs)
+				checkResult(t, r, testDirs, hit)
+			}
+			// A directive no failure matched asserts a failure that never
+			// happened, which is the case a reverted change has to fail.
+			for i, d := range testDirs {
+				if !hit[i] {
+					t.Errorf("line %d: ERROR(test) %q matched no test failure", d.Line, d.Substring)
+				}
 			}
 		})
 	}
@@ -137,7 +145,7 @@ func testIsolation(t Test, c main) {
 	}
 }
 
-func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirective) {
+func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirective, hit map[int]bool) {
 	t.Helper()
 
 	// Match each recorded failure against a directive at its line (or the
@@ -149,11 +157,11 @@ func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirec
 		matched := false
 		anyAtLine := false
 		if f.Line > 0 {
-			for _, d := range dirs {
+			for i, d := range dirs {
 				if d.Line == f.Line || d.Line == f.Line-1 {
 					anyAtLine = true
 					if strings.Contains(f.Message, d.Substring) {
-						matched = true
+						matched, hit[i] = true, true
 						break
 					}
 				}
@@ -177,13 +185,8 @@ func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirec
 	// the file substring-matches it. Keeps fixtures with func-line
 	// directives (test_errors.sngl, test_error_runtime.sngl, …) green.
 	for _, f := range unmatched {
-		matched := false
-		for _, d := range dirs {
-			if strings.Contains(f.Message, d.Substring) {
-				matched = true
-				break
-			}
-		}
+		matched := matchAny(f.Message, dirs, hit)
+
 		if !matched {
 			desc := r.Desc
 			if r.Component != "" {
@@ -202,8 +205,25 @@ func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirec
 	}
 
 	for _, child := range r.Children {
-		checkResult(t, child, dirs)
+		checkResult(t, child, dirs, hit)
 	}
+}
+
+// matchAny records the directive msg matches, preferring one no failure has
+// matched yet, so two tests failing alike each answer their own.
+func matchAny(msg string, dirs []testutil.ErrorDirective, hit map[int]bool) bool {
+	for i, d := range dirs {
+		if !hit[i] && strings.Contains(msg, d.Substring) {
+			hit[i] = true
+			return true
+		}
+	}
+	for _, d := range dirs {
+		if strings.Contains(msg, d.Substring) {
+			return true
+		}
+	}
+	return false
 }
 
 // notRunnable says why a fixture's assertions are not this harness's to

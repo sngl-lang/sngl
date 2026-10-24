@@ -183,7 +183,7 @@ func (m Model) View() tea.View {
 		var content_0_0 string
 		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("inside"))
 		content_0Children = append(content_0Children, content_0_0)
-		content_0 = tui.Column(0, content_0Children...)
+		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = tui.RenderTerminal(10, 5, 1, func() image.Image {
@@ -195,7 +195,7 @@ func (m Model) View() tea.View {
 		var content_2 string
 		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("radius 5"))
 		contentChildren = append(contentChildren, content_2)
-		content = tui.Column(0, contentChildren...)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -399,11 +399,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -543,7 +545,6 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
@@ -571,6 +572,12 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	}
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
+
+var (
+	__cstr0 = C.CString("inside")
+	__cstr1 = C.CString("radius 5")
+	__cstr2 = C.CString("t")
+)
 
 type Measurement struct {
 	Px  float64
@@ -693,10 +700,9 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
 	m.label = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.label)), C.CString("inside"))
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.label)), C.float(0.0))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.label)))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.label)), __cstr0)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.label)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n3, C.int(10))
 	C.gtk_drawing_area_set_content_height(m.__n3, C.int(10))
@@ -705,12 +711,11 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw0(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n3), C.int((len(snglDrawFuncs) - 1)))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString("radius 5"))
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.float(0.0))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), __cstr1)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -719,7 +724,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString("t"))
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr2)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -1079,11 +1084,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4fe50b5d33008f6b8fa0d786946ef400
+pass sha256:4290edc85447b8cadbfb2da946422a90
 -- run/go/fyne --
 pass sha256:c269fa43fcc8ff0f3fc0f3f8423487cd
 -- run/go/gtk4 --
-pass sha256:511b965889b83a07fbf75567798b7d40
+pass sha256:c498a688b5db6ed83ca9795b979360fa
 -- run/kotlin/android --
 pass sha256:06067c5416f333ab560bd88f089cbfc8
 -- run/none/html --

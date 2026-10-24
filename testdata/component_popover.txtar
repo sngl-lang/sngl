@@ -313,11 +313,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -431,6 +433,12 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+var (
+	__cstr0 = C.CString("closed")
+	__cstr1 = C.CString("toggle")
+	__cstr2 = C.CString("clicked")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible bool
@@ -468,11 +476,11 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_widget_set_visible((*C.GtkWidget)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(m.visible)))
 	C.gtk_popover_set_autohide((*C.GtkPopover)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n0_closed_handler)
-	C.sngl_connect(unsafe.Pointer(__n0), C.CString("closed"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(__n0), __cstr0, C.int((len(snglCallbacks) - 1)))
 	__n1 := (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(__n1)), C.CString("toggle"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(__n1)), __cstr1)
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(__n1), __cstr2, C.int((len(snglCallbacks) - 1)))
 	C.gtk_popover_set_child((*C.GtkPopover)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
@@ -612,7 +620,7 @@ pass sha256:7f3b2d82d65ec8cfd23cd734c9f533d4
 -- run/go/fyne --
 pass sha256:6b9e53ad4e7409c2b5620b7c1de8cf98
 -- run/go/gtk4 --
-pass sha256:d84ab71ae8ed74b394160b02d570f545
+pass sha256:4ae3b82bd79d5463c0cac7a12b6d5325
 -- run/kotlin/android --
 pass sha256:25d1cec2b220a0ceca8157414eb66526
 -- run/none/html --

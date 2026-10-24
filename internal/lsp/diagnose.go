@@ -5,29 +5,67 @@ import (
 	"path/filepath"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/lspcore"
 )
+
+// check checks filename, whose text is content, beside the other files of its
+// package, over standing in for any file's text by path.
+func (s *Server) check(filename, content string, over map[string]string) (lspcore.Analysis, []*ast.Document, []string) {
+	dir := filepath.Dir(filename)
+	// Imports resolve as a build's do, so a plugin's handler runs here too --
+	// under the server's grants, never prompting.
+	resolver := build.NewResolver(dir)
+	resolver.Trust = s.trust
+	siblings, broken := s.siblings(filename, over)
+	langs, plats := build.RegisteredTargets()
+	a := lspcore.AnalyzePackageChecked(content, filename, siblings, &checker.Config{
+		FS:              build.ProjectFS(dir),
+		Dir:             dir,
+		Resolver:        resolver,
+		IsMain:          true,
+		Languages:       langs,
+		Platforms:       plats,
+		TargetsComplete: true,
+	})
+	return a, siblings, broken
+}
 
 // analyze parses and type-checks a file, returning LSP diagnostics.
 func (s *Server) analyze(fs *fileState) []Diagnostic {
 	uri := fs.URI
 	filename := uriToPath(uri)
-	dir := filepath.Dir(filename)
-
-	// Imports resolve as a build's do, so a plugin's handler runs here too --
-	// under the server's grants, never prompting.
-	resolver := build.NewResolver(dir)
-	resolver.Trust = s.trust
-	a := lspcore.AnalyzeChecked(fs.Content, filename, build.ProjectFS(dir), dir, resolver)
-	coreDiags := a.Diags
-	if a.Doc != nil {
-		fs.Doc, fs.Pkg = a.Doc, a.Pkg
+	if isLibraryCopy(filename) {
+		return nil
 	}
 
-	diags := make([]Diagnostic, len(coreDiags))
-	for i, d := range coreDiags {
-		diags[i] = coreDiagToLSP(d)
+	a, siblings, broken := s.check(filename, fs.Content, nil)
+	coreDiags := a.Diags
+	for _, name := range broken {
+		coreDiags = append(coreDiags, lspcore.Diagnostic{
+			Severity: lspcore.SeverityError,
+			Source:   "sngl",
+			Message:  name + " does not parse, so nothing it declares is in scope here",
+		})
+	}
+	if a.Doc != nil {
+		fs.Doc, fs.Pkg = a.Doc, a.Pkg
+		files := []string{filename}
+		for _, sib := range siblings {
+			files = append(files, lspcore.FileOf(sib))
+		}
+		fs.Index = lspcore.BuildIndex(a.Pkg, files, s.source)
+	}
+
+	diags := make([]Diagnostic, 0, len(coreDiags))
+	for _, d := range coreDiags {
+		// A sibling's problems are published on the sibling when it is open,
+		// and reported by the build when it is not.
+		if d.File == "" {
+			diags = append(diags, coreDiagToLSP(d))
+		}
 	}
 	return diags
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -475,8 +476,12 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// composable does: through the file.
 	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
 	composedOwn := componentOwnedFuncs(ctx)
+	var atFileLevel map[*ir.Func]bool
+	if !testMode {
+		atFileLevel = composedCallees(ctx)
+	}
 	for fn := range stateReaching {
-		if composedOwn[fn] {
+		if composedOwn[fn] || atFileLevel[fn] {
 			delete(stateReaching, fn)
 			continue
 		}
@@ -894,6 +899,20 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
+	// The application ends with the composition, when the activity is
+	// destroyed. Remembered first, so it is forgotten last: every @unmount
+	// and timer below has gone when Teardown releases what lives as long as
+	// the application.
+	if td := ctx.Pkg.Teardown; td != nil && !cfg.GoLib {
+		fmt.Fprintf(&body, "    %s(Unit) {\n", kc.Name(ktDisposableEffect))
+		body.WriteString("        onDispose {\n")
+		for _, line := range kc.EvalStmt(&ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: td}}) {
+			fmt.Fprintf(&body, "            %s\n", line)
+		}
+		body.WriteString("        }\n")
+		body.WriteString("    }\n\n")
+	}
+
 	// Visual tree
 	cc := &irComposeContext{
 		nav:     nav,
@@ -1060,6 +1079,7 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	if decls > 0 {
 		b.WriteString("\n")
 	}
+	emitPropReports(b, cc, ctx.Pkg.PropReports, kc)
 	emitInstanceRegistration(b, own, kc)
 
 	vc := &irComposeContext{
@@ -1181,7 +1201,7 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 		}
 	}
 
-	if len(fn.Block) > 0 {
+	if codegen.HasBody(fn) {
 		fmt.Fprintf(b, "    %sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {
@@ -1281,7 +1301,7 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	}
 
 	// Block body
-	if len(fn.Block) > 0 {
+	if codegen.HasBody(fn) {
 		fmt.Fprintf(b, "\n%sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {
@@ -1482,7 +1502,8 @@ func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Fun
 }
 
 // sharedPageState is the page's state a composable other than MainScreen reads
-// or writes, and what those vars' initializers read, by name.
+// or writes, itself or through a package function it calls (composedCallees),
+// and what those vars' initializers read, by name.
 func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 	page := map[ir.Symbol]bool{}
 	for _, ov := range ctx.ModelState() {
@@ -1497,13 +1518,11 @@ func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 			return nil
 		})
 	}
-	for _, cc := range ctx.NonRootComponents() {
-		visit(cc.Body)
-		for _, fn := range cc.Funcs {
-			if fn != nil {
-				visit(fn.Block)
-			}
-		}
+	for _, root := range composedRoots(ctx) {
+		visit(root)
+	}
+	for fn := range composedCallees(ctx) {
+		visit(fn.Block)
 	}
 	// A file-level declaration is initialized at file level, so what its
 	// initializer reads has to be declared there too.
@@ -1517,6 +1536,91 @@ func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 			visit(ov.Init())
 			changed = changed || len(out) > n
 		}
+	}
+	return out
+}
+
+// emitPropReports marks the reports whose key reads a prop and settles them
+// when the prop changes. Elsewhere the prop's setter does (settleOnSet); a
+// composable has none, and is called again with the new value, so the change
+// is seen when it is applied. The first value is the one the brackets began
+// with, and reports nothing, as a setter handed what the prop holds does not.
+func emitPropReports(b *strings.Builder, cc *codegen.ComponentCtx, reports map[*ir.Param][]ir.PropReport, kc *kotlin.KtIRContext) {
+	for _, p := range cc.Props {
+		rs := reports[p.Sym]
+		if len(rs) == 0 {
+			continue
+		}
+		seen := "__prop_" + p.Name + "_seen"
+		fmt.Fprintf(b, "    val %s = %s { arrayOf<Any?>(%s) }\n", seen, kc.Name(ktRemember), p.Name)
+		fmt.Fprintf(b, "    %s(%s) {\n", kc.Name(ktDisposableEffect), p.Name)
+		fmt.Fprintf(b, "        if (%s[0] != %s) {\n", seen, p.Name)
+		fmt.Fprintf(b, "            %s[0] = %s\n", seen, p.Name)
+		var settles []*ir.Func
+		for _, r := range rs {
+			fmt.Fprintf(b, "            %s = true\n", r.Dirty.Name)
+			if !slices.Contains(settles, r.Settle) {
+				settles = append(settles, r.Settle)
+			}
+		}
+		for _, settle := range settles {
+			fmt.Fprintf(b, "            %s()\n", settle.Name)
+		}
+		b.WriteString("        }\n        onDispose {}\n    }\n\n")
+	}
+}
+
+// composedRoots is what the composables other than MainScreen run: their
+// bodies, vars' initializers, computeds and funcs.
+func composedRoots(ctx *codegen.CodegenCtx) []any {
+	var roots []any
+	for _, cc := range ctx.NonRootComponents() {
+		roots = append(roots, cc.Body)
+		for _, v := range cc.Vars {
+			if v != nil && v.Init != nil {
+				roots = append(roots, v.Init)
+			}
+		}
+		for _, fns := range [][]*ir.Func{cc.Funcs, cc.Computeds} {
+			for _, fn := range fns {
+				if fn != nil {
+					roots = append(roots, fn.Block)
+				}
+			}
+		}
+	}
+	return roots
+}
+
+// composedCallees is every package function a composable other than MainScreen
+// calls, and what those call in turn. Such a composable reaches the page only
+// through the file, so these are declared there in an app, where they would
+// otherwise be local funs of MainScreen, and what they read is shared.
+func composedCallees(ctx *codegen.CodegenCtx) map[*ir.Func]bool {
+	pkgFunc := map[*ir.Func]bool{}
+	for _, fn := range ctx.Pkg.Funcs {
+		if fn != nil && !fn.OnType() && !fn.IsTest && !codegen.IsComputed(fn) {
+			pkgFunc[fn] = true
+		}
+	}
+	out := map[*ir.Func]bool{}
+	var queue []*ir.Func
+	collect := func(root any) {
+		_ = ir.Walk(root, func(nd ir.Node) error {
+			if c, ok := nd.(*ir.Call); ok && pkgFunc[c.Func] && !out[c.Func] {
+				out[c.Func] = true
+				queue = append(queue, c.Func)
+			}
+			return nil
+		})
+	}
+	for _, root := range composedRoots(ctx) {
+		collect(root)
+	}
+	for len(queue) > 0 {
+		fn := queue[0]
+		queue = queue[1:]
+		collect(fn.Block)
 	}
 	return out
 }

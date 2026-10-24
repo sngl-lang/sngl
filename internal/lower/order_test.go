@@ -68,6 +68,8 @@ var alwaysOn = []string{
 	"BoundaryFailed",
 	// Once every raise is resolved a boundary holds nothing, on any target.
 	"BoundaryPassthrough",
+	// A C call's argument crosses the one way C takes it, on every target.
+	"CMarshal",
 	"CSE",
 	// Every emitted function takes every parameter it declares.
 	"CallDefaults",
@@ -122,6 +124,8 @@ var alwaysOn = []string{
 	// primitive keeps, so every target runs the pass and the declaration
 	// decides what it does.
 	"NodePropReads",
+	// An owned value a component holds is released on every target.
+	"OwnedState",
 	"PlatformExtensionBody",
 	"PropBindings",
 	// No target reaches a receiver no parameter names.
@@ -133,6 +137,8 @@ var alwaysOn = []string{
 	"RefLoop",
 	// A by-reference parameter is copy-in, copy-out on every target.
 	"RefParams",
+	// An owned value a statement borrows is released on every target.
+	"ReleaseTemps",
 	// A render's raise reaches the boundary around it on every target,
 	// whether it renders inside the handler that asked or after it.
 	"RenderCatch",

@@ -139,7 +139,7 @@ func isMultiTarget(args []string, cliLang, cliPlat string, optSlice []string) bo
 	if err != nil {
 		return false
 	}
-	pkg, err := checkDoc(doc, units[0].dir, true)
+	pkg, err := checkDoc(doc, units[0].dir, true, build.ParseCLIOpts(optSlice))
 	if err != nil {
 		return false
 	}

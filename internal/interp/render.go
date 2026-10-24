@@ -130,6 +130,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 	child.Pkg = env.Pkg
 	child.handling = env.handling
 	child.wlog = env.writes()
+	child.handles = env.owned()
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env
@@ -232,6 +233,7 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child.Pkg = env.Pkg
 	child.handling = env.handling
 	child.wlog = env.writes()
+	child.handles = env.owned()
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env

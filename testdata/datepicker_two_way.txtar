@@ -208,7 +208,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) __widget0_change(__v *time.Time) {
 	m.changes__inst0 += 1
-	_ = m.View()
 }
 
 // dChange types v into the #d widget and runs its @change; for tests.
@@ -234,7 +233,7 @@ func (m Model) View() tea.View {
 		var content_3 string
 		content_3 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
 		contentChildren = append(contentChildren, content_3)
-		content = tui.Column(0, contentChildren...)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -439,11 +438,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -549,7 +550,6 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"strconv"
 	"time"
 	"unsafe"
@@ -592,6 +592,10 @@ func boolToInt(b bool) int {
 	}
 	return 0
 }
+
+var (
+	__cstr0 = C.CString("day-selected")
+)
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -701,7 +705,9 @@ func (m *Model) d_daySelected_handler() {
 	} else {
 		__lt0 = "none"
 	}
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt0))
+	__ctmp1 := C.CString(__lt0)
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), __ctmp1)
+	C.free(unsafe.Pointer(__ctmp1))
 	m.changes__inst0 += 1
 	m.__effects0_settle()
 }
@@ -742,8 +748,8 @@ func (m *Model) buildWidgetTree() {
 	m.d = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.d)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.d_daySelected_handler)
-	C.sngl_connect(unsafe.Pointer(m.d), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.d)))
+	C.sngl_connect(unsafe.Pointer(m.d), __cstr0, C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.d)))
 	var __lt1 string
 	if m.picked__inst0 != nil {
 		__lt1 = (*(m.picked__inst0)).Format("2006-01-02")
@@ -751,10 +757,11 @@ func (m *Model) buildWidgetTree() {
 		__lt1 = "none"
 	}
 	m.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt1))
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.float(0.0))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
-	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
+	__ctmp0 := C.CString(__lt1)
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), __ctmp0)
+	C.free(unsafe.Pointer(__ctmp0))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -957,11 +964,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4989d4bb67ced2e29c571ed3d9a4a20b
+pass sha256:ad538e920261cc371fe575c447db6768
 -- run/go/fyne --
 pass sha256:fd8d2962b874c24d2bc113f300a786b5
 -- run/go/gtk4 --
-pass sha256:38d72cdd71a6192a7e6632e5f2057ad7
+pass sha256:983974dbfb990f62198aed6829aab61e
 -- run/kotlin/android --
 pass sha256:4693d7f3522d182067bb2e27cbd270e8
 -- run/none/html --

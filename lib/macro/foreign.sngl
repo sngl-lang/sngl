@@ -29,12 +29,13 @@ func foreign(path string = "", name string = "", flags list[ir.ForeignFlag] = []
 // a platform built on a C library has no business naming a SNGL language --
 // `sngl:platform/gtk4` describes cairo with this and nothing Go-specific, so
 // any backend that can call C can serve it. Today that is the Go one, which
-// renders a call as cgo and supplies the `C.double`/`C.int` conversions from
-// the declared parameter types.
+// renders a call as cgo. A `string`, `int`, `float` or `bool` argument crosses
+// through the conversion `sngl:x/c` declares for its parameter's type, written
+// in before any backend sees the call.
 //
 // The name is spelled as the emitting language reaches it, prefix included
 // where one is needed -- `C.cairo_line_cap_t` for a type, `cairo_arc` for a
-// function the renderer prefixes itself.
+// function the renderer prefixes itself, `unsafe.Pointer` for one it does not.
 //
 // Struct and function are the forms that carry it, as `#[foreign]`'s are.
 func cnative(name string) ir.Macro

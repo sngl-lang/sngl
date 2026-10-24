@@ -11,12 +11,23 @@ import (
 
 // Run executes all test functions in a package and returns results.
 func Run(pkg *ir.Package) ([]*codegen.TestResult, error) {
+	return Simulate(pkg, "")
+}
+
+// Simulate is Run on platform's overrides, with the natives they call stubbed
+// (interp.BuildSimulatedEnv); an empty platform is the interpreter's own.
+func Simulate(pkg *ir.Package, platform string) ([]*codegen.TestResult, error) {
 	if pkg == nil {
 		return nil, nil
 	}
 	// See interp.Prepare: the test runner builds envs without going through a
 	// Session, so it takes what a Session takes from the pipeline itself.
-	pkg, err := interp.Prepare(pkg)
+	var err error
+	if platform == "" {
+		pkg, err = interp.Prepare(pkg)
+	} else {
+		pkg, err = interp.PrepareFor(pkg, platform)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -25,13 +36,13 @@ func Run(pkg *ir.Package) ([]*codegen.TestResult, error) {
 		if !fn.IsTest {
 			continue
 		}
-		r := runTestFunc(pkg, fn)
+		r := runTestFunc(pkg, fn, platform)
 		results = append(results, r)
 	}
 	return results, nil
 }
 
-func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
+func runTestFunc(pkg *ir.Package, fn *ir.Func, simulate string) *codegen.TestResult {
 	start := time.Now()
 	r := &codegen.TestResult{Desc: fn.Name}
 
@@ -52,7 +63,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 	// component's var initializers.
 	clock := interp.NewVirtual()
 
-	env, err := interp.BuildEnv(pkg, compName, clock)
+	env, err := interp.BuildSimulatedEnv(pkg, compName, clock, simulate)
 	if err != nil {
 		r.Error = err.Error()
 		r.Duration = time.Since(start)
@@ -85,7 +96,12 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		env.Set(fn.Params[0], tVal)
 	}
 
-	for _, stmt := range fn.Block {
+	body := fn.Block
+	if cVal != nil && cVal.settleErr != nil {
+		r.Failures = append(r.Failures, codegen.TestFailure{Message: cVal.settleErr.Error(), Fatal: true})
+		body = nil
+	}
+	for _, stmt := range body {
 		err := env.Exec(stmt)
 		if interp.IsReturn(err) {
 			break
@@ -116,11 +132,35 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		}
 	}
 
+	if err := tVal.teardown(); err != nil && len(r.Failures) == 0 {
+		r.Failures = append(r.Failures, codegen.TestFailure{Message: err.Error(), Fatal: true})
+	}
+
 	composeFailures(r)
 	r.Log = env.Log
 	r.Passed = len(r.Failures) == 0 && allPassed(r.Children)
 	r.Duration = time.Since(start)
 	return r
+}
+
+// teardown ends the application a test is: the tree unmounts, so every
+// lifetime's `@unmount` runs, newest first; the timers stop; and whatever owned
+// value is still held after that is a leak. A test that already failed
+// stopped where it failed, so what it leaves held says nothing more.
+func (tv *testingT) teardown() error {
+	tv.env.Unmounted()
+	if cv := tv.comp; cv != nil && cv.fx != nil {
+		if err := cv.fx.Retarget(nil, cv.Env); err != nil {
+			return err
+		}
+	}
+	tv.timers = nil
+	if fn := tv.pkg.Teardown; fn != nil {
+		if _, err := tv.env.CallUserFuncValues(fn, nil); err != nil {
+			return err
+		}
+	}
+	return tv.env.LeakError()
 }
 
 // composeFailures derives the legacy Error / ErrorLine fields from the
@@ -246,7 +286,11 @@ func (cv *componentValue) settle() {
 	if cv == nil || cv.fx == nil || cv.Env == nil {
 		return
 	}
-	if _, err := interp.Settle(cv.fx, cv.Env); err != nil {
+	v, err := interp.Settle(cv.fx, cv.Env)
+	if err == nil {
+		err = cv.Env.Paint(v)
+	}
+	if err != nil {
 		cv.settleErr = err
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -39,7 +40,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	st.reach.instanceState = feats.InstanceState
@@ -385,6 +386,11 @@ type inlineCompState struct {
 	// reaching into it (repointTestReaches).
 	insts []splice
 	reach *testReach
+	// effect is sngl:builtin's `effect`, for restartOnEntry.
+	effect *ir.Component
+	// nativeEffects is Features.Effects: the platform brackets a lifetime
+	// itself, and an Enter bracket runs only in the settle passEffect writes.
+	nativeEffects bool
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -919,14 +925,19 @@ type reactiveCtx struct {
 	// loops are the view loops enclosing the position, outermost first: what a
 	// copy is a copy of, for a target that keys a copy's state by it.
 	loops []*ir.For
+	// drawn is whether the position is inside a canvas, whose shapes are
+	// spliced into its draw routine: a shape built at run time has nowhere to
+	// be built there, so one with state is spliced per copy on every target.
+	drawn bool
 }
 
 // perCopy reports whether an instantiation of c here is built at run time, one
 // per copy: every one in a reactive position, and under any `for` one whose
 // state is its own -- its vars, or a lifetime it holds, whose handle and key
-// one splice would share between the copies.
+// one splice would share between the copies -- or a library component's it
+// would splice, which nothing builds at run time in its place.
 func (rc reactiveCtx) perCopy(c *ir.Component) bool {
-	return rc.in || rc.repeated && (len(c.Vars) > 0 || holdsLifetime(c.Stmts))
+	return rc.in || rc.repeated && (len(c.Vars) > 0 || holdsLifetime(c.Stmts) || splicesLibraryState(c.Stmts))
 }
 
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
@@ -952,13 +963,14 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// built per showing, so a component with state there starts again.
 		// Lowered by passNavigation, it already is an `if`.
 		if n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
-			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops}
+			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
 		} else if n.Record != nil {
 			// A target's own primitive standing for a page, which it writes
 			// as a document or a route of its own (html): a rendering root,
 			// so a loop of pages is not a position its body is repeated in.
 			childRC = reactiveCtx{}
 		}
+		childRC.drawn = childRC.drawn || ir.IsShapeContainer(n)
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
 		if err != nil {
 			return nil, false, err
@@ -991,9 +1003,13 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// position. Not under a `for` -- the body is spliced once and its state
 		// hoisted once, so the copies would share one var.
 		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
+			varStart := len(*st.hoist.vars)
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
+			}
+			if enter := st.restartOnEntry(slices.Clone((*st.hoist.vars)[varStart:]), nil); enter != nil {
+				spliced = append([]ir.Stmt{enter}, spliced...)
 			}
 			return spliced, true, nil
 		}
@@ -1040,6 +1056,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// second mount, so the first schedule can never be stopped. That a
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
+		if rc.drawn && st.captureOnly == nil && n.Component != nil && rc.perCopy(n.Component) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+			return st.expandPerCopy(n, rc)
+		}
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
 			if err := st.instantiateRuntime(n); err != nil {
 				return nil, false, err
@@ -1073,7 +1092,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return spliced, true, nil
 	case *ir.If:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
 		// A record's content, in its container's loop over the records, is
 		// rendered by one iteration of it, so that loop keys none of its
 		// copies -- of a stateful card under a `for` in a tab's panel, the
@@ -1093,7 +1112,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.Match:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Subject, st.reactive), repeated: rc.repeated, loops: rc.loops}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Subject, st.reactive), repeated: rc.repeated, loops: rc.loops, drawn: rc.drawn}
 		for _, arm := range n.Arms {
 			for _, p := range arm.Patterns {
 				inner.in = inner.in || dependsOnReactiveVar(p, st.reactive)
@@ -1110,7 +1129,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return []ir.Stmt{n}, changed, nil
 	case *ir.For:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n)}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n), drawn: rc.drawn}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
@@ -1567,20 +1586,70 @@ func clearDemotedReceivers(pkg *ir.Package, demoted map[*ir.Func]bool) {
 func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	varStart, funcStart := len(*st.hoist.vars), len(*st.hoist.funcs)
 	body, err := st.expandCall(n)
-	if err != nil || len(rc.loops) == 0 {
+	if err != nil {
 		return body, true, err
 	}
 	vars := slices.Clone((*st.hoist.vars)[varStart:])
-	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
 	inits := map[*ir.Var]ir.Expr{}
 	for _, v := range vars {
 		inits[v] = v.Init
 	}
+	if rc.in {
+		if enter := st.restartOnEntry(vars, rc.loops); enter != nil {
+			body = append([]ir.Stmt{enter}, body...)
+		}
+	}
+	if len(rc.loops) == 0 {
+		return body, true, nil
+	}
+	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
 	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
 	if err == nil {
 		st.recordCells(n, inits, rc.loops)
 	}
 	return body, true, err
+}
+
+// restartOnEntry is an Enter effect giving each of vars its initializer each
+// time the instance's position is taken, where the instance stands: spliced,
+// its vars are the owner's, and would keep what the last showing left them,
+// where a target building the instance there starts it afresh. Each is
+// declared from its type's zero instead, since the first entry initializes
+// it, and an initializer run twice makes an owned value twice. Under loops
+// the effect is keyed by the copy, which the cells already are. A platform
+// bracketing lifetimes itself keeps it as a bracket of its own, ahead of the
+// instance's, since it never runs the settle passEffect would lower it into.
+func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.NodeInst {
+	var block []ir.Stmt
+	for _, v := range vars {
+		if v.IsConst || v.NodeHandle {
+			continue
+		}
+		zero, init := ir.DeclaredDefault(v.Type), v.Init
+		if init == nil {
+			init = zero
+		}
+		if init == nil {
+			continue
+		}
+		block = append(block, &ir.Assign{Target: &ir.Ident{Name: v.Name, Type: v.Type, Sym: v}, Op: ast.AssignSet, Value: deepCloneExpr(init)})
+		if zero != nil {
+			v.Init = zero
+		}
+	}
+	if len(block) == 0 {
+		return nil
+	}
+	if st.effect == nil {
+		st.effect = effectComponent()
+	}
+	n := &ir.NodeInst{Name: "effect", Component: st.effect, Enter: true, Handlers: []ir.EventHandler{
+		{Name: ir.EffectMount, Func: &ir.Func{Pkg: st.pkg, Block: block}},
+	}}
+	if len(loops) > 0 {
+		n.Props = []ir.Arg{{Name: ir.EffectOn, Value: CopyKey(loops)}}
+	}
+	return n
 }
 
 // rendersFocusStop reports whether c's body, or a component it renders, holds

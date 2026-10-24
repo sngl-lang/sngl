@@ -3,6 +3,7 @@ package lspcore
 import (
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -175,9 +176,9 @@ func nameBefore(code func(int) string, p textPos) (string, int) {
 }
 
 // nodeAt is the checked node the cursor is in, found by the name and line the
-// text says it was written at, or nil -- where no package was checked, or the
-// node was written after it was.
-func nodeAt(pkg *ir.Package, content string, line, col int) *ir.NodeInst {
+// text says it was written at in doc's file, or nil -- where no package was
+// checked, or the node was written after it was.
+func nodeAt(pkg *ir.Package, doc *ast.Document, content string, line, col int) *ir.NodeInst {
 	if pkg == nil {
 		return nil
 	}
@@ -189,13 +190,14 @@ func nodeAt(pkg *ir.Package, content string, line, col int) *ir.NodeInst {
 	if i := strings.LastIndex(name, "."); i >= 0 {
 		local = name[i+1:]
 	}
+	file := FileOf(doc)
 	var found *ir.NodeInst
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		inst, isNode := n.(*ir.NodeInst)
 		if !isNode || found != nil || inst.AST == nil || inst.Site != nil {
 			return nil
 		}
-		if pos := ir.StmtPos(inst); pos.Line == nodeLine && inst.Name == local {
+		if pos := ir.StmtPos(inst); pos.Line == nodeLine && pos.File == file && inst.Name == local {
 			found = inst
 		}
 		return nil
@@ -224,4 +226,17 @@ func irEventSignature(e *ir.EventDecl) string {
 		parts[i] = strings.TrimSpace(p.Name + " " + p.Type.String())
 	}
 	return "(" + strings.Join(parts, ", ") + ")"
+}
+
+// FileOf is the file doc was parsed from, as its positions name it: a package
+// checked with its siblings holds positions in every one of them.
+func FileOf(doc *ast.Document) string {
+	if doc != nil {
+		for _, st := range doc.Stmts {
+			if p := st.StmtPos(); p != nil && p.File != "" {
+				return p.File
+			}
+		}
+	}
+	return ""
 }

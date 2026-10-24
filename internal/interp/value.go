@@ -27,6 +27,8 @@ type Struct struct {
 	Def    *ir.StructDef
 	Type   *ir.Type
 	Fields []Field
+	// Handle is the value's identity when its type is owned, nil otherwise.
+	Handle *Handle
 }
 
 // Field is one field of a Struct.
@@ -72,7 +74,7 @@ func CopyValue(v any) any {
 	if !ok || s == nil {
 		return v
 	}
-	cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields))}
+	cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields)), Handle: s.Handle}
 	for i, f := range s.Fields {
 		cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value), Omitted: f.Omitted, Filled: f.Filled}
 	}
@@ -142,7 +144,7 @@ func copyOf(v any, t *ir.Type) any {
 		for _, f := range ir.CopiedFields(t) {
 			fieldTypes[f.Field.Name] = f.Type
 		}
-		cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields))}
+		cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields)), Handle: s.Handle}
 		for i, f := range s.Fields {
 			if ft, ok := fieldTypes[f.Name]; ok {
 				cp.Fields[i] = Field{Name: f.Name, Value: copyOf(f.Value, ft), Omitted: f.Omitted, Filled: f.Filled}
@@ -171,7 +173,7 @@ func DeepCopy(v any) any {
 		if x == nil {
 			return x
 		}
-		cp := &Struct{Def: x.Def, Type: x.Type, Fields: make([]Field, len(x.Fields))}
+		cp := &Struct{Def: x.Def, Type: x.Type, Fields: make([]Field, len(x.Fields)), Handle: x.Handle}
 		for i, f := range x.Fields {
 			cp.Fields[i] = Field{Name: f.Name, Value: DeepCopy(f.Value), Omitted: f.Omitted, Filled: f.Filled}
 		}
@@ -260,7 +262,7 @@ func (s *Struct) Clone() *Struct {
 	if s == nil {
 		return nil
 	}
-	out := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields))}
+	out := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields)), Handle: s.Handle}
 	for i, f := range s.Fields {
 		out.Fields[i] = Field{Name: f.Name, Value: CloneValue(f.Value), Omitted: f.Omitted, Filled: f.Filled}
 	}

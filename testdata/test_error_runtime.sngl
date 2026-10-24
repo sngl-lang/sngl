@@ -18,7 +18,7 @@ func testToggleUndefined(t Test, c errs) { // ERROR(test) "undefined"
     unknown!! // ERROR(check) "undefined"
 }
 
-func testUnknownFunction(t Test, c errs) { // ERROR(test) "unknown function"
+func testUnknownFunction(t Test, c errs) { // ERROR(test) "undefined variable \"unknownFunc\""
     t.assert(c.count == 0)
     t.assert(unknownFunc(1) == 0) // ERROR(check) "undefined"
 }

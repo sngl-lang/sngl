@@ -18,6 +18,9 @@ type Diagnostic struct {
 	Severity DiagSeverity
 	Source   string
 	Message  string
+	// File is the sibling a package check found this in, and empty for the
+	// file that was analyzed.
+	File string
 }
 
 type DiagSeverity int

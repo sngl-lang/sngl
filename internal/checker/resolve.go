@@ -871,7 +871,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	if f.Const && !funcHasBody(f) {
 		fn.Purity = ir.PurityPure
 	}
-	c.refuseParamMarks(f.Params.Params)
+	c.applyFuncParamMarks(f, fn)
 	popTypeParams()
 	if isMethod {
 		fn.Receiver = c.receiverType(typeName)

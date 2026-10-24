@@ -331,6 +331,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 		c.analyzeAsync()
 	}
 	c.checkAsyncRules()
+	c.checkOwnedDerived()
 	c.pkg.Symbols = c.symtab
 	// Last, because it needs every lib package loaded and every target's
 	// overrides merged.
@@ -397,6 +398,8 @@ type checker struct {
 	// so every macro a mark may name is registered by the time one runs.
 	// Non-nil only for that window.
 	pendingMarks *[]pendingMark
+	// ownedMarks are the #[owned] marks whose release is still to be judged.
+	ownedMarks []ownedMark
 
 	// curFileScope is the file whose imports are in scope, or nil outside any
 	// file (loading a library, checking synthesized IR).
@@ -3868,6 +3871,7 @@ func (c *checker) pass2() {
 	c.checkGenSchemes()
 	c.checkCLinks()
 	c.reportUnlinkedCNativeCalls()
+	c.checkOwnedReleases()
 
 	// Every body has now been read, which is what a family read off one waits
 	// for -- and every membership check waits for that in turn. A library

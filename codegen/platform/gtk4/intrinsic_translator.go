@@ -33,6 +33,14 @@ type emitShared struct {
 	errs     []error
 	seen     map[string]bool
 
+	// cStrings are the literals handed to C, each a package-level var holding
+	// its C copy for the application's lifetime; cStringN numbers them and
+	// cTempN the locals a non-constant one is bound to (ownCStrings).
+	cStrings      []cStringDecl
+	cStringByText map[string]string
+	cStringN      int
+	cTempN        int
+
 	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
 	// translator without these maps reports it as a component gtk4 does not
@@ -80,6 +88,85 @@ func (s *emitShared) needSlotAnchor() {
 	if s != nil {
 		s.slotAnchor = true
 	}
+}
+
+// cStringDecl is a package-level `*C.char` made once from a literal.
+type cStringDecl struct {
+	Name, Text string
+}
+
+const cTempPrefix = "__ctmp"
+
+func (s *emitShared) cTempName() string {
+	name := fmt.Sprintf("%s%d", cTempPrefix, s.cTempN)
+	s.cTempN++
+	return name
+}
+
+// constCString is the var holding a literal's C copy, one per distinct text.
+func (s *emitShared) constCString(text string) ir.Expr {
+	if s.cStringByText == nil {
+		s.cStringByText = map[string]string{}
+	}
+	name, ok := s.cStringByText[text]
+	if !ok {
+		name = fmt.Sprintf("__cstr%d", s.cStringN)
+		s.cStringN++
+		s.cStringByText[text] = name
+		s.cStrings = append(s.cStrings, cStringDecl{Name: name, Text: text})
+	}
+	return &ir.Ident{Name: name, Type: ir.NativePointerOf("char")}
+}
+
+// ownCStrings gives back each C string the statements make. The translator
+// builds these calls after lowering, so ReleaseTemps never saw the `C.CString`
+// in them, and the release it would have written is written here: a
+// literal's copy is a package-level var kept for the application's lifetime,
+// and any other is bound to a local before the statement that hands it to C
+// and freed after it. Every C function the translator calls copies the string
+// it is handed, so none outlives its statement. A nil shared frees nothing,
+// as it fails nothing.
+func (s *emitShared) ownCStrings(stmts []ir.Stmt) []ir.Stmt {
+	if s == nil {
+		return stmts
+	}
+	return ir.RewriteBlocks(stmts, func(block []ir.Stmt) []ir.Stmt {
+		out := make([]ir.Stmt, 0, len(block))
+		for _, st := range block {
+			if lv, ok := st.(*ir.LocalVar); ok && strings.HasPrefix(lv.Name, cTempPrefix) {
+				out = append(out, st)
+				continue
+			}
+			var frees []ir.Stmt
+			// Only the statement's own expressions: a nested block was
+			// rewritten before it, and binding its temps again would free
+			// each twice.
+			_ = ir.Rewrite(st, func(n ir.Node) (ir.Node, error) {
+				if nested, ok := n.(ir.Stmt); ok && nested != st {
+					return n, ir.SkipDir
+				}
+				c, ok := n.(*ir.Call)
+				if !ok || !isCString(c) {
+					return n, nil
+				}
+				if lit, ok := c.Args[0].Value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
+					return s.constCString(lit.Value), ir.SkipDir
+				}
+				ref := &ir.Ident{Name: s.cTempName(), Type: ir.NativePointerOf("char")}
+				out = append(out, &ir.LocalVar{Name: ref.Name, Type: ref.Type, Init: c})
+				frees = append([]ir.Stmt{&ir.CallStmt{Call: nativeCall("free", ir.TypVoid, cgoCast("", ref))}}, frees...)
+				return ref, ir.SkipDir
+			})
+			out = append(out, st)
+			out = append(out, frees...)
+		}
+		return out
+	})
+}
+
+func isCString(c *ir.Call) bool {
+	recv, ok := c.Receiver.(*ir.Ident)
+	return ok && recv.Name == "C" && c.Func != nil && c.Func.Name == "CString" && len(c.Args) == 1
 }
 
 // fail records that a property cannot be emitted. The same property assigned
@@ -661,7 +748,7 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		args = append(args, arg)
 	}
 	ctor := nativeCall(ctorInfo.Name, ir.NativePointerOf("GtkWidget"), args...)
-	return t.emitConstructorAssign(id, cType, ctor)
+	return t.shared.ownCStrings(t.emitConstructorAssign(id, cType, ctor))
 }
 
 // ctorZeroArg returns the IR expression for a typed-zero value matching one
@@ -1211,7 +1298,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 
 func (t *gtk4Translator) emitSetterCall(node ir.Expr, recvType, setter string, valArg ir.Expr) []ir.Stmt {
 	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, ir.TypVoid, cast, valArg)}}
+	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, ir.TypVoid, cast, valArg)}})
 }
 
 // gObjectSetFn is the preamble helper that carries each kind of value through
@@ -1243,7 +1330,7 @@ func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propV
 	t.shared.needGObjectSet()
 	obj := cgoCast("", t.qualifyNodeExpr(node))
 	name := cString(&ir.Literal{Type: ir.TypString, Value: p.Name})
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, obj, name, valArg)}}
+	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, obj, name, valArg)}})
 }
 
 func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType string, value ir.Expr) (ir.Expr, error) {
@@ -1534,7 +1621,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	connectStmt := &ir.CallStmt{
 		Call: nativeCall("sngl_connect", ir.TypVoid, widget, signalCStr, idxArg),
 	}
-	return []ir.Stmt{registerStmt, connectStmt}
+	return t.shared.ownCStrings([]ir.Stmt{registerStmt, connectStmt})
 }
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {

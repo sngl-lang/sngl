@@ -9,6 +9,7 @@ enum TokenType {
   STRING_CONTENT,
   STRING_INTERPOLATION_START,
   STRING_INTERPOLATION_END,
+  I18N_STRING_CONTENT,
 };
 
 typedef struct {
@@ -45,7 +46,15 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
   Scanner *s = (Scanner *)payload;
 
   // --- String interpolation end: } closing interpolation ---
-  // Check this first, before ASI can claim the }.
+  // Check this first, before ASI can claim the }. A placeholder's cases may
+  // run over several lines, leaving its } on a line of its own.
+  if (valid_symbols[STRING_INTERPOLATION_END] && s->interp_depth > 0 &&
+      !valid_symbols[AUTOMATIC_SEMICOLON]) {
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+           lexer->lookahead == '\r' || lexer->lookahead == '\n') {
+      lexer->advance(lexer, true);
+    }
+  }
   if (valid_symbols[STRING_INTERPOLATION_END] && s->interp_depth > 0 &&
       lexer->lookahead == '}') {
     lexer->advance(lexer, false);
@@ -57,13 +66,33 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
   }
 
   // --- String content ---
-  // When STRING_CONTENT is valid, we're inside a string_literal.
-  if (valid_symbols[STRING_CONTENT]) {
+  // When STRING_CONTENT is valid, we're inside a string_literal; when
+  // I18N_STRING_CONTENT is, inside a $"..." one, where ICU's apostrophe
+  // quoting hides a brace: '{' is a literal {, as the compiler's lexer reads it.
+  if (valid_symbols[STRING_CONTENT] || valid_symbols[I18N_STRING_CONTENT]) {
+    bool icu = valid_symbols[I18N_STRING_CONTENT];
     s->in_string = true;
     bool has_content = false;
-    lexer->result_symbol = STRING_CONTENT;
+    lexer->result_symbol = icu ? I18N_STRING_CONTENT : STRING_CONTENT;
     while (lexer->lookahead != 0) {
       if (lexer->lookahead == '"') break;
+      if (icu && lexer->lookahead == '\'') {
+        has_content = true;
+        lexer->advance(lexer, false);
+        int32_t c = lexer->lookahead;
+        if (c == '{' || c == '}' || c == '#' || c == '|') {
+          while (lexer->lookahead != 0 && lexer->lookahead != '"') {
+            if (lexer->lookahead == '\'') {
+              lexer->advance(lexer, false);
+              if (lexer->lookahead != '\'') break;
+            }
+            lexer->advance(lexer, false);
+          }
+        } else if (c == '\'') {
+          lexer->advance(lexer, false);
+        }
+        continue;
+      }
       if (lexer->lookahead == '{') break;
       if (lexer->lookahead == '\\') {
         has_content = true;
@@ -93,10 +122,23 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
         bool found_close = false;
         bool has_ident = false;
         int depth = 1;
-        while (lexer->lookahead != 0 && lexer->lookahead != '"') {
+        // A quote inside the braces opens a string of the placeholder's
+        // own, `{shout("hi")}`, which ends on its line.
+        while (lexer->lookahead != 0) {
           if (lexer->lookahead == '\\') {
             lexer->advance(lexer, false);
             if (lexer->lookahead != 0) lexer->advance(lexer, false);
+            continue;
+          }
+          if (lexer->lookahead == '"') {
+            lexer->advance(lexer, false);
+            while (lexer->lookahead != 0 && lexer->lookahead != '"' &&
+                   lexer->lookahead != '\n') {
+              if (lexer->lookahead == '\\') lexer->advance(lexer, false);
+              if (lexer->lookahead != 0) lexer->advance(lexer, false);
+            }
+            if (lexer->lookahead != '"') break;
+            lexer->advance(lexer, false);
             continue;
           }
           if (lexer->lookahead == '{') depth++;
@@ -130,7 +172,7 @@ bool tree_sitter_sngl_external_scanner_scan(void *payload, TSLexer *lexer,
         lexer->advance(lexer, false);
       }
       lexer->mark_end(lexer);
-      lexer->result_symbol = STRING_CONTENT;
+      lexer->result_symbol = icu ? I18N_STRING_CONTENT : STRING_CONTENT;
       return true;
     }
 

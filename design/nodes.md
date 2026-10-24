@@ -45,8 +45,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   `kotlin.native`, which android needs to describe Compose, and by
   **`#[cnative]` in `sngl:macro`** — C is an ABI rather than a target, so a
   platform built on a C library (gtk4 on cairo) names C identifiers and no
-  language at all. The Go backend renders those as cgo and supplies the
-  `C.double`/`C.int` conversions from the declared parameter types. Which
+  language at all. The Go backend renders those as cgo. Each argument is
+  converted before any backend sees the call, by `lower.CMarshal`, through the
+  `sngl:x/c` conversion its parameter's type names (`cstring`, `cint`,
+  `cdouble`, `cbool`), so a C string is an owned `c.str` in the IR rather than
+  a `C.CString` only the printed Go held (`testdata/c_bool_argument.txtar`). Which
   header declares one is the program's `c.link` (`sngl:x/c`), and every Go target writes the links the program
   reaches (`ir.ReachedCLinks`) into its cgo preamble: fyne and bubbletea as a
   preamble of their own, gtk4 inside the one inline mode already has, which a
@@ -539,9 +542,11 @@ each platform's own intrinsic path already wrote `m.<id>` for the references it
 emits, which is why only a native call's *receiver* went bare and why it read
 as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
 `gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it; it
-is one of the *actions* `declgen` generates from GIR -- a method taking nothing
-beyond its instance and returning nothing -- as a `#[cnative]` method reached
-through the handle.
+is one of the *actions* `declgen` generates from GIR -- a method returning
+nothing, no property's setter, whose values each cross as a SNGL scalar
+(`gir.methodParam.crosses`) -- as a `#[cnative]` method reached through the
+handle. A value crosses only where cgo takes the conversion CMarshal writes:
+a `C.int` passes as a `gint`, a typedef of `int`, and not as a `guint`.
 
 **A node's one-way prop may not be written**, which `refuseNodePropAssign`
 reports on both the assignment and the toggle paths, through the node's `#id`

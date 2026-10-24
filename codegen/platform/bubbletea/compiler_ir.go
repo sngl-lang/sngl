@@ -798,7 +798,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 // emitIRTypeMethod emits a method on a user type through the shared Go
 // emitter, which is also what decides whether it takes the Model.
 func emitIRTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	for _, line := range gc.EmitTypeMethodDef(fn) {
@@ -811,7 +811,7 @@ func emitIRTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 // emitIRFreeFunc emits a top-level func under its exported name, which is what
 // FreeFuncs told the call sites to expect.
 func emitIRFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	fnCopy := *fn
@@ -878,7 +878,7 @@ func componentFuncSet(pkg *ir.Package) map[*ir.Func]bool {
 }
 
 func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
+	if !codegen.HasBody(fn) {
 		return
 	}
 	// Emit user funcs as Model methods (lowercase name preserved so tests can

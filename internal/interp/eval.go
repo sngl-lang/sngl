@@ -506,6 +506,8 @@ type Env struct {
 	// wlog is the program's write log, held by the outermost scope and
 	// reached by every other through writes().
 	wlog *writeLog
+	// handles is the program's owned values, shared the same way (owned()).
+	handles *handles
 }
 
 func NewEnv() *Env {
@@ -680,6 +682,7 @@ func (env *Env) Snapshot() *Env {
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
 		wlog:       env.writes(),
+		handles:    env.owned(),
 		build:      env.build,
 	}
 	maps.Copy(cp.vals, env.vals)
@@ -1455,6 +1458,13 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		return v, nil
 	}
 	if s, ok := obj.(*Struct); ok {
+		if s.Handle != nil && s.Handle.released {
+			var at ast.Pos
+			if e.AST != nil {
+				at = e.AST.Pos
+			}
+			return nil, env.useAfterRelease(s, "read", at)
+		}
 		v, _ := s.Get(e.Field)
 		return v, nil
 	}
@@ -1625,6 +1635,13 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		return &Builder{}, nil
 	}
 	s := NewStruct(e.Def, e.Type)
+	if e.Def != nil && e.Def.Release != nil {
+		var at ast.Pos
+		if e.AST != nil {
+			at = e.AST.Pos
+		}
+		s.Handle = env.owned().alloc(e.Def, at)
+	}
 	for _, f := range e.Fields {
 		v, err := env.Eval(f.Value)
 		if err != nil {
@@ -1886,6 +1903,7 @@ func (r *listRef) get() any  { return r.list[r.idx] }
 func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
+	defer env.enterCall(call)()
 	v, err := env.evalCallSite(call)
 	if raised, ok := err.(*RaisedError); ok {
 		if call.ErrorMode == ir.ErrorRender {
@@ -1946,6 +1964,9 @@ func (env *Env) zeroOf(t *ir.Type) (any, error) {
 func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	if call.Func != nil && call.Func.BuildOnly {
 		return env.callBuildOnly(call)
+	}
+	if isCNative(call.Func) {
+		return env.callCNative(call)
 	}
 	// i18n by the id, before the call shape is examined: the `i18n._*`
 	// primitives arrive plain once the wrapper is inlined, so they are not
@@ -2617,7 +2638,7 @@ func (env *Env) evalCallArgs(args []ir.CallArg) ([]any, error) {
 		}
 		out[i] = v
 	}
-	return out, nil
+	return out, env.checkPassed(out)
 }
 
 func argExprs(args []ir.CallArg) []ir.Expr {
@@ -2734,6 +2755,16 @@ func (env *Env) boundArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any)
 }
 
 func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
+	if ir.IsRelease(fn) {
+		return env.releaseCall(fn, args, func() (any, error) { return env.runUserFunc(fn, args) })
+	}
+	if err := env.checkPassed(args); err != nil {
+		return nil, err
+	}
+	return env.runUserFunc(fn, args)
+}
+
+func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 	defer env.enterFunc(fn)()
 	env.depth++
 	if env.depth > maxCallDepth {

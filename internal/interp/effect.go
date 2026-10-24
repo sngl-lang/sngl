@@ -186,6 +186,7 @@ func (fx *Effects) Reconcile(v *View, root *Env) (Key, bool, error) {
 	for _, prev := range fx.endingLifetimes(next) {
 		delete(fx.live, prev.Key)
 		delete(fx.watch, prev.Key)
+		root.owned().letGo(prev.Key)
 		if prev.Unmount != nil {
 			return prev.Key, true, fx.run(prev, prev.Unmount, root)
 		}
@@ -242,6 +243,7 @@ func (fx *Effects) Retarget(v *View, root *Env) error {
 	for _, prev := range fx.endingLifetimes(next) {
 		delete(fx.live, prev.Key)
 		delete(fx.watch, prev.Key)
+		root.owned().letGo(prev.Key)
 		if prev.Unmount == nil {
 			continue
 		}
@@ -299,7 +301,11 @@ func (fx *Effects) runWith(e MountedEffect, fn *ir.Func, root *Env, values []any
 	env.refreshFrom(root)
 	// A handler may leave trailing parameters unbound.
 	args := values[:min(len(values), len(fn.Params))]
-	if _, err := env.underHandler(e.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
+	err := env.owned().within(e.Key, func() error {
+		_, err := env.underHandler(e.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) })
+		return err
+	})
+	if err != nil {
 		return err
 	}
 	if root != nil && env != root {

@@ -393,10 +393,12 @@ type Model struct {
 	__effect0_desired    []bool
 	__effect1_key        time.Duration
 	__effect1_dirty      bool
+	__effect1_absent     bool
 	__effect2_live       []bool
 	__effect2_desired    []bool
 	__effect3_key        time.Duration
 	__effect3_dirty      bool
+	__effect3_absent     bool
 	__effects0_settling  bool
 	__effects0_pending   bool
 	__effects0_torn      bool
@@ -427,10 +429,12 @@ func New() *Model {
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_dirty = false
+	m.__effect1_absent = false
 	m.__effect2_live = []bool{}
 	m.__effect2_desired = []bool{}
 	m.__effect3_key = (time.Duration(0) * time.Millisecond)
 	m.__effect3_dirty = false
+	m.__effect3_absent = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_torn = false
@@ -611,17 +615,33 @@ func (m *Model) __effects0_settle() {
 			for m.__effects0_pending && (m.__effects0_steps < 512) {
 				m.__effects0_pending = false
 				m.__effects0_steps = (m.__effects0_steps + 1)
-				if m.__effect1_dirty {
-					m.__effect1_dirty = false
-					if m.running__inst0 {
-						m.__effect1_key = (time.Duration(1000) * time.Millisecond)
-						m.__effect1_update()
+				__effect1_seen := false
+				if m.running__inst0 {
+					if m.__effect1_dirty {
+						m.__effect1_dirty = false
+						if !m.__effect1_absent {
+							m.__effect1_key = (time.Duration(1000) * time.Millisecond)
+							m.__effect1_update()
+						}
 					}
+					__effect1_seen = true
 				}
+				m.__effect1_absent = !__effect1_seen
+				if m.__effect1_absent {
+					m.__effect1_dirty = false
+				}
+				__effect3_seen := false
 				if m.__effect3_dirty {
 					m.__effect3_dirty = false
-					m.__effect3_key = (time.Duration(250) * time.Millisecond)
-					m.__effect3_update()
+					if !m.__effect3_absent {
+						m.__effect3_key = (time.Duration(250) * time.Millisecond)
+						m.__effect3_update()
+					}
+				}
+				__effect3_seen = true
+				m.__effect3_absent = !__effect3_seen
+				if m.__effect3_absent {
+					m.__effect3_dirty = false
 				}
 				m.__effect2_down()
 				m.__effect0_down()
@@ -1309,7 +1329,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:bdaf13e6969b6a65a08d61ae191144a4
 -- run/go/fyne --
-pass sha256:ff343c6dea911a4064ffa60e67750ade
+pass sha256:acec6a1453449c8f6357cbebdce3930d
 -- run/go/gtk4 --
 pass sha256:aa8bc45037050471d967f0a1146beb72
 -- run/kotlin/android --

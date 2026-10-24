@@ -149,6 +149,14 @@ const (
 	// includes for the package's `#[cnative]` declarations. Read into
 	// Package.CLinks rather than rendered.
 	BuiltinCLink BuiltinKind = "cLink"
+	// CString, CInt, CDouble and CBool are `sngl:x/c`'s conversions of a
+	// SNGL value into the C type a C function's parameter takes. They mark
+	// functions: lower.CMarshal wraps each argument of a C call in the one
+	// its parameter's type names.
+	BuiltinCString BuiltinKind = "cString"
+	BuiltinCInt    BuiltinKind = "cInt"
+	BuiltinCDouble BuiltinKind = "cDouble"
+	BuiltinCBool   BuiltinKind = "cBool"
 
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
@@ -248,6 +256,16 @@ func (b BuiltinKind) IsCommand() bool {
 	return b == BuiltinGenRun || b == BuiltinGenBuild
 }
 
+// IsCMarshal reports whether the kind marks a conversion a C call's argument
+// is made through. These are the kinds a function carries.
+func (b BuiltinKind) IsCMarshal() bool {
+	switch b {
+	case BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool:
+		return true
+	}
+	return false
+}
+
 // IsConst reports whether the kind marks a predeclared constant. Const kinds
 // are stamped on const declarations, and the compiler replaces the declared
 // type and value.
@@ -274,6 +292,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink, BuiltinApplication,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
+		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -282,5 +301,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognized string).
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsConst()
+		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst()
 }

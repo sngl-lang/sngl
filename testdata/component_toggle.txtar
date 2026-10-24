@@ -309,11 +309,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -427,6 +429,10 @@ func boolToInt(b bool) int {
 	return 0
 }
 
+var (
+	__cstr0 = C.CString("notify::active")
+)
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	on     bool
@@ -466,7 +472,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.on)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n0_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n0), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.__n0), __cstr0, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -615,7 +621,7 @@ pass sha256:2ae81eca7be4a3cde7683ce2d074614d
 -- run/go/fyne --
 pass sha256:378dc747678c3dece285ec5ec7cc108c
 -- run/go/gtk4 --
-pass sha256:e6afb07bbdc9aa1032dfaba1c43c6fb4
+pass sha256:1d4714389bc1a1ed9866cd564d80f187
 -- run/kotlin/android --
 pass sha256:a5c970bda86a29610e72de8db2dcf8f4
 -- run/none/html --

@@ -71,6 +71,15 @@ type TextDocumentPositionParams struct {
 	Position     Position               `json:"position"`
 }
 
+type ReferenceParams struct {
+	TextDocumentPositionParams
+	Context ReferenceContext `json:"context"`
+}
+
+type ReferenceContext struct {
+	IncludeDeclaration bool `json:"includeDeclaration"`
+}
+
 type TextDocumentContentChangeEvent struct {
 	Text string `json:"text"`
 }
@@ -96,15 +105,55 @@ type ServerInfo struct {
 }
 
 type ServerCapabilities struct {
-	TextDocumentSync       int                    `json:"textDocumentSync"` // 1=Full
-	HoverProvider          bool                   `json:"hoverProvider,omitempty"`
-	CompletionProvider     *CompletionOptions     `json:"completionProvider,omitempty"`
-	DiagnosticProvider     *DiagnosticOptions     `json:"diagnosticProvider,omitempty"`
-	SemanticTokensProvider *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
-	ColorProvider          bool                   `json:"colorProvider,omitempty"`
-	InlayHintProvider      bool                   `json:"inlayHintProvider,omitempty"`
-	ExecuteCommandProvider *ExecuteCommandOptions `json:"executeCommandProvider,omitempty"`
-	CodeActionProvider     bool                   `json:"codeActionProvider,omitempty"`
+	TextDocumentSync           int                    `json:"textDocumentSync"` // 1=Full
+	HoverProvider              bool                   `json:"hoverProvider,omitempty"`
+	CompletionProvider         *CompletionOptions     `json:"completionProvider,omitempty"`
+	DiagnosticProvider         *DiagnosticOptions     `json:"diagnosticProvider,omitempty"`
+	SemanticTokensProvider     *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
+	ColorProvider              bool                   `json:"colorProvider,omitempty"`
+	InlayHintProvider          bool                   `json:"inlayHintProvider,omitempty"`
+	ExecuteCommandProvider     *ExecuteCommandOptions `json:"executeCommandProvider,omitempty"`
+	CodeActionProvider         bool                   `json:"codeActionProvider,omitempty"`
+	DefinitionProvider         bool                   `json:"definitionProvider,omitempty"`
+	ReferencesProvider         bool                   `json:"referencesProvider,omitempty"`
+	DocumentSymbolProvider     bool                   `json:"documentSymbolProvider,omitempty"`
+	DocumentFormattingProvider bool                   `json:"documentFormattingProvider,omitempty"`
+	RenameProvider             *RenameOptions         `json:"renameProvider,omitempty"`
+}
+
+type RenameOptions struct {
+	PrepareProvider bool `json:"prepareProvider"`
+}
+
+type RenameParams struct {
+	TextDocumentPositionParams
+	NewName string `json:"newName"`
+}
+
+type DocumentFormattingParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+}
+
+type TextEdit struct {
+	Range   Range  `json:"range"`
+	NewText string `json:"newText"`
+}
+
+type WorkspaceEdit struct {
+	Changes map[string][]TextEdit `json:"changes"`
+}
+
+type DocumentSymbolParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+}
+
+type DocumentSymbol struct {
+	Name           string           `json:"name"`
+	Detail         string           `json:"detail,omitempty"`
+	Kind           int              `json:"kind"`
+	Range          Range            `json:"range"`
+	SelectionRange Range            `json:"selectionRange"`
+	Children       []DocumentSymbol `json:"children,omitempty"`
 }
 
 // --- Execute Command ---

@@ -1985,7 +1985,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					if want := optionElem(c.expected); want != nil && want.Kind == ir.TypeEnum && want.Decl == ed {
 						typ = want
 					}
-					return &ir.Ident{Type: typ, Name: x.Field, Member: x.Field, Sym: ed}
+					return &ir.Ident{Type: typ, Name: x.Field, Member: x.Field, Sym: ed, SelAST: x}
 				}
 				if isExportedMemberName(x.Field) {
 					c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)

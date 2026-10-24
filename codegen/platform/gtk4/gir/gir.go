@@ -145,6 +145,16 @@ type ClassInfo struct {
 type Action struct {
 	Name   string // GIR name, e.g. "pulse"
 	CIdent string // C identifier, e.g. "gtk_progress_bar_pulse"
+	Params []ActionParam
+}
+
+// ActionParam is one value an action takes beyond its instance.
+type ActionParam struct {
+	Name    string
+	GIRType string
+	// Moves is GIR's transfer-ownership="full": the callee takes the
+	// argument, so the caller must not free it.
+	Moves bool
 }
 
 // ChildAdder is the C function a container's child is added through, and
@@ -224,6 +234,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 		inMethodReturn bool
 		inMethodParams bool
 		inMethodParam  bool
+		inMethodArray  bool
 		// inPropArray records that the property being parsed carries an
 		// <array> type (GStrv and friends). Its inner <type> names the
 		// element, not the property, so the property keeps no GIR type at
@@ -340,15 +351,29 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 
 			// The instance is a separate element (<instance-parameter>), so
 			// every <parameter> here is a value the caller has to supply.
-			// Only the first one's type is recorded; the count is what says
-			// whether a one-value cgo call site can reach this method at all.
+			// The count is what says whether a one-value cgo call site can
+			// reach this method as a setter.
 			case local == "parameter" && inMethodParams:
 				currentMethod.valParams++
-				inMethodParam = currentMethod.valParams == 1
+				inMethodParam = true
+				dir := attrVal(t.Attr, "", "direction")
+				currentMethod.params = append(currentMethod.params, methodParam{
+					Name:  attrVal(t.Attr, "", "name"),
+					Moves: attrVal(t.Attr, "", "transfer-ownership") == "full",
+					in:    dir == "" || dir == "in",
+				})
+
+			case (local == "array" || local == "varargs") && inMethodParam:
+				inMethodArray = true
 
 			case local == "type" && inMethodParam:
-				currentMethod.valCType = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type")
-				inMethodParam = false
+				if currentMethod.valParams == 1 && currentMethod.valCType == "" {
+					currentMethod.valCType = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type")
+				}
+				if p := &currentMethod.params[len(currentMethod.params)-1]; !inMethodArray && p.GIRType == "" {
+					p.GIRType = attrVal(t.Attr, "", "name")
+					p.cType = attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "type")
+				}
 
 			case local == "implements" && inClass:
 				name := attrVal(t.Attr, "", "name")
@@ -442,10 +467,15 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inMethodReturn = false
 				inMethodParams = false
 				inMethodParam = false
+				inMethodArray = false
 				currentMethod = nil
 
 			case local == "parameters" && inMethodParams:
 				inMethodParams = false
+
+			case local == "parameter" && inMethodParam:
+				inMethodParam = false
+				inMethodArray = false
 
 			case local == "constructor" && inCtor:
 				inCtor = false
@@ -479,7 +509,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 					GIRType:  paramTypeName,
 					CType:    paramCType,
 					Nullable: paramNullable,
-					IRType:   girTypeToIR(paramTypeName),
+					IRType:   TypeToIR(paramTypeName),
 				}
 				// Append to the in-progress (last) Constructors entry.
 				if n := len(currentClass.Constructors); n > 0 {
@@ -500,7 +530,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 						Setter:        propSetter,
 						ConstructOnly: propConstructOnly == "1",
 						GIRType:       propTypeName,
-						IRType:        girTypeToIR(propTypeName),
+						IRType:        TypeToIR(propTypeName),
 					}
 					switch {
 					case currentClass != nil:
@@ -518,8 +548,8 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	// resolved props onto implementing classes. A reference nothing declares
 	// leaves the prop with no setter rather than a name that does not exist.
 	for _, cls := range reg.Classes {
+		cls.Actions = actionsOf(methods[any(cls)], cls.Props)
 		resolveSetters(cls.Props, methods[any(cls)])
-		cls.Actions = actionsOf(methods[any(cls)])
 	}
 	for _, iface := range reg.Interfaces {
 		resolveSetters(iface.Props, methods[any(iface)])
@@ -729,15 +759,63 @@ type methodInfo struct {
 	// valParams counts the <parameter> elements after the instance — the
 	// values a caller supplies.
 	valParams int
+	params    []methodParam
+}
+
+type methodParam struct {
+	ActionParam
+	cType string
+	in    bool
+}
+
+// crosses reports whether a SNGL value converted the way a C call converts
+// its argument is what cgo accepts here. cgo distinguishes typedefs: a C.int
+// passes as a gint, which is an alias, but not as a guint.
+func (p methodParam) crosses() bool {
+	if !p.in {
+		return false
+	}
+	switch p.GIRType {
+	case "utf8", "filename":
+		switch p.cType {
+		case "const char*", "char*", "const gchar*", "gchar*":
+			return true
+		}
+	case "gboolean":
+		return p.cType == "gboolean"
+	case "gint":
+		return p.cType == "int" || p.cType == "gint"
+	case "gdouble":
+		return p.cType == "double" || p.cType == "gdouble"
+	}
+	return false
 }
 
 // actionsOf is the methods a program calls for their effect alone: on an
-// instance, taking nothing else and returning nothing.
-func actionsOf(methods map[string]*methodInfo) []Action {
+// instance, returning nothing, and taking only values a SNGL scalar crosses
+// to. A property's setter is left to the prop, which already reaches it.
+// props carries setters by GIR method name, so this runs before
+// resolveSetters rewrites them.
+func actionsOf(methods map[string]*methodInfo, props []Prop) []Action {
+	setters := map[string]bool{}
+	for _, p := range props {
+		setters[p.Setter] = true
+	}
 	var out []Action
 	for name, m := range methods {
-		if m.instance && !m.skip && m.valParams == 0 && m.returns == "none" && m.ident != "" {
-			out = append(out, Action{Name: name, CIdent: m.ident})
+		if !m.instance || m.skip || m.returns != "none" || m.ident == "" || setters[name] {
+			continue
+		}
+		a := Action{Name: name, CIdent: m.ident}
+		for _, p := range m.params {
+			if !p.crosses() {
+				a.CIdent = ""
+				break
+			}
+			a.Params = append(a.Params, p.ActionParam)
+		}
+		if a.CIdent != "" {
+			out = append(out, a)
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
@@ -755,8 +833,8 @@ func attrVal(attrs []xml.Attr, ns, local string) string {
 	return ""
 }
 
-// girTypeToIR maps a GIR type name to the closest ir.Type.
-func girTypeToIR(name string) *ir.Type {
+// TypeToIR maps a GIR type name to the closest ir.Type.
+func TypeToIR(name string) *ir.Type {
 	switch name {
 	case "utf8", "gchararray", "filename":
 		return &ir.Type{Kind: ir.TypeString}

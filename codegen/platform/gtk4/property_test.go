@@ -104,18 +104,29 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 		// The helper definitions, emitted only when something needs them.
 		"static void sngl_set_prop(void *obj, const char *name, GValue *src)",
 		"g_object_set_property(o, name, &dst);",
-		// The property's GObject name is its GIR name, hyphens and all.
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n1), C.CString("primary-icon-name"), C.CString("edit-find"))`,
-		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), C.CString("enable-emoji-completion"), C.int(boolToInt(true)))`,
+		// The property's GObject name is its GIR name, hyphens and all, a C
+		// string made once for the application's lifetime (ownCStrings).
+		`= C.CString("primary-icon-name")`,
+		`= C.CString("edit-find")`,
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n1), __cstr`,
+		`= C.CString("enable-emoji-completion")`,
+		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), __cstr`,
+		`C.int(boolToInt(true)))`,
 		// An enum-typed property with no setter takes its member's C
 		// constant through the int helper.
-		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), C.CString("accessible-role"), C.int(C.GTK_ACCESSIBLE_ROLE_BUTTON))`,
+		`= C.CString("accessible-role")`,
+		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), __cstr`,
+		`C.int(C.GTK_ACCESSIBLE_ROLE_BUTTON))`,
 		// A property whose GIR setter takes two values takes the generic
 		// path, and its object-pointer constructor parameter is nil rather
 		// than a bare 0 no cgo pointer type accepts.
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), C.CString("text"), C.CString("hi"))`,
+		`= C.CString("text")`,
+		`= C.CString("hi")`,
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), __cstr`,
 		`C.gtk_text_buffer_new(nil)`,
-		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), C.CString("scale"), C.double(0.25))`,
+		`= C.CString("scale")`,
+		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), __cstr`,
+		`C.double(0.25))`,
 		// A property that does have a setter still calls it directly.
 		`C.gtk_entry_set_max_length((*C.GtkEntry)(unsafe.Pointer(m.__n1)), C.int(12))`,
 		// The value is cast to what the setter's parameter is declared as,

@@ -142,7 +142,7 @@ window(title="t") {
 func genericPropLines(out string) string {
 	var b strings.Builder
 	for line := range strings.SplitSeq(out, "\n") {
-		if strings.Contains(line, "sngl_set_prop_") && strings.Contains(line, "C.CString(") {
+		if strings.Contains(line, "sngl_set_prop_") {
 			b.WriteString(strings.TrimSpace(line))
 			b.WriteByte('\n')
 		}

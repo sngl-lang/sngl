@@ -273,8 +273,8 @@ func (t *gtk4Translator) emitFlowMarkup(flow string) []ir.Stmt {
 	if t.wrapped {
 		return []ir.Stmt{&ir.CallStmt{Call: rtCall("LabelSetMarkup", ir.TypVoid, ref, expr)}}
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_label_set_markup", ir.TypVoid,
-		cgoCast("GtkLabel", ref), cString(expr))}}
+	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_label_set_markup", ir.TypVoid,
+		cgoCast("GtkLabel", ref), cString(expr))}})
 }
 
 // markupExpr is the Pango markup one flow renders, as a Go string expression.

@@ -37,7 +37,15 @@ does with it is each target's:
   (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot
   inside renders into.
 - gtk4: a gtk4rt image box and a `GtkPicture` per source, which fits itself to
-  the image it lands in by watching its own `notify::parent`. A drawing makes
+  the image it lands in by watching its own `notify::parent`. A URL's picture
+  is an owned derived value of its source (`ui.file`'s and `ui.remote`'s
+  `picture`, a `gtk4rt.Picture`), decoded once per URL and released when the
+  URL changes or the source unmounts; the source shows it and `canvasImage`
+  paints it, scaled once per box size rather than per frame
+  (`testdata/gtk4_image_pictures.txtar`, and
+  `cmd/sngl/testdata/simulate_gtk4_image_pictures.txt` for the leak check).
+  Before, a source fetched its own URL and a drawing downloaded and scaled
+  the texture on every frame (see [ownership.md](ownership.md)). A drawing makes
   every gtk4 build inline cgo (a canvas does), so the image runtime is called
   from cgo-mode code too, which is why gtk4rt's exported callbacks are
   `snglRt*`: the cgo scaffold exports `snglGoDispatch` and `snglActivate` of

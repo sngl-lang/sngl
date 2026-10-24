@@ -1,0 +1,46 @@
+import math "sngl:math"
+
+struct Point {
+    x, y int
+
+    func sum() => x + y
+}
+
+enum Shade {
+    light
+    dark
+}
+
+const limit = 3
+
+func area(p Point, scale int = 1) int {
+    var total = p.x * p.y
+    for var i, q = [p] {
+        total += q.sum() + i
+    }
+    return total * scale + int(math.pi)
+}
+
+func shaded() => Shade.dark
+
+func use() => area(Point{x=1, y=2}, scale=limit)
+
+// DEFINITION(area(^Point) "struct ^Point"
+// DEFINITION(Point{^x=1) "    ^x, y int"
+// DEFINITION(p.^y) "    x, ^y int"
+// DEFINITION(q.^sum) "func ^sum"
+// DEFINITION(x + ^y) "    x, ^y int"
+// DEFINITION(^total * scale) "var ^total"
+// DEFINITION(+ ^i) "for var ^i"
+// DEFINITION(scale=^limit) "const ^limit"
+// DEFINITION(scale=limit) "func area(p Point, ^scale"
+// DEFINITION(math.^pi) "math/math.sngl: const ^pi"
+// DEFINITION(^math.pi) "import ^math"
+// DEFINITION(int(^math) "import ^math"
+// DEFINITION(Shade.^dark) "    ^dark"
+// DEFINITION(int = 1) "builtin/numbers.sngl: struct ^int"
+// DEFINITION(^Shade.dark) "enum ^Shade"
+// REFERENCES(Shade.^dark) "11:5 24:24"
+// REFERENCES(^area) "16:6 26:15"
+// REFERENCES(^total) "17:9 19:9 21:12"
+// REFERENCES(^limit) "14:7 26:43"

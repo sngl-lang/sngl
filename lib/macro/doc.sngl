@@ -7,6 +7,8 @@
 // outside SNGL and `#[unusable]` records that it cannot be reached from here;
 // `#[wildcard]` says what a name nobody declared resolves to; and
 // `#[construct]` says a prop is read only while its instance is being built.
+// `#[owned]` says a struct's values must be given back and how, and
+// `#[retains]` and `#[moves]` what a native does with one it is handed.
 //
 // The per-target packages under it -- `sngl:platform/html`, `sngl:language/go`
 // -- are separate packages, and hold no marks.

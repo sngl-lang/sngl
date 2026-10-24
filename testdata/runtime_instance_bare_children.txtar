@@ -78,10 +78,15 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -95,6 +100,14 @@ type modelState struct {
 	hits__inst0         map[string]int
 	hits__inst1         map[string]int
 	visible__inst0      bool
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effect1_live      []string
+	__effect1_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop1_cursor int
 	__focusLoop2_cursor int
@@ -110,9 +123,18 @@ func New() Model {
 	m.hits__inst0 = map[string]int{}
 	m.hits__inst1 = map[string]int{}
 	m.visible__inst0 = true
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effect1_live = []string{}
+	m.__effect1_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
 	m.__focusLoop2_cursor = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -120,6 +142,72 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, _ := range m.items {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			var __cell1_hits__inst0 int = func() int {
+				if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell1_hits__inst0 = 0
+			m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_enter() {
+	m.__effect1_desired = []string{}
+	for __copy0, _ := range m.items {
+		__effect1_fresh := true
+		if len(m.__effect1_desired) < len(m.__effect1_live) {
+			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect1_fresh {
+			var __cell1_hits__inst1 int = func() int {
+				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()
+			__cell1_hits__inst1 = 0
+			m.hits__inst1[fmt.Sprint(__copy0)] = __cell1_hits__inst1
+		}
+		m.__effect1_desired = append(m.__effect1_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop1_len() int {
@@ -304,6 +392,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.items = append(m.items, "c")
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
 				__focusPos1 := 0
@@ -311,19 +400,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = it
 					if m.__focusLoop1_cursor == __focusPos1 {
-						var __cell1_hits__inst0 int = func() int {
+						var __cell2_hits__inst0 int = func() int {
 							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}()
-						__cell1_hits__inst0 = (func() int {
+						__cell2_hits__inst0 = (func() int {
 							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}() + 1)
-						m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
+						m.hits__inst0[fmt.Sprint(__copy0)] = __cell2_hits__inst0
 						return
 					}
 					__focusPos1++
@@ -340,19 +429,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for __copy0, _ := range m.items {
 					_ = __copy0
 					if m.__focusLoop2_cursor == __focusPos2 {
-						var __cell1_hits__inst1 int = func() int {
+						var __cell2_hits__inst1 int = func() int {
 							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}()
-						__cell1_hits__inst1 = (func() int {
+						__cell2_hits__inst1 = (func() int {
 							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}() + 1)
-						m.hits__inst1[fmt.Sprint(__copy0)] = __cell1_hits__inst1
+						m.hits__inst1[fmt.Sprint(__copy0)] = __cell2_hits__inst1
 						return
 					}
 					__focusPos2++
@@ -364,96 +453,99 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentChildren []string
-		var content_0 string
-		content_0Focused := (m.__focusID == 0)
-		content_0Prefix := " "
-		if content_0Focused {
-			content_0Prefix = ">"
+		var part0Children []string
+		var part0_0 string
+		part0_0Focused := (m.__focusID == 0)
+		part0_0Prefix := " "
+		if part0_0Focused {
+			part0_0Prefix = ">"
 		}
-		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("add"))
-		contentChildren = append(contentChildren, content_0)
-		var content_1 string
-		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(("picked " + m.picked)))
-		contentChildren = append(contentChildren, content_1)
-		var content_2 string
+		part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("add"))
+		part0Children = append(part0Children, part0_0)
+		var part0_1 string
+		part0_1 = lipgloss.NewStyle().Render(fmt.Sprint(("picked " + m.picked)))
+		part0Children = append(part0Children, part0_1)
+		var part0_2 string
 		__focusPos1 := 0
 		_ = __focusPos1
-		var content_2Items []string
+		var part0_2Items []string
 		for __copy0, it := range m.items {
 			_ = __copy0
 			_ = it
-			var content_2Item string
-			var content_2ItemChildren []string
-			var content_2Item_0 string
-			content_2Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-			content_2Item_0Prefix := " "
-			if content_2Item_0Focused {
-				content_2Item_0Prefix = ">"
+			var part0_2Item string
+			var part0_2ItemChildren []string
+			var part0_2Item_0 string
+			part0_2Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+			part0_2Item_0Prefix := " "
+			if part0_2Item_0Focused {
+				part0_2Item_0Prefix = ">"
 			}
-			content_2Item_0 = lipgloss.NewStyle().Render(content_2Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
+			part0_2Item_0 = lipgloss.NewStyle().Render(part0_2Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
 				if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
 				return 0
 			}()))))
 			__focusPos1++
-			content_2ItemChildren = append(content_2ItemChildren, content_2Item_0)
-			var content_2Item_1 string
-			content_2Item_1 = lipgloss.NewStyle().Render(fmt.Sprint(("item " + it)))
-			content_2ItemChildren = append(content_2ItemChildren, content_2Item_1)
-			var content_2Item_2 string
-			content_2Item_2Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
-			content_2Item_2Prefix := " "
-			if content_2Item_2Focused {
-				content_2Item_2Prefix = ">"
+			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_0)
+			var part0_2Item_1 string
+			part0_2Item_1 = lipgloss.NewStyle().Render(fmt.Sprint(("item " + it)))
+			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_1)
+			var part0_2Item_2 string
+			part0_2Item_2Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
+			part0_2Item_2Prefix := " "
+			if part0_2Item_2Focused {
+				part0_2Item_2Prefix = ">"
 			}
-			content_2Item_2 = lipgloss.NewStyle().Render(content_2Item_2Prefix + " " + fmt.Sprint("pick"))
+			part0_2Item_2 = lipgloss.NewStyle().Render(part0_2Item_2Prefix + " " + fmt.Sprint("pick"))
 			__focusPos1++
-			content_2ItemChildren = append(content_2ItemChildren, content_2Item_2)
-			content_2Item = tui.Column(0, content_2ItemChildren...)
-			content_2Items = append(content_2Items, content_2Item)
+			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_2)
+			part0_2Item = lipgloss.JoinVertical(lipgloss.Left, part0_2ItemChildren...)
+			part0_2Items = append(part0_2Items, part0_2Item)
 		}
-		content_2 = tui.Column(0, content_2Items...)
-		if content_2 != "" {
-			contentChildren = append(contentChildren, content_2)
+		part0_2 = strings.Join(part0_2Items, "\n")
+		if part0_2 != "" {
+			part0Children = append(part0Children, part0_2)
 		}
-		var content_3 string
+		var part0_3 string
 		__focusPos2 := 0
 		_ = __focusPos2
-		var content_3Items []string
+		var part0_3Items []string
 		for __copy0, _ := range m.items {
 			_ = __copy0
-			var content_3Item string
-			var content_3ItemChildren []string
-			var content_3Item_0 string
-			content_3Item_0Focused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
-			content_3Item_0Prefix := " "
-			if content_3Item_0Focused {
-				content_3Item_0Prefix = ">"
+			var part0_3Item string
+			var part0_3ItemChildren []string
+			var part0_3Item_0 string
+			part0_3Item_0Focused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+			part0_3Item_0Prefix := " "
+			if part0_3Item_0Focused {
+				part0_3Item_0Prefix = ">"
 			}
-			content_3Item_0 = lipgloss.NewStyle().Render(content_3Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
+			part0_3Item_0 = lipgloss.NewStyle().Render(part0_3Item_0Prefix + " " + fmt.Sprint(("hit " + fmt.Sprint(func() int {
 				if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
 				return 0
 			}()))))
 			__focusPos2++
-			content_3ItemChildren = append(content_3ItemChildren, content_3Item_0)
-			var content_3Item_1 string
-			content_3Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("empty"))
-			content_3ItemChildren = append(content_3ItemChildren, content_3Item_1)
-			content_3Item = tui.Column(0, content_3ItemChildren...)
-			content_3Items = append(content_3Items, content_3Item)
+			part0_3ItemChildren = append(part0_3ItemChildren, part0_3Item_0)
+			var part0_3Item_1 string
+			part0_3Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("empty"))
+			part0_3ItemChildren = append(part0_3ItemChildren, part0_3Item_1)
+			part0_3Item = lipgloss.JoinVertical(lipgloss.Left, part0_3ItemChildren...)
+			part0_3Items = append(part0_3Items, part0_3Item)
 		}
-		content_3 = tui.Column(0, content_3Items...)
-		if content_3 != "" {
-			contentChildren = append(contentChildren, content_3)
+		part0_3 = strings.Join(part0_3Items, "\n")
+		if part0_3 != "" {
+			part0Children = append(part0Children, part0_3)
 		}
-		content = tui.Column(0, contentChildren...)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	}
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -530,53 +622,49 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		func() {
-			defer func() {
-				m.__rendering0 = false
-			}()
-			for m.__renderAgain0 {
-				m.__renderAgain0 = false
-				for _, __entry := range m.__slot0 {
-					fynelayout.Remove(__parent, __entry)
-				}
-				m.__slot0 = nil
-				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-				__inst0_next := []*Card__slot0Instance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
-					var __n5 *Card__slot0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n5 = m.__inst0_live[__inst0_i]
-						__n5.Set__on0(func() {
-							m.picked = it
-							m.__n4.SetText(("picked " + m.picked))
-						})
-						__n5.Set__p0(it)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
-						}
-						__n5__new := newCard__slot0Instance(m, it, func() {
-							m.picked = it
-							m.__n4.SetText(("picked " + m.picked))
-						})
-						__n5 = __n5__new
-					}
-					__inst0_next = append(__inst0_next, __n5)
-					__inst0_i = (__inst0_i + 1)
-					__n5__el := __n5.Root
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
-					m.__slot0 = append(m.__slot0, __n5__el)
-				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
-					}
-				}
-				m.__inst0_live = __inst0_next
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				fynelayout.Remove(__parent, __entry)
 			}
-		}()
+			m.__slot0 = nil
+			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+			__inst0_next := []*Card__slot0Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items {
+				var __n5 *Card__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n5 = m.__inst0_live[__inst0_i]
+					__n5.Set__on0(func() {
+						m.picked = it
+						m.__n4.SetText(("picked " + m.picked))
+					})
+					__n5.Set__p0(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n5__new := newCard__slot0Instance(m, it, func() {
+						m.picked = it
+						m.__n4.SetText(("picked " + m.picked))
+					})
+					__n5 = __n5__new
+				}
+				__inst0_next = append(__inst0_next, __n5)
+				__inst0_i = (__inst0_i + 1)
+				__n5__el := __n5.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+				m.__slot0 = append(m.__slot0, __n5__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+		}
+		m.__rendering0 = false
 	}
 }
 
@@ -586,45 +674,41 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		func() {
-			defer func() {
-				m.__rendering1 = false
-			}()
-			for m.__renderAgain1 {
-				m.__renderAgain1 = false
-				for _, __entry := range m.__slot1 {
-					fynelayout.Remove(__parent, __entry)
-				}
-				m.__slot1 = nil
-				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-				__inst1_next := []*CardInstance{}
-				var __inst1_i int = 0
-				for range m.items {
-					var __n6 *CardInstance
-					if len(m.__inst1_live) > __inst1_i {
-						__n6 = m.__inst1_live[__inst1_i]
-					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
-						}
-						__n6__new := newCardInstance(m)
-						__n6 = __n6__new
-					}
-					__inst1_next = append(__inst1_next, __n6)
-					__inst1_i = (__inst1_i + 1)
-					__n6__el := __n6.Root
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n6__el)
-					m.__slot1 = append(m.__slot1, __n6__el)
-				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
-					}
-				}
-				m.__inst1_live = __inst1_next
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				fynelayout.Remove(__parent, __entry)
 			}
-		}()
+			m.__slot1 = nil
+			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+			__inst1_next := []*CardInstance{}
+			var __inst1_i int = 0
+			for range m.items {
+				var __n6 *CardInstance
+				if len(m.__inst1_live) > __inst1_i {
+					__n6 = m.__inst1_live[__inst1_i]
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n6__new := newCardInstance(m)
+					__n6 = __n6__new
+				}
+				__inst1_next = append(__inst1_next, __n6)
+				__inst1_i = (__inst1_i + 1)
+				__n6__el := __n6.Root
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n6__el)
+				m.__slot1 = append(m.__slot1, __n6__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
+		}
+		m.__rendering1 = false
 	}
 }
 
@@ -863,53 +947,49 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		func() {
-			defer func() {
-				m.__rendering0 = false
-			}()
-			for m.__renderAgain0 {
-				m.__renderAgain0 = false
-				for _, __entry := range m.__slot0 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				m.__slot0 = nil
-				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-				__inst0_next := []*Card__slot0Instance{}
-				var __inst0_i int = 0
-				for _, it := range m.items {
-					var __n5 *Card__slot0Instance
-					if len(m.__inst0_live) > __inst0_i {
-						__n5 = m.__inst0_live[__inst0_i]
-						__n5.Set__on0(func() {
-							m.picked = it
-							gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
-						})
-						__n5.Set__p0(it)
-					} else {
-						if len(m.__inst0_live) > __inst0_i {
-							m.__inst0_live[__inst0_i].Destroy()
-						}
-						__n5__new := newCard__slot0Instance(m, it, func() {
-							m.picked = it
-							gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
-						})
-						__n5 = __n5__new
-					}
-					__inst0_next = append(__inst0_next, __n5)
-					__inst0_i = (__inst0_i + 1)
-					__n5__el := __n5.Root
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
-					m.__slot0 = append(m.__slot0, __n5__el)
-				}
-				for __inst0_i_d, _ := range m.__inst0_live {
-					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						m.__inst0_live[__inst0_i_j].Destroy()
-					}
-				}
-				m.__inst0_live = __inst0_next
+		for m.__renderAgain0 {
+			m.__renderAgain0 = false
+			for _, __entry := range m.__slot0 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-		}()
+			m.__slot0 = nil
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+			__inst0_next := []*Card__slot0Instance{}
+			var __inst0_i int = 0
+			for _, it := range m.items {
+				var __n5 *Card__slot0Instance
+				if len(m.__inst0_live) > __inst0_i {
+					__n5 = m.__inst0_live[__inst0_i]
+					__n5.Set__on0(func() {
+						m.picked = it
+						gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
+					})
+					__n5.Set__p0(it)
+				} else {
+					if len(m.__inst0_live) > __inst0_i {
+						m.__inst0_live[__inst0_i].Destroy()
+					}
+					__n5__new := newCard__slot0Instance(m, it, func() {
+						m.picked = it
+						gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
+					})
+					__n5 = __n5__new
+				}
+				__inst0_next = append(__inst0_next, __n5)
+				__inst0_i = (__inst0_i + 1)
+				__n5__el := __n5.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
+				m.__slot0 = append(m.__slot0, __n5__el)
+			}
+			for __inst0_i_d, _ := range m.__inst0_live {
+				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+				if __inst0_i_j >= __inst0_i {
+					m.__inst0_live[__inst0_i_j].Destroy()
+				}
+			}
+			m.__inst0_live = __inst0_next
+		}
+		m.__rendering0 = false
 	}
 }
 
@@ -919,45 +999,41 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		func() {
-			defer func() {
-				m.__rendering1 = false
-			}()
-			for m.__renderAgain1 {
-				m.__renderAgain1 = false
-				for _, __entry := range m.__slot1 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				m.__slot1 = nil
-				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-				__inst1_next := []*CardInstance{}
-				var __inst1_i int = 0
-				for range m.items {
-					var __n6 *CardInstance
-					if len(m.__inst1_live) > __inst1_i {
-						__n6 = m.__inst1_live[__inst1_i]
-					} else {
-						if len(m.__inst1_live) > __inst1_i {
-							m.__inst1_live[__inst1_i].Destroy()
-						}
-						__n6__new := newCardInstance(m)
-						__n6 = __n6__new
-					}
-					__inst1_next = append(__inst1_next, __n6)
-					__inst1_i = (__inst1_i + 1)
-					__n6__el := __n6.Root
-					gtk4rt.InsertBefore(parent, m.__slot1_at, __n6__el)
-					m.__slot1 = append(m.__slot1, __n6__el)
-				}
-				for __inst1_i_d, _ := range m.__inst1_live {
-					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						m.__inst1_live[__inst1_i_j].Destroy()
-					}
-				}
-				m.__inst1_live = __inst1_next
+		for m.__renderAgain1 {
+			m.__renderAgain1 = false
+			for _, __entry := range m.__slot1 {
+				gtk4rt.BoxRemove(parent, __entry)
 			}
-		}()
+			m.__slot1 = nil
+			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+			__inst1_next := []*CardInstance{}
+			var __inst1_i int = 0
+			for range m.items {
+				var __n6 *CardInstance
+				if len(m.__inst1_live) > __inst1_i {
+					__n6 = m.__inst1_live[__inst1_i]
+				} else {
+					if len(m.__inst1_live) > __inst1_i {
+						m.__inst1_live[__inst1_i].Destroy()
+					}
+					__n6__new := newCardInstance(m)
+					__n6 = __n6__new
+				}
+				__inst1_next = append(__inst1_next, __n6)
+				__inst1_i = (__inst1_i + 1)
+				__n6__el := __n6.Root
+				gtk4rt.InsertBefore(parent, m.__slot1_at, __n6__el)
+				m.__slot1 = append(m.__slot1, __n6__el)
+			}
+			for __inst1_i_d, _ := range m.__inst1_live {
+				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+				if __inst1_i_j >= __inst1_i {
+					m.__inst1_live[__inst1_i_j].Destroy()
+				}
+			}
+			m.__inst1_live = __inst1_next
+		}
+		m.__rendering1 = false
 	}
 }
 
@@ -1007,7 +1083,6 @@ func newCardInstance(__model *Model) *CardInstance {
 	gtk4rt.BoxAppend(__n8, c.__n0)
 	__n9 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n9, "empty")
-	gtk4rt.LabelSetXAlign(__n9, 0.0)
 	gtk4rt.BoxAppend(__n8, __n9)
 	c.Root = __n8
 	gtk4rt.Retain(c.Root)
@@ -1064,7 +1139,6 @@ func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *
 	gtk4rt.BoxAppend(__n10, c.__n1)
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, ("item " + c.__prop___p0))
-	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	gtk4rt.BoxAppend(__n10, c.__n2)
 	__n11 := gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(__n11, "pick")
@@ -1141,7 +1215,6 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n7, m.__n12)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
-	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n7, m.__n4)
 	m.__renderSlot0(m.__n7)
 	m.__renderSlot1(m.__n7)
@@ -1365,63 +1438,60 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      try {
-        while (__renderAgain0) {
-          __renderAgain0 = false;
-          let __place0_prev = __slot0;
-          let __place0_i = 0;
-          __slot0 = [];
-          let __inst1_next = [];
-          let __inst1_i = 0;
-          for (const it of state.items) {
-            let __n5 = null;
+      while (__renderAgain0) {
+        __renderAgain0 = false;
+        let __place0_prev = __slot0;
+        let __place0_i = 0;
+        __slot0 = [];
+        let __inst1_next = [];
+        let __inst1_i = 0;
+        for (const it of state.items) {
+          let __n5 = null;
+          if (__inst1_live.length > __inst1_i) {
+            __n5 = __inst1_live[__inst1_i];
+            __n5.__set___on0(() => {
+              state.picked = it;
+              __n4.textContent = "picked " + state.picked;
+            });
+            __n5.__set___p0(it);
+          } else {
             if (__inst1_live.length > __inst1_i) {
-              __n5 = __inst1_live[__inst1_i];
-              __n5.__set___on0(() => {
-                state.picked = it;
-                __n4.textContent = "picked " + state.picked;
-              });
-              __n5.__set___p0(it);
-            } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
-              }
-              let __n5__new = __cf_Card__slot0({ __p0: it, __on0: () => {
-                state.picked = it;
-                __n4.textContent = "picked " + state.picked;
-              } });
-              __n5 = __n5__new;
+              __inst1_live[__inst1_i].__destroy();
             }
-            __inst1_next.push(__n5);
-            __inst1_i = __inst1_i + 1;
-            let __n5__el = __n5.__root;
-            let __place0_i_ref0 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref0 = __place0_prev[__place0_i];
-            }
-            if (__place0_i_ref0 === __n5__el) {
-              __place0_i = __place0_i + 1;
-            } else {
-              parent.insertBefore(__n5__el, __place0_i_ref0);
-            }
-            __slot0.push(__n5__el);
+            let __n5__new = __cf_Card__slot0({ __p0: it, __on0: () => {
+              state.picked = it;
+              __n4.textContent = "picked " + state.picked;
+            } });
+            __n5 = __n5__new;
           }
-          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-            if (__inst1_i_j >= __inst1_i) {
-              __inst1_live[__inst1_i_j].__destroy();
-            }
+          __inst1_next.push(__n5);
+          __inst1_i = __inst1_i + 1;
+          let __n5__el = __n5.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
           }
-          __inst1_live = __inst1_next;
-          for (const __place0_prev_e of __place0_prev) {
-            if (__slot0.indexOf(__place0_prev_e) < 0) {
-              parent.removeChild(__place0_prev_e);
-            }
+          if (__place0_i_ref0 === __n5__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n5__el, __place0_i_ref0);
+          }
+          __slot0.push(__n5__el);
+        }
+        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+          if (__inst1_i_j >= __inst1_i) {
+            __inst1_live[__inst1_i_j].__destroy();
           }
         }
-      } finally {
-        __rendering0 = false;
+        __inst1_live = __inst1_next;
+        for (const __place0_prev_e of __place0_prev) {
+          if (__slot0.indexOf(__place0_prev_e) < 0) {
+            parent.removeChild(__place0_prev_e);
+          }
+        }
       }
+      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -1430,55 +1500,52 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      try {
-        while (__renderAgain1) {
-          __renderAgain1 = false;
-          let __place2_prev = __slot1;
-          let __place2_i = 0;
-          __slot1 = [];
-          let __inst3_next = [];
-          let __inst3_i = 0;
-          for (const it of state.items) {
-            let __n6 = null;
+      while (__renderAgain1) {
+        __renderAgain1 = false;
+        let __place2_prev = __slot1;
+        let __place2_i = 0;
+        __slot1 = [];
+        let __inst3_next = [];
+        let __inst3_i = 0;
+        for (const it of state.items) {
+          let __n6 = null;
+          if (__inst3_live.length > __inst3_i) {
+            __n6 = __inst3_live[__inst3_i];
+          } else {
             if (__inst3_live.length > __inst3_i) {
-              __n6 = __inst3_live[__inst3_i];
-            } else {
-              if (__inst3_live.length > __inst3_i) {
-                __inst3_live[__inst3_i].__destroy();
-              }
-              let __n6__new = __cf_Card({});
-              __n6 = __n6__new;
+              __inst3_live[__inst3_i].__destroy();
             }
-            __inst3_next.push(__n6);
-            __inst3_i = __inst3_i + 1;
-            let __n6__el = __n6.__root;
-            let __place2_i_ref0 = null;
-            if (__place2_i < __place2_prev.length) {
-              __place2_i_ref0 = __place2_prev[__place2_i];
-            }
-            if (__place2_i_ref0 === __n6__el) {
-              __place2_i = __place2_i + 1;
-            } else {
-              parent.insertBefore(__n6__el, __place2_i_ref0);
-            }
-            __slot1.push(__n6__el);
+            let __n6__new = __cf_Card({});
+            __n6 = __n6__new;
           }
-          for (const [__inst3_i_d, _] of __inst3_live.entries()) {
-            let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
-            if (__inst3_i_j >= __inst3_i) {
-              __inst3_live[__inst3_i_j].__destroy();
-            }
+          __inst3_next.push(__n6);
+          __inst3_i = __inst3_i + 1;
+          let __n6__el = __n6.__root;
+          let __place2_i_ref0 = null;
+          if (__place2_i < __place2_prev.length) {
+            __place2_i_ref0 = __place2_prev[__place2_i];
           }
-          __inst3_live = __inst3_next;
-          for (const __place2_prev_e of __place2_prev) {
-            if (__slot1.indexOf(__place2_prev_e) < 0) {
-              parent.removeChild(__place2_prev_e);
-            }
+          if (__place2_i_ref0 === __n6__el) {
+            __place2_i = __place2_i + 1;
+          } else {
+            parent.insertBefore(__n6__el, __place2_i_ref0);
+          }
+          __slot1.push(__n6__el);
+        }
+        for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+          let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+          if (__inst3_i_j >= __inst3_i) {
+            __inst3_live[__inst3_i_j].__destroy();
           }
         }
-      } finally {
-        __rendering1 = false;
+        __inst3_live = __inst3_next;
+        for (const __place2_prev_e of __place2_prev) {
+          if (__slot1.indexOf(__place2_prev_e) < 0) {
+            parent.removeChild(__place2_prev_e);
+          }
+        }
       }
+      __rendering1 = false;
     }
   }
   function String(v) {
@@ -1503,12 +1570,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a3820834ed4443e0634e522fa2f35802
+pass sha256:8869563df1864874d8fcc407e0c84cb0
 -- run/go/fyne --
-pass sha256:8856b527fa3b24a0621b14e6f23c659e
+pass sha256:221e93ecd1fc1dc4cd7646c8c112ef15
 -- run/go/gtk4 --
-pass sha256:b7cf8b713fd78c7455efb4afdbdf6fd2
+pass sha256:646ec3ccdfe2e8e75d2feedb943cfb47
 -- run/kotlin/android --
 pass sha256:9e2984d6d77e020ec49c4a92bfeed3a2
 -- run/none/html --
-pass sha256:fb8603db2e159921ec1a32656aee3899
+pass sha256:ea4739284f3b662327b07172ef4e6f89

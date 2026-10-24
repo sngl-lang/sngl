@@ -122,10 +122,15 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
+	"strings"
 )
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -134,16 +139,34 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	shown     bool
-	n         int
-	m__inst0  int
-	on__inst0 bool
-	xs__inst0 []int
-	k__inst0  int
-	k__inst1  int
-	k__inst2  int
-	n__inst0  int
-	__focusID int
+	shown               bool
+	n                   int
+	m__inst0            int
+	on__inst0           bool
+	xs__inst0           []int
+	k__inst0            int
+	k__inst1            int
+	k__inst2            int
+	n__inst0            int
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effect1_live      []bool
+	__effect1_desired   []bool
+	__effect2_live      []bool
+	__effect2_desired   []bool
+	__effect3_live      []bool
+	__effect3_desired   []bool
+	__effect4_live      []bool
+	__effect4_desired   []bool
+	__effect5_live      []bool
+	__effect5_desired   []bool
+	__effect6_live      []bool
+	__effect6_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
+	__focusID           int
 
 	width, height int
 }
@@ -155,12 +178,31 @@ func New() Model {
 	m.n = 1
 	m.m__inst0 = 0
 	m.on__inst0 = false
-	m.xs__inst0 = []int{1, 2}
+	m.xs__inst0 = []int{}
 	m.k__inst0 = 0
 	m.k__inst1 = 0
 	m.k__inst2 = 0
 	m.n__inst0 = 0
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effect1_live = []bool{}
+	m.__effect1_desired = []bool{}
+	m.__effect2_live = []bool{}
+	m.__effect2_desired = []bool{}
+	m.__effect3_live = []bool{}
+	m.__effect3_desired = []bool{}
+	m.__effect4_live = []bool{}
+	m.__effect4_desired = []bool{}
+	m.__effect5_live = []bool{}
+	m.__effect5_desired = []bool{}
+	m.__effect6_live = []bool{}
+	m.__effect6_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -168,6 +210,138 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []bool{}
+	if m.shown {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != true)
+		}
+		if __effect0_fresh {
+			m.m__inst0 = 0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, true)
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect1_enter() {
+	m.__effect1_desired = []bool{}
+	if m.shown {
+		__effect1_fresh := true
+		if len(m.__effect1_desired) < len(m.__effect1_live) {
+			__effect1_fresh = (m.__effect1_live[len(m.__effect1_desired)] != true)
+		}
+		if __effect1_fresh {
+			m.n__inst0 = 0
+		}
+		m.__effect1_desired = append(m.__effect1_desired, true)
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effect2_enter() {
+	m.__effect2_desired = []bool{}
+	if m.shown {
+		__effect2_fresh := true
+		if len(m.__effect2_desired) < len(m.__effect2_live) {
+			__effect2_fresh = (m.__effect2_live[len(m.__effect2_desired)] != true)
+		}
+		if __effect2_fresh {
+			m.on__inst0 = false
+		}
+		m.__effect2_desired = append(m.__effect2_desired, true)
+	}
+	m.__effect2_live = m.__effect2_desired
+}
+
+func (m *Model) __effect3_enter() {
+	m.__effect3_desired = []bool{}
+	if m.shown {
+		__effect3_fresh := true
+		if len(m.__effect3_desired) < len(m.__effect3_live) {
+			__effect3_fresh = (m.__effect3_live[len(m.__effect3_desired)] != true)
+		}
+		if __effect3_fresh {
+			m.xs__inst0 = []int{1, 2}
+		}
+		m.__effect3_desired = append(m.__effect3_desired, true)
+	}
+	m.__effect3_live = m.__effect3_desired
+}
+
+func (m *Model) __effect4_enter() {
+	m.__effect4_desired = []bool{}
+	if m.shown {
+		__effect4_fresh := true
+		if len(m.__effect4_desired) < len(m.__effect4_live) {
+			__effect4_fresh = (m.__effect4_live[len(m.__effect4_desired)] != true)
+		}
+		if __effect4_fresh {
+			m.k__inst0 = 0
+		}
+		m.__effect4_desired = append(m.__effect4_desired, true)
+	}
+	m.__effect4_live = m.__effect4_desired
+}
+
+func (m *Model) __effect5_enter() {
+	m.__effect5_desired = []bool{}
+	if m.shown {
+		__effect5_fresh := true
+		if len(m.__effect5_desired) < len(m.__effect5_live) {
+			__effect5_fresh = (m.__effect5_live[len(m.__effect5_desired)] != true)
+		}
+		if __effect5_fresh {
+			m.k__inst1 = 0
+		}
+		m.__effect5_desired = append(m.__effect5_desired, true)
+	}
+	m.__effect5_live = m.__effect5_desired
+}
+
+func (m *Model) __effect6_enter() {
+	m.__effect6_desired = []bool{}
+	if m.shown {
+		__effect6_fresh := true
+		if len(m.__effect6_desired) < len(m.__effect6_live) {
+			__effect6_fresh = (m.__effect6_live[len(m.__effect6_desired)] != true)
+		}
+		if __effect6_fresh {
+			m.k__inst2 = 0
+		}
+		m.__effect6_desired = append(m.__effect6_desired, true)
+	}
+	m.__effect6_live = m.__effect6_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+				m.__effect1_enter()
+				m.__effect2_enter()
+				m.__effect3_enter()
+				m.__effect4_enter()
+				m.__effect5_enter()
+				m.__effect6_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusNext() {
@@ -365,6 +539,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.shown = !m.shown
+			m.__effects0_settle()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.n__inst0 += 1
 		}
@@ -376,22 +551,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) toggleClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
 }
 
 // bumpClick activates the #bump widget the way a keypress does; for tests.
 func (m *Model) bumpClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
-	_ = m.View()
-	_ = cmd
 }
 
 func (m *Model) bPresent() bool {
@@ -405,68 +576,70 @@ func (m *Model) bPresent() bool {
 	if __lt0 > 0 {
 		return true
 	}
+	m.__effects0_settle()
 	return false
 }
 
 func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	var parts []string
+	var part0 string
+	var part0Children []string
+	var part0_0 string
+	part0_0Focused := (m.__focusID == 0)
+	part0_0Prefix := " "
+	if part0_0Focused {
+		part0_0Prefix = ">"
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("t"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
+	part0_0 = lipgloss.NewStyle().Render(part0_0Prefix + " " + fmt.Sprint("t"))
+	part0Children = append(part0Children, part0_0)
+	var part0_1 string
 	if m.shown {
-		var content_1Parts []string
-		var content_1Part_0 string
-		content_1Part_0Focused := (m.__focusID == 1)
-		content_1Part_0Prefix := " "
-		if content_1Part_0Focused {
-			content_1Part_0Prefix = ">"
+		var part0_1Parts []string
+		var part0_1Part_0 string
+		part0_1Part_0Focused := (m.__focusID == 1)
+		part0_1Part_0Prefix := " "
+		if part0_1Part_0Focused {
+			part0_1Part_0Prefix = ">"
 		}
-		content_1Part_0 = lipgloss.NewStyle().Render(content_1Part_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.n__inst0)))
-		content_1Parts = append(content_1Parts, content_1Part_0)
-		var content_1Part_1 string
+		part0_1Part_0 = lipgloss.NewStyle().Render(part0_1Part_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.n__inst0)))
+		part0_1Parts = append(part0_1Parts, part0_1Part_0)
+		var part0_1Part_1 string
 		if m.on__inst0 {
-			content_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("on"))
+			part0_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("on"))
 		} else {
-			content_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("off"))
+			part0_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("off"))
 		}
-		if content_1Part_1 != "" {
-			content_1Parts = append(content_1Parts, content_1Part_1)
+		if part0_1Part_1 != "" {
+			part0_1Parts = append(part0_1Parts, part0_1Part_1)
 		}
-		var content_1Part_2 string
-		var content_1Part_2Items []string
+		var part0_1Part_2 string
+		var part0_1Part_2Items []string
 		for _, x := range m.xs__inst0 {
 			_ = x
-			var content_1Part_2Item string
-			content_1Part_2Item = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(x)))
-			content_1Part_2Items = append(content_1Part_2Items, content_1Part_2Item)
+			var part0_1Part_2Item string
+			part0_1Part_2Item = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(x)))
+			part0_1Part_2Items = append(part0_1Part_2Items, part0_1Part_2Item)
 		}
-		content_1Part_2 = tui.Column(0, content_1Part_2Items...)
-		if content_1Part_2 != "" {
-			content_1Parts = append(content_1Parts, content_1Part_2)
+		part0_1Part_2 = strings.Join(part0_1Part_2Items, "\n")
+		if part0_1Part_2 != "" {
+			part0_1Parts = append(part0_1Parts, part0_1Part_2)
 		}
-		var content_1Part_3 string
-		content_1Part_3 = lipgloss.NewStyle().Render(fmt.Sprint(("on " + fmt.Sprint(m.k__inst0))))
-		content_1Parts = append(content_1Parts, content_1Part_3)
-		var content_1Part_4 string
-		content_1Part_4 = lipgloss.NewStyle().Render(fmt.Sprint(("on " + fmt.Sprint(m.k__inst1))))
-		content_1Parts = append(content_1Parts, content_1Part_4)
-		var content_1Part_5 string
+		var part0_1Part_3 string
+		part0_1Part_3 = lipgloss.NewStyle().Render(fmt.Sprint(("on " + fmt.Sprint(m.k__inst0))))
+		part0_1Parts = append(part0_1Parts, part0_1Part_3)
+		var part0_1Part_4 string
+		part0_1Part_4 = lipgloss.NewStyle().Render(fmt.Sprint(("on " + fmt.Sprint(m.k__inst1))))
+		part0_1Parts = append(part0_1Parts, part0_1Part_4)
+		var part0_1Part_5 string
 		if true {
 		}
-		if content_1Part_5 != "" {
-			content_1Parts = append(content_1Parts, content_1Part_5)
+		if part0_1Part_5 != "" {
+			part0_1Parts = append(part0_1Parts, part0_1Part_5)
 		}
-		content_1 = tui.Column(0, content_1Parts...)
+		part0_1 = lipgloss.JoinVertical(lipgloss.Left, part0_1Parts...)
 	}
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
+	if part0_1 != "" {
+		part0Children = append(part0Children, part0_1)
 	}
 	var __lt0 int
 	if m.shown {
@@ -474,14 +647,16 @@ func (m Model) View() tea.View {
 	} else {
 		__lt0 = 0
 	}
-	var content_4 string
+	var part0_4 string
 	if __lt0 > 0 {
-		content_4 = lipgloss.NewStyle().Render(fmt.Sprint("x"))
+		part0_4 = lipgloss.NewStyle().Render(fmt.Sprint("x"))
 	}
-	if content_4 != "" {
-		contentChildren = append(contentChildren, content_4)
+	if part0_4 != "" {
+		part0Children = append(part0Children, part0_4)
 	}
-	content = tui.Column(0, contentChildren...)
+	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	parts = append(parts, part0)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -527,6 +702,6 @@ func TestPresence(t *testing.T) {
 }
 
 
-func newTestComponent() Model { m := New(); _ = m.View(); return m }
+func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:923a35d4fb29ff459fa986d9a49403b1
+pass sha256:de77230be49903715402679c400ebd0e

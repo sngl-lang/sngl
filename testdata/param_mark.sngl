@@ -1,9 +1,10 @@
-// A mark annotates a declaration, and a function or lambda parameter is not
-// one, so every mark there is refused — whether or not the name it gives
-// resolves to a macro.
+// A mark annotates a declaration, and a lambda parameter is not one, so every
+// mark there is refused — whether or not the name it gives resolves to a
+// macro.
 //
-// A component prop is the exception: #[macro.wildcard] says something about
-// one. So a mark written there is resolved first, and a name that names no
+// A component prop and a declared function's parameter are the exceptions:
+// #[macro.wildcard] says something about the one, #[macro.moves] about the
+// other. So a mark written there is resolved first, and a name that names no
 // macro is reported as the unknown macro it is rather than as an illegal
 // position.
 
@@ -11,9 +12,9 @@ import . "sngl:ui"
 import "sngl:ui/draw"
 import "sngl:macro"
 
-func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
+func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(check) "unknown macro package \"nosuch\""
 
-func unknownName(#[draw.nosuch] a string) => a // ERROR(check) "#[draw.nosuch] cannot mark a parameter"
+func unknownName(#[draw.nosuch] a string) => a // ERROR(check) "unknown macro \"nosuch\""
 
 func realMacro(#[macro.wildcard(".*")] a string) => a // ERROR(check) "#[macro.wildcard] cannot mark a parameter"
 

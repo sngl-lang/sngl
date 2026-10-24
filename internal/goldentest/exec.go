@@ -2,8 +2,10 @@ package goldentest
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"maps"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,25 +21,33 @@ import (
 //	exec out/go/gtk4 --window x -- shown.txt
 //	exec out/go/fyne <clicks.txt -- want.txt
 //	exec out/go/gtk4 toplevels[Load]=2
+//	exec out/go/fyne --twice exit=2 2>refused.txt -- before.txt
 //
 // The words after the target are the program's arguments, except `<file`,
 // which is its standard input, and `toplevels=N` or `toplevels[title]=N`, how
 // many times gtk4 titles a toplevel, any or the one named -- the Wayland
 // protocol log is how a run tells a window reached the screen. `-- file` is
-// what the program must print. A file named is one of the archive's own, and a
-// run must exit zero whatever else it asserts.
+// what the program must print, and `2>file` text its standard error must hold,
+// among whatever the toolkit logs there. A file named is one of the archive's
+// own. A run must exit zero whatever else it asserts, or with the status
+// `exit=N` names.
 type execution struct {
 	line           int
 	text           string
 	lang, platform string
 	run            toolchain.Run
 	stdout         string
+	stderr         string
+	exit           int
 	toplevels      map[string]int
 }
 
 func (e execution) target() string { return e.lang + "/" + e.platform }
 
-var toplevelsWord = regexp.MustCompile(`^toplevels(?:\[([^\]]+)\])?=([0-9]+)$`)
+var (
+	toplevelsWord = regexp.MustCompile(`^toplevels(?:\[([^\]]+)\])?=([0-9]+)$`)
+	exitWord      = regexp.MustCompile(`^exit=([1-9][0-9]*)$`)
+)
 
 // parseExecs reads the `exec` directives out of the archive comment, by
 // target.
@@ -60,7 +70,7 @@ func parseExecs(comment string, src map[string][]byte) (map[string][]execution, 
 }
 
 func parseExec(rest string, src map[string][]byte) (execution, error) {
-	const form = "want: exec out/<lang>/<platform> [args] [<stdin] [toplevels[title]=N] [-- stdout]"
+	const form = "want: exec out/<lang>/<platform> [args] [<stdin] [toplevels[title]=N] [exit=N] [2>stderr] [-- stdout]"
 
 	words := strings.Fields(rest)
 	if len(words) == 0 {
@@ -98,6 +108,13 @@ func parseExec(rest string, src map[string][]byte) (execution, error) {
 				return execution{}, err
 			}
 			e.run.Stdin = data
+		case strings.HasPrefix(w, "2>"):
+			if _, err := file(w[2:]); err != nil {
+				return execution{}, err
+			}
+			e.stderr = w[2:]
+		case exitWord.MatchString(w):
+			e.exit, _ = strconv.Atoi(exitWord.FindStringSubmatch(w)[1])
 		case toplevelsWord.MatchString(w):
 			if platform != "gtk4" {
 				return execution{}, fmt.Errorf("exec counts toplevels on %s; only gtk4 speaks Wayland to the compositor", platform)
@@ -134,6 +151,9 @@ func withExecs(files map[string][]byte, execs []execution, src map[string][]byte
 		if e.stdout != "" {
 			out[key+"/stdout"] = src[e.stdout]
 		}
+		if e.stderr != "" {
+			out[key+"/stderr"] = src[e.stderr]
+		}
 	}
 	out["\x00exec/modules"] = h.Sum(nil)
 	return out, nil
@@ -141,8 +161,16 @@ func withExecs(files map[string][]byte, execs []execution, src map[string][]byte
 
 // checkRan holds one execution to what it printed.
 func checkRan(e execution, ran toolchain.Ran, src map[string][]byte) error {
-	if ran.Err != nil {
+	var exited *exec.ExitError
+	switch {
+	case e.exit != 0 && errors.As(ran.Err, &exited) && exited.ExitCode() == e.exit:
+	case e.exit != 0:
+		return fmt.Errorf("line %d: want exit status %d, got %v\n--- stdout ---\n%s--- stderr ---\n%s", e.line, e.exit, ran.Err, ran.Stdout, tail(ran.Stderr))
+	case ran.Err != nil:
 		return fmt.Errorf("line %d: %v\n--- stdout ---\n%s--- stderr ---\n%s", e.line, ran.Err, ran.Stdout, tail(ran.Stderr))
+	}
+	if e.stderr != "" && !strings.Contains(ran.Stderr, string(src[e.stderr])) {
+		return fmt.Errorf("line %d: standard error holds no\n%s\n--- stderr ---\n%s", e.line, src[e.stderr], tail(ran.Stderr))
 	}
 	if e.stdout != "" && ran.Stdout != string(src[e.stdout]) {
 		return fmt.Errorf("line %d: printed\n%s\nwant %s:\n%s", e.line, ran.Stdout, e.stdout, src[e.stdout])
