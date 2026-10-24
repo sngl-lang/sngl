@@ -1349,7 +1349,6 @@ type ErrorEvent struct {
 
 var (
 	__cstr0 = C.CString("see [logo]")
-	__cstr1 = C.CString("Images")
 )
 
 type Measurement struct {
@@ -1669,6 +1668,7 @@ func (m *Model) __n1_closed_handler() {
 
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
 }
 
 func (m *Model) __n9_click_handler() {
@@ -2071,7 +2071,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
+	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "Images")
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_closed_handler)
+	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_visible_handler)
 	m.__n8 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n8)), 1)
 	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n8)), 6)
@@ -2123,7 +2127,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "grow")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "clicked", m.__n17_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n17)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n8)))
 	m.__n18 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n18)), 16, 16, func(cr unsafe.Pointer) {
 		m._canvasDraw2((*C.cairo_t)(unsafe.Pointer(cr)))
@@ -2138,7 +2142,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr1)
+	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	gtk4rt.WindowSetIcon(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n18)))
 	return win
@@ -3032,7 +3036,7 @@ pass sha256:6ffa0cb95d1f1c536b3b7bc9791666b9
 -- run/go/fyne --
 pass sha256:10d808cf393bc58b95342b4fd4f899b8
 -- run/go/gtk4 --
-pass sha256:280b5ad2aa7085745c9ee77abfab6e38
+pass sha256:12d39da3cd889f9eecb94c352d425ce1
 -- run/kotlin/android --
 pass sha256:f095afdc067dbeeba41f1c86078dc049
 -- run/none/html --

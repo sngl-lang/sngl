@@ -55,11 +55,8 @@ type emitShared struct {
 	markup *markupTrees
 
 	// toplevels are every Toplevel id the file creates, since a handler or an
-	// updater setting one's `visible` is a scope that did not create it; and
-	// toplevelTitles the title each is built with, which the inline-cgo
-	// scaffold writes on the window BuildUI makes.
-	toplevels      map[string]bool
-	toplevelTitles map[string]ir.Expr
+	// updater setting one's `visible` is a scope that did not create it.
+	toplevels map[string]bool
 	// images are every image primitive id the file creates, by tag.
 	images map[string]string
 	// scrolls are every Scroll primitive id the file creates.
@@ -690,7 +687,7 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 	// emitFlowMarkup.
 	switch tag {
 	case toplevelTag:
-		return t.emitToplevelCreate(id)
+		return t.emitToplevelCreate(id, made)
 	case imageTag, imageURLTag, imageDrawingTag:
 		return t.emitImageCreate(id, tag, made)
 	case scrollTag:
@@ -1259,8 +1256,8 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if id, ok := codegen.InstanceRootID(prop); ok {
 		return t.listRoot(id, node, value)
 	}
-	if t.isToplevel(bare) {
-		return t.toplevelPropAssign(node, prop, value)
+	if t.isToplevel(bare) && t.untitled(prop, value) {
+		return nil
 	}
 	if setterOf(node, prop) != nil {
 		return t.setThrough(value)
@@ -1459,7 +1456,8 @@ func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call
 	}
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
-		return t.toplevelAttachHandler(node, event, handler)
+		t.refuseCgoClosed(event, handler)
+		return t.connectThrough(bare, event, handler, call)
 	}
 	if t.imageTagOf(bare) != "" {
 		return t.connectThrough(bare, event, handler, call)

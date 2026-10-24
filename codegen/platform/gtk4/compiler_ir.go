@@ -298,7 +298,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)
@@ -431,12 +431,11 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	// The inline-cgo scaffold has no runtime to attach a window to, so it puts
 	// the first one's box in the window BuildUI makes, as it did the one
 	// window it could build before a window was a node.
-	var cgoTitle ir.Expr
-	cgoIcon := ""
+	cgoWindow, cgoIcon := "", ""
 	if appRoot && !c.wrapped {
 		topLevelRefs = append(slices.Clip(topLevelRefs), appChildren...)
 		if len(appChildren) > 0 {
-			cgoTitle = c.shared.toplevelTitles[appChildren[0]]
+			cgoWindow = appChildren[0]
 			cgoIcon = c.shared.toplevelIcons[appChildren[0]]
 		}
 	}
@@ -471,7 +470,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 		}
 		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
 	} else {
-		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, c.shared, cgoTitle, cgoIcon, widgetFieldNames(widgetFields))
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoWindow, cgoIcon, widgetFieldNames(widgetFields))
 	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
@@ -835,6 +834,9 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 	// the Model's field.
 	spell := func(cType string, ref ir.Expr) ir.Expr {
 		if id, ok := ref.(*ir.Ident); ok {
+			if isSlotParent(id) {
+				return id
+			}
 			if isNodeRef(id) {
 				return qualify(strings.TrimPrefix(id.Name, "m."))
 			}
@@ -1295,7 +1297,7 @@ func isWindowClass(cType string) bool {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, shared *emitShared, title ir.Expr, icon string, fields map[string]bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, window, icon string, fields map[string]bool) {
 	if wrapped {
 		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, "", fields)
 		return
@@ -1367,14 +1369,14 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setSizeCall}) {
 		fmt.Fprintf(b, "\t%s\n", line)
 	}
-	// Not through gtk4rt: the cgo scaffold does not require that module, so
-	// importing it does not build.
-	if title != nil {
-		setTitle := &ir.CallStmt{Call: nativeCall("gtk_window_set_title", ir.TypVoid, cgoCast("GtkWindow", winRef), cString(title))}
-		for _, st := range shared.ownCStrings([]ir.Stmt{setTitle}) {
-			for _, line := range gc.EvalStmt(st) {
-				fmt.Fprintf(b, "\t%s\n", line)
-			}
+	// The title the window's declared set handed gtk4rt, which copies it into
+	// C itself.
+	if window != "" {
+		setTitle := rtCall("ToplevelTitleWindow", ir.TypVoid,
+			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", winRef)},
+			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", buildRef(window, fields))})
+		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setTitle}) {
+			fmt.Fprintf(b, "\t%s\n", line)
 		}
 	}
 	setChildCall := &ir.Call{

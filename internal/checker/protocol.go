@@ -117,11 +117,14 @@ func (c *checker) bindSet(pm protocolMark, comp *ir.Component) {
 }
 
 // bindOn gives a #[gen.protocol(on)] function to the event of comp its handler
-// parameter is named as.
+// parameter is named as, or to a two-way prop's report, which reaches the
+// node as an event of the prop's name.
 func (c *checker) bindOn(pm protocolMark, comp *ir.Component) {
 	event := pm.fn.Params[1].Name
-	if !slices.ContainsFunc(comp.Events, func(e *ir.EventDecl) bool { return e.Name == event }) {
-		c.error(pm.pos, "#[gen.protocol(on)] connects the event its handler parameter is named as, and %s has no event @%s", comp.Name, event)
+	isEvent := slices.ContainsFunc(comp.Events, func(e *ir.EventDecl) bool { return e.Name == event })
+	isReport := slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Name == event && p.Bidirectional })
+	if !isEvent && !isReport {
+		c.error(pm.pos, "#[gen.protocol(on)] connects the event its handler parameter is named as, and %s has no event @%s nor two-way prop :%s", comp.Name, event, event)
 		return
 	}
 	if prev := comp.Protocol.Handler(event); prev != nil {

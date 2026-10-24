@@ -19,7 +19,7 @@ import (
 func TestGenProtocolPlacement(t *testing.T) {
 	const otherSrc = "import sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\n\n#[marks.intrinsic(\"other:Other\")]\ncomponent Other(@tap) sngl.node\n"
 	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport other \"sngl:x/protocolother\"\n\n" +
-		"#[marks.intrinsic(\"extstub:Thing\")]\ncomponent Thing(x int, @tap) sngl.node\n\n" +
+		"#[marks.intrinsic(\"extstub:Thing\")]\ncomponent Thing(x int, :shown bool, @tap) sngl.node\n\n" +
 		"component Plain() sngl.node {}\n\n" +
 		"#[macro.cnative(\"thing_new\")]\nfunc thingNew() Thing\n\n" +
 		"#[macro.cnative(\"plain_new\")]\nfunc plainNew() Plain\n\n" +
@@ -44,7 +44,8 @@ func TestGenProtocolPlacement(t *testing.T) {
 		{"a set twice", "#[gen.protocol(set)]\nfunc _a(w Thing, x int) {}\n\n#[gen.protocol(set)]\nfunc _b(w Thing, x int) {}\n", "#[gen.protocol(set)]: Thing already sets x with _a"},
 		{"a set of another package's", "#[gen.protocol(set)]\nfunc _set_x(w other.Other, x int) {}\n", "#[gen.protocol(set)]: Other is declared by"},
 		{"an on of an event", "#[gen.protocol(on)]\nfunc _on_tap(w Thing, tap func()) {}\n", ""},
-		{"an on of no event", "#[gen.protocol(on)]\nfunc _on_hold(w Thing, hold func()) {}\n", "#[gen.protocol(on)] connects the event its handler parameter is named as, and Thing has no event @hold"},
+		{"an on of a two-way prop's report", "#[gen.protocol(on)]\nfunc _on_shown(w Thing, shown func(v bool)) {}\n", ""},
+		{"an on of no event", "#[gen.protocol(on)]\nfunc _on_hold(w Thing, hold func()) {}\n", "#[gen.protocol(on)] connects the event its handler parameter is named as, and Thing has no event @hold nor two-way prop :hold"},
 		{"an on twice", "#[gen.protocol(on)]\nfunc _a(w Thing, tap func()) {}\n\n#[gen.protocol(on)]\nfunc _b(w Thing, tap func()) {}\n", "#[gen.protocol(on)]: Thing already connects @tap with _a"},
 		{"an on of another package's", "#[gen.protocol(on)]\nfunc _on_tap(w other.Other, tap func()) {}\n", "#[gen.protocol(on)]: Other is declared by"},
 		{"connects on an event", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"button-press\")]\n    @pressed,\n) sngl.node\n", ""},

@@ -161,9 +161,10 @@ enum Protocol {
     set
     // Connects a handler to one event of the widget, in place of the
     // platform's `connect`: a function of the widget, typed as the component,
-    // and the handler, whose parameter is named as the event it connects,
-    // declared in the component's package, at most one per event. For an
-    // event the host raises through no call `connect` makes.
+    // and the handler, whose parameter is named as the event it connects or
+    // as a two-way prop whose report it connects, declared in the
+    // component's package, at most one per event. For an event the host
+    // raises through no call `connect` makes.
     on
 }
 

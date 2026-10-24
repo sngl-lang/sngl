@@ -98,8 +98,8 @@ on 2026-10-23; seven is the count on this branch): the constructor
 (`compiler_ir.go`), and a flow's markup (`markup.go`). The parts take them in
 that order, after the child adder, which makes no string but is the protocol
 all the same. Parts 1, 3 and 4 retired the constructor, `sngl_connect`, the
-setter, `g_object_set_property` and the entry-text write; the window title
-and a flow's markup are left, for Part 5.
+setter, `g_object_set_property` and the entry-text write, and Part 5's
+toplevel the window title; a flow's markup is left.
 
 **Wrapped mode is kept by what a declared op calls.** Part 3 found that a
 string marshaled in IR leaves a `C.` that sends the program down the cgo
@@ -280,8 +280,12 @@ commit each.
   create was already declgen's; `offerChoices` is `gtk4rt.DropDownOffer` as
   a `#[go.native]`, which copies its strings, and `dropdown.go` and the
   `snglDropDownOffer` helper, whose cgo copy made two C strings, went.
-- [ ] Toplevel (`toplevel.go`): the window's create, its title -- the
-  `compiler_ir.go` call site -- its icon and `visible`.
+- [X] Toplevel (`toplevel.go`): the window's create, its title -- the
+  `compiler_ir.go` call site -- its icon and `visible`. gtk4rt's toplevel in
+  both modes; the cgo scaffold's window takes the title through
+  `gtk4rt.ToplevelTitleWindow`. `on` binds a two-way prop's report too
+  (`:visible`). The icon stays the translator's (`windowIcon`): appending a
+  source to a window is where it lives, not a call to make.
 - [ ] Flow and span markup (`markup.go`): the label's create and its
   `gtk_label_set_markup`, the last `ownCStrings` site; a span stays a node
   with no widget, read off the tree.

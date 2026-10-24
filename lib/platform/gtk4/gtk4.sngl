@@ -81,6 +81,67 @@ component Toplevel(
     content  ...component ui.node,
 ) root
 
+// A window is gtk4rt's toplevel in either mode: the box its content is
+// appended to, which keeps the title, visibility and handlers until the
+// window is made around it. gtk4rt copies the title into C itself.
+#[go.native(_rtPkg, "gtk4rt.ToplevelNew")]
+func _rtToplevelNew() Toplevel
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelSetTitle")]
+func _rtToplevelSetTitle(w Toplevel, title string)
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelSetVisible")]
+func _rtToplevelSetVisible(w Toplevel, visible bool)
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelOnClosed")]
+func _rtToplevelOnClosed(w Toplevel, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelOnVisible")]
+func _rtToplevelOnVisible(w Toplevel, fn func(visible bool))
+
+#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
+func _rtToplevelAppend(box Toplevel, child ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
+func _rtToplevelRemove(box Toplevel, child ui.node)
+
+#[gen.protocol(create)]
+func _create_Toplevel() Toplevel {
+    return _rtToplevelNew()
+}
+
+#[gen.protocol(append)]
+func _append_Toplevel(parent Toplevel, child ui.node) {
+    _rtToplevelAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Toplevel(parent Toplevel, child ui.node) {
+    _rtToplevelRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Toplevel_title(w Toplevel, title string) {
+    _rtToplevelSetTitle(w, title)
+}
+
+#[gen.protocol(set)]
+func _set_Toplevel_visible(w Toplevel, visible bool) {
+    _rtToplevelSetVisible(w, visible)
+}
+
+// The window manager's close and the host's own change of `visible` are
+// gtk4rt's to report: the window raises close-request, which it answers.
+#[gen.protocol(on)]
+func _on_Toplevel_closed(w Toplevel, closed func()) {
+    _rtToplevelOnClosed(w, closed)
+}
+
+#[gen.protocol(on)]
+func _on_Toplevel_visible(w Toplevel, visible func(visible bool)) {
+    _rtToplevelOnVisible(w, visible)
+}
+
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
 const component ui.window[platform](title, visible, @error, @closed, content, favicon) {

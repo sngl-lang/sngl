@@ -66,7 +66,8 @@ platform puts the walked handler there, shaped as its trampoline calls it
 
 `on` is a component's own connect for one event the host raises through no
 call `connect` makes: a function of the widget, typed as the component, and
-the handler, whose parameter is named as the event (`bindOn`,
+the handler, whose parameter is named as the event -- or as a two-way
+prop, whose report reaches the node as an event of its name (`bindOn`,
 `testdata/error_gen_protocol_on.sngl`, `TestGenProtocolPlacement`), at most
 one per event. `passDeclarative` splices it in place of the platform's
 connect, with the node bound and the handler left for the platform as

@@ -445,9 +445,8 @@ declares: gtk4's preamble includes it, and fyne's and bubbletea's
 those targets make is freed.
 
 **A call the gtk4 translator builds releases its own strings.** The
-inline-cgo translator writes `C.CString` into a flow's markup and the window
-title after lowering, so no pass
-sees the allocation. `emitShared.ownCStrings` (`intrinsic_translator.go`) is
+inline-cgo translator writes `C.CString` into a flow's markup after
+lowering, so no pass sees the allocation. `emitShared.ownCStrings` (`intrinsic_translator.go`) is
 run over the statements each of those sites returns and writes the release
 `ReleaseTemps` would have: a literal's copy becomes a package-level `var`
 (`__cstrN`, one per distinct text, `scaffoldData.CStrings`) kept for the
@@ -473,7 +472,11 @@ setters, `g_object_set_property` and the entry's quiet write were the third:
 a prop write is its declared set's call, so a string it hands C is a temp
 `ReleaseTemps` frees after the write or, for a literal, an
 application-lifetime value freed at teardown, where the translator's `__cstr` was never freed, and a setter gtk4rt wraps, the entry's among them,
-copies the string itself.
+copies the string itself. The window title was the fourth: a window is
+gtk4rt's toplevel in both modes, its title written by a declared set that
+hands gtk4rt a Go string, and the inline-cgo scaffold's window takes it from
+gtk4rt (`gtk4rt.ToplevelTitleWindow`), which copies it into C and frees it,
+where the translator's `__cstr` was kept for the application.
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective
