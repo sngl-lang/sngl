@@ -876,7 +876,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(6))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
@@ -1153,6 +1153,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:48915c331d1c7998482800fbee8f80ee
 -- run/go/gtk4 --
-pass sha256:57afa39a6f5e21b4a80c0d8c6156c6d6
+pass sha256:357e97ba3a7ee16e3630e8b7388ee667
 -- run/none/html --
 pass sha256:a39c641cb11a4782be3281b478ca4e8b

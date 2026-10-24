@@ -41,7 +41,7 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	// attached to it (ir.AppParent), and what that means is the platform's.
 	st.hosted = nil
 	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, appRef())
-	return nil
+	return st.err
 }
 
 type declarativeState struct {
@@ -67,6 +67,8 @@ type declarativeState struct {
 	// returning a widget, and asking that widget for a root reads a field it
 	// has not got.
 	instanceRecords bool
+	// err is the first protocol function that could not be spliced.
+	err error
 	// nestedInstance, set while a render slot's body is lowered, builds an
 	// instance written under a node of that body: the slot keeps it in a
 	// registry, as it keeps one written at the body's top, so the next render
@@ -305,17 +307,21 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	// so a widget-emitting platform can still build a raster-backed canvas.
 	// Its shapes are a family of their own and were never flattened; without
 	// the back-pointer the flattening is where the drawing is lost.
+	create := &ir.Call{
+		Type: varType,
+		Func: st.intrinsics["CreateNode"],
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: ir.TypString, Value: n.Name}},
+		},
+	}
+	if made := st.made(n); made != nil {
+		create.Args = append(create.Args, ir.CallArg{Value: made})
+	}
 	lv := &ir.LocalVar{
 		Name:    id,
 		Type:    varType,
 		NodeAST: n.AST,
-		Init: &ir.Call{
-			Type: varType,
-			Func: st.intrinsics["CreateNode"],
-			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Value: n.Name}},
-			},
-		},
+		Init:    create,
 	}
 	if ir.IsShapeContainer(n) {
 		lv.CanvasNode = n
@@ -407,6 +413,38 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	}
 
 	return stmts
+}
+
+// made is what n's #[gen.protocol(create)] function returns, spliced as the
+// createNode op's second operand, or nil for a node whose platform makes it
+// itself. Marshaled here: passCMarshal ran before this op existed.
+func (st *declarativeState) made(n *ir.NodeInst) ir.Expr {
+	if n.Component == nil || n.Component.Protocol == nil || n.Component.Protocol.Create == nil {
+		return nil
+	}
+	create := n.Component.Protocol.Create
+	body := exprBody(create)
+	if body == nil {
+		if st.err == nil {
+			st.err = fmt.Errorf("%s: #[gen.protocol(create)] %s returns one expression, which is what is spliced where the widget is made", n.Name, create.Name)
+		}
+		return nil
+	}
+	made := ir.CloneExprSharingDecls(body)
+	// The optimizer folds a program's `null` and never saw this body: a
+	// library function nothing calls is not one of the program's.
+	_ = ir.Rewrite(made, func(n ir.Node) (ir.Node, error) {
+		if id, ok := n.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && v.Builtin == ir.BuiltinNull {
+				return &ir.Literal{Type: ir.TypNull}, nil
+			}
+		}
+		return n, nil
+	})
+	if err := marshalSpliced(made); err != nil && st.err == nil {
+		st.err = err
+	}
+	return made
 }
 
 // hasRealComponentBody reports whether comp carries SNGL-defined behavior

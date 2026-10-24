@@ -257,9 +257,12 @@ func gtkPost(fn func()) {
 	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
 }
 
+var snglModel *Model
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
+	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -273,6 +276,9 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
+	if snglModel != nil {
+		snglModel.__snglTeardown()
+	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -385,16 +391,16 @@ func boolToInt(b bool) int {
 }
 
 var (
-	__cstr0 = C.CString("")
-	__cstr1 = C.CString("https://example.com")
-	__cstr2 = C.CString("Example")
-	__cstr3 = C.CString("clicked")
-	__cstr4 = C.CString("New tab")
+	__cstr0 = C.CString("https://example.com")
+	__cstr1 = C.CString("Example")
+	__cstr2 = C.CString("clicked")
+	__cstr3 = C.CString("New tab")
 )
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
+	__rel0         *C.char
 	__n0           *C.GtkBox
 	__n1           *C.GtkBox
 	__n2           *C.GtkLinkButton
@@ -407,6 +413,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.visible__inst0 = true
+	m.__rel0 = C.CString("")
 	return m
 }
 
@@ -423,6 +430,14 @@ func (m *Model) __n2_clicked_handler() {
 func (m *Model) __n3_clicked_handler() {
 }
 
+func (m *Model) __snglTeardown() {
+	Free(m.__rel0)
+}
+
+func Free(s *C.char) {
+	C.free(unsafe.Pointer(s))
+}
+
 func (m *Model) Visible__inst0() bool {
 	return m.visible__inst0
 }
@@ -437,22 +452,22 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_HORIZONTAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
-	m.__n2 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(__cstr0)))
-	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n2)), __cstr1)
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __cstr2)
+	m.__n2 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(m.__rel0)))
+	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n2)), __cstr0)
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __cstr1)
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n2), __cstr3, C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.__n2), __cstr2, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(__cstr0)))
-	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n3)), __cstr1)
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr4)
+	m.__n3 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(m.__rel0)))
+	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n3)), __cstr0)
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr3)
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n3), __cstr3, C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(m.__n3), __cstr2, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -546,7 +561,7 @@ pass sha256:1d722b64110a108e0a10edd9506f043f
 -- run/go/fyne --
 pass sha256:308f4d8734be5df67713371a8178a229
 -- run/go/gtk4 --
-pass sha256:47c45f4f4b9832ea02b662bd2287a04f
+pass sha256:1057a5decdc3c9c22603e3d05349cec8
 -- run/kotlin/android --
 pass sha256:eb54884d6cf002e280e9e07a8e7a93de
 -- run/none/html --

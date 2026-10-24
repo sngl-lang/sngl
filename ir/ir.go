@@ -756,6 +756,25 @@ type Func struct {
 	// Package.ReleaseFor synthesized for a type owned by what it holds; a
 	// declared release is named by its struct instead (StructDef.Release).
 	Releases *Type `json:"-"`
+	// Protocol is the operation a #[gen.protocol] mark names, ProtocolNone
+	// otherwise. The component it serves holds it (Component.Protocol).
+	Protocol ProtocolOp `json:",omitempty"`
+}
+
+// ProtocolOp is one operation of the protocol a platform builds an
+// #[intrinsic] component's widget with (sngl:x/gen's Protocol).
+type ProtocolOp string
+
+const (
+	ProtocolNone   ProtocolOp = ""
+	ProtocolCreate ProtocolOp = "create"
+)
+
+// NodeProtocol is the functions a platform declares to build an #[intrinsic]
+// component's widget with, which lowering splices into the node operations
+// it makes so that every call to the host is IR a pass can see.
+type NodeProtocol struct {
+	Create *Func
 }
 
 // FuncLowering is what the lowering passes record on a function for codegen
@@ -1098,6 +1117,10 @@ type Component struct {
 	// a component nobody overrides.
 	PlatformOverrides map[string]Override `json:"-"`
 	LanguageOverrides map[string]Override `json:"-"`
+	// Protocol is what the #[gen.protocol] functions declared beside this
+	// #[intrinsic] component build its widget with; nil for one whose
+	// platform's generator answers every operation itself.
+	Protocol *NodeProtocol `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this component's Body that do NOT escape to any other

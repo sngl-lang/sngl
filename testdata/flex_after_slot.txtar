@@ -461,7 +461,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
 	gtk4rt.Flex(gtk4rt.Handle(unsafe.Pointer(m.__n2)))
@@ -493,4 +493,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 -- run/go/fyne --
 pass sha256:ee48b981604b2b663f9abdc65535ef44
 -- run/go/gtk4 --
-pass sha256:141350876a2d3385401a61705251b6f7
+pass sha256:067e173c7c2ed7fc943299d158fa0d12

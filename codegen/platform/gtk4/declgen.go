@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"unicode"
@@ -39,6 +40,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	var b strings.Builder
 	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport c \"sngl:x/c\"\n")
 	declared := map[string]bool{}
+	casts := map[string]string{}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
@@ -116,6 +118,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// from, so a body would be emitted by nobody. The checker refuses one on
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
+		writeCreate(&b, reg, info, casts)
 		// Each action is a method reached through a `#id` on the widget,
 		// declared as the C identifier it is: `bar.pulse()` is
 		// gtk_progress_bar_pulse(bar). One whose name a prop, an event or the
@@ -130,7 +133,148 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			}
 		}
 	}
+	castTypes := make([]string, 0, len(casts))
+	for cType := range casts {
+		castTypes = append(castTypes, cType)
+	}
+	slices.Sort(castTypes)
+	for _, cType := range castTypes {
+		fmt.Fprintf(&b, "\n#[macro.cnative(\"C.%s\")]\nstruct %s {}\n", cType, castType(cType))
+		fmt.Fprintf(&b, "\n#[macro.cnative(\"C.%s\")]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
+	}
 	return []byte(b.String())
+}
+
+// writeCreate declares how a class is made: its primary constructor as a
+// native, and the #[gen.protocol(create)] function lowering splices where the
+// program renders the class, calling it with a zero per parameter -- the
+// props are written once it returns. A class whose constructor has a
+// parameter no zero can be spelled for gets neither (unconstructible says
+// why). casts collects the C types a zero crosses through a cast to, with
+// the SNGL type the cast takes.
+func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, casts map[string]string) {
+	if len(info.Constructors) == 0 {
+		return
+	}
+	ctor := pickPrimaryConstructorInfo(info)
+	params := make([]string, len(ctor.Params))
+	zeros := make([]string, len(ctor.Params))
+	used := map[string]string{}
+	for i, p := range ctor.Params {
+		spelled, err := ctorParam(reg, p)
+		if err != nil {
+			return
+		}
+		name, ok := snglName(p.Name)
+		if !ok {
+			return
+		}
+		params[i] = name + " " + spelled.typ
+		zeros[i] = spelled.zero
+		if spelled.cast != "" {
+			used[spelled.cast] = spelled.castFrom
+		}
+	}
+	maps.Copy(casts, used)
+	native := "_" + ctor.Name
+	fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(%s) %s\n", ctor.Name, native, strings.Join(params, ", "), info.CType)
+	fmt.Fprintf(b, "\n#[gen.protocol(create)]\nfunc _create_%s() %s {\n    return %s(%s)\n}\n", info.CType, info.CType, native, strings.Join(zeros, ", "))
+}
+
+// spelledParam is one constructor parameter as declgen writes it: the SNGL
+// type of the native's parameter, the zero the create hands it, and the C
+// type it crosses through a cast to, with the SNGL type the cast takes, where
+// CMarshal's own conversion would hand C the wrong type.
+type spelledParam struct {
+	typ, zero      string
+	cast, castFrom string
+}
+
+// ctorParam spells one constructor parameter. A string is the empty string
+// where GTK refuses NULL -- gtk_link_button_new returns no widget at all for
+// one -- and null where it takes one; any other pointer is null, which only
+// the parameter's c:type identifies, since a GIR name alone does not say
+// whether GApplicationFlags is an integer or GFile is a pointer. A number
+// crosses as cgo's `int` or `double` where its C type is that, and through a
+// cast to its own C type otherwise, as an enumeration always does: cgo
+// converts no named C numeric type to another on its own.
+//
+// It errs for a parameter whose zero cannot be spelled: a varargs or array
+// form with no c:type at all, and a named type from a namespace other than
+// Gtk, which the platform does not parse and so cannot tell a foreign enum
+// from a foreign callback.
+func ctorParam(reg *gir.TypeRegistry, p gir.ConstructorParam) (spelledParam, error) {
+	switch p.GIRType {
+	case "utf8", "filename", "gchararray":
+		if p.Nullable {
+			return spelledParam{typ: "option[string]", zero: "null"}, nil
+		}
+		return spelledParam{typ: "string", zero: `""`}, nil
+	case "gboolean", "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
+		return numberParam(ctorScalarCast(p), "int", "int", "0"), nil
+	case "gdouble", "gfloat":
+		return numberParam(ctorScalarCast(p), "double", "float", "0.0"), nil
+	}
+	if reg != nil {
+		if e := reg.Enums[p.GIRType]; e != nil {
+			return spelledParam{typ: castType(e.CType), zero: castFunc(e.CType) + "(0)", cast: e.CType, castFrom: "int"}, nil
+		}
+	}
+	// gpointer is void*, which cgo renders as unsafe.Pointer, even though the
+	// c:type carries no star.
+	if strings.HasSuffix(p.CType, "*") || p.CType == "gpointer" {
+		return spelledParam{typ: "option[c.pointer]", zero: "null"}, nil
+	}
+	if p.CType == "" {
+		return spelledParam{}, fmt.Errorf("which GIR describes with no C type of its own")
+	}
+	return spelledParam{}, fmt.Errorf("whose C type %s is from a namespace this platform does not parse, so its zero value cannot be spelled", p.CType)
+}
+
+// numberParam is a number crossing as cType: plain where CMarshal's own
+// conversion already makes that type, cgo's `int` from an int and `double`
+// from a float.
+func numberParam(cType, marshaled, snglType, zero string) spelledParam {
+	if cType == marshaled {
+		return spelledParam{typ: snglType, zero: zero}
+	}
+	return spelledParam{typ: castType(cType), zero: castFunc(cType) + "(" + zero + ")", cast: cType, castFrom: snglType}
+}
+
+// castType names the struct a C type crosses as, and castFunc the cast to it.
+// Prefixed, since a C type may spell a SNGL one: GTK's `float`.
+func castType(cType string) string { return "_c_" + cType }
+func castFunc(cType string) string { return "_to_" + cType }
+
+// ctorScalarCast is the C type a numeric zero takes to satisfy one
+// constructor parameter. It is the parameter's own c:type, not the GIR type's
+// canonical cgo spelling -- GTK constructors take guint and float parameters
+// of gint- and gdouble-named GIR types. A c:type that is not a plain cgo
+// identifier ("unsigned int") falls back to the glib typedef, which cgo does
+// accept. Mirrors girScalarCast, which does the same for a property's setter.
+func ctorScalarCast(p gir.ConstructorParam) string {
+	if c := p.CType; c != "" && !strings.ContainsAny(c, "* ") {
+		return c
+	}
+	return p.GIRType
+}
+
+// unconstructible is the build error for a GIR class rendered with no create
+// declared for it, saying which of writeCreate's reasons kept it.
+func unconstructible(reg *gir.TypeRegistry, cType string, info *gir.ClassInfo) error {
+	if len(info.Constructors) == 0 {
+		return fmt.Errorf("gtk4: %s cannot be constructed: GTK declares no constructor for it", cType)
+	}
+	ctor := pickPrimaryConstructorInfo(info)
+	for _, p := range ctor.Params {
+		if _, err := ctorParam(reg, p); err != nil {
+			return fmt.Errorf("gtk4: %s cannot be constructed: %s takes %s %s, %w", cType, ctor.Name, p.GIRType, p.Name, err)
+		}
+		if _, ok := snglName(p.Name); !ok {
+			return fmt.Errorf("gtk4: %s cannot be constructed: %s's parameter %q has no SNGL spelling", cType, ctor.Name, p.Name)
+		}
+	}
+	return fmt.Errorf("gtk4: %s cannot be constructed: the gir: package declares no create for it", cType)
 }
 
 // actionParams is the parameter list of an action's declaration, and false

@@ -20,6 +20,25 @@ component renders nothing, which is the one thing an intrinsic never does. The
 rule is at registration, so gtk4's GIR-synthesized declarations are held to it
 too.
 
+**How a platform builds the widget may be declared beside it.** A
+`#[gen.protocol(op)]` function (`sngl:x/gen`) is one operation of the
+protocol an `#[intrinsic]` component's widget is built with, written in SNGL
+so that every call to the host is one a pass sees. `create` is the first: a
+function of no parameters declaring the component as its return type, in the
+component's own package, at most one per component (`bindProtocols`,
+`testdata/error_gen_protocol_create.sngl`,
+`TestGenProtocolCreatePlacement`). The return type is declared rather than
+inferred because the mark runs before an `=>` body is checked. The checker
+hangs it on the component (`Component.Protocol`), and `passDeclarative`
+splices its one returned expression into the `createNode` op as a second
+operand, marshaling the splice itself (`marshalSpliced`): `CMarshal` ran
+before the op existed. The predeclared `null` in the splice is folded there
+too, since the optimizer never saw a library body nothing calls. A
+translator taking the operand implements `codegen.NodeMaker`; one that does
+not and is handed one panics, rather than dropping the call. gtk4's GIR
+classes are the first users (`design/architecture.md`), and the plan for the
+rest of gtk4's protocol is #293's.
+
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides

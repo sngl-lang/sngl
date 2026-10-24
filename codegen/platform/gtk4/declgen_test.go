@@ -586,3 +586,70 @@ func TestWidgetSource_DeclaresActions(t *testing.T) {
 		}
 	}
 }
+
+// TestWidgetSource_DeclaresConstructors pins how a widget is made: its primary
+// constructor as a native, and a #[gen.protocol(create)] function calling it
+// with the zero GTK accepts per parameter, which lowering splices where the
+// program renders the widget. A class whose constructor has a parameter no
+// zero can be spelled for gets neither, and the build says why where one is
+// rendered (TestUnconstructibleClass_FailsTheBuild).
+func TestWidgetSource_DeclaresConstructors(t *testing.T) {
+	reg, err := rulesGIR(t).gir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(widgetSource(reg))
+	for _, want := range []string{
+		"#[macro.cnative(\"gtk_button_new\")]\nfunc _gtk_button_new() GtkButton\n",
+		"#[gen.protocol(create)]\nfunc _create_GtkButton() GtkButton {\n    return _gtk_button_new()\n}\n",
+		// A string GTK accepts NULL for is an option, handed null.
+		"func _gtk_label_new(str option[string]) GtkLabel\n",
+		"    return _gtk_label_new(null)\n",
+		// One it refuses NULL for is handed the empty string.
+		"func _gtk_link_button_new(uri string) GtkLinkButton\n",
+		"    return _gtk_link_button_new(\"\")\n",
+		// An enumeration crosses as its own C type, through a cast; an int
+		// whose C type is cgo's own as an int.
+		"#[macro.cnative(\"C.GtkOrientation\")]\nstruct _c_GtkOrientation {}\n",
+		"#[macro.cnative(\"C.GtkOrientation\")]\nconst func _to_GtkOrientation(v int) _c_GtkOrientation\n",
+		"func _gtk_box_new(orientation _c_GtkOrientation, spacing int) GtkBox\n",
+		"    return _gtk_box_new(_to_GtkOrientation(0), 0)\n",
+		// Any other pointer is an opaque one, handed null.
+		"func _gtk_text_buffer_new(table option[c.pointer]) GtkTextBuffer\n",
+		"    return _gtk_text_buffer_new(null)\n",
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated source lacks\n%s", want)
+		}
+	}
+	for _, deny := range []string{
+		"_create_GtkWidget",     // GTK declares no constructor
+		"_create_GtkDropTarget", // a GType and a Gdk enumeration
+		"_create_GtkListStore",  // variadic
+	} {
+		if strings.Contains(src, deny) {
+			t.Errorf("generated source declares %s", deny)
+		}
+	}
+}
+
+// A C type may spell a SNGL scalar -- GTK 4's gtk_spin_button_new takes a
+// `float` -- and the struct a zero crosses as must not shadow it in the
+// generated package, where every `float` prop would then name the struct.
+func TestCtorParam_CastShadowsNoScalar(t *testing.T) {
+	for _, tc := range []struct {
+		p    gir.ConstructorParam
+		want string
+	}{
+		{gir.ConstructorParam{Name: "climb_rate", GIRType: "gdouble", CType: "float"}, "_c_float"},
+		{gir.ConstructorParam{Name: "n", GIRType: "gint", CType: "int"}, "int"},
+	} {
+		spelled, err := ctorParam(nil, tc.p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if spelled.typ != tc.want {
+			t.Errorf("a %s parameter crosses as %q; want %q", tc.p.CType, spelled.typ, tc.want)
+		}
+	}
+}

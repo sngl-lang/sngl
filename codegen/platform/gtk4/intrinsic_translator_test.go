@@ -41,6 +41,14 @@ func seedWidget(tr *gtk4Translator, tag, cType, constructor string) {
 	tr.registry.ByCType[cType] = cls
 }
 
+// makeWidget is the createNode of a seeded widget as lowering hands it over:
+// with the call its declared create makes spliced in.
+func makeWidget(tr *gtk4Translator, id, tag string) []ir.Stmt {
+	_, info := tr.widgetClass(tag)
+	made := nativeCall(info.Constructors[0].Name, ir.NativePointerOf("GtkWidget"))
+	return tr.OnMakeNode(context.Background(), id, tag, made)
+}
+
 func renderStmts(gc *golang.GoIRContext, stmts []ir.Stmt) string {
 	var lines []string
 	for _, s := range stmts {
@@ -56,7 +64,7 @@ func TestGtk4Translator_OnCreateNode_Text(t *testing.T) {
 		fields = append(fields, name+" "+cType)
 	})
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	stmts := tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
+	stmts := makeWidget(tr, "__n0", "GtkLabel")
 	got := renderStmts(gc, stmts)
 	if !strings.Contains(got, "C.gtk_label_new") {
 		t.Errorf("expected C.gtk_label_new; got: %s", got)
@@ -138,8 +146,8 @@ func TestGtk4Translator_OnAppendChild_Box(t *testing.T) {
 	tr := newGtk4Translator(gc, func(_, _ string) {})
 	seedWidget(tr, "GtkBox", "GtkBox", "gtk_box_new")
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
-	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkBox")
+	_ = makeWidget(tr, "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	child := &ir.Ident{Name: "__n1", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnAppendChild(context.Background(), parent, child))
@@ -153,8 +161,8 @@ func TestGtk4Translator_OnRemoveChild_Box(t *testing.T) {
 	tr := newGtk4Translator(gc, func(_, _ string) {})
 	seedWidget(tr, "GtkBox", "GtkBox", "gtk_box_new")
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkBox")
-	_ = tr.OnCreateNode(context.Background(), "__n1", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkBox")
+	_ = makeWidget(tr, "__n1", "GtkLabel")
 	parent := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	child := &ir.Ident{Name: "__n1", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnRemoveChild(context.Background(), parent, child))
@@ -167,7 +175,7 @@ func TestGtk4Translator_OnPropAssign_LabelText(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
 	seedWidget(tr, "GtkLabel", "GtkLabel", "gtk_label_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkLabel")
+	_ = makeWidget(tr, "__n0", "GtkLabel")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypString, Value: "hi"}
 	// gtk4.sngl maps stdlib `value` prop onto `label` for GtkLabel; the
@@ -185,7 +193,7 @@ func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
 	seedWidget(tr, "GtkButton", "GtkButton", "gtk_button_new")
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkButton")
+	_ = makeWidget(tr, "__n0", "GtkButton")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	handler := &ir.Ident{Name: "handleClick", Synthesized: true}
 	got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "click", handler))
@@ -258,7 +266,7 @@ func TestGtk4Translator_OnAttachHandler_RefusesWrongArity(t *testing.T) {
 		{Name: "changed", Params: 0, ReturnType: "none"},
 	}
 	shared := seedShared(tr)
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkEntry")
+	_ = makeWidget(tr, "__n0", "GtkEntry")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	handler := &ir.Ident{Name: "onPress", Synthesized: true}
 
@@ -294,7 +302,7 @@ func TestGtk4Translator_OnPropAssign_RefusesConstructOnly(t *testing.T) {
 		{Name: "use-header-bar", ConstructOnly: true, GIRType: "gint", IRType: &ir.Type{Kind: ir.TypeInt}},
 	}
 	shared := seedShared(tr)
-	_ = tr.OnCreateNode(context.Background(), "__n0", "GtkAssistant")
+	_ = makeWidget(tr, "__n0", "GtkAssistant")
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	val := &ir.Literal{Type: ir.TypInt, Value: "1"}
 

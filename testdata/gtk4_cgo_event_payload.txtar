@@ -789,7 +789,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	__n6 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	__n6 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n6)), C.GTK_ORIENTATION_HORIZONTAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n6)), C.int(6))
 	c.entry = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
@@ -942,7 +942,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	__n5 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	__n5 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n5)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n5)), C.int(6))
 	m.box = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
@@ -1018,4 +1018,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:f48ee85a6bcc796b235295889d415fc1
 -- run/go/gtk4 --
-pass sha256:e2a45f8d13e2b895c4e5f6a7591bbb64
+pass sha256:49a4f9c1189b52b6414270521dc6b332

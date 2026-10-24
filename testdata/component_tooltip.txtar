@@ -458,7 +458,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	__n0 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	__n0 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
 	__ctmp0 := C.CString(m.msg)
 	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n0)), __ctmp0)
 	C.free(unsafe.Pointer(__ctmp0))
@@ -605,7 +605,7 @@ pass sha256:28d0f1f52c3fbe2813aea4b9f6d0ee04
 -- run/go/fyne --
 pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
-pass sha256:820c7d6e00bb320a828131677b5ecdc0
+pass sha256:383b653e50a2b5180a55ba92db1bee7b
 -- run/kotlin/android --
 pass sha256:ee23cedbec76377068253f1b69fd9506
 -- run/none/html --

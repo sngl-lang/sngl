@@ -30,17 +30,20 @@ the tags no GIR class is behind.
 - **Spliced where the op is born.** `passDeclarative` makes
   `lower.CreateNode`, `AppendChild`, `AttachHandler` and the prop `Assign`,
   and `passReactivity`'s eager flattening of a render slot calls the same
-  code, so that is the one place to resolve an op: the protocol function's
-  `=>` expression, its parameters bound to the op's operands, becomes the
-  op's last argument (an assignment's value), as `CMarshal`'s `convertArg`
-  splices a bodied conversion. A function with a block body is called, and
-  `LibFuncs` promotes it, as it promotes `c.free`.
+  code, so that is the one place to resolve an op: the expression the
+  protocol function returns, its parameters bound to the op's operands,
+  becomes the op's last argument (an assignment's value), as `CMarshal`'s
+  `convertArg` splices a bodied conversion. A body of more than its one
+  `return` is refused today; the first op that needs one decides whether it
+  is called instead, and `LibFuncs` promotes it as it promotes `c.free`.
 - **Marshaled where it is spliced.** `CMarshal` runs before the ops exist,
-  since `ConditionalTemps` needs every allocation in view, and it is not
-  idempotent over a package (a converted argument's parameter is still a
-  `string`). The splice is marshaled by the same code, scoped to the spliced
-  expression. `ReleaseTemps` runs after `passDeclarative` and sees the
-  result as any other statement.
+  since `ConditionalTemps` needs every allocation in view. The splice is
+  marshaled by the same code, scoped to it (`marshalSpliced`), and an
+  argument whose own type is converted already is left, since the program's
+  copy of a protocol function may have been rewritten in place.
+- **Released where the view was flattened.** `ReleaseTemps` runs after
+  `passDeclarative`, and on a target without declarative views it reaches
+  the flattened view bodies as it reaches any block.
 - **The translator keeps what is codegen's.** Each `On*` takes the resolved
   call and no longer builds one: it casts the result to the class's C type,
   records the id's C type, and puts the handle where the scope needs it.
@@ -99,43 +102,47 @@ all the same.
 The smallest site and the whole mechanism: a mark, a splice, a marshal, and
 one op the translator stops building.
 
-- [ ] `sngl:x/gen` declares `enum Protocol { create }` and
+- [X] `sngl:x/gen` declares `enum Protocol { create }` and
   `func protocol(op Protocol) ir.Macro`; the checker stamps the op on the
-  function (`ir.Func.Protocol`). `create` takes no parameters and returns an
-  `#[intrinsic]` component; one per component; anywhere else is refused,
-  naming the rule.
-- [ ] `declgen` writes, for each class whose primary constructor it can
-  spell, the constructor as a `#[macro.cnative]` function returning the
-  class's component, and `#[gen.protocol(create)] func _create_<CType>()`
-  whose body is that call with a zero per parameter: `""` for a string GTK
-  refuses NULL for, `null` for a nullable pointer (an `option[string]` for a
-  string, an `option[c.pointer]` otherwise), `0` for an `int` or a `float`,
-  and a cast through a struct naming the C type for an enumeration or a
-  scalar whose C type is not cgo's `int` or `double` (`ctorScalarCast`'s
-  rule, moved). A class whose constructor it cannot spell gets none, and
-  `ctorZeroArg`'s reasons move with it so the build error still names the
-  parameter.
-- [ ] `passDeclarative` resolves `CreateNode`: a node whose component has a
-  `create` gets it spliced as the op's second argument and marshaled.
-- [ ] The translator's `OnCreateNode` takes that argument and builds no
-  constructor; a GIR class with none fails the build as today
-  (`TestUnconstructibleClass_FailsTheBuild` unchanged). Its `ownCStrings`
-  call goes, and wrapped mode keeps `rtCtorForCType` until Part 6.
-- [ ] `design/nodes.md` gains the protocol mark beside `#[intrinsic]`;
-  `design/architecture.md`'s gtk4 section says where a constructor comes
-  from; `design/ownership.md`'s translator paragraph loses the constructor.
+  function (`ir.Func.Protocol`) and, once every mark has run, hangs it on
+  the component (`Component.Protocol`, `bindProtocols`). `create` takes no
+  parameters and declares the `#[intrinsic]` component it returns -- an
+  `=>` body's type is not known when marks run -- of its own package, one
+  per component.
+- [X] `declgen` writes, for each class whose primary constructor it can
+  spell, the constructor as a `#[macro.cnative]` function (`_gtk_label_new`)
+  returning the class's component, and `#[gen.protocol(create)] func _create_<CType>() <CType> { return … }` with a zero per parameter: `""` for
+  a string GTK refuses NULL for, `null` for a nullable string
+  (`option[string]`) or any other pointer (`option[c.pointer]`), `0` for a
+  number cgo's `int` or `double` carries, and a cast through a struct naming
+  the C type otherwise (`_to_GtkOrientation`, `_c_GtkOrientation`; prefixed,
+  since GTK has a `float` parameter). `ctorZeroArg` and `ctorScalarCast`
+  moved there; `unconstructible` words the build error.
+- [X] `passDeclarative` splices the create's returned expression into
+  `CreateNode` as its second operand, folds the predeclared `null` in it and
+  marshals it (`marshalSpliced`). `CMarshal` leaves an argument whose own
+  type is converted already: the program's copy of the `gir:` package had
+  its create bodies rewritten in place, and the splice was converted twice.
+- [X] `ReleaseTemps` reaches a flattened view body on a target without
+  declarative views: the link button's `""` is now one application-lifetime
+  `c.str` freed at teardown, where the translator's `__cstr` was never freed.
+- [X] The translator takes the operand through `codegen.NodeMaker`
+  (`OnMakeNode`) and builds no GIR constructor; wrapped mode keeps
+  `rtCtorForCType` until Part 6. Its `ownCStrings` call went.
+- [X] `design/nodes.md`, `design/architecture.md`'s gtk4 section and
+  `design/ownership.md` (the translator paragraph, `CMarshal`, the reach of
+  `ReleaseTemps`).
 
-Fixture: `testdata/error_gen_protocol_create.sngl`, the mark on a function
-with a parameter, on one returning no intrinsic component, and twice for one
-component. Golden: `testdata/gtk4_declared_create.txtar`, a window with a
-label (nullable string), a box (enumeration and `int`), a frame and a link
-button (a string GTK refuses NULL for), asserting each `C.gtk_*_new` call
-and that the link button's `""` is released by `ReleaseTemps`'s lowering,
-with a `deny` on `__cstr`. `declgen_test.go` asserts the declarations over
-the bundled GIR and `rules.gir`. Revert: drop the splice in
-`passDeclarative` and the golden's build fails with "cannot be
-constructed"; drop the placement check and the fixture's `ERROR(check)`
-lines go unmatched.
+Fixture: `testdata/error_gen_protocol_create.sngl` (a parameter, an inferred
+or non-component return, a struct) and `TestGenProtocolCreatePlacement`
+(not intrinsic, another package's, twice). Golden:
+`testdata/gtk4_declared_create.txtar`. `declgen_test.go`'s
+`TestWidgetSource_DeclaresConstructors` and
+`TestCtorParam_CastShadowsNoScalar`. Reverted, each fails: no splice and the
+golden's build stops at "GtkLabel cannot be constructed"; no view-block
+release and the golden differs; no parameter check and the fixture's
+`ERROR(check)` goes unmatched; no idempotent conversion and
+`TestWidgetSurface_EitherCompilesOrRefuses` does not build.
 
 ## Part 2: the child adder
 

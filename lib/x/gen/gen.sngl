@@ -124,6 +124,24 @@ func native(generator string) ir.Macro
 // argument check with a list of what the enum does accept.
 func renders(these list[Rendered]) ir.Macro
 
+// One operation of the protocol a platform builds an `#[intrinsic]`
+// component's widget with, written in SNGL so that every call to the host is
+// one a lowering pass sees: the conversion of a string handed to C, and its
+// release, are the passes' and not the platform's generator's.
+enum Protocol {
+    // Makes the widget: a function of no parameters returning the component,
+    // declared in the component's package, at most one per component. The
+    // build calls it where the program renders the component, and the
+    // component's props are written after it returns, so its arguments to the
+    // host are the zeros the host accepts.
+    create
+}
+
+// Says the function is the named operation of its component's protocol.
+// Nothing calls one by name: the build finds it by this mark, through the
+// component its signature names.
+func protocol(op Protocol) ir.Macro
+
 // How a family's override generates the family, written as the whole of the
 // override's body. The build walks each place the program renders the family
 // -- a component whose rest slot takes it -- and each member supplies its own

@@ -22,7 +22,11 @@ after `LibFuncs`, so a promoted library helper's calls are reached, and before
 number coming back as `int(...)`. A `bool` argument used to panic the printer,
 cgo having no conversion for one (`testdata/c_bool_argument.txtar`); `free`
 reaches cgo's `C.free` through `unsafe.Pointer`, a qualified native name the
-printer spells as written (`testdata/c_free.txtar`).
+printer spells as written (`testdata/c_free.txtar`). An argument whose own
+type is no longer the one its parameter names is converted already and left:
+a body the pass rewrote in place may be spliced by a later pass and walked
+again with the splice (`marshalSpliced`), and before this a gtk4 link
+button's constructor was handed `C.CString(C.CString(""))`.
 
 **A type declares its release.** `#[owned(release)]` (`lib/macro/owned.sngl`)
 marks a struct and names the function that gives one back, stored as
@@ -319,9 +323,12 @@ saw, spelled it as the `len` builtin by name, a hack now gone
 `ir.RewriteBlocks`, which hands the pass every list it holds innermost first,
 so a lambda written in a block is reached twice, once as its own block: a
 temp already bound is an identifier, and `released` remembers an argument
-already given a release. On the interpreter, `ReleaseTemps` reaches every
-body the program does, library ones included, the way `CMarshal` does, since
-nothing there is spliced.
+already given a release. On a target without declarative views the view
+bodies are reached too (`viewBlocks`): `passDeclarative` flattened each into
+the statements that build it, and a widget's declared constructor hands C a
+string there (`testdata/gtk4_declared_create.txtar`). On the interpreter,
+`ReleaseTemps` reaches every body the program does, library ones included,
+the way `CMarshal` does, since nothing there is spliced.
 
 **What a statement owns is enumerated by expression kind** (`tempCollector`),
 every kind `ir.Rewrite` walks, and an unknown one panics as that walk does:
@@ -439,8 +446,8 @@ those targets make is freed.
 
 **A call the gtk4 translator builds releases its own strings.** The
 inline-cgo translator writes `C.CString` into a setter, a `sngl_connect`, a
-`g_object_set_property` helper, a constructor's non-nullable zero, a flow's
-markup, the window title and the entry-text write after lowering, so no pass
+`g_object_set_property` helper, a flow's markup, the window title and the
+entry-text write after lowering, so no pass
 sees the allocation. `emitShared.ownCStrings` (`intrinsic_translator.go`) is
 run over the statements each of those sites returns and writes the release
 `ReleaseTemps` would have: a literal's copy becomes a package-level `var`
@@ -456,7 +463,10 @@ calls in lowering would retire this, since `CMarshal` and `ReleaseTemps` would
 see them; that is a re-platforming of gtk4's inline-cgo mode -- the widget
 protocol declared as native-calling bodies rather than answered by the
 translator -- and is #293, split out of the ownership work with the count of
-what it touches.
+what it touches. A constructor is the first site it retired: its arguments
+are the declared create's (`design/architecture.md`), and a GTK constructor
+refusing NULL is handed one application-lifetime `""` that `ReleaseTemps`
+frees at teardown, where the translator's copy was never freed.
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective

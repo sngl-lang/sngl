@@ -281,6 +281,9 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// After the walks, because a registry only exists once the slot render
 	// that opened it has been built.
 	st.destroyHeld()
+	if st.err == nil && st.slotDeclSt != nil {
+		st.err = st.slotDeclSt.err
+	}
 	return st.err
 }
 

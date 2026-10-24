@@ -399,6 +399,9 @@ type checker struct {
 	// so every macro a mark may name is registered by the time one runs.
 	// Non-nil only for that window.
 	pendingMarks *[]pendingMark
+	// protocols are the #[gen.protocol] functions this package's marks
+	// named, bound to their components once every mark has run.
+	protocols []protocolMark
 	// ownedMarks are the #[owned] marks whose release is still to be judged.
 	ownedMarks []ownedMark
 
@@ -1623,6 +1626,7 @@ func (c *checker) pass1() {
 	// be judged by its fields. The initializers below read what the marks
 	// said.
 	c.runPendingMarks()
+	c.bindProtocols()
 
 	c.checkPendingConstInits()
 	c.checkPendingInits()

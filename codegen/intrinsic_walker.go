@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"context"
+	"fmt"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -94,6 +95,15 @@ type ChildInserter interface {
 	OnInsertBefore(ctx context.Context, parent, child, ref ir.Expr) []ir.Stmt
 }
 
+// NodeMaker is implemented by a platform whose widgets a
+// #[gen.protocol(create)] function makes: lowering splices the call into the
+// createNode op as its second operand, so the call is IR the passes saw, and
+// the platform puts what it returns where the node lives. A createNode
+// without one is still OnCreateNode's.
+type NodeMaker interface {
+	OnMakeNode(ctx context.Context, id, tag string, made ir.Expr) []ir.Stmt
+}
+
 // WalkLowered iterates the lowered IR statement sequence and dispatches
 // each known shape to t. Returns the concatenated emissions in source
 // order. ctx is passed through to every translator method; if the
@@ -115,6 +125,13 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 					ns.NodeSite(n.Name, n.NodeAST)
 				}
 				tag, _ := extractStringLit(call.Args[0].Value)
+				if len(call.Args) == 2 {
+					nm, ok := t.(NodeMaker)
+					if !ok {
+						panic(fmt.Sprintf("codegen: %s is made by a declared create, and %T takes none", tag, t))
+					}
+					return nm.OnMakeNode(ctx, n.Name, tag, call.Args[1].Value)
+				}
 				return t.OnCreateNode(ctx, n.Name, tag)
 			}
 			if isLowerIntrinsic(call, "CreateComponent") {
