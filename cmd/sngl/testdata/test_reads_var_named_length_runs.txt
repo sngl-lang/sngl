@@ -36,7 +36,7 @@ window {
     box
 }
 -- testrun/bubbletea/go/app.sngl/box/1 --
-sha256:16e4344b01d948b1578f3d2294dfb97e
+sha256:2dd9a1d8c03cb2a4d9b2f1a0fc6e11f6
 {
   "results": [
     {
@@ -46,7 +46,7 @@ sha256:16e4344b01d948b1578f3d2294dfb97e
   ]
 }
 -- testrun/fyne/go/app.sngl/box/1 --
-sha256:5c10f710e160a9d9e98b36427c8ecd91
+sha256:020ef88a41879a8bd4efff6ab70c18cd
 {
   "results": [
     {

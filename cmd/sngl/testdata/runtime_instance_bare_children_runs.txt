@@ -404,7 +404,7 @@ window {
     main
 }
 -- testrun/fyne/go/nestnosnap.sngl/main/1 --
-sha256:10c99c34ce97a75816e99acb5e9b618e
+sha256:dd4e8c63e53ba1a39ec218baa435611a
 {
   "results": [
     {
@@ -414,7 +414,7 @@ sha256:10c99c34ce97a75816e99acb5e9b618e
   ]
 }
 -- testrun/fyne/go/nosnap.sngl/main/1 --
-sha256:bfe82b453c174182892c1822933f1224
+sha256:ac2f49d8110a3cd82270afc9d19626b7
 {
   "results": [
     {
@@ -424,7 +424,7 @@ sha256:bfe82b453c174182892c1822933f1224
   ]
 }
 -- testrun/fyne/go/recnosnap.sngl/main/1 --
-sha256:9b58125297baa616f80e7a1f3e0f9e1a
+sha256:801f17fced4bc6dbc0d411206acf2dcb
 {
   "results": [
     {

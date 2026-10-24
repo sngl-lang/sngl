@@ -51,7 +51,7 @@ func testLength(t Test, c counts) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/counts/1 --
-sha256:68757976c3d0f0593e00b7cffde9f287
+sha256:efb649517f1836bc8c460fcf693458d8
 {
   "results": [
     {

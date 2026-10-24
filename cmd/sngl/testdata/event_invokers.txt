@@ -109,7 +109,7 @@ window {
     counter()
 }
 -- testrun/bubbletea/go/click.sngl/counter/1 --
-sha256:43c7f1eca30b1f314c06fb6c00ed0d0a
+sha256:206eb1890aa6dd1f0f844b96b2fd6818
 {
   "results": [
     {
@@ -119,7 +119,7 @@ sha256:43c7f1eca30b1f314c06fb6c00ed0d0a
   ]
 }
 -- testrun/fyne/go/click.sngl/counter/1 --
-sha256:0e8ad17346b3783491439597c4153db2
+sha256:eab3340f41fd61476968d2bd5e33e354
 {
   "results": [
     {

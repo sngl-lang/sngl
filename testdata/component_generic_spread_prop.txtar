@@ -211,13 +211,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
 	if (s.Width != Measurement{Px: 0}) {
-		l = l.Width(Cells(s.Width))
+		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(Cells(s.Height))
+		l = l.Height(CellsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
-		l = l.MaxWidth(Cells(s.MaxWidth))
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
 		var __lt0 int
@@ -226,7 +226,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -276,10 +276,10 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 		}
 		__lt5 = __lt4
 	}
-	return Cells(__lt5)
+	return CellsOf(__lt5)
 }
 
-func Cells(m__r0 Measurement) int {
+func CellsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt6 int
 	if px <= 0.0 {
@@ -924,7 +924,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:cb821e2819e81edaa6442ed3f5652ed7
+pass sha256:06e18c282ddc1860a110c50bf7c4656f
 -- run/go/fyne --
 pass sha256:c0e2d7f92c14b89f911322f530b273ca
 -- run/go/gtk4 --

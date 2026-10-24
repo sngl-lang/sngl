@@ -179,13 +179,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
 	if (s.Width != Measurement{Px: 0}) {
-		l = l.Width(Cells(s.Width))
+		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(Cells(s.Height))
+		l = l.Height(CellsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
-		l = l.MaxWidth(Cells(s.MaxWidth))
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
 		var __lt0 int
@@ -194,7 +194,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -244,10 +244,10 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 		}
 		__lt5 = __lt4
 	}
-	return Cells(__lt5)
+	return CellsOf(__lt5)
 }
 
-func Cells(m__r0 Measurement) int {
+func CellsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt6 int
 	if px <= 0.0 {
@@ -774,7 +774,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:ed83338a20fb0da0269a51cba6ecae85
+pass sha256:d887a20fc76d1f95faec07ef2fb5a009
 -- run/go/fyne --
 pass sha256:d92da3a33da6d81cf4df7d1fdfad610a
 -- run/go/gtk4 --

@@ -163,7 +163,7 @@ func Check(s string) {
 	}
 }
 
-func Cells(m__r0 Measurement) int {
+func CellsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
@@ -212,13 +212,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
 	if (s.Width != Measurement{Px: 0}) {
-		l = l.Width(Cells(s.Width))
+		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(Cells(s.Height))
+		l = l.Height(CellsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
-		l = l.MaxWidth(Cells(s.MaxWidth))
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
 		var __lt2 int
@@ -227,7 +227,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -277,7 +277,7 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 		}
 		__lt7 = __lt6
 	}
-	return Cells(__lt7)
+	return CellsOf(__lt7)
 }
 
 func LineCap(height__r0 int, lines int) int {
@@ -624,6 +624,6 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:a75947cb4d183f37a2e9cac8af2a2b38
+pass sha256:50a2971dc15cb9f60c96b0a762299946
 -- run/go/fyne --
 pass sha256:9655226913c127fdb0a4b3e64a7e115f

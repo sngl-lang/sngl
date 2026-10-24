@@ -276,7 +276,7 @@ func (m *Model) add(state int) {
 	m.object = (m.object + state)
 }
 
-func Cells(m__r2 Measurement) int {
+func CellsOf(m__r2 Measurement) int {
 	var px float64 = (m__r2.Px + (16.0 * (m__r2.Em + m__r2.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
@@ -352,7 +352,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt6 = __lt5
 	}
-	l = l.MarginTop(Cells(__lt6))
+	l = l.MarginTop(CellsOf(__lt6))
 	var __lt8 Measurement
 	if (s.MarginRight != Measurement{Px: 0}) {
 		__lt8 = s.MarginRight
@@ -365,7 +365,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt8 = __lt7
 	}
-	l = l.MarginRight(Cells(__lt8))
+	l = l.MarginRight(CellsOf(__lt8))
 	var __lt10 Measurement
 	if (s.MarginBottom != Measurement{Px: 0}) {
 		__lt10 = s.MarginBottom
@@ -378,7 +378,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt10 = __lt9
 	}
-	l = l.MarginBottom(Cells(__lt10))
+	l = l.MarginBottom(CellsOf(__lt10))
 	var __lt12 Measurement
 	if (s.MarginLeft != Measurement{Px: 0}) {
 		__lt12 = s.MarginLeft
@@ -391,7 +391,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt12 = __lt11
 	}
-	l = l.MarginLeft(Cells(__lt12))
+	l = l.MarginLeft(CellsOf(__lt12))
 	var __lt14 Measurement
 	if (s.PaddingTop != Measurement{Px: 0}) {
 		__lt14 = s.PaddingTop
@@ -404,7 +404,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt14 = __lt13
 	}
-	l = l.PaddingTop(Cells(__lt14))
+	l = l.PaddingTop(CellsOf(__lt14))
 	var __lt16 Measurement
 	if (s.PaddingRight != Measurement{Px: 0}) {
 		__lt16 = s.PaddingRight
@@ -417,7 +417,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt16 = __lt15
 	}
-	l = l.PaddingRight(Cells(__lt16))
+	l = l.PaddingRight(CellsOf(__lt16))
 	var __lt18 Measurement
 	if (s.PaddingBottom != Measurement{Px: 0}) {
 		__lt18 = s.PaddingBottom
@@ -430,7 +430,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt18 = __lt17
 	}
-	l = l.PaddingBottom(Cells(__lt18))
+	l = l.PaddingBottom(CellsOf(__lt18))
 	var __lt20 Measurement
 	if (s.PaddingLeft != Measurement{Px: 0}) {
 		__lt20 = s.PaddingLeft
@@ -443,19 +443,19 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt20 = __lt19
 	}
-	l = l.PaddingLeft(Cells(__lt20))
+	l = l.PaddingLeft(CellsOf(__lt20))
 	if (s.Width != Measurement{Px: 0}) {
-		l = l.Width(Cells(s.Width))
+		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(Cells(s.Height))
+		l = l.Height(CellsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
-		l = l.MaxWidth(Cells(s.MaxWidth))
+		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
 		var __lt25 int
-		if Cells(s.MaxHeight) == 0 {
+		if CellsOf(s.MaxHeight) == 0 {
 			var __lt21 int
 			if s.MaxLines == 0 {
 				__lt21 = 0
@@ -472,7 +472,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			}
 			var __lt24 int
 			if __lt22 == 0 {
-				__lt24 = Cells(s.MaxHeight)
+				__lt24 = CellsOf(s.MaxHeight)
 			} else {
 				var __lt23 int
 				if s.MaxLines == 0 {
@@ -480,7 +480,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 				} else {
 					__lt23 = (s.MaxLines + l.GetVerticalFrameSize())
 				}
-				__lt24 = min(Cells(s.MaxHeight), __lt23)
+				__lt24 = min(CellsOf(s.MaxHeight), __lt23)
 			}
 			__lt25 = __lt24
 		}
@@ -1836,7 +1836,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6505874335a83b3350771c2035486454
+pass sha256:f7f26abd42f935d6f9ee72b5b8adf036
 -- run/go/fyne --
 pass sha256:eb15ad4baa078e2abd59b0ea89e27944
 -- run/go/gtk4 --

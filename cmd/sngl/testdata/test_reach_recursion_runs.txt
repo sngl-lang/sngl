@@ -256,7 +256,7 @@ sha256:8b0c65f525d1c8697467236c3226cc06
   ]
 }
 -- testrun/bubbletea/go/recursion.sngl/main/1 --
-sha256:ee340dbd0c83822d38f0904320748f30
+sha256:c4247876e2a2bd6109fe1f9a734cc0b9
 {
   "results": [
     {
@@ -266,7 +266,7 @@ sha256:ee340dbd0c83822d38f0904320748f30
   ]
 }
 -- testrun/fyne/go/buttons.sngl/main/1 --
-sha256:56dbf27b60c553b4e3ab5b3ab5e4e0f0
+sha256:56aaed7b42f67f599a18e3b98e4f9bc9
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:56dbf27b60c553b4e3ab5b3ab5e4e0f0
   ]
 }
 -- testrun/fyne/go/counters.sngl/main/1 --
-sha256:5e7c24db4e97d38b1093bbc753dc3ca5
+sha256:a8f2dc40bfb2e6e4c41406111fa5a150
 {
   "results": [
     {
@@ -286,7 +286,7 @@ sha256:5e7c24db4e97d38b1093bbc753dc3ca5
   ]
 }
 -- testrun/fyne/go/recursion.sngl/main/1 --
-sha256:4d27d7e775d5628b67678ecdd1dae5b8
+sha256:5697f278b44dc465a9b18208d0f12c8f
 {
   "results": [
     {
