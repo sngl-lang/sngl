@@ -294,11 +294,126 @@ commit each.
   markup it assembles (`boundCall`); lowering splices no append for a child
   whose intrinsic declares no protocol (`isNoWidget`).
 - [ ] Canvas (`canvas.go`): the `GtkDrawingArea`'s create and its draw func.
+  Deferred: `draw.canvas` is `sngl:ui/draw`'s own component, lowered by
+  `passShapeDraw` under the `canvas` capability, not a gtk4 `#[intrinsic]`,
+  so `bindProtocols` refuses a `gtk4.sngl` protocol for it; and it makes no
+  C string. Declaring it through a platform-declared protocol for another
+  package's component was rejected as making the shape family more special,
+  not less. It goes with the issue below, which retires `passShapeDraw`
+  instead; file it once git.duckfam.us is back (`glab issue create`, title
+  *Make a drawing an ordinary generated family and retire passShapeDraw*,
+  the body the section below), then point this item at it.
 
 Fixture per tag: the placement error it introduces, if any, else none.
 Golden per tag: `testdata/gtk4_declared_<tag>.txtar`, each asserting the
 create and every C string's release. Revert: drop the tag's declaration and
 its golden fails on the translator's path.
+
+#### Issue to file: a drawing as an ordinary generated family
+
+##### The problem
+
+A drawing is the one family the compiler still treats specially. The shape
+family is a builtin role (`ir.BuiltinFamilyShape`). `ir.IsShapeContainer`
+makes a canvas out of any component whose rest slot takes it. `passShapeDraw`
+splices each shape's `@draw` body into the canvas's children as paint
+statements, and `passCanvasReactivity` injects the redraws. Every backend then
+recognises `CreateNode("canvas")` and reads `canvasutil.Meta` to build its own
+drawing surface: gtk4's `canvas.go` (`gtk_drawing_area_new`,
+`sngl_drawing_area_set_draw` + `snglDrawFuncs`, `sngl_connect_click` +
+`snglCallbacks`), fyne's, android's, html's and bubbletea's. About 60 Go
+files ask `IsShapeContainer`, `IsShapeFamily` or about the canvas metadata.
+
+The shapes themselves are SNGL already: on gtk4, `shapes.circle[platform]` is
+an override over the `draw(@draw(e))` intrinsic calling cairo `#[cnative]`s.
+What is compiler-shaped is the container and the splice.
+
+Found while declaring gtk4's protocol (#293 Part 5): the canvas could not be
+declared like the other tags, because `draw.canvas` is `sngl:ui/draw`'s own
+component rather than a platform intrinsic. Part 5 deferred it.
+
+##### The proposal
+
+Make the canvas an ordinary platform override and the shapes a generated
+family in code mode, then remove `passShapeDraw`, `ir.IsShapeContainer`, the
+canvas metadata and (probably) `passCanvasReactivity`.
+
+```sngl
+// gtk4.sngl
+#[marks.intrinsic("gtk4:DrawingArea")]
+component DrawingArea(width int, height int, scalingMode string, @draw(e DrawEvent), @click()) ui.node
+// + #[gen.protocol] create / set / on over gtk4rt, as Image's are
+
+const component draw.canvas[platform](width, height, scalingMode, @click, shapes) {
+    DrawingArea(width=width, height=height, scalingMode=scalingMode,
+        @draw(e) { paint(e.ctx) },          // paint: the family's generated function
+        @click { click() })
+}
+
+const component shapes.circle[platform](cx, cy, r, style) {
+    gen.node(value=func(ctx CairoContext) {
+        ctx.arc(cx, cy, r, 0.0, 6.283)
+        paint(ctx, style)
+    })
+}
+```
+
+Each target does the same with its own surface: a Fyne raster, a Compose
+`Canvas`, an html `<canvas>`, bubbletea's cells. A redraw is the emitted
+family's effect rekeying on what the members read, the way
+`testdata/emit_family_state_runs.txtar` re-renders today.
+
+##### No closures survive
+
+Drawing must not become a closure call per shape per frame. Two pieces flatten
+it back to what `passShapeDraw` writes now:
+
+1. **An applying runner.** Where the family's `T` is a function type, code
+   mode's runner (`internal/build/emitcode.go`, `runSNGL`) writes one function
+   that *calls* each member's value where it stands, keeping the program's
+   `if`s and `for`s, instead of `__<host>_members()` collecting a list for the
+   override to loop over.
+2. **Statement-level inlining of a literal call.** `optimize.inlineLambdaCall`
+   inlines a called function literal only when its body is one `return expr`.
+   Extend it to a `CallStmt` whose callee is a literal: splice its block, with
+   params substituted, locals renamed by the inliner's existing hygiene, and an
+   argument that has effects or is read more than once bound to a local first.
+
+The result is straight-line paint calls under the program's own control flow.
+The optimizer still unrolls no loop. A prop that reads state is read at paint
+time, as it is today. A member whose value is not a literal (a named function)
+stays a call, which is correct, just not flattened.
+
+##### What code mode lacks today
+
+Each of these is refused with a position now (`design/families.md`):
+
+- a member holding children (a group of shapes, `drawSource`'s source);
+- a host under a `for`;
+- a composed member's handlers.
+
+##### Scope and order
+
+This touches every target, so it is several MRs:
+
+1. Statement-level `inlineLambdaCall` and the applying runner, with a golden
+   showing a generated paint function flattened.
+2. Code-mode children and composed handlers.
+3. One target at a time moves its canvas to an override over its own surface
+   intrinsic, with goldens and recorded runs showing identical paint calls.
+4. Remove `passShapeDraw`, `IsShapeContainer`, `canvasutil` and the builtin
+   shape role once no target reads them; reconsider `passCanvasReactivity`.
+
+Measure a canvas-heavy program's paint before and after step 3 on gtk4 and
+fyne. The flattening should make them equal; the measurement is what says so.
+
+##### Fixtures
+
+- `testdata/canvas_*.txtar` and `draw_*.txtar` keep their paint calls byte for
+  byte, apart from the surface's create.
+- A new golden pins the flattened paint function, with a `deny` on a closure
+  in it.
+- `cmd/sngl/testdata/*canvas*_runs.txt` run unchanged.
 
 ### Part 6: wrapped `gtk4rt` mode, decided
 
