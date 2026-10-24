@@ -417,34 +417,89 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 
 // made is what n's #[gen.protocol(create)] function returns, spliced as the
 // createNode op's second operand, or nil for a node whose platform makes it
-// itself. Marshaled here: passCMarshal ran before this op existed.
+// itself.
 func (st *declarativeState) made(n *ir.NodeInst) ir.Expr {
 	if n.Component == nil || n.Component.Protocol == nil || n.Component.Protocol.Create == nil {
 		return nil
 	}
-	create := n.Component.Protocol.Create
-	body := exprBody(create)
-	if body == nil {
-		if st.err == nil {
-			st.err = fmt.Errorf("%s: #[gen.protocol(create)] %s returns one expression, which is what is spliced where the widget is made", n.Name, create.Name)
-		}
-		return nil
+	made, err := protocolSplice(n.Component.Protocol.Create, nil)
+	if err != nil && st.err == nil {
+		st.err = fmt.Errorf("%s: %w", n.Name, err)
 	}
-	made := ir.CloneExprSharingDecls(body)
+	return made
+}
+
+// protocolSplice is what fn, a #[gen.protocol] function, does with its
+// parameters bound to args: the expression it returns, or the call that is
+// its one statement. Marshaled here: passCMarshal ran before the op it is
+// spliced into existed.
+func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
+	body := exprBody(fn)
+	if body == nil && len(fn.Block) == 1 {
+		if cs, ok := fn.Block[0].(*ir.CallStmt); ok {
+			body = cs.Call
+		}
+	}
+	if body == nil {
+		return nil, fmt.Errorf("#[gen.protocol(%s)] %s is spliced where its op is made, so its body is one return or one call", fn.Protocol, fn.Name)
+	}
+	bound := map[ir.Symbol]ir.Expr{}
+	for i, p := range fn.Params {
+		bound[p] = args[i]
+	}
+	spliced := ir.CloneExprSharingDecls(body)
 	// The optimizer folds a program's `null` and never saw this body: a
 	// library function nothing calls is not one of the program's.
-	_ = ir.Rewrite(made, func(n ir.Node) (ir.Node, error) {
+	_ = ir.Rewrite(spliced, func(n ir.Node) (ir.Node, error) {
 		if id, ok := n.(*ir.Ident); ok {
+			if arg, ok := bound[id.Sym]; ok {
+				return ir.CloneExprSharingDecls(arg), nil
+			}
 			if v, ok := id.Sym.(*ir.Var); ok && v.Builtin == ir.BuiltinNull {
 				return &ir.Literal{Type: ir.TypNull}, nil
 			}
 		}
 		return n, nil
 	})
-	if err := marshalSpliced(made); err != nil && st.err == nil {
-		st.err = err
+	if err := marshalSpliced(spliced); err != nil {
+		return nil, err
 	}
-	return made
+	return spliced, nil
+}
+
+// childOp is the node op intrinsic (AppendChild, RemoveChild) of child under
+// parent. Where the parent's component declares its protocol, what its
+// #[gen.protocol(op)] function does with the two rides along as the last
+// operand; a component made through a create and declaring no append takes
+// no child.
+func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.CallStmt, error) {
+	call := &ir.Call{
+		Type: ir.TypVoid,
+		Func: intrinsic,
+		Args: []ir.CallArg{{Value: parent}, {Value: child}},
+	}
+	stmt := &ir.CallStmt{Call: call}
+	t := parent.ExprType()
+	if t == nil {
+		return stmt, nil
+	}
+	comp, _ := t.Decl.(*ir.Component)
+	if comp == nil || comp.Protocol == nil {
+		return stmt, nil
+	}
+	fn := comp.Protocol.Op(op)
+	if fn == nil {
+		if op == ir.ProtocolAppend {
+			return stmt, fmt.Errorf("%s takes no child: its package declares how it is made, and no #[gen.protocol(append)] to put one into it", comp.Name)
+		}
+		return stmt, nil
+	}
+	spliced, err := protocolSplice(fn, []ir.Expr{parent, child})
+	if err != nil {
+		return stmt, fmt.Errorf("%s: %w", comp.Name, err)
+	}
+	call.Args = append(call.Args, ir.CallArg{Value: spliced})
+	return stmt, nil
 }
 
 // hasRealComponentBody reports whether comp carries SNGL-defined behavior
@@ -508,14 +563,11 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 // appendChildStmt attaches a node to a parent expression: what the tree
 // attaches for it (attachRef).
 func (st *declarativeState) appendChildStmt(parent ir.Expr, child *ir.NodeInst) ir.Stmt {
-	return &ir.CallStmt{Call: &ir.Call{
-		Type: ir.TypVoid,
-		Func: st.intrinsics[ir.NodeOpAppendChild],
-		Args: []ir.CallArg{
-			{Value: parent},
-			{Value: st.attachRef(child)},
-		},
-	}}
+	stmt, err := childOp(st.intrinsics[ir.NodeOpAppendChild], ir.ProtocolAppend, parent, st.attachRef(child))
+	if err != nil && st.err == nil {
+		st.err = err
+	}
+	return stmt
 }
 
 // attachRef is a reference to what the tree attaches for n (attachName),

@@ -139,6 +139,10 @@ type ClassInfo struct {
 	// listed in Go: a hard-coded list of container types silently re-parented
 	// the children of every class outside it.
 	ChildAdd ChildAdder
+	// ChildRemove is how this class gives a child up: its `remove` method
+	// taking one widget, or the zero value. Owner and Func as ChildAdd's;
+	// Single is never set.
+	ChildRemove ChildAdder
 }
 
 // Action is a method a program calls for its effect alone.
@@ -643,18 +647,19 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	// How each class takes a child, from the methods and properties parsed
 	// above. After the inherit pass, so a subclass reads its parent's answer:
 	// GtkApplicationWindow takes its child through GtkWindow's `child`.
-	for owner, cls := range reg.Classes {
+	for _, cls := range reg.Classes {
 		cls.ChildAdd = childAdder(cls, methods[cls])
-		_ = owner
+		if mi := methods[cls]["remove"]; mi != nil && mi.ident != "" && mi.valParams == 1 && isWidgetCType(mi.valCType) {
+			cls.ChildRemove = ChildAdder{Func: mi.ident, Owner: cls.CType}
+		}
 	}
 	for _, cls := range reg.Classes {
-		if cls.ChildAdd.Func != "" {
-			continue
-		}
-		for p := reg.Classes[cls.Parent]; p != nil; p = reg.Classes[p.Parent] {
-			if p.ChildAdd.Func != "" {
+		for p := reg.Classes[cls.Parent]; p != nil && (cls.ChildAdd.Func == "" || cls.ChildRemove.Func == ""); p = reg.Classes[p.Parent] {
+			if cls.ChildAdd.Func == "" {
 				cls.ChildAdd = p.ChildAdd
-				break
+			}
+			if cls.ChildRemove.Func == "" {
+				cls.ChildRemove = p.ChildRemove
 			}
 		}
 	}

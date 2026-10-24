@@ -19,6 +19,22 @@ import (
 // error is returned, since refusing to emit is behavior under test.
 func generateGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	t.Helper()
+	pkg, err := lowerGtk4(t, src)
+	if err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	g := codegen.LookupPlatform(platformName)
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: codegen.LookupLang("go"), Source: "t.sngl"}, mem); err != nil {
+		return nil, err
+	}
+	return mem.Files(), nil
+}
+
+// lowerGtk4 checks src for gtk4, failing the test on a check error, and
+// lowers a copy of it.
+func lowerGtk4(t *testing.T, src string) (*ir.Package, error) {
+	t.Helper()
 	doc, err := parser.Parse("t.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -35,14 +51,7 @@ func generateGtk4(t *testing.T, src string) (map[string][]byte, error) {
 		t.Fatal("go lang not registered")
 	}
 	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		return nil, err
-	}
-	return mem.Files(), nil
+	return pkg, lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"})
 }
 
 // checkGtk4 runs one SNGL source through the checker against every registered
@@ -347,5 +356,20 @@ func TestUnconstructibleClass_FailsTheBuild(t *testing.T) {
 				t.Errorf("error %q does not name the class and the reason %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// A class GIR names no single-widget adder for has a create and no
+// #[gen.protocol(append)], and a child written into it is refused where the
+// op is made rather than dropped.
+func TestClassWithNoAdder_RefusesAChild(t *testing.T) {
+	_, err := lowerGtk4(t, gtk4Window(`            gtk.GtkLabel() {
+                text(value="inside")
+            }`))
+	if err == nil {
+		t.Fatal("a child of a GtkLabel generated; GTK has no way to put one there")
+	}
+	if want := "GtkLabel takes no child"; !strings.Contains(err.Error(), want) {
+		t.Errorf("error %q does not say %q", err, want)
 	}
 }

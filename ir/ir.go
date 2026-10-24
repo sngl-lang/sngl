@@ -768,6 +768,8 @@ type ProtocolOp string
 const (
 	ProtocolNone   ProtocolOp = ""
 	ProtocolCreate ProtocolOp = "create"
+	ProtocolAppend ProtocolOp = "append"
+	ProtocolRemove ProtocolOp = "remove"
 )
 
 // NodeProtocol is the functions a platform declares to build an #[intrinsic]
@@ -775,6 +777,24 @@ const (
 // it makes so that every call to the host is IR a pass can see.
 type NodeProtocol struct {
 	Create *Func
+	Append *Func
+	Remove *Func
+}
+
+// Op is the function declared for op, nil where none is.
+func (p *NodeProtocol) Op(op ProtocolOp) *Func {
+	if p == nil {
+		return nil
+	}
+	switch op {
+	case ProtocolCreate:
+		return p.Create
+	case ProtocolAppend:
+		return p.Append
+	case ProtocolRemove:
+		return p.Remove
+	}
+	return nil
 }
 
 // FuncLowering is what the lowering passes record on a function for codegen

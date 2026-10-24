@@ -18,26 +18,38 @@ func (c *checker) bindProtocols() {
 	c.protocols = nil
 	for _, pm := range marks {
 		fn := pm.fn
-		comp, _ := fn.Return.Decl.(*ir.Component)
+		op := fn.Protocol
+		served, verb := fn.Return, "returns"
+		if op != ir.ProtocolCreate {
+			served, verb = fn.Params[0].Type, "adds to"
+		}
+		comp, _ := served.Decl.(*ir.Component)
 		switch {
 		case comp == nil || comp.Intrinsic == "":
 			name := "it"
 			if comp != nil {
 				name = comp.Name
 			}
-			c.error(pm.pos, "#[gen.protocol(create)] declares the #[intrinsic] component it returns, and %s is not one", name)
+			c.error(pm.pos, "#[gen.protocol(%s)] declares the #[intrinsic] component it %s, and %s is not one", op, verb, name)
 			continue
 		case comp.Pkg != fn.Pkg:
-			c.error(pm.pos, "#[gen.protocol(create)]: %s is declared by %s, and only the package declaring a component says how its widget is made", comp.Name, comp.PkgPath())
+			c.error(pm.pos, "#[gen.protocol(%s)]: %s is declared by %s, and only the package declaring a component says how its widget is built", op, comp.Name, comp.PkgPath())
 			continue
 		}
 		if comp.Protocol == nil {
 			comp.Protocol = &ir.NodeProtocol{}
 		}
-		if prev := comp.Protocol.Create; prev != nil {
-			c.error(pm.pos, "#[gen.protocol(create)]: %s is already made by %s", comp.Name, prev.Name)
+		if prev := comp.Protocol.Op(op); prev != nil {
+			c.error(pm.pos, "#[gen.protocol(%s)]: %s already has %s", op, comp.Name, prev.Name)
 			continue
 		}
-		comp.Protocol.Create = fn
+		switch op {
+		case ir.ProtocolCreate:
+			comp.Protocol.Create = fn
+		case ir.ProtocolAppend:
+			comp.Protocol.Append = fn
+		case ir.ProtocolRemove:
+			comp.Protocol.Remove = fn
+		}
 	}
 }

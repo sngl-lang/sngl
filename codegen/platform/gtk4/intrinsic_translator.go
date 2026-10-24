@@ -971,13 +971,21 @@ func gtk4ChildRemoveFn(parentCType string) string {
 }
 
 func (t *gtk4Translator) parentCType(e ir.Expr) string {
-	if id, ok := e.(*ir.Ident); ok {
-		if id.Name == "container" || id.Name == "parent" {
-			return "GtkBox"
-		}
+	if isSlotParent(e) {
+		return "GtkBox"
+	}
+	if _, ok := e.(*ir.Ident); ok {
 		return t.idCTypes[codegen.IdentBareName(e)]
 	}
 	return ""
+}
+
+// isSlotParent reports whether e is the parent a render slot renders into: a
+// GtkBox whatever its container is declared as, since a single-child
+// container holds the slot's box rather than the slot's nodes.
+func isSlotParent(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	return ok && (id.Name == "container" || id.Name == "parent")
 }
 
 // isSkipped reports whether the expression refers to a widget id OnCreateNode
@@ -992,6 +1000,18 @@ func (t *gtk4Translator) isSkipped(e ir.Expr) bool {
 }
 
 func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return t.appendChild(parent, child, nil)
+}
+
+// OnAppendThrough is an AppendChild carrying the call the parent class's
+// declared append makes (declgen), which lowering spliced.
+func (t *gtk4Translator) OnAppendThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt {
+	return t.appendChild(parent, child, call)
+}
+
+// appendChild puts child into parent: through call, or for a tag no GIR class
+// is behind, through the adder its class has.
+func (t *gtk4Translator) appendChild(parent, child, call ir.Expr) []ir.Stmt {
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
@@ -1005,13 +1025,18 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if cType == "" {
 		cType = "GtkBox"
 	}
+	if call == nil && declaresProtocol(parent) && !isSlotParent(parent) {
+		panic(fmt.Sprintf("gtk4: a child of %s reached the translator without the append its class declares", cType))
+	}
 	adder := t.childAdder(cType)
+	if call != nil {
+		adder = gir.ChildAdder{Func: nativeName(call)}
+	}
 	if adder.Func == "" {
 		t.shared.fail(fmt.Errorf("gtk4: %s hosts children through no single-widget call this platform can emit; "+
 			"its GTK API needs arguments a child append cannot supply", cType))
 		return nil
 	}
-	fn := adder.Func
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
 			if name == id.Name {
@@ -1028,48 +1053,103 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		return []ir.Stmt{&ir.CallStmt{Call: call}}
 	}
 	if t.wrapped {
-		stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))
-		if !ok {
+		if stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
+			return []ir.Stmt{stmt}
+		}
+		if call == nil {
 			// A cgo call in a file built without cgo does not compile, so the
 			// gap is reported where it is rather than emitted.
 			t.shared.fail(fmt.Errorf("gtk4: %s adds its child through %s, which pkg/go/gtk4rt does not wrap; "+
 				"a wrapped build cannot emit the cgo call directly", cType, adder.Func))
 			return nil
 		}
-		return []ir.Stmt{stmt}
+	}
+	if call != nil {
+		return t.callStmt(call)
 	}
 	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, parentArg, childArg)}}
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(adder.Func, ir.TypVoid, parentArg, childArg)}}
 }
 
 func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
-	return append(t.unlistRemoved(child), t.removeChild(parent, child)...)
+	return append(t.unlistRemoved(child), t.removeChild(parent, child, nil)...)
 }
 
-func (t *gtk4Translator) removeChild(parent, child ir.Expr) []ir.Stmt {
+// OnRemoveThrough is a RemoveChild carrying the call the parent class's
+// declared remove makes.
+func (t *gtk4Translator) OnRemoveThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt {
+	if t.isSkipped(parent) || t.isSkipped(child) {
+		return nil
+	}
+	return append(t.unlistRemoved(child), t.removeChild(parent, child, call)...)
+}
+
+func (t *gtk4Translator) removeChild(parent, child, call ir.Expr) []ir.Stmt {
 	if ir.IsAppParent(parent) {
 		return t.appDetach(child)
+	}
+	if call == nil && declaresProtocol(parent) && !isSlotParent(parent) {
+		return nil
 	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
-	}
-	fn := gtk4ChildRemoveFn(cType)
-	if fn == "" {
-		return nil
 	}
 	if t.wrapped {
 		if stmt, ok := rtChildRemoveCall(cType, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
 			return []ir.Stmt{stmt}
 		}
 	}
+	if call != nil {
+		return t.callStmt(call)
+	}
+	fn := gtk4ChildRemoveFn(cType)
+	if fn == "" {
+		return nil
+	}
 	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, parentArg, childArg)}}
+}
+
+// callStmt is a call a declared protocol makes, with each node it names put
+// where this scope holds it.
+func (t *gtk4Translator) callStmt(call ir.Expr) []ir.Stmt {
+	c, ok := ir.CloneExprSharingDecls(call).(*ir.Call)
+	if !ok {
+		panic(fmt.Sprintf("gtk4: a declared child op made %T, not a call", call))
+	}
+	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
+		if id, ok := n.(*ir.Ident); ok {
+			return t.qualifyNodeExpr(id), nil
+		}
+		return n, nil
+	})
+	return []ir.Stmt{&ir.CallStmt{Call: c}}
+}
+
+// declaresProtocol reports whether e is a node whose component's package
+// declares how it is built, so that lowering, not this file, says how it takes
+// a child.
+func declaresProtocol(e ir.Expr) bool {
+	if t := e.ExprType(); t != nil {
+		if c, ok := t.Decl.(*ir.Component); ok {
+			return c.Protocol != nil
+		}
+	}
+	return false
+}
+
+// nativeName is the C function a declared protocol's call reaches.
+func nativeName(call ir.Expr) string {
+	if c, ok := call.(*ir.Call); ok && c.Func != nil {
+		return c.Func.Foreign.Name
+	}
+	return ""
 }
 
 // qualifyNodeExpr re-qualifies a synthesized widget ident as a Model field

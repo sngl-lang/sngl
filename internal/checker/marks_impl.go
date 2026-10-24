@@ -958,6 +958,13 @@ func markGenProtocol(m *mark) error {
 		if fn.Return == nil || fn.Return.Kind != ir.TypeComponent {
 			return fmt.Errorf("#[gen.protocol(create)] declares the #[intrinsic] component it returns: func f() C { return … }")
 		}
+	case ir.ProtocolAppend, ir.ProtocolRemove:
+		if len(fn.Params) != 2 {
+			return fmt.Errorf("#[gen.protocol(%s)] takes the parent and the child: func f(parent P, child ui.node)", op)
+		}
+		if t := fn.Params[0].Type; t == nil || t.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(%s)] declares the #[intrinsic] component it adds to as its first parameter", op)
+		}
 	default:
 		return fmt.Errorf("#[gen.protocol(%s)]: the compiler implements no such operation", op)
 	}

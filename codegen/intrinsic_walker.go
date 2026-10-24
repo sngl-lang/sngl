@@ -104,6 +104,16 @@ type NodeMaker interface {
 	OnMakeNode(ctx context.Context, id, tag string, made ir.Expr) []ir.Stmt
 }
 
+// ChildProtocol is implemented by a platform whose containers a
+// #[gen.protocol(append)] and #[gen.protocol(remove)] function fill: lowering
+// splices the call into the AppendChild or RemoveChild op as its third
+// operand, and the platform emits it where the scope holds the two nodes. An
+// op without one is still OnAppendChild's or OnRemoveChild's.
+type ChildProtocol interface {
+	OnAppendThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt
+	OnRemoveThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt
+}
+
 // WalkLowered iterates the lowered IR statement sequence and dispatches
 // each known shape to t. Returns the concatenated emissions in source
 // order. ctx is passed through to every translator method; if the
@@ -114,6 +124,14 @@ func WalkLowered(ctx context.Context, stmts []ir.Stmt, t IntrinsicTranslator) []
 		out = append(out, walkOne(ctx, s, t)...)
 	}
 	return out
+}
+
+func childProtocol(t IntrinsicTranslator) ChildProtocol {
+	cp, ok := t.(ChildProtocol)
+	if !ok {
+		panic(fmt.Sprintf("codegen: a child is placed through a declared protocol, and %T takes none", t))
+	}
+	return cp
 }
 
 func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
@@ -154,8 +172,14 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		if n.Call != nil {
 			switch {
 			case isLowerIntrinsic(n.Call, "AppendChild"):
+				if len(n.Call.Args) == 3 {
+					return childProtocol(t).OnAppendThrough(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
+				}
 				return t.OnAppendChild(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value)
 			case isLowerIntrinsic(n.Call, "RemoveChild"):
+				if len(n.Call.Args) == 3 {
+					return childProtocol(t).OnRemoveThrough(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
+				}
 				return t.OnRemoveChild(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value)
 			case isLowerIntrinsic(n.Call, "AttachHandler"):
 				evt, _ := extractStringLit(n.Call.Args[1].Value)

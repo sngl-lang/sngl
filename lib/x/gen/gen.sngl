@@ -135,6 +135,14 @@ enum Protocol {
     // component's props are written after it returns, so its arguments to the
     // host are the zeros the host accepts.
     create
+    // Puts a child into the widget: a function of the parent, typed as the
+    // component, and the child, declared in the component's package, at most
+    // one per component. The build calls it wherever a node of the component
+    // takes a child. A component with a create and no append takes none.
+    append
+    // Takes a child out of the widget, the same shape as `append`. A
+    // component with no remove keeps a child the program stops rendering.
+    remove
 }
 
 // Says the function is the named operation of its component's protocol.

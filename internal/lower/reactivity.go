@@ -119,6 +119,19 @@ func (st *reactivityState) failf(pos ast.Pos, format string, args ...any) {
 	st.err = fmt.Errorf("%s", msg)
 }
 
+// childOp records the package-level childOp's error as this pass's.
+func (st *reactivityState) childOp(op ir.ProtocolOp, parent, child ir.Expr) *ir.CallStmt {
+	name := ir.NodeOpAppendChild
+	if op == ir.ProtocolRemove {
+		name = ir.NodeOpRemoveChild
+	}
+	stmt, err := childOp(st.intrinsics[name], op, parent, child)
+	if err != nil {
+		st.failf(ast.Pos{}, "%v", err)
+	}
+	return stmt
+}
+
 // reactiveSlot records a per-If/per-For reactive dep. SlotID names the
 // synthetic __slot<N>; GenFunc is the synthesized __renderSlot<N> Func
 // (populated in a later task).
@@ -1793,16 +1806,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Key:    entryVar,
 		KeySym: entrySym,
 		Iter:   st.slotIdent(slotID),
-		Body: []ir.Stmt{
-			&ir.CallStmt{Call: &ir.Call{
-				Type: ir.TypVoid,
-				Func: st.intrinsics["RemoveChild"],
-				Args: []ir.CallArg{
-					{Value: parentRef()},
-					{Value: &ir.Ident{Name: entryVar, Type: elem, Sym: entrySym, Synthesized: true}},
-				},
-			}},
-		},
+		Body:   []ir.Stmt{st.childOp(ir.ProtocolRemove, parentRef(), &ir.Ident{Name: entryVar, Type: elem, Sym: entrySym, Synthesized: true})},
 	}
 
 	// 2. Reset: __slotN = []

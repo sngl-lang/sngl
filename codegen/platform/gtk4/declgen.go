@@ -41,6 +41,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport c \"sngl:x/c\"\n")
 	declared := map[string]bool{}
 	casts := map[string]string{}
+	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
@@ -119,6 +120,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
 		writeCreate(&b, reg, info, casts)
+		children.write(&b, info)
 		// Each action is a method reached through a `#id` on the widget,
 		// declared as the C identifier it is: `bar.pulse()` is
 		// gtk_progress_bar_pulse(bar). One whose name a prop, an event or the
@@ -133,6 +135,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			}
 		}
 	}
+	children.writeCasts(&b)
 	castTypes := make([]string, 0, len(casts))
 	for cType := range casts {
 		castTypes = append(castTypes, cType)
@@ -180,6 +183,65 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 	fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(%s) %s\n", ctor.Name, native, strings.Join(params, ", "), info.CType)
 	fmt.Fprintf(b, "\n#[gen.protocol(create)]\nfunc _create_%s() %s {\n    return %s(%s)\n}\n", info.CType, info.CType, native, strings.Join(zeros, ", "))
 }
+
+// childOps writes how each class takes a child in and gives one up: the C
+// call GIR names, as a native taking the C pointers it declares, and the
+// #[gen.protocol(append)] and #[gen.protocol(remove)] functions lowering
+// splices where the program puts a node into the class or takes one out. The
+// receiver is cast to the class that declares the call, so a subclass reaches
+// its parent's adder, and the child to GtkWidget; each cast is a native of its
+// own, `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer to
+// another.
+type childOps struct {
+	natives map[string]bool
+	ptrs    map[string]bool
+}
+
+// write declares info's append, and its remove where the class accumulates
+// children: a class that holds one replaces it and has nothing to remove.
+func (o *childOps) write(b *strings.Builder, info *gir.ClassInfo) {
+	add := info.ChildAdd
+	if add.Func == "" {
+		return
+	}
+	o.op(b, info, "append", add)
+	if rm := info.ChildRemove; rm.Func != "" && !add.Single {
+		o.op(b, info, "remove", rm)
+	}
+	// Taking the class itself: handed a family value, Go would box it.
+	fmt.Fprintf(b, "\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _ptr_%s(w %s) c.pointer\n", info.CType, info.CType)
+}
+
+func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
+	owner := adderReceiver(call, info.CType)
+	o.ptrs[owner] = true
+	o.ptrs["GtkWidget"] = true
+	native := "_" + call.Func
+	if !o.natives[call.Func] {
+		o.natives[call.Func] = true
+		fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(parent %s, child %s)\n", call.Func, native, ptrType(owner), ptrType("GtkWidget"))
+	}
+	fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %s(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
+		op, op, info.CType, info.CType, native, ptrFunc(owner), info.CType, ptrFunc("GtkWidget"))
+}
+
+// writeCasts declares the pointer types and casts the calls written so far
+// take, and the way to a child's untyped pointer.
+func (o *childOps) writeCasts(b *strings.Builder) {
+	if len(o.ptrs) == 0 {
+		return
+	}
+	b.WriteString("\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _widget(w ui.node) c.pointer\n")
+	for _, cType := range slices.Sorted(maps.Keys(o.ptrs)) {
+		fmt.Fprintf(b, "\n#[macro.cnative(\"*C.%s\")]\nstruct %s {}\n", cType, ptrType(cType))
+		fmt.Fprintf(b, "\n#[macro.cnative(\"(*C.%s)\")]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
+	}
+}
+
+// ptrType and ptrFunc name a C pointer type and the cast to it, prefixed as
+// castType and castFunc are.
+func ptrType(cType string) string { return "_p_" + cType }
+func ptrFunc(cType string) string { return "_as_" + cType }
 
 // spelledParam is one constructor parameter as declgen writes it: the SNGL
 // type of the native's parameter, the zero the create hands it, and the C

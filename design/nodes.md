@@ -27,7 +27,7 @@ so that every call to the host is one a pass sees. `create` is the first: a
 function of no parameters declaring the component as its return type, in the
 component's own package, at most one per component (`bindProtocols`,
 `testdata/error_gen_protocol_create.sngl`,
-`TestGenProtocolCreatePlacement`). The return type is declared rather than
+`TestGenProtocolPlacement`). The return type is declared rather than
 inferred because the mark runs before an `=>` body is checked. The checker
 hangs it on the component (`Component.Protocol`), and `passDeclarative`
 splices its one returned expression into the `createNode` op as a second
@@ -35,7 +35,19 @@ operand, marshaling the splice itself (`marshalSpliced`): `CMarshal` ran
 before the op existed. The predeclared `null` in the splice is folded there
 too, since the optimizer never saw a library body nothing calls. A
 translator taking the operand implements `codegen.NodeMaker`; one that does
-not and is handed one panics, rather than dropping the call. gtk4's GIR
+not and is handed one panics, rather than dropping the call.
+
+`append` and `remove` are the next two: a function of the parent, typed as
+the component, and the child, under the same placement rules
+(`testdata/error_gen_protocol_append.sngl`). `childOp` makes every
+`AppendChild` and `RemoveChild` -- the flattening, a render slot's teardown,
+a placed slot's close -- and splices the parent's function as a third
+operand, its parameters bound to the two operands; a translator taking it
+implements `codegen.ChildProtocol`. The parent is found by its handle's type,
+which names its component. A component with a create and no append takes no
+child, and putting one in is a lowering error where the op is made
+(`TestClassWithNoAdder_RefusesAChild`); one with no remove keeps a child the
+program stops rendering, as it did when the translator answered. gtk4's GIR
 classes are the first users (`design/architecture.md`), and the plan for the
 rest of gtk4's protocol is #293's.
 

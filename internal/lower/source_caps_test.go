@@ -1,6 +1,7 @@
 package lower_test
 
 import (
+	"slices"
 	"testing"
 
 	"duckfam.us/sngl/internal/checker"
@@ -36,7 +37,7 @@ func TestGenVocabularyIsMapped(t *testing.T) {
 				continue
 			}
 			if ed.Name == "Protocol" {
-				if ir.ProtocolOp(m.Name) != ir.ProtocolCreate {
+				if !slices.Contains([]ir.ProtocolOp{ir.ProtocolCreate, ir.ProtocolAppend, ir.ProtocolRemove}, ir.ProtocolOp(m.Name)) {
 					t.Errorf("sngl:x/gen declares Protocol.%s, which ir declares no op for", m.Name)
 				}
 				continue

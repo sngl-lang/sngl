@@ -134,7 +134,7 @@ one op the translator stops building.
   `ReleaseTemps`).
 
 Fixture: `testdata/error_gen_protocol_create.sngl` (a parameter, an inferred
-or non-component return, a struct) and `TestGenProtocolCreatePlacement`
+or non-component return, a struct) and `TestGenProtocolPlacement`
 (not intrinsic, another package's, twice). Golden:
 `testdata/gtk4_declared_create.txtar`. `declgen_test.go`'s
 `TestWidgetSource_DeclaresConstructors` and
@@ -149,23 +149,33 @@ release and the golden differs; no parameter check and the fixture's
 No string, but a C call all the same, and the shape every container op
 after it takes.
 
-- [ ] `Protocol` gains `append`: `(parent P, child T)` with `P` an
-  `#[intrinsic]` component. `declgen` writes one per class with a
-  `gir.ChildAdder`, its receiver cast to the class that declares the call
-  (`adderReceiver`'s rule), and `remove` beside it where GTK has one
-  (`gtk4ChildRemoveFn`'s `gtk_box_remove`), so `RemoveChild` resolves the
-  same way.
-- [ ] `passDeclarative` and the reactivity pass resolve `AppendChild` and
-  `RemoveChild`; the translator keeps `appAttach`, the window icon, the
-  render slot's anchor (`sngl_insert_before`, a preamble helper the slot
-  machinery owns) and the refusal of a class with no single-widget adder,
-  which moves to where the op finds no `append`.
+- [X] `Protocol` gains `append` and `remove`: `(parent P, child T)` with `P`
+  an `#[intrinsic]` component of the function's package, one each per
+  component (`bindProtocols`). `declgen` writes, per class with a
+  `gir.ChildAdder`, the call as a `#[macro.cnative]` taking C pointers and
+  `#[gen.protocol(append)] func _append_<CType>(parent <CType>, child ui.node)` handing it the nodes through declared casts (`_as_GtkButton(_ptr_GtkLinkButton(parent))`, `adderReceiver`'s rule); `_ptr_<CType>` takes
+  the class, since a family value reaches Go boxed in an `any`. `remove` is
+  GIR's `remove` method taking one widget (`gir.ClassInfo.ChildRemove`,
+  inherited as the adder is; the bundled subset gained `gtk_box_remove`),
+  written where the class accumulates children.
+- [X] `childOp` makes every `AppendChild` and `RemoveChild` (the flattening, a
+  render slot's teardown, a placed slot's close, a recreated instance) and
+  splices the parent's function as a third operand (`protocolSplice`, shared
+  with the create); the translator takes it through `codegen.ChildProtocol`.
+  A create with no append is refused in lowering
+  (`TestClassWithNoAdder_RefusesAChild`). The translator keeps `appAttach`,
+  the window icon, wrapped mode's `rtChildAppendWrappers`, the render slot's
+  parent -- a GtkBox whatever its container is declared as, so its insert is
+  `sngl_insert_before` and a remove with no call is `gtk_box_remove` -- and
+  the GIR adder for the tags no GIR class is behind, until Part 5. An
+  unresolved op on a declared-protocol parent panics.
 
 Fixture: `testdata/error_gen_protocol_append.sngl`. Golden:
 `testdata/gtk4_declared_append.txtar`, a box, a frame and a scrolled window
 each holding a child, and an `if` removing one, asserting each adder and
 `gtk_box_remove`. Revert: drop the resolution and the golden's build fails
-on the missing adder.
+on the missing adder. Done: also a link button, whose adder is GtkButton's;
+every other golden and recorded run is unchanged byte for byte.
 
 ## Part 3: `sngl_connect` and the callbacks index
 

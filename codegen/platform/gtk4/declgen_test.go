@@ -633,6 +633,44 @@ func TestWidgetSource_DeclaresConstructors(t *testing.T) {
 	}
 }
 
+// Each class with a single-widget adder is given an append calling it, the
+// receiver cast to the class declaring the call, and a remove beside it where
+// GTK has one and the class holds more than one child.
+func TestWidgetSource_DeclaresChildOps(t *testing.T) {
+	reg, err := rulesGIR(t).gir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(widgetSource(reg))
+	for _, want := range []string{
+		"#[macro.cnative(\"gtk_box_append\")]\nfunc _gtk_box_append(parent _p_GtkBox, child _p_GtkWidget)\n",
+		"#[gen.protocol(append)]\nfunc _append_GtkBox(parent GtkBox, child ui.node) {\n    _gtk_box_append(_as_GtkBox(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))\n}\n",
+		"#[gen.protocol(remove)]\nfunc _remove_GtkBox(parent GtkBox, child ui.node) {\n    _gtk_box_remove(_as_GtkBox(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))\n}\n",
+		// A replacing adder, and one a subclass inherits from its parent.
+		"func _append_GtkFrame(parent GtkFrame, child ui.node) {\n    _gtk_frame_set_child(_as_GtkFrame(_ptr_GtkFrame(parent)), _as_GtkWidget(_widget(child)))\n}\n",
+		"func _append_GtkLinkButton(parent GtkLinkButton, child ui.node) {\n    _gtk_button_set_child(_as_GtkButton(_ptr_GtkLinkButton(parent)), _as_GtkWidget(_widget(child)))\n}\n",
+		"#[macro.cnative(\"unsafe.Pointer\")]\nconst func _ptr_GtkBox(w GtkBox) c.pointer\n",
+		"#[macro.cnative(\"*C.GtkButton\")]\nstruct _p_GtkButton {}\n",
+		"#[macro.cnative(\"(*C.GtkButton)\")]\nconst func _as_GtkButton(p c.pointer) _p_GtkButton\n",
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated source lacks\n%s", want)
+		}
+	}
+	for _, deny := range []string{
+		"_append_GtkLabel",  // GTK puts no child in a label
+		"_remove_GtkFrame",  // a frame's one child is replaced
+		"_remove_GtkButton", // nor a button's
+	} {
+		if strings.Contains(src, deny) {
+			t.Errorf("generated source declares %s", deny)
+		}
+	}
+	if n := strings.Count(src, "func _gtk_button_set_child("); n != 1 {
+		t.Errorf("gtk_button_set_child is declared %d times; every class inheriting it shares one", n)
+	}
+}
+
 // A C type may spell a SNGL scalar -- GTK 4's gtk_spin_button_new takes a
 // `float` -- and the struct a zero crosses as must not shadow it in the
 // generated package, where every `float` prop would then name the struct.

@@ -2,7 +2,7 @@
 // #[intrinsic] component stands for: a function of no parameters returning
 // that component, declared beside it. A program declares no intrinsic, so a
 // create it writes is refused whatever it returns; the rules about the
-// component returned are the library's, and TestGenProtocolCreatePlacement
+// component returned are the library's, and TestGenProtocolPlacement
 // holds them.
 
 import gen "sngl:x/gen"
