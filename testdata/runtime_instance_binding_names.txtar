@@ -3594,7 +3594,7 @@ pass sha256:aa78b22a88b7ee2ebe6e01540c35ee62
 -- run/go/fyne --
 pass sha256:78d70b6f2606053ae9f97f1ca400a72b
 -- run/go/gtk4 --
-pass sha256:b95fd72695cc3d9688351d1d60be1c39
+pass sha256:3638c4413dae289e265004a044f82dac
 -- run/kotlin/android --
 pass sha256:cec96adda10ef28af22c9246c8d766d5
 -- run/none/html --

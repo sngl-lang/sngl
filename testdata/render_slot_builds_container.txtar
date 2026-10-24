@@ -571,6 +571,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:19e1965e0d01bface9cafbc899fc094b
+pass sha256:a3f2e9c178f4bda99e04eb57f8edf193
 -- run/go/gtk4 --
-pass sha256:2ec3ae418f60be1a4eaaa86421667bed
+pass sha256:150b53b02bdb5e7dea17e3547b5253ce

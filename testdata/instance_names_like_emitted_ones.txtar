@@ -928,6 +928,6 @@ func (m *Model) bumpClick() {
 	gtk4rt.Emit(m.bump, "clicked")
 }
 -- run/go/fyne --
-pass sha256:4d376a9e3e3c7ad85a4721b9b5b0803e
+pass sha256:50719fc79565dce598a7212c14aa17cb
 -- run/go/gtk4 --
-pass sha256:760fcac17b97d8ec072d15175e47e843
+pass sha256:ba2632b553db959b5dcaec9d063d2ede

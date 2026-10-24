@@ -799,4 +799,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:7c64a36eb71af3bda13580d2d742d4cd
+pass sha256:f00a7a4a98ac6d401e8a3b4ac7f14158

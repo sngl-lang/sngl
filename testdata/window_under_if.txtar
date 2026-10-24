@@ -1023,6 +1023,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:a33e94a7cf3b067e8a8f880c85f1dbab
 -- run/go/gtk4 --
-pass sha256:f62a9b05b1e0b7c0701aae816da6748f
+pass sha256:09a42c2b81b3e3e2b0351324e13b8e50
 -- run/none/html --
 pass sha256:066ea77d9142c5d6ce8cb10cabbeae66

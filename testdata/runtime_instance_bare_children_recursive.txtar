@@ -1009,6 +1009,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:ec23c0467216e14e247048de3ea3a5d9
 -- run/go/gtk4 --
-pass sha256:33673c4c720dbe6c62bfc4687eb06611
+pass sha256:1e8bfd254993220f4186856daf079485
 -- run/none/html --
 pass sha256:13a0a9cb94ba9c64216fb2abe6bb511d

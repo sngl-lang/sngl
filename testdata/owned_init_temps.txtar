@@ -250,10 +250,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ((fmt.Sprint(m.n__inst0) + " ") + fmt.Sprint(m.f__inst0.Fd)))
+	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.n__inst0) + " ") + fmt.Sprint(m.f__inst0.Fd)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.total))
+	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.total))
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -282,8 +282,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class File(
     var fd: Int = 0
@@ -332,8 +334,8 @@ fun MainScreen() {
                     close(__init0__inst0)
                 }
             }
-            Text(text = ((n__inst0.toString() + " ") + f__inst0.fd.toString()), modifier = Modifier.safeDrawingPadding())
-            Text(text = total.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((n__inst0.toString() + " ") + f__inst0.fd.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = total.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -445,8 +447,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:bf0ee909e48f7cc4f35b9357eceb9c9b
+pass sha256:c051968c52a7da795c7e3e53c9c69c5b
 -- run/kotlin/android --
-pass sha256:5b4ef872c097cab37f1ae41583589c4a
+pass sha256:70fd58b10283e31efda33f3f2391695b
 -- run/none/html --
 pass sha256:66ddb5431298d5565a675dd3391fe388

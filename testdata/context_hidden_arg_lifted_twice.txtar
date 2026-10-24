@@ -2071,7 +2071,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:cc21aae63cbddec5a55ca43d3307e8cc
 -- run/go/fyne --
-pass sha256:f53c33fdec1e5908ab6dfc23dd99bf36
+pass sha256:af4f1eca932da42558c459b3d9dbbe47
 -- run/go/gtk4 --
 pass sha256:9559b5b0990b5d726487dfa9755160ad
 -- run/none/html --

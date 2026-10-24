@@ -722,8 +722,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7265509450e51aa92c8936e0344a58c3
+pass sha256:4c2664f520ac6cba76c8d19280f0850c
 -- run/go/gtk4 --
-pass sha256:98ee158f91327b767d8b4f93e9aeeb5e
+pass sha256:c4ad3933018ca14672b7597ccd1ab7f4
 -- run/none/html --
 pass sha256:3d896236bcf597b614421224f0c7318d

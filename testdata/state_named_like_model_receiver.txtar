@@ -1015,8 +1015,8 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
 	c.__prop_start = __a_start
-	c.m__r0 = c.__prop_start
-	c.c__r0 = 0
+	c.m__r2 = c.__prop_start
+	c.c__r1 = 0
 	c.__slot0 = nil
 	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationHorizontal)
@@ -1109,6 +1109,6 @@ func (m *Model) incClick() {
 -- run/go/bubbletea --
 pass sha256:5ce3417b740fa0a4a942077f151be911
 -- run/go/fyne --
-pass sha256:da3322c1251b0b11c321a294de226aae
+pass sha256:2ffd63d91b6b5ee0849286429f4a29fc
 -- run/go/gtk4 --
-pass sha256:4aa1333bad2f06d6e7c94bacf0def388
+pass sha256:208ee3c7327f9c3173a71dcb2aeac0f1

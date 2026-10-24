@@ -1264,6 +1264,6 @@ func (m *Model) entryChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_entry)), sig)
 }
 -- run/go/fyne --
-pass sha256:f48ee85a6bcc796b235295889d415fc1
+pass sha256:5b725cb133533f8e72a236d4dd386e69
 -- run/go/gtk4 --
-pass sha256:e2a45f8d13e2b895c4e5f6a7591bbb64
+pass sha256:2be00bd2e7bfac3e446865882230998b

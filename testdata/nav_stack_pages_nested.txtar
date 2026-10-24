@@ -1810,8 +1810,8 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:ee5eb3c577d78f85a717392455e29e1f
 -- run/go/fyne --
-pass sha256:f0f7f6a603040faba711f4f40758c271
+pass sha256:f37c914161b26dc9bf7a43319d064fd3
 -- run/go/gtk4 --
-pass sha256:7a8ae0afb060735448050b0f4186d7b2
+pass sha256:78e4382df7e3ddf9b7cb592fe1a474ff
 -- run/kotlin/android --
 pass sha256:0a8a2589fec852e0597a10ac0c166bc6

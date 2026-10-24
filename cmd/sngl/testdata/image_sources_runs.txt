@@ -87,7 +87,7 @@ ui.window {
     main
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:03851c4518a20b1d3bd191cb38d56725
+sha256:99e11fb7df8fd521b4b631510377c3be
 {
   "results": [
     {
@@ -101,7 +101,7 @@ sha256:03851c4518a20b1d3bd191cb38d56725
   }
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:9503b86f585d8f992c1aa6b18df1d17c
+sha256:d627f38156450abd93814db4b1f0c0cb
 {
   "results": [
     {

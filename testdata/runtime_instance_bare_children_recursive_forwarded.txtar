@@ -1743,6 +1743,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:166780ba538078f3a1d34564a783b85f
 -- run/go/gtk4 --
-pass sha256:dc0b48a5c96410772a6512f3c7671481
+pass sha256:ded4d8371dcc8623de68e7ca8335855e
 -- run/none/html --
 pass sha256:20e974bc55f3733e9ebaccee6ccb4dd5

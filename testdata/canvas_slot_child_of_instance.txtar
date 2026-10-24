@@ -1055,8 +1055,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:d7e869891685461cfb247a6b8e6b63c1
+pass sha256:eade3230cfba5d6950b472b3495b327a
 -- run/go/gtk4 --
-pass sha256:795f9b5ae690baa1a068bf0fcd5c2e67
+pass sha256:e420ae0290f7895174d19d0d47bd72ad
 -- run/none/html --
 pass sha256:76902a6326d76594f37eaf80a2cb6a8f

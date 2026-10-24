@@ -840,7 +840,7 @@ pass sha256:db881c931b56210a41359a0b1f07f02e
 -- run/none/html --
 pass sha256:b0686336075c3cbb2a2d2d1b2e356544
 -- testrun/html/none/component_modal.sngl/main/1 --
-sha256:31f912a1f3a12a8a6e821a1644fda22e
+sha256:a2dce9904e57133c26b0f1816474c5aa
 {
   "results": [
     {

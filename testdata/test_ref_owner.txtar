@@ -2747,7 +2747,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:65f7307f546ddd1218c0994b97eb7047
 -- run/go/fyne --
-pass sha256:85fe7d80183c6cebe005281706cce085
+pass sha256:40a7726bc9a7f6f979f9165777aa0b8f
 -- run/go/gtk4 --
 pass sha256:bfba35febac77203bde4130a95277177
 -- run/kotlin/android --

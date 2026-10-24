@@ -898,4 +898,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:7edbf44fac2d47bb9c308db2530f8d91
+pass sha256:97baec84685b104ab7763b0d0a00f78a

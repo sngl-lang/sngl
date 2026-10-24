@@ -1700,6 +1700,6 @@ pass sha256:018b3ffc0b59663333a8c6a89603e841
 -- run/go/fyne --
 pass sha256:9ef8ee19df0c04f1b5ccf128bf524998
 -- run/go/gtk4 --
-pass sha256:e6d9ed0e10e90230b1763b60ad468739
+pass sha256:729b749dcef4b751004c3fdf1546e35b
 -- run/none/html --
 pass sha256:51e7eb66d596eeebb530bc9f58de3af7

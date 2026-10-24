@@ -690,10 +690,6 @@ window.__sngl_boot = () => {
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  function __sngl_init() {
-    __n3.style.setProperty("padding", _snglStyleLength(0));
-  }
-  __sngl_init();
   window.addEventListener("pagehide", __snglTeardown);
 })();
 };
@@ -707,9 +703,9 @@ pass sha256:c8ba70cad659e21eb7c1e2a3b8dfdb34
 -- run/kotlin/android --
 pass sha256:036c42aa24b8f3f7cfd2beaa7b48864e
 -- run/none/html --
-pass sha256:bda9f2add5a7acf6d0fff18feab69346
+pass sha256:ec52854d9325ee891e1c6aa60d6897d6
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:50cc4dad240a5d62009a38db01a2cc47
+sha256:29e53015b721c9e78501abff4dbaf738
 {
   "results": [
     {

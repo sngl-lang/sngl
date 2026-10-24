@@ -702,4 +702,4 @@ func (m *Model) noteClick() {
 -- run/go/fyne --
 pass sha256:f06bc2f5f4dac1d37fc7ec5eed05787f
 -- run/go/gtk4 --
-pass sha256:84eb2aae16c252644ebdfd89fcb1298b
+pass sha256:5a6717b094a9e115378e78ce3785591c

@@ -1920,15 +1920,15 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:bf0f123fbc4decbb595bd9ab0ad76982
 -- run/go/fyne --
-pass sha256:688020c1d3802b403e4614288aa0f28b
+pass sha256:8ccb1f4f43f051cf6d5c34b9dc79e878
 -- run/go/gtk4 --
-pass sha256:e00ca5755ceb019e2869b65d4aa54b03
+pass sha256:ff38a2732bffd437dca0140cc6b710e4
 -- run/kotlin/android --
 pass sha256:90f2d70e3e40cbc0a0c29d96716f3364
 -- run/none/html --
-pass sha256:50c3ca6e7b10ec18b75a9d52097c4100
+pass sha256:e1a3d80a064d29d1c4efaaf45800988e
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:5b89db5e09a4c98f1c1c19256a948a99
+sha256:bb2871952a83f739c702ddd16a9ea8ae
 {
   "results": [
     {

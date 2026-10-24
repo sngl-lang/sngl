@@ -89,7 +89,7 @@ sha256:9ed0692b10296efa8b9e6ae6b0068269
   ]
 }
 -- testrun/fyne/go/app.sngl/cards/1 --
-sha256:3909207c88c51e8b0cb80aadd595c7bd
+sha256:5e0caa9da3a5a6d97357e3f23253274f
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:3909207c88c51e8b0cb80aadd595c7bd
   ]
 }
 -- testrun/gtk4/go/app.sngl/cards/1 --
-sha256:2e9c0268a1db6839a02c42cbcf0b1e8b
+sha256:d2964c5a883a5a19ac3010233c024826
 {
   "results": [
     {

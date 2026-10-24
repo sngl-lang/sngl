@@ -258,4 +258,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:cb8fd326caf693e96573f44a820e6d4a
+pass sha256:ad61922df39123a8f85ddce1e4f83609

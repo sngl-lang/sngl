@@ -2114,10 +2114,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:95d81d891d608b3ad90da5d85a55ea9b
 -- run/go/fyne --
-pass sha256:8308fa2132a12aad04f8c3c594d47394
+pass sha256:eb3ff0d36acb59eb3adfb7b2d25281b5
 -- run/go/gtk4 --
-pass sha256:8a48cf054ad70380c2494a31622c00d0
+pass sha256:009aba018bb431889cc1a26f28143b33
 -- run/kotlin/android --
 pass sha256:ce5f510aca5ec3ee0fd19704e1f0ab7c
 -- run/none/html --
-pass sha256:3e34b7eef21d44c38029afb24b23f164
+pass sha256:0409df6a10f47db008fd5d03a642cac8

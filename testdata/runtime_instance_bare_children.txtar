@@ -1818,9 +1818,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3fe2d36264d97ace83c61c859d90de44
 -- run/go/fyne --
-pass sha256:1a7f8e716b862495cb008b94bc5be64c
+pass sha256:ae5449907ee11c60962f401e86f0df25
 -- run/go/gtk4 --
-pass sha256:6749b91f92a812df6b8b9d11ae92bfe4
+pass sha256:1278fb2f4c7b91bbe759f4852711887d
 -- run/kotlin/android --
 pass sha256:e7e88e9a0626b519c773a0344e23e371
 -- run/none/html --

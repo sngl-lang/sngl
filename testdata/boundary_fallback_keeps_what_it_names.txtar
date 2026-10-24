@@ -786,6 +786,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:15e1bcb4a34bcdd6814d76a94da7ec2f
 -- run/go/gtk4 --
-pass sha256:841bb851730ed9018887b90afe16f063
+pass sha256:17ea3b24193a7b201a18e39a1ebf7a7c
 -- run/none/html --
 pass sha256:8c981dd7c3aef7099c7c0b020b2aa74d

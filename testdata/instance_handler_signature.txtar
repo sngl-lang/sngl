@@ -589,6 +589,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:83f0b73cdc031d9b8952276c473dd503
+pass sha256:759242c914155d249d11e38ddedd4540
 -- run/go/gtk4 --
-pass sha256:84cdb5df7481944732ffcf9141e0e48b
+pass sha256:9872a8692072f834aee9f00a6d68c810

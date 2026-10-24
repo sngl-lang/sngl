@@ -1184,6 +1184,6 @@ pass sha256:1bcb6daa309cc0be7ca8898c6181b576
 -- run/go/fyne --
 pass sha256:309c1686a33777784ffaeaa9227627a6
 -- run/go/gtk4 --
-pass sha256:9461062ff939385af223269ca2014e6d
+pass sha256:16677a2edc24cf4dd0c8bba351880034
 -- run/none/html --
 pass sha256:5b3c63511633072050bc1e0bd14bf506

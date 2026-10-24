@@ -1431,7 +1431,7 @@ sha256:28a76d83b26121e4e69334c3c7b6a849
   ]
 }
 -- testrun/fyne/go/copies.sngl/main/1 --
-sha256:0049974e160d871dd577485f8a9baa2d
+sha256:974c3331ace71ee4a7b396fa949e03a4
 {
   "results": [
     {
@@ -1445,7 +1445,7 @@ sha256:0049974e160d871dd577485f8a9baa2d
   ]
 }
 -- testrun/fyne/go/deepfire.sngl/main/1 --
-sha256:d10e3119f42109effa25f9dafca4fb84
+sha256:43964c9addb02e54b78fd1b864e34a9f
 {
   "results": [
     {
@@ -1495,7 +1495,7 @@ sha256:514da5b83e6ae9238f4490252872d27f
   ]
 }
 -- testrun/fyne/go/gone.sngl/main/1 --
-sha256:34e602d6b2a8556c9a2778f80dd72dc8
+sha256:053acdb29107f536a304a623d4e28f87
 {
   "results": [
     {
@@ -1515,7 +1515,7 @@ sha256:1eee71747a742d67811397df3dbf048c
   ]
 }
 -- testrun/fyne/go/nested.sngl/main/1 --
-sha256:48829f96ed0572bc814734b77efa3d62
+sha256:8409f3db1a140ddeaf19ff968a47f60c
 {
   "results": [
     {
@@ -1549,7 +1549,7 @@ sha256:a5422b5e0ed59ccac8f2cd05793830f7
   ]
 }
 -- testrun/fyne/go/reserved.sngl/main/1 --
-sha256:dd3abfe080dc072d277d6700c40c8393
+sha256:1062f6ce111ecd06006f24711044994c
 {
   "results": [
     {
@@ -1559,7 +1559,7 @@ sha256:dd3abfe080dc072d277d6700c40c8393
   ]
 }
 -- testrun/fyne/go/seq.sngl/main/1 --
-sha256:52269a46832a730c03ba46537810b4ed
+sha256:5d44c4477362adc4b50400d70520b0f1
 {
   "results": [
     {
@@ -1569,7 +1569,7 @@ sha256:52269a46832a730c03ba46537810b4ed
   ]
 }
 -- testrun/fyne/go/shrink.sngl/main/1 --
-sha256:0fd6bf8256f4672cb04027e1777dfad2
+sha256:6867eb4e26405be1d15cb3e5ac5cbbb2
 {
   "results": [
     {
@@ -1613,7 +1613,7 @@ sha256:bccf59a93fac5ff977fa0f8d613bcf76
   ]
 }
 -- testrun/gtk4/go/copies.sngl/main/1 --
-sha256:28440b56661064b1c5f4052f1fd556f0
+sha256:6ae10426c298c8c62e6c37167be4170b
 {
   "results": [
     {
@@ -1627,7 +1627,7 @@ sha256:28440b56661064b1c5f4052f1fd556f0
   ]
 }
 -- testrun/gtk4/go/deepfire.sngl/main/1 --
-sha256:0c0980808d464b66926bcfb0a9839b52
+sha256:7b0fd6ccbee705d4e77a56a4b4334521
 {
   "results": [
     {
@@ -1697,7 +1697,7 @@ sha256:1769727e586a30887387bbeb285c0896
   ]
 }
 -- testrun/gtk4/go/nested.sngl/main/1 --
-sha256:4402bad7bc6b13b7d69c9807cb9bdb6d
+sha256:c383317c6126f5c23eb1469462fb95d1
 {
   "results": [
     {
