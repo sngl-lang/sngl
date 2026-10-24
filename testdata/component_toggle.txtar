@@ -616,7 +616,10 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-import "unsafe"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"unsafe"
+)
 
 func boolToInt(b bool) int {
 	if b {
@@ -624,10 +627,6 @@ func boolToInt(b bool) int {
 	}
 	return 0
 }
-
-var (
-	__cstr0 = C.CString("notify::active")
-)
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -667,8 +666,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.on)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
-	snglCallbacks = append(snglCallbacks, m.__n0_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n0), __cstr0, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "notify::active", m.__n0_notifyActive_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -818,7 +816,7 @@ pass sha256:473b3a64e17d3680a11ccdc3123f964e
 -- run/go/fyne --
 pass sha256:378dc747678c3dece285ec5ec7cc108c
 -- run/go/gtk4 --
-pass sha256:1d4714389bc1a1ed9866cd564d80f187
+pass sha256:213a5724c1bf79f73cf4ad724cad41cd
 -- run/kotlin/android --
 pass sha256:d6a03f79a8a86bcad9a9fa758d094ec9
 -- run/none/html --

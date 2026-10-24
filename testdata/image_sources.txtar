@@ -1350,9 +1350,8 @@ type ErrorEvent struct {
 var (
 	__cstr0 = C.CString("see [logo]")
 	__cstr1 = C.CString("grow")
-	__cstr2 = C.CString("clicked")
-	__cstr3 = C.CString("JD")
-	__cstr4 = C.CString("Images")
+	__cstr2 = C.CString("JD")
+	__cstr3 = C.CString("Images")
 )
 
 type Measurement struct {
@@ -1625,7 +1624,7 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 			var __inst1_i int = 0
 			if m.failed__inst0 || !m.hasPhoto__inst0 {
 				__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr3)
+				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr2)
 				gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n6)), gtk4rt.Look{Css: "background: #cccccc; border-radius: 20px; ", Width: 40.0, Height: 40.0, Cross: 2, TextAlign: 1})
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n6)))
 				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n6)))
@@ -2124,8 +2123,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n14)))
 	m.__n17 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n17)), __cstr1)
-	snglCallbacks = append(snglCallbacks, m.__n17_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n17), __cstr2, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "clicked", m.__n17_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n17)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
 	m.__n18 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
@@ -2142,7 +2140,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr4)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr3)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	gtk4rt.WindowSetIcon(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n18)))
 	return win
@@ -3036,7 +3034,7 @@ pass sha256:6ffa0cb95d1f1c536b3b7bc9791666b9
 -- run/go/fyne --
 pass sha256:10d808cf393bc58b95342b4fd4f899b8
 -- run/go/gtk4 --
-pass sha256:4522ad1d6db559d4d642f07652dd2c8a
+pass sha256:fc8cf208e9905f993c3dc6a202431832
 -- run/kotlin/android --
 pass sha256:f095afdc067dbeeba41f1c86078dc049
 -- run/none/html --

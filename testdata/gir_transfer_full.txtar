@@ -194,6 +194,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -201,8 +202,7 @@ import (
 var (
 	__cstr0 = C.CString("")
 	__cstr1 = C.CString("go")
-	__cstr2 = C.CString("clicked")
-	__cstr3 = C.CString("t")
+	__cstr2 = C.CString("t")
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -270,8 +270,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.l)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __cstr1)
-	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr2, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "clicked", m.__n1_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -281,9 +280,9 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr3)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr2)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:ba6dd25570712cd555b280e1507083a3
+pass sha256:23ddd2da3f4056b01bd8ef5d72ff4454

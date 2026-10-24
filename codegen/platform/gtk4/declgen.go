@@ -124,12 +124,12 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 				continue
 			}
 			events[n] = true
-			fmt.Fprintf(&b, "    @%s(self %s),\n", n, info.CType)
+			writeEvent(&b, n, s.Name, info.CType)
 		}
 		for _, prop := range notifyProps[info.CType] {
 			if n, ok := snglName("notify-" + prop); ok && !events[n] {
 				events[n] = true
-				fmt.Fprintf(&b, "    @%s(self %s),\n", n, info.CType)
+				writeEvent(&b, n, "notify::"+prop, info.CType)
 			}
 		}
 		// GIR does not say which widgets accept children, and declaring a
@@ -166,6 +166,16 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		fmt.Fprintf(&b, "\n#[macro.cnative(\"C.%s\")]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
 	}
 	return []byte(b.String())
+}
+
+// writeEvent declares the event n, which GTK knows as signal: the name the
+// connect gtk4.sngl declares is handed (#[gen.connects]) where SNGL spells it
+// otherwise.
+func writeEvent(b *strings.Builder, n, signal, cType string) {
+	if signal != n {
+		fmt.Fprintf(b, "    #[gen.connects(%q)]\n", signal)
+	}
+	fmt.Fprintf(b, "    @%s(self %s),\n", n, cType)
 }
 
 // writeCreate declares how a class is made: its primary constructor as a

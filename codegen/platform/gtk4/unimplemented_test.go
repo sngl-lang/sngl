@@ -152,7 +152,7 @@ window {
 		"C.gtk_label_set_xalign(",
 		// table, tree, radio and select mark a selection with a check button
 		"C.gtk_check_button_set_active(",
-		`C.CString("toggled")`,
+		`"toggled", func() {`,
 		// drawer, menu and modal show while open
 		"C.gtk_widget_set_visible(",
 	} {

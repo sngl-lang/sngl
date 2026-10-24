@@ -770,7 +770,7 @@ func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 	// read here, the parameter would be taken for a widget handed in as a value.
 	attached := map[*ir.Param]struct{}{}
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) == 3 {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) >= 3 {
 			if lam, ok := c.Args[2].Value.(*ir.Lambda); ok && lam.Func != nil {
 				for _, p := range lam.Func.Params {
 					attached[p] = struct{}{}

@@ -906,6 +906,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -916,8 +917,7 @@ type ErrorEvent struct {
 }
 
 var (
-	__cstr0 = C.CString("clicked")
-	__cstr1 = C.CString("t")
+	__cstr0 = C.CString("t")
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1074,15 +1074,13 @@ func (m *Model) buildWidgetTree() {
 	__ctmp0 := C.CString(fmt.Sprint(m.v))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp0)
 	C.free(unsafe.Pointer(__ctmp0))
-	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr0, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "clicked", m.__n1_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	__ctmp1 := C.CString(m.problem)
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __ctmp1)
 	C.free(unsafe.Pointer(__ctmp1))
-	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n2), __cstr0, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -1092,7 +1090,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr1)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr0)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -1101,4 +1099,4 @@ pass sha256:6cf518da6bef223e08abd6b48bd0188a
 -- run/go/fyne --
 pass sha256:fc3b6cef86f1abfcea39fd4d0e122561
 -- run/go/gtk4 --
-pass sha256:72ff80831db15a2ce8242ebe3e1099bd
+pass sha256:a88db96b055e3961238091192b612fc4

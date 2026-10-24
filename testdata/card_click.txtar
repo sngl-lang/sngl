@@ -967,6 +967,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -977,10 +978,6 @@ func boolToInt(b bool) int {
 	}
 	return 0
 }
-
-var (
-	__cstr0 = C.CString("clicked")
-)
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -1126,7 +1123,7 @@ func (m *Model) buildWidgetTree() {
 		m.row = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 		C.gtk_button_set_has_frame((*C.GtkButton)(unsafe.Pointer(m.row)), C.gboolean(boolToInt(false)))
 		m.__list_row(fmt.Sprint(__copy0), m.row)
-		snglCallbacks = append(snglCallbacks, func() {
+		gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.row)), "clicked", func() {
 			m.opened = name
 			m.__n2_box = C.sngl_slot_box(m.__n2_box)
 			if C.gtk_widget_get_parent((*C.GtkWidget)(unsafe.Pointer(m.__n2_box))) != (*C.GtkWidget)(unsafe.Pointer(m.__n2)) {
@@ -1134,7 +1131,6 @@ func (m *Model) buildWidgetTree() {
 			}
 			m.__renderSlot0(m.__n2_box)
 		})
-		C.sngl_connect(unsafe.Pointer(m.row), __cstr0, C.int((len(snglCallbacks) - 1)))
 		__n4 := (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
 		__n5 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 		__ctmp0 := C.CString(name)
@@ -1442,7 +1438,7 @@ pass sha256:6bd8e5b7d9738f0116cf6bcf32fe3ed0
 -- run/go/fyne --
 pass sha256:e9452f5e3e3b4149bf1f81000838f3ad
 -- run/go/gtk4 --
-pass sha256:660b4625958f39175d9138a59df53837
+pass sha256:07a70ce75a6d7d9b4009d10e4c1321c4
 -- run/kotlin/android --
 pass sha256:457965dbd9c5e9b8cefff8019a32d9e1
 -- run/none/html --

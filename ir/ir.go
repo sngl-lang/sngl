@@ -766,10 +766,11 @@ type Func struct {
 type ProtocolOp string
 
 const (
-	ProtocolNone   ProtocolOp = ""
-	ProtocolCreate ProtocolOp = "create"
-	ProtocolAppend ProtocolOp = "append"
-	ProtocolRemove ProtocolOp = "remove"
+	ProtocolNone    ProtocolOp = ""
+	ProtocolCreate  ProtocolOp = "create"
+	ProtocolAppend  ProtocolOp = "append"
+	ProtocolRemove  ProtocolOp = "remove"
+	ProtocolConnect ProtocolOp = "connect"
 )
 
 // NodeProtocol is the functions a platform declares to build an #[intrinsic]
@@ -779,6 +780,9 @@ type NodeProtocol struct {
 	Create *Func
 	Append *Func
 	Remove *Func
+	// Connect is held by a build-target node, not by the component: one
+	// connects a handler to every widget its platform makes.
+	Connect *Func
 }
 
 // Op is the function declared for op, nil where none is.
@@ -793,6 +797,8 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 		return p.Append
 	case ProtocolRemove:
 		return p.Remove
+	case ProtocolConnect:
+		return p.Connect
 	}
 	return nil
 }
@@ -1227,6 +1233,9 @@ type EventDecl struct {
 	Wildcard string `json:",omitempty"`
 	// Doc is the comment written on the event in its declaration.
 	Doc string `json:",omitempty"`
+	// Connects is the name the host knows the event by, from #[gen.connects];
+	// empty where it is the event's own.
+	Connects string `json:",omitempty"`
 }
 
 // SlotDecl is a resolved slot declaration: a parameter whose type is a

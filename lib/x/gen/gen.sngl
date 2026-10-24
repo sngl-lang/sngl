@@ -143,12 +143,25 @@ enum Protocol {
     // Takes a child out of the widget, the same shape as `append`. A
     // component with no remove keeps a child the program stops rendering.
     remove
+    // Connects a handler to the widget: a function of the node, the name the
+    // host knows the event by, and the handler, declared once beside the
+    // platform's build-target node rather than per component. The build calls
+    // it wherever a node of a component declaring any of the operations above
+    // is handed a handler. The platform puts the handler in place, since
+    // whether it is a method or a closure is the shape of the code it writes.
+    connect
 }
 
 // Says the function is the named operation of its component's protocol.
 // Nothing calls one by name: the build finds it by this mark, through the
-// component its signature names.
+// component its signature names, or for `connect`, the build-target node
+// declared beside it.
 func protocol(op Protocol) ir.Macro
+
+// Names an event as its host knows it, where that is no SNGL name: GTK's
+// `notify::active` is `@notifyActive`. The `connect` operation is handed this
+// name, or the event's own where there is none.
+func connects(name string) ir.Macro
 
 // How a family's override generates the family, written as the whole of the
 // override's body. The build walks each place the program renders the family

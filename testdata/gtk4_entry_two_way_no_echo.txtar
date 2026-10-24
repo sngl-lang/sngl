@@ -317,11 +317,6 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-var (
-	__cstr0 = C.CString("changed")
-	__cstr1 = C.CString("activate")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -747,7 +742,7 @@ func newSearchInstance(__model *Model) *SearchInstance {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n4)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n4)), C.int(6))
 	c.box = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
-	snglCallbacks = append(snglCallbacks, func() {
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "changed", func() {
 		if C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box)))) != c.search {
 			c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
 			__ctmp0 := C.CString(c.search)
@@ -756,15 +751,13 @@ func newSearchInstance(__model *Model) *SearchInstance {
 		}
 		c.__effects0_settle()
 	})
-	C.sngl_connect(unsafe.Pointer(c.box), __cstr0, C.int((len(snglCallbacks) - 1)))
-	snglCallbacks = append(snglCallbacks, func() {
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(c.box)), "activate", func() {
 		c.search = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.box))))
 		__ctmp1 := C.CString(c.search)
 		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp1)
 		C.free(unsafe.Pointer(__ctmp1))
 		c.__effects0_settle()
 	})
-	C.sngl_connect(unsafe.Pointer(c.box), __cstr1, C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(c.box)))
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp2 := C.CString(c.search)
@@ -898,4 +891,4 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__named_box)), sig)
 }
 -- run/go/gtk4 --
-pass sha256:29bffb8eca8f7932ebc5aa49353f0cc1
+pass sha256:0b54ebeba37f3ce80b61cb1da36aa463

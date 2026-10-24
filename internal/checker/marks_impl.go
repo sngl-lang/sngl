@@ -40,6 +40,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "name"}:                  markGenName,
 	{"x/gen", "native"}:                markGenNative,
 	{"x/gen", "protocol"}:              markGenProtocol,
+	{"x/gen", "connects"}:              markGenConnects,
 	{"ui/markup/md", "order"}:          markMdOrder,
 	{"json", "identifier"}:             markJSONIdentifier,
 	{"http", "identifier"}:             markHTTPIdentifier,
@@ -965,11 +966,47 @@ func markGenProtocol(m *mark) error {
 		if t := fn.Params[0].Type; t == nil || t.Kind != ir.TypeComponent {
 			return fmt.Errorf("#[gen.protocol(%s)] declares the #[intrinsic] component it adds to as its first parameter", op)
 		}
+	case ir.ProtocolConnect:
+		if len(fn.Params) != 3 {
+			return fmt.Errorf("#[gen.protocol(connect)] takes the node, the event's name and the handler: func f(w ui.node, event string, handler func())")
+		}
+		if t := fn.Params[0].Type; t == nil || t.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(connect)] declares the node it connects to as its first parameter")
+		}
+		if t := fn.Params[1].Type; t == nil || t.Kind != ir.TypeString {
+			return fmt.Errorf("#[gen.protocol(connect)] is handed the event's name, a string, as its second parameter")
+		}
+		if t := fn.Params[2].Type; t == nil || t.Kind != ir.TypeFunc {
+			return fmt.Errorf("#[gen.protocol(connect)] is handed the handler, a function, as its third parameter")
+		}
 	default:
 		return fmt.Errorf("#[gen.protocol(%s)]: the compiler implements no such operation", op)
 	}
 	fn.Protocol = op
 	m.c.protocols = append(m.c.protocols, protocolMark{fn: fn, pos: m.attr.Pos})
+	return nil
+}
+
+// markGenConnects implements #[gen.connects(name)]: the event's name as the
+// host knows it, which the connect operation is handed in place of the
+// event's own.
+func markGenConnects(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[gen.connects] names the event as its host knows it, and the name is empty")
+	}
+	evt, ok := m.sym.(*ir.EventDecl)
+	if !ok {
+		what := ast.DeclFormName(m.decl)
+		if _, prop := m.sym.(*ir.Prop); prop {
+			what = "a parameter"
+		}
+		return fmt.Errorf("#[gen.connects] cannot mark %s; it marks an event", what)
+	}
+	if evt.Connects != "" {
+		return fmt.Errorf("#[gen.connects(%q)]: @%s already connects %q", name, evt.Name, evt.Connects)
+	}
+	evt.Connects = name
 	return nil
 }
 

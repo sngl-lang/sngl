@@ -97,7 +97,14 @@ on 2026-10-23; seven is the count on this branch): the constructor
 (`OnAttachHandler`), the entry-text write and the window title
 (`compiler_ir.go`), and a flow's markup (`markup.go`). The parts take them in
 that order, after the child adder, which makes no string but is the protocol
-all the same.
+all the same. Parts 1 and 3 retired the constructor and `sngl_connect`.
+
+**Wrapped mode is kept by what a declared op calls.** Part 3 found that a
+string marshaled in IR leaves a `C.` that sends the program down the cgo
+path. Where gtk4rt already wraps the call with a Go string, the op calls it
+as a `#[go.native]` in both modes, as the connect does, and the string's C
+copy is gtk4rt's; where it does not, the string is a pass's and the program
+is cgo, as a link button's create already is. Part 6 decides what is left.
 
 ### Part 1: a widget's constructor
 
@@ -181,28 +188,34 @@ every other golden and recorded run is unchanged byte for byte.
 
 ### Part 3: `sngl_connect` and the callbacks index
 
-The first string a pass frees: the signal name.
+Done, but not as planned: the signal name makes no C string in the program.
+Marshaled in IR, it left a `C.` in every program with a handler, which would
+have sent 145 wrapped goldens down the cgo path and wrapped mode's cached
+build with them, so the connect calls a cached runtime instead.
 
-- [ ] `Protocol` gains `connect`, declared once in `gtk4.sngl`, not per
-  class: `sngl_connect` is a preamble function of the platform's.
-  `snglCallbacks` becomes a package var of `gtk4.sngl` (`list[func()]`) the
-  scaffold's `snglGoDispatch` reads by its emitted name, or stays Go with
-  only the call declared; decide by whether the generated `callbacks.go`
-  can read a SNGL var's emitted name without the translator spelling it,
-  and write the reason in `design/architecture.md`.
-- [ ] A `@notify<Prop>` event's `notify::<prop>` and every GIR signal reach
-  the connect as a `string` argument, so `CMarshal` makes the `c.str` and
-  `ReleaseTemps` gives it back (a literal at the application's lifetime).
-  The activate signal in `callbacks.go` is the scaffold's own and stays a
-  package var.
-- [ ] `OnAttachHandler` keeps `recordInvoker` (a test's invoker needs the id
-  and event, which only the op has) and the signal lambda's `self`.
+- [X] `Protocol` gains `connect`, declared once in `gtk4.sngl` beside the
+  build-target node (`bindConnect`, `NodeProtocol.Connect` on the node) and
+  read off it by `FeaturesFrom` (`Features.connect`, unexported). It is
+  `gtk4rt.Connect` as a `#[go.native]`: gtk4rt registers the handler through
+  `cbind` and copies the signal into C itself, in both modes. `snglCallbacks`
+  stays Go, `callbacks.go` being fixed text that cannot name a SNGL var's
+  emitted spelling; it holds only the canvas click until Part 5.
+- [X] `#[gen.connects(name)]` (`EventDecl.Connects`) names an event as its
+  host knows it; declgen writes `notify::<prop>` on each `@notify<Prop>` and
+  the GIR name on a signal SNGL spells otherwise. `passDeclarative` splices
+  the connect into `AttachHandler` as a fourth operand, every parameter bound
+  but the handler, which the op already carries.
+- [X] `OnConnectThrough` (`codegen.HandlerConnector`) puts the node as a
+  `Handle` and the walked handler in the unbound parameter (`connectCall`),
+  and keeps `recordInvoker` and the signal lambda's `self`. A node with no
+  declared protocol is connected through `gtk4rt.Connect` too; one with a
+  protocol and no splice panics. `OnAttachHandler`'s `ownCStrings` call went.
 
-Fixture: `testdata/error_gen_protocol_connect.sngl`. Golden:
-`testdata/gtk4_declared_connect.txtar`, a button's `@clicked`, a switch's
-`@notifyActive` and a handler in a `for` row, asserting the connect, the
-index and the signal string's release. Revert: drop the resolution and the
-golden shows the translator's `__cstr` back.
+Fixture: `testdata/error_gen_protocol_connect.sngl`, and
+`TestGenProtocolPlacement` (beside the target, twice, `connects` on an event
+and on a prop). Golden: `testdata/gtk4_declared_connect.txtar`. Reverted,
+each fails: no splice and the build panics at the translator; no
+`#[gen.connects]` and the golden connects `"notifyActive"`.
 
 ### Part 4: the setters and `g_object_set_property`
 
@@ -215,14 +228,18 @@ The largest site: every prop write.
   every `set` lives), or a `sngl_set_prop_*` helper by the property's name
   where GTK ships no setter. An enumeration's string member is a `match`
   over the member names GIR lists, to the member's value through the enum's
-  cast, which folds for a literal; an `int` passes through.
+  cast, which folds for a literal; an `int` passes through. Where gtk4rt
+  wraps the setter (`wrapped.go`'s `rt*` tables), the `set` calls it as a
+  `#[go.native]` in both modes, as Part 3's connect does, so a label's text
+  keeps a program wrapped; count the goldens that would flip before choosing
+  otherwise.
 - [ ] A nullable string prop is `option[string]`; `CMarshal` learns that
   conversion (`null` to `NULL`, a value to `cstring`) here, since Part 1 only
   ever passes `null`.
 - [ ] `setEntryText` (`compiler_ir.go`'s entry-text write) becomes a SNGL
   body in `gtk4.sngl` calling `sngl_set_entry_text_quiet` as a
   `#[cnative]`, and stops being a `widgetWrites` intrinsic.
-- [ ] `OnPropAssign` keeps `style` and `flex`, `CopyProp`, instance roots,
+- [ ] `OnPropAssign` keeps `look` (`gtk4rt.SetLook`), `CopyProp`, instance roots,
   and the refusals (construct-only, unsettable, no such prop), which move
   to where the op finds no `set`; `coerceSetterValue` goes.
 
@@ -259,9 +276,9 @@ Every gtk4 build tries wrapped mode first -- `gtk4rt` calls over a `Handle`
 -- and re-emits as inline cgo when a `C.` is left (`emitIRMode`), which is
 why most gtk4 goldens record wrapped output and a fixture needing cgo draws
 a canvas. A lowered protocol leaves a `C.` wherever a pass marshaled a
-string, so from Part 3 on a program handing a string to a widget falls back
-to cgo whatever it renders: read those goldens' diffs as that fallback, and
-take this part before Part 3 if the churn hides behavior.
+string, so a program handing one to a widget falls back to cgo whatever it
+renders; Part 3 kept the connect from doing so by calling gtk4rt, and the
+parts after it do the same where gtk4rt wraps the call.
 
 - [ ] Measure a fresh `go build` of `examples/pokedex` and a two-widget
   program in each mode with a warm and a cold cache. If wrapped mode still
@@ -290,8 +307,8 @@ cgo. Revert: for a kept mode, drop the option and the golden shows cgo.
   an intrinsic, writes its prop and attaches its handler), so the tracker
   sees each `c.str`.
 
-Fixture: `cmd/sngl/testdata/simulate_gtk4_widget_strings.txt`, a `sngl test --simulate gtk4` over a reactive label, a link button and a switch's notify,
-passing. Revert: stop `ReleaseTemps` releasing a spliced temp and the
+Fixture: `cmd/sngl/testdata/simulate_gtk4_widget_strings.txt`, a `sngl test --simulate gtk4` over a reactive label, a link button and a switch's notify
+(whose connect makes no `c.str`), passing. Revert: stop `ReleaseTemps` releasing a spliced temp and the
 tracker reports the leak at the setter; stop the interpreter calling the
 protocol and the run passes while the golden's release lines go, which is
 why both are pinned.

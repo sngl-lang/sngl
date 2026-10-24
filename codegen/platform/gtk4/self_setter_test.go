@@ -85,7 +85,7 @@ func TestClickUpdatesOwnLabel(t *testing.T) {
 // the click counted and the label showed 0.
 func TestAClickUpdatesTheButtonsOwnLabel(t *testing.T) {
 	files := goFiles(generateGTK4FilesBuilt(t, selfSetterSrc))
-	if strings.Contains(files["model.go"], "gtk4rt.") {
+	if !strings.Contains(files["model.go"], "import \"C\"") {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])
 	}
 	files["entry.go"] = "package main\n\nfunc main() {}\n"

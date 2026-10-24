@@ -114,7 +114,7 @@ func TestRootSlotsKeepTheirPlaceRuns(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			files := goFiles(generateGTK4FilesBuilt(t, src))
-			if cgo := !strings.Contains(files["model.go"], "gtk4rt."); cgo != (name == "cgo") {
+			if cgo := strings.Contains(files["model.go"], "import \"C\""); cgo != (name == "cgo") {
 				t.Fatalf("expected the %s path:\n%s", name, files["model.go"])
 			}
 			files["entry.go"] = "package main\n\nfunc main() {}\n"

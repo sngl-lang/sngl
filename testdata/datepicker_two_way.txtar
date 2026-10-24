@@ -791,10 +791,6 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-var (
-	__cstr0 = C.CString("day-selected")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1188,8 +1184,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
 	m.d = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.d)), C.gboolean(boolToInt(true)))
-	snglCallbacks = append(snglCallbacks, m.d_daySelected_handler)
-	C.sngl_connect(unsafe.Pointer(m.d), __cstr0, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.d)), "day-selected", m.d_daySelected_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.d)))
 	var __lt17 string
 	if m.picked__inst0 != nil {
@@ -1410,7 +1405,7 @@ pass sha256:7c14c23a1cf0ee0f1489081a805bbb7f
 -- run/go/fyne --
 pass sha256:8b7419ba33ac57aafc723c8230965e7a
 -- run/go/gtk4 --
-pass sha256:f036d67d82fe1238aedeb1accdb17a6d
+pass sha256:340ea493f984f95f3a4fe6c3c8874915
 -- run/kotlin/android --
 pass sha256:f732a6dd828003a2a53b787a0cf89e11
 -- run/none/html --

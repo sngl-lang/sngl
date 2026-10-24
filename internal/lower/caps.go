@@ -6,6 +6,8 @@ package lower
 
 import (
 	"strings"
+
+	"duckfam.us/sngl/ir"
 )
 
 // Features is what a target says it can do, declared in its own package by
@@ -194,9 +196,15 @@ type Features struct {
 	// default -- the language's reservedWords and the platform's
 	// reservedNames props together -- for a build with no output block to
 	// read them from: passReservedNames renames a
-	// declaration the program gave one of them. Not a capability, so it is
-	// the one field String does not list and no pass is gated on.
+	// declaration the program gave one of them. Not a capability, so String
+	// does not list it and no pass is gated on it.
 	Reserved []string
+
+	// connect is the platform node's #[gen.protocol(connect)], which
+	// passDeclarative splices into each handler it attaches to a widget whose
+	// component declares its protocol. Unexported: it is read off the node,
+	// and a caller has no other way to say it.
+	connect *ir.Func
 }
 
 // LowersNothing reports whether f holds exactly NoLowering's capabilities,

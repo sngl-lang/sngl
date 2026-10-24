@@ -36,6 +36,10 @@ func TestGenProtocolPlacement(t *testing.T) {
 		{"append to another package's", "#[gen.protocol(append)]\nfunc _add(parent other.Other, child sngl.node) {}\n", "#[gen.protocol(append)]: Other is declared by"},
 		{"append twice", "#[gen.protocol(append)]\nfunc _a(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n\n#[gen.protocol(append)]\nfunc _b(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n", "#[gen.protocol(append)]: Thing already has _a"},
 		{"remove twice", "#[gen.protocol(remove)]\nfunc _a(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n\n#[gen.protocol(remove)]\nfunc _b(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n", "#[gen.protocol(remove)]: Thing already has _a"},
+		{"a connect beside the target", "#[gen.protocol(connect)]\nfunc _connect(w sngl.node, event string, handler func()) {}\n", ""},
+		{"connect twice", "#[gen.protocol(connect)]\nfunc _a(w sngl.node, event string, handler func()) {}\n\n#[gen.protocol(connect)]\nfunc _b(w sngl.node, event string, handler func()) {}\n", "#[gen.protocol(connect)]: extstub already has _a"},
+		{"connects on an event", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"button-press\")]\n    @pressed,\n) sngl.node\n", ""},
+		{"connects on a prop", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"press\")]\n    x int,\n) sngl.node\n", "#[gen.connects] cannot mark a parameter; it marks an event"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			doc, err := parser.Parse("main.sngl", []byte(withStd("component main node {\n    text(value=\"hi\")\n}\n")))

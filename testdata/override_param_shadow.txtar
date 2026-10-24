@@ -985,10 +985,6 @@ func boolToInt(b bool) int {
 
 var (
 	__cstr0 = C.CString("")
-	__cstr1 = C.CString("toggled")
-	__cstr2 = C.CString("changed")
-	__cstr3 = C.CString("activate")
-	__cstr4 = C.CString("notify::active")
 )
 
 type Measurement struct {
@@ -1413,20 +1409,16 @@ func (m *Model) buildWidgetTree() {
 	m.box = (*C.GtkCheckButton)(unsafe.Pointer(C.gtk_check_button_new()))
 	C.gtk_check_button_set_label((*C.GtkCheckButton)(unsafe.Pointer(m.box)), __cstr0)
 	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.checked__inst0)))
-	snglCallbacks = append(snglCallbacks, m.box_toggled_handler)
-	C.sngl_connect(unsafe.Pointer(m.box), __cstr1, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.box)), "toggled", m.box_toggled_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
 	m.field = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
-	snglCallbacks = append(snglCallbacks, m.field_changed_handler)
-	C.sngl_connect(unsafe.Pointer(m.field), __cstr2, C.int((len(snglCallbacks) - 1)))
-	snglCallbacks = append(snglCallbacks, m.field_activate_handler)
-	C.sngl_connect(unsafe.Pointer(m.field), __cstr3, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.field)), "changed", m.field_changed_handler)
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.field)), "activate", m.field_activate_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.field)))
 	m.sw = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst1)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(true)))
-	snglCallbacks = append(snglCallbacks, m.sw_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.sw), __cstr4, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.sw)), "notify::active", m.sw_notifyActive_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
@@ -1694,7 +1686,7 @@ pass sha256:b70346fc5d491b3f2647f6c20189a536
 -- run/go/fyne --
 pass sha256:52e20ad15b1d36644071414add1bee26
 -- run/go/gtk4 --
-pass sha256:e70e9e97cd07352f09b5c0e66c576013
+pass sha256:3f0042755f5e8d32885c7ccc9c283f1b
 -- run/kotlin/android --
 pass sha256:8f42eeb8b7d173367d719e87d53699f9
 -- run/none/html --

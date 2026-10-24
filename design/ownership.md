@@ -445,7 +445,7 @@ declares: gtk4's preamble includes it, and fyne's and bubbletea's
 those targets make is freed.
 
 **A call the gtk4 translator builds releases its own strings.** The
-inline-cgo translator writes `C.CString` into a setter, a `sngl_connect`, a
+inline-cgo translator writes `C.CString` into a setter, a
 `g_object_set_property` helper, a flow's markup, the window title and the
 entry-text write after lowering, so no pass
 sees the allocation. `emitShared.ownCStrings` (`intrinsic_translator.go`) is
@@ -466,7 +466,10 @@ translator -- and is #293, split out of the ownership work with the count of
 what it touches. A constructor is the first site it retired: its arguments
 are the declared create's (`design/architecture.md`), and a GTK constructor
 refusing NULL is handed one application-lifetime `""` that `ReleaseTemps`
-frees at teardown, where the translator's copy was never freed.
+frees at teardown, where the translator's copy was never freed. A signal name
+was the second, and makes no C string in the program at all: the declared
+connect is `gtk4rt.Connect`, which copies the name into C and frees it itself,
+so a wrapped build stays one with no cgo (`design/architecture.md`).
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective

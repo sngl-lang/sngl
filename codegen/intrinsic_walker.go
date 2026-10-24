@@ -114,6 +114,16 @@ type ChildProtocol interface {
 	OnRemoveThrough(ctx context.Context, parent, child, call ir.Expr) []ir.Stmt
 }
 
+// HandlerConnector is implemented by a platform whose widgets a
+// #[gen.protocol(connect)] function connects handlers to: lowering splices the
+// call into the AttachHandler op as its fourth operand with every parameter
+// bound but the handler, which is left as the parameter it is written as. The
+// platform puts the walked handler there, shaped as its trampoline calls it.
+// An op without one is still OnAttachHandler's.
+type HandlerConnector interface {
+	OnConnectThrough(ctx context.Context, node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt
+}
+
 // WalkLowered iterates the lowered IR statement sequence and dispatches
 // each known shape to t. Returns the concatenated emissions in source
 // order. ctx is passed through to every translator method; if the
@@ -183,8 +193,15 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				return t.OnRemoveChild(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value)
 			case isLowerIntrinsic(n.Call, "AttachHandler"):
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
-				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt,
-					walkHandlerBody(ctx, n.Call.Args[2].Value, t))
+				handler := walkHandlerBody(ctx, n.Call.Args[2].Value, t)
+				if len(n.Call.Args) == 4 {
+					hc, ok := t.(HandlerConnector)
+					if !ok {
+						panic(fmt.Sprintf("codegen: a handler is connected through a declared protocol, and %T takes none", t))
+					}
+					return hc.OnConnectThrough(ctx, n.Call.Args[0].Value, evt, handler, n.Call.Args[3].Value)
+				}
+				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt, handler)
 			case isLowerIntrinsic(n.Call, ir.NodeOpDetachHandler) && len(n.Call.Args) == 3:
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
 				return t.OnDetachHandler(ctx, n.Call.Args[0].Value, evt, n.Call.Args[2].Value)

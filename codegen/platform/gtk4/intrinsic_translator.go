@@ -1523,6 +1523,16 @@ func (t *gtk4Translator) widgetReader() widgetAccess {
 }
 
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	return t.attachHandler(node, event, handler, nil)
+}
+
+// OnConnectThrough is an AttachHandler carrying the call gtk4.sngl's declared
+// connect makes, which lowering spliced.
+func (t *gtk4Translator) OnConnectThrough(ctx context.Context, node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt {
+	return t.attachHandler(node, event, handler, call)
+}
+
+func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt {
 	if t.isSkipped(node) {
 		return nil
 	}
@@ -1560,47 +1570,38 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	if lam, ok := handler.(*ir.Lambda); ok {
 		handler = t.signalLambda(lam, node)
 	}
-
-	// gtk4rt.Connect registers the handler and wires the signal in one call —
-	// no per-program snglCallbacks slice or cgo.
-	if t.wrapped {
+	if call == nil {
+		if declaresProtocol(node) {
+			panic(fmt.Sprintf("gtk4: a handler on %s reached the translator without the connect gtk4.sngl declares", cType))
+		}
 		sigLit := &ir.Literal{Type: ir.TypString, Value: signal}
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", ir.TypVoid, t.qualifyNodeExpr(node), sigLit, handler)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), sigLit, handler)}}
 	}
-	// snglCallbacks = append(snglCallbacks, handler)
-	cbList := snglCallbacksRef()
-	appendCall := &ir.Call{
-		Type: cbList.Type,
-		Func: &ir.Func{Name: "append"},
-		Args: []ir.CallArg{
-			{Value: cbList},
-			{Value: handler},
-		},
+	return []ir.Stmt{&ir.CallStmt{Call: t.connectCall(call, handler)}}
+}
+
+// connectCall is the declared connect's call with the node put where this
+// scope holds it, as the Handle gtk4rt takes, and handler in the place of the
+// parameter lowering left unbound for it.
+func (t *gtk4Translator) connectCall(call, handler ir.Expr) *ir.Call {
+	c, ok := ir.CloneExprSharingDecls(call).(*ir.Call)
+	if !ok {
+		panic(fmt.Sprintf("gtk4: a declared connect made %T, not a call", call))
 	}
-	registerStmt := &ir.Assign{
-		Target: cbList,
-		Op:     ast.AssignSet,
-		Value:  appendCall,
-	}
-	// sngl_connect's C signature is `void *widget`, so cgo expects
-	// unsafe.Pointer.
-	widget := cgoCast("", t.qualifyNodeExpr(node))
-	signalCStr := cString(&ir.Literal{Type: ir.TypString, Value: signal})
-	lenCall := &ir.Call{
-		Type: ir.TypInt,
-		Func: &ir.Func{Name: "len"},
-		Args: []ir.CallArg{{Value: cbList}},
-	}
-	idxExpr := &ir.Binary{
-		Op:    ast.BinSub,
-		Left:  lenCall,
-		Right: &ir.Literal{Type: ir.TypInt, Value: "1"},
-	}
-	idxArg := cScalar("int", idxExpr)
-	connectStmt := &ir.CallStmt{
-		Call: nativeCall("sngl_connect", ir.TypVoid, widget, signalCStr, idxArg),
-	}
-	return t.shared.ownCStrings([]ir.Stmt{registerStmt, connectStmt})
+	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
+		id, ok := n.(*ir.Ident)
+		if !ok {
+			return n, nil
+		}
+		if _, ok := id.Sym.(*ir.Param); ok {
+			return handler, ir.SkipDir
+		}
+		if id.IsElementRef {
+			return t.rtHandle(t.qualifyNodeExpr(id)), ir.SkipDir
+		}
+		return n, nil
+	})
+	return c
 }
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {

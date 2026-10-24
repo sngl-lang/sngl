@@ -207,6 +207,9 @@ func TestGtk4Translator_OnPropAssign_UnknownPropReported(t *testing.T) {
 	}
 }
 
+// A node no declared protocol made is connected through gtk4rt in either mode,
+// as the declared connect connects one: the generated file calls no C to
+// connect a handler.
 func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
@@ -215,14 +218,8 @@ func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 	node := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	handler := &ir.Ident{Name: "handleClick", Synthesized: true}
 	got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "click", handler))
-	if !strings.Contains(got, "C.sngl_connect") {
-		t.Errorf("expected C.sngl_connect; got: %s", got)
-	}
-	if !strings.Contains(got, `"clicked"`) {
-		t.Errorf("expected signal name 'clicked'; got: %s", got)
-	}
-	if !strings.Contains(got, "snglCallbacks") {
-		t.Errorf("expected snglCallbacks registration; got: %s", got)
+	if !strings.Contains(got, `gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "clicked", handleClick)`) {
+		t.Errorf("expected gtk4rt.Connect of 'clicked'; got: %s", got)
 	}
 }
 
@@ -299,11 +296,10 @@ func TestGtk4Translator_OnAttachHandler_RefusesWrongArity(t *testing.T) {
 			t.Errorf("error %q does not mention %q", shared.errs[0], want)
 		}
 	}
-	// The connectable sibling still connects, its signal name a C string
-	// made once (ownCStrings).
+	// The connectable sibling still connects.
 	got := renderStmts(gc, tr.OnAttachHandler(context.Background(), node, "changed", handler))
-	if !strings.Contains(got, "C.sngl_connect(") || len(shared.cStrings) != 1 || shared.cStrings[0].Text != "changed" {
-		t.Errorf("changed was not connected: %s\n%v", got, shared.cStrings)
+	if !strings.Contains(got, `gtk4rt.Connect(`) || !strings.Contains(got, `"changed"`) {
+		t.Errorf("changed was not connected: %s", got)
 	}
 }
 

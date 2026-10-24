@@ -47,9 +47,24 @@ implements `codegen.ChildProtocol`. The parent is found by its handle's type,
 which names its component. A component with a create and no append takes no
 child, and putting one in is a lowering error where the op is made
 (`TestClassWithNoAdder_RefusesAChild`); one with no remove keeps a child the
-program stops rendering, as it did when the translator answered. gtk4's GIR
-classes are the first users (`design/architecture.md`), and the plan for the
-rest of gtk4's protocol is #293's.
+program stops rendering, as it did when the translator answered.
+
+`connect` is the platform's rather than a component's: a function of the
+node, the name the host knows the event by and the handler, declared once
+beside the build-target node (`bindConnect`,
+`testdata/error_gen_protocol_connect.sngl`), since a platform connects a
+handler to every widget it makes the same way. `FeaturesFrom` reads it off
+the platform's node, and `passDeclarative` splices it into each
+`attachHandler` op on a node whose component declares a protocol, as a
+fourth operand. The event is handed over as `#[gen.connects]` names it, or by
+its own name: GTK's `notify::active` is no SNGL name, so `@notifyActive`
+carries the mark. The handler parameter is the one left unbound: the op
+already carries the handler, and a copy in the splice would be a second body
+every later pass rewrites, the two sharing whatever the body declares. The
+platform puts the walked handler there, shaped as its trampoline calls it
+(`codegen.HandlerConnector`). gtk4's GIR classes are the first users
+(`design/architecture.md`), and the plan for the rest of gtk4's protocol is
+#293's.
 
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package

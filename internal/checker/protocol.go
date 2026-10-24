@@ -19,6 +19,10 @@ func (c *checker) bindProtocols() {
 	for _, pm := range marks {
 		fn := pm.fn
 		op := fn.Protocol
+		if op == ir.ProtocolConnect {
+			c.bindConnect(pm)
+			continue
+		}
 		served, verb := fn.Return, "returns"
 		if op != ir.ProtocolCreate {
 			served, verb = fn.Params[0].Type, "adds to"
@@ -52,4 +56,29 @@ func (c *checker) bindProtocols() {
 			comp.Protocol.Remove = fn
 		}
 	}
+}
+
+// bindConnect gives a #[gen.protocol(connect)] function to the build-target
+// node of its package: a platform connects a handler to every widget it
+// makes the same way, so the operation is the target's, not a component's.
+func (c *checker) bindConnect(pm protocolMark) {
+	var node *ir.Component
+	for _, comp := range c.declPkg().Components {
+		if comp.Gen != nil && comp.Gen.TargetName != "" {
+			node = comp
+			break
+		}
+	}
+	if node == nil {
+		c.error(pm.pos, "#[gen.protocol(connect)] is a platform's, declared beside its build-target node, and this package declares none")
+		return
+	}
+	if node.Protocol == nil {
+		node.Protocol = &ir.NodeProtocol{}
+	}
+	if prev := node.Protocol.Connect; prev != nil {
+		c.error(pm.pos, "#[gen.protocol(connect)]: %s already has %s", node.DisplayName(), prev.Name)
+		return
+	}
+	node.Protocol.Connect = pm.fn
 }

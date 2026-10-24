@@ -90,6 +90,9 @@ func FeaturesFrom(lang, plat *ir.Component) (Features, error) {
 	f.Reserved = append(ir.TargetReserved(lang), ir.TargetReserved(plat)...)
 	slices.Sort(f.Reserved)
 	f.Reserved = slices.Compact(f.Reserved)
+	if plat != nil {
+		f.connect = plat.Protocol.Op(ir.ProtocolConnect)
+	}
 	return f, nil
 }
 

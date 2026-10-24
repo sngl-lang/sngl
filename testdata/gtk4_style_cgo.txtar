@@ -267,8 +267,7 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 var (
 	__cstr0 = C.CString("literal")
 	__cstr1 = C.CString("recolor")
-	__cstr2 = C.CString("clicked")
-	__cstr3 = C.CString("Style")
+	__cstr2 = C.CString("Style")
 )
 
 type Measurement struct {
@@ -640,8 +639,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __cstr1)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Color: m.tone, Flex: 1.0}))
-	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr2, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "clicked", m.__n1_clicked_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n4, C.int(40))
@@ -661,9 +659,9 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr3)
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr2)
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:8208f46943ff3fde0a80ae231212a6bc
+pass sha256:df78faae85eac84bce1a191ec9b62cc3

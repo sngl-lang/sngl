@@ -867,6 +867,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -880,8 +881,6 @@ func boolToInt(b bool) int {
 
 var (
 	__cstr0 = C.CString("a")
-	__cstr1 = C.CString("toggled")
-	__cstr2 = C.CString("notify::active")
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -973,14 +972,12 @@ func (m *Model) buildWidgetTree() {
 	m.box = (*C.GtkCheckButton)(unsafe.Pointer(C.gtk_check_button_new()))
 	C.gtk_check_button_set_label((*C.GtkCheckButton)(unsafe.Pointer(m.box)), __cstr0)
 	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.on)))
-	snglCallbacks = append(snglCallbacks, m.box_toggled_handler)
-	C.sngl_connect(unsafe.Pointer(m.box), __cstr1, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.box)), "toggled", m.box_toggled_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
 	m.sw = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst0)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(true)))
-	snglCallbacks = append(snglCallbacks, m.sw_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.sw), __cstr2, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.sw)), "notify::active", m.sw_notifyActive_handler)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp0 := C.CString(m.seen)
@@ -1250,7 +1247,7 @@ pass sha256:be37577d82a39978cad588bd263de55f
 -- run/go/fyne --
 pass sha256:68c5a4ee52f531df05154c28f8b36143
 -- run/go/gtk4 --
-pass sha256:09ee9698d5f41b22f4f509c0fc6ccf06
+pass sha256:21daa0b04a2105fe5387ab5186beeeb3
 -- run/go/html --
 pass sha256:299fd0606c3b9b7f1c96605654863c50
 -- run/kotlin/android --
