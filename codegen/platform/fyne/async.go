@@ -23,22 +23,22 @@ const (
 )
 
 // agentPosts is what a test build declares beside the model for t.wait: it
-// turns the queue on where the program posts, and runs what arrived; where
-// nothing posts it only lets time pass.
+// turns the queue on, for what the program and fynelayout post, and runs what
+// arrived.
 //
 // Each test starts from a fresh Model, so what the last test's Model posted
 // and the last test never waited for is dropped as the next one starts
 // (dropPostsFunc), rather than drawn inside the next test's waits.
 func agentPosts(pkg *ir.Package) string {
+	decl := ""
 	if !usesPosts(pkg) {
-		return `
-func ` + runPostsFunc + `(d time.Duration) { time.Sleep(d) }
-
-func ` + dropPostsFunc + `() {}
-`
+		decl = "\nvar " + testPostsVar + " chan func()\n"
 	}
-	return `
-func init() { ` + testPostsVar + ` = make(chan func(), 256) }
+	return decl + `
+func init() {
+	` + testPostsVar + ` = make(chan func(), 256)
+	fynelayout.Post = func(f func()) { ` + testPostsVar + ` <- f }
+}
 
 func ` + runPostsFunc + `(d time.Duration) {
 	select {
