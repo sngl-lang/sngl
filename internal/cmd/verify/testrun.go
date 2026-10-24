@@ -40,8 +40,12 @@ func recordedTestRuns(pkgs []string) []string {
 // requirements. A dependency's tests are left out -- gtk4rt's tests import
 // much of the compiler, and a test added beside it builds nothing of theirs --
 // and so is the record itself. No toolchain moves it, which -verify is for.
+//
+// The files are those of a cgo build, which the tests are, whatever the host
+// would build by default: with cgo off a cgo file is not listed.
 func testRunDigest(pkg string) (string, error) {
 	list := exec.Command("go", "list", "-deps", "-test", "-json", pkg)
+	list.Env = append(os.Environ(), "CGO_ENABLED=1")
 	out, err := list.Output()
 	if err != nil {
 		return "", fmt.Errorf("go list %s: %w", pkg, err)
@@ -93,10 +97,10 @@ func testRunDigest(pkg string) (string, error) {
 		h.Write(data)
 		return nil
 	}
-	for _, f := range []string{"go.mod", "go.sum"} {
-		if err := add(filepath.Join(root, f)); err != nil {
-			return "", err
-		}
+	// go.mod alone: it fixes every module's version, and CI's `go mod
+	// download all` adds lines to go.sum that build nothing.
+	if err := add(filepath.Join(root, "go.mod")); err != nil {
+		return "", err
 	}
 	for _, f := range slices.Sorted(maps.Keys(files)) {
 		if err := add(f); err != nil {

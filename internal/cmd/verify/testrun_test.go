@@ -45,6 +45,12 @@ func TestARecordedTestRunIsLeftOutUntilItMoves(t *testing.T) {
 		t.Fatalf("with a standing record: %v, %v; want ./plain alone", got, err)
 	}
 
+	// Lines go.sum gains build nothing; go.mod fixes every version.
+	write("go.sum", "example.com/x v1.0.0 h1:x=\n")
+	if got, err := withoutRecordedTestRuns(pkgs); err != nil || !slices.Equal(got, []string{"./plain"}) {
+		t.Fatalf("after go.sum grew: %v, %v; want ./plain alone", got, err)
+	}
+
 	// A test of a package the tests import builds nothing of theirs.
 	write("dep/dep_test.go", "package dep\n\nimport \"testing\"\n\nfunc TestOne(t *testing.T) {}\n")
 	if got, err := withoutRecordedTestRuns(pkgs); err != nil || !slices.Equal(got, []string{"./plain"}) {
