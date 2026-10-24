@@ -692,7 +692,7 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 	case toplevelTag:
 		return t.emitToplevelCreate(id)
 	case imageTag, imageURLTag, imageDrawingTag:
-		return t.emitImageCreate(id, tag)
+		return t.emitImageCreate(id, tag, made)
 	case scrollTag:
 		return t.emitScrollCreate(id, made)
 	case flowTag:
@@ -1154,15 +1154,24 @@ func (t *gtk4Translator) placeNodes(c *ir.Call) {
 		case *ir.Call:
 			if x.Func != nil && x.Func.Foreign.Path == gtk4rtPkg {
 				for i, a := range x.Args {
+					if i >= len(x.Func.Params) || paramComponent(x.Func.Params[i]) == nil {
+						continue
+					}
 					// The class handed to a gtk4rt native's ui.node arrives
 					// widened to it, which Go would box in an any.
 					v := a.Value
-					if conv, ok := v.(*ir.Conversion); ok {
+					if conv, ok := v.(*ir.Conversion); ok && !isHandle(conv) {
 						v = conv.Operand
 					}
-					if id, ok := v.(*ir.Ident); ok && id.IsElementRef {
-						x.Args[i].Value = t.rtHandle(t.qualifyNodeExpr(id))
+					if h, ok := t.replaceHandle(v); ok {
+						x.Args[i].Value = h
+						continue
 					}
+					if id, ok := v.(*ir.Ident); ok && id.IsElementRef {
+						v = t.qualifyNodeExpr(id)
+					}
+					// A render slot's entry is a widget, held as no node.
+					x.Args[i].Value = t.rtHandle(v)
 				}
 			}
 		case *ir.Ident:
@@ -1253,11 +1262,11 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if t.isToplevel(bare) {
 		return t.toplevelPropAssign(node, prop, value)
 	}
-	if tag := t.imageTagOf(bare); tag != "" {
-		return t.imagePropAssign(node, tag, prop, value)
-	}
 	if setterOf(node, prop) != nil {
 		return t.setThrough(value)
+	}
+	if tag := t.imageTagOf(bare); tag != "" {
+		return t.imagePropAssign(tag, prop)
 	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
@@ -1452,11 +1461,12 @@ func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call
 	if t.isToplevel(bare) {
 		return t.toplevelAttachHandler(node, event, handler)
 	}
-	if tag := t.imageTagOf(bare); tag != "" {
-		return t.imageAttachHandler(node, tag, event, handler)
+	if t.imageTagOf(bare) != "" {
+		return t.connectThrough(bare, event, handler, call)
 	}
 	if t.isScroll(bare) {
-		return t.scrollAttachHandler(node, event, handler, call)
+		t.recordScrollInvoker(node, event, handler)
+		return t.connectThrough(bare, event, handler, call)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {

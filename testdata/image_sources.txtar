@@ -1944,7 +1944,7 @@ func (c *__child0Instance) __renderSlot0(parent *C.GtkBox) {
 		for c.__renderAgain0 {
 			c.__renderAgain0 = false
 			for _, __entry := range c.__slot0 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
 			}
 			c.__slot0 = nil
 			c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
@@ -2082,7 +2082,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_failed_handler)
 	m.__n2 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.picture__inst0__inst0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n9)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n9)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
 	m.__n10 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "contain")
@@ -2091,7 +2091,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_failed_handler)
 	m.__n3 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.picture__inst1__inst0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n10)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n10)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
 	m.__n11 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n11)), "contain")
@@ -2102,7 +2102,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n12)), 16, 16, func(cr unsafe.Pointer) {
 		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
 	})
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n11)), (*C.GtkWidget)(unsafe.Pointer(m.__n12)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n11)), gtk4rt.Handle(unsafe.Pointer(m.__n12)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n11)))
 	m.__renderSlot1(m.__n8)
 	m.__n13 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
@@ -3032,7 +3032,7 @@ pass sha256:6ffa0cb95d1f1c536b3b7bc9791666b9
 -- run/go/fyne --
 pass sha256:10d808cf393bc58b95342b4fd4f899b8
 -- run/go/gtk4 --
-pass sha256:30e27eac9f8637ee15bc7cfab6b0ebe2
+pass sha256:280b5ad2aa7085745c9ee77abfab6e38
 -- run/kotlin/android --
 pass sha256:f095afdc067dbeeba41f1c86078dc049
 -- run/none/html --

@@ -914,6 +914,64 @@ component Image(
     content ...component option[ui.imageSource],
 ) ui.node
 
+#[go.native(_rtPkg, "gtk4rt.ImageFrameNew")]
+func _rtImageFrameNew() Image
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameSetFit")]
+func _rtImageFrameSetFit(w Image, fit string)
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameOnClick")]
+func _rtImageFrameOnClick(w Image, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameOnLoad")]
+func _rtImageFrameOnLoad(w Image, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameOnError")]
+func _rtImageFrameOnError(w Image, fn func(message string))
+
+#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
+func _rtBoxAppend(box ui.node, child ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
+func _rtBoxRemove(box ui.node, child ui.node)
+
+#[gen.protocol(create)]
+func _create_Image() Image {
+    return _rtImageFrameNew()
+}
+
+#[gen.protocol(append)]
+func _append_Image(parent Image, child ui.node) {
+    _rtBoxAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Image(parent Image, child ui.node) {
+    _rtBoxRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Image_fit(w Image, fit string) {
+    _rtImageFrameSetFit(w, fit)
+}
+
+// An image's events are gtk4rt's: a click on its box, and the source it
+// holds reporting whether its picture arrived.
+#[gen.protocol(on)]
+func _on_Image_click(w Image, click func()) {
+    _rtImageFrameOnClick(w, click)
+}
+
+#[gen.protocol(on)]
+func _on_Image_load(w Image, load func()) {
+    _rtImageFrameOnLoad(w, load)
+}
+
+#[gen.protocol(on)]
+func _on_Image_failed(w Image, failed func(message string)) {
+    _rtImageFrameOnError(w, failed)
+}
+
 // A scroll is gtk4rt's GtkScrolledWindow, which reports the end of its
 // content coming within half a viewport of showing -- as it arrives, and when
 // the content changes size while it is there. GTK has no signal saying so;
@@ -974,6 +1032,33 @@ component ImageUrl(url string, picture Picture) ui.imageSource
 
 #[marks.intrinsic("gtk4:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
+// A source of either kind is a GtkPicture gtk4rt fits to the image holding
+// it. The URL is what a source says it shows, which a test reads; what it
+// shows is the picture, and a drawing's is painted from its shapes.
+#[go.native(_rtPkg, "gtk4rt.ImageSourceNew")]
+func _rtImageSourceNew() ImageUrl
+
+#[go.native(_rtPkg, "gtk4rt.ImageSourceNew")]
+func _rtImageDrawingNew() ImageDrawing
+
+#[go.native(_rtPkg, "gtk4rt.ImageSourceSetPicture")]
+func _rtImageSourceSetPicture(w ImageUrl, picture Picture)
+
+#[gen.protocol(create)]
+func _create_ImageUrl() ImageUrl {
+    return _rtImageSourceNew()
+}
+
+#[gen.protocol(set)]
+func _set_ImageUrl_picture(w ImageUrl, picture Picture) {
+    _rtImageSourceSetPicture(w, picture)
+}
+
+#[gen.protocol(create)]
+func _create_ImageDrawing() ImageDrawing {
+    return _rtImageDrawingNew()
+}
 
 const component ui.file[platform](path) {
     func picture() => loadPicture(path)

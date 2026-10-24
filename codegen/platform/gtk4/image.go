@@ -55,16 +55,16 @@ func (t *gtk4Translator) imageTagOf(bare string) string {
 	return t.shared.images[bare]
 }
 
-func (t *gtk4Translator) emitImageCreate(id, tag string) []ir.Stmt {
-	if tag == imageTag {
-		return t.emitConstructorAssign(id, primitiveCType(tag), rtCall("ImageFrameNew", gtk4rtHandleIRType()))
+func (t *gtk4Translator) emitImageCreate(id, tag string, made ir.Expr) []ir.Stmt {
+	if made == nil {
+		panic(fmt.Sprintf("gtk4: %s reached the translator without the create gtk4.sngl declares", tag))
 	}
 	if tag == imageDrawingTag {
 		// A repaint reaches the source from whatever scope writes what it
 		// reads, which the escape analysis cannot see.
 		t.fieldIDs[id] = true
 	}
-	create := t.emitConstructorAssign(id, primitiveCType(tag), rtCall("ImageSourceNew", gtk4rtHandleIRType()))
+	create := t.emitConstructorAssign(id, primitiveCType(tag), made)
 	if tag == imageDrawingTag {
 		if m := t.canvasMetaForID(id); m != nil {
 			create = append(create, t.paintImageDrawing(m))
@@ -86,37 +86,17 @@ func (t *gtk4Translator) paintImageDrawing(m *canvasMeta) ir.Stmt {
 	return &ir.CallStmt{Call: rtCall("ImagePaint", ir.TypVoid, t.rtHandle(t.canvasFieldRef(m)), intLit(fmt.Sprint(m.Width)), intLit(fmt.Sprint(m.Height)), draw)}
 }
 
-func (t *gtk4Translator) imagePropAssign(node ir.Expr, tag, prop string, value ir.Expr) []ir.Stmt {
-	ref := t.rtHandle(t.qualifyNodeExpr(node))
+// imagePropAssign is a write to an image primitive that no declared set
+// answers: a source's URL, which is what it says it shows rather than what it
+// shows, and a drawing's size, which the paint read off the drawing.
+func (t *gtk4Translator) imagePropAssign(tag, prop string) []ir.Stmt {
 	switch {
-	case tag == imageTag && prop == "fit":
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageFrameSetFit", ir.TypVoid, ref, value)}}
 	case tag == imageURLTag && prop == ir.ImageSourceURL:
-		// The URL is what the source says it shows; the picture is what it
-		// shows.
-		return nil
-	case tag == imageURLTag && prop == imagePictureProp:
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageSourceSetPicture", ir.TypVoid, ref, value)}}
+	case tag == imageDrawingTag:
+	default:
+		t.shared.fail(fmt.Errorf("gtk4: %s.%s is written, and gtk4.sngl declares no #[gen.protocol(set)] for it", tag, prop))
 	}
 	return nil
-}
-
-func (t *gtk4Translator) imageAttachHandler(node ir.Expr, tag, event string, handler ir.Expr) []ir.Stmt {
-	if tag != imageTag {
-		return nil
-	}
-	fn := ""
-	switch event {
-	case "click":
-		fn = "ImageFrameOnClick"
-	case "load":
-		fn = "ImageFrameOnLoad"
-	case "failed":
-		fn = "ImageFrameOnError"
-	default:
-		return nil
-	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall(fn, ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), handler)}}
 }
 
 // rtHandle is a widget as gtk4rt takes it, which in an inline-cgo build is a
@@ -155,14 +135,19 @@ func (t *gtk4Translator) emitScrollCreate(id string, made ir.Expr) []ir.Stmt {
 	return t.emitConstructorAssign(id, primitiveCType(scrollTag), made)
 }
 
-// scrollAttachHandler connects a Scroll's handler through the call its
-// declared connect makes, and records the test invoker that fires it.
-func (t *gtk4Translator) scrollAttachHandler(node ir.Expr, event string, handler, call ir.Expr) []ir.Stmt {
-	if call == nil {
-		panic(fmt.Sprintf("gtk4: a Scroll's @%s reached the translator without the connect gtk4.sngl declares", event))
-	}
+// recordScrollInvoker records the test invoker that fires a Scroll's
+// handler, which no key reaches.
+func (t *gtk4Translator) recordScrollInvoker(node ir.Expr, event string, handler ir.Expr) {
 	if id := codegen.IdentBareName(node); t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
 		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: "GtkScrolledWindow", RtFire: "ScrollReachEnd"})
+	}
+}
+
+// connectThrough is a handler on a tag no GIR class is behind, connected by
+// the #[gen.protocol(on)] its component declares for the event.
+func (t *gtk4Translator) connectThrough(bare, event string, handler, call ir.Expr) []ir.Stmt {
+	if call == nil {
+		panic(fmt.Sprintf("gtk4: @%s on %s reached the translator without the connect gtk4.sngl declares", event, bare))
 	}
 	return []ir.Stmt{&ir.CallStmt{Call: t.connectCall(call, handler)}}
 }

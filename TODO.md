@@ -272,7 +272,10 @@ commit each.
   `#[go.native]`s; `@reachEnd` is no GTK signal, so `Protocol` gains `on`,
   a component's own connect for one event (`bindOn`,
   `testdata/error_gen_protocol_on.sngl`). No golden flipped to cgo.
-- [ ] Image, URL image and drawing image (`image.go`).
+- [X] Image, URL image and drawing image (`image.go`): each create, the
+  image's append, remove, `fit` and three events, and a URL source's
+  `picture`, as `#[go.native]`s over gtk4rt; a drawing's paint stays the
+  translator's until the canvas is declared. No golden flipped to cgo.
 - [ ] Drop-down (`dropdown.go`, a `GtkDropDown` over a string list).
 - [ ] Toplevel (`toplevel.go`): the window's create, its title -- the
   `compiler_ir.go` call site -- its icon and `visible`.

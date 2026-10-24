@@ -517,7 +517,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				__inst0_next = append(__inst0_next, __n4)
 				__inst0_i = (__inst0_i + 1)
 				__n4__el := __n4.Root
-				C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
+				gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Handle(unsafe.Pointer(__n4__el)))
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n3)))
 				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n3)))
 			}
@@ -765,7 +765,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n6)), m.__n6_failed_handler)
 	m.__n2 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.picture__inst0__inst0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n6)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
 	m.__renderSlot0(m.__n5)
 	m.__n7 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
@@ -796,4 +796,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:8142064dc1ba3e947b2207b069655d16
+pass sha256:bd216142700efa2ea98957c0476cf52c
