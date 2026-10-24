@@ -246,6 +246,7 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 	"unsafe"
@@ -407,19 +408,19 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw0(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n2), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	__ctmp0 := C.CString(fmt.Sprint(m.n))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp0)
 	C.free(unsafe.Pointer(__ctmp0))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr0, C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.__n3 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr1)
 	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n3), __cstr0, C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -433,4 +434,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:efb2d6391ce9d7d5ba2c37de2e05e797
+pass sha256:997fa7f09fbd638dc35567e167efe35d

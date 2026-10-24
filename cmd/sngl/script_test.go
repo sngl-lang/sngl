@@ -69,6 +69,13 @@ func TestScript(t *testing.T) {
 		"a node binary is available",
 		func() bool { _, err := exec.LookPath("node"); return err == nil }(),
 	)
+	// `toolchain` is true where a script's `sngl build` and `sngl run`
+	// compile -- under -update and -verify -- rather than answering from
+	// their records, so a step running what they built has it to run.
+	conds["toolchain"] = script.BoolCondition(
+		"sngl build and sngl run use the toolchain rather than their records",
+		*updateTestRuns || *verifyTestRuns,
+	)
 	// `ci` is true under GitLab CI. Used to quarantine a script that fails only
 	// in the CI environment while it's being investigated, without losing the
 	// coverage everywhere else.
@@ -111,6 +118,16 @@ func TestScript(t *testing.T) {
 			// records its own. GOENV is pinned first, since the go command
 			// finds its own config under the same directory.
 			work := t.TempDir()
+			// The go command counts its own runs under the config
+			// directory, and a script's `gobuild` record names the
+			// script's tree, so its telemetry is off.
+			telemetry := filepath.Join(work, "config", "go", "telemetry")
+			if err := os.MkdirAll(telemetry, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(telemetry, "mode"), []byte("off"), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			env := append(os.Environ(), "WORK="+work, "GOENV="+goEnvFile, "XDG_CONFIG_HOME="+filepath.Join(work, "config"), "SNGL_ROOT="+root)
 			s, err := script.NewState(context.Background(), work, env)
 			if err != nil {
@@ -149,6 +166,7 @@ func scriptCmds() map[string]script.Cmd {
 	cmds["cmpgen"] = cmpGenCmd()
 	cmds["serve"] = serveCmd()
 	cmds["fetch"] = fetchCmd()
+	cmds["gobuild"] = gobuildCmd()
 	return cmds
 }
 

@@ -29,7 +29,7 @@ grep 's\.Biggest__inst0\(\)' out/server.go
 
 # And it compiles. A grep over generated Go cannot say that, which is how an
 # unbound route parameter survived in this file's own output.
-exec go build ./...
+gobuild ./...
 
 -- go.mod --
 module routefuncs
@@ -62,3 +62,6 @@ component main root {
 }
 
 main()
+-- testrun/gobuild/.../1 --
+sha256:f33d18b21b5a030d022464b4e0621a12
+{}

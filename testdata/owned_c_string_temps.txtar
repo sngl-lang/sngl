@@ -74,6 +74,7 @@ import "C"
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"unsafe"
@@ -325,7 +326,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint(m.problem))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -710,6 +711,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -880,14 +882,14 @@ func (m *Model) buildWidgetTree() {
 	C.free(unsafe.Pointer(__ctmp0))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr0, C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	__ctmp1 := C.CString(m.problem)
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __ctmp1)
 	C.free(unsafe.Pointer(__ctmp1))
 	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n2), __cstr0, C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -901,8 +903,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:5ab03b78ed63a160a8d55faf558efa5e
+pass sha256:555deddbafc8bb011bf488399564f027
 -- run/go/fyne --
 pass sha256:fc3b6cef86f1abfcea39fd4d0e122561
 -- run/go/gtk4 --
-pass sha256:72ff80831db15a2ce8242ebe3e1099bd
+pass sha256:03bc711385602c21232e14e9312865cf

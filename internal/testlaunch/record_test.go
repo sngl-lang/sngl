@@ -107,3 +107,60 @@ func TestAFailedLaunchIsNotRecorded(t *testing.T) {
 		t.Errorf("recorded %v", rr.Written())
 	}
 }
+
+// A script's build or run is answered from its record as a launch is, so a
+// plain run compiles nothing: it replays what the tool printed, and a program
+// that moved since, or one never built, fails naming -update. -update and
+// -verify run the tool every time, since what they built is what the script
+// goes on to use.
+func TestAToolIsAnsweredFromItsRecord(t *testing.T) {
+	gen := t.TempDir()
+	if err := os.WriteFile(filepath.Join(gen, "main.go"), []byte("package main"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	seed := NewRecords(map[string]Record{}, true, false)
+	if _, err := seed.AnswerTool("build/k", gen, []string{"-x"}, func() (string, error) { return "built\n", nil }); err != nil {
+		t.Fatal(err)
+	}
+	have := seed.Written()
+	movedGen := t.TempDir()
+	if err := os.WriteFile(filepath.Join(movedGen, "main.go"), []byte("package main // moved"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name           string
+		have           map[string]Record
+		moved          bool
+		args           []string
+		update, verify bool
+		runs           int
+		err            string
+	}{
+		{"a run replays what the tool printed", have, false, []string{"-x"}, false, false, 0, ""},
+		{"a run fails one whose program moved", have, true, []string{"-x"}, false, false, 0, "changed since it was built"},
+		{"a run fails one handed other args", have, false, []string{"-y"}, false, false, 0, "changed since it was built"},
+		{"a run fails one never built", map[string]Record{}, false, []string{"-x"}, false, false, 0, "no record of this build"},
+		{"update runs it", have, false, []string{"-x"}, true, false, 1, ""},
+		{"verify runs it", have, false, []string{"-x"}, false, true, 1, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runs := 0
+			rr := NewRecords(tc.have, tc.update, tc.verify)
+			dir := gen
+			if tc.moved {
+				dir = movedGen
+			}
+			out, err := rr.AnswerTool("build/k", dir, tc.args, func() (string, error) {
+				runs++
+				return "built\n", nil
+			})
+			if runs != tc.runs {
+				t.Errorf("ran %d times, want %d", runs, tc.runs)
+			}
+			if tc.err == "" && (err != nil || out != "built\n") || tc.err != "" && (err == nil || !strings.Contains(err.Error(), tc.err)) {
+				t.Errorf("out, err = %q, %v, want %q", out, err, tc.err)
+			}
+		})
+	}
+}

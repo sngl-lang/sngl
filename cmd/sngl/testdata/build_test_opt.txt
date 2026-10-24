@@ -5,7 +5,7 @@ exists out/index.html
 
 [!exec:go] skip 'go toolchain required'
 sngl build --lang=go --platform=bubbletea --opt test=true --opt name=tapp bt.sngl
-exists tapp
+[toolchain] exists tapp
 
 -- app.sngl --
 import . "sngl:ui"
@@ -29,3 +29,6 @@ component main node {
 window {
     main
 }
+-- testrun/build/bubbletea/go/bt.sngl/1 --
+sha256:e31e2137b8ef985a9ef85ee4ff0c4266
+{}

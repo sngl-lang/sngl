@@ -69,6 +69,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
@@ -319,7 +320,7 @@ func (m Model) View() tea.View {
 		part0 = lipgloss.NewStyle().Render(fmt.Sprint(strings.Join(m.log, ",")))
 	}
 	parts = append(parts, part0)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -929,6 +930,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log, ","))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -945,7 +947,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import kotlinx.coroutines.delay
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -954,6 +955,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
@@ -1003,14 +1006,16 @@ fun MainScreen() {
         }
     }
 
+    val __tick1 = rememberUpdatedState({
+        report(__rel0)
+        log.add(("held " + held.id.toString()))
+    })
     LaunchedEffect(true) {
         while (true) {
             delay(100L)
-            report(__rel0)
-            log.add(("held " + held.id.toString()))
+            __tick1.value()
         }
     }
-
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
@@ -1185,12 +1190,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:929b4e2d28e854c7286a7bd21c6604e5
+pass sha256:cbfc755f33cb37b49d2607a5f9e5a129
 -- run/go/fyne --
 pass sha256:2cc2c7372b0e0e79e1d92e48c0567252
 -- run/go/gtk4 --
-pass sha256:bf3224ddc4efe52f8375c9e6f2df946e
+pass sha256:5647baaf195d1db8221cfb1e7e99233f
 -- run/kotlin/android --
-pass sha256:aa8becae7ea4e15b7a9e3d01a668f5fb
+pass sha256:d99c520869525de28d86f9252cd2630d
 -- run/none/html --
 pass sha256:a4681e87ef98e929555d69aafabab9e8

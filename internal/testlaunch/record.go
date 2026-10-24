@@ -27,6 +27,9 @@ type Record struct {
 	Digest    string                `json:"-"`
 	Results   []*codegen.TestResult `json:"results,omitempty"`
 	Snapshots map[string][]byte     `json:"snapshots,omitempty"`
+	// Stdout is what a tool a script ran over a generated program printed:
+	// a `sngl run`'s program, a `sngl build` saying nothing (AnswerTool).
+	Stdout string `json:"stdout,omitempty"`
 }
 
 type Records struct {
@@ -150,6 +153,72 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 	rr.keep(name, rec)
 	return results, err
 }
+
+// AnswerTool answers a toolchain a script runs over a generated program -- a
+// `sngl build` or a `sngl run` -- as answer does a test launch: from a
+// record of an earlier run whose generated program, and arguments, were
+// these. Plain, a matching record is the run and nothing is compiled; one
+// that moved or is missing fails naming -update. Under update and verify
+// the toolchain runs, since what a script does next with the binary -- the
+// steps a `[toolchain]` condition guards -- wants it built; update records
+// what it printed and verify holds it to the record.
+//
+// The checkout's own path is no input: a generated go.mod names it, and CI
+// checks out somewhere else.
+func (rr *Records) AnswerTool(key, genDir string, args []string, run func() (string, error)) (string, error) {
+	rr.mu.Lock()
+	rr.seen[key]++
+	name := fmt.Sprintf("testrun/%s/%d", key, rr.seen[key])
+	have, recorded := rr.have[name]
+	rr.mu.Unlock()
+
+	gen, err := readTree(genDir)
+	if err != nil {
+		return "", err
+	}
+	if mod := os.Getenv("SNGL_HOST_GO_MOD"); mod != "" {
+		root := []byte(filepath.Dir(mod))
+		for f, data := range gen {
+			gen[f] = bytes.ReplaceAll(data, root, []byte("$SNGL_ROOT"))
+		}
+	}
+	gen["\x00args"] = []byte(strings.Join(args, "\x00"))
+	want := runDigest(gen, nil, false)
+
+	matched := recorded && have.Digest == want
+	if !rr.update && !rr.verify {
+		if matched {
+			rr.keep(name, have)
+			return have.Stdout, nil
+		}
+		if recorded {
+			rr.keep(name, have)
+			return "", fmt.Errorf("%s: the generated program changed since it was built; rerun its test with -update -- `go tool verify -update` rerecords every package's", name)
+		}
+		return "", fmt.Errorf("%s: no record of this build; rerun its test with -update on a host with the toolchain", name)
+	}
+	out, err := run()
+	if err != nil {
+		if recorded {
+			rr.keep(name, have)
+		}
+		return out, err
+	}
+	rec := Record{Digest: want, Stdout: out}
+	if !rr.update {
+		rr.keep(name, have)
+		if !bytes.Equal(rec.format(), have.format()) {
+			return out, fmt.Errorf("%s: a rerun disagrees with the record:\n%s\nrerun its test with -update -- `go tool verify -update` rerecords every package's", name, rec.format())
+		}
+		return out, nil
+	}
+	rr.keep(name, rec)
+	return out, nil
+}
+
+// Replays reports whether a tool AnswerTool is handed is answered from its
+// record rather than run: neither update nor verify.
+func (rr *Records) Replays() bool { return !rr.update && !rr.verify }
 
 func (rr *Records) keep(name string, rec Record) {
 	rr.mu.Lock()

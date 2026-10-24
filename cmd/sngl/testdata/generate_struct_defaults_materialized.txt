@@ -9,7 +9,7 @@ grep 'a: 255' outjs/index.html
 
 [!exec:go] skip 'go toolchain required'
 sngl build --lang=go --platform=bubbletea --opt name=sd bt.sngl
-exists sd
+[toolchain] exists sd
 
 -- app.sngl --
 import . "sngl:ui"
@@ -47,3 +47,6 @@ component main node {
 window {
     main
 }
+-- testrun/build/bubbletea/go/bt.sngl/1 --
+sha256:8ef31e85e7521615f638dc5d085646e9
+{}

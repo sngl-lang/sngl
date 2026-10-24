@@ -79,6 +79,11 @@ type Style struct {
 	FontFamily  string
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	*modelState
@@ -89,6 +94,12 @@ type modelState struct {
 	sizes               []float64
 	big__inst0          map[string]bool
 	visible__inst0      bool
+	__effect0_live      []string
+	__effect0_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -101,8 +112,15 @@ func New() Model {
 	m.sizes = []float64{1.0, 6.0}
 	m.big__inst0 = map[string]bool{}
 	m.visible__inst0 = true
+	m.__effect0_live = []string{}
+	m.__effect0_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -176,6 +194,49 @@ func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetStrokeWidth(style.StrokeWidth)
 	ctx.SetFont(style.FontSize, style.FontFamily)
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
+}
+
+func (m *Model) __effect0_enter() {
+	m.__effect0_desired = []string{}
+	for __copy0, _ := range m.sizes {
+		__effect0_fresh := true
+		if len(m.__effect0_desired) < len(m.__effect0_live) {
+			__effect0_fresh = (m.__effect0_live[len(m.__effect0_desired)] != fmt.Sprint(__copy0))
+		}
+		if __effect0_fresh {
+			__cell1_big__inst0 := func() bool {
+				if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return false
+			}()
+			__cell1_big__inst0 = false
+			m.big__inst0[fmt.Sprint(__copy0)] = __cell1_big__inst0
+		}
+		m.__effect0_desired = append(m.__effect0_desired, fmt.Sprint(__copy0))
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if !m.__effects0_torn {
+		if m.__effects0_settling {
+			m.__effects0_pending = true
+		} else {
+			m.__effects0_settling = true
+			m.__effects0_pending = true
+			m.__effects0_steps = 0
+			for m.__effects0_pending && (m.__effects0_steps < 512) {
+				m.__effects0_pending = false
+				m.__effects0_steps = (m.__effects0_steps + 1)
+				m.__effect0_enter()
+			}
+			m.__effects0_settling = false
+			if m.__effects0_pending {
+				panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+			}
+		}
+	}
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -294,19 +355,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = s
 					if m.__focusLoop0_cursor == __focusPos0 {
-						__cell1_big__inst0 := func() bool {
+						__cell2_big__inst0 := func() bool {
 							if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell1_big__inst0 = !func() bool {
+						__cell2_big__inst0 = !func() bool {
 							if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						m.big__inst0[fmt.Sprint(__copy0)] = __cell1_big__inst0
+						m.big__inst0[fmt.Sprint(__copy0)] = __cell2_big__inst0
 						return
 					}
 					__focusPos0++
@@ -319,21 +380,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
+	var parts []string
+	var part0 string
 	if m.visible__inst0 {
-		var contentChildren []string
-		var content_0 string
+		var part0Children []string
+		var part0_0 string
 		__focusPos0 := 0
 		_ = __focusPos0
 		__canvasSeq0 := 0
 		_ = __canvasSeq0
-		var content_0Items []string
+		var part0_0Items []string
 		for __copy0, s := range m.sizes {
 			_ = __copy0
 			_ = s
-			var content_0Item string
-			var content_0ItemChildren []string
-			var content_0Item_0 string
+			var part0_0Item string
+			var part0_0ItemChildren []string
+			var part0_0Item_0 string
 			__canvasAt0 := __canvasSeq0
 			__canvasSeq0++
 			__canvasRaster0 := func() image.Image {
@@ -355,26 +417,28 @@ func (m Model) View() tea.View {
 				ctx.Restore()
 				return ctx.Result()
 			}
-			content_0Item_0 = tui.RenderTerminal(16, 8, 1|(__canvasAt0+1)<<16, __canvasRaster0)
-			content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
-			var content_0Item_1 string
-			content_0Item_1Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-			content_0Item_1Prefix := " "
-			if content_0Item_1Focused {
-				content_0Item_1Prefix = ">"
+			part0_0Item_0 = tui.RenderTerminal(16, 8, 1|(__canvasAt0+1)<<16, __canvasRaster0)
+			part0_0ItemChildren = append(part0_0ItemChildren, part0_0Item_0)
+			var part0_0Item_1 string
+			part0_0Item_1Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			part0_0Item_1Prefix := " "
+			if part0_0Item_1Focused {
+				part0_0Item_1Prefix = ">"
 			}
-			content_0Item_1 = lipgloss.NewStyle().Render(content_0Item_1Prefix + " " + fmt.Sprint("grow"))
+			part0_0Item_1 = lipgloss.NewStyle().Render(part0_0Item_1Prefix + " " + fmt.Sprint("grow"))
 			__focusPos0++
-			content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
-			content_0Item = tui.Column(0, content_0ItemChildren...)
-			content_0Items = append(content_0Items, content_0Item)
+			part0_0ItemChildren = append(part0_0ItemChildren, part0_0Item_1)
+			part0_0Item = tui.Column(0, part0_0ItemChildren...)
+			part0_0Items = append(part0_0Items, part0_0Item)
 		}
-		content_0 = tui.Column(0, content_0Items...)
-		if content_0 != "" {
-			contentChildren = append(contentChildren, content_0)
+		part0_0 = tui.Column(0, part0_0Items...)
+		if part0_0 != "" {
+			part0Children = append(part0Children, part0_0)
 		}
-		content = tui.Column(0, contentChildren...)
+		part0 = tui.Column(0, part0Children...)
 	}
+	parts = append(parts, part0)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -566,6 +630,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:256153ce7c172201a5fc5b23846bd451
+pass sha256:4fc0e6b09cec5e2d0581c6fc334432ea
 -- run/none/html --
 pass sha256:406ad43c661bfc73269fdd4cfd6e2c68

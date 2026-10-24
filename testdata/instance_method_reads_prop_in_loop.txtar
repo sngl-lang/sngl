@@ -54,9 +54,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -332,9 +332,11 @@ func (m *Model) bClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
 	m.__focusID, m.__focusLoop0_cursor = 0, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
+	_ = m.View()
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -359,14 +361,14 @@ func (m Model) View() tea.View {
 			__focusPos0++
 			part0_0Items = append(part0_0Items, part0_0Item)
 		}
-		part0_0 = strings.Join(part0_0Items, "\n")
+		part0_0 = tui.Column(0, part0_0Items...)
 		if part0_0 != "" {
 			part0Children = append(part0Children, part0_0)
 		}
-		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+		part0 = tui.Column(0, part0Children...)
 	}
 	parts = append(parts, part0)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -444,53 +446,56 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const it of state.items) {
-          let __n2 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n2 = __inst1_live[__inst1_i];
-            __n2.__set_label(it);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const it of state.items) {
+            let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n2 = __inst1_live[__inst1_i];
+              __n2.__set_label(it);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n2__new = __cf_row({ label: it });
+              __n2 = __n2__new;
             }
-            let __n2__new = __cf_row({ label: it });
-            __n2 = __n2__new;
+            __inst1_next.push(__n2);
+            __inst1_i = __inst1_i + 1;
+            let __n2__el = __n2.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n2__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n2__el, __place0_i_ref0);
+            }
+            __slot0.push(__n2__el);
           }
-          __inst1_next.push(__n2);
-          __inst1_i = __inst1_i + 1;
-          let __n2__el = __n2.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n2__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n2__el, __place0_i_ref0);
-          }
-          __slot0.push(__n2__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -502,6 +507,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b98d353b683367031b9908af8fb55f16
+pass sha256:80b06a27a18b16b45a0c5a6f43a7a999
 -- run/none/html --
-pass sha256:6368e92351dc44b2c52610b64cb821fb
+pass sha256:46cd49c86744429b449ac2a994286fc2

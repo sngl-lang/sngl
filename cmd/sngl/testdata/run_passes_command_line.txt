@@ -5,7 +5,7 @@
 #
 # testdata/platform_run_handler_runs.txtar runs the built binary itself.
 
-[!headless] skip 'needs the headless compositor go tool verify provides'
+[toolchain] [!headless] skip 'running it needs the headless compositor go tool verify provides'
 
 sngl run --lang go --platform fyne app.sngl
 cmp stdout hidden.txt
@@ -61,4 +61,14 @@ time.timer(interval=100ms, @tick {
 
 ui.window {
     ui.text(value="{n}")
+}
+-- testrun/run/fyne/go/app.sngl/1 --
+sha256:70b5c25230e7e647bd48578443466401
+{
+  "stdout": "before 0\nafter\ntick 0\n"
+}
+-- testrun/run/fyne/go/app.sngl/2 --
+sha256:be7407535715691b950003b0c682c545
+{
+  "stdout": "before 2\ntick 2\n"
 }

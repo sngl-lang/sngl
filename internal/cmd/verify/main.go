@@ -41,7 +41,10 @@
 // declares an `update` flag (recordPackages) -- with -update, which rewrites
 // whichever records moved: the root goldens, cmd/sngl's scripts, and the
 // records gtk4, html, internal/build and internal/lower keep, which a codegen
-// change makes stale as surely as the first two.
+// change makes stale as surely as the first two. It also runs the tests of
+// each package keeping a testdata/test_run whose digest moved -- gtk4rt's,
+// which link the host's GTK -- and writes it again; step 7 leaves such a
+// package out while its digest stands (testrun.go).
 //
 // Usage: go tool verify [-v] [-dry] [-full] [-only lint|test] [-update]
 package main
@@ -143,7 +146,7 @@ func main() {
 		log.Fatalf("listing packages: %v", err)
 	}
 	if *update {
-		if !rerecord(recordPackages(pkgs), *verbose) {
+		if !rerecord(recordPackages(pkgs), *verbose) || !rerecordTestRuns(recordedTestRuns(pkgs), *verbose) {
 			exit(1)
 		}
 		exit(0)
@@ -164,7 +167,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("reading the tree: %v", err)
 	}
-	if !runTests(*verbose, !*dry, *full, pkgs) {
+	tested, err := withoutRecordedTestRuns(pkgs)
+	if err != nil {
+		log.Print(err)
+		exit(1)
+	}
+	if !runTests(*verbose, !*dry, *full, tested) {
 		reportTreeChange(".", before)
 		exit(1)
 	}

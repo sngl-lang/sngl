@@ -245,11 +245,13 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
 
+var snglActivateSignal = C.CString("activate")
+
 func main() {
 	runtime.LockOSThread()
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		C.CString("activate"),
+		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
 	if status != 0 {
@@ -889,7 +891,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:f8a302762a5ffa54eb727646233cacb0
+pass sha256:bbba5ad2d6b10159cacd305311b0028a
 -- run/kotlin/android --
 pass sha256:b7b01539244ce74b590e5551fc4ab778
 -- run/none/html --

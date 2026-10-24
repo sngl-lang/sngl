@@ -7,7 +7,7 @@
 [!gtk4] skip 'needs the gtk4 development libraries'
 
 sngl build -o bin app.sngl
-exists bin/app-gtk4 bin/app-bubbletea
+[toolchain] exists bin/app-gtk4 bin/app-bubbletea
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -22,3 +22,9 @@ output {
 ui.window {
     ui.text(value="hi")
 }
+-- testrun/build/bubbletea/go/app.sngl/1 --
+sha256:a0d7faf7e2df9d5afbd4a3e33a00b12b
+{}
+-- testrun/build/gtk4/go/app.sngl/1 --
+sha256:41391ea0cda9da21c2094782bcf7d1ed
+{}

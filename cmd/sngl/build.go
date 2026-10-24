@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -66,7 +67,20 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			if !build.HasCommand(target, ir.BuiltinGenBuild) {
 				return fmt.Errorf("platform %q with language %q does not support building", target.Platform, target.Lang)
 			}
-			if err := build.RunCommand(target, ir.BuiltinGenBuild, srcDir, finalPath); err != nil {
+			compile := func() (string, error) {
+				return "", build.RunCommand(target, ir.BuiltinGenBuild, srcDir, finalPath)
+			}
+			// A script's build is answered from its record, so verify
+			// compiles nothing a record says built: the binary is there only
+			// under -update and -verify, which `[toolchain]` says.
+			if testRuns != nil {
+				compile = func() (string, error) {
+					return testRuns.AnswerTool(toolKey("build", target, args), srcDir, optSlice, func() (string, error) {
+						return "", build.RunCommand(target, ir.BuiltinGenBuild, srcDir, finalPath)
+					})
+				}
+			}
+			if _, err := compile(); err != nil {
 				return fmt.Errorf("build failed: %w", err)
 			}
 			fmt.Println(finalPath)
@@ -176,4 +190,10 @@ func moveFile(src, dst string) error {
 		return err
 	}
 	return os.Remove(src)
+}
+
+// toolKey names a script's build or run of target in its records: the
+// command, the target and the files it was handed.
+func toolKey(command string, target build.Target, files []string) string {
+	return path.Join(command, target.Platform, target.Lang, strings.Join(files, "+"))
 }

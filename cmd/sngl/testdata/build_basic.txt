@@ -4,7 +4,7 @@
 [!exec:go] skip 'go toolchain required'
 
 sngl build --lang=go --platform=bubbletea --opt name=myapp app.sngl
-exists myapp
+[toolchain] exists myapp
 
 -- app.sngl --
 import . "sngl:ui"
@@ -18,3 +18,6 @@ component main node {
 window {
     main
 }
+-- testrun/build/bubbletea/go/app.sngl/1 --
+sha256:7195ed8d825486eca40041e3e824bf4d
+{}

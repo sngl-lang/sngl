@@ -15,7 +15,7 @@
 
 sngl generate --lang go --platform html -o out app.sngl
 
-exec go build ./...
+gobuild ./...
 
 # The parameter is the local, the state var is the field.
 grep 'v.Id = __r.PathValue\("id"\)' out/server.go
@@ -62,3 +62,6 @@ component main root {
 }
 
 main()
+-- testrun/gobuild/.../1 --
+sha256:0db689d9ab0da4644c8fa22846d998a9
+{}

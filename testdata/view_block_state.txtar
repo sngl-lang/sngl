@@ -81,9 +81,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type __anon_e3b0c4 struct {
@@ -496,10 +496,10 @@ func (m Model) View() tea.View {
 				return 0
 			}()))))
 			part0_2ItemChildren = append(part0_2ItemChildren, part0_2Item_1)
-			part0_2Item = lipgloss.JoinHorizontal(lipgloss.Top, part0_2ItemChildren...)
+			part0_2Item = tui.Row(0, part0_2ItemChildren...)
 			part0_2Items = append(part0_2Items, part0_2Item)
 		}
-		part0_2 = strings.Join(part0_2Items, "\n")
+		part0_2 = tui.Column(0, part0_2Items...)
 		if part0_2 != "" {
 			part0Children = append(part0Children, part0_2)
 		}
@@ -520,7 +520,7 @@ func (m Model) View() tea.View {
 			var part0_4Part_1 string
 			part0_4Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst0))))
 			part0_4Parts = append(part0_4Parts, part0_4Part_1)
-			part0_4 = lipgloss.JoinVertical(lipgloss.Left, part0_4Parts...)
+			part0_4 = tui.Column(0, part0_4Parts...)
 		} else {
 			if m.pages__current.Id == 1 {
 				part0_4 = lipgloss.NewStyle().Render(fmt.Sprint("about"))
@@ -537,10 +537,10 @@ func (m Model) View() tea.View {
 		}
 		part0_5 = lipgloss.NewStyle().Render(part0_5Prefix + " " + fmt.Sprint("about"))
 		part0Children = append(part0Children, part0_5)
-		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+		part0 = tui.Column(0, part0Children...)
 	}
 	parts = append(parts, part0)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -643,56 +643,60 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
-			for _, it := range m.items {
-				var __n7 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n7 = m.__inst0_live[__inst0_i]
-					__n7.Set__on0(func(__total int) {
-						m.total__inst0 = __total
-						m.__n6.SetText(("total " + fmt.Sprint(m.total__inst0)))
-						for __inst0_live_ui, _ := range m.__inst0_live {
-							m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
-						}
-					})
-					__n7.Set__p0(it)
-					__n7.Set__p1(m.total__inst0)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				for _, it := range m.items {
+					var __n7 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
-					}
-					__n7__new := new__child0Instance(m, it, m.total__inst0, func(__total int) {
-						m.total__inst0 = __total
-						m.__n6.SetText(("total " + fmt.Sprint(m.total__inst0)))
-						for __inst0_live_ui, _ := range m.__inst0_live {
-							m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
+						__n7 = m.__inst0_live[__inst0_i]
+						__n7.Set__on0(func(__total int) {
+							m.total__inst0 = __total
+							m.__n6.SetText(("total " + fmt.Sprint(m.total__inst0)))
+							for __inst0_live_ui, _ := range m.__inst0_live {
+								m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
+							}
+						})
+						__n7.Set__p0(it)
+						__n7.Set__p1(m.total__inst0)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
 						}
-					})
-					__n7 = __n7__new
+						__n7__new := new__child0Instance(m, it, m.total__inst0, func(__total int) {
+							m.total__inst0 = __total
+							m.__n6.SetText(("total " + fmt.Sprint(m.total__inst0)))
+							for __inst0_live_ui, _ := range m.__inst0_live {
+								m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
+							}
+						})
+						__n7 = __n7__new
+					}
+					__inst0_next = append(__inst0_next, __n7)
+					__inst0_i = (__inst0_i + 1)
+					__n7__el := __n7.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n7__el)
+					m.__slot0 = append(m.__slot0, __n7__el)
 				}
-				__inst0_next = append(__inst0_next, __n7)
-				__inst0_i = (__inst0_i + 1)
-				__n7__el := __n7.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n7__el)
-				m.__slot0 = append(m.__slot0, __n7__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -702,48 +706,52 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-			__inst1_next := []*__block_state0Instance{}
-			var __inst1_i int = 0
-			if m.pages__current.Id == 0 {
-				var __n8 *__block_state0Instance
-				if len(m.__inst1_live) > __inst1_i {
-					__n8 = m.__inst1_live[__inst1_i]
-				} else {
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				__inst1_next := []*__block_state0Instance{}
+				var __inst1_i int = 0
+				if m.pages__current.Id == 0 {
+					var __n8 *__block_state0Instance
 					if len(m.__inst1_live) > __inst1_i {
-						m.__inst1_live[__inst1_i].Destroy()
+						__n8 = m.__inst1_live[__inst1_i]
+					} else {
+						if len(m.__inst1_live) > __inst1_i {
+							m.__inst1_live[__inst1_i].Destroy()
+						}
+						__n8__new := new__block_state0Instance(m)
+						__n8 = __n8__new
 					}
-					__n8__new := new__block_state0Instance(m)
-					__n8 = __n8__new
+					__inst1_next = append(__inst1_next, __n8)
+					__inst1_i = (__inst1_i + 1)
+					__n8__el := __n8.Root
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n8__el)
+					m.__slot1 = append(m.__slot1, __n8__el)
+				} else {
+					if m.pages__current.Id == 1 {
+						__n9 := widget.NewLabel("")
+						__n9.SetText("about")
+						fynelayout.InsertBefore(__parent, m.__slot1_at, __n9)
+						m.__slot1 = append(m.__slot1, __n9)
+					}
 				}
-				__inst1_next = append(__inst1_next, __n8)
-				__inst1_i = (__inst1_i + 1)
-				__n8__el := __n8.Root
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n8__el)
-				m.__slot1 = append(m.__slot1, __n8__el)
-			} else {
-				if m.pages__current.Id == 1 {
-					__n9 := widget.NewLabel("")
-					__n9.SetText("about")
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n9)
-					m.__slot1 = append(m.__slot1, __n9)
+				for __inst1_i_d, _ := range m.__inst1_live {
+					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+					if __inst1_i_j >= __inst1_i {
+						m.__inst1_live[__inst1_i_j].Destroy()
+					}
 				}
+				m.__inst1_live = __inst1_next
 			}
-			for __inst1_i_d, _ := range m.__inst1_live {
-				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-				if __inst1_i_j >= __inst1_i {
-					m.__inst1_live[__inst1_i_j].Destroy()
-				}
-			}
-			m.__inst1_live = __inst1_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -1096,56 +1104,60 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
-			for _, it := range m.items {
-				var __n7 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n7 = m.__inst0_live[__inst0_i]
-					__n7.Set__on0(func(__total int) {
-						m.total__inst0 = __total
-						gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
-						for __inst0_live_ui, _ := range m.__inst0_live {
-							m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
-						}
-					})
-					__n7.Set__p0(it)
-					__n7.Set__p1(m.total__inst0)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				for _, it := range m.items {
+					var __n7 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
-					}
-					__n7__new := new__child0Instance(m, it, m.total__inst0, func(__total int) {
-						m.total__inst0 = __total
-						gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
-						for __inst0_live_ui, _ := range m.__inst0_live {
-							m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
+						__n7 = m.__inst0_live[__inst0_i]
+						__n7.Set__on0(func(__total int) {
+							m.total__inst0 = __total
+							gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+							for __inst0_live_ui, _ := range m.__inst0_live {
+								m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
+							}
+						})
+						__n7.Set__p0(it)
+						__n7.Set__p1(m.total__inst0)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
 						}
-					})
-					__n7 = __n7__new
+						__n7__new := new__child0Instance(m, it, m.total__inst0, func(__total int) {
+							m.total__inst0 = __total
+							gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+							for __inst0_live_ui, _ := range m.__inst0_live {
+								m.__inst0_live[__inst0_live_ui].Set__p1(m.total__inst0)
+							}
+						})
+						__n7 = __n7__new
+					}
+					__inst0_next = append(__inst0_next, __n7)
+					__inst0_i = (__inst0_i + 1)
+					__n7__el := __n7.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n7__el)
+					m.__slot0 = append(m.__slot0, __n7__el)
 				}
-				__inst0_next = append(__inst0_next, __n7)
-				__inst0_i = (__inst0_i + 1)
-				__n7__el := __n7.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n7__el)
-				m.__slot0 = append(m.__slot0, __n7__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1155,48 +1167,53 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-			__inst1_next := []*__block_state0Instance{}
-			var __inst1_i int = 0
-			if m.pages__current.Id == 0 {
-				var __n8 *__block_state0Instance
-				if len(m.__inst1_live) > __inst1_i {
-					__n8 = m.__inst1_live[__inst1_i]
-				} else {
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+				__inst1_next := []*__block_state0Instance{}
+				var __inst1_i int = 0
+				if m.pages__current.Id == 0 {
+					var __n8 *__block_state0Instance
 					if len(m.__inst1_live) > __inst1_i {
-						m.__inst1_live[__inst1_i].Destroy()
+						__n8 = m.__inst1_live[__inst1_i]
+					} else {
+						if len(m.__inst1_live) > __inst1_i {
+							m.__inst1_live[__inst1_i].Destroy()
+						}
+						__n8__new := new__block_state0Instance(m)
+						__n8 = __n8__new
 					}
-					__n8__new := new__block_state0Instance(m)
-					__n8 = __n8__new
+					__inst1_next = append(__inst1_next, __n8)
+					__inst1_i = (__inst1_i + 1)
+					__n8__el := __n8.Root
+					gtk4rt.InsertBefore(parent, m.__slot1_at, __n8__el)
+					m.__slot1 = append(m.__slot1, __n8__el)
+				} else {
+					if m.pages__current.Id == 1 {
+						__n9 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetText(__n9, "about")
+						gtk4rt.LabelSetXAlign(__n9, 0.0)
+						gtk4rt.InsertBefore(parent, m.__slot1_at, __n9)
+						m.__slot1 = append(m.__slot1, __n9)
+					}
 				}
-				__inst1_next = append(__inst1_next, __n8)
-				__inst1_i = (__inst1_i + 1)
-				__n8__el := __n8.Root
-				gtk4rt.InsertBefore(parent, m.__slot1_at, __n8__el)
-				m.__slot1 = append(m.__slot1, __n8__el)
-			} else {
-				if m.pages__current.Id == 1 {
-					__n9 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n9, "about")
-					gtk4rt.InsertBefore(parent, m.__slot1_at, __n9)
-					m.__slot1 = append(m.__slot1, __n9)
+				for __inst1_i_d, _ := range m.__inst1_live {
+					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+					if __inst1_i_j >= __inst1_i {
+						m.__inst1_live[__inst1_i_j].Destroy()
+					}
 				}
+				m.__inst1_live = __inst1_next
 			}
-			for __inst1_i_d, _ := range m.__inst1_live {
-				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-				if __inst1_i_j >= __inst1_i {
-					m.__inst1_live[__inst1_i_j].Destroy()
-				}
-			}
-			m.__inst1_live = __inst1_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -1250,6 +1267,7 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	})
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ("hits " + fmt.Sprint(c.hits)))
+	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, __n11)
 	gtk4rt.BoxAppend(__box, c.__n0)
@@ -1307,6 +1325,7 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 	})
 	c.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, c.__n1)
 	gtk4rt.BoxAppend(__box, c.__n2)
@@ -1478,10 +1497,12 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n10, m.__n13)
 	m.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
 	gtk4rt.BoxAppend(m.__n10, m.__n5)
 	m.__renderSlot0(m.__n10)
 	m.__n6 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+	gtk4rt.LabelSetXAlign(m.__n6, 0.0)
 	gtk4rt.BoxAppend(m.__n10, m.__n6)
 	m.__renderSlot1(m.__n10)
 	m.__n14 = gtk4rt.ButtonNew()
@@ -1775,71 +1796,74 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const it of items) {
-          let __n7 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n7 = __inst1_live[__inst1_i];
-            __n7.__set___on0((__total) => {
-              state.total__inst0 = __total;
-              __n5.textContent = "total " + String(state.total__inst0);
-              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-                ;
-                __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
-              }
-              ;
-            });
-            __n7.__set___p0(it);
-            __n7.__set___p1(state.total__inst0);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const it of items) {
+            let __n7 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
-            }
-            let __n7__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
-              state.total__inst0 = __total;
-              __n5.textContent = "total " + String(state.total__inst0);
-              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+              __n7 = __inst1_live[__inst1_i];
+              __n7.__set___on0((__total) => {
+                state.total__inst0 = __total;
+                __n5.textContent = "total " + String(state.total__inst0);
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                  ;
+                  __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
+                }
                 ;
-                __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
+              });
+              __n7.__set___p0(it);
+              __n7.__set___p1(state.total__inst0);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
               }
-              ;
-            } });
-            __n7 = __n7__new;
+              let __n7__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
+                state.total__inst0 = __total;
+                __n5.textContent = "total " + String(state.total__inst0);
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                  ;
+                  __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
+                }
+                ;
+              } });
+              __n7 = __n7__new;
+            }
+            __inst1_next.push(__n7);
+            __inst1_i = __inst1_i + 1;
+            let __n7__el = __n7.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n7__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n7__el, __place0_i_ref0);
+            }
+            __slot0.push(__n7__el);
           }
-          __inst1_next.push(__n7);
-          __inst1_i = __inst1_i + 1;
-          let __n7__el = __n7.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n7__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n7__el, __place0_i_ref0);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot0.push(__n7__el);
         }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -2005,71 +2029,74 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const it of items) {
-          let __n7 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n7 = __inst1_live[__inst1_i];
-            __n7.__set___on0((__total) => {
-              state.total__inst0 = __total;
-              __n5.textContent = "total " + String(state.total__inst0);
-              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
-                ;
-                __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
-              }
-              ;
-            });
-            __n7.__set___p0(it);
-            __n7.__set___p1(state.total__inst0);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const it of items) {
+            let __n7 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
-            }
-            let __n7__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
-              state.total__inst0 = __total;
-              __n5.textContent = "total " + String(state.total__inst0);
-              for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+              __n7 = __inst1_live[__inst1_i];
+              __n7.__set___on0((__total) => {
+                state.total__inst0 = __total;
+                __n5.textContent = "total " + String(state.total__inst0);
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                  ;
+                  __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
+                }
                 ;
-                __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
+              });
+              __n7.__set___p0(it);
+              __n7.__set___p1(state.total__inst0);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
               }
-              ;
-            } });
-            __n7 = __n7__new;
+              let __n7__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
+                state.total__inst0 = __total;
+                __n5.textContent = "total " + String(state.total__inst0);
+                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                  ;
+                  __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
+                }
+                ;
+              } });
+              __n7 = __n7__new;
+            }
+            __inst1_next.push(__n7);
+            __inst1_i = __inst1_i + 1;
+            let __n7__el = __n7.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n7__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n7__el, __place0_i_ref0);
+            }
+            __slot0.push(__n7__el);
           }
-          __inst1_next.push(__n7);
-          __inst1_i = __inst1_i + 1;
-          let __n7__el = __n7.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n7__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n7__el, __place0_i_ref0);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot0.push(__n7__el);
         }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -2106,12 +2133,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3ea6f45279ae148a9fe77635ffebc3e8
+pass sha256:2e77d11cf4df2cea1d46023ccb8e9a26
 -- run/go/fyne --
-pass sha256:8866a881544fe8383ea6bf3cd53dd83a
+pass sha256:3d811c1a7981123f581fa9612dc6709f
 -- run/go/gtk4 --
-pass sha256:059512b03a4459e312ec4f477fc5fd8f
+pass sha256:ed5ef793b8b9e3d08c09bf212ecd6912
 -- run/kotlin/android --
 pass sha256:859713184b186410eaae7db4af2aeb79
 -- run/none/html --
-pass sha256:4282853fb43b1cebf630c0a76bee71ed
+pass sha256:07041513b93255bfb77a97d720cb5f03

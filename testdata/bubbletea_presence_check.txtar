@@ -122,9 +122,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type ErrorEvent struct {
@@ -551,18 +551,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) toggleClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 // bumpClick activates the #bump widget the way a keypress does; for tests.
 func (m *Model) bumpClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 func (m *Model) bPresent() bool {
@@ -620,7 +624,7 @@ func (m Model) View() tea.View {
 			part0_1Part_2Item = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(x)))
 			part0_1Part_2Items = append(part0_1Part_2Items, part0_1Part_2Item)
 		}
-		part0_1Part_2 = strings.Join(part0_1Part_2Items, "\n")
+		part0_1Part_2 = tui.Column(0, part0_1Part_2Items...)
 		if part0_1Part_2 != "" {
 			part0_1Parts = append(part0_1Parts, part0_1Part_2)
 		}
@@ -636,7 +640,7 @@ func (m Model) View() tea.View {
 		if part0_1Part_5 != "" {
 			part0_1Parts = append(part0_1Parts, part0_1Part_5)
 		}
-		part0_1 = lipgloss.JoinVertical(lipgloss.Left, part0_1Parts...)
+		part0_1 = tui.Column(0, part0_1Parts...)
 	}
 	if part0_1 != "" {
 		part0Children = append(part0Children, part0_1)
@@ -654,9 +658,9 @@ func (m Model) View() tea.View {
 	if part0_4 != "" {
 		part0Children = append(part0Children, part0_4)
 	}
-	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = tui.Column(0, part0Children...)
 	parts = append(parts, part0)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -702,6 +706,6 @@ func TestPresence(t *testing.T) {
 }
 
 
-func newTestComponent() Model { return New() }
+func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:de77230be49903715402679c400ebd0e
+pass sha256:805fe15b2a12915de2699fcd3289a54e

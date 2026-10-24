@@ -100,9 +100,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type File struct {
@@ -820,18 +820,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) b__reach0Click() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 // b__reach1Click activates the #b__reach1 widget the way a keypress does; for tests.
 func (m *Model) b__reach1Click() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 // b__reach2Click activates the last copy of #b__reach2 the way a keypress does; for tests.
@@ -864,9 +868,11 @@ func (m *Model) b__reach2Click() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+	_ = m.View()
+	_ = cmd
 }
 
 // b__reach2ClickAt activates the copy of #b__reach2 with the key the way a keypress does; for tests.
@@ -901,9 +907,11 @@ func (m *Model) b__reach2ClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+	_ = m.View()
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -962,13 +970,13 @@ func (m Model) View() tea.View {
 		__focusPos2++
 		part0_2Items = append(part0_2Items, part0_2Item)
 	}
-	part0_2 = strings.Join(part0_2Items, "\n")
+	part0_2 = tui.Column(0, part0_2Items...)
 	if part0_2 != "" {
 		part0Children = append(part0Children, part0_2)
 	}
-	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	part0 = tui.Column(0, part0Children...)
 	parts = append(parts, part0)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	content := tui.Column(0, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1036,6 +1044,6 @@ func TestFor(t *testing.T) {
 }
 
 
-func newTestComponent() Model { return New() }
+func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:f75ef34718dbbc2837368fe530d92beb
+pass sha256:e3387622b0b253a18e3a6d76ec4068a3

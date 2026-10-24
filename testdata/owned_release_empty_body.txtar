@@ -51,6 +51,7 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
@@ -187,7 +188,7 @@ func (m Model) View() tea.View {
 		var contentPart_1 string
 		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.n)))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Column(0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -396,6 +397,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -509,11 +511,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0d08de8e945c1288ad3e448125941a19
+pass sha256:1c40c57138b50498db3fd9038bb801f5
 -- run/go/fyne --
 pass sha256:1d7fac66ffd5e0079a6fee071a81429a
 -- run/go/gtk4 --
-pass sha256:39ab146bc5c98de89b0d581dcedc7fa1
+pass sha256:8719dd004f9b19e373c8b07a39c765c6
 -- run/kotlin/android --
 pass sha256:8e2367f183ddc4396929a942452ee35f
 -- run/none/html --

@@ -81,7 +81,7 @@ func TestSetStyleSizesAndSpaces(t *testing.T) {
 		SetStyle(label, Style{Width: 200, Height: 100, Background: red})
 		frame := ImageFrameNew()
 		src := ImageSourceNew()
-		ImageSourceSetURL(src, "blue.png")
+		ImageSourceSetPicture(src, LoadPicture("blue.png"))
 		BoxAppend(frame, src)
 		SetStyle(frame, Style{Width: 50, Height: 50})
 		for _, w := range []Handle{label, frame, col2} {

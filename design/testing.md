@@ -79,6 +79,25 @@ on every target from its records. Run unrecorded in verify, every launch
 needed every toolchain and a display, so gtk4 failed in CI, where cage does
 not start, and a slow fyne run timed out there.
 
+**Nor does it compile what a record answers.** A script's `sngl build` and
+compiled `sngl run` are answered from a `testrun/build/…` or `testrun/run/…`
+record of the generated program and the arguments (`Records.AnswerTool`; a
+run's record holds what it printed), and compile only under `-update` and
+`-verify`, which the `[toolchain]` condition says: a step running the binary
+they built is guarded by it. A script that only checks generated Go compiles
+writes `gobuild <pkgs>` rather than `exec go build`, answered the same way
+(`testrun/gobuild/…`, of the script's whole tree); the go command's telemetry
+is off in a script's config so its counters do not move that digest. What still
+compiles in a plain run is sngl's own behavior: the `go://` const evaluator
+`trust_eval` runs, and `serve`'s build of sngl. And a package keeping a `testdata/test_run` --
+`pkg/go/gtk4rt`, whose tests link the host's GTK and skip in CI for want of a
+compositor -- is left out of the test step while that digest of what its tests
+build stands (`internal/cmd/verify/testrun.go`), `-update` running them and
+writing it again. Both compiled in CI: a GTK call CI's 4.8 lacked failed its
+link in three scripts and gtk4rt's own build, where every record stood.
+`go vet` still reads gtk4rt's C, which preprocesses it with the host's headers
+but links nothing.
+
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
 `func test…` through the same launcher (`internal/testlaunch`, in process),

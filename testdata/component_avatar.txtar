@@ -149,7 +149,7 @@ func (m Model) View() tea.View {
 		var content_0 string
 		content_0 = lipgloss.NewStyle().
 			Background(lipgloss.Color("#cccccc")).
-			Height(5).
+			Height(2).
 			AlignHorizontal(lipgloss.Center).
 			Width(5).Render(fmt.Sprint("JD"))
 		contentChildren = append(contentChildren, content_0)
@@ -157,17 +157,17 @@ func (m Model) View() tea.View {
 		if m.failed__inst1 {
 			content_1 = lipgloss.NewStyle().
 				Background(lipgloss.Color("#cccccc")).
-				Height(5).
+				Height(2).
 				AlignHorizontal(lipgloss.Center).
 				Width(5).Render(fmt.Sprint("AB"))
 		} else {
 			var content_1Children []string
 			var content_1_0 string
-			content_1_0 = tui.Picture("https://example.com/a.png", 24, 12)
+			content_1_0 = tui.Picture("https://example.com/a.png", 5, 2)
 			content_1Children = append(content_1Children, content_1_0)
-			content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+			content_1 = tui.Column(0, content_1Children...)
 			content_1 = lipgloss.NewStyle().
-				Height(5).
+				Height(2).
 				Width(5).Render(content_1)
 		}
 		if content_1 != "" {
@@ -176,11 +176,11 @@ func (m Model) View() tea.View {
 		var content_2 string
 		content_2 = lipgloss.NewStyle().
 			Background(lipgloss.Color("#cccccc")).
-			Height(8).
+			Height(4).
 			AlignHorizontal(lipgloss.Center).
 			Width(8).Render(fmt.Sprint("XY"))
 		contentChildren = append(contentChildren, content_2)
-		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+		content = tui.Row(0, contentChildren...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -272,19 +272,23 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__n1 := widget.NewLabel("")
+				__n1.SetText("JD")
+				fynelayout.InsertBefore(__parent, m.__slot0_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n1), _snglTheme0), 0, 0, 40, 40))
+				m.__slot0 = append(m.__slot0, __n1)
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__n1 := widget.NewLabel("")
-			__n1.SetText("JD")
-			fynelayout.InsertBefore(__parent, m.__slot0_at, fynelayout.ShareSized(container.NewThemeOverride(__n1, _snglTheme0), 0, 0, 40, 40))
-			m.__slot0 = append(m.__slot0, __n1)
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -294,37 +298,41 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				if m.failed__inst1 {
+					__n3 := widget.NewLabel("")
+					__n3.SetText("AB")
+					fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n3), _snglTheme1), 0, 0, 40, 40))
+					m.__slot1 = append(m.__slot1, __n3)
+				} else {
+					__n4 := fynelayout.NewImage()
+					__n4.SetFit("cover")
+					__n4.OnTapped = func() {
+					}
+					__n4.OnLoad = func() {
+					}
+					__n4.OnError = func(m__r0 string) {
+						m.failed__inst1 = true
+						m.__renderSlot1(m.__n8)
+					}
+					__n5 := fynelayout.NewImageSource()
+					__n5.SetURL("https://example.com/a.png")
+					__n4.Add(__n5)
+					fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(__n4, _snglTheme2), 0, 0, 40, 40))
+					m.__slot1 = append(m.__slot1, __n4)
+				}
 			}
-			m.__slot1 = nil
-			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-			if m.failed__inst1 {
-				__n3 := widget.NewLabel("")
-				__n3.SetText("AB")
-				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(__n3, _snglTheme1), 0, 0, 40, 40))
-				m.__slot1 = append(m.__slot1, __n3)
-			} else {
-				__n4 := fynelayout.NewImage()
-				__n4.SetFit("cover")
-				__n4.OnTapped = func() {
-				}
-				__n4.OnLoad = func() {
-				}
-				__n4.OnError = func(m__r0 string) {
-					m.failed__inst1 = true
-					m.__renderSlot1(m.__n8)
-				}
-				__n5 := fynelayout.NewImageSource()
-				__n5.SetURL("https://example.com/a.png")
-				__n4.Add(__n5)
-				fynelayout.InsertBefore(__parent, m.__slot1_at, fynelayout.ShareSized(container.NewThemeOverride(__n4, _snglTheme2), 0, 0, 40, 40))
-				m.__slot1 = append(m.__slot1, __n4)
-			}
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -334,19 +342,23 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 	} else {
 		m.__rendering2 = true
 		m.__renderAgain2 = true
-		for m.__renderAgain2 {
-			m.__renderAgain2 = false
-			for _, __entry := range m.__slot2 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering2 = false
+			}()
+			for m.__renderAgain2 {
+				m.__renderAgain2 = false
+				for _, __entry := range m.__slot2 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot2 = nil
+				m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
+				__n6 := widget.NewLabel("")
+				__n6.SetText("XY")
+				fynelayout.InsertBefore(__parent, m.__slot2_at, fynelayout.ShareSized(container.NewThemeOverride(fynetheme.NewBackdrop(__n6), _snglTheme3), 0, 0, 64, 64))
+				m.__slot2 = append(m.__slot2, __n6)
 			}
-			m.__slot2 = nil
-			m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
-			__n6 := widget.NewLabel("")
-			__n6.SetText("XY")
-			fynelayout.InsertBefore(__parent, m.__slot2_at, fynelayout.ShareSized(container.NewThemeOverride(__n6, _snglTheme3), 0, 0, 64, 64))
-			m.__slot2 = append(m.__slot2, __n6)
-		}
-		m.__rendering2 = false
+		}()
 	}
 }
 
@@ -662,33 +674,36 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __n1 = document.createElement("span");
-        __n1.textContent = "JD";
-        __n1.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
-        __n1.addEventListener("click", () => {
-        });
-        let __place0_i_ref0 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref0 = __place0_prev[__place0_i];
-        }
-        if (__place0_i_ref0 === __n1) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n1, __place0_i_ref0);
-        }
-        __slot0.push(__n1);
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __n1 = document.createElement("span");
+          __n1.textContent = "JD";
+          __n1.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+          __n1.addEventListener("click", () => {
+          });
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n1) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n1, __place0_i_ref0);
+          }
+          __slot0.push(__n1);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -697,61 +712,64 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place1_prev = __slot1;
-        let __place1_i = 0;
-        __slot1 = [];
-        if (state.failed__inst1) {
-          let __n3 = document.createElement("span");
-          __n3.textContent = "AB";
-          __n3.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:4px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
-          __n3.addEventListener("click", () => {
-          });
-          let __place1_i_ref0 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref0 = __place1_prev[__place1_i];
-          }
-          if (__place1_i_ref0 === __n3) {
-            __place1_i = __place1_i + 1;
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place1_prev = __slot1;
+          let __place1_i = 0;
+          __slot1 = [];
+          if (state.failed__inst1) {
+            let __n3 = document.createElement("span");
+            __n3.textContent = "AB";
+            __n3.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:4px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+            __n3.addEventListener("click", () => {
+            });
+            let __place1_i_ref0 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref0 = __place1_prev[__place1_i];
+            }
+            if (__place1_i_ref0 === __n3) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n3, __place1_i_ref0);
+            }
+            __slot1.push(__n3);
           } else {
-            parent.insertBefore(__n3, __place1_i_ref0);
+            let __n4 = document.createElement("span");
+            __n4.setAttribute("class", "sngl-image sngl-image-cover");
+            __n4.setAttribute("role", "img");
+            __n4.setAttribute("aria-label", "");
+            __n4.setAttribute("style", "border-radius:4px;display:inline-block;height:40px;overflow:hidden;width:40px");
+            __n4.addEventListener("click", () => {
+            });
+            __n4.addEventListener("error", (e) => {
+              state.failed__inst1 = true;
+              __renderSlot1(__slotAnchor_1);
+            });
+            let __n5 = document.createElement("img");
+            __n5.setAttribute("alt", "");
+            __n5.src = "https://example.com/a.png";
+            __n4.appendChild(__n5);
+            let __place1_i_ref1 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref1 = __place1_prev[__place1_i];
+            }
+            if (__place1_i_ref1 === __n4) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n4, __place1_i_ref1);
+            }
+            __slot1.push(__n4);
           }
-          __slot1.push(__n3);
-        } else {
-          let __n4 = document.createElement("span");
-          __n4.setAttribute("class", "sngl-image sngl-image-cover");
-          __n4.setAttribute("role", "img");
-          __n4.setAttribute("aria-label", "");
-          __n4.setAttribute("style", "border-radius:4px;display:inline-block;height:40px;overflow:hidden;width:40px");
-          __n4.addEventListener("click", () => {
-          });
-          __n4.addEventListener("error", (e) => {
-            state.failed__inst1 = true;
-            __renderSlot1(__slotAnchor_1);
-          });
-          let __n5 = document.createElement("img");
-          __n5.setAttribute("alt", "");
-          __n5.src = "https://example.com/a.png";
-          __n4.appendChild(__n5);
-          let __place1_i_ref1 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref1 = __place1_prev[__place1_i];
-          }
-          if (__place1_i_ref1 === __n4) {
-            __place1_i = __place1_i + 1;
-          } else {
-            parent.insertBefore(__n4, __place1_i_ref1);
-          }
-          __slot1.push(__n4);
-        }
-        for (const __place1_prev_e of __place1_prev) {
-          if (__slot1.indexOf(__place1_prev_e) < 0) {
-            parent.removeChild(__place1_prev_e);
+          for (const __place1_prev_e of __place1_prev) {
+            if (__slot1.indexOf(__place1_prev_e) < 0) {
+              parent.removeChild(__place1_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function __renderSlot2(parent) {
@@ -760,33 +778,36 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering2 = true;
       __renderAgain2 = true;
-      while (__renderAgain2) {
-        __renderAgain2 = false;
-        let __place2_prev = __slot2;
-        let __place2_i = 0;
-        __slot2 = [];
-        let __n6 = document.createElement("span");
-        __n6.textContent = "XY";
-        __n6.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px");
-        __n6.addEventListener("click", () => {
-        });
-        let __place2_i_ref0 = null;
-        if (__place2_i < __place2_prev.length) {
-          __place2_i_ref0 = __place2_prev[__place2_i];
-        }
-        if (__place2_i_ref0 === __n6) {
-          __place2_i = __place2_i + 1;
-        } else {
-          parent.insertBefore(__n6, __place2_i_ref0);
-        }
-        __slot2.push(__n6);
-        for (const __place2_prev_e of __place2_prev) {
-          if (__slot2.indexOf(__place2_prev_e) < 0) {
-            parent.removeChild(__place2_prev_e);
+      try {
+        while (__renderAgain2) {
+          __renderAgain2 = false;
+          let __place2_prev = __slot2;
+          let __place2_i = 0;
+          __slot2 = [];
+          let __n6 = document.createElement("span");
+          __n6.textContent = "XY";
+          __n6.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px");
+          __n6.addEventListener("click", () => {
+          });
+          let __place2_i_ref0 = null;
+          if (__place2_i < __place2_prev.length) {
+            __place2_i_ref0 = __place2_prev[__place2_i];
+          }
+          if (__place2_i_ref0 === __n6) {
+            __place2_i = __place2_i + 1;
+          } else {
+            parent.insertBefore(__n6, __place2_i_ref0);
+          }
+          __slot2.push(__n6);
+          for (const __place2_prev_e of __place2_prev) {
+            if (__slot2.indexOf(__place2_prev_e) < 0) {
+              parent.removeChild(__place2_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering2 = false;
       }
-      __rendering2 = false;
     }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
@@ -799,10 +820,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:08958d88015273ce2774d02d039dac1f
+pass sha256:fff7b784c05be08f7406255af836f5a5
 -- run/go/fyne --
-pass sha256:8b16020596b26a4b051b7954ceeadbda
+pass sha256:c23fd075d7dd1e2219ca0678e1de0085
 -- run/kotlin/android --
 pass sha256:06e7dd46104a41d626707dca420f730f
 -- run/none/html --
-pass sha256:6626f8dc0c1e50b37c6496bb201f9e3c
+pass sha256:13ffb6fb13864dadd0507e431be8b221

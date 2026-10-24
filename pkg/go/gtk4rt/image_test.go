@@ -43,7 +43,7 @@ func TestAFetchPaintsOnlyItsOwnPicture(t *testing.T) {
 	build := func(app Handle) Handle {
 		old := ImageSourceNew()
 		Retain(old)
-		ImageSourceSetURL(old, srv.URL+"/red.png")
+		ImageSourceSetPicture(old, LoadPicture(srv.URL+"/red.png"))
 		Release(old)
 		frame := ImageFrameNew()
 		fresh := ImageSourceNew()
@@ -99,11 +99,13 @@ func TestAFetchForAGonePictureKeepsNoTexture(t *testing.T) {
 	defer srv.Close()
 
 	var gone *source
+	var fetched *Picture
 	build := func(app Handle) Handle {
 		pic := ImageSourceNew()
 		Retain(pic)
 		gone = sources[pic]
-		ImageSourceSetURL(pic, srv.URL+"/dot.png")
+		fetched = LoadPicture(srv.URL + "/dot.png")
+		ImageSourceSetPicture(pic, fetched)
 		Release(pic)
 		close(release)
 		PumpFor(500)
@@ -115,8 +117,8 @@ func TestAFetchForAGonePictureKeepsNoTexture(t *testing.T) {
 		}
 		t.Fatalf("SnapshotModelBytes: %v", err)
 	}
-	if gone.url == "" {
-		t.Fatal("the fetch never started")
+	if !fetched.arrived {
+		t.Fatal("the fetch never arrived")
 	}
 	if gone.tex != nil {
 		t.Error("a gone picture's source holds the texture its fetch decoded")

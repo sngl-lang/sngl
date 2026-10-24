@@ -449,6 +449,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"unsafe"
 )
@@ -518,7 +519,7 @@ func (m *Model) buildWidgetTree() {
 	C.free(unsafe.Pointer(__ctmp0))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr0, C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -536,4 +537,4 @@ pass sha256:95603e190116c45d265e54a1856a8e93
 -- run/go/fyne --
 pass sha256:00b0d2f7a17fcaa854c749bb102f1161
 -- run/go/gtk4 --
-pass sha256:08521a83996c06e60a435147b5206b12
+pass sha256:362c65ff612b31d45ba44f048d80f959

@@ -40,7 +40,7 @@ func TestScrollShowsThePicturesItOverflowsWith(t *testing.T) {
 		for range 10 {
 			frame := ImageFrameNew()
 			src := ImageSourceNew()
-			ImageSourceSetURL(src, "red.png")
+			ImageSourceSetPicture(src, LoadPicture("red.png"))
 			BoxAppend(frame, src)
 			BoxAppend(list, frame)
 			BoxAppend(list, LabelNew(strings.Repeat("line\n", 20)))
