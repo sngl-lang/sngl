@@ -24,6 +24,10 @@ type Handle struct {
 	// moved says a native took the value at ReleasedAt rather than the
 	// program releasing it there.
 	moved bool
+	// holders is how many hold the value now -- one from the allocation,
+	// one more per retain -- and Holders how many ever did: the value is
+	// given back when the last releases it.
+	holders, Holders int
 }
 
 // handles is every owned value a program allocated and has not given back,
@@ -39,8 +43,9 @@ type handles struct {
 	simulated string
 	// retained is each value a native keeps a pointer to, by where it was
 	// handed over and the lifetime that call ran in, and lifetime is the one
-	// running now: the zero Key outside every effect, which is the
-	// application's.
+	// running now: the zero Key outside every effect, where the lifetime is
+	// the component instance the call ran in, or the application's outside
+	// every component.
 	retained map[*Handle]retention
 	lifetime Key
 }
@@ -48,6 +53,7 @@ type handles struct {
 type retention struct {
 	at       ast.Pos
 	lifetime Key
+	inst     *Env
 }
 
 func (env *Env) owned() *handles {
@@ -59,7 +65,7 @@ func (env *Env) owned() *handles {
 
 func (h *handles) alloc(def *ir.StructDef, at ast.Pos) *Handle {
 	h.next++
-	hd := &Handle{ID: h.next, Def: def, At: at}
+	hd := &Handle{ID: h.next, Def: def, At: at, holders: 1, Holders: 1}
 	h.live[hd] = true
 	return hd
 }
@@ -117,11 +123,15 @@ func (env *Env) checkPassed(args []any) error {
 }
 
 // releaseCall runs fn, the release of its argument's type, and gives the
-// value back once fn returns: the release reads what it is releasing.
+// value back once fn returns: the release reads what it is releasing. A
+// synthesized release gives back what its argument holds, by calling each
+// held value's own, so it counts nothing itself: an option of an owned value
+// is that value on the interpreter, and counted here as well it was released
+// twice.
 func (env *Env) releaseCall(fn *ir.Func, args []any, run func() (any, error)) (any, error) {
 	h := env.owned()
 	var hd *Handle
-	if len(args) == 1 {
+	if len(args) == 1 && fn.Releases == nil {
 		hd = handleOf(args[0])
 	}
 	if hd != nil && hd.moved {
@@ -140,8 +150,30 @@ func (env *Env) releaseCall(fn *ir.Func, args []any, run func() (any, error)) (a
 	if err != nil || hd == nil {
 		return v, err
 	}
+	if hd.holders > 1 {
+		hd.holders--
+		return v, nil
+	}
 	hd.released, hd.ReleasedAt = true, h.site()
 	delete(h.live, hd)
+	return v, nil
+}
+
+// retainCall runs fn, the retain of its argument's type, and counts the
+// holder it gives the value: the host counts a reference, and the tracker
+// counts with it.
+func (env *Env) retainCall(fn *ir.Func, args []any, run func() (any, error)) (any, error) {
+	if err := env.checkPassed(args); err != nil {
+		return nil, err
+	}
+	v, err := run()
+	if err != nil {
+		return nil, err
+	}
+	if hd := handleOf(args[0]); hd != nil {
+		hd.holders++
+		hd.Holders++
+	}
 	return v, nil
 }
 
@@ -171,13 +203,17 @@ func (h *handles) move(hd *Handle) {
 }
 
 // retain records that the native being called keeps hd until the lifetime
-// running now ends, or until the same call in the same lifetime hands it
-// another, which is the native's to hold in its place.
-func (h *handles) retain(hd *Handle) {
+// running now ends -- the effect whose handler is running, else the node of
+// inst, the instance the call ran in -- or until the same call in the same
+// lifetime hands it another, which is the native's to hold in its place.
+func (h *handles) retain(hd *Handle, inst *Env) {
 	if h.retained == nil {
 		h.retained = map[*Handle]retention{}
 	}
 	r := retention{at: h.site(), lifetime: h.lifetime}
+	if r.lifetime == (Key{}) {
+		r.inst = inst
+	}
 	for prev, q := range h.retained {
 		if q == r {
 			delete(h.retained, prev)
@@ -194,6 +230,43 @@ func (h *handles) letGo(k Key) {
 			delete(h.retained, hd)
 		}
 	}
+}
+
+// letGoInstance ends every retention made in inst's node and the nodes
+// under it: the instance is unmounted, so the natives holding the pointers
+// are gone with it. Called as the instance is evicted, which is before its
+// `@unmount` releases what the cells hold.
+func (h *handles) letGoInstance(inst *Env) {
+	if inst == nil {
+		return
+	}
+	for hd, r := range h.retained {
+		if r.inst == inst {
+			delete(h.retained, hd)
+		}
+	}
+	for _, child := range inst.childEnvs {
+		h.letGoInstance(child)
+	}
+	for _, child := range inst.callChildEnvs {
+		h.letGoInstance(child)
+	}
+}
+
+// instance is the component instance env runs in: the scope its snapshots
+// were taken from, when that is a component's. A handler, a timer's tick
+// and a component function run in the instance's scope or a snapshot of it,
+// and a function they call in a snapshot of that. Nil outside every
+// component, which is the application's lifetime.
+func (env *Env) instance() *Env {
+	e := env
+	for e.origin != nil {
+		e = e.origin
+	}
+	if e.Comp == nil {
+		return nil
+	}
+	return e
 }
 
 // within runs fn as part of the lifetime at k.
@@ -225,11 +298,17 @@ func (env *Env) Leaks() []string {
 	type site struct {
 		name string
 		at   ast.Pos
+		// left and of say a value retained more than once was released by
+		// some of its holders and not the rest.
+		left, of int
 	}
 	var order []site
 	count := map[site]int{}
 	for _, hd := range live {
-		s := site{hd.Def.Name, hd.At}
+		s := site{name: hd.Def.Name, at: hd.At}
+		if hd.holders < hd.Holders {
+			s.left, s.of = hd.holders, hd.Holders
+		}
 		if count[s] == 0 {
 			order = append(order, s)
 		}
@@ -237,7 +316,11 @@ func (env *Env) Leaks() []string {
 	}
 	out := make([]string, len(order))
 	for i, s := range order {
-		out[i] = fmt.Sprintf("leak: the %s allocated at %s was never released", s.name, s.at)
+		if s.of > 0 {
+			out[i] = fmt.Sprintf("leak: the %s allocated at %s has %d of its %d holders left", s.name, s.at, s.left, s.of)
+		} else {
+			out[i] = fmt.Sprintf("leak: the %s allocated at %s was never released", s.name, s.at)
+		}
 		if n := count[s]; n > 1 {
 			out[i] += fmt.Sprintf(", %d times", n)
 		}

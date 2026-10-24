@@ -120,6 +120,7 @@ var passes = []pass{
 	passComponentProps,
 	passReactivity,
 	passMatchLate,
+	passConditionalTemps,
 	passTernary,
 	passCanvasReactivity,
 	passFocusOrder,

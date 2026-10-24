@@ -46,7 +46,7 @@ spec instead.
 - `design/testing.md` — fixture directives, goldens and `deny`, recorded runs, the two harnesses, test lowering and test reach
 - `design/performance.md` — profiling, the store (`internal/gencache`), what costs
 - `design/trust.md` — grants, `--allow-eval`, fetch gating, the LSP
-- `design/ownership.md` — `#[owned]`, `#[retains]`/`#[moves]`, the four lifetimes, `ir.Keyable`, the interpreter's handles and leak check, application teardown
+- `design/ownership.md` — `#[owned]`, `#[retains]`/`#[moves]`, the four lifetimes, `ir.Keyable`, the interpreter's handles and leak check, application teardown, the C target's per-turn arena
 
 **Where a new note goes.** A rule a session must follow whatever it is
 working on goes here, in a sentence or two. The reasoning behind a design --

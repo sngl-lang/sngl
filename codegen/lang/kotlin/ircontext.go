@@ -654,10 +654,12 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 			}
 		}
 		// A variant's class is narrower than the sealed class a later write
-		// may hold another variant of, and a host value may be narrower than
-		// the type SNGL declared -- Compose's empty `Modifier` is its
-		// companion object.
-		if sd, ok := hostStruct(n.Type); ir.PayloadEnum(n.Type) != nil || ok && sd.Foreign.Scheme == "kotlin" {
+		// may hold another variant of, `null` alone infers `Nothing?`, and a
+		// host value may be narrower than the type SNGL declared -- Compose's
+		// empty `Modifier` is its companion object.
+		sd, host := hostStruct(n.Type)
+		nullInit := n.Type != nil && n.Type.Kind == ir.TypeOption && n.Init.ExprType() != nil && n.Init.ExprType().Kind == ir.TypeNull
+		if ir.PayloadEnum(n.Type) != nil || nullInit || host && sd.Foreign.Scheme == "kotlin" {
 			return "var " + n.Name + ": " + IRTypeToKt(n.Type) + " = " + kc.valueCopyFor(n, initStr)
 		}
 		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
@@ -1063,7 +1065,17 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		return kc.waitingLiteralCall(lam, args)
 	}
 	if n.Callee != nil {
-		return kc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
+		callee := kc.EvalExpr(n.Callee)
+		if _, ok := n.Callee.(*ir.Lambda); ok {
+			// A labeled literal called where it stands: `fn@{ … }()` labels
+			// the call, and Kotlin refuses the `return@fn` inside it. An
+			// unlabeled one stays bare, since a statement opening with `(`
+			// continues the line before it.
+			if i := strings.IndexByte(callee, '{'); i > 0 && callee[i-1] == '@' {
+				callee = "(" + callee + ")"
+			}
+		}
+		return callee + "(" + strings.Join(args, ", ") + ")"
 	}
 	return "(" + strings.Join(args, ", ") + ")"
 }

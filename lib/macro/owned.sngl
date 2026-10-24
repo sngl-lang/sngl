@@ -8,9 +8,15 @@ import ir "sngl:internal/ir"
 // prove is no longer reachable, at the narrowest of four lifetimes -- the
 // statement, the node, the application, or never, once it is moved.
 //
+// A type the host counts references to names its `retain` as well, a
+// function taking one value of the type and answering it: a value stored from
+// another holder -- in a second var, a field or a collection -- is retained
+// there, and each holder releases its own. Without one, a value stored twice
+// is released twice.
+//
 // Nothing is owned by its name. A C string, a pixbuf and a program's own
 // handle are owned because their declarations say so.
-func owned[T any](release func(T)) ir.Macro
+func owned[T any](release func(T), retain func(T) T = func(v struct {}) => v) ir.Macro
 
 // Marks a parameter of a native function that keeps a pointer to its argument
 // after it returns, while the caller still owns it: the value lives as long as

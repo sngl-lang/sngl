@@ -294,7 +294,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	// (splicesLibraryState), and an owned var is a lifetime wherever it
 	// stands: initialized where the owner is built, gtk4's picture was loaded
 	// for a branch not yet shown, reading what the branch guards.
-	if splicesLibraryState(c.Stmts) || slices.ContainsFunc(c.Vars, func(v *ir.Var) bool { return ir.ReleaseOf(v.Type) != nil }) {
+	if splicesLibraryState(c.Stmts) || slices.ContainsFunc(c.Vars, func(v *ir.Var) bool { return ir.Owned(v.Type) }) {
 		return false
 	}
 	if len(c.Vars) == 0 {

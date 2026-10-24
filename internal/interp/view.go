@@ -175,8 +175,9 @@ func Mount(env *Env) (*View, error) {
 // with it, so mounting it again starts it from its initializers.
 func (m *mounter) evictUnreached() {
 	for env := range m.visited {
-		for key := range env.childEnvs {
+		for key, child := range env.childEnvs {
 			if !m.reached[key] {
+				env.owned().letGoInstance(child)
 				delete(env.childEnvs, key)
 			}
 		}

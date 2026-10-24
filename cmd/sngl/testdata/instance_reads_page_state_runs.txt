@@ -81,7 +81,7 @@ sha256:e7f8b4bca5d5a6dd9b2d770844053a19
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:dd56b8fbbd0d087625ecd8cf10fb8a12
+sha256:37db35ee797b9df65264a3bcb4c3c171
 {
   "results": [
     {
@@ -91,7 +91,7 @@ sha256:dd56b8fbbd0d087625ecd8cf10fb8a12
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:dd8e2919c949b80139607916f8d0a58d
+sha256:5ccc5088918e1cc8b0545daaeeafbd82
 {
   "results": [
     {
@@ -101,7 +101,7 @@ sha256:dd8e2919c949b80139607916f8d0a58d
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:c1d8d956b2cd833230c5b6343e1ff63e
+sha256:f3afaff890e0fc8a3ec9e63a10246387
 {
   "results": [
     {

@@ -553,6 +553,18 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function __snglTeardown() {
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { __snglTeardown });
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -678,6 +690,11 @@ window.__sngl_boot = () => {
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
+  function __sngl_init() {
+    __n3.style.setProperty("padding", _snglStyleLength(0));
+  }
+  __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
@@ -690,9 +707,9 @@ pass sha256:c8ba70cad659e21eb7c1e2a3b8dfdb34
 -- run/kotlin/android --
 pass sha256:036c42aa24b8f3f7cfd2beaa7b48864e
 -- run/none/html --
-pass sha256:9b944d78108190fe97c065fd0179297f
+pass sha256:bda9f2add5a7acf6d0fff18feab69346
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:b37c30074e424574fab4c17eac713e23
+sha256:50cc4dad240a5d62009a38db01a2cc47
 {
   "results": [
     {

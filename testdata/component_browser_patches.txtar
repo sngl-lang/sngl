@@ -325,8 +325,38 @@ window.__sngl_boot = () => {
     let x = state.base + 1;
     return x * 3;
   }
+  function __snglTeardown() {
+    for (const [__inst8_live_di, _] of __inst8_live.entries()) {
+      ;
+      let __inst8_live_dj = __inst8_live.length - 1 - __inst8_live_di;
+      __inst8_live[__inst8_live_dj].__destroy();
+    }
+    ;
+    __inst8_live = [];
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+      ;
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
+    }
+    ;
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { run, doubled, blocky });
+    Object.assign(window, { run, doubled, blocky, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -935,13 +965,14 @@ window.__sngl_boot = () => {
     __n5.open = state.visible__inst1;
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:39e2e34c19d16c3d988fccca0c2a8b08
+pass sha256:c666be4776fa9c1985d94a4bb1955cd0
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:f6ccd5b024dac12e92a94a09484c5acc
 {
@@ -983,7 +1014,7 @@ sha256:c6d41674695985c971c043eb363c5b38
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:5b162ab48ecd7e93915eaade37f4bc0c
+sha256:61a2f170ad91014d40129910b4f3c547
 {
   "results": [
     {
@@ -993,7 +1024,7 @@ sha256:5b162ab48ecd7e93915eaade37f4bc0c
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:86c896bc1769aabf6786cd03f2fb7f3e
+sha256:48ffdcaf18f7225b02ae37876a086cd4
 {
   "results": [
     {
@@ -1003,7 +1034,7 @@ sha256:86c896bc1769aabf6786cd03f2fb7f3e
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:ee670d9dc39369037af1b65f43fee462
+sha256:e68d87208edac1b6f8038cb970a8f3cd
 {
   "results": [
     {

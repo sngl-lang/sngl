@@ -1028,6 +1028,19 @@ func (m *Model) __renderSlot7(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst8_live_di, _ := range m.__inst8_live {
+		var __inst8_live_dj int = ((len(m.__inst8_live) - 1) - __inst8_live_di)
+		m.__inst8_live[__inst8_live_dj].Destroy()
+	}
+	m.__inst8_live = []*Outer__slot1Instance{}
+	for __inst7_live_di, _ := range m.__inst7_live {
+		var __inst7_live_dj int = ((len(m.__inst7_live) - 1) - __inst7_live_di)
+		m.__inst7_live[__inst7_live_dj].Destroy()
+	}
+	m.__inst7_live = []*OuterInstance{}
+}
+
 func (m *Model) __n11_closed_handler() {
 }
 
@@ -2096,6 +2109,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -2225,6 +2239,22 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { n__inst0: 2, xs__inst0: [1, 2], visible__inst0: true };
+  function __snglTeardown() {
+    for (const [__inst16_live_di, _] of __inst16_live.entries()) {
+      ;
+      let __inst16_live_dj = __inst16_live.length - 1 - __inst16_live_di;
+      __inst16_live[__inst16_live_dj].__destroy();
+    }
+    ;
+    __inst16_live = [];
+    for (const [__inst15_live_di, _] of __inst15_live.entries()) {
+      ;
+      let __inst15_live_dj = __inst15_live.length - 1 - __inst15_live_di;
+      __inst15_live[__inst15_live_dj].__destroy();
+    }
+    ;
+    __inst15_live = [];
+  }
   function __cf_tree(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -2318,7 +2348,7 @@ body { font-family: system-ui, sans-serif; }
         __rendering0 = false;
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst1_live_di, _] of __inst1_live.entries()) {
         let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
         __inst1_live[__inst1_live_dj].__destroy();
@@ -2335,7 +2365,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_d,
       __set___depth,
@@ -2429,7 +2459,7 @@ body { font-family: system-ui, sans-serif; }
         __rendering1 = false;
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst3_live_di, _] of __inst3_live.entries()) {
         let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
         __inst3_live[__inst3_live_dj].__destroy();
@@ -2446,7 +2476,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_d,
       __set___depth
@@ -2539,7 +2569,7 @@ body { font-family: system-ui, sans-serif; }
         __rendering2 = false;
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst5_live_di, _] of __inst5_live.entries()) {
         let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
         __inst5_live[__inst5_live_dj].__destroy();
@@ -2556,7 +2586,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_d,
       __set___depth
@@ -2649,7 +2679,7 @@ body { font-family: system-ui, sans-serif; }
         __rendering3 = false;
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst7_live_di, _] of __inst7_live.entries()) {
         let __inst7_live_dj = __inst7_live.length - 1 - __inst7_live_di;
         __inst7_live[__inst7_live_dj].__destroy();
@@ -2666,7 +2696,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_d,
       __set___depth
@@ -2759,7 +2789,7 @@ body { font-family: system-ui, sans-serif; }
         __rendering4 = false;
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst9_live_di, _] of __inst9_live.entries()) {
         let __inst9_live_dj = __inst9_live.length - 1 - __inst9_live_di;
         __inst9_live[__inst9_live_dj].__destroy();
@@ -2776,7 +2806,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set_d,
       __set___depth
@@ -2935,7 +2965,7 @@ body { font-family: system-ui, sans-serif; }
         __rendering5 = false;
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst11_live_di, _] of __inst11_live.entries()) {
         let __inst11_live_dj = __inst11_live.length - 1 - __inst11_live_di;
         __inst11_live[__inst11_live_dj].__destroy();
@@ -2961,7 +2991,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       }
     };
   }
@@ -3043,7 +3073,7 @@ body { font-family: system-ui, sans-serif; }
         __rendering6 = false;
       }
     }
-    function __snglTeardown() {
+    function __snglTeardown2() {
       for (const [__inst13_live_di, _] of __inst13_live.entries()) {
         let __inst13_live_dj = __inst13_live.length - 1 - __inst13_live_di;
         __inst13_live[__inst13_live_dj].__destroy();
@@ -3069,7 +3099,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
-        __snglTeardown();
+        __snglTeardown2();
       },
       __set___p0
     };
@@ -3177,14 +3207,15 @@ body { font-family: system-ui, sans-serif; }
   __n13__pos.appendChild(__n13.__root);
   var __slotAnchor_7 = document.querySelector('[data-sngl-slot="7"]');
   __renderSlot7(__slotAnchor_7);
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
 pass sha256:ff76bd23e31d3db5b10e378f5ecd74fc
 -- run/go/fyne --
-pass sha256:9f8d0c7716fa0ea860920e8ac3fe6d88
+pass sha256:47d269315263adc1de2993152a82c448
 -- run/kotlin/android --
 pass sha256:fd16dcdae7abb53200188bf4e8406cdb
 -- run/none/html --
-pass sha256:3a84d43faedbafc3ed6eafc8ca61e1c3
+pass sha256:49dc04b55ddc0e8d97ba6e1e87c2d957

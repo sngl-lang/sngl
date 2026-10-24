@@ -1,0 +1,106 @@
+// SKIP(codegen) "a #[cnative] declaration links against C, which no per-platform harness provides; the lifetime of a retained value is pinned on the interpreter"
+// A value handed to a #[retains] parameter lives as long as the node around
+// the call, whatever made it: an event handler, a timer's @tick and a
+// component function are the node's as an effect's handler is. The native is
+// handed the next value before the old one is released, and the last goes
+// when the node unmounts. A call no node encloses is refused at check time
+// (error_owned_retains_outside_node).
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+import "sngl:time"
+import c "sngl:x/c"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+var opened list[int] = []
+var closed list[int] = []
+
+func close(f file) {
+    closed.push(f.fd)
+}
+
+func open(fd int) file {
+    opened.push(fd)
+    return file{fd=fd}
+}
+
+#[macro.cnative("view_show")]
+func show(#[macro.retains] f file)
+
+component clicks ui.node {
+    var n = 0
+
+    ui.button #next(text="{n}", @click {
+        n += 1
+        show(open(n))
+    })
+}
+
+func testHandlerReplacesTheLastValue(t test.Test, c clicks) {
+    c.next.click()
+    t.assert(opened == [1])
+    t.assert(closed.length == 0)
+    c.next.click()
+    t.assert(opened == [1, 2])
+    t.assert(closed == [1])
+}
+
+component ticks ui.node {
+    var n = 0
+
+    time.timer(interval=100ms, @tick {
+        n += 1
+        show(open(n))
+    })
+}
+
+component toggles ui.node {
+    var on = true
+
+    if on {
+        ticks
+    }
+}
+
+func testTickReplacesTheLastValue(t test.Test, c toggles) {
+    t.tick()
+    t.tick()
+    t.assert(opened == [1, 2])
+    t.assert(closed == [1])
+}
+
+func testUnmountReleasesTheLastValue(t test.Test, c toggles) {
+    t.tick()
+    c.on = false
+    t.assert(closed == [1])
+}
+
+component calls ui.node {
+    var n = 0
+
+    func refresh() {
+        n += 1
+        show(open(n))
+    }
+
+    ui.button #run(text="{n}", @click {
+        refresh()
+    })
+}
+
+func testFunctionReplacesTheLastValue(t test.Test, c calls) {
+    c.run.click()
+    c.refresh()
+    t.assert(opened == [1, 2])
+    t.assert(closed == [1])
+}
+
+ui.window(title="t") {
+    clicks
+}
+
+c.link(include="view.h")

@@ -314,6 +314,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*CardInstance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -933,6 +938,11 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*CardInstance{}
 	m.__effects0_torn = true
 	m.__effect0_teardown()
 }
@@ -1043,7 +1053,6 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__effects1_pending = false
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	var __lt20 string
 	if c.length != nil {
@@ -1315,6 +1324,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:1197c83813f667e6153b462b57f1d8da
+pass sha256:b7f41ce5e99badbf5a4e0dd26a9f42db
 -- run/go/gtk4 --
-pass sha256:cd959a6e0dc777008c91925c9aa3a45d
+pass sha256:b87e31493a8968051752d32e0dc5f3ad

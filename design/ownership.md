@@ -33,6 +33,93 @@ after every body is checked, since a `=>` release has no return type until
 then (`testdata/error_mark_owned.sngl`). `owned` is the one generic macro, so
 `resolveMacroSig` pushes a macro's type parameters.
 
+**A type the host counts names a retain** (`StructDef.Retain`, `ir.RetainOf`,
+`ir.IsRetain`): `#[owned(unref, retain=ref)]` names a `func(T) T`, judged in
+`checkOwnedReleases` beside the release (`testdata/error_mark_owned.sngl`).
+The macro's parameter defaults to a lambda, as `gen.sngl`'s function-typed
+parameters do, since a mark's optional parameter is one with a default. The
+retain is written by `OwnedState` (`stored`), once the derived values are
+cells and the holder vars are collected: every initializer of a holder var --
+a component's, a view block's, a package's -- and, through `bindNew`, the
+value of every assignment `overwrite` rewrites, and what `push` and `insert`
+hand a list (`putIn`), is passed through the retain where it reads what some
+other holder holds (`holderRead`): a var other than a local, a parameter, a
+loop variable, a field, an element, what an intrinsic reads out of a
+collection, through the `copy` the checker wraps a struct read in; a literal
+or a conversion in that position is entered, and a ternary's or a match's
+arms are each stored. A local names a value rather than holding it: one
+initialized by an allocation moves it into the holder it is stored in, and
+one initialized from a holder's value is an alias (`findAliases`, a walk
+that meets each declaration before its reads), stored as the holder's own
+would be. The retain call is an allocation like any other to every later
+pass, so a `__new` bound to one is the var's, and `ReleaseTemps` holds one
+handed to `push` with the list. The shake keeps a struct's retain with its
+release, and `LibFuncs`, which runs after `OwnedState`, promotes a library's
+-- gtk4's `refPicture` -- as it promotes any library call the program's
+lowered body makes (`testdata/owned_retain.sngl`,
+`testdata/gtk4_picture_retained.txtar`,
+`cmd/sngl/testdata/simulate_gtk4_picture_retained.txt`). What the retain
+does not reach: a composed type -- `list[T]` for a `T` with a retain --
+copied var to var is still released by each, as before; and a local's
+reassignment, which releases nothing today, retains nothing either.
+
+gtk4's `Picture` is the first use: `gtk4rt.Picture.refs` counts its holders,
+`RefPicture` adds one and `UnrefPicture` gives the decode back at the last,
+so a program keeping the picture a source derived -- the last one shown while
+the URL moves on -- holds a reference, not a second decode. A `gir:` class
+whose chain reaches `GObject.Object` would be declared
+`#[owned(g_object_unref, retain=g_object_ref)]` by `declgen` if it declared a
+struct for one; it declares none today (every GIR class is a widget
+component, and a GObject-typed property or action parameter is left out as
+having no SNGL spelling), so the rule waits on the first struct a `gir:`
+import declares.
+
+**A type that holds an owned value is owned by what it holds** (`ir.Owned`):
+a struct with an owned field, a `list`, a `map` or an `option` of an owned
+type, through any depth. Its release is synthesized by `Package.ReleaseFor`
+on the program's package, once per type by `releaseKey` (the declaration
+of the owned struct, not its name, so two packages' `file` are two), named
+`__release_<type>` and registered in `ir.Package.Releases`; `ir.ReleaseOf`
+stays the declared release, and `Func.Releases` is what marks the synthesized
+one for `ir.IsRelease`. The body is ordinary IR every target already emits:
+a list walks `list.reverse()` of itself, so the last pushed is released
+first; a map walks its values; an option tests `!= null` and converts; a
+struct releases its owned fields last declared first, calling `ReleaseFor`
+of each field's type, so `list[option[file]]` reaches
+`__release_option_file` through `__release_list_option_file`. On the
+interpreter the body runs as any function does, and the element's release
+marks each handle, which every copy of a list shares. A synthesized release
+whose body reaches a library's -- gtk4's `unrefPicture` -- is promoted the
+way a library release is (`callsLibrary`). Every pass that asked
+`ReleaseOf` of a var's or a temp's type asks `Owned` and `ReleaseFor` now
+(`testdata/owned_containers.sngl`, `testdata/owned_containers.txtar`).
+
+**A collection write moves the value in** (`OwnedState.overwrites`). An
+assignment to a list element, a map entry or a field of a struct is
+rewritten the way one to an owned var is: the new value bound to a
+`__newN`, the old to an `__oldN`, the write, then the release. The index or
+key is bound to an `__idxN` first, since the old value's read and the write
+both name it. A map entry that may be absent is read into an
+`option` cell under `map.contains`, and released where it was held, which
+is `releaseIfHeld`'s shape; `remove` reads the element the same way under a
+bounds test, since an index outside the list removes nothing, and releases
+it after the call; `clear` calls the list's own release before it. A `__retN`
+cell is an option of an owned type and so owned by what it holds, but
+`retain` writes its own releases, so `collect` leaves the cells out
+(`cells`). The rewrite walks every root whether or not a var is owned, and
+a `remove` or `clear` once rewritten is remembered (`taken`), since
+`RewriteBlocks` reaches a lambda's block twice.
+
+**A literal of a composed type allocates only where something in it does**
+(`isAllocation`): `[open(1)]` makes a value nothing else holds, and
+`[f]` or the `SourceEvent{picture=…}` the draw lowering builds from a
+source's prop holds what a var holds, and released as a temp would release
+the var's value under it. A literal of constants of a composed type --
+`[fixed(1), fixed(2)]` -- is an application-lifetime value like the struct
+literal it holds (`constantValue`). An owned value converted to an option, or
+read out of one, passes through the conversion rather than being read by it
+(`tempCollector`).
+
 **A native says what it does with an argument.** `#[retains]` and `#[moves]`
 set `ir.Param.Transfer` on a parameter of a bodyless function, the one place
 nothing else could say it. A declared function's parameter list now takes
@@ -55,23 +142,25 @@ that `strdup`s the family; `cairo_show_text` keeps nothing). The calls that
 keep a pointer -- a signal's, an idle's, a timeout's, a draw func's or a weak
 ref's user data, `g_object_set_data` -- are in gtk4rt and the inline-cgo
 scaffold, outside the IR, and are handed `GINT_TO_POINTER(idx)` or `NULL`,
-nothing allocated. The scaffold's `gtkPost` hands `g_idle_add` a Go pointer,
-`&f`, which GLib keeps past the call as cgo forbids; nothing calls it, and
-gtk4rt's `Post` passes an index instead.
+nothing allocated. `lib/retains_test.go` pins it: no function a library
+package or what it imports declares has a `#[retains]` parameter, so the
+first one written is noticed as the decision it is. The scaffold's `gtkPost`
+hands `g_idle_add` a Go pointer, `&f`, which GLib keeps past the call as cgo
+forbids; nothing calls it, and gtk4rt's `Post` passes an index instead.
 
 **An owned value has one of four lifetimes**, the narrowest that fits:
 
-| Lifetime        | When                                                                                            | Released                             |
-|-----------------|-------------------------------------------------------------------------------------------------|--------------------------------------|
-| **Statement**   | passed to a parameter that copies or borrows (GLib's transfer-none)                             | after the statement                  |
-| **Node**        | held in component state, bound by an owned derived value, or handed to a `#[retains]` parameter | on overwrite, on key change, unmount |
-| **Application** | built from constants                                                                            | once, at application teardown        |
-| **Moved**       | handed to a `#[moves]` parameter (transfer-full)                                                | never; the host owns it              |
+| Lifetime        | When                                                                                                               | Released                             |
+|-----------------|--------------------------------------------------------------------------------------------------------------------|--------------------------------------|
+| **Statement**   | passed to a parameter that copies or borrows (GLib's transfer-none)                                                | after the statement                  |
+| **Node**        | held in component state, bound by an owned derived value, or handed to a `#[retains]` parameter inside a component | on overwrite, on key change, unmount |
+| **Application** | built from constants                                                                                               | once, at application teardown        |
+| **Moved**       | handed to a `#[moves]` parameter (transfer-full)                                                                   | never; the host owns it              |
 
 **Node lifetime lowers onto `effect`** (`internal/lower/owned_state.go`). A
 branch leaving, a list row removed, a window closing are already `@unmount`,
 so `OwnedState` writes ordinary `effect`s and every target's `Effect` lowering
-brackets them. Three things become node lifetime:
+brackets them. Four things become node lifetime:
 
 - **An owned `var` of a component** is released when it is overwritten and
   when the node unmounts. Each assignment to it, in the component or through
@@ -114,15 +203,45 @@ brackets them. Three things become node lifetime:
   a handle for and nothing released (`reads` in `owned_state.sngl`). A
   reader declared before one of the cell's own reads is a cycle, and the cell
   goes last.
-- **An allocation an effect's handler hands a `#[retains]` parameter** is
-  stored in an `option` cell of the component (`__retN`) and passed from it;
-  the next call replaces it, releasing the old one after the native has the
-  new, and the effect's `@unmount` releases the last. An effect that only
-  reports writes brackets nothing, and an `@unmount` would make it a bracket
-  ended by every change of its key, releasing what the native still holds, so
-  its cells are released by the component's unmount effect instead
-  (`cmd/sngl/testdata/simulate_cnative_owned.txt`). A `#[moves]` argument is
-  left where it is.
+- **An allocation a component hands a `#[retains]` parameter** is stored in
+  an `option` cell of the component (`__retN`) and passed from it; the next
+  call at the same site replaces it, releasing the old one after the native
+  has the new, and the lifetime that made the call releases the last. For a
+  bracketing effect's handler that is the effect's `@unmount`. An effect that
+  only reports writes brackets nothing, and an `@unmount` would make it a
+  bracket ended by every change of its key, releasing what the native still
+  holds, so its cells are released by the component's unmount effect instead
+  (`cmd/sngl/testdata/simulate_cnative_owned.txt`); so are the cells of every
+  other call the component encloses -- an event handler's, a timer's
+  `@tick`'s, a component function's, which `retain` reaches by rewriting
+  every block of the component after the effects
+  (`testdata/owned_retains_node.sngl`). `retainedIn` rewrites one statement
+  and skips the statements it encloses, which are their own block's: found
+  from the enclosing `if`, a handler's call had its cell written around the
+  `if`. A program should not have to know where a native may be called from,
+  so a call no component encloses -- a free function, a test, a package
+  var's initializer, the package body -- is refused by the checker
+  (`checkRetainsOutsideNode`, `testdata/error_owned_retains_outside_node.sngl`)
+  where the argument allocates; one handing over a value another holder owns
+  is left to that holder's lifetime. A `#[moves]` argument is left where it
+  is.
+- **What a var's initializer borrows** -- `open(fd)` in
+  `var n = size(open(fd))` -- becomes a var of its own declared ahead of the
+  var (`__initN`, `initTemps`), and so an owned var of the component,
+  released when the node unmounts; a package var's the same, released at
+  teardown by `ReleaseTemps`' `packageVars`. An initializer has no statement
+  around it to release a temp after, which is why no pass reached one and
+  the temp was held (`testdata/owned_init_temps.sngl`,
+  `testdata/owned_init_temps.txtar`). The statement-exact shape -- a method
+  of the component computing the initializer, whose `return` ReleaseTemps
+  would bind and release around, as it does for `derive`'s `__own_` helper
+  -- is the one to move to once two backends emit it: Go drops a synthesized
+  method's result type, and Kotlin declares a component's functions after
+  its vars, where no initializer can reach one, which a hand-written
+  `var n = helper()` on android trips today. A view block's var keeps its
+  temp held: on a target passHoistState has made it a component's var by
+  the time the pass runs, and the interpreter's block state is reached by no
+  pass.
 
 The pass runs before `NoComputed`, which would inline a derived value at
 every read and so allocate it per read; before the inliners, which give each
@@ -160,6 +279,8 @@ how, so the pass must never grow its own idea of keyable.
 ```
 … → OwnedState   (node half; before NoComputed, while a derived value is a function)
   → NoComputed → … → Effect
+  → … → MatchLate
+  → ConditionalTemps (an arm that allocates becomes a statement) → NoTernary
   → … → ErrorCatch
   → ReleaseTemps (statement half; after ErrorCatch so a raise path is a catch block)
   → MutatedVars → CSE → … → ReservedNames
@@ -233,6 +354,40 @@ compiled target inlines into its emitter, and a catch block of its own there
 ended the emitted handler instead of both. `__argN` temps ErrorCatch bound for
 a per-call `@error` are released after the call they were bound for.
 
+A temp bound before a later temp of the same statement raises while being
+bound is released the same way: the later binding is declared ahead and
+assigned inside a `catchReleasing` of its own over the temps bound so far
+(`releaseTemps.bind`), so each binding that may raise has its own catch and
+the body's catch releases them all. A single catch over the bindings and the
+body would have released a temp not yet bound
+(`testReleasedWhenALaterTempRaises` in `testdata/owned_conditional_temps.sngl`).
+
+**A value the statement may not make is made by a statement of its own**
+(`passConditionalTemps`, `internal/lower/conditional_temps.go`), before
+`ReleaseTemps` and on every target, so the pass sees it: a ternary's or a
+`match` expression's arm that allocates becomes an assignment to a local
+(`__armN`) under an `if` or a `match` statement ahead of the statement, the
+right of `&&` or `||` likewise under a test of the left, and a condition
+`for`'s head, evaluated per iteration, a function literal called in place
+whose body returns it, so that what it makes is a `return`'s temp. The shape
+is `NoTernary`'s (`FromTernary`, `FromValue`), written here only for the arms
+that allocate (`allocates`, any `isAllocation` under the arm outside a
+lambda), so a target with ternaries keeps the rest: the lifted arm is a
+statement in the branch's block, which `ReleaseTemps` reaches as any nested
+list. The kinds of statement it rewrites are `ReleaseTemps`'s, and its reach
+is the same -- `imperativeBlocks` and `drawBlocks` on a target,
+`reachedBlocks` on the interpreter, which runs it from `PrepareFor`. An
+iterable `for` head is evaluated once and read by every iteration, so it is
+`ReleaseTemps`'s own case: its temps are bound before the loop and released
+after it, and ahead of each `return` in the body (`releaseBeforeReturns`,
+through `ir.TransparentBlocks`, so a lambda's `return` is not one). A raise
+out of the loop body wraps the loop in a `catchReleasing`, which nests one
+the body's own statements wrote: `raisingCalls` enters a nested catch's
+handler, which the walk does not, so the inner raise again is turned to
+bubble and the outer catch sees it. Kotlin calls a lambda literal where it
+stands in parentheses, `(fn@{ … })()`, since `fn@{ … }()` labels the call and
+refuses the `return@fn` inside (`testdata/owned_conditional_temps.txtar`).
+
 **An application-lifetime value is a package-level declaration.** An
 allocation built from constants -- a literal of an owned type whose fields are
 literals or package consts, or a call of a `const func` or of `c.cstring` with
@@ -255,9 +410,12 @@ declares one the same way, released after the program's own
 (`testdata/owned_imported_var.txtar`). `OwnedState` collects both as it
 collects a component's vars, so an assignment to one anywhere releases the
 old value, but it cannot release the last one, since the effect lowering
-writes `Teardown` afresh between the two passes. The interpreter refuses an
-assignment to an imported package's var altogether ("cannot assign to
-undefined variable"), which is older than ownership and not its concern. By the time `ReleaseTemps`
+writes `Teardown` afresh between the two passes. The interpreter binds an
+imported package's vars in the root scope before the program's own
+(`seedPackageState`): unbound, a read re-evaluated the initializer, allocating
+a value nothing released, and an assignment was refused ("cannot assign to
+undefined variable"), which kept the golden without a run
+(`cmd/sngl/testdata/owned_imported_var_test.txt`). By the time `ReleaseTemps`
 runs, an inlined instance's var is a package var too, released by its node's
 `@unmount`; a var the package already releases somewhere is left to that
 (`testdata/owned_state.txtar`'s bubbletea output released `f__inst0` twice
@@ -300,22 +458,25 @@ protocol declared as native-calling bodies rather than answered by the
 translator -- and is #293, split out of the ownership work with the count of
 what it touches.
 
-**What it does not release is held**, never released wrongly, and the spec's
-*Owned values* lists it so a program knows to release by hand: an allocation
-the statement may not evaluate -- the right of `&&` or `||`, a ternary's or a
-`match` expression's arm, a `for` head, which may be evaluated per iteration
--- where a target without
-ternaries lowers the arm to a statement before the pass and so does release
-it, which is why the spec says to write such a value in a statement of its
-own; a temp bound before a later temp of the same statement raises while
-being bound; an owned value in a list, a map, a struct field or an `option`
-rather than a var of the owned type; and an allocation handed to a
-`#[retains]` parameter outside an effect's handler (an event handler, a
-function), which `retain` does not see. Two shapes release twice rather than
-hold, and the spec rules them out: a temp passed to a function returning the
-same owned type that returns its argument, since the pass releases the
-argument and the result alike; and a component's or package's var assigned
-another var's value, which both then release.
+**Nothing it reaches is held.** The review of the ownership work left a list
+of values the compiler held, and the spec's *Owned values* and Effective
+SNGL's carried it so a program knew to release by hand. A value in a
+collection or a struct was on it until `ir.Owned` and `ReleaseFor` composed;
+a conditional arm and a temp bound before a later one raises until
+`ConditionalTemps` and `releaseTemps.bind`; an allocation handed to a
+`#[retains]` parameter outside an effect's handler until `retain` reached
+every block a component encloses; what a var's initializer borrows until
+`initTemps`, all above. The list is empty and both documents are without it:
+in its place the spec states what a collection write does with an owned
+value and where a retained value lives, and Effective SNGL which shapes are
+released twice. What is left is what no lifetime can hold, and the checker
+refuses it: a `#[retains]` call no component encloses. Two shapes release
+twice rather than hold, and the spec rules them out: a temp passed to a
+function returning the same owned type that returns its argument, since the
+pass releases the argument and the result alike; and a component's or
+package's var assigned another var's value, which both then release. A type
+with a retain is the exception to the second: the store is a reference, and
+each holder releases its own.
 
 **The application ends before the process does.** `@run` hands the program a
 `run` that presents the windows and runs the loop, and code after `run()`
@@ -330,7 +491,16 @@ The teardown is `__snglTeardown` (`lower.TeardownFunc`, `ir.Package.Teardown`):
 the effect lowering writes it to end every lifetime newest first -- which is
 every `@unmount` and every timer -- and `ReleaseTemps` appends the
 application-lifetime releases, so one call is the test teardown's order. The
-entry points, and where each calls it:
+reactivity lowering then puts the page's own registries ahead of all of it
+(`destroyPageHeld`, `slot_instances.go`): every instance the page holds --
+under a window's `if` or `for`, or a spliced component's -- is destroyed
+newest first, which runs its own teardown, as `destroyHeld` already did for
+the registries an instance holds. Before that the handler existed only where
+a page effect had a teardown, and emptied no registry: a page whose every
+lifetime sat inside an instance it holds had no handler at all, so the
+pokedex's pages, and the pictures they held, were held until the process
+ended (`testdata/teardown_page_registries.txtar`, found by the ASan check
+below). The entry points, and where each calls it:
 
 - **gtk4**, `main` of a program whose root is the application
   (`emitGTK4AppMain`): after `gtk4rt.RunWindows` returns, inside `run` where
@@ -404,7 +574,15 @@ an id, its type and the position that allocated it. `evalStructLit` allocates
 one for a literal of an owned type, and every copy -- `CopyValue`, `copyOf`,
 `DeepCopy`, `Clone` -- carries the same pointer, so releasing a copy releases
 the original, as it would a pointer on a target. The program's handles are
-shared by every scope the way its write log is.
+shared by every scope the way its write log is. A handle counts its holders:
+one from the allocation, one more per call of the type's retain
+(`retainCall`, and the stub answers the argument itself), and the declared
+release gives the value back only when the last holder's runs. Only the
+declared release counts: a synthesized one -- `__release_option_file` --
+calls the held value's own, and on the interpreter an option of an owned
+value is that value, so counting it too released the value twice. A handle
+some holders released and the rest did not is a leak of its own wording at
+teardown (`has 1 of its 2 holders left`).
 
 **Releasing twice, and reading or passing after a release, are errors where
 they happen**, naming where the value was allocated, where it was released and
@@ -450,9 +628,13 @@ anything else the zero value; every argument is checked for use after release;
 a `#[moves]` argument is the native's from there (a later use or release says
 "moved"); a `#[retains]` one may not be released until the lifetime that made
 the call ends -- the effect whose handler ran it (`handles.within`, ended by
-`letGo` before its `@unmount`), or the application outside one -- or until the
-same call in the same lifetime hands the native another, which it holds in
-its place: an `@update` keyed on a list is one lifetime however often it runs.
+`letGo` before its `@unmount`); outside one the component instance the call
+ran in (`Env.instance`, the scope a handler's or a function's snapshot was
+taken from, ended by `letGoInstance` as `evictUnreached` drops the instance,
+which is before the unmount effect releasing its cells runs); or the
+application outside every component -- or until the same call in the same
+lifetime hands the native another, which it holds in its place: an `@update`
+keyed on a list is one lifetime however often it runs.
 A native's return steering control flow takes one path.
 
 Simulating is what adds the target's half (`BuildSimulatedEnv`, set before the
@@ -480,7 +662,260 @@ the gtk4 translator builds after lowering, which releases its own strings
 (`ownCStrings`); resolving those calls in lowering (#293) is what brings them
 under it (`cmd/sngl/testdata/simulate_cnative_owned.txt` pins the rest).
 
-**Out of scope: a C language target.** It adds `#[owned]` to `string`, and
-decides between per-statement release and a per-frame or per-event arena for
-temps. State needs release-on-overwrite either way: an arena held for an
-instance's lifetime keeps every rewrite of a label until unmount.
+## What ASan saw on gtk4
+
+A one-off check of the generated code after the gaps closed, run by hand on
+2026-10-23 and written up here; not a test, since GTK keeps caches alive on
+purpose, so no report is empty and a threshold would be a number nobody can
+defend. The tracker above is the check that runs on every commit; this one
+asked a different question of a real toolkit: what C memory a gtk4 program
+has allocated and dropped when its process ends.
+
+**What ran.** Three programs, generated with `--opt main=true` for gtk4 and
+built with `go build -asan` and `CGO_CFLAGS=-fsanitize=address`, so the Go
+runtime and the cgo half are both instrumented: `examples/pokedex`, with its
+window wrapped in `poke.server` and `artwork` pointed at the recorded answers
+`internal/testhttp` serves (the same server `sngl test` runs against), and
+the programs of `owned_canvas_text.txtar` and `gtk4_image_pictures.txtar`,
+the latter with a 16x16 PNG at each file name it shows. Each ran inside
+`cage` with the headless wlroots backend, as the test suite runs gtk4, under
+`ASAN_OPTIONS=detect_leaks=1` and `LSAN_OPTIONS=suppressions=tmp/asan/lsan.supp`.
+A driver file added to each generated package clicked every GtkButton under
+each window's content in turn, four a second, cycled every GtkDropDown every
+fifth tick, and after 40 ticks (120 for the pokedex, which navigates between
+its pages) raised SIGTERM against the process. Its SIGTERM handler closed
+every window the way a user does, collected the Go heap and gave it back to
+the OS, and quit the application, so `main` ran `__snglTeardown` before the
+leak check: with the windows gone, a widget still allocated is one the
+program holds, and with the heap collected, a C pointer only a dead Go object
+still held is a leak rather than reachable. The same was run at
+`ownership`'s last commit (6ca05a1ef) for the baseline, from a worktree with
+that commit's compiler and runtime.
+
+**What LSan can and cannot see here.** Go's `-asan` registers the Go heap
+with LeakSanitizer as a root region, and the binary's data is a root as any
+program's is, so a C allocation a live Go value points at is reachable and
+never reported: a pixbuf in a Model field, a `__cstrN` package var, a
+`__relN` the Model holds until teardown. The check therefore sees only what
+the program dropped -- a C string never freed, a widget nothing points at --
+and cannot see a value held too long by a Go reference, which is exactly what
+the held list named and the tracker checks. That is why the baseline and the
+branch gave the same report for the two fixtures: what Parts 1 to 4 closed
+was Go-held, and the tracker, not ASan, is where their fixtures assert it.
+
+**What each report showed.** Numbers are from the final runs on this branch
+with the suppression file off, then on; the baseline column is the same
+program at `ownership`'s last commit.
+
+| Program               | Baseline                                        | Branch, before the fixes       | Branch, after                  | Suppressed |
+|-----------------------|-------------------------------------------------|--------------------------------|--------------------------------|------------|
+| `owned_canvas_text`   | 192 blocks, 39 KB, none the program's           | the same                       | the same                       | 0 blocks   |
+| `gtk4_image_pictures` | 189 blocks, 39 KB, none the program's           | the same                       | the same                       | 0 blocks   |
+| `examples/pokedex`    | 368 blocks, 585 KB; 790 GtkBox the program made | 368 blocks, 610 KB; 827 GtkBox | 364 blocks, 80 KB; 952 B GTK's | 0 blocks   |
+
+Every block the two fixtures report is fontconfig's: the font sets, patterns
+and charsets pango builds the first time a label or a `canvasText` is laid
+out, with cairo's toy font face cache behind `cairo_select_font_face` in some
+runs. Nothing in either reaches a `C.CString`, a pixbuf or a cairo surface the
+generated code made: the `__ctmpN` the translator frees after the statement,
+the `__relN` `ReleaseTemps` frees per frame and the picture `UnrefPicture`
+gives back are all gone at exit. The pokedex was different, and the same at
+both commits: a GtkBox leaked per instance built, several hundred over a run
+that navigates, plus the layouts GTK keeps for the dropdown popovers it
+mapped.
+
+**Found, and fixed on this branch.** Two defects, neither a Part 1 to 4 hold
+and neither the translator's strings:
+
+- *A GtkBox per instance.* Every instance record's constructor made its
+  `__root`, the box a slot at the top of the body renders into, whether or
+  not the body had such a slot; a body whose top is one node binds that node
+  as the Root, so the box was never parented, never sunk and never
+  unreferenced -- a leak LSan sees once nothing in Go points at the record.
+  The constructor makes it only where a render names it
+  (`instance.go`, `testdata/gtk4_instance_root_box.txtar`). Bisected with
+  small programs under the same harness: a toggled instance, a `for` of
+  cards, a dropdown, a `nav.stack`, tabs and remote pictures were each clean
+  until the Go heap was collected before the check: a dead record still held
+  the pointer. Collected, a toggled page holding two remote pictures leaked
+  three boxes per toggle, one per instance built, and the pokedex its 827.
+- *No teardown for a page whose lifetimes are all in its instances.*
+  `__snglTeardown` was the effect lowering's, written only where a page
+  effect had a teardown, so the pokedex -- every effect of which is inside a
+  page instance under its `nav.stack` -- had none, and nothing destroyed its
+  instances at exit; `destroyPageHeld` above gives the page one and puts the
+  registries first. LSan could not see this one (the pictures those instances
+  held are Go-held); the generated `main` showed it, calling no teardown.
+
+**The suppression file** is `tmp/asan/lsan.supp` in the checkout, which git
+ignores; its content, so a rerun needs no archaeology:
+
+```
+leak:libfontconfig
+leak:gdk_popup_layout_new
+leak:cairo_toy_font_face_create
+```
+
+Each is the toolkit's for the life of the process: fontconfig's caches, the
+layout GTK keeps for a popover it has mapped (a GtkDropDown's list), cairo's
+toy font faces. `leak:` matches any frame of a block's stack, so a
+suppression names a library or a function the generated code never calls
+itself. With the file on, all three programs report nothing, and a positive
+control -- the driver dropping one `g_strdup` and one `gtk_box_new` on its
+first tick -- still reports both (5 blocks, 656 bytes), so the file hides
+nothing the check is for.
+
+**What is left to #293** is unchanged: the strings `ownCStrings` writes after
+lowering are freed by the translator's own statements and never appeared
+here, so the check neither found them nor could it tell whether a future
+site forgets one. Resolving those calls in lowering so `CMarshal` and
+`ReleaseTemps` see them remains the re-platforming of gtk4's inline-cgo mode,
+and nothing in this check changes its size.
+
+**To rerun it**, which a toolkit upgrade or a change to the instance emitter
+or to teardown is reason to: generate a program for gtk4 with
+`--opt main=true`, add a driver that drives it and ends it through the
+application's quit so `main` tears down, build with the two flags above, and
+run it under `cage` with the environment `internal/headless.Env` gives. Read
+the report for blocks whose stack reaches the program's binary; the rest is
+the toolkit's. The driver and the summarizer are not kept, since neither is
+a test and both are a page of code the note above describes.
+
+## A C language target
+
+Decided ahead of the target, with no code until one exists to need it. On
+every target today a `string` is the host's: Go, Kotlin and JavaScript
+collect it, and the only string the program gives back is the `c.str` a C
+call makes of one. In C a `string` is an allocation, every concatenation,
+interpolation and `fmt` call makes one, and the question is what releases
+it. The holder side -- a var's overwrite, a derived value's key change, a
+node's unmount, a collection's write, teardown -- is what Parts 1 to 4 built
+for every owned type and the C target reuses unchanged. The decision below is
+about the statement side only.
+
+**A `string` is owned on the C target, and the program never sees it.** The
+C language package declares it: `string` is `#[owned]` there, and the mark's
+rule that only a struct may be owned opens to a target's own scalar when the
+target arrives, as a package rule and not a spec one. The spec's *Owned
+values* does not change: a program names no release for a string, stores
+one, passes one and returns one as it does anywhere, and the compiler's four
+lifetimes hold every string the program makes. A C string stored twice is
+two copies, each released once -- stricter than the spec's "stored twice is
+released twice", and what makes `string` a value on C as it is everywhere
+else. The same declaration covers a `list` and a `map`, which are allocations
+on C too: the rule below is for a type with no destructor, and `string` is
+the first of them.
+
+**A type with no destructor names no release, and its bytes are all it is.**
+A cairo surface, a pixbuf, a widget has a destructor: a function the host
+must run, which frees memory the host allocated and undoes what the
+allocation did. A string has none: giving it back is giving its bytes back,
+and `free` is the allocator's, not the type's. The C target's `string` is
+`#[owned]` with no release function, `ReleaseOf` answers nothing for it, and
+a type composed only of such types (`list[string]`, a struct of strings) is
+owned by composition as today and has no destructor either. The distinction
+is what decides the allocator.
+
+**Statement-lifetime values of a type with no destructor live in a per-turn
+arena.** A turn is one pass through the event loop: start-up before the loop
+runs, an event handler, a frame's draw, a timer's `@tick`, a network reply's
+continuation, the teardown. The target's loop resets the arena when the turn
+ends, with one call it writes itself; `ReleaseTemps` writes nothing. A
+string a statement makes and only reads -- an interpolation handed to a
+label's setter, a concatenation compared, a `fmt` result returned up to a
+caller in the same turn -- costs a bump and no free, and a statement of
+string arithmetic reads as one line of C rather than a `__relN` binding, a
+catch block and a release per subexpression. The alternatives, and why not:
+
+- *Per-statement free*, which is what `ReleaseTemps` does for every owned
+  type today, costs a `malloc`/`free` pair per intermediate and makes every
+  statement that may raise a catch block, for a type whose release undoes
+  nothing. It is right for a destructor and wrong for bytes.
+- *Per-frame* alone leaves a turn that is not a frame -- a timer, a reply --
+  accumulating until the next draw, and a program that draws nothing for a
+  while leaks for a while. A turn is the unit of work the UI thread runs,
+  and the arena is empty between turns, so per-turn is the bound.
+- *Per-instance*, an arena held until the node unmounts, keeps every rewrite
+  of a label until then -- the out-of-scope note's own objection -- and is
+  the same mistake as holding state in the arena, below.
+
+A loop inside one turn grows the arena until the turn ends, where today's
+lowering releases a condition head's temps before each test. That is
+accepted: a turn is short by construction, a loop building a million strings
+in a handler is wrong on every target, and an arena mark at a loop body's
+end, which is safe once nothing a loop stores stays in the arena, is an
+optimization a profile asks for and not part of the design.
+
+**A value with a destructor is released as today.** A statement-lifetime
+`c.str` is already gone on C -- there is no conversion to make one -- but a
+surface a draw makes and only hands to cairo, a pixbuf decoded and only
+measured, keeps `ReleaseTemps`'s `__relN` binding, release after the
+statement, catch around a later temp's raise, and release ahead of every
+`return`. An arena cannot hold one: its memory is the host's, allocated by
+cairo and not by the program, and a reset would run no destructor. The two
+rules compose: a struct holding a surface and a string is released by
+releasing the surface, since the string's bytes are the arena's or the
+holder's, never the struct's own.
+
+**State leaves the arena at the store, and is freed on overwrite either
+way.** A value stored into a holder -- a component's or a view block's var,
+a package var, a field, an element, a `#[retains]` native's argument, an
+owned derived value's cell -- outlives the turn that made it, and the arena
+does not. The store copies the value to the heap, deep for a composed type,
+and the heap copy is the holder's. `OwnedState`'s effects then do what they
+do for every owned type: the overwrite frees the old copy once the new one
+is in place, the unmount frees the last, a collection write frees what it
+replaces, teardown frees the package vars. Release-on-overwrite is needed
+whatever the arena is scoped to, and is the reason a longer-lived arena was
+never an answer: a per-turn arena frees a var's string while the var still
+holds it, so state cannot be in it at all, and an arena that lives as long
+as the state keeps every value the state ever held, so a label rewritten per
+keystroke holds every text it showed. The heap copy and the free at
+overwrite are the only way a var holds exactly one string. A value handed to
+a `#[moves]` parameter is a heap copy the same way, since the callee will
+free it: GLib's transfer-full takes a `g_free`-able pointer, and the arena's
+original is left to the reset.
+
+**What `ReleaseTemps` emits on C, per lifetime.** The pass runs, since the
+destructor types need it, and classifies as it does today; the type decides
+the rest.
+
+| Lifetime        | No destructor (`string`, `list`, `map`, composed)                            | Destructor (a native)                    |
+|-----------------|------------------------------------------------------------------------------|------------------------------------------|
+| **Statement**   | nothing; the arena, reset by the loop at the turn's end                      | `__relN`, release after, catch on raise  |
+| **Node**        | heap copy at the store; `OwnedState`'s overwrite and unmount effects free it | as today: overwrite, key change, unmount |
+| **Application** | heap copy once at start-up; freed at teardown                                | as today                                 |
+| **Moved**       | heap copy handed to the callee; the arena's original is the reset's          | as today: handed over, never released    |
+
+The copy at the store is the one new mechanism: a lowering step on the C
+target that wraps a stored value of a no-destructor type in the target's
+`__snglHeap(v)`, placed where `OwnedState` binds the `__newN` and where a
+collection write or a `#[moves]` argument takes its value. It is a
+`#[gen.can]` capability of the C target alone, since no other target has
+two allocators.
+
+**`CMarshal` makes no copy where the string is already a C string.** On
+today's targets the pass wraps a `string` argument of a C call in `cstring`,
+which allocates a NUL-terminated copy the program frees. On the C target the
+program's string already is one: the representation keeps its length beside
+the bytes and a NUL after them, one byte per string, so handing it to a
+`char *` parameter is a pointer to the bytes and no allocation. The target
+writes `CMarshal` in `#[gen.can]`, so the pass does not run: `cstring`,
+`cint`, `cdouble` and `cbool` are all identities or casts there, and the
+reason the conversions live in the IR -- that an allocation must be where a
+pass can see it -- holds for none of them. A string holding a NUL byte is
+truncated at the C boundary, as `C.CString` truncates it today. A `#[moves]`
+`char *` parameter gets the heap copy above; a `#[retains]` one gets the
+node's, released when the node hands the native its next value or unmounts.
+
+**What Parts 1 to 4 leave for the target: nothing held.** The held list is
+empty: a value in a collection or a struct is released by composition, a
+conditional arm's or a later-raising temp's by its own statement, a
+`#[retains]` argument by the node around it, a value stored from another
+holder by each holder or through the host's retain. A C program therefore
+leaks only what no lifetime can hold, which is a `#[retains]` call no
+component encloses, and the checker refuses that before any code is written.
+What the tracker cannot see on gtk4, the strings its translator writes after
+lowering (`ownCStrings`), has no counterpart on a C target, whose widget
+protocol would be declared as native-calling bodies from the start; it is
+#293's on gtk4 either way.

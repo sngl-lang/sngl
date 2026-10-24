@@ -98,6 +98,12 @@ func emitComponentInstance(
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {
+		// A body with no slot at its top never renders into __root, and a
+		// box made here all the same was a GtkBox leaked per instance: never
+		// parented, never sunk, never unreferenced.
+		if v.Synthesized && v.Name == instanceRootVar && len(tr.rootRenders) == 0 {
+			continue
+		}
 		fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, v.Name, instanceVarInit(v, cgc, wrapped))
 	}
 	for _, stmt := range bodyStmts {

@@ -1,0 +1,39 @@
+// A #[retains] parameter keeps what it is handed for as long as the node that
+// made the call, so an allocation handed to one where no node encloses the
+// call -- a free function, a test -- has no
+// lifetime to be released at, and the call is refused. A value some other
+// holder owns may be handed over anywhere: it lives as long as that holder.
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "sngl:test"
+import c "sngl:x/c"
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+func close(f file) {
+}
+
+func open(fd int) => file{fd=fd}
+
+#[macro.cnative("view_show")]
+func show(#[macro.retains] f file)
+
+func helper() {
+    show(open(1)) // ERROR(check) "parameter f of show retains the file it is handed"
+}
+
+func keeps(f file) {
+    show(f)
+}
+
+func testOutside(t test.Test) {
+    show(open(2)) // ERROR(check) "parameter f of show retains the file it is handed"
+}
+
+ui.window(title="t") {
+}
+
+c.link(include="view.h")

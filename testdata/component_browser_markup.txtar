@@ -264,8 +264,31 @@ window.__sngl_boot = () => {
     }
     ;
   }
+  function __snglTeardown() {
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+      ;
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
+    }
+    ;
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+    for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+      ;
+      let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+      __inst1_live[__inst1_live_dj].__destroy();
+    }
+    ;
+    __inst1_live = [];
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { has });
+    Object.assign(window, { has, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -736,15 +759,16 @@ window.__sngl_boot = () => {
     $16.hidden = state.open === false;
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:315284576b8cdbfc8caac6f6b792995f
+pass sha256:eb66bcccca45e146c162154070d98b88
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:00f9a44913d413802d78f2f6a951c0c9
+sha256:0027d05455c391cd01649f8efb74427b
 {
   "results": [
     {

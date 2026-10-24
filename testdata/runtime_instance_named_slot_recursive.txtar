@@ -928,7 +928,6 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__rendering0 = false
@@ -1063,7 +1062,6 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__prop_n = __a_n
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
@@ -1589,7 +1587,7 @@ pass sha256:f9deb100b9187d362933dec86220655c
 -- run/go/fyne --
 pass sha256:7a4b69a704a48ff1415a4d61f2db8abf
 -- run/go/gtk4 --
-pass sha256:04f32a73f2cb8bbcced170092f4b021a
+pass sha256:93365fd192c81be76993f8c80bc6f446
 -- run/kotlin/android --
 pass sha256:6ba464b9a29cd20be14744f9ccc73a23
 -- run/none/html --

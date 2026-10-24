@@ -2714,6 +2714,9 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 	if ir.IsRelease(fn) {
 		return env.releaseCall(fn, args, func() (any, error) { return env.runUserFunc(fn, args) })
 	}
+	if ir.IsRetain(fn) {
+		return env.retainCall(fn, args, func() (any, error) { return env.runUserFunc(fn, args) })
+	}
 	if err := env.checkPassed(args); err != nil {
 		return nil, err
 	}

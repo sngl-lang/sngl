@@ -1567,7 +1567,6 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot6Instance{}
 	c.__rendering0 = false
@@ -1741,7 +1740,6 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot5Instance{}
@@ -1915,7 +1913,6 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -2089,7 +2086,6 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -2263,7 +2259,6 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -2437,7 +2432,6 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__prop_m = __a_m
 	c.__prop___depth = __a___depth
 	c.__prop___p0 = __a___p0
-	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
@@ -3600,7 +3594,7 @@ pass sha256:aa78b22a88b7ee2ebe6e01540c35ee62
 -- run/go/fyne --
 pass sha256:78d70b6f2606053ae9f97f1ca400a72b
 -- run/go/gtk4 --
-pass sha256:0b5f795629fa67f89a2f06227f5a9d1d
+pass sha256:b95fd72695cc3d9688351d1d60be1c39
 -- run/kotlin/android --
 pass sha256:cec96adda10ef28af22c9246c8d766d5
 -- run/none/html --

@@ -72,7 +72,28 @@ func BuildProgramEnv(pkg *ir.Package, clock Clock) *Env {
 	return env
 }
 
+// seedPackageState binds the package's vars and consts, each initialized
+// once, and before them those of every package the program wrote that it
+// imports: their initializers run first, and a var bound nowhere was
+// re-evaluated at every read and could not be assigned.
 func seedPackageState(env *Env, pkg *ir.Package) {
+	seen := map[*ir.Package]bool{pkg: true}
+	var imported func(p *ir.Package)
+	imported = func(p *ir.Package) {
+		for _, imp := range p.Imports {
+			if imp == nil || imp.Pkg == nil || imp.Pkg.Library || seen[imp.Pkg] {
+				continue
+			}
+			seen[imp.Pkg] = true
+			imported(imp.Pkg)
+			seedOwnState(env, imp.Pkg)
+		}
+	}
+	imported(pkg)
+	seedOwnState(env, pkg)
+}
+
+func seedOwnState(env *Env, pkg *ir.Package) {
 	for _, v := range pkg.Vars {
 		env.Set(v, evalInit(env, v.Init))
 	}

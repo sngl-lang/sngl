@@ -787,6 +787,19 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 	}
 }
 
+func (m *Model) __snglTeardown() {
+	for __inst1_live_di, _ := range m.__inst1_live {
+		var __inst1_live_dj int = ((len(m.__inst1_live) - 1) - __inst1_live_di)
+		m.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	m.__inst1_live = []*__child1Instance{}
+	for __inst0_live_di, _ := range m.__inst0_live {
+		var __inst0_live_dj int = ((len(m.__inst0_live) - 1) - __inst0_live_di)
+		m.__inst0_live[__inst0_live_dj].Destroy()
+	}
+	m.__inst0_live = []*__child0Instance{}
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -1092,6 +1105,7 @@ func main() {
 	m := New()
 	m.BuildUI()
 	fynelayout.RunWindows(a, true)
+	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -1226,6 +1240,22 @@ body { font-family: system-ui, sans-serif; }
   var state = { xs__inst0: [1], shown__inst0: false, visible__inst0: true, started__inst0: true, started__inst1: false, started__inst2: null, started__inst3: null };
   state.started__inst2 = !state.shown__inst0;
   state.started__inst3 = !(state.xs__inst0.length === 0);
+  function __snglTeardown() {
+    for (const [__inst5_live_di, _] of __inst5_live.entries()) {
+      ;
+      let __inst5_live_dj = __inst5_live.length - 1 - __inst5_live_di;
+      __inst5_live[__inst5_live_dj].__destroy();
+    }
+    ;
+    __inst5_live = [];
+    for (const [__inst3_live_di, _] of __inst3_live.entries()) {
+      ;
+      let __inst3_live_dj = __inst3_live.length - 1 - __inst3_live_di;
+      __inst3_live[__inst3_live_dj].__destroy();
+    }
+    ;
+    __inst3_live = [];
+  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1521,14 +1551,15 @@ body { font-family: system-ui, sans-serif; }
     __n6.textContent = state.started__inst3 ? "started empty" : "started with content";
   }
   __sngl_init();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
 pass sha256:023a330a8de286c2c4590a60959e57f1
 -- run/go/fyne --
-pass sha256:5f8f63cabbcf7b148f06ae26d2b3aa3c
+pass sha256:e99237e25d1184dbad686dfad32a8466
 -- run/kotlin/android --
 pass sha256:3aebb42b9a70dd81742dc283b957430f
 -- run/none/html --
-pass sha256:7feb990bfc7dda356fad1ac673971d10
+pass sha256:bf856e3028c8392edde92ff328e0bb1f

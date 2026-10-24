@@ -50,7 +50,7 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 	if len(nodes) == 0 {
 		return nil
 	}
-	st := &handleParams{nodes: nodes, writes: map[*ir.Func]map[*ir.Param]bool{}, tests: map[*ir.Param]bool{}}
+	st := &handleParams{nodes: nodes, writes: map[*ir.Func]map[*ir.Param]bool{}, tests: map[*ir.Param]bool{}, pkg: pkg}
 	for _, fn := range pkg.Funcs {
 		if fn != nil && fn.IsTest && len(fn.Params) > 1 {
 			st.tests[fn.Params[1]] = true
@@ -114,6 +114,7 @@ type handleParams struct {
 	writes map[*ir.Func]map[*ir.Param]bool
 	temps  int
 	err    error
+	pkg    *ir.Package
 }
 
 // written is the parameters fn writes a prop through.
@@ -281,7 +282,7 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 		// parameter borrows after the statement; bound to a local, it is
 		// released after the body, which is the statement now.
 		if p.Transfer == ir.TransferBorrow && isAllocation(tmp.Init) {
-			post = append([]ir.Stmt{releaseStmt(identOf(tmp))}, post...)
+			post = append([]ir.Stmt{releaseWith(st.pkg.ReleaseFor(tmp.Type), identOf(tmp))}, post...)
 		}
 	}
 	body := deepCloneStmts(fn.Block)
