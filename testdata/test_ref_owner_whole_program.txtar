@@ -2103,7 +2103,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.hits = 0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.hit = gtk4rt.ButtonNew()
+	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, (c.__prop_label + fmt.Sprint(c.hits)))
 	gtk4rt.Connect(c.hit, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -2154,7 +2154,7 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___on0 = __a___on0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.k = gtk4rt.ButtonNew()
+	c.k = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.k, ("mk" + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.Connect(c.k, "clicked", func() {
 		c.__prop___on0()
@@ -2211,7 +2211,7 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___on0 = __a___on0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.k__own0 = gtk4rt.ButtonNew()
+	c.k__own0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.k__own0, ("pk" + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.Connect(c.k__own0, "clicked", func() {
 		c.__prop___on0()
@@ -2296,19 +2296,19 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.ts = gtk4rt.ButtonNew()
+	m.ts = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.ts, "s")
 	gtk4rt.Connect(m.ts, "clicked", m.ts_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.ts)
 	m.__renderSlot0(m.__n3)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
-	m.tp = gtk4rt.ButtonNew()
+	m.tp = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.tp, "p")
 	gtk4rt.Connect(m.tp, "clicked", m.tp_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.tp)
@@ -3245,7 +3245,7 @@ pass sha256:6ee64d01214142534154d21e12f56678
 -- run/go/fyne --
 pass sha256:6cdd6f872c6447bed418a7e5c5d7c018
 -- run/go/gtk4 --
-pass sha256:e5b5cd9bc39d6cbabf55226d47339e17
+pass sha256:4f018f9d05b6a942080f54db5f878612
 -- run/kotlin/android --
 pass sha256:2487159ffb5181264e5ae41b5c44c5a8
 -- run/none/html --

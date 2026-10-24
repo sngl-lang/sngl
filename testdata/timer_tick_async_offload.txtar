@@ -588,7 +588,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, m.name__inst0)
 	gtk4rt.BoxAppend(m.main, m.__n0)
 	gtk4rt.AppAttach(m.main)
@@ -604,4 +604,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:123cb637cc9927759f753223625f8b06
 -- run/go/gtk4 --
-pass sha256:5f9a89383c86381352f1d026f700fafb
+pass sha256:8613f0be4e256cb276d07f22d40ce964

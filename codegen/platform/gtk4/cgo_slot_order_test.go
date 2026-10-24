@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// The toggle has no gtk4rt wrapper, which puts the whole file on the cgo path.
 const cgoSlotOrderSrc = `
 import . "sngl:ui"
 
@@ -88,6 +87,7 @@ func TestASlotReRendersInPlace(t *testing.T) {
 // A render slot on the cgo path re-renders before its anchor, as it does
 // wrapped, rather than after every sibling written below it.
 func TestCgoSlotReRendersInPlace(t *testing.T) {
+	withCgo(t)
 	files := goFiles(generateGTK4FilesBuilt(t, cgoSlotOrderSrc))
 	// The widgets are C pointers on the cgo path. gtk4rt is still reached
 	// for its own primitives -- the scroll is gtk4rt's -- as it is for an

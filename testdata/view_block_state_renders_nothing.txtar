@@ -2175,17 +2175,17 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n5, 1)
 	gtk4rt.BoxSetSpacing(m.__n5, 6)
 	m.__renderSlot0(m.__n5)
 	m.__renderSlot1(m.__n5)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n6 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n6, 1)
 	gtk4rt.BoxSetSpacing(m.__n6, 6)
 	m.__renderSlot2(m.__n6)
 	gtk4rt.BoxAppend(m.__n5, m.__n6)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total))
 	gtk4rt.BoxAppend(m.__n5, m.__n1)
 	gtk4rt.BoxAppend(m.__n0, m.__n5)
@@ -2703,6 +2703,6 @@ pass sha256:06f5b6b3dc2fcdc55dfb781a9c280140
 -- run/go/fyne --
 pass sha256:c382dbb52622ff6e502c78a659042930
 -- run/go/gtk4 --
-pass sha256:3425407e063d00768f296c904f7bdd88
+pass sha256:5bae789356f274ac3419bf1bf53311c1
 -- run/none/html --
 pass sha256:9a76386811b32261047170addd168383

@@ -711,10 +711,10 @@ func newFrame__slot4Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
-	__n11 := gtk4rt.LabelNew("")
+	__n11 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n11, "BETA")
 	gtk4rt.BoxAppend(c.__n4, __n11)
 	c.__renderSlot0(c.__n4)
@@ -846,10 +846,10 @@ func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n6 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n6, 1)
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
-	__n12 := gtk4rt.LabelNew("")
+	__n12 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n12, "ALPHA")
 	gtk4rt.BoxAppend(c.__n6, __n12)
 	c.__renderSlot1(c.__n6)
@@ -981,10 +981,10 @@ func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__rendering2 = false
 	c.__renderAgain2 = false
 	c.__slot3 = nil
-	c.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n8, 1)
 	gtk4rt.BoxSetSpacing(c.__n8, 6)
-	__n13 := gtk4rt.LabelNew("")
+	__n13 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n13, "BETA")
 	gtk4rt.BoxAppend(c.__n8, __n13)
 	c.__renderSlot2(c.__n8)
@@ -1116,10 +1116,10 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst3_live = []*Frame__slot3Instance{}
 	c.__rendering3 = false
 	c.__renderAgain3 = false
-	c.__n10 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n10 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n10, 1)
 	gtk4rt.BoxSetSpacing(c.__n10, 6)
-	__n14 := gtk4rt.LabelNew("")
+	__n14 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n14, "ALPHA")
 	gtk4rt.BoxAppend(c.__n10, __n14)
 	c.__renderSlot3(c.__n10)
@@ -1241,7 +1241,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n15 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n15 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n15, 1)
 	gtk4rt.BoxSetSpacing(m.__n15, 6)
 	m.__n1 = newFrame__slot0Instance(m, m.depth, 0)
@@ -1250,7 +1250,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n2 = newFrame__slot1Instance(m, m.depth, 0)
 	m.__n2__el = m.__n2.Root
 	gtk4rt.BoxAppend(m.__n15, m.__n2__el)
-	m.__n16 = gtk4rt.ButtonNew()
+	m.__n16 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n16, "deeper")
 	gtk4rt.Connect(m.__n16, "clicked", m.__n16_clicked_handler)
 	gtk4rt.BoxAppend(m.__n15, m.__n16)
@@ -1743,6 +1743,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:166780ba538078f3a1d34564a783b85f
 -- run/go/gtk4 --
-pass sha256:25332a6070e163966687ff07b2fb7df6
+pass sha256:523cb3fd3618bcba07f285929b928305
 -- run/none/html --
 pass sha256:20e974bc55f3733e9ebaccee6ccb4dd5

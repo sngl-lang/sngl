@@ -604,7 +604,7 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 		c.visible = __visible
 		gtk4rt.ToplevelSetVisible(c.__n0, c.visible)
 	})
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, fmt.Sprint(c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n0, c.__n1)
 	c.__effects0_settle()
@@ -732,15 +732,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "Details")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.__n4)
-	m.__n5 = gtk4rt.ButtonNew()
+	m.__n5 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n5, "+")
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.__n5)
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, (("shown " + fmt.Sprint(m.shown)) + " times"))
 	gtk4rt.BoxAppend(m.main, m.__n2)
 	gtk4rt.AppAttach(m.main)
@@ -1023,6 +1023,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:a33e94a7cf3b067e8a8f880c85f1dbab
 -- run/go/gtk4 --
-pass sha256:09a42c2b81b3e3e2b0351324e13b8e50
+pass sha256:3bfabcb5d63fe92d3c27db6e362af740
 -- run/none/html --
 pass sha256:066ea77d9142c5d6ce8cb10cabbeae66

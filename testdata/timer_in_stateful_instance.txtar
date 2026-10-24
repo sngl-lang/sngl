@@ -915,7 +915,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
 	c.Root = c.__n0
@@ -1251,6 +1251,6 @@ pass sha256:e0f45bbc9212662438f657fca6e4b18c
 -- run/go/fyne --
 pass sha256:0f8b814b5de81ebfef08028783aaf212
 -- run/go/gtk4 --
-pass sha256:fbee50ebeed23780d8546a31be07bde7
+pass sha256:1019d612086571d46f1a67e99bf1056e
 -- run/none/html --
 pass sha256:d9c58af93d79a9dd3ba72b06f5e301bd

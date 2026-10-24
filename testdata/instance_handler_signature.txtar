@@ -436,10 +436,10 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n5 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n5, 0)
 	gtk4rt.BoxSetSpacing(__n5, 6)
-	c.__n0 = gtk4rt.CheckButtonNew()
+	c.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked__inst0)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
@@ -451,7 +451,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		}
 	})
 	gtk4rt.BoxAppend(__n5, c.__n0)
-	c.__n1 = gtk4rt.CheckButtonNew()
+	c.__n1 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n1, "")
 	gtk4rt.CheckButtonSetActive(c.__n1, c.checked__inst1)
 	gtk4rt.Connect(c.__n1, "toggled", func() {
@@ -461,7 +461,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		}
 	})
 	gtk4rt.BoxAppend(__n5, c.__n1)
-	c.entry = gtk4rt.EntryNew()
+	c.entry = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst0 {
 			c.value__inst0 = gtk4rt.EditableGetText(c.entry)
@@ -475,7 +475,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.__effects0_settle()
 	})
 	gtk4rt.BoxAppend(__n5, c.entry)
-	c.__n2 = gtk4rt.LabelNew("")
+	c.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 	gtk4rt.BoxAppend(__n5, c.__n2)
 	c.__effects0_settle()
@@ -561,7 +561,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	m.__renderSlot0(__n4)
@@ -591,4 +591,4 @@ func (m *Model) entryChange(v string) {
 -- run/go/fyne --
 pass sha256:759242c914155d249d11e38ddedd4540
 -- run/go/gtk4 --
-pass sha256:16ca2dc2e0e64942c3f88110973e09c4
+pass sha256:888f84f8df6ee3efd78225ff380fca57

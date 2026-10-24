@@ -1891,9 +1891,9 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.shown = gtk4rt.LabelNew("")
+	c.shown = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
-	c.hit = gtk4rt.ButtonNew()
+	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, "hit")
 	gtk4rt.Connect(c.hit, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -1937,7 +1937,7 @@ func (c *BadgeInstance) __renderSlot0(parent gtk4rt.Handle) {
 				c.__model.__named_done = nil
 			}
 			if c.hits >= 2 {
-				c.done = gtk4rt.LabelNew("")
+				c.done = gtk4rt.New("GtkLabel")
 				c.__model.__named_done = c.done
 				gtk4rt.LabelSetLabel(c.done, "done")
 				gtk4rt.InsertBefore(parent, c.__slot0_at, c.done)
@@ -2012,9 +2012,9 @@ func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_ta
 	c.__renderAgain1 = false
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.face = gtk4rt.LabelNew("")
+	c.face = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
-	c.tap = gtk4rt.ButtonNew()
+	c.tap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.tap, "tap")
 	c.__model.__list_tap(c.__prop___copy, c.tap)
 	gtk4rt.Connect(c.tap, "clicked", func() {
@@ -2158,7 +2158,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.fin = gtk4rt.LabelNew("")
+	c.fin = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.fin, "fin")
 	c.__model.__list_fin(c.__prop___p0, c.fin)
 	c.Root = c.fin
@@ -2224,12 +2224,12 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__renderSlot2(m.__n1)
 	m.__renderSlot3(m.__n1)
-	m.toggle = gtk4rt.ButtonNew()
+	m.toggle = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.toggle, "t")
 	gtk4rt.Connect(m.toggle, "clicked", m.toggle_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.toggle)
@@ -3063,7 +3063,7 @@ pass sha256:7ab84a43ce80689c535d9d3208e62f57
 -- run/go/fyne --
 pass sha256:0c604d545ba74a08b3e5df2b2b3681a2
 -- run/go/gtk4 --
-pass sha256:5f167dfab9da61544cd486118495d1e7
+pass sha256:6dda9717861e23baba76b5f1706c1b00
 -- run/kotlin/android --
 pass sha256:b7c8fc55d840fde3e9207d4a33237bf8
 -- run/none/html --

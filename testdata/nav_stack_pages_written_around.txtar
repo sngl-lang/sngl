@@ -1132,7 +1132,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			var __inst0_i int = 0
 			for __copy, it := range m.items {
 				if (m.pages__current.Id == 0) && ((len(m.pages__current.Copy) == 1) && (m.pages__current.Copy[0] == __copy)) {
-					__n2 := gtk4rt.LabelNew("")
+					__n2 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n2, it.Title)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 					m.__slot0 = append(m.__slot0, __n2)
@@ -1181,7 +1181,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			m.__slot1 = nil
 			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 			if m.pages__current.Id == 1 {
-				__n4 := gtk4rt.LabelNew("")
+				__n4 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n4, "about")
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 				m.__slot1 = append(m.__slot1, __n4)
@@ -1205,7 +1205,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			m.__slot2 = nil
 			m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
 			if m.pages__current.Id == 2 {
-				__n5 := gtk4rt.LabelNew("")
+				__n5 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n5, "FAQ only")
 				gtk4rt.InsertBefore(parent, m.__slot2_at, __n5)
 				m.__slot2 = append(m.__slot2, __n5)
@@ -1229,7 +1229,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 			m.__slot3 = nil
 			m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
 			if m.pages__current.Id == 3 {
-				__n6 := gtk4rt.LabelNew("")
+				__n6 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n6, "[inside]")
 				gtk4rt.InsertBefore(parent, m.__slot3_at, __n6)
 				m.__slot3 = append(m.__slot3, __n6)
@@ -1253,7 +1253,7 @@ func (m *Model) __renderSlot4(parent gtk4rt.Handle) {
 			m.__slot4 = nil
 			m.__slot4_at = gtk4rt.SlotAnchor(parent, m.__slot4_at)
 			if m.pages__current.Id == 4 {
-				__n7 := gtk4rt.LabelNew("")
+				__n7 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n7, "contact")
 				gtk4rt.InsertBefore(parent, m.__slot4_at, __n7)
 				m.__slot4 = append(m.__slot4, __n7)
@@ -1334,7 +1334,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 	} else {
 		__lt18 = "hidden"
 	}
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, __lt18)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1419,7 +1419,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n8, 1)
 	gtk4rt.BoxSetSpacing(m.__n8, 6)
 	m.__renderSlot0(m.__n8)
@@ -1427,11 +1427,11 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot2(m.__n8)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
-	m.__n9 = gtk4rt.ButtonNew()
+	m.__n9 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n9, "Contact")
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n9)
-	m.__n10 = gtk4rt.ButtonNew()
+	m.__n10 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n10, "Back")
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n10)
@@ -1869,7 +1869,7 @@ pass sha256:8d25bafc3d7f5f041fada29cce6b17ad
 -- run/go/fyne --
 pass sha256:7fb27f514b979f52adf01176ef78eb51
 -- run/go/gtk4 --
-pass sha256:168c60414bfef68c9253aaa319141a28
+pass sha256:4b03929ad8c7b5ef9875e20c5364fb32
 -- run/kotlin/android --
 pass sha256:bb41ca86046685b7f1088d46ef14c508
 -- run/none/html --

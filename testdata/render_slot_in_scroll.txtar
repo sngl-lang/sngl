@@ -243,7 +243,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0 = nil
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			if m.on {
-				__n0 := gtk4rt.LabelNew("")
+				__n0 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n0, "on")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
 				m.__slot0 = append(m.__slot0, __n0)
@@ -278,7 +278,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n2 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n2, 1)
 	gtk4rt.BoxSetSpacing(__n2, 6)
 	m.__n1 = gtk4rt.ScrollNew()
@@ -289,7 +289,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__renderSlot0(m.__n1_box)
 	gtk4rt.BoxAppend(__n2, m.__n1)
-	m.flip = gtk4rt.ButtonNew()
+	m.flip = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
 	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
 	gtk4rt.BoxAppend(__n2, m.flip)
@@ -312,4 +312,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:204d81537a168d57b83e4b31af4298b9
 -- run/go/gtk4 --
-pass sha256:b4faad6aa48d52842b87fe9128dabd86
+pass sha256:07249a642282e16bb3d42f33b3043419

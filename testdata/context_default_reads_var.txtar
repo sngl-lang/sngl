@@ -516,7 +516,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, m.initialTheme)
 	gtk4rt.BoxAppend(m.home, m.__n0)
 	gtk4rt.AppAttach(m.home)
@@ -605,7 +605,7 @@ pass sha256:a1a9721c17c4babdd9e49aaf3f19ec2c
 -- run/go/fyne --
 pass sha256:ccf1b76fa8ea47fc80c91a82a6917a90
 -- run/go/gtk4 --
-pass sha256:b1c44ca319623d7abe093ffc2a2225eb
+pass sha256:f543ac2ed10da79a784e0981d6034274
 -- run/kotlin/android --
 pass sha256:52bfd69d79616e5d5817bacbee05a823
 -- run/none/html --

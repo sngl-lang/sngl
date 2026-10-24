@@ -1203,7 +1203,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0 = nil
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			if m.a__inst0 {
-				__n2 := gtk4rt.LabelNew("")
+				__n2 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n2, "a")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
@@ -1227,7 +1227,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			m.__slot1 = nil
 			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 			if m.b__inst0 {
-				__n3 := gtk4rt.LabelNew("")
+				__n3 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n3, "b")
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 				m.__slot1 = append(m.__slot1, __n3)
@@ -1251,7 +1251,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			m.__slot2 = nil
 			m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
 			if !m.a__inst0 && !m.b__inst0 {
-				__n4 := gtk4rt.LabelNew("")
+				__n4 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n4, "fallback")
 				gtk4rt.InsertBefore(parent, m.__slot2_at, __n4)
 				m.__slot2 = append(m.__slot2, __n4)
@@ -1275,7 +1275,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 			m.__slot3 = nil
 			m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
 			for _, x := range m.xs__inst0 {
-				__n5 := gtk4rt.LabelNew("")
+				__n5 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n5, fmt.Sprint(x))
 				gtk4rt.InsertBefore(parent, m.__slot3_at, __n5)
 				m.__slot3 = append(m.__slot3, __n5)
@@ -1299,7 +1299,7 @@ func (m *Model) __renderSlot4(parent gtk4rt.Handle) {
 			m.__slot4 = nil
 			m.__slot4_at = gtk4rt.SlotAnchor(parent, m.__slot4_at)
 			if len(m.xs__inst0) == 0 {
-				__n6 := gtk4rt.LabelNew("")
+				__n6 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n6, "fallback")
 				gtk4rt.InsertBefore(parent, m.__slot4_at, __n6)
 				m.__slot4 = append(m.__slot4, __n6)
@@ -1395,10 +1395,10 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt16 = "asks: full"
 	}
-	m.two = gtk4rt.LabelNew("")
+	m.two = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.two, __lt16)
 	gtk4rt.BoxAppend(m.__n0, m.two)
-	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n7 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
 	m.__renderSlot0(m.__n7)
@@ -1411,30 +1411,30 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt17 = "asks: full"
 	}
-	m.loop = gtk4rt.LabelNew("")
+	m.loop = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.loop, __lt17)
 	gtk4rt.BoxAppend(m.__n0, m.loop)
-	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n8, 1)
 	gtk4rt.BoxSetSpacing(m.__n8, 6)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
 	__lt18 := "asks: empty"
-	m.lifetime = gtk4rt.LabelNew("")
+	m.lifetime = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.lifetime, __lt18)
 	gtk4rt.BoxAppend(m.__n0, m.lifetime)
-	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n9 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n9, 1)
 	gtk4rt.BoxSetSpacing(m.__n9, 6)
-	m.__n10 = gtk4rt.LabelNew("")
+	m.__n10 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n10, "fallback")
 	gtk4rt.BoxAppend(m.__n9, m.__n10)
 	gtk4rt.BoxAppend(m.__n0, m.__n9)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	m.show = gtk4rt.ButtonNew()
+	m.show = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.show, "show")
 	gtk4rt.Connect(m.show, "clicked", m.show_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.show)
@@ -1916,7 +1916,7 @@ pass sha256:fdf3995b2eea50a9aceac7e00d4f6d43
 -- run/go/fyne --
 pass sha256:9fd64bebb2aeee506aca9ea426fc222f
 -- run/go/gtk4 --
-pass sha256:6e5d7d27ff4c6fcc5866fa8f3b8ca169
+pass sha256:f6b966a337b3209d02f10739997a9f0f
 -- run/kotlin/android --
 pass sha256:caff83eee833d3fb1dfdad8e584724c7
 -- run/none/html --

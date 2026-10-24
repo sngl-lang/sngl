@@ -480,7 +480,11 @@ where the translator's `__cstr` was kept for the application. A flow's markup
 was the last: the label is written by its `markup` prop's declared set,
 `gtk4rt.LabelSetMarkup`, which copies the Pango string into C and frees it,
 where the translator bound a `__ctmp` around `gtk_label_set_markup`
-(`testdata/gtk4_declared_flow.txtar`). `ownCStrings` has no caller.
+(`testdata/gtk4_declared_flow.txtar`). `ownCStrings` has no caller. What
+`ReleaseTemps` frees in a GIR class's create and sets is the `cgo` option's
+since: by default declgen writes them over gtk4rt's calls by name, which take
+a Go string and copy it into C themselves, so a program's temps are only what
+it hands C on its own (`design/architecture.md`, *Which file a program gets*).
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective

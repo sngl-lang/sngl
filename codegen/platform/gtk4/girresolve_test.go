@@ -100,6 +100,7 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 // generated code differs by host and nothing says so. Asserted as the absence of
 // that fallback across every override, which needs no system GIR to check.
 func TestBundledGIRLosesNoSetter(t *testing.T) {
+	withCgo(t)
 	const src = `import . "sngl:ui"
 import . "sngl:ui"
 window(title="t") {
@@ -170,7 +171,11 @@ func generateWithBundledGIR(t *testing.T, src string) string {
 		if !ok || reg.PlatformIdentifier() != platformName {
 			continue
 		}
-		if err := reg.Configure(map[string]string{"gir": girBuiltin}); err != nil {
+		opts := map[string]string{"gir": girBuiltin}
+		if genOptions != nil {
+			opts["cgo"] = "true"
+		}
+		if err := reg.Configure(opts); err != nil {
 			t.Fatalf("configure registered gtk4: %v", err)
 		}
 		t.Cleanup(func() { _ = reg.Configure(map[string]string{}) })
@@ -192,7 +197,7 @@ func generateWithBundledGIR(t *testing.T, src string) string {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
+	if err := g.Generate(genRequest(pkg, lang), mem); err != nil {
 		t.Fatalf("generate against the bundled GIR: %v", err)
 	}
 	model, ok := mem.Files()["model.go"]

@@ -791,7 +791,7 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -836,7 +836,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.__renderSlot0(m.__n3)
@@ -1048,7 +1048,7 @@ pass sha256:ab7e2111058b17520104f150ff89cc3b
 -- run/go/fyne --
 pass sha256:1bafc1b5bd5e518d3283640130fbdd34
 -- run/go/gtk4 --
-pass sha256:0713a2a0c5a12fb2a8a12844e153688f
+pass sha256:ccfd352b705f1b52e35b96f661faa616
 -- run/kotlin/android --
 pass sha256:2a1ecb2b40db888d34cfda2ca296f617
 -- run/none/html --

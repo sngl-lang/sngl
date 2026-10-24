@@ -1192,13 +1192,13 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	c.taps = 0
 	c.width__inst0 = 1
 	c.__slot0 = nil
-	__n8 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n8 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n8, 0)
 	gtk4rt.BoxSetSpacing(__n8, 6)
-	__n0 := gtk4rt.LabelNew("")
+	__n0 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n0, ("w" + fmt.Sprint(c.width__inst0)))
 	gtk4rt.BoxAppend(__n8, __n0)
-	c.__n1 = gtk4rt.ButtonNew()
+	c.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n1, ("tap " + fmt.Sprint(c.taps)))
 	gtk4rt.Connect(c.__n1, "clicked", func() {
 		c.taps = (c.taps + 1)
@@ -1274,30 +1274,30 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
-	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n7 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
 	m.__renderSlot0(m.__n7)
-	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n9 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n9, 0)
 	gtk4rt.BoxSetSpacing(m.__n9, 6)
-	m.__n10 = gtk4rt.ButtonNew()
+	m.__n10 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n10, "done")
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
 	gtk4rt.BoxAppend(m.__n9, m.__n10)
 	gtk4rt.BoxAppend(m.__n7, m.__n9)
-	m.__n11 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n11 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n11, 1)
 	gtk4rt.BoxSetSpacing(m.__n11, 6)
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, ("opened " + fmt.Sprint(m.opened__inst0)))
 	gtk4rt.BoxAppend(m.__n11, m.__n3)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, ("named " + fmt.Sprint(m.hits__inst0)))
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n11, m.__n4)
 	gtk4rt.BoxAppend(m.__n7, m.__n11)
-	m.__n5 = gtk4rt.LabelNew("")
+	m.__n5 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 	gtk4rt.BoxAppend(m.__n7, m.__n5)
 	gtk4rt.BoxAppend(m.__n2, m.__n7)
@@ -1587,7 +1587,7 @@ pass sha256:bcddb152cce046eaf8ad48a0f42054d7
 -- run/go/fyne --
 pass sha256:b592fa226b1dc286e7f0c88de375b1a8
 -- run/go/gtk4 --
-pass sha256:1a3a171825ffd99760f688de86e5a256
+pass sha256:03585d441d61951dd19608e652eae323
 -- run/kotlin/android --
 pass sha256:fe3334edbc5f4279826411e00236086e
 -- run/none/html --

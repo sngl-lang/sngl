@@ -686,11 +686,11 @@ func newRowInstance(__model *Model, __a_container string) *RowInstance {
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n3, 0)
 	gtk4rt.BoxSetSpacing(c.__n3, 6)
 	c.__renderSlot0(c.__n3)
-	__n7 := gtk4rt.ButtonNew()
+	__n7 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n7, "hit")
 	gtk4rt.Connect(__n7, "clicked", func() {
 		c.parent += 1
@@ -803,7 +803,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -853,7 +853,7 @@ func new__child1Instance(__model *Model, __a___p0 int) *__child1Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ("p " + fmt.Sprint(c.__prop___p0)))
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
@@ -902,11 +902,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n6 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n6, 1)
 	gtk4rt.BoxSetSpacing(m.__n6, 6)
 	m.__renderSlot1(m.__n6)
-	m.bump = gtk4rt.ButtonNew()
+	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(m.__n6, m.bump)
@@ -930,4 +930,4 @@ func (m *Model) bumpClick() {
 -- run/go/fyne --
 pass sha256:50719fc79565dce598a7212c14aa17cb
 -- run/go/gtk4 --
-pass sha256:f837f2a20ddcfad3547050c4549e85f1
+pass sha256:cd3faee24f9d8fea6911c2b56a26731d

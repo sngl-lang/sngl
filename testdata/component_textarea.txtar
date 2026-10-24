@@ -609,7 +609,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.entry = gtk4rt.EntryNew()
+	m.entry = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
 	m.__effects0_settle()
@@ -763,7 +763,7 @@ pass sha256:e1d33fdc5881f1abbaa56b4c3a4b8651
 -- run/go/fyne --
 pass sha256:70ff8dcc203e63490968bb37b9878017
 -- run/go/gtk4 --
-pass sha256:3d55d4fb561e4b00dbde33a35c57e20c
+pass sha256:9c73ec919b725a1e442503c08f4bab86
 -- run/kotlin/android --
 pass sha256:68aeb0022393af26479b2970b3326689
 -- run/none/html --

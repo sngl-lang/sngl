@@ -796,10 +796,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ((((((fmt.Sprint(PtSum(m.p, m)) + " ") + fmt.Sprint(ListPick__int(m.xs, m))) + " ") + fmt.Sprint(ListSecond__int(m.xs))) + " ") + fmt.Sprint(PtFlip(m.p).X)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	m.__n2 = gtk4rt.ButtonNew()
+	m.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n2, "go")
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
@@ -972,7 +972,7 @@ pass sha256:3103f7e43ad7cbf3045e9349b179746a
 -- run/go/fyne --
 pass sha256:cc4f31d7add133882d48e413f50fe08e
 -- run/go/gtk4 --
-pass sha256:5c918f55386b22b2a32b47eb2b93c6fc
+pass sha256:3605eea227ff6488de253b027e30c931
 -- run/kotlin/android --
 pass sha256:96492162856462d531387abb32815c87
 -- run/none/html --

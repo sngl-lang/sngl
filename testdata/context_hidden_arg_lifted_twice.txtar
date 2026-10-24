@@ -1379,7 +1379,7 @@ func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowIns
 	c.k = 0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)) + " ") + fmt.Sprint(c.k)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.k = (c.k + 1)
@@ -1442,10 +1442,10 @@ func newPageInstance(__model *Model, __a___ctx_label string) *PageInstance {
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
-	__n8 := gtk4rt.ButtonNew()
+	__n8 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n8, "flip")
 	gtk4rt.Connect(__n8, "clicked", func() {
 		c.on = !c.on
@@ -1584,7 +1584,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n9 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n9 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n9, 1)
 	gtk4rt.BoxSetSpacing(__n9, 6)
 	c.__n1 = newShowInstance(c.__model, 1, c.__prop___p0)
@@ -1637,7 +1637,7 @@ func new__child1Instance(__model *Model, __a___p0 string) *__child1Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n10 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n10 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n10, 1)
 	gtk4rt.BoxSetSpacing(__n10, 6)
 	c.__n2 = newShowInstance(c.__model, 2, c.__prop___p0)
@@ -1705,10 +1705,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
-	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n7 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
-	m.__n11 = gtk4rt.ButtonNew()
+	m.__n11 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n11, "flip")
 	gtk4rt.Connect(m.__n11, "clicked", m.__n11_clicked_handler)
 	gtk4rt.BoxAppend(m.__n7, m.__n11)
@@ -2073,6 +2073,6 @@ pass sha256:5b4d72719ad6158a6922fb1e68b2d63a
 -- run/go/fyne --
 pass sha256:af4f1eca932da42558c459b3d9dbbe47
 -- run/go/gtk4 --
-pass sha256:727028c4dd2ff3222aa3cae574313230
+pass sha256:08771eb10309f67c5f115e61015fd886
 -- run/none/html --
 pass sha256:444a4f3ef4586c3b65207365e1faf469

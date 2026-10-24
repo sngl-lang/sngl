@@ -1055,7 +1055,7 @@ func newShow__intInstance(__model *Model, __a_xs []int, __a_w __anon_v_853006, _
 	c.hits = 0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -1125,7 +1125,7 @@ func newShow__stringInstance(__model *Model, __a_xs []string, __a_w __anon_v_ba9
 	c.hits = 0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n1 = gtk4rt.ButtonNew()
+	c.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n1, ((fmt.Sprint(c.hits) + " ") + fmt.Sprint(len(c.__prop_xs))))
 	gtk4rt.Connect(c.__n1, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -1815,7 +1815,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:58b620bac5f3c1335a5bbd7e00996641
 -- run/go/gtk4 --
-pass sha256:f5ae264e120bf5f637a2877ce44aba5f
+pass sha256:aa3823c88edc5d64eb11f156cb42e7b1
 -- run/kotlin/android --
 pass sha256:a1920d4493b40462812c7c7f5c703c4f
 -- run/none/html --

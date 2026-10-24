@@ -1968,7 +1968,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			__inst1_next := []*__input_state1Instance{}
 			var __inst1_i int = 0
 			for __copy0, it := range m.items {
-				m.tap = gtk4rt.ButtonNew()
+				m.tap = gtk4rt.New("GtkButton")
 				gtk4rt.ButtonSetLabel(m.tap, it)
 				m.__list_tap(fmt.Sprint(__copy0), m.tap)
 				gtk4rt.Connect(m.tap, "clicked", func() {
@@ -2087,7 +2087,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
 	c.__slot0 = nil
-	c.box = gtk4rt.CheckButtonNew()
+	c.box = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.box, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.box, c.checked)
 	c.__model.__list_box(c.__prop___copy, c.box)
@@ -2173,7 +2173,7 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	c.field = gtk4rt.EntryNew()
+	c.field = gtk4rt.New("GtkEntry")
 	c.__model.__list_field(c.__prop___copy, c.field)
 	gtk4rt.Connect(c.field, "changed", func() {
 		if gtk4rt.EditableGetText(c.field) != c.value {
@@ -2290,15 +2290,15 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.swap = gtk4rt.ButtonNew()
+	m.swap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.swap, "swap")
 	gtk4rt.Connect(m.swap, "clicked", m.swap_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.swap)
 	m.__renderSlot0(m.__n3)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, m.log)
 	gtk4rt.BoxAppend(m.__n3, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n3)
@@ -3000,7 +3000,7 @@ pass sha256:49741e29826ef4805c3f59f929ff32a9
 -- run/go/fyne --
 pass sha256:7034f51212045cd5520ec5e11f3c07e0
 -- run/go/gtk4 --
-pass sha256:c499b62da98608e84f91d6d83c927029
+pass sha256:515885530c8c15908639c0ffe371c011
 -- run/kotlin/android --
 pass sha256:0b96717a7aa55c39ee255ba1e7c74aaa
 -- run/none/html --

@@ -390,7 +390,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				__n1 := (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
 				gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(__n1)), func() {
 				})
-				__n2 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+				__n2 := (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 				gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n2)), "maybe")
 				gtk4rt.ScrolledWindowSetChild(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(__n2)))
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
@@ -470,7 +470,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.list = (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
 	gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)), m.list_reachEnd_handler)
-	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n4)), "rows")
 	gtk4rt.ScrolledWindowSetChild(gtk4rt.Handle(unsafe.Pointer(m.list)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.list)))
@@ -493,4 +493,4 @@ func (m *Model) listReachEnd() {
 	gtk4rt.ScrollReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)))
 }
 -- run/go/gtk4 --
-pass sha256:48d1658032a51c0ba9a51404cc7f5728
+pass sha256:9e05d591443dd6d4a34a7e3c8dd9e0da

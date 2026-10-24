@@ -727,11 +727,6 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 	if cType == "GtkDropDown" {
 		t.shared.dropDown = true
 	}
-	if t.wrapped {
-		if ctor, ok := rtCtorForCType(cType); ok {
-			return t.emitConstructorAssign(id, cType, ctor)
-		}
-	}
 	if made == nil {
 		t.shared.fail(unconstructible(t.registry, cType, info))
 		t.skipped[id] = struct{}{}
@@ -1050,20 +1045,11 @@ func (t *gtk4Translator) appendChild(parent, child, call ir.Expr) []ir.Stmt {
 		call := nativeCall("sngl_insert_before", ir.TypVoid, cgoCast("GtkBox", parent), t.slotAnchor, cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
 		return []ir.Stmt{&ir.CallStmt{Call: call}}
 	}
-	if t.wrapped {
-		if stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
-			return []ir.Stmt{stmt}
-		}
-		if call == nil {
-			// A cgo call in a file built without cgo does not compile, so the
-			// gap is reported where it is rather than emitted.
-			t.shared.fail(fmt.Errorf("gtk4: %s adds its child through %s, which pkg/go/gtk4rt does not wrap; "+
-				"a wrapped build cannot emit the cgo call directly", cType, adder.Func))
-			return nil
-		}
-	}
 	if call != nil {
 		return t.callStmt(call)
+	}
+	if t.wrapped {
+		return []ir.Stmt{rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))}
 	}
 	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
@@ -1097,17 +1083,15 @@ func (t *gtk4Translator) removeChild(parent, child, call ir.Expr) []ir.Stmt {
 	if cType == "" {
 		cType = "GtkBox"
 	}
-	if t.wrapped {
-		if stmt, ok := rtChildRemoveCall(cType, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child)); ok {
-			return []ir.Stmt{stmt}
-		}
-	}
 	if call != nil {
 		return t.callStmt(call)
 	}
 	fn := gtk4ChildRemoveFn(cType)
 	if fn == "" {
 		return nil
+	}
+	if t.wrapped {
+		return []ir.Stmt{rtChildAppendCall(gir.ChildAdder{Func: fn}, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))}
 	}
 	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
@@ -1652,10 +1636,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 	var slotBox, parentOf, parentArg ir.Expr
 	var set ir.Stmt
 	if t.wrapped {
-		var ok bool
-		if set, ok = rtChildAppendCall(adder, parent, box); !ok {
-			return nil, false
-		}
+		set = rtChildAppendCall(adder, parent, box)
 		slotBox, parentOf, parentArg = rtCall("SlotBox", gtk4rtHandleIRType(), box), rtCall("ParentOf", gtk4rtHandleIRType(), box), parent
 	} else {
 		t.shared.needSlotAnchor()
@@ -1777,7 +1758,9 @@ func invokerStateSetter(cType string, wrapped bool) string {
 		return "gtk4rt.CheckButtonSetActive"
 	case cType == "GtkCheckButton":
 		return "C.gtk_check_button_set_active"
-	case cType == "GtkSwitch" && !wrapped:
+	case cType == "GtkSwitch" && wrapped:
+		return "gtk4rt.SwitchSetActive"
+	case cType == "GtkSwitch":
 		return "C.gtk_switch_set_active"
 	}
 	return ""

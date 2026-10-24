@@ -866,7 +866,7 @@ func newRowInstance(__model *Model, __a_label int) *RowInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((fmt.Sprint(c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits += 1
@@ -918,11 +918,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.__renderSlot0(m.__n3)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "more")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.__n4)
@@ -941,4 +941,4 @@ pass sha256:0a6abf796c08f9a6934930ba5a222a84
 -- run/go/fyne --
 pass sha256:e8c2200e9acd3e5c476d12b4c7a572ce
 -- run/go/gtk4 --
-pass sha256:16496badaccbca9c8d93cf3cf8ee670d
+pass sha256:271ceed40ffba25b9baeeb7e19f6ff68

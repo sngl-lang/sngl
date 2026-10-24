@@ -592,7 +592,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0 = nil
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			for i := range m.shown {
-				__n0 := gtk4rt.LabelNew("")
+				__n0 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n0, ("row " + fmt.Sprint(i)))
 				gtk4rt.SetLook(__n0, gtk4rt.Look{Height: 48.0})
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
@@ -626,7 +626,7 @@ func (m *Model) buildWidgetTree() {
 	m.list = gtk4rt.ScrollNew()
 	gtk4rt.SetLook(m.list, gtk4rt.Look{Grow: 1.0})
 	gtk4rt.ScrollOnReachEnd(m.list, m.list_reachEnd_handler)
-	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__renderSlot0(m.__n1)
@@ -1221,7 +1221,7 @@ pass sha256:6eeff4fc804d39e1c8129fa91e9f89d2
 -- run/go/fyne --
 pass sha256:4de3733219d2ad09ca4ac20ec4a48591
 -- run/go/gtk4 --
-pass sha256:c877970a0412ed597b9a5b788be9d579
+pass sha256:a97dc0b51d2eec6a497df7fdcb2f5162
 -- run/kotlin/android --
 pass sha256:a12d9222f3396a706de306a5f0224865
 -- run/none/html --

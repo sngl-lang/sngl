@@ -868,13 +868,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 				if k == m.shown {
 					if c__r1.__id == 0 {
-						__n2 := gtk4rt.LabelNew("")
+						__n2 := gtk4rt.New("GtkLabel")
 						gtk4rt.LabelSetLabel(__n2, "first")
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 						m.__slot0 = append(m.__slot0, __n2)
 					} else {
 						if c__r1.__id == 1 {
-							__n3 := gtk4rt.ButtonNew()
+							__n3 := gtk4rt.New("GtkButton")
 							gtk4rt.ButtonSetLabel(__n3, "hit")
 							gtk4rt.Connect(__n3, "clicked", func() {
 								m.hits = (m.hits + 1)
@@ -948,7 +948,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.__prop___p0))
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1003,11 +1003,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n5, 0)
 	gtk4rt.BoxSetSpacing(m.__n5, 6)
 	for k, c__r2 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
-		m.__n6 = gtk4rt.ButtonNew()
+		m.__n6 = gtk4rt.New("GtkButton")
 		gtk4rt.ButtonSetLabel(m.__n6, c__r2.Label)
 		gtk4rt.Connect(m.__n6, "clicked", func() {
 			m.shown = k
@@ -1289,7 +1289,7 @@ pass sha256:ecd76b5fd847e8132d522362bbc1d5ff
 -- run/go/fyne --
 pass sha256:e043e88fd37fb17c3d5b86d181ba8e84
 -- run/go/gtk4 --
-pass sha256:452958ae7fcdd8cd54724ab739563f16
+pass sha256:17b3e685a278a34ac98b0f2cfd8eae71
 -- run/kotlin/android --
 pass sha256:0d149794264a32c4a0396e7591162bfc
 -- run/none/html --

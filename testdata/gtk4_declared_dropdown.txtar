@@ -578,8 +578,8 @@ func (m *Model) buildWidgetTree() {
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
-	m.drop = (*C.GtkDropDown)(unsafe.Pointer(C.gtk_drop_down_new(nil, nil)))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.drop)), C.gboolean(C.int(func() int { return 1 }())))
+	m.drop = (*C.GtkDropDown)(unsafe.Pointer(gtk4rt.New("GtkDropDown")))
+	gtk4rt.SetBool(gtk4rt.Handle(unsafe.Pointer(m.drop)), "sensitive", true)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.drop)), "notify::selected", m.drop_notifySelected_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.drop)))
 	m.__effect0_rebuilt()
@@ -604,4 +604,4 @@ func (m *Model) dropChange(v string) {
 	C.sngl_drop_down_select((*C.GtkDropDown)(unsafe.Pointer(m.drop)), __v)
 }
 -- run/go/gtk4 --
-pass sha256:bcb94930e10604da3d0ec156ed258d03
+pass sha256:dfa89b17f0b18b551a92df6f8c6efd33

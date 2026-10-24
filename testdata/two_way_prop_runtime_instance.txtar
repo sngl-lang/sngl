@@ -435,7 +435,7 @@ func newCounterInstance(__model *Model, __a_n int, __a_label string, __a___on_n 
 	c.__prop___on_n = __a___on_n
 	c.clicks = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.clicks)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.clicks += 1
@@ -504,14 +504,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
 	m.__renderSlot0(m.__n4)
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, ("total " + fmt.Sprint(m.total)))
 	gtk4rt.BoxAppend(m.__n4, m.__n2)
-	m.__n5 = gtk4rt.ButtonNew()
+	m.__n5 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n5, "more")
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.__n5)
@@ -704,6 +704,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:bbd6c4992518be205133eddb805eb992
 -- run/go/gtk4 --
-pass sha256:70799867d3a8eb6501c7b9851d778870
+pass sha256:b1d91611149d957ed37e9cb2f710509a
 -- run/none/html --
 pass sha256:38a064f11e287f07364a282d6f0e9b9b

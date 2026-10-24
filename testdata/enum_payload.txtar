@@ -1214,7 +1214,7 @@ func new__child0Instance(__model *Model, __a___p0 Shape) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
-	c.round = gtk4rt.LabelNew("")
+	c.round = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.round, ("radius " + fmt.Sprint(c.__prop___p0.Circle)))
 	c.Root = c.round
 	gtk4rt.Retain(c.Root)
@@ -1277,7 +1277,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.shownArea = gtk4rt.LabelNew("")
+	m.shownArea = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.shownArea)
 	var __lt15 string
@@ -1286,7 +1286,7 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt15 = ("failed: " + m.result__inst0.Failed.Message)
 	}
-	m.outcome = gtk4rt.LabelNew("")
+	m.outcome = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.outcome, __lt15)
 	gtk4rt.BoxAppend(m.__n0, m.outcome)
 	var __lt16 string
@@ -1295,7 +1295,7 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt16 = "not round"
 	}
-	m.facts = gtk4rt.LabelNew("")
+	m.facts = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt16) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	gtk4rt.BoxAppend(m.__n0, m.facts)
 	var __lt17 string
@@ -1304,15 +1304,15 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt17 = "none"
 	}
-	m.radius = gtk4rt.LabelNew("")
+	m.radius = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.radius, __lt17)
 	gtk4rt.BoxAppend(m.__n0, m.radius)
 	m.__renderSlot0(m.__n0)
-	m.grow = gtk4rt.ButtonNew()
+	m.grow = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.grow, "Grow")
 	gtk4rt.Connect(m.grow, "clicked", m.grow_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.grow)
-	m.odd = gtk4rt.ButtonNew()
+	m.odd = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.odd, "Odd")
 	gtk4rt.Connect(m.odd, "clicked", m.odd_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.odd)
@@ -1664,7 +1664,7 @@ pass sha256:ad7c1ee95fbaf2e3c186dcf5f39bda80
 -- run/go/fyne --
 pass sha256:06a1483e7e0f1e25bc61bb6b91bb4937
 -- run/go/gtk4 --
-pass sha256:8cb41a0e05613781e28bb4bb1e514bf7
+pass sha256:8866d53e57747f2afd11e207a999fa39
 -- run/kotlin/android --
 pass sha256:5faa3d6b53c5f7838a062aeaa21ea061
 -- run/none/html --

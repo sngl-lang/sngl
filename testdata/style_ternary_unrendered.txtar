@@ -610,7 +610,7 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt15 = "normal"
 	}
-	m.__n1 = gtk4rt.ButtonNew()
+	m.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n1, "x")
 	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt15}))
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
@@ -627,4 +627,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:0f9b1c8cdafd984855393000486a38e8
 -- run/go/gtk4 --
-pass sha256:d98c8aa2f9fa39ce53c27cd33ac0acdf
+pass sha256:78b41f3355c6ee4d7deec68074de42d5

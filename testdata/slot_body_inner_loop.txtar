@@ -430,7 +430,7 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n2, 0)
 	gtk4rt.BoxSetSpacing(c.__n2, 6)
 	c.__renderSlot0(c.__n2)
@@ -463,7 +463,7 @@ func (c *__child0Instance) __renderSlot0(parent gtk4rt.Handle) {
 			c.__slot0 = nil
 			c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 			for _, cell := range c.__prop___p0 {
-				__n1 := gtk4rt.LabelNew("")
+				__n1 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
 				gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
 				c.__slot0 = append(c.__slot0, __n1)
@@ -519,10 +519,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n4 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n4, 1)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
-	m.bump = gtk4rt.ButtonNew()
+	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.bump)
@@ -724,6 +724,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:4c2664f520ac6cba76c8d19280f0850c
 -- run/go/gtk4 --
-pass sha256:e81be542adbbea2dbc11b27e9ba799fd
+pass sha256:d82e37123c4b9515e8101495a621d674
 -- run/none/html --
 pass sha256:3d896236bcf597b614421224f0c7318d

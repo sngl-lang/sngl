@@ -634,7 +634,7 @@ func newNestInstance(__model *Model, __a_tag string, __a_depth int, __a_note fun
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, (("[" + c.__prop_tag) + "]"))
 	gtk4rt.BoxAppend(c.__root, c.__n0)
 	c.__renderSlot0(c.__root)
@@ -822,10 +822,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.drop = gtk4rt.ButtonNew()
+	m.drop = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.drop, "drop")
 	gtk4rt.Connect(m.drop, "clicked", m.drop_clicked_handler)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
 	m.__renderSlot1(m.__root)
 	gtk4rt.BoxAppend(m.__root, m.drop)
@@ -1287,7 +1287,7 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:a06ab3467e1040130adc725a94ae7e7e
 -- run/go/gtk4 --
-pass sha256:43ec52cee8e2630add457a12b86f450c
+pass sha256:5230149b1b8c52dce61d966b7f9419cf
 -- run/kotlin/android --
 pass sha256:80d84c56bfd055cc695163df81575a9c
 -- run/none/html --

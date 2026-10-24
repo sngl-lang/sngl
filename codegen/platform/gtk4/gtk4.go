@@ -56,7 +56,10 @@ type Generator struct {
 	initErr  error // set if autodetect GIR load fails
 	minimal  bool  // registry is the bundled subset, not the host's GIR
 	girOpt   string
-	fsLoaded bool // fsErr answers girOpt
+	// cgoOpt is the "cgo" option: the widget declarations make, fill and
+	// write a GIR class through the C functions GIR names rather than gtk4rt.
+	cgoOpt   bool
+	fsLoaded bool // fsErr answers girOpt and cgoOpt
 	fsErr    error
 	// store is where the registry and the declarations derived from it are
 	// kept between builds. Nil means the process's default store.
@@ -79,6 +82,7 @@ func (g *Generator) Configure(opts map[string]string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.setGIROpt(opts["gir"])
+	g.cgoOpt = opts["cgo"] == "true"
 	return nil
 }
 
@@ -111,11 +115,14 @@ func (g *Generator) Unavailable() error {
 	return g.fsErr
 }
 
-// LibraryState is the GIR setting, which decides the widgets
-// sngl:platform/gtk4 declares.
+// LibraryState is the GIR and cgo settings, which decide the widgets
+// sngl:platform/gtk4 declares and what they call.
 func (g *Generator) LibraryState() string {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.cgoOpt {
+		return g.girOpt + "\x00cgo"
+	}
 	return g.girOpt
 }
 
@@ -232,7 +239,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	// the model's chosen mode (wrapped harnesses call BuildUI over gtk4rt.Handle
 	// and snapshot via gtk4rt). After EmitFromMutation, c.wrapped reflects the
 	// model's actual mode (the emitIR scan sets it), so the harness can match.
-	c.disableWrapped = codegen.OptionBool(req.Options, "gtk4NoWrap")
+	c.disableWrapped = codegen.OptionBool(req.Options, "gtk4NoWrap") || codegen.OptionBool(req.Options, "cgo")
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
 		return err

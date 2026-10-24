@@ -540,7 +540,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(func() []int {
 		__out := make([]int, len(m.xs__inst0))
 		for __i, __item := range m.xs__inst0 {
@@ -571,4 +571,4 @@ pass sha256:ececb5b15d672e5298c7b3d16c470217
 -- run/go/fyne --
 pass sha256:b3552dde39ae8b48fcad2d101d1f8797
 -- run/go/gtk4 --
-pass sha256:38b8e055c03a0002e06afb51bd88312d
+pass sha256:38e70380e07bb84a82b7c95986e826e8

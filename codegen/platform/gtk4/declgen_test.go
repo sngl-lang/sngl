@@ -46,7 +46,7 @@ func TestWidgetSource_DeclaresProps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(widgetSource(reg))
+	src := string(widgetSource(reg, false))
 	for _, want := range []string{
 		"#[intrinsic(\"gtk4:GtkBox\")]\ncomponent GtkBox(",
 		"\n    spacing int,\n",
@@ -503,7 +503,7 @@ func TestClassInheritance_Merges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decl := componentDecl(t, string(widgetSource(reg)), "GtkBox")
+	decl := componentDecl(t, string(widgetSource(reg, false)), "GtkBox")
 	for _, want := range []string{"\n    tooltipText string,\n", "\n    hexpand bool,\n", "\n    visible bool,\n", "\n    @destroy(self GtkBox),\n"} {
 		if !strings.Contains(decl, want) {
 			t.Errorf("the GtkBox declaration is missing %q", want)
@@ -542,7 +542,7 @@ func componentDecl(t *testing.T, src, name string) string {
 // nothing here reads, so neither is declared as an action: the setter is the
 // fraction prop's set.
 func TestWidgetSource_DeclaresActions(t *testing.T) {
-	src := string(widgetSource(bundledGIR(t)))
+	src := string(widgetSource(bundledGIR(t), false))
 	for _, want := range []string{
 		"#[macro.cnative(\"gtk_progress_bar_pulse\")]\nfunc GtkProgressBar.pulse()\n",
 	} {
@@ -560,7 +560,8 @@ func TestWidgetSource_DeclaresActions(t *testing.T) {
 	}
 }
 
-// TestWidgetSource_DeclaresConstructors pins how a widget is made: its primary
+// TestWidgetSource_DeclaresConstructors pins how a widget is made under the
+// cgo option: its primary
 // constructor as a native, and a #[gen.protocol(create)] function calling it
 // with the zero GTK accepts per parameter, which lowering splices where the
 // program renders the widget. A class whose constructor has a parameter no
@@ -571,7 +572,7 @@ func TestWidgetSource_DeclaresConstructors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(widgetSource(reg))
+	src := string(widgetSource(reg, true))
 	for _, want := range []string{
 		"#[macro.cnative(\"gtk_button_new\")]\nfunc _gtk_button_new() GtkButton\n",
 		"#[gen.protocol(create)]\nfunc _create_GtkButton() GtkButton {\n    return _gtk_button_new()\n}\n",
@@ -606,7 +607,8 @@ func TestWidgetSource_DeclaresConstructors(t *testing.T) {
 	}
 }
 
-// Each class with a single-widget adder is given an append calling it, the
+// Under the cgo option, each class with a single-widget adder is given an
+// append calling it, the
 // receiver cast to the class declaring the call, and a remove beside it where
 // GTK has one and the class holds more than one child.
 func TestWidgetSource_DeclaresChildOps(t *testing.T) {
@@ -614,7 +616,7 @@ func TestWidgetSource_DeclaresChildOps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(widgetSource(reg))
+	src := string(widgetSource(reg, true))
 	for _, want := range []string{
 		"#[macro.cnative(\"gtk_box_append\")]\nfunc _gtk_box_append(parent _p_GtkBox, child _p_GtkWidget)\n",
 		"#[gen.protocol(append)]\nfunc _append_GtkBox(parent GtkBox, child ui.node) {\n    _gtk_box_append(_as_GtkBox(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))\n}\n",
@@ -647,6 +649,37 @@ func TestWidgetSource_DeclaresChildOps(t *testing.T) {
 // A C type may spell a SNGL scalar -- GTK 4's gtk_spin_button_new takes a
 // `float` -- and the struct a zero crosses as must not shadow it in the
 // generated package, where every `float` prop would then name the struct.
+// Without the cgo option a class is made, filled and written through gtk4rt:
+// its wrapper of a call where it has one, and otherwise the generic call
+// naming the class, the adder or the property, so no #[cnative] is declared
+// for any of them.
+func TestWidgetSource_DeclaresGtk4rtProtocol(t *testing.T) {
+	reg, err := rulesGIR(t).gir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(widgetSource(reg, false))
+	for _, want := range []string{
+		"#[go.native(\"duckfam.us/sngl/pkg/go/gtk4rt\", \"gtk4rt.New\")]\nfunc _rtNew_GtkLinkButton(typeName string) GtkLinkButton\n",
+		"#[gen.protocol(create)]\nfunc _create_GtkLinkButton() GtkLinkButton {\n    return _rtNew_GtkLinkButton(\"GtkLinkButton\")\n}\n",
+		"#[gen.protocol(append)]\nfunc _append_GtkBox(parent GtkBox, child ui.node) {\n    _rtBoxAppend(parent, child)\n}\n",
+		"#[gen.protocol(remove)]\nfunc _remove_GtkBox(parent GtkBox, child ui.node) {\n    _rtBoxRemove(parent, child)\n}\n",
+		"#[gen.protocol(append)]\nfunc _append_GtkStack(parent GtkStack, child ui.node) {\n    _rtChildCall(\"gtk_stack_add_child\", parent, child)\n}\n",
+		"func _set_GtkLabel_label(self GtkLabel, label string) {\n    _rtLabelSetLabel(self, label)\n}\n",
+		"func _set_GtkProgressBar_fraction(self GtkProgressBar, fraction float) {\n    _rtSetFloat(self, \"fraction\", fraction)\n}\n",
+		"func _set_GtkWidget_tooltipText(self GtkWidget, tooltipText string) {\n    _rtSetString(self, \"tooltip-text\", tooltipText)\n}\n",
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated source lacks\n%s", want)
+		}
+	}
+	for _, unwanted := range []string{"#[macro.cnative(\"gtk_link_button_new\")]", "#[macro.cnative(\"gtk_box_append\")]", "#[macro.cnative(\"gtk_progress_bar_set_fraction\")]"} {
+		if strings.Contains(src, unwanted) {
+			t.Errorf("generated source declares %s", unwanted)
+		}
+	}
+}
+
 func TestCtorParam_CastShadowsNoScalar(t *testing.T) {
 	for _, tc := range []struct {
 		p    gir.ConstructorParam

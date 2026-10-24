@@ -1183,11 +1183,11 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			m.__slot1 = nil
 			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 			for _, x := range m.xs {
-				__n3 := gtk4rt.LabelNew("")
+				__n3 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n3, ("first " + fmt.Sprint(x)))
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 				m.__slot1 = append(m.__slot1, __n3)
-				__n4 := gtk4rt.LabelNew("")
+				__n4 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n4, ("second " + fmt.Sprint(x)))
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 				m.__slot1 = append(m.__slot1, __n4)
@@ -1211,7 +1211,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			m.__slot2 = nil
 			m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
 			for range m.k {
-				__n5 := gtk4rt.ButtonNew()
+				__n5 := gtk4rt.New("GtkButton")
 				gtk4rt.ButtonSetLabel(__n5, "pick")
 				gtk4rt.Connect(__n5, "clicked", func() {
 					m.picked += m.count()
@@ -1261,7 +1261,7 @@ func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.n)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.n += 1
@@ -1330,7 +1330,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n6 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n6, 1)
 	gtk4rt.BoxSetSpacing(__n6, 6)
 	m.__renderSlot0(__n6)
@@ -1919,7 +1919,7 @@ pass sha256:64db23ee7d96856124e420fe0ec02c31
 -- run/go/fyne --
 pass sha256:2f4cdb614925f9dbd1acf59b2eb7a03a
 -- run/go/gtk4 --
-pass sha256:68d0f6b752e1a6b0a646b78684edb5c5
+pass sha256:dd2f150875cec9f743613871b1525426
 -- run/kotlin/android --
 pass sha256:73203767ae35587f453bbaf2ede2e189
 -- run/none/html --

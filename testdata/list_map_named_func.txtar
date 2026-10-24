@@ -664,7 +664,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.mapped))
 	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
@@ -683,4 +683,4 @@ pass sha256:b34221b27cfe772a3df8058b89f34128
 -- run/go/fyne --
 pass sha256:7b17d2b80961b1ce81581327aed73b7f
 -- run/go/gtk4 --
-pass sha256:5447f9682451cfe726e3a04b35998eea
+pass sha256:6ded2bd15e36739889bd7c8080befd02

@@ -1226,7 +1226,7 @@ func newCounterInstance(__model *Model, __a_inc int) *CounterInstance {
 	c.step = 2
 	c.total = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, fmt.Sprint(c.total))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.add(1, (c.step + c.__prop_inc))
@@ -1321,18 +1321,18 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, ((((((fmt.Sprint(m.plus(1, 2)) + " ") + fmt.Sprint(m.span(1, 1, 5))) + " ") + fmt.Sprint(m.span(2, 1, (m.n+10)))) + " ") + fmt.Sprint(IntBump(m.n, 3, m))))
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
-	m.__n6 = gtk4rt.ButtonNew()
+	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "go")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n6)
-	m.__n3 = gtk4rt.ButtonNew()
+	m.__n3 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n3, fmt.Sprint(m.total__inst0))
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, fmt.Sprint(m.total__inst1))
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
@@ -1642,7 +1642,7 @@ pass sha256:246ec4041d544ddab8728f8621bda5f3
 -- run/go/fyne --
 pass sha256:773d22b40503db6ee35b4fe489fb8c9a
 -- run/go/gtk4 --
-pass sha256:25e5d2ee758f7be922c08ec32a017b7a
+pass sha256:1650af8057cc895919886edeaeceed66
 -- run/kotlin/android --
 pass sha256:1692fd34284954b990133b2b21a467ee
 -- run/none/html --

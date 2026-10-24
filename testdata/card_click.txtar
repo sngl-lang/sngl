@@ -778,71 +778,16 @@ func newTestComponent() *Model {
 
 package main
 
-/*
-#include <gtk/gtk.h>
-
-extern void sngl_gtk_idle_add(void* fn);
-extern void snglActivate(GtkApplication* app, gpointer data);
-*/
-import "C"
-import (
-	"fmt"
-	"os"
-	"runtime"
-	"unsafe"
-)
-
-// snglCallbacks holds registered Go signal handlers indexed by int.
-var snglCallbacks []func()
-
-// The index arrives as GTK's user_data pointer round-tripped through
-// GPOINTER_TO_INT, so a stray pointer lands here as an arbitrary int —
-// negative included. Bound it on both sides. (//export must sit directly
-// above the declaration, so this note goes above it.)
-//
-//export snglGoDispatch
-func snglGoDispatch(idx C.int) {
-	if idx >= 0 && int(idx) < len(snglCallbacks) {
-		snglCallbacks[int(idx)]()
-	}
-}
-
-//export snglIdleCallback
-func snglIdleCallback(ptr unsafe.Pointer) {
-	fn := *(*func())(ptr)
-	fn()
-}
-
-func gtkPost(fn func()) {
-	f := fn
-	C.sngl_gtk_idle_add(unsafe.Pointer(&f))
-}
-
-var snglModel *Model
-
-//export snglActivate
-func snglActivate(app *C.GtkApplication, _ C.gpointer) {
-	m := New()
-	snglModel = m
-	win := m.BuildUI(app)
-	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
-}
-
-var snglActivateSignal = C.CString("activate")
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
-	runtime.LockOSThread()
-	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
-	C.g_signal_connect_data((C.gpointer)(unsafe.Pointer(app)),
-		snglActivateSignal,
-		C.GCallback(C.snglActivate), nil, nil, 0)
-	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
-	if snglModel != nil {
-		snglModel.__snglTeardown()
-	}
-	if status != 0 {
-		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
-		os.Exit(int(status))
+	var m *Model
+	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
+		m = New()
+		return m.BuildUI(app)
+	})
+	if m != nil {
+		m.__snglTeardown()
 	}
 }
 -- out/go/gtk4/model.go --
@@ -850,141 +795,24 @@ func main() {
 
 package main
 
-/*
-#cgo pkg-config: gtk4
-#include <gtk/gtk.h>
-#include <stdlib.h>
-
-extern void snglGoDispatch(int idx);
-// g_signal_connect callbacks are invoked with the signal's signature
-// (self, ...args, user_data). This one is (instance, user_data), which
-// is the signature of a void signal that carries no arguments of its
-// own — and gir.Signal.Connectable is what holds every connection to
-// that shape, since otherwise GTK would pass the signal's first real
-// argument into `data` and snglGoDispatch would fire a wildly wrong
-// callback. 155 of GTK's 400 signals qualify; the rest are neither
-// declared nor connectable.
-static void sngl_cb(gpointer instance, gpointer data) {
-    (void)instance;
-    snglGoDispatch(GPOINTER_TO_INT(data));
-}
-// A property notification is (instance, pspec, user_data).
-static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
-    (void)instance;
-    (void)pspec;
-    snglGoDispatch(GPOINTER_TO_INT(data));
-}
-static void sngl_connect(void* widget, const char* signal, int idx) {
-    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
-    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
-}
-
-extern void snglIdleCallback(void* fn);
-static gboolean sngl_idle_tramp(gpointer data) {
-    snglIdleCallback(data);
-    return G_SOURCE_REMOVE;
-}
-void sngl_gtk_idle_add(void* fn) {
-    g_idle_add(sngl_idle_tramp, fn);
-}
-
-// Variadic wrapper — cgo cannot call `g_signal_emit_by_name` directly
-// (the `...` in its prototype trips the cgo type checker). Used by
-// per-id test invokers to fire signals with no extra args.
-static void sngl_emit(gpointer instance, const char *signal) {
-    g_signal_emit_by_name(instance, signal);
-}
-
-// Reactive-safe entry setter — GtkEditable's set_text fires "changed"
-// even when the new text equals the current text, which loops back
-// through any change handler that wrote the mutating var and re-applies
-// reactivity, blowing the stack. Skip the call when the value already
-// matches.
-// g_object_unref takes a gpointer, and a declaration that names it directly
-// would need a cast a SNGL override has no way to write. The shim is where the
-// cast belongs -- it is C, which is what this preamble is.
-static void sngl_unref_pixbuf(GdkPixbuf *p) {
-    if (p != NULL) g_object_unref(p);
-}
-
-// Selects a day the way a click on it does, for gtk4's datepicker override
-// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
-// 4.20 deprecates it for set_date, which the older ones lack.
-// The selection is the program's, not input, so "day-selected" is blocked;
-// a test's invoker fires it itself after selecting.
-static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
-    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
-    if (dt == NULL) return;
-    guint id = g_signal_lookup("day-selected", GTK_TYPE_CALENDAR);
-    g_signal_handlers_block_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-    gtk_calendar_select_day(c, dt);
-    G_GNUC_END_IGNORE_DEPRECATIONS
-    g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
-    g_date_time_unref(dt);
-}
-
-static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
-    if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
-    GtkWidget *w = gtk_label_new(NULL);
-    gtk_widget_set_visible(w, FALSE);
-    g_object_ref_sink(w);
-    gtk_box_append(box, w);
-    return w;
-}
-
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
-static GtkBox *sngl_slot_box(GtkBox *b) {
-    if (b != NULL) return b;
-    GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
-    g_object_ref_sink(w);
-    return GTK_BOX(w);
-}
-
-static void sngl_set_entry_text(GtkEditable *e, const char *t) {
-    const char *cur = gtk_editable_get_text(e);
-    if (t == NULL) t = "";
-    if (cur != NULL && strcmp(cur, t) == 0) return;
-    gtk_editable_set_text(e, t);
-}
-
-// A test invoker puts the payload's text in the entry and then fires the one
-// signal it drives, so the text is set with "changed" blocked: setting it would
-// otherwise run the input handler as well.
-static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
-    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
-    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
-    gtk_editable_set_text(e, t);
-    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
-}
-*/
-import "C"
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"unsafe"
 )
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	opened         string
-	__root         *C.GtkBox
-	__slot0        []*C.GtkWidget
-	__slot0_at     *C.GtkWidget
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__child0Instance
 	__rendering0   bool
 	__renderAgain0 bool
-	row            *C.GtkButton
-	__copies_row   map[string]*C.GtkButton
-	__n2_box       *C.GtkBox
-	__n2           *C.GtkFrame
+	row            gtk4rt.Handle
+	__copies_row   map[string]gtk4rt.Handle
+	__n2_box       gtk4rt.Handle
+	__n2           gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -1001,7 +829,7 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __renderSlot0(parent *C.GtkBox) {
+func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
 	} else {
@@ -1010,10 +838,10 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		for m.__renderAgain0 {
 			m.__renderAgain0 = false
 			for _, __entry := range m.__slot0 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				gtk4rt.BoxRemove(parent, __entry)
 			}
 			m.__slot0 = nil
-			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
+			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			__inst0_next := []*__child0Instance{}
 			var __inst0_i int = 0
 			if m.opened != "" {
@@ -1031,8 +859,8 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				__inst0_next = append(__inst0_next, __n1)
 				__inst0_i = (__inst0_i + 1)
 				__n1__el := __n1.Root
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
-				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1__el)))
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
+				m.__slot0 = append(m.__slot0, __n1__el)
 			}
 			for __inst0_i_d, _ := range m.__inst0_live {
 				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -1056,13 +884,13 @@ func (m *Model) __snglTeardown() {
 
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
-	Root        *C.GtkWidget
+	Root        gtk4rt.Handle
 	__model     *Model
 	__prop___p0 string
-	__root      *C.GtkBox
-	__slot0     []*C.GtkWidget
-	__slot0_at  *C.GtkWidget
-	__n0        *C.GtkLabel
+	__root      gtk4rt.Handle
+	__slot0     []gtk4rt.Handle
+	__slot0_at  gtk4rt.Handle
+	__n0        gtk4rt.Handle
 }
 
 func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
@@ -1070,25 +898,25 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
-	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), ("opened " + c.__prop___p0))
-	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
-	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
+	c.__n0 = gtk4rt.New("GtkLabel")
+	gtk4rt.LabelSetLabel(c.__n0, ("opened " + c.__prop___p0))
+	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(c.__n0)), ("opened " + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n0, ("opened " + c.__prop___p0))
 }
 
 func (c *__child0Instance) Destroy() {
 	if c.Root != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
+		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
 	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1104,53 +932,51 @@ func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
-	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	__n3 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
-	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n3)), 1)
-	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(__n3)), 6)
+	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	__n3 := gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(__n3, 1)
+	gtk4rt.BoxSetSpacing(__n3, 6)
 	for __copy0, name := range []string{"one", "two"} {
-		m.row = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-		C.gtk_button_set_has_frame((*C.GtkButton)(unsafe.Pointer(m.row)), C.gboolean(C.int(func() int { return 0 }())))
+		m.row = gtk4rt.New("GtkButton")
+		gtk4rt.SetBool(m.row, "has-frame", false)
 		m.__list_row(fmt.Sprint(__copy0), m.row)
-		gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.row)), "clicked", func() {
+		gtk4rt.Connect(m.row, "clicked", func() {
 			m.opened = name
-			m.__n2_box = C.sngl_slot_box(m.__n2_box)
-			if C.gtk_widget_get_parent((*C.GtkWidget)(unsafe.Pointer(m.__n2_box))) != (*C.GtkWidget)(unsafe.Pointer(m.__n2)) {
-				C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n2_box)))
+			m.__n2_box = gtk4rt.SlotBox(m.__n2_box)
+			if gtk4rt.ParentOf(m.__n2_box) != m.__n2 {
+				gtk4rt.FrameSetChild(m.__n2, m.__n2_box)
 			}
 			m.__renderSlot0(m.__n2_box)
 		})
-		__n4 := (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
-		__n5 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n5)), name)
-		C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(__n4)), (*C.GtkWidget)(unsafe.Pointer(__n5)))
-		C.gtk_button_set_child((*C.GtkButton)(unsafe.Pointer(m.row)), (*C.GtkWidget)(unsafe.Pointer(__n4)))
-		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(m.row)))
+		__n4 := gtk4rt.New("GtkFrame")
+		__n5 := gtk4rt.New("GtkLabel")
+		gtk4rt.LabelSetLabel(__n5, name)
+		gtk4rt.FrameSetChild(__n4, __n5)
+		gtk4rt.ChildCall("gtk_button_set_child", m.row, __n4)
+		gtk4rt.BoxAppend(__n3, m.row)
 	}
-	m.__n2 = (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
-	m.__n2_box = C.sngl_slot_box(m.__n2_box)
-	if C.gtk_widget_get_parent((*C.GtkWidget)(unsafe.Pointer(m.__n2_box))) != (*C.GtkWidget)(unsafe.Pointer(m.__n2)) {
-		C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n2_box)))
+	m.__n2 = gtk4rt.New("GtkFrame")
+	m.__n2_box = gtk4rt.SlotBox(m.__n2_box)
+	if gtk4rt.ParentOf(m.__n2_box) != m.__n2 {
+		gtk4rt.FrameSetChild(m.__n2, m.__n2_box)
 	}
 	m.__renderSlot0(m.__n2_box)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n3)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n3)))
+	gtk4rt.BoxAppend(__n3, m.__n2)
+	gtk4rt.BoxAppend(m.__root, __n3)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
-func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
+func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := C.gtk_application_window_new(app)
-	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
+	win := gtk4rt.ApplicationWindowNew(app)
+	gtk4rt.WindowSetDefaultSize(win, 480, 640)
+	gtk4rt.WindowSetChild(win, m.__root)
 	return win
 }
 
 // rowClick fires the "clicked" signal on the #row widget; for tests.
 func (m *Model) rowClick() {
-	sig := C.CString("clicked")
-	defer C.free(unsafe.Pointer(sig))
-	C.sngl_emit(C.gpointer(unsafe.Pointer(m.row)), sig)
+	gtk4rt.Emit(m.row, "clicked")
 }
 
 // rowClickAt fires it on the copy of #row with the key; for tests.
@@ -1158,19 +984,17 @@ func (m *Model) rowClickAt(key string) {
 	if m.__copies_row[key] == nil {
 		return
 	}
-	sig := C.CString("clicked")
-	defer C.free(unsafe.Pointer(sig))
-	C.sngl_emit(C.gpointer(unsafe.Pointer(m.__copies_row[key])), sig)
+	gtk4rt.Emit(m.__copies_row[key], "clicked")
 }
 
-func (m *Model) __list_row(key string, w *C.GtkButton) {
+func (m *Model) __list_row(key string, w gtk4rt.Handle) {
 	for k, c := range m.__copies_row {
 		if c == w {
 			delete(m.__copies_row, k)
 		}
 	}
 	if m.__copies_row == nil {
-		m.__copies_row = map[string]*C.GtkButton{}
+		m.__copies_row = map[string]gtk4rt.Handle{}
 	}
 	m.__copies_row[key] = w
 }
@@ -1425,7 +1249,7 @@ pass sha256:6bd8e5b7d9738f0116cf6bcf32fe3ed0
 -- run/go/fyne --
 pass sha256:e9452f5e3e3b4149bf1f81000838f3ad
 -- run/go/gtk4 --
-pass sha256:e0307900d1af888e3417d080d2af77aa
+pass sha256:de66ea592f558f241797ddc799318aef
 -- run/kotlin/android --
 pass sha256:457965dbd9c5e9b8cefff8019a32d9e1
 -- run/none/html --

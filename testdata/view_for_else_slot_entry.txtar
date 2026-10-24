@@ -437,13 +437,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0 = nil
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			if len(m.xs__inst0) == 0 {
-				__n1 := gtk4rt.LabelNew("")
+				__n1 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n1, "nothing here")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 				m.__slot0 = append(m.__slot0, __n1)
 			} else {
 				for _, i := range m.xs__inst0 {
-					__n2 := gtk4rt.LabelNew("")
+					__n2 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n2, fmt.Sprint(i))
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 					m.__slot0 = append(m.__slot0, __n2)
@@ -487,7 +487,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n3 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	m.__renderSlot0(m.__n3)
@@ -637,6 +637,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e686d8c0fb5be5aa504f0c8884415572
 -- run/go/gtk4 --
-pass sha256:3dc2235c0fb4837b00429389f7bfd072
+pass sha256:651aaba8b6790d26865f521032a65a1a
 -- run/none/html --
 pass sha256:4f4c6df8842de7da82c9a2fd57eb263f

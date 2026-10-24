@@ -107,7 +107,9 @@ string marshaled in IR leaves a `C.` that sends the program down the cgo
 path. Where gtk4rt already wraps the call with a Go string, the op calls it
 as a `#[go.native]` in both modes, as the connect does, and the string's C
 copy is gtk4rt's; where it does not, the string is a pass's and the program
-is cgo, as a link button's create already is. Part 6 decides what is left.
+is cgo, as a link button's create already is. Part 6 made gtk4rt's the default
+protocol for every GIR class, and the per-class `#[cnative]` one the `cgo`
+option's.
 
 ### Part 1: a widget's constructor
 
@@ -425,20 +427,34 @@ string, so a program handing one to a widget falls back to cgo whatever it
 renders; Part 3 kept the connect from doing so by calling gtk4rt, and the
 parts after it do the same where gtk4rt wraps the call.
 
-- [ ] Measure a fresh `go build` of `examples/pokedex` and a two-widget
-  program in each mode with a warm and a cold cache. If wrapped mode still
-  saves what it was written to save, it becomes a second declared protocol
-  over `#[go.native]` `gtk4rt` functions, selected by an option at check
-  time as `gir` is; otherwise it is retired with `wrapped.go` and the
-  `rt*` tables. Write the numbers and the decision in
-  `design/architecture.md`.
+- [X] Measured a fresh `go build` of `examples/pokedex` and a two-widget
+  program in each mode, warm and cold: warm, 0.85s wrapped against 3.1s cgo
+  for the two widgets, and pokedex 6.0s on cgo, 3.4s of it `cgo run` over
+  the gtk.h preamble. Kept, as the default protocol rather than a second
+  one: declgen writes a GIR class's create, append, remove and sets over
+  gtk4rt -- its wrapper where it has one, and `gtk4rt.New`, `ChildCall` and
+  `SetString`/`SetBool`/`SetInt`/`SetFloat` by name otherwise -- and the
+  per-class `#[cnative]` protocol under `gtk4(cgo=true)`, which the widget
+  package is keyed by as it is by `gir`. Pokedex builds wrapped now, 1.6s
+  warm; 223 of 254 gtk4 goldens record wrapped output, up from 198, and the
+  31 that do not draw or call a `#[cnative]`. `rtCtorForCType` went; the
+  calendar's select and a switch's read and invoker state moved to gtk4rt.
+  Numbers and decision in `design/architecture.md`, *Which file a program
+  gets*.
 
-Golden: a kept mode gets `testdata/gtk4_wrapped_protocol.txtar`, a label,
-a button and a reactive string setter under the option, asserting
-`gtk4rt` calls and a `deny` on `C\.`; a retired mode's goldens rerecord as
-cgo. Revert: for a kept mode, drop the option and the golden shows cgo.
+Golden: the stdlib's every widget is `TestStdlibOverrides_EmitTheirWidgets`,
+which now asserts gtk4rt's calls and no `import "C"`, and
+`TestWidgetSource_DeclaresGtk4rtProtocol` pins what declgen writes in each
+mode; the tests that mean the cgo path ask for it (`withCgo`). Revert: write
+the per-class protocol whatever the option says and the stdlib test finds
+`import "C"`.
 
 ### Part 7: retire `ownCStrings`, widen the tracker
+
+Part 6 made the per-class protocol, whose strings `ReleaseTemps` frees, the
+`cgo` option's: the tracker follows a `c.str` the protocol makes only under
+it, and the fixture below says `gtk4(cgo=true)`. By default the protocol's
+calls are gtk4rt `#[go.native]`s, which `--simulate gtk4` has to stub.
 
 - [ ] `ownCStrings`, `constCString`, `cTempName`, `scaffoldData.CStrings`
   and their state on `emitShared` go; nothing is left calling them.

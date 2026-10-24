@@ -1097,27 +1097,27 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n2 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	m.__n3 = gtk4rt.ButtonNew()
+	m.__n3 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n3, "grow")
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "same")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
-	m.__n5 = gtk4rt.ButtonNew()
+	m.__n5 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n5, "push")
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n5)
-	m.__n6 = gtk4rt.ButtonNew()
+	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "first")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n6)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -1471,7 +1471,7 @@ pass sha256:45da2d5470c8c8ac255228cc6fe3d7c6
 -- run/go/fyne --
 pass sha256:e1653310e652a74ba8b763f811caaa9d
 -- run/go/gtk4 --
-pass sha256:61c8ed08d726231b8e78782c71278573
+pass sha256:092cdaeda61d7ee26c2af2f5e55de1ee
 -- run/kotlin/android --
 pass sha256:2fd9f105f477275e22af391626932cfe
 -- run/none/html --

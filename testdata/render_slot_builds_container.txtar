@@ -384,10 +384,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0 = nil
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			for _, it := range m.items {
-				__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+				__n1 := gtk4rt.New("GtkBox")
 				gtk4rt.OrientableSetOrientation(__n1, 0)
 				gtk4rt.BoxSetSpacing(__n1, 6)
-				__n2 := gtk4rt.LabelNew("")
+				__n2 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n2, it)
 				gtk4rt.BoxAppend(__n1, __n2)
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
@@ -414,7 +414,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			__inst0_next := []*__checkbox_state0Instance{}
 			var __inst0_i int = 0
 			for _, it := range m.items {
-				__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+				__n3 := gtk4rt.New("GtkBox")
 				gtk4rt.OrientableSetOrientation(__n3, 0)
 				gtk4rt.BoxSetSpacing(__n3, 8)
 				var __n4 *__checkbox_state0Instance
@@ -433,10 +433,10 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				__inst0_i = (__inst0_i + 1)
 				__n4__el := __n4.Root
 				gtk4rt.BoxAppend(__n3, __n4__el)
-				__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+				__n5 := gtk4rt.New("GtkBox")
 				gtk4rt.OrientableSetOrientation(__n5, 1)
 				gtk4rt.BoxSetSpacing(__n5, 6)
-				__n6 := gtk4rt.LabelNew("")
+				__n6 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n6, it)
 				gtk4rt.BoxAppend(__n5, __n6)
 				gtk4rt.BoxAppend(__n3, __n5)
@@ -492,7 +492,7 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.checked = c.__prop___start_checked
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n0 = gtk4rt.CheckButtonNew()
+	c.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(c.__n0, "")
 	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
 	gtk4rt.Connect(c.__n0, "toggled", func() {
@@ -540,17 +540,17 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n7 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
 	m.__renderSlot0(m.__n7)
-	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n8 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n8, 1)
 	gtk4rt.BoxSetSpacing(m.__n8, 4)
 	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Css: "padding-left: 20px; "})
 	m.__renderSlot1(m.__n8)
 	gtk4rt.BoxAppend(m.__n7, m.__n8)
-	m.more = gtk4rt.ButtonNew()
+	m.more = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.more, "more")
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
 	gtk4rt.BoxAppend(m.__n7, m.more)
@@ -573,4 +573,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:a3f2e9c178f4bda99e04eb57f8edf193
 -- run/go/gtk4 --
-pass sha256:c23f554a0a0f66d4f16396a2f01c7742
+pass sha256:4547bdb03f2dc369bf40e1b4e01ebbfb

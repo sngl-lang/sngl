@@ -93,6 +93,7 @@ func TestTypingUpdatesOnce(t *testing.T) {
 // an entry's changed handler that writes its text back through it re-entered
 // itself until the stack overflowed.
 func TestTypingIntoATwoWayEntryDoesNotRecurse(t *testing.T) {
+	withCgo(t)
 	files := goFiles(generateGTK4FilesBuilt(t, entryEchoSrc))
 	if !strings.Contains(files["model.go"], "C.gtk_entry_new") {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])

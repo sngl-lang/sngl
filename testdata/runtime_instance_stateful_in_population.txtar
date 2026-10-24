@@ -1078,10 +1078,10 @@ func newCounterInstance(__model *Model, __a_tag string, __a_seen func(string)) *
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n5 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n5, 1)
 	gtk4rt.BoxSetSpacing(__n5, 6)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
 	gtk4rt.BoxAppend(__n5, c.__n0)
 	c.__effects0_settle()
@@ -1179,10 +1179,10 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__prop___on0 = __a___on0
 	c.k = (c.__prop_start * 2)
 	c.__slot0 = nil
-	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n6 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n6, 1)
 	gtk4rt.BoxSetSpacing(__n6, 6)
-	__n1 := gtk4rt.LabelNew("")
+	__n1 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n1, ("card " + fmt.Sprint(c.k)))
 	gtk4rt.BoxAppend(__n6, __n1)
 	c.__n2 = newCounterInstance(c.__model, ((fmt.Sprint(c.__prop___p0) + "/") + fmt.Sprint(c.k)), func(__on0_0 string) {
@@ -1244,7 +1244,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	m.__renderSlot0(__n4)
@@ -1620,7 +1620,7 @@ pass sha256:4029ec62f7e1877ca84f51acb29f3a06
 -- run/go/fyne --
 pass sha256:3af2467d2015473f1f5ba5e4c7ebeeeb
 -- run/go/gtk4 --
-pass sha256:17b07a684360c362f27fd88214e7a17b
+pass sha256:6833a47989646f0120bb81a4c29c5325
 -- run/kotlin/android --
 pass sha256:c4224aeb720b1cbfe79e01b4d48a3abf
 -- run/none/html --

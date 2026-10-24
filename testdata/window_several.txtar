@@ -324,7 +324,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__slot0 = nil
 			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 			if m.closes > 2 {
-				__n2 := gtk4rt.LabelNew("")
+				__n2 := gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(__n2, "closed often")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
@@ -400,10 +400,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, (("closed the log " + fmt.Sprint(m.closes)) + " times"))
 	gtk4rt.BoxAppend(m.main, m.__n0)
-	m.__n3 = gtk4rt.ButtonNew()
+	m.__n3 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n3, "Log")
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.main, m.__n3)
@@ -413,11 +413,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.log, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.log, m.log_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.log, m.log_visible_handler)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.closes))
 	gtk4rt.BoxAppend(m.log, m.__n1)
 	m.__renderSlot0(m.log)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "Hide main")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.log, m.__n4)
@@ -546,6 +546,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:52e09601be8b3d28e2415d64e73af1a6
 -- run/go/gtk4 --
-pass sha256:513eaaba847985d783d5e57d0c47fdae
+pass sha256:bb22d9d6dfe4788201b6b2d051e4fd63
 -- run/none/html --
 pass sha256:a86500ef7c8982821d4940a0198b11df

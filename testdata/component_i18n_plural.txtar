@@ -587,9 +587,9 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, m.label)
-	m.add = gtk4rt.ButtonNew()
+	m.add = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.add, "add")
 	gtk4rt.Connect(m.add, "clicked", m.add_clicked_handler)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
@@ -1763,7 +1763,7 @@ pass sha256:3eb74db63bc72181f72f4edcc76ca26d
 -- run/go/fyne --
 pass sha256:02c29a19d8e168acdd196a917cf1ae21
 -- run/go/gtk4 --
-pass sha256:c852ffca6d47f7170fc35019dcaa3601
+pass sha256:45559ea2bc5fdd91f0ee2de6abab2f0b
 -- run/kotlin/android --
 pass sha256:14e38f525ab9cfb012fa98ff2919a99c
 -- run/none/html --

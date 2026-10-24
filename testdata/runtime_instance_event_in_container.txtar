@@ -938,10 +938,10 @@ func newCardInstance(__model *Model, __a_n int, __a_report func(int)) *CardInsta
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n3 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.BoxSetSpacing(__n3, 6)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.BoxAppend(__n3, c.__n0)
 	c.__effects0_settle()
@@ -1038,7 +1038,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n2 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n2, 1)
 	gtk4rt.BoxSetSpacing(__n2, 6)
 	m.__renderSlot0(__n2)
@@ -1359,7 +1359,7 @@ pass sha256:b3eb02c98583f561448be26809bdc483
 -- run/go/fyne --
 pass sha256:1ad9e13743f3bd989f06c5c6323a532e
 -- run/go/gtk4 --
-pass sha256:d3a80a32e3d8f101da96185d5b67fe4b
+pass sha256:103ed009586863ded51bb6b293870222
 -- run/kotlin/android --
 pass sha256:c6071e4842b285ea0df2f4f13dc8c9ce
 -- run/none/html --

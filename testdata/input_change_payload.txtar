@@ -545,10 +545,10 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.BoxSetSpacing(__n4, 6)
-	c.entry = gtk4rt.EntryNew()
+	c.entry = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst1 {
 			c.value__inst1 = gtk4rt.EditableGetText(c.entry)
@@ -562,7 +562,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.__effects0_settle()
 	})
 	gtk4rt.BoxAppend(__n4, c.entry)
-	c.entry__1 = gtk4rt.EntryNew()
+	c.entry__1 = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(c.entry__1, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry__1) != c.value__inst2 {
 			c.value__inst2 = gtk4rt.EditableGetText(c.entry__1)
@@ -576,7 +576,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.__effects0_settle()
 	})
 	gtk4rt.BoxAppend(__n4, c.entry__1)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.committed)
 	gtk4rt.BoxAppend(__n4, c.__n0)
 	c.__effects0_settle()
@@ -706,14 +706,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n3 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.BoxSetSpacing(__n3, 6)
-	m.entry = gtk4rt.EntryNew()
+	m.entry = gtk4rt.New("GtkEntry")
 	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
 	gtk4rt.BoxAppend(__n3, m.entry)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, m.last)
 	gtk4rt.BoxAppend(__n3, m.__n1)
 	m.__renderSlot0(__n3)
@@ -756,4 +756,4 @@ func (m *Model) entry__1Change(v string) {
 -- run/go/fyne --
 pass sha256:4e5771d220e22c7b843e0762e271b10c
 -- run/go/gtk4 --
-pass sha256:c6a8ab704a08c95d8f2e7af6c5ec75b3
+pass sha256:489933c73996cbb75099d3e01ded12c8

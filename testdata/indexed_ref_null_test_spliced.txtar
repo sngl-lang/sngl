@@ -2488,7 +2488,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n6__el)
 					m.__slot1 = append(m.__slot1, __n6__el)
 				} else {
-					__n7 := gtk4rt.LabelNew("")
+					__n7 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n7, "z")
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
 					m.__slot1 = append(m.__slot1, __n7)
@@ -2522,12 +2522,12 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
 			for _, n := range m.names {
 				if n == "a" {
-					m.w = gtk4rt.LabelNew("")
+					m.w = gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(m.w, n)
 					gtk4rt.InsertBefore(parent, m.__slot2_at, m.w)
 					m.__slot2 = append(m.__slot2, m.w)
 				} else {
-					__n8 := gtk4rt.LabelNew("")
+					__n8 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n8, "z")
 					gtk4rt.InsertBefore(parent, m.__slot2_at, __n8)
 					m.__slot2 = append(m.__slot2, __n8)
@@ -2555,7 +2555,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 			__inst2_next := []*__child1Instance{}
 			var __inst2_i int = 0
 			for _, n := range m.names {
-				m.p = gtk4rt.LabelNew("")
+				m.p = gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(m.p, n)
 				gtk4rt.InsertBefore(parent, m.__slot3_at, m.p)
 				m.__slot3 = append(m.__slot3, m.p)
@@ -2666,10 +2666,10 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	c.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	c.__n5 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
 	c.__renderSlot0(c.__n5)
@@ -2817,7 +2817,7 @@ func new__block_state0Instance(__model *Model, __a_n string, __a_skip string, __
 	c.__inst5_live = []*__child3Instance{}
 	c.__rendering4 = false
 	c.__renderAgain4 = false
-	__n1 := gtk4rt.LabelNew("")
+	__n1 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n1, fmt.Sprint(c.local))
 	gtk4rt.BoxAppend(c.__root, __n1)
 	c.__renderSlot4(c.__root)
@@ -2900,7 +2900,7 @@ func (c *__block_state0Instance) __renderSlot4(parent gtk4rt.Handle) {
 					gtk4rt.InsertBefore(parent, c.__slot4_at, __n12__el)
 					c.__slot4 = append(c.__slot4, __n12__el)
 				} else {
-					__n13 := gtk4rt.LabelNew("")
+					__n13 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n13, "z")
 					gtk4rt.InsertBefore(parent, c.__slot4_at, __n13)
 					c.__slot4 = append(c.__slot4, __n13)
@@ -3020,7 +3020,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	c.one = gtk4rt.LabelNew("")
+	c.one = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.one, c.__prop___p0)
 	c.Root = c.one
 	gtk4rt.Retain(c.Root)
@@ -3086,7 +3086,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	__n15 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n15 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n15, 1)
 	gtk4rt.BoxSetSpacing(__n15, 6)
 	c.__n2 = new__block_state0Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 string) {
@@ -3168,7 +3168,7 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	c.__n3 = gtk4rt.LabelNew("")
+	c.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n3, c.__prop___p0)
 	c.Root = c.__n3
 	gtk4rt.Retain(c.Root)
@@ -3232,7 +3232,7 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	c.f = gtk4rt.LabelNew("")
+	c.f = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
 	c.Root = c.f
 	gtk4rt.Retain(c.Root)
@@ -3299,7 +3299,7 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	c.e = gtk4rt.LabelNew("")
+	c.e = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.e, c.__prop___p0)
 	c.Root = c.e
 	gtk4rt.Retain(c.Root)
@@ -3378,19 +3378,19 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n10 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n10 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n10, 1)
 	gtk4rt.BoxSetSpacing(m.__n10, 6)
-	m.move = gtk4rt.ButtonNew()
+	m.move = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.move, "m")
 	gtk4rt.Connect(m.move, "clicked", m.move_clicked_handler)
 	gtk4rt.BoxAppend(m.__n10, m.move)
-	m.hide = gtk4rt.ButtonNew()
+	m.hide = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.hide, "h")
 	gtk4rt.Connect(m.hide, "clicked", m.hide_clicked_handler)
 	gtk4rt.BoxAppend(m.__n10, m.hide)
 	m.__renderSlot1(m.__n10)
-	__n16 := gtk4rt.LabelNew("")
+	__n16 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n16, m.shout__inst0())
 	gtk4rt.BoxAppend(m.__n10, __n16)
 	r := newStepInstance(m, m.depth, 0)
@@ -3398,7 +3398,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n10, r__el)
 	for __copy0, n := range []string{"x", "y"} {
 		if n != "y" {
-			__n17 := gtk4rt.ButtonNew()
+			__n17 := gtk4rt.New("GtkButton")
 			gtk4rt.ButtonSetLabel(__n17, n)
 			m.__list_th(fmt.Sprint(__copy0), __n17)
 			gtk4rt.Connect(__n17, "clicked", func() {
@@ -4838,7 +4838,7 @@ pass sha256:27562189ffe81a2637187874de1723d4
 -- run/go/fyne --
 pass sha256:9bfac4129dfa066432effd8734747b2f
 -- run/go/gtk4 --
-pass sha256:3ec9c2f7bd59961ae1d2c2dcf67c87ac
+pass sha256:47a02c5fd295baf15b1f346ad522968c
 -- run/kotlin/android --
 pass sha256:8bf42432fccf06a7e873f8b7938a7070
 -- run/none/html --

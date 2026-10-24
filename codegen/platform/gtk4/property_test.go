@@ -25,7 +25,7 @@ func generateGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	}
 	g := codegen.LookupPlatform(platformName)
 	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: codegen.LookupLang("go"), Source: "t.sngl"}, mem); err != nil {
+	if err := g.Generate(genRequest(pkg, codegen.LookupLang("go")), mem); err != nil {
 		return nil, err
 	}
 	return mem.Files(), nil
@@ -104,6 +104,7 @@ window(title="t") {
 // the call needs. Nothing may emit a gtk_*_set_* function that does not exist.
 func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 	rulesGIR(t)
+	withCgo(t)
 	files, err := generateGtk4(t, setterlessSource)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -124,12 +125,12 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), m.__rel2, C.int(1))`,
 		// An enum-typed property with no setter takes its member's value,
 		// which the set's match folds to, through the int helper.
-		`m.__rel3 = C.CString("accessible-role")`,
-		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), m.__rel3, C.int(3))`,
+		`m.__rel4 = C.CString("accessible-role")`,
+		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), m.__rel4, C.int(3))`,
 		// A property whose GIR setter takes two values takes the generic
 		// path, and its object-pointer constructor parameter is nil rather
-		// than a bare 0 no cgo pointer type accepts.
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), m.__rel4, m.__rel5)`,
+		// than a bare 0 no cgo pointer type accepts. Its "hi" is the label's.
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), m.__rel5, m.__rel3)`,
 		`C.gtk_text_buffer_new(nil)`,
 		`m.__rel7 = C.CString("scale")`,
 		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), m.__rel7, C.double(0.25))`,
@@ -164,6 +165,7 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 // the helpers to be absent from.
 func TestGObjectPropSet_HelperIsGatedOnUse(t *testing.T) {
 	rulesGIR(t)
+	withCgo(t)
 	files, err := generateGtk4(t, `
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
@@ -253,8 +255,8 @@ func TestSetterlessProps_GeneratedGoCompiles(t *testing.T) {
 // recovered by the caller.
 func TestDispatchIsBoundedBothWays(t *testing.T) {
 	rulesGIR(t)
-	// GtkGrid is outside the wrapped gtk4rt surface, which puts the whole
-	// program on the inline-cgo path where snglGoDispatch exists at all.
+	withCgo(t)
+	// snglGoDispatch exists only on the inline-cgo path.
 	files, err := generateGtk4(t, gtk4Window(`            gtk.GtkGrid(columnSpacing=4) {}
             gtk.GtkButton(label="go", @clicked { }) {}`))
 	if err != nil {

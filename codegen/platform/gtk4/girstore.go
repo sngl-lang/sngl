@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"duckfam.us/sngl/codegen/platform/gtk4/gir"
@@ -50,6 +51,14 @@ func girRequest(producer, opt string) (gencache.Request, error) {
 		opt = abs
 	}
 	return gencache.Request{Producer: producer, Params: []string{opt}}, nil
+}
+
+// widgetsRequest names the declarations for the GIR opt selects, written over
+// C or over gtk4rt as cgo says.
+func widgetsRequest(opt string, cgo bool) (gencache.Request, error) {
+	req, err := girRequest(widgetsProducer, opt)
+	req.Params = append(req.Params, strconv.FormatBool(cgo))
+	return req, err
 }
 
 // parseGIR is gir.ParseGIR, a variable so a test can count the parses a
@@ -232,5 +241,5 @@ func produceWidgets(s *gencache.Store, params []string) (gencache.Output, error)
 	if err != nil {
 		return gencache.Output{}, err
 	}
-	return gencache.Output{Inputs: []gencache.Input{in}, Body: widgetSource(reg)}, nil
+	return gencache.Output{Inputs: []gencache.Input{in}, Body: widgetSource(reg, params[1] == "true")}, nil
 }

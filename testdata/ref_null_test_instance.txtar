@@ -844,7 +844,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				b__el := b.Root
 				gtk4rt.InsertBefore(parent, m.__slot0_at, b__el)
 				m.__slot0 = append(m.__slot0, b__el)
-				m.label = gtk4rt.LabelNew("")
+				m.label = gtk4rt.New("GtkLabel")
 				gtk4rt.LabelSetLabel(m.label, "y")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, m.label)
 				m.__slot0 = append(m.__slot0, m.label)
@@ -892,7 +892,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__prop_label = __a_label
 	c.hits = 0
 	c.__slot0 = nil
-	c.hit = gtk4rt.ButtonNew()
+	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, ((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.Connect(c.hit, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -932,10 +932,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n0 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n0, 1)
 	gtk4rt.BoxSetSpacing(m.__n0, 6)
-	m.toggle = gtk4rt.ButtonNew()
+	m.toggle = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.toggle, "t")
 	gtk4rt.Connect(m.toggle, "clicked", m.toggle_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.toggle)
@@ -1262,7 +1262,7 @@ pass sha256:a7ed7f4d3240ccc95a6084d9e4a3623b
 -- run/go/fyne --
 pass sha256:63dba7d5ec41ae9b2d9e595ec787bbeb
 -- run/go/gtk4 --
-pass sha256:be58c12ff6bacd2bd01a64117e8eaaab
+pass sha256:3c04d7845c7eaf056712132fa442e939
 -- run/kotlin/android --
 pass sha256:15e08fe4c4cf3ae5a6cde510e390b779
 -- run/none/html --

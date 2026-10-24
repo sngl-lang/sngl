@@ -1272,7 +1272,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.hits = 0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.hit = gtk4rt.ButtonNew()
+	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, ((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.Connect(c.hit, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -1333,7 +1333,7 @@ func new__block_state0Instance(__model *Model, __a_r []string, __a_skip string, 
 	c.__inst1_live = []*BadgeInstance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	__n0 := gtk4rt.LabelNew("")
+	__n0 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n0, fmt.Sprint(c.local))
 	gtk4rt.BoxAppend(c.__root, __n0)
 	c.__renderSlot1(c.__root)
@@ -1448,7 +1448,7 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 string, __a
 	c.__prop___on0 = __a___on0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n4 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	c.__n1 = new__block_state0Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 string) {
@@ -1514,10 +1514,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	__n3 := gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.BoxSetSpacing(__n3, 6)
-	m.move = gtk4rt.ButtonNew()
+	m.move = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.move, "m")
 	gtk4rt.Connect(m.move, "clicked", m.move_clicked_handler)
 	gtk4rt.BoxAppend(__n3, m.move)
@@ -2007,7 +2007,7 @@ pass sha256:9180e9453940eaacc80827c31fea2286
 -- run/go/fyne --
 pass sha256:90ee4f23adc614007862e022316ff0bb
 -- run/go/gtk4 --
-pass sha256:cf8bf7338cdbf53f416509bfd549be7b
+pass sha256:1ab59c7528e6ae50b9fc896d4c71c1ac
 -- run/kotlin/android --
 pass sha256:afff42d541766fee5a0f8c411f6d133a
 -- run/none/html --

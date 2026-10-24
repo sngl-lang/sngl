@@ -46,7 +46,12 @@ struct Look {
 // becomes a typed prop and a GLib signal an event, both under the SNGL
 // spelling of their name; #[intrinsic] names the C type, which is the key the
 // emitter reads its per-prop setters back out of the same registry under.
-func widgetSource(reg *gir.TypeRegistry) []byte {
+//
+// cgo selects how a class is made, filled and written: through the C
+// functions GIR names, or, by default, through pkg/go/gtk4rt, whose generic
+// calls take the class, the property and the adder by name, so a program
+// rendering only GIR classes has no cgo of its own.
+func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 	names := make([]string, 0, len(reg.Classes))
 	for name, info := range reg.Classes {
 		// A GIR <class> without a c:type is not a C type anything can
@@ -62,7 +67,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	b.WriteString(lookDecl)
 	declared := map[string]bool{}
 	casts := map[string]string{}
-	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
+	children := childOps{cgo: cgo, natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
@@ -142,7 +147,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// from, so a body would be emitted by nobody. The checker refuses one on
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
-		writeCreate(&b, reg, info, casts)
+		writeCreate(&b, reg, info, casts, cgo)
 		children.write(&b, info)
 		children.writeSets(&b, reg, info, props, casts)
 		// Each action is a method reached through a `#id` on the widget,
@@ -182,14 +187,14 @@ func writeEvent(b *strings.Builder, n, signal, cType string) {
 	fmt.Fprintf(b, "    @%s(self %s),\n", n, cType)
 }
 
-// writeCreate declares how a class is made: its primary constructor as a
-// native, and the #[gen.protocol(create)] function lowering splices where the
-// program renders the class, calling it with a zero per parameter -- the
-// props are written once it returns. A class whose constructor has a
+// writeCreate declares how a class is made: the #[gen.protocol(create)]
+// function lowering splices where the program renders the class, calling
+// gtk4rt.New with the class's name, or under cgo its primary constructor as a
+// native with a zero per parameter -- the props are written once it returns. A class whose constructor has a
 // parameter no zero can be spelled for gets neither (unconstructible says
 // why). casts collects the C types a zero crosses through a cast to, with
 // the SNGL type the cast takes.
-func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, casts map[string]string) {
+func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, casts map[string]string, cgo bool) {
 	if len(info.Constructors) == 0 {
 		return
 	}
@@ -212,21 +217,27 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 			used[spelled.cast] = spelled.castFrom
 		}
 	}
+	if !cgo {
+		fmt.Fprintf(b, "\n#[go.native(%q, \"gtk4rt.New\")]\nfunc _rtNew_%s(typeName string) %s\n", gtk4rtPkg, info.CType, info.CType)
+		fmt.Fprintf(b, "\n#[gen.protocol(create)]\nfunc _create_%s() %s {\n    return _rtNew_%s(%q)\n}\n", info.CType, info.CType, info.CType, info.CType)
+		return
+	}
 	maps.Copy(casts, used)
 	native := "_" + ctor.Name
 	fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(%s) %s\n", ctor.Name, native, strings.Join(params, ", "), info.CType)
 	fmt.Fprintf(b, "\n#[gen.protocol(create)]\nfunc _create_%s() %s {\n    return %s(%s)\n}\n", info.CType, info.CType, native, strings.Join(zeros, ", "))
 }
 
-// childOps writes how each class takes a child in and gives one up: the C
-// call GIR names, as a native taking the C pointers it declares, and the
+// childOps writes how each class takes a child in and gives one up: the
 // #[gen.protocol(append)] and #[gen.protocol(remove)] functions lowering
-// splices where the program puts a node into the class or takes one out. The
-// receiver is cast to the class that declares the call, so a subclass reaches
-// its parent's adder, and the child to GtkWidget; each cast is a native of its
-// own, `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer to
-// another.
+// splices where the program puts a node into the class or takes one out,
+// calling the C call GIR names through gtk4rt (rtOp), or under cgo as a native
+// taking the C pointers it declares. There the receiver is cast to the class
+// that declares the call, so a subclass reaches its parent's adder, and the
+// child to GtkWidget; each cast is a native of its own,
+// `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer to another.
 type childOps struct {
+	cgo     bool
 	natives map[string]bool
 	ptrs    map[string]bool
 	// classPtrs is each class a `_ptr_` cast is declared for.
@@ -258,6 +269,10 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
+	if !o.cgo {
+		o.rtOp(b, info, op, call)
+		return
+	}
 	owner := adderReceiver(call, info.CType)
 	o.ptrs[owner] = true
 	o.ptrs["GtkWidget"] = true
@@ -268,6 +283,21 @@ func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call g
 	}
 	fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %s(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
 		op, op, info.CType, info.CType, native, ptrFunc(owner), info.CType, ptrFunc("GtkWidget"))
+}
+
+// rtOp is op over gtk4rt: its wrapper of the call where it has one, and
+// ChildCall naming the call otherwise.
+func (o *childOps) rtOp(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
+	var body string
+	if fn, ok := rtChildWrappers[call.Func]; ok {
+		native := "_rt" + fn
+		o.native(b, native, fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.%s\")]\nfunc %s(parent ui.node, child ui.node)\n", gtk4rtPkg, fn, native))
+		body = fmt.Sprintf("%s(parent, child)", native)
+	} else {
+		o.native(b, "_rtChildCall", fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.ChildCall\")]\nfunc _rtChildCall(fn string, parent ui.node, child ui.node)\n", gtk4rtPkg))
+		body = fmt.Sprintf("_rtChildCall(%q, parent, child)", call.Func)
+	}
+	fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %s\n}\n", op, op, info.CType, info.CType, body)
 }
 
 // writeCasts declares the pointer types and casts the calls written so far
@@ -291,14 +321,15 @@ type setProp struct {
 
 // writeSets declares, for each prop of info a value can be written to, the
 // #[gen.protocol(set)] function lowering splices wherever the program writes
-// it. The call is gtk4rt's where gtk4rt wraps the setter (rtSetterTable), so
-// a program writing only those stays one with no cgo, as the connect does;
-// GIR's setter otherwise, its receiver cast to the class or interface that
-// declares it; and where GTK ships none, the preamble's sngl_set_prop_* by
-// the property's name, which GObject converts to the type its GParamSpec
-// declares. A string is handed to C as a string, which CMarshal converts and
-// ReleaseTemps frees; an enumeration's member is written as its name, which a
-// match turns into the member's value and which folds where it is spliced.
+// it. The call is gtk4rt's: its wrapper where it wraps the setter
+// (rtSetterTable), and its set by the property's name otherwise. Under cgo it
+// is GIR's setter, its receiver cast to the class or interface that declares
+// it, and where GTK ships none, the preamble's sngl_set_prop_* by the
+// property's name; either set by name is converted by GObject to the type the
+// property's GParamSpec declares. A string handed to a C setter is converted
+// by CMarshal and freed by ReleaseTemps; an enumeration's member is written as
+// its name, which a match turns into the member's value and which folds where
+// it is spliced.
 func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, props []setProp, casts map[string]string) {
 	for _, sp := range props {
 		p, n := sp.prop, sp.name
@@ -307,8 +338,10 @@ func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gi
 			continue
 		}
 		var call string
-		if rt, ok := rtSetterTable[p.Setter]; ok && p.Setter != "" {
+		if rt, ok := rtSetterTable[p.Setter]; ok && p.Setter != "" && !o.cgo {
 			call = o.rtSet(b, reg, p, n, rt.fn, rt.kind)
+		} else if !o.cgo {
+			call = o.rtPropSet(b, reg, p, n, kind)
 		} else if p.Setter != "" {
 			call = o.cSet(b, reg, info, p, n, casts)
 		} else {
@@ -343,6 +376,24 @@ func (o *childOps) rtSet(b *strings.Builder, reg *gir.TypeRegistry, p gir.Prop, 
 	native := "_rt" + fn
 	o.native(b, native, fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.%s\")]\nfunc %s(w ui.node, v %s)\n", gtk4rtPkg, fn, native, typ))
 	return fmt.Sprintf("%s(self, %s)", native, value)
+}
+
+// rtPropSet is the call of gtk4rt's generic set of p by its name.
+func (o *childOps) rtPropSet(b *strings.Builder, reg *gir.TypeRegistry, p gir.Prop, n string, kind propValueKind) string {
+	fn, typ, value := "SetInt", "int", n
+	switch kind {
+	case propString:
+		fn, typ = "SetString", "string"
+	case propBool:
+		fn, typ = "SetBool", "bool"
+	case propFloat:
+		fn, typ = "SetFloat", "float"
+	case propEnum:
+		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
+	}
+	native := "_rt" + fn
+	o.native(b, native, fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.%s\")]\nfunc %s(w ui.node, prop string, v %s)\n", gtk4rtPkg, fn, native, typ))
+	return fmt.Sprintf("%s(self, %q, %s)", native, p.Name, value)
 }
 
 // cSet is the call of p's GIR setter.

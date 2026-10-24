@@ -872,7 +872,7 @@ func newCounterInstance(__model *Model) *CounterInstance {
 	c.__effects1_torn = false
 	c.__effects1_steps = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.mounts))
 	c.__effects1_settle()
 	c.Root = c.__n0
@@ -996,7 +996,7 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 		c.visible = __visible
 		gtk4rt.ToplevelSetVisible(c.__n1, c.visible)
 	})
-	__n4 := gtk4rt.LabelNew("")
+	__n4 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n4, "load")
 	gtk4rt.BoxAppend(c.__n1, __n4)
 	c.__n5 = newCounterInstance(c.__model)
@@ -1077,7 +1077,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.ticks))
 	gtk4rt.BoxAppend(m.main, m.__n2)
 	gtk4rt.AppAttach(m.main)
@@ -1094,4 +1094,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:3fb90f03c3d98e01494d21f385192b00
 -- run/go/gtk4 --
-pass sha256:17318acea768117698a9d3c7a2e7def9
+pass sha256:a92110de4ff77b1ab795f02b7ee1496f

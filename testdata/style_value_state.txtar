@@ -1369,7 +1369,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__chi
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 	gtk4rt.SetLook(c.__n0, LookOf(c.__prop___p1))
 	c.Root = c.__n0
@@ -1446,15 +1446,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n6 = gtk4rt.ButtonNew()
+	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "swap")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n6)
-	m.__n7 = gtk4rt.ButtonNew()
+	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "tint")
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n7)
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, "styled")
 	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
@@ -1464,11 +1464,11 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt16 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, "picked")
 	gtk4rt.SetLook(m.__n3, LookOf(__lt16))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
-	m.__n4 = gtk4rt.LabelNew("")
+	m.__n4 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n4, "kept")
 	gtk4rt.SetLook(m.__n4, LookOf(m.kept[0]))
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
@@ -2116,7 +2116,7 @@ pass sha256:ed2fa36653c5ebab1a8cbf6795a414ff
 -- run/go/fyne --
 pass sha256:eb3ff0d36acb59eb3adfb7b2d25281b5
 -- run/go/gtk4 --
-pass sha256:009aba018bb431889cc1a26f28143b33
+pass sha256:4d06d31c253fb5a229da01f8c6d14c7a
 -- run/kotlin/android --
 pass sha256:ce5f510aca5ec3ee0fd19704e1f0ab7c
 -- run/none/html --

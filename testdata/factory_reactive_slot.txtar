@@ -467,7 +467,7 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_name)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.open = !c.open
@@ -574,7 +574,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ("body of " + c.__prop___p0))
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
@@ -637,4 +637,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:277ad55b6c1fcb96528204c19f096f3c
 -- run/go/gtk4 --
-pass sha256:f607450812d6fef4cff49d5fedb409cd
+pass sha256:9e7e06f161e986ae84c5700097fffee8

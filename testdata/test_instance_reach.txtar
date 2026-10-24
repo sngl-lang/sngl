@@ -1048,7 +1048,7 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 	c.__prop___p0 = __a___p0
 	c.__prop___on0 = __a___on0
 	c.__slot0 = nil
-	c.k = gtk4rt.ButtonNew()
+	c.k = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.k, ("k" + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.Connect(c.k, "clicked", func() {
 		c.__prop___on0()
@@ -1110,17 +1110,17 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	m.__n1 = gtk4rt.New("GtkBox")
 	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
-	m.ts = gtk4rt.ButtonNew()
+	m.ts = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.ts, "s")
 	gtk4rt.Connect(m.ts, "clicked", m.ts_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.ts)
-	m.label = gtk4rt.LabelNew("")
+	m.label = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.label, ("n" + fmt.Sprint(m.hits)))
 	gtk4rt.BoxAppend(m.__n1, m.label)
-	m.hit = gtk4rt.ButtonNew()
+	m.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.hit, ("b" + fmt.Sprint(m.hits__inst0)))
 	gtk4rt.Connect(m.hit, "clicked", m.hit_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.hit)
@@ -1508,7 +1508,7 @@ pass sha256:3b9c961e02ed59c9e64d4f4457ddfed2
 -- run/go/fyne --
 pass sha256:6f73efaf192eb2051274c229f0345f21
 -- run/go/gtk4 --
-pass sha256:1a948f7154777bc61e02d9c66847357d
+pass sha256:db59bc6dac6d3df1e431be33aa3472ba
 -- run/kotlin/android --
 pass sha256:9020ea6ffb98906753741bdecb870b96
 -- run/none/html --

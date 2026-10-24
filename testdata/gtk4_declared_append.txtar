@@ -100,12 +100,9 @@ func sngl_draw_dispatch(idx C.int, cr *C.cairo_t, width, height C.int) {
 	}
 }
 
-var snglModel *Model
-
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	m := New()
-	snglModel = m
 	win := m.BuildUI(app)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 }
@@ -119,9 +116,6 @@ func main() {
 		snglActivateSignal,
 		C.GCallback(C.snglActivate), nil, nil, 0)
 	status := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)
-	if snglModel != nil {
-		snglModel.__snglTeardown()
-	}
 	if status != 0 {
 		fmt.Fprintf(os.Stderr, "gtk: application exited with status %d\n", status)
 		os.Exit(int(status))
@@ -336,9 +330,6 @@ type Model struct {
 	__slot0_at     *C.GtkWidget
 	__rendering0   bool
 	__renderAgain0 bool
-	__rel0         *C.char
-	__rel1         *C.char
-	__rel2         *C.char
 	__n0           *C.GtkBox
 	__n3           *C.GtkDrawingArea
 	__n2           *C.GtkBox
@@ -362,9 +353,6 @@ func New() *Model {
 	m.__slot0_at = nil
 	m.__rendering0 = false
 	m.__renderAgain0 = false
-	m.__rel0 = C.CString("frame")
-	m.__rel1 = C.CString("")
-	m.__rel2 = C.CString("https://example.com")
 	return m
 }
 
@@ -401,12 +389,12 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		for m.__renderAgain0 {
 			m.__renderAgain0 = false
 			for _, __entry := range m.__slot0 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
 			}
 			m.__slot0 = nil
 			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
 			if m.shown {
-				__n1 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+				__n1 := (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 				gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n1)), "shown")
 				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
@@ -427,16 +415,6 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 func (m *Model) __n10_clicked_handler() {
 	m.shown = !m.shown
 	m.__renderSlot0(m.__n2)
-}
-
-func (m *Model) __snglTeardown() {
-	Free(m.__rel0)
-	Free(m.__rel1)
-	Free(m.__rel2)
-}
-
-func Free(s *C.char) {
-	C.free(unsafe.Pointer(s))
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -486,29 +464,29 @@ func (m *Model) buildWidgetTree() {
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n3), C.int((len(snglDrawFuncs) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
-	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(C.int(0)), C.int(0))))
+	m.__n2 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
 	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n2)), 4)
-	m.__n4 = (*C.GtkFrame)(unsafe.Pointer(C.gtk_frame_new(nil)))
-	C.gtk_frame_set_label((*C.GtkFrame)(unsafe.Pointer(m.__n4)), m.__rel0)
-	m.__n5 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	m.__n4 = (*C.GtkFrame)(unsafe.Pointer(gtk4rt.New("GtkFrame")))
+	gtk4rt.SetString(gtk4rt.Handle(unsafe.Pointer(m.__n4)), "label", "frame")
+	m.__n5 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n5)), "framed")
-	C.gtk_frame_set_child((*C.GtkFrame)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
-	m.__n6 = (*C.GtkScrolledWindow)(unsafe.Pointer(C.gtk_scrolled_window_new()))
-	m.__n7 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	gtk4rt.FrameSetChild(gtk4rt.Handle(unsafe.Pointer(m.__n4)), gtk4rt.Handle(unsafe.Pointer(m.__n5)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
+	m.__n6 = (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.New("GtkScrolledWindow")))
+	m.__n7 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n7)), "scrolled")
-	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n7)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
-	m.__n8 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(m.__rel1)))
-	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n8)), m.__rel2)
-	m.__n9 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	gtk4rt.ScrolledWindowSetChild(gtk4rt.Handle(unsafe.Pointer(m.__n6)), gtk4rt.Handle(unsafe.Pointer(m.__n7)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n6)))
+	m.__n8 = (*C.GtkLinkButton)(unsafe.Pointer(gtk4rt.New("GtkLinkButton")))
+	gtk4rt.SetString(gtk4rt.Handle(unsafe.Pointer(m.__n8)), "uri", "https://example.com")
+	m.__n9 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n9)), "linked")
-	C.gtk_button_set_child((*C.GtkButton)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
-	m.__n10 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	gtk4rt.ChildCall("gtk_button_set_child", gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n9)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n8)))
+	m.__n10 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "toggle")
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "clicked", m.__n10_clicked_handler)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n10)))
 	m.__renderSlot0(m.__n2)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -524,4 +502,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:ba46478515abc81668280d4a8de01696
+pass sha256:9ce2ea856656c526c8865a6d50b8280f

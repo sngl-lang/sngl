@@ -1065,11 +1065,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
-	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	m.__n1 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n1)), fmt.Sprint(m.v))
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
-	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	m.__n2 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
 	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.problem)
 	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
@@ -1090,4 +1090,4 @@ pass sha256:6cf518da6bef223e08abd6b48bd0188a
 -- run/go/fyne --
 pass sha256:fc3b6cef86f1abfcea39fd4d0e122561
 -- run/go/gtk4 --
-pass sha256:bd37e0aea7dc112521ea83f076ccb9c3
+pass sha256:6bde81cf0f6c72984ec0f0cbdbe9bc4d

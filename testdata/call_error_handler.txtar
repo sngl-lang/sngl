@@ -1074,19 +1074,19 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.inHandler = gtk4rt.ButtonNew()
+	m.inHandler = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.inHandler, "Handler")
 	gtk4rt.Connect(m.inHandler, "clicked", m.inHandler_clicked_handler)
-	m.inFunc = gtk4rt.ButtonNew()
+	m.inFunc = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.inFunc, "Func")
 	gtk4rt.Connect(m.inFunc, "clicked", m.inFunc_clicked_handler)
-	m.deep = gtk4rt.ButtonNew()
+	m.deep = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.deep, "Deep")
 	gtk4rt.Connect(m.deep, "clicked", m.deep_clicked_handler)
-	m.fine = gtk4rt.ButtonNew()
+	m.fine = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.fine, "Fine")
 	gtk4rt.Connect(m.fine, "clicked", m.fine_clicked_handler)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, ((m.caught + "|") + m.after))
 	gtk4rt.BoxAppend(m.__root, m.inHandler)
 	gtk4rt.BoxAppend(m.__root, m.inFunc)
@@ -1463,7 +1463,7 @@ pass sha256:8beaec0322561d6c8dab79109e62d3e4
 -- run/go/fyne --
 pass sha256:1112193df48bef5dc65ee8dbb21a8081
 -- run/go/gtk4 --
-pass sha256:7eb6b7843b8a72f388bff5242cdbb9b4
+pass sha256:b096701783b9ee7b8bdddca72a2bc964
 -- run/go/html --
 pass sha256:ea8f4da2070ee8184c6d7295d06a0741
 -- run/kotlin/android --

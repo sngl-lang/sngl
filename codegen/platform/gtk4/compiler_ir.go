@@ -481,7 +481,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers, c.wrapped)
 	for _, inv := range vc.eventInvokers {
 		// A calendar's invoker selects the day through model.go's helper.
-		if inv.WidgetType == "GtkCalendar" {
+		if inv.WidgetType == "GtkCalendar" && !c.wrapped {
 			c.shared.calendarDate = true
 		}
 	}
@@ -883,12 +883,10 @@ func isNodeRef(id *ir.Ident) bool {
 	return ok && v.NodeHandle
 }
 
-// modelNode spells a node of the Model, in the mode the file is emitted in.
-func modelNode(wrapped bool) func(name string) ir.Expr {
+// modelNode spells a node for the translator to put where its scope holds it:
+// a Model field, or a local of a render slot that keeps it.
+func modelNode(bool) func(name string) ir.Expr {
 	return func(name string) ir.Expr {
-		if wrapped {
-			return codegen.ModelFieldRef(name, gtk4rtHandleIRType())
-		}
 		return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
 	}
 }
@@ -1603,6 +1601,8 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s)))\n", inv.RtFire, w)
 	case inv.GTKSignal == "pressed":
 		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
+	case notify && wrapped:
+		fmt.Fprintf(b, "\tgtk4rt.Notify(%s, %q)\n", w, prop)
 	case notify:
 		// g_signal_emit_by_name cannot be handed the GParamSpec a
 		// notification carries; g_object_notify builds it.
@@ -1627,7 +1627,7 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wrapped bool) {
 	setter := invokerStateSetter(inv.WidgetType, wrapped)
 	if wrapped {
-		fmt.Fprintf(b, "\tif gtk4rt.CheckButtonGetActive(%s) != v {\n", w)
+		fmt.Fprintf(b, "\tif %s(%s) != v {\n", strings.Replace(setter, "Set", "Get", 1), w)
 		fmt.Fprintf(b, "\t\t%s(%s, v)\n\t\treturn\n\t}\n", setter, w)
 		return
 	}
