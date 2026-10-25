@@ -1381,7 +1381,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			// only ever mattered for a body that *reads* a prop the call site
 			// omitted -- a platform override does, so `style` on a
 			// `rect(x, y, w, h)` emitted an identifier nothing declares.
-			val = ir.DeclaredDefault(p.Type)
+			val = ir.ZeroExpr(p.Type)
 		}
 		if val != nil {
 			bindings[p.Name] = val
@@ -1655,7 +1655,7 @@ func (st *inlineCompState) restartOnEntry(vars []*ir.Var, loops []*ir.For) *ir.N
 		if v.IsConst || v.NodeHandle {
 			continue
 		}
-		zero, init := ir.DeclaredDefault(v.Type), v.Init
+		zero, init := ir.ZeroExpr(v.Type), v.Init
 		if init == nil {
 			init = zero
 		}

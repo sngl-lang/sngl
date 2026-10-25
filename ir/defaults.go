@@ -36,7 +36,9 @@ func ZeroExpr(t *Type) Expr {
 			return &Literal{Type: t, Value: "0001-01-01 00:00:00"}
 		}
 		sd, _ := t.Decl.(*StructDef)
-		return &StructLit{Type: t, Def: sd, Fields: nil}
+		lit := &StructLit{Type: t, Def: sd}
+		FillOmittedFields(lit)
+		return lit
 	case TypeEnum:
 		ed, _ := t.Decl.(*EnumDef)
 		if ed == nil || len(ed.Members) == 0 {
@@ -69,42 +71,82 @@ func ZeroExpr(t *Type) Expr {
 	return nil
 }
 
-// DeclaredDefault is the value a declaration means by omitting one.
-//
-// The same as ZeroExpr except for a struct, where it carries the fields' own
-// declared defaults. An empty struct literal reads as every field's zero, and
-// a declaration that says `strokeWidth float = 1.0` and `fontSize float = 16.0`
-// means those -- so a platform override reading a prop the call site left out
-// gets what the stdlib documents rather than a transparent hairline in a
-// zero-point font.
-//
-// Only the fields the declaration actually gave a default, which is what
-// DefaultWritten is for: Normalize fills every nil Default with the type's
-// zero, so reading Default alone names every field of every struct. That
-// difference is not academic -- a backend reads a field's *presence* as
-// having been set, and `ui.Style` declares no defaults at all while
-// documenting that an unset field inherits the platform's. Naming them all
-// put `flex:0` and a zero-line `-webkit-line-clamp` on every element of every
-// generated page.
-func DeclaredDefault(t *Type) Expr {
-	if t == nil || t.Kind != TypeStruct {
-		return ZeroExpr(t)
+// FillOmittedFields writes every field lit leaves out, each as what the
+// declaration means by omitting it (FieldZero), so that nothing after the
+// check can tell an omitted field from a written one: only the value says
+// anything, and a field a program means to leave unset is an option holding
+// null. A field a spread supplies is the spread's, and a host's own struct
+// keeps the fields its literal names, the host deciding what the rest hold.
+func FillOmittedFields(lit *StructLit) {
+	fillOmittedFields(lit, nil)
+}
+
+func fillOmittedFields(lit *StructLit, seen map[*StructDef]bool) {
+	sd := lit.Def
+	if sd == nil || (sd.Foreign.Name != "" && !sd.Foreign.Marked) || seen[sd] {
+		return
 	}
-	// A string-representable stdlib struct has a canonical zero of its own.
-	if IsDateStruct(t) || IsTimeStruct(t) || IsDateTimeStruct(t) {
-		return ZeroExpr(t)
-	}
-	sd, _ := t.Decl.(*StructDef)
-	if sd == nil || len(sd.Fields) == 0 {
-		return ZeroExpr(t)
-	}
-	lit := &StructLit{Type: t, Def: sd}
-	for _, f := range sd.Fields {
-		if !f.DefaultWritten || f.Default == nil {
+	written := make(map[string]bool, len(lit.Fields))
+	for _, f := range lit.Fields {
+		if !f.Spread {
+			written[f.Name] = true
 			continue
 		}
-		lit.Fields = append(lit.Fields, FieldInit{Name: f.Name, Value: f.Default})
+		covered, ok := FieldsOf(f.Value.ExprType())
+		if !ok {
+			// Nothing says which fields the spread holds, so it may hold
+			// any of them.
+			return
+		}
+		for _, c := range covered {
+			written[c.Name] = true
+		}
 	}
+	for _, f := range sd.Fields {
+		if written[f.Name] {
+			continue
+		}
+		if v := fieldZero(lit.Type, f, seen); v != nil {
+			lit.Fields = append(lit.Fields, FieldInit{Name: f.Name, Value: v})
+		}
+	}
+}
+
+// FieldZero is what a literal of t holds in a field f it leaves out: the
+// field's declared default, or its type's zero at t's type arguments. nil
+// where neither is known: a field typed by a type parameter nothing binds.
+func FieldZero(t *Type, f *StructField) Expr {
+	return fieldZero(t, f, nil)
+}
+
+func fieldZero(t *Type, f *StructField, seen map[*StructDef]bool) Expr {
+	if f.Default != nil {
+		return f.Default
+	}
+	ft := f.Type
+	if bound, ok := FieldsOf(t); ok {
+		if b := FieldNamed(bound, f.Name); b != nil {
+			ft = b.Type
+		}
+	}
+	if ft == nil || ft.Kind != TypeStruct {
+		return ZeroExpr(ft)
+	}
+	// A struct holding itself does so through an option or a list, whose
+	// zero is empty; the guard is for one declared otherwise, which the
+	// checker refuses, so that reporting it is all that happens.
+	sd, _ := t.Decl.(*StructDef)
+	inner, _ := ft.Decl.(*StructDef)
+	if inner == nil || IsDateStruct(ft) || IsTimeStruct(ft) || IsDateTimeStruct(ft) {
+		return ZeroExpr(ft)
+	}
+	if seen == nil {
+		seen = map[*StructDef]bool{}
+	}
+	seen[sd] = true
+	defer delete(seen, sd)
+	lit := &StructLit{Type: ft, Def: inner}
+	fillOmittedFields(lit, seen)
 	return lit
 }
 
@@ -359,4 +401,41 @@ func normalizeExpr(e Expr) {
 			normalizeFunc(n.Func)
 		}
 	}
+}
+
+// SameConstant reports whether a and b are one constant written alike: the
+// same literal, both null, the same enum member, or struct literals of one
+// declaration holding such constants field for field. Anything else is not
+// known to be the same, and answers false.
+func SameConstant(a, b Expr) bool {
+	if a == b {
+		return a != nil
+	}
+	if IsNullLiteral(a) || IsNullLiteral(b) {
+		return IsNullLiteral(a) && IsNullLiteral(b)
+	}
+	switch x := a.(type) {
+	case *Literal:
+		y, ok := b.(*Literal)
+		return ok && x.Value == y.Value && x.Suffix == y.Suffix && x.Type != nil && x.Type.Equal(y.Type)
+	case *Ident:
+		y, ok := b.(*Ident)
+		return ok && x.Member != "" && x.Member == y.Member && x.Type != nil && x.Type.Equal(y.Type)
+	case *Conversion:
+		y, ok := b.(*Conversion)
+		return ok && x.Type != nil && x.Type.Equal(y.Type) && SameConstant(x.Operand, y.Operand)
+	case *StructLit:
+		y, ok := b.(*StructLit)
+		if !ok || x.Def == nil || x.Def != y.Def || len(x.Fields) != len(y.Fields) {
+			return false
+		}
+		for i, f := range x.Fields {
+			g := y.Fields[i]
+			if f.Spread || g.Spread || f.Name != g.Name || !SameConstant(f.Value, g.Value) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }

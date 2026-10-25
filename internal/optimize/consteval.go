@@ -33,6 +33,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		if x.Member != "" {
 			return true // an enum member is written, not computed
 		}
+		if x.Type != nil && x.Type.Kind == ir.TypeNull {
+			return true // `null`, the universe's
+		}
 		// A const the compiler supplies no value for -- i18n's plural keys,
 		// whose value is the runtime's -- does not fold.
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst && (v.Init != nil || v.Builtin.IsConst()) {
@@ -340,6 +343,9 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 	if x.Member != "" {
 		return x.Member, true
 	}
+	if x.Type != nil && x.Type.Kind == ir.TypeNull {
+		return nil, true
+	}
 	// Const variable — evaluate its initializer, except where the compiler
 	// supplies the value. The build target is keyed off the #[builtin] mark
 	// rather than the name, so a declaration shadowing PLATFORM is an
@@ -646,12 +652,12 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 }
 
 func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
-	// A T promoted to option[T] is not a value change, so folding it produces
-	// the operand's value and the rebuilt expression is typed T again -- the
-	// wrap vanishes, and Go's *T field is assigned a T. There is nothing to
-	// gain by folding it either: the operand folds on its own.
+	// A T promoted to option[T] is not a value change: the option holds the
+	// operand's value, and irFromValue writes the wrap back wherever an
+	// option is what the position holds. Refused, no struct with a set option
+	// field folded, nor anything reading one -- every ui.Style.
 	if ir.IsOptionWrap(conv) {
-		return nil, false
+		return evalExpr(conv.Operand, ctx)
 	}
 	if conv.Type.Kind == ir.TypeString {
 		if s, ok := multiBaseUnitString(conv.Operand); ok {
@@ -1521,9 +1527,10 @@ func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
 }
 
 // fillOmittedFields gives each field a literal left out what the declaration
-// means by omitting it, so a read of one folds and two literals compare; marked
-// omitted, irFromValue writes the literal back as it was written. It reports
-// whether every field now has a value.
+// means by omitting it, so a read of one folds and two literals compare. The
+// checker has written every field of a literal a program wrote; what is left
+// out here was built by a pass. It reports whether every field now has a
+// value.
 func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
 	if def == nil {
 		def = expectedStructDef(s.Type)
@@ -1549,7 +1556,7 @@ func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
 			complete = false
 			continue
 		}
-		s.Fields = append(s.Fields, interp.Field{Name: f.Name, Value: v, Omitted: true, Filled: interp.DeepCopy(v)})
+		s.Fields = append(s.Fields, interp.Field{Name: f.Name, Value: v})
 	}
 	return complete
 }

@@ -426,7 +426,7 @@ func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst
 	for i, p := range handler.Params {
 		tmp := &ir.Var{Name: f.names.next(p.Name, "fire"), Type: p.Type}
 		names[p] = tmp.Name
-		var val ir.Expr = ir.DeclaredDefault(p.Type)
+		var val ir.Expr = ir.ZeroExpr(p.Type)
 		if i < len(args) {
 			val = args[i]
 		}
@@ -765,7 +765,7 @@ func (f *reachFlattener) fireTriggers(fn *ir.Func) error {
 			if i < len(c.Args) {
 				args = append(args, ir.CallArg{Value: c.Args[i].Value})
 			} else {
-				args = append(args, ir.CallArg{Value: ir.DeclaredDefault(p.Type)})
+				args = append(args, ir.CallArg{Value: ir.ZeroExpr(p.Type)})
 			}
 		}
 		for _, idx := range idxs {
@@ -940,7 +940,7 @@ func handleNode(stmts []ir.Stmt, id string) (*ir.NodeInst, bool) {
 func (f *reachFlattener) foldedNullTest(b *ir.Binary) *ir.Literal {
 	if _, _, present, isNull := ir.NullTestedCopy(b); isNull {
 		operand := b.Left
-		if isNullLiteral(operand) {
+		if ir.IsNullLiteral(operand) {
 			operand = b.Right
 		}
 		if r, ok, _ := f.ref(operand); ok && r.folded {

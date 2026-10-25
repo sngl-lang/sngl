@@ -1459,9 +1459,8 @@ type StructField struct {
 	Default Expr // nil if no default
 	// DefaultWritten records that the declaration gave this field a default.
 	// Normalize otherwise erases the distinction by filling every nil Default
-	// with the type's zero, and DeclaredDefault needs it: a field the
-	// declaration said nothing about has to stay absent, so that "unset" goes
-	// on meaning unset to a backend that reads presence.
+	// with the type's zero, which a dump written back as source would then
+	// spell as a default the declaration never wrote.
 	DefaultWritten bool `json:",omitempty"`
 	Foreign        `json:"Foreign,omitzero"`
 	// JSON and HTTP are the field's name on the wire in each format, as

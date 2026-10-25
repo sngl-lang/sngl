@@ -325,7 +325,7 @@ func bindRootProps(comp *ir.Component) {
 		}
 		init := p.Default
 		if init == nil {
-			init = ir.DeclaredDefault(p.Type)
+			init = ir.ZeroExpr(p.Type)
 		} else {
 			init = ir.CloneExprSharingDecls(init)
 		}

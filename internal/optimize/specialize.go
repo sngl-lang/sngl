@@ -200,12 +200,11 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		if !ok {
 			continue
 		}
-		// DeclaredDefault, not ZeroExpr, for the reason inline_pure gives: a
-		// struct's declared default is its fields' own, so a body reading
+		// A struct's zero is its fields' own defaults, so a body reading
 		// `style.fontSize` off an omitted prop gets what the declaration says.
 		def := p.Default
 		if def == nil {
-			def = ir.DeclaredDefault(p.Type)
+			def = ir.ZeroExpr(p.Type)
 		}
 		if def == nil {
 			continue

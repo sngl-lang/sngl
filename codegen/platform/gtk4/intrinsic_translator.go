@@ -1870,5 +1870,5 @@ func (t *gtk4Translator) setLook(node, value ir.Expr) []ir.Stmt {
 	if codegen.IRIsZeroLiteral(value) {
 		return nil
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), codegen.IRWrittenFields(value))}}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), value)}}
 }

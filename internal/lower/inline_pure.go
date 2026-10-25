@@ -691,11 +691,11 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// call-site arg to the prop's default to the type's declared default, so
 	// the body never keeps a bare param identifier.
 	//
-	// DeclaredDefault, not ZeroExpr: shapeBody in pass_canvas.go answers the
-	// same question the same way, and the two have to agree because a shape
-	// reaches whichever of them composes it away. A struct's declared default
-	// is its fields' own, which is how a body reading `style.fontSize` off a
-	// prop the call site left out gets 16 rather than nothing.
+	// shapeBody in pass_canvas.go answers the same question the same way,
+	// and the two have to agree because a shape reaches whichever of them
+	// composes it away. A struct's zero is its fields' own defaults, which is
+	// how a body reading `style.fontSize` off a prop the call site left out
+	// gets 16 rather than nothing.
 	bindings := map[string]ir.Expr{}
 	for _, p := range comp.Props {
 		var val ir.Expr
@@ -709,7 +709,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			val = p.Default
 		}
 		if val == nil {
-			val = ir.DeclaredDefault(p.Type)
+			val = ir.ZeroExpr(p.Type)
 		}
 		if val != nil {
 			bindings[p.Name] = val

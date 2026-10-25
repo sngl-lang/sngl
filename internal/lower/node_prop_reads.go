@@ -182,7 +182,7 @@ func nodePropExpr(n *ir.NodeInst, name string) ir.Expr {
 		}
 		// What a stdlib prop with no written default means, and the same
 		// answer shapeBody gives when it splices a body.
-		return ir.DeclaredDefault(p.Type)
+		return ir.ZeroExpr(p.Type)
 	}
 	return nil
 }

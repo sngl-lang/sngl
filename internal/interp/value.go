@@ -2,7 +2,6 @@ package interp
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ir"
@@ -35,26 +34,6 @@ type Struct struct {
 type Field struct {
 	Name  string
 	Value any
-	// Omitted marks a field the literal that built the struct left out, and
-	// Filled is a copy of what it was filled with: its type's zero or its
-	// declared default. It reads like any other field; Unwritten says whether
-	// it still stands as it was left out.
-	Omitted bool
-	Filled  any
-}
-
-// Unwritten reports whether f is still what its literal's omission filled in.
-// A value spelled back as a literal leaves such a field out, since a backend
-// reads a field's presence as having been set (ir.DeclaredDefault). Asked of
-// the value rather than trusted to a flag, because a write may reach the field
-// without passing through its struct: `o.inner.x = 1` writes the struct inner
-// holds in place.
-func (f Field) Unwritten() bool {
-	if !f.Omitted {
-		return false
-	}
-	eq, ok := Equal(f.Value, f.Filled)
-	return ok && eq
 }
 
 // NewStruct returns an empty struct value of the given declaration and type.
@@ -76,7 +55,7 @@ func CopyValue(v any) any {
 	}
 	cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields)), Handle: s.Handle}
 	for i, f := range s.Fields {
-		cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value), Omitted: f.Omitted, Filled: f.Filled}
+		cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value)}
 	}
 	return cp
 }
@@ -147,9 +126,9 @@ func copyOf(v any, t *ir.Type) any {
 		cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields)), Handle: s.Handle}
 		for i, f := range s.Fields {
 			if ft, ok := fieldTypes[f.Name]; ok {
-				cp.Fields[i] = Field{Name: f.Name, Value: copyOf(f.Value, ft), Omitted: f.Omitted, Filled: f.Filled}
+				cp.Fields[i] = Field{Name: f.Name, Value: copyOf(f.Value, ft)}
 			} else {
-				cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value), Omitted: f.Omitted, Filled: f.Filled}
+				cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value)}
 			}
 		}
 		return cp
@@ -175,7 +154,7 @@ func DeepCopy(v any) any {
 		}
 		cp := &Struct{Def: x.Def, Type: x.Type, Fields: make([]Field, len(x.Fields)), Handle: x.Handle}
 		for i, f := range x.Fields {
-			cp.Fields[i] = Field{Name: f.Name, Value: DeepCopy(f.Value), Omitted: f.Omitted, Filled: f.Filled}
+			cp.Fields[i] = Field{Name: f.Name, Value: DeepCopy(f.Value)}
 		}
 		return cp
 	}
@@ -210,7 +189,6 @@ func (s *Struct) Set(name string, v any) {
 	for i := range s.Fields {
 		if s.Fields[i].Name == name {
 			s.Fields[i].Value = v
-			s.Fields[i].Omitted, s.Fields[i].Filled = false, nil
 			return
 		}
 	}
@@ -225,12 +203,6 @@ func (s *Struct) Merge(src *Struct) {
 	}
 	for _, f := range src.Fields {
 		s.Set(f.Name, f.Value)
-		// What src's own literal left out, this one did not write either --
-		// where the two are one declaration, whose omission means the same.
-		if f.Omitted && src.Def != nil && src.Def == s.Def {
-			i := slices.IndexFunc(s.Fields, func(g Field) bool { return g.Name == f.Name })
-			s.Fields[i].Omitted, s.Fields[i].Filled = true, f.Filled
-		}
 	}
 }
 
@@ -264,7 +236,7 @@ func (s *Struct) Clone() *Struct {
 	}
 	out := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields)), Handle: s.Handle}
 	for i, f := range s.Fields {
-		out.Fields[i] = Field{Name: f.Name, Value: CloneValue(f.Value), Omitted: f.Omitted, Filled: f.Filled}
+		out.Fields[i] = Field{Name: f.Name, Value: CloneValue(f.Value)}
 	}
 	return out
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -405,6 +406,30 @@ func (gc *GoIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	return "slices.Concat(" + strings.Join(parts, ", ") + ")"
 }
 
+// atGoZero reports whether f holds Go's own zero for it -- nil for an
+// option, a zero number, false, "" -- which is what a composite literal
+// gives a field it leaves out. A struct is spelled whatever it holds: its
+// fields were spelled first, and asked for the imports they name.
+func atGoZero(f ir.FieldInit) bool {
+	if ir.IsNullLiteral(f.Value) {
+		return true
+	}
+	lit, ok := f.Value.(*ir.Literal)
+	if !ok || lit.Type == nil {
+		return false
+	}
+	switch lit.Type.Kind {
+	case ir.TypeString:
+		return lit.Value == ""
+	case ir.TypeBool:
+		return lit.Value == "false"
+	case ir.TypeInt, ir.TypeFloat:
+		n, err := strconv.ParseFloat(lit.Value, 64)
+		return err == nil && n == 0
+	}
+	return false
+}
+
 func isSpread(e ir.Expr) bool {
 	_, ok := e.(*ir.Spread)
 	return ok
@@ -460,12 +485,15 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		}
 		return "nil"
 	}
-	parts := make([]string, len(n.Fields))
+	parts := make([]string, 0, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
 			panic("golang: struct spread must be lowered by flatten_struct_spread")
 		}
-		parts[i] = ExportName(f.Name) + ": " + fieldStrs[i]
+		if atGoZero(f) {
+			continue
+		}
+		parts = append(parts, ExportName(f.Name)+": "+fieldStrs[i])
 	}
 	return name + "{" + strings.Join(parts, ", ") + "}"
 }
@@ -2272,6 +2300,9 @@ func IRLiteralToGo(e ir.Expr) string {
 		}
 		var parts []string
 		for _, f := range n.Fields {
+			if atGoZero(f) {
+				continue
+			}
 			parts = append(parts, ExportName(f.Name)+": "+IRLiteralToGo(f.Value))
 		}
 		return name + "{" + strings.Join(parts, ", ") + "}"

@@ -1695,7 +1695,7 @@ func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
 		if err != nil {
 			return err
 		}
-		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type), Omitted: true, Filled: DeepCopy(v)})
+		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type)})
 	}
 	// A spread may have supplied a field def does not name; keep it after.
 	for _, f := range s.Fields {

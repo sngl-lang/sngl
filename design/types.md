@@ -25,6 +25,32 @@ with a `v` and a `T` constrained to one bind alike), and `HasTypeParam` reads
 its fields; `Type.Equal` needed nothing, comparing anonymous structs by
 fields already.
 
+**A struct literal comes out of the check holding every field**
+(`ir.FillOmittedFields`, called by the checker's `fillOmittedFields` on every
+literal of a named struct and by `ir.ZeroExpr` for a struct's zero): each
+field the literal neither writes nor takes from a spread is its declared
+default, else its type's zero. Nothing after the check can tell an omitted
+field from a written one, so no backend, fold or host reads a field's
+presence; only the value says anything. Before, JavaScript wrote only the
+fields named, so an omitted one read undefined, and Go left an omitted enum
+field `""`, which no member is (`cmd/sngl/testdata/struct_omitted_fields_runs.txt`).
+And `ui.Style` read a field at its type's zero as unset everywhere but html,
+which read presence instead, so `{padding=16px, paddingTop=0px}` was 16 on top
+on four targets and 0 on the fifth (`style_side_zero_runs.txt`). A field whose
+absence means something is an option, or an enum leading with a member saying
+so: `ui.Style`'s lengths, colors and numbers are options and each of its enums
+leads with `unset`. A host's own struct keeps the fields its literal names,
+the host deciding what the rest hold.
+
+Two things follow. A spread writes every field its operand holds, the unset
+ones included, so `{display=flex, ...style}` hands the caller's nulls over the
+component's defaults; a component taking a caller's Style on top of its own
+writes `style.over({display=flex})` (`ui.Style.over`). And the generated code
+need not spell every field: Go leaves out a field holding Go's own zero for it
+(`atGoZero`, nil for an option) and Kotlin one holding the default its data
+class declares (`atDeclaredDefault`), each being what the host gives a field
+left out; JavaScript has no such default and writes them all.
+
 **A type is walked by `ir.Type.Any` and rebuilt by `ir.Type.MapChildren`**
 (`ir/typewalk.go`), and nothing else restates which types are inside one:
 the elements, the signature's parameters and result, and an un-interned

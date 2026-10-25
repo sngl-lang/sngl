@@ -321,7 +321,14 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 		c.error(x.Pos, format, args...)
 		return &ir.Literal{AST: &x.LiteralExpr, Type: TypInvalid, Value: num, Suffix: x.Suffix}
 	}
-	ud := ir.UnitDeclOf(c.expected)
+	// An option of a unit takes the unit's own value, which the option then
+	// wraps as it wraps any value of its element type: `padding=16px` is
+	// written to an option[measurement].
+	expected := c.expected
+	if expected != nil && expected.Kind == ir.TypeOption && len(expected.Elems) == 1 {
+		expected = expected.Elems[0]
+	}
+	ud := ir.UnitDeclOf(expected)
 	if ud == nil {
 		return bad("%s needs a unit type here: a suffix belongs to the unit that declares it, and nothing in this position says which", x.Raw)
 	}
@@ -330,12 +337,12 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 		// library unit legible: two declarations called `duration` are two
 		// types, and the suffix is the thing that says which one was meant.
 		if other := c.unitDeclaring(ud, x.Suffix); other != nil {
-			want, got := ir.Contrast(c.expected, other.SymType())
+			want, got := ir.Contrast(expected, other.SymType())
 			return bad("cannot initialize %s with %s: %q is a suffix of the second", want, got, x.Suffix)
 		}
 		return bad("unit %s has no suffix %q", ud.Name, x.Suffix)
 	}
-	return &ir.Literal{AST: &x.LiteralExpr, Type: c.expected, Value: num, Suffix: x.Suffix}
+	return &ir.Literal{AST: &x.LiteralExpr, Type: expected, Value: num, Suffix: x.Suffix}
 }
 
 // unitDeclaring finds a unit other than want that declares suffix, for a
@@ -3193,7 +3200,7 @@ func typeParamZeroFor(def ir.Expr, typ *ir.Type) ir.Expr {
 			return e, nil
 		}
 		if t := exprType(e).Substitute(b); !t.HasTypeParam() {
-			if zero := ir.DeclaredDefault(t); zero != nil {
+			if zero := ir.ZeroExpr(t); zero != nil {
 				return zero, ir.SkipDir
 			}
 		}
@@ -4725,37 +4732,35 @@ func structDeclOf(t *ir.Type) (*ir.StructDef, bool) {
 	return sd, true
 }
 
-// fillOmittedFields appends the declared default of every field lit omits, so
-// the value is complete before anything reads it. Doing it here rather than in
-// each evaluator is what makes `color{r=255}` carry its alpha in the
-// interpreter, the const folder and all four backends alike — they had
-// disagreed, and the two that agreed were both wrong.
+// fillOmittedFields writes every field lit omits as the declaration means
+// it (ir.FillOmittedFields), so the value is complete before anything reads
+// it and nothing after the check can tell an omitted field from a written
+// one. Doing it here rather than in each evaluator is what makes
+// `color{r=255}` carry its alpha, and an omitted enum field its first member,
+// in the interpreter, the const folder and all four backends alike -- they
+// had disagreed, and the two that agreed were both wrong.
 func (c *checker) fillOmittedFields(lit *ir.StructLit) {
-	if lit.Def == nil {
-		return
-	}
-	written := make(map[string]bool, len(lit.Fields))
-	for _, f := range lit.Fields {
-		if f.Spread {
-			// A spread supplies whatever the runtime value holds, so which
-			// fields it covers is not known here.
+	n := len(lit.Fields)
+	ir.FillOmittedFields(lit)
+	for _, f := range lit.Fields[n:] {
+		if c.holdsPlaceholder(f.Value) {
+			c.placeholderLits = append(c.placeholderLits, lit)
 			return
 		}
-		written[f.Name] = true
 	}
-	pending := false
-	for _, f := range lit.Def.Fields {
-		if f.Default == nil || written[f.Name] {
-			continue
-		}
-		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: f.Default})
-		if _, ok := c.defaultPlaceholders[f.Default]; ok {
-			pending = true
-		}
+}
+
+// holdsPlaceholder reports whether e is, or a struct literal of e holds, a
+// field default not yet checked: a zero filled into a nested struct copies
+// its fields' defaults as the outer literal copies its own.
+func (c *checker) holdsPlaceholder(e ir.Expr) bool {
+	if _, ok := c.defaultPlaceholders[e]; ok {
+		return true
 	}
-	if pending {
-		c.placeholderLits = append(c.placeholderLits, lit)
+	if lit, ok := e.(*ir.StructLit); ok {
+		return slices.ContainsFunc(lit.Fields, func(f ir.FieldInit) bool { return c.holdsPlaceholder(f.Value) })
 	}
+	return false
 }
 
 // resolvePlaceholderLits gives every literal that copied a default before it
@@ -4764,23 +4769,34 @@ func (c *checker) fillOmittedFields(lit *ir.StructLit) {
 func (c *checker) resolvePlaceholderLits() {
 	kept := c.placeholderLits[:0]
 	for _, lit := range c.placeholderLits {
-		pending := false
-		for i, fi := range lit.Fields {
-			field, ok := c.defaultPlaceholders[fi.Value]
-			if !ok {
-				continue
-			}
-			if field.Default == fi.Value {
-				pending = true
-				continue
-			}
-			lit.Fields[i].Value = field.Default
-		}
-		if pending {
+		if c.resolvePlaceholders(lit) {
 			kept = append(kept, lit)
 		}
 	}
 	c.placeholderLits = kept
+}
+
+// resolvePlaceholders gives each field of lit, and of each struct literal it
+// holds, the default that replaced its placeholder, and reports whether one
+// is still waiting for its struct to be filled.
+func (c *checker) resolvePlaceholders(lit *ir.StructLit) bool {
+	pending := false
+	for i, fi := range lit.Fields {
+		if inner, ok := fi.Value.(*ir.StructLit); ok {
+			pending = c.resolvePlaceholders(inner) || pending
+			continue
+		}
+		field, ok := c.defaultPlaceholders[fi.Value]
+		if !ok {
+			continue
+		}
+		if field.Default == fi.Value {
+			pending = true
+			continue
+		}
+		lit.Fields[i].Value = field.Default
+	}
+	return pending
 }
 
 func componentPropType(comp *ir.Component, name string) *ir.Type {

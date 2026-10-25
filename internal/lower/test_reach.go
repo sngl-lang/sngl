@@ -404,7 +404,7 @@ func (r *resolver) cellRead(x *ir.Select) (ir.Expr, error) {
 		return nil, nil
 	}
 	if init == nil {
-		init = ir.DeclaredDefault(x.Type)
+		init = ir.ZeroExpr(x.Type)
 	}
 	inst := r.instance(operand)
 	owner := componentOf(inst)

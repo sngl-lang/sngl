@@ -563,7 +563,9 @@ expects (see [Unit literals](#unit-literals)).
   value printed in the first declared base (`0px`).
 
 The integer literal `0` is assignable to any unit type; other bare numbers must
-be scaled by a unit literal (`5 * 1s`).
+be scaled by a unit literal (`5 * 1s`). Where an `option` of a unit is
+expected, a unit literal and `0` are the unit's value, wrapped as any value
+of the option's element type is.
 
 ### References
 
@@ -1341,6 +1343,28 @@ brace syntax denotes a **map literal** when a map type is expected. A struct
 literal whose head is a bare identifier is recognized only outside condition
 position, where a following `{` would otherwise begin a statement block (see
 [Condition expressions](#condition-expressions)).
+
+A struct literal of a named type holds every field of its type. A field the
+literal neither writes nor takes from a spread holds its declared default, or
+its type's zero value where the declaration gives none: an `option` is
+`null`, a number `0`, a string empty, an enum its first member and a struct
+its own fields' defaults. A literal leaving a field out and one writing that
+value are the same value, and nothing can tell them apart. A value whose
+absence means something is an `option`, or an enum leading with a member that
+says so (`ui.Style`'s `unset`). Fields are written in order, so a spread
+writes every field its operand holds over what came before it, the operand's
+defaults included:
+
+```sngl
+struct Box {
+    w int = 4
+    h int
+}
+
+var a = Box{h=1}       // {w = 4, h = 1}
+var b = Box{w=2, ...a} // {w = 4, h = 1}: the spread writes w too
+var c = Box{...a, w=2} // {w = 2, h = 1}
+```
 
 ### Selectors, indexing, and calls
 

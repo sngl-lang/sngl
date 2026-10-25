@@ -321,15 +321,38 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if n.Def != nil {
 		name = exportName(n.Def.Name)
 	}
-	parts := make([]string, len(n.Fields))
+	parts := make([]string, 0, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
 			panic("kotlin: struct spread must be lowered by flatten_struct_spread")
 		}
-		parts[i] = SafeIdent(f.Name) + " = " + fieldStrs[i]
+		// The data class declares each field's default, so a field holding
+		// it is what the constructor gives one left out.
+		if atDeclaredDefault(n.Def, f) {
+			continue
+		}
+		parts = append(parts, SafeIdent(f.Name)+" = "+fieldStrs[i])
 	}
 	return name + "(" + strings.Join(parts, ", ") + ")"
 }
+
+// atDeclaredDefault reports whether f holds the default its declaration
+// gives it, which a data class constructor supplies.
+func atDeclaredDefault(sd *ir.StructDef, f ir.FieldInit) bool {
+	if sd == nil || sd.Foreign.Name != "" {
+		return false
+	}
+	d := ir.FieldNamed(sd.Fields, f.Name)
+	if d == nil {
+		return false
+	}
+	def := d.Default
+	if def == nil {
+		def = ir.ZeroExpr(d.Type)
+	}
+	return ir.SameConstant(f.Value, def)
+}
+
 func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string {
 	return "*" + operand + ".toTypedArray()"
 }
@@ -1883,6 +1906,9 @@ func IRLiteralToKt(e ir.Expr) string {
 		}
 		var parts []string
 		for _, f := range n.Fields {
+			if atDeclaredDefault(n.Def, f) {
+				continue
+			}
 			parts = append(parts, f.Name+" = "+IRLiteralToKt(f.Value))
 		}
 		return name + "(" + strings.Join(parts, ", ") + ")"
