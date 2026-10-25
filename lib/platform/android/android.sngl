@@ -388,6 +388,9 @@ const plainTextStyle TextStyle
 #[kt.native("merge", "", method)]
 const func mergeTextStyle(base TextStyle, over TextStyle) TextStyle
 
+#[kt.native("FontWeight.Normal", "androidx.compose.ui.text.font.FontWeight")]
+const weightNormal FontWeight
+
 #[kt.native("FontWeight.Bold", "androidx.compose.ui.text.font.FontWeight")]
 const weightBold FontWeight
 
@@ -396,6 +399,9 @@ const weightLight FontWeight
 
 #[kt.native("FontWeight.ExtraBold", "androidx.compose.ui.text.font.FontWeight")]
 const weightExtraBold FontWeight
+
+#[kt.native("FontStyle.Normal", "androidx.compose.ui.text.font.FontStyle")]
+const slantNormal FontStyle
 
 #[kt.native("FontStyle.Italic", "androidx.compose.ui.text.font.FontStyle")]
 const slantItalic FontStyle
@@ -417,6 +423,9 @@ const familyCursive FontFamily
 
 #[kt.native("TextAlign.Unspecified", "androidx.compose.ui.text.style.TextAlign")]
 const alignUnspecified TextAlign
+
+#[kt.native("TextAlign.Start", "androidx.compose.ui.text.style.TextAlign")]
+const alignStartText TextAlign
 
 #[kt.native("TextAlign.Center", "androidx.compose.ui.text.style.TextAlign")]
 const alignCenter TextAlign

@@ -499,7 +499,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 					})
 					gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(__n3)), func() {
 					})
-					gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r2 string) {
+					gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r4 string) {
 					})
 					var __n4 *__remote_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
@@ -544,7 +544,7 @@ func (m *Model) __n6_click_handler() {
 func (m *Model) __n6_load_handler() {
 }
 
-func (m *Model) __n6_failed_handler(m__r2 string) {
+func (m *Model) __n6_failed_handler(m__r4 string) {
 }
 
 func (m *Model) __n8_clicked_handler() {
@@ -795,4 +795,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:955b35e36a69b7b6b067aa4015df04aa
+pass sha256:efe72821a2cf4b9447a993c560c6e769

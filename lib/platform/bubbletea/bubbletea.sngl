@@ -209,29 +209,29 @@ const component ui.window[platform](visible, @error, @closed, content) {
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         children
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         layers
     }
 }
 
 const component ui.spacer[platform](style) {
-    Styled(content="", look=lookOf(style), grow=style.flex) {}
+    Styled(content="", look=lookOf(style), grow=growOf(style.flex)) {}
 }
 
 const component ui.scroll[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         content
     }
 }
@@ -239,7 +239,7 @@ const component ui.scroll[platform](style, content) {
 // --- Core Text & Media ---
 
 const component ui.text[platform](value, style) {
-    Styled(content=value, look=lookOf(style), grow=style.flex) {}
+    Styled(content=value, look=lookOf(style), grow=growOf(style.flex)) {}
 }
 
 const component ui.button[platform](text, style) {
@@ -248,7 +248,7 @@ const component ui.button[platform](text, style) {
         focus = Focus{enabled=true},
         events = [Event{on="click", key="enter"}],
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
@@ -257,7 +257,7 @@ const component ui.button[platform](text, style) {
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform](style, src) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         #[family.crosses]
         src
     }
@@ -298,7 +298,7 @@ const component ui.input[platform](placeholder, style) {
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         placeholder = placeholder,
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
@@ -308,7 +308,7 @@ const component ui.checkbox[platform](label, checked, style, @change) {
         focus = Focus{enabled=true},
         events = [Event{on="change", key="space"}],
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
         @change {
             checked = !checked
             change(checked)
@@ -319,7 +319,7 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](style) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
     }
 }
 
@@ -329,7 +329,7 @@ const component ui.toggle[platform](label, checked, style, @change) {
         focus = Focus{enabled=true},
         events = [Event{on="change", key="space"}],
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
         @change {
             checked = !checked
             change(checked)
@@ -354,7 +354,7 @@ const component ui.select[platform](style, options) {
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
@@ -371,7 +371,7 @@ const component ui.textarea[platform](style) {
         focus = Focus{enabled=true},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
@@ -392,7 +392,7 @@ const component ui.datepicker[platform](placeholder, style) {
         binds = [Bind{prop="value", get=".Date()", set=".SetDate"}],
         placeholder = placeholder,
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
@@ -417,7 +417,7 @@ const component ui.progress[platform](style, value, max) {
             value = value,
             max = max,
             look = lookOf(style),
-            grow = style.flex,
+            grow = growOf(style.flex),
         ) {}
     } else {
         Widget(
@@ -431,7 +431,7 @@ const component ui.progress[platform](style, value, max) {
             value = 0.0,
             max = max,
             look = lookOf(style),
-            grow = style.flex,
+            grow = growOf(style.flex),
         ) {}
     }
 }
@@ -447,19 +447,19 @@ const component ui.spinner[platform](style) {
             pkg = "charm.land/bubbles/v2/spinner",
         },
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
 const component ui.divider[platform](style) {
-    Styled(content="─", look=lookOf(style), grow=style.flex) {}
+    Styled(content="─", look=lookOf(style), grow=growOf(style.flex)) {}
 }
 
 // A terminal focuses controls rather than regions, so a clickable card is its
 // content beside a `›` that takes the focus and fires `@click` on enter, as a
 // button's label does.
 const component ui.card[platform](style, clickable, @click, content) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=growOf(style.flex)) {
         if clickable {
             Styled(
                 content = "› ",
@@ -480,12 +480,12 @@ const component ui.chip[platform](label, style) {
         focus = Focus{enabled=true},
         events = [Event{on="click", key="enter"}],
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
 const component ui.link[platform](text, style) {
-    Styled(content=text, look=lookOf(style), grow=style.flex) {}
+    Styled(content=text, look=lookOf(style), grow=growOf(style.flex)) {}
 }
 
 const component ui.modal[platform](style, open, content) {
@@ -509,19 +509,19 @@ const component ui.tooltip[platform](style, text, trigger) {
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
-    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         panes
     }
 }
@@ -542,7 +542,7 @@ const component ui.table[platform](style, columns, rows) {
         columns = columns,
         rows = rows.map(func(r) => r.cells),
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
@@ -571,7 +571,7 @@ const component ui.tree[platform](style, items) {
         binds = [Bind{prop="selected", get="tui.SelectedString"}],
         items = _treeLabels(items),
         look = lookOf(style),
-        grow = style.flex,
+        grow = growOf(style.flex),
     ) {}
 }
 
@@ -592,18 +592,18 @@ const component ui.menu[platform](style, open, items) {
             focus = Focus{enabled=true},
             items = items.map(func(it) => it.label),
             look = lookOf(style),
-            grow = style.flex,
+            grow = growOf(style.flex),
         ) {}
     }
 }
 
 const component ui.menubar[platform](style) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
     }
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=growOf(style.flex), align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
         controls
     }
 }
@@ -688,7 +688,7 @@ component Span(
 ) markup.span
 
 const component markup.richText[platform](style, content) {
-    Flow(look=flowLookOf(style), seed=seedOf(style), grow=style.flex) {
+    Flow(look=flowLookOf(style), seed=seedOf(style), grow=growOf(style.flex)) {
         content
     }
 }

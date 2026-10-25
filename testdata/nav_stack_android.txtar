@@ -157,7 +157,7 @@ data class _page__valueRoute2(val params: Pkg = Pkg(name = "first"))
 fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
     val destination = entry?.destination ?: return null
     return when {
-        destination.hasRoute<_page__valueRoute0>() -> _page__value(id = 0, href = "/", title = "Home", meta = Meta(label = "home"))
+        destination.hasRoute<_page__valueRoute0>() -> _page__value(href = "/", title = "Home", meta = Meta(label = "home"))
         destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = Meta(label = "about"))
         destination.hasRoute<_page__valueRoute2>() -> _page__value(id = 2, href = "/p/{name}", title = "Package", meta = Meta(label = "pkg"))
         else -> null
@@ -170,7 +170,7 @@ fun MainScreen() {
     var visible__inst0 by remember { mutableStateOf(true) }
     val pages__nav = rememberNavController()
     val pages__entry by pages__nav.currentBackStackEntryAsState()
-    val pages__current = _page__valueOf(pages__entry) ?: _page__value(id = 0, href = "/", title = "Home", meta = Meta(label = "home"))
+    val pages__current = _page__valueOf(pages__entry) ?: _page__value(href = "/", title = "Home", meta = Meta(label = "home"))
 
 
     if (visible__inst0) {
@@ -233,4 +233,4 @@ fun Counter(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     }
 }
 -- run/kotlin/android --
-pass sha256:fb65e86df6f460ae419ea5bbd2393b23
+pass sha256:bdd95b9acac1a58b47c4e4b236eeaabc

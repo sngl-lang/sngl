@@ -14,7 +14,9 @@ import (
 
 // The page's functions from a SNGL value to the CSS text for it, written when
 // a style field is only known at run time. Each spells its value the way
-// htmlutil spells the same value when the build can read it.
+// htmlutil spells the same value when the build can read it, and an unset
+// one -- null, or an enum's `unset` -- as nothing, which setProperty reads as
+// removing the declaration.
 const (
 	styleColorHelper   = "_snglStyleColor"
 	styleLengthHelper  = "_snglStyleLength"
@@ -23,12 +25,14 @@ const (
 
 var styleHelperJS = map[string]string{
 	styleColorHelper: `function _snglStyleColor(c) {
+  if (c == null) return "";
   if (typeof c === "string") return c;
   if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
   return "#" + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, "0")).join("");
 }
 `,
 	styleLengthHelper: `function _snglStyleLength(v) {
+  if (v == null) return "";
   if (typeof v === "number") return v + "px";
   const t = Object.keys(v).filter(k => v[k] !== 0).map(k => v[k] + k);
   if (t.length === 0) return "0px";
@@ -36,6 +40,7 @@ var styleHelperJS = map[string]string{
 }
 `,
 	styleKeywordHelper: `function _snglStyleKeyword(m) {
+  if (m == null || m === "unset") return "";
   return m.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
 }
 `,
@@ -113,6 +118,9 @@ func styleFieldType(sl *ir.StructLit, f ir.FieldInit) *ir.Type {
 }
 
 func styleHelperFor(t *ir.Type, css string) string {
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
 	switch {
 	case t != nil && ir.IsColorStruct(t):
 		return styleColorHelper
@@ -231,6 +239,12 @@ func styleValueWrite(node, v ir.Expr) ir.Stmt {
 	}
 }
 
+// unsetJS is the test that a Style field read off a value at run time is
+// unset: null, an empty string, or an enum's `unset`.
+func unsetJS(v string) string {
+	return "(" + v + ` == null || ` + v + ` === "" || ` + v + ` === "unset")`
+}
+
 func (g *htmlGen) useStyleValue(sd *ir.StructDef) {
 	g.styleValueDef = sd
 	g.ctx.Helpers[styleValueHelper] = true
@@ -259,6 +273,9 @@ func styleValueJS(sd *ir.StructDef, helpers map[string]bool) string {
 		for _, d := range htmlutil.StylePropDecls(f.Name) {
 			var cond strings.Builder
 			cond.WriteString("s." + f.Name + " != null")
+			if f.Type != nil && f.Type.Kind == ir.TypeEnum {
+				cond.WriteString(" && s." + f.Name + ` !== "unset"`)
+			}
 			var val string
 			switch {
 			case d.Dynamic:
@@ -271,11 +288,11 @@ func styleValueJS(sd *ir.StructDef, helpers map[string]bool) string {
 				}
 			case f.Name == "borderWidth" && d.Name == "border-style":
 				for _, l := range htmlutil.BorderLineFields {
-					cond.WriteString(" && s." + l + " == null")
+					cond.WriteString(" && " + unsetJS("s."+l))
 				}
 				val = strconv.Quote(d.Name + ":" + d.Value)
 			case named[d.Name] != "":
-				cond.WriteString(" && s." + named[d.Name] + " == null")
+				cond.WriteString(" && " + unsetJS("s."+named[d.Name]))
 				val = strconv.Quote(d.Name + ":" + d.Value)
 			default:
 				val = strconv.Quote(d.Name + ":" + d.Value)

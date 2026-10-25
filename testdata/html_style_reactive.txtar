@@ -107,14 +107,12 @@ body { font-family: system-ui, sans-serif; }
     __n0.style.setProperty("padding-left", _snglStyleLength(on ? { px: 8, em: 0, rem: 0 } : { px: 2, em: 0, rem: 0 }));
     __n0.style.setProperty("padding-right", _snglStyleLength(on ? { px: 8, em: 0, rem: 0 } : { px: 2, em: 0, rem: 0 }));
     __n0.style.setProperty("border-width", _snglStyleLength(on ? { px: 2, em: 0, rem: 0 } : { px: 0, em: 0, rem: 0 }));
-    __n0.style.setProperty("border-style", "solid");
     __n0.addEventListener("click", () => {
       on = !on;
       __n0.style.setProperty("font-weight", _snglStyleKeyword(on ? "bold" : "normal"));
       __n0.style.setProperty("padding-left", _snglStyleLength(on ? { px: 8, em: 0, rem: 0 } : { px: 2, em: 0, rem: 0 }));
       __n0.style.setProperty("padding-right", _snglStyleLength(on ? { px: 8, em: 0, rem: 0 } : { px: 2, em: 0, rem: 0 }));
       __n0.style.setProperty("border-width", _snglStyleLength(on ? { px: 2, em: 0, rem: 0 } : { px: 0, em: 0, rem: 0 }));
-      __n0.style.setProperty("border-style", "solid");
     });
     __n0.addEventListener("contextmenu", () => {
     });
@@ -192,17 +190,20 @@ body { font-family: system-ui, sans-serif; }
     }
   }
   function _snglStyleColor(c) {
+    if (c == null) return "";
     if (typeof c === "string") return c;
     if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
     return "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
   }
   function _snglStyleLength(v) {
+    if (v == null) return "";
     if (typeof v === "number") return v + "px";
     const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
     if (t.length === 0) return "0px";
     return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
   }
   function _snglStyleKeyword(m) {
+    if (m == null || m === "unset") return "";
     return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
   }
   var $0 = document.getElementById("$0");
@@ -232,4 +233,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f323244e62cf47a9547d20d23a922e34
+pass sha256:284f09f3a69c7671c6bf2de3f07b10f5

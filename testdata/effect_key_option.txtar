@@ -532,7 +532,7 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { __effect0_mount, __effect0_unmount, __snglTeardown });
   }
-  var __effect0_key = {};
+  var __effect0_key = { limit: null, name: null };
   var __effect0_live = [];
   var __effect0_desired = [];
   var __effects0_settling = false;
@@ -635,4 +635,4 @@ pass sha256:e388d021dac665dbadf2151bf1569944
 -- run/kotlin/android --
 pass sha256:a08a8d581f22a4a02104c28f576eb380
 -- run/none/html --
-pass sha256:8cb23e3dc3cb6a9daf54ca4b30fb5811
+pass sha256:ec187e192d6b9ef31a0788534fb9e63f

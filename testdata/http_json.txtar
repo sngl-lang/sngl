@@ -211,9 +211,9 @@ func Lookup(name string) Result__Echo {
 		}())), nil, nil)
 		if __snglF != nil {
 			if __snglF.Timeout {
-				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 			}
-			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+			return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 		}
 		return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 	}()
@@ -238,13 +238,13 @@ func Lookup(name string) Result__Echo {
 					return c0
 				}())
 				if __snglMsg != "" {
-					return Result__Echo{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg, Code: ""}}
+					return Result__Echo{tag: 1, Failed: Failure{Kind: "decode", Message: __snglMsg}}
 				}
 				return Result__Echo{tag: 0, Ok: __snglV}
 			}()
 		}
 	}
-	return Result__Echo{tag: 0, Ok: Echo{}}
+	return Result__Echo{tag: 0, Ok: Echo{Kind: "hardcover"}}
 }
 
 func ResponseChecked(r Response) Result__Response {
@@ -283,18 +283,18 @@ func (m *Model) __effect0_mount() {
 			case (r.tag == 0):
 				got := r.Ok
 				m.answer__inst0 = snglSome(got)
-				var __lt7 string
+				var __lt9 string
 				if m.answer__inst0 != nil {
-					__lt7 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
+					__lt9 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 						c0 := &sngljson.Codec{Kind: sngljson.Struct}
 						c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 						c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 						return c0
 					}())
 				} else {
-					__lt7 = "-"
+					__lt9 = "-"
 				}
-				m.__n1.SetText(__lt7)
+				m.__n1.SetText(__lt9)
 				m.failure__inst0 = nil
 			default:
 				got := r.Failed
@@ -396,7 +396,7 @@ func (m *Model) __n2_click_handler() {
 	_ = __async_arg2
 	__async_arg3 := map[string]string{"X-Sngl": "on"}
 	_ = __async_arg3
-	__async_arg4 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Query: nil, Kind: "hardcover"}, func() *sngljson.Codec {
+	__async_arg4 := snglSome(sngljson.Encode[Echo](Echo{Method: "m", Kind: "hardcover"}, func() *sngljson.Codec {
 		c0 := &sngljson.Codec{Kind: sngljson.Struct}
 		c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 		c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
@@ -409,9 +409,9 @@ func (m *Model) __n2_click_handler() {
 			__snglR, __snglF := snglhttp.Send(__async_arg1, "http://127.0.0.1:47819/echo", __async_arg3, __async_arg4)
 			if __snglF != nil {
 				if __snglF.Timeout {
-					return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message, Code: ""}}
+					return Result__Response{tag: 1, Failed: Failure{Kind: "timeout", Message: __snglF.Message}}
 				}
-				return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message, Code: ""}}
+				return Result__Response{tag: 1, Failed: Failure{Kind: "transport", Message: __snglF.Message}}
 			}
 			return Result__Response{tag: 0, Ok: Response{Status: __snglR.Status, Headers: __snglR.Headers, Body: __snglR.Body}}
 		}()
@@ -501,19 +501,19 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	var __lt8 string
+	var __lt10 string
 	if m.answer__inst0 != nil {
-		__lt8 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
+		__lt10 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 			c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 			return c0
 		}())
 	} else {
-		__lt8 = "-"
+		__lt10 = "-"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt8)
+	m.__n1.SetText(__lt10)
 	m.__n0.Add(m.__n1)
 	m.__n2 = widget.NewButton("", nil)
 	m.__n2.SetText("Send")
@@ -684,7 +684,7 @@ fun MainScreen() {
             Text(text = (if ((answer__inst0 != null)) SnglCodec.encode(answer__inst0!!, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }) else "-"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 SnglCodec.start {
-                	var __match2: SnglResult__Response = run { val __r = SnglCodec.send(SnglMethod.POST.toString(), "http://127.0.0.1:47819/echo", mapOf("X-Sngl" to "on"), SnglCodec.encode(Echo(method = "m", query = null, kind = Kind.HARDCOVER), run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 })); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
+                	var __match2: SnglResult__Response = run { val __r = SnglCodec.send(SnglMethod.POST.toString(), "http://127.0.0.1:47819/echo", mapOf("X-Sngl" to "on"), SnglCodec.encode(Echo(method = "m"), run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 })); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
                 	when {
                 		(__match2 is SnglResult__Response.Ok) -> {
                 			var r = (__match2 as SnglResult__Response.Ok).value
@@ -703,7 +703,7 @@ fun MainScreen() {
 }
 
 suspend fun lookup(name: String): SnglResult__Echo {
-    var __match0: SnglResult__Response = run { val __r = SnglCodec.send("get", SnglCodec.withQuery(("http://127.0.0.1:47819/echo/" + SnglCodec.escape(name)), Page(size = 20, tags = listOf("a")), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("page-size", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, SnglCodec.of(SnglCodec.STRING)))); c0.make = { a -> Page(size = a[0] as Int?, tags = a[1] as List<String>) }; c0.read = { v -> (v as Page).let { listOf<Any?>(it.size, it.tags) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
+    var __match0: SnglResult__Response = run { val __r = SnglCodec.send("get", SnglCodec.withQuery(("http://127.0.0.1:47819/echo/" + SnglCodec.escape(name)), Page(size = 20, tags = listOf("a")), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("page-size", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, SnglCodec.of(SnglCodec.STRING)))); c0.make = { a -> Page(size = a[0] as Int?, tags = a[1] as List<String>) }; c0.read = { v -> (v as Page).let { listOf<Any?>(it.size, it.tags) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message)) else SnglResult__Response.Failed(Failure(message = __r.message))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
     when {
     	(__match0 is SnglResult__Response.Failed) -> {
     		var r = (__match0 as SnglResult__Response.Failed).value
@@ -719,7 +719,7 @@ suspend fun lookup(name: String): SnglResult__Echo {
     			}
     			else -> {
     				var checked = (__match1 as SnglResult__Response.Ok).value
-    				return run { val __r = SnglCodec.decode(checked.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }); if (__r.error != null) SnglResult__Echo.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!, code = "")) else SnglResult__Echo.Ok((__r.value as Echo)) }
+    				return run { val __r = SnglCodec.decode(checked.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.ENUM); c0.fields = listOf(SnglCodecField("method", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("raw_query", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("kind", c1)); c0.make = { a -> Echo(method = a[0] as String, query = a[1] as String?, kind = a[2] as Kind) }; c0.read = { v -> (v as Echo).let { listOf<Any?>(it.method, it.query, it.kind) } }; c1.wires = listOf("hard-cover", "paperback"); c1.values = listOf(Kind.HARDCOVER, Kind.PAPERBACK); c0 }); if (__r.error != null) SnglResult__Echo.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__Echo.Ok((__r.value as Echo)) }
     			}
     		}
     	}
@@ -1127,7 +1127,7 @@ body { font-family: system-ui, sans-serif; }
       ;
     }
     ;
-    return { tag: "ok", value: {} };
+    return { tag: "ok", value: { method: "", query: null, kind: "hardcover" } };
   }
   function Response_checked(r) {
     if (r.status >= 200 && r.status < 300) {
@@ -1193,7 +1193,7 @@ body { font-family: system-ui, sans-serif; }
     __effects0_torn = true;
     __effect0_teardown();
   }
-  var __effect0_key = {};
+  var __effect0_key = { key: "", n: 0 };
   var __effect0_live = [];
   var __effect0_desired = [];
   var __effects0_settling = false;
@@ -1480,8 +1480,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:20c07e439f3eddc1928481e22626771e
+pass sha256:3f0d08f754182ec933336cf5ef63717f
 -- run/kotlin/android --
-pass sha256:e084177ca8fbdedf1e22856218f2bd6f
+pass sha256:2e1ee4780e82c8ae0b8bffa42aa235f1
 -- run/none/html --
-pass sha256:a1dcb90f3139929f5515a43f059ea69b
+pass sha256:d64b67f4f3377875880fbc4bb853661b

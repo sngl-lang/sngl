@@ -339,7 +339,7 @@ const component ui.image[platform](alt, fit, style, @click, src) {
     html.span(
         class = "sngl-image sngl-image-" + string(fit),
         attrs = {"role"="img", "aria-label"=alt},
-        style = {display=inlineBlock, overflow=hidden, ...style},
+        style = style.over({display=inlineBlock, overflow=hidden}),
         @click { click() },
     ) {
         #[family.crosses]
@@ -391,7 +391,7 @@ const component ui.input[platform](placeholder, readonly, value, disabled, type,
 }
 
 const component ui.checkbox[platform](label, checked, disabled, style, @change) {
-    html.label(style={display=inlineFlex, alignItems=center, gap=4px, ...style}) {
+    html.label(style=style.over({display=inlineFlex, alignItems=center, gap=4px})) {
         html.input(type="checkbox", checked=checked, disabled=disabled, @change(e) {
             checked = e.currentTarget.checked
             change(checked)
@@ -403,7 +403,7 @@ const component ui.checkbox[platform](label, checked, disabled, style, @change) 
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](value, disabled, direction, style, @change, options) {
-    html.fieldset(style={display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0, ...style}) {
+    html.fieldset(style=style.over({display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0px})) {
         for var opt = options {
             html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
                 html.input(type="radio", value=opt.label, checked=(opt.label == value), disabled=disabled, @change {
@@ -417,7 +417,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
 }
 
 const component ui.toggle[platform](label, checked, disabled, style, @change) {
-    html.label(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
+    html.label(style=style.over({display=inlineFlex, alignItems=center, gap=8px})) {
         html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change(e) {
             checked = e.currentTarget.checked
             change(checked)
@@ -480,20 +480,19 @@ const component ui.badge[platform](value, variant, style) {
     html.span(
         class = variant != "" ? "sngl-badge sngl-badge-" + variant : "sngl-badge",
         textContent = value,
-        style = {
+        style = style.over({
             display = inlineBlock,
             paddingY = 2px,
             paddingX = 8px,
             borderRadius = 12px,
-            ...style,
-        },
+        }),
     ) {}
 }
 
 const component ui.chip[platform](label, variant, removable, selected, disabled, style, @click, @remove) {
     html.span(
         class = "sngl-chip" + (variant != "" ? " sngl-chip-" + variant : "") + (selected ? " sngl-chip-selected" : ""),
-        style = {
+        style = style.over({
             display = inlineFlex,
             alignItems = center,
             gap = 4px,
@@ -503,8 +502,7 @@ const component ui.chip[platform](label, variant, removable, selected, disabled,
             borderWidth = 1px,
             borderColor = selected ? #0066CC : #CCCCCC,
             opacity = disabled ? 0.5 : 1.0,
-            ...style,
-        },
+        }),
     ) {
         html.span(textContent=label, @click { click() }) {}
         if removable {
@@ -514,7 +512,7 @@ const component ui.chip[platform](label, variant, removable, selected, disabled,
 }
 
 const component ui.spinner[platform](label, style) {
-    html.span(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
+    html.span(style=style.over({display=inlineFlex, alignItems=center, gap=8px})) {
         html.span(class="sngl-spinner") {}
         html.span(textContent=label) {}
     }
@@ -602,7 +600,7 @@ const component ui.window[platform](title, visible, @error, @closed, content, fa
 }
 
 const component ui.modal[platform](style, open, title, content) {
-    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, right=0, bottom=0, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
+    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0px, left=0px, right=0px, bottom=0px, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
         html.div(class="modal-content", style={background=#fff, borderRadius=8px, padding=24px}) {
             if title != "" {
                 html.h3(textContent=title, style={marginTop=0, marginX=0, marginBottom=16px})
@@ -613,7 +611,7 @@ const component ui.modal[platform](style, open, title, content) {
 }
 
 const component ui.drawer[platform](style, content) {
-    html.div(style={...style, position=fixed, top=0, bottom=0, background=#fff, zIndex=1000}) {
+    html.div(style={...style, position=fixed, top=0px, bottom=0px, background=#fff, zIndex=1000}) {
         content
     }
 }
@@ -639,7 +637,7 @@ const component ui.splitview[platform](style, panes) {
 // --- Tier 4: Data & Desktop ---
 
 const component ui.table[platform](style, columns, rows) {
-    html.table(width="100%", style={borderCollapse="collapse", ...style}) {
+    html.table(width="100%", style=style.over({borderCollapse="collapse"})) {
         html.thead {
             html.tr {
                 for var col = columns {
@@ -676,7 +674,7 @@ const func _treeRows(items list[ui.treeItem], indent ui.measurement) list[_TreeR
 }
 
 const component ui.tree[platform](style, items) {
-    html.ul(style={listStyleType=none, paddingLeft=16px, ...style}) {
+    html.ul(style=style.over({listStyleType=none, paddingLeft=16px})) {
         for var row = _treeRows(items, 0px) {
             html.li(textContent=row.label, style={paddingLeft=row.indent})
         }
@@ -747,7 +745,7 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
 const component ui.card[platform](style, clickable, @click, content) {
     html.div(
         attrs = clickable ? {"role"="button", "tabindex"="0"} : {},
-        style = {borderRadius=8px, padding=16px, cursor=clickable ? "pointer" : "auto", ...style},
+        style = style.over({borderRadius=8px, padding=16px, cursor=clickable ? "pointer" : "auto"}),
         @click(e) {
             if clickable && e.target.closest(controls) == e.currentTarget {
                 click()
@@ -857,7 +855,7 @@ const func roleTag(role markup.Role) string {
 // a caller's own style wins, which is also how every other override here
 // orders its defaults.
 const component markup.richText[platform](style, role, anchor, content) {
-    flow(tag=roleTag(role), id=anchor, style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
+    flow(tag=roleTag(role), id=anchor, style=style.over({margin=0px, whiteSpace=ui.WhiteSpace.preWrap})) {
         content
     }
 }

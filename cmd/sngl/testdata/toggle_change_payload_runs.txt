@@ -117,7 +117,7 @@ window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:1d290d426edcd6162af9816a7adc743e
+sha256:e27df0ae8434673c9fb9d3050aa01500
 {
   "results": [
     {
@@ -145,7 +145,7 @@ sha256:039904b04b40bd778b94baef32179bb1
   ]
 }
 -- testrun/fyne/go/canvas.sngl/main/1 --
-sha256:11b170041bcd75bb186a43ddfca17c84
+sha256:621cd76ea13aac1d4470d295c7325837
 {
   "results": [
     {
@@ -169,7 +169,7 @@ sha256:557ef7bd3600c8240216306e85d1a79f
   ]
 }
 -- testrun/gtk4/go/canvas.sngl/main/1 --
-sha256:157daf8488ec6fb2d8b56280375cc20d
+sha256:33009415eb68ca42d009f95f421af5c8
 {
   "results": [
     {

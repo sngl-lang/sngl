@@ -110,6 +110,7 @@ static void sngl_restore_expand(GtkWidget *w, SnglLook *l) {
 
 static GtkAlign sngl_cross_align(int cross) {
     switch (cross) {
+    case 1: return GTK_ALIGN_START;
     case 2: return GTK_ALIGN_CENTER;
     case 3: return GTK_ALIGN_END;
 #if GTK_CHECK_VERSION(4, 12, 0)
@@ -276,14 +277,14 @@ static void sngl_look_set_text(GtkWidget *w, SnglLook *l, int align, int lines, 
             l->xalign0 = gtk_editable_get_alignment(GTK_EDITABLE(t));
         }
     }
-    float x = align == 1 ? 0.5f : align == 2 ? 1.0f : align == 3 ? 0.0f : l->xalign0;
+    float x = align == 1 ? 0.5f : align == 2 ? 1.0f : align == 3 || align == 4 ? 0.0f : l->xalign0;
     if (!GTK_IS_LABEL(t)) {
         gtk_editable_set_alignment(GTK_EDITABLE(t), x);
         return;
     }
     GtkLabel *lb = GTK_LABEL(t);
     gtk_label_set_xalign(lb, x);
-    gtk_label_set_justify(lb, align == 1 ? GTK_JUSTIFY_CENTER : align == 2 ? GTK_JUSTIFY_RIGHT : align == 3 ? GTK_JUSTIFY_FILL : l->justify0);
+    gtk_label_set_justify(lb, align == 1 ? GTK_JUSTIFY_CENTER : align == 2 ? GTK_JUSTIFY_RIGHT : align == 3 ? GTK_JUSTIFY_FILL : align == 4 ? GTK_JUSTIFY_LEFT : l->justify0);
     gtk_label_set_lines(lb, lines > 0 ? lines : l->lines0);
     gtk_label_set_ellipsize(lb, lines > 0 ? PANGO_ELLIPSIZE_END : l->ellipsize0);
     gtk_label_set_wrap(lb, lines > 0 || wrap == 2 ? TRUE : wrap == 1 ? FALSE : l->wrap0);
@@ -378,11 +379,11 @@ type Look struct {
 	// Grow is the widget's flex: above zero it expands along the axis of the
 	// box it sits in.
 	Grow float64
-	// Cross is a box's alignItems, which it puts on each child: 2 center,
-	// 3 end, 4 baseline; zero stretches.
+	// Cross is a box's alignItems, which it puts on each child: 1 start,
+	// 2 center, 3 end, 4 baseline; zero stretches.
 	Cross int
 	// TextAlign is a label's, an entry's or a button's: 1 center, 2 right,
-	// 3 justify.
+	// 3 justify, 4 left; zero leaves the widget's own.
 	TextAlign int
 	// Lines ellipsizes a label at that many lines.
 	Lines int

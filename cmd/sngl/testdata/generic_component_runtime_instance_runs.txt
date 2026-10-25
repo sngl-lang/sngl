@@ -385,7 +385,7 @@ sha256:797ee67ba1aa2293fe2f470dad0e4579
   ]
 }
 -- testrun/android/kotlin/method.sngl/main/1 --
-sha256:59130ad486b190f4716f9c9764e2c033
+sha256:71efd7b73d72fa16429f926172eb2a42
 {
   "results": [
     {
@@ -455,7 +455,7 @@ sha256:b02daf53d5bb7d143be5e68aad7f7615
   ]
 }
 -- testrun/fyne/go/method.sngl/main/1 --
-sha256:c4ffc99ebe73bcd96ac4bd9ad1391fdd
+sha256:a3726de15fe84f4e5dbc87eb4f4fe813
 {
   "results": [
     {

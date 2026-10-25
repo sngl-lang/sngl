@@ -80,54 +80,54 @@ type Palette struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -151,7 +151,7 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
+	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
@@ -163,15 +163,15 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt1 int
+func RowsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
+	var __lt2 int
 	if px <= 0.0 {
-		__lt1 = 0
+		__lt2 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 16))
+		__lt2 = max(1, (int(px) / 16))
 	}
-	return __lt1
+	return __lt2
 }
 
 func TokenColor(p Palette, kind string) snglcolor.Color {
@@ -209,20 +209,20 @@ func TokenColor(p Palette, kind string) snglcolor.Color {
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if (s == Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -231,10 +231,10 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -245,100 +245,110 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt5 int
-		if s.MaxLines == 0 {
-			__lt5 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt6 int
+		if s.MaxLines == nil {
+			__lt6 = 0
 		} else {
-			__lt5 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
-func AlignOf(a string) lipgloss.Position {
-	var __lt6 lipgloss.Position
-	switch a {
-	case "center":
-		__lt6 = lipgloss.Center
-	case "right":
-		__lt6 = lipgloss.Right
-	default:
-		__lt6 = lipgloss.Left
-	}
-	return __lt6
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt7 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt7 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt7 = tui.DashedBorder()
-	default:
-		var __lt8 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt8 = lipgloss.RoundedBorder()
-		} else {
-			__lt8 = lipgloss.NormalBorder()
-		}
-		__lt7 = __lt8
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt7 float64
+	if m__r1 == nil {
+		__lt7 = 0.0
+	} else {
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
 	return __lt7
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt10 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt10 = own
-	} else {
-		var __lt9 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt9 = axis
-		} else {
-			__lt9 = all
-		}
-		__lt10 = __lt9
+func AlignOf(a string) lipgloss.Position {
+	var __lt8 lipgloss.Position
+	switch a {
+	case "center":
+		__lt8 = lipgloss.Center
+	case "right":
+		__lt8 = lipgloss.Right
+	default:
+		__lt8 = lipgloss.Left
 	}
-	return CellsOf(__lt10)
+	return __lt8
 }
 
-func CellsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt11 int
-	if px <= 0.0 {
-		__lt11 = 0
-	} else {
-		__lt11 = max(1, (int(px) / 8))
+func BorderOf(s Style) lipgloss.Border {
+	var __lt9 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt9 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt9 = tui.DashedBorder()
+	default:
+		var __lt10 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt10 = lipgloss.RoundedBorder()
+		} else {
+			__lt10 = lipgloss.NormalBorder()
+		}
+		__lt9 = __lt10
 	}
-	return __lt11
+	return __lt9
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt12 *Measurement
+	if own != nil {
+		__lt12 = own
+	} else {
+		var __lt11 *Measurement
+		if axis != nil {
+			__lt11 = axis
+		} else {
+			__lt11 = all
+		}
+		__lt12 = __lt11
+	}
+	return CellsOf(__lt12)
+}
+
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt13 int
+	if px <= 0.0 {
+		__lt13 = 0
+	} else {
+		__lt13 = max(1, (int(px) / 8))
+	}
+	return __lt13
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt13 int
+	var __lt15 int
 	if height__r0 == 0 {
-		__lt13 = lines
+		__lt15 = lines
 	} else {
-		var __lt12 int
+		var __lt14 int
 		if lines == 0 {
-			__lt12 = height__r0
+			__lt14 = height__r0
 		} else {
-			__lt12 = min(height__r0, lines)
+			__lt14 = min(height__r0, lines)
 		}
-		__lt13 = __lt12
+		__lt15 = __lt14
 	}
-	return __lt13
+	return __lt15
 }
 
 func (m *Model) __focusNext() {
@@ -414,7 +424,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
+			m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -430,15 +440,15 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("theme"))
+		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("theme"))
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = ""
 		content_1 += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(m.pal, "keyword").Or("5"))).Render(fmt.Sprint("func"))
-		content_1 = BoxLook(Style{}, false).Render(content_1)
+		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{}, true).Render(content)
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -506,7 +516,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
+	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.visible__inst0 = true
 	return m
 }
@@ -554,7 +564,7 @@ func (m *Model) home_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n2_click_handler() {
-	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
+	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.__n0.SetColor(TokenColor(m.pal, "keyword"))
 }
 
@@ -686,7 +696,7 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
+	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.visible__inst0 = true
 	return m
 }
@@ -742,8 +752,8 @@ func (m *Model) home_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n2_clicked_handler() {
-	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
-	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}, "keyword"))) + ">")) + "func</span></tt>"))
+	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
+	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, "keyword"))) + ">")) + "func</span></tt>"))
 }
 
 func (m *Model) Pal() Palette {
@@ -782,7 +792,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n3, true)
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}, "keyword"))) + ">")) + "func</span></tt>"))
+	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, "keyword"))) + ">")) + "func</span></tt>"))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	gtk4rt.BoxAppend(m.home, m.__n1)
 	gtk4rt.AppAttach(m.home)
@@ -879,7 +889,7 @@ enum class SnglToken(private val sngl: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var pal by remember { mutableStateOf(Palette(keyword = Color(r = 207, g = 34, b = 46, a = 255), type = Color(r = 149, g = 56, b = 0, a = 255), function = Color(r = 130, g = 80, b = 223, a = 255), constant = Color(r = 5, g = 80, b = 174, a = 255), string = Color(r = 10, g = 48, b = 105, a = 255), number = Color(r = 5, g = 80, b = 174, a = 255), comment = Color(r = 110, g = 119, b = 129, a = 255), plain = Color(a = 0, r = 0, g = 0, b = 0), variable = Color(a = 0, r = 0, g = 0, b = 0), operator = Color(a = 0, r = 0, g = 0, b = 0), punctuation = Color(a = 0, r = 0, g = 0, b = 0))) }
+    var pal by remember { mutableStateOf(Palette(keyword = Color(r = 207, g = 34, b = 46), type = Color(r = 149, g = 56), function = Color(r = 130, g = 80, b = 223), constant = Color(r = 5, g = 80, b = 174), string = Color(r = 10, g = 48, b = 105), number = Color(r = 5, g = 80, b = 174), comment = Color(r = 110, g = 119, b = 129))) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
     if (visible__inst0) {
@@ -892,7 +902,7 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
-                pal = Palette(keyword = Color(r = 255, g = 123, b = 114, a = 255), type = Color(r = 255, g = 166, b = 87, a = 255), function = Color(r = 210, g = 168, b = 255, a = 255), constant = Color(r = 121, g = 192, b = 255, a = 255), string = Color(r = 165, g = 214, b = 255, a = 255), number = Color(r = 121, g = 192, b = 255, a = 255), comment = Color(r = 139, g = 148, b = 158, a = 255), plain = Color(a = 0, r = 0, g = 0, b = 0), variable = Color(a = 0, r = 0, g = 0, b = 0), operator = Color(a = 0, r = 0, g = 0, b = 0), punctuation = Color(a = 0, r = 0, g = 0, b = 0))
+                pal = Palette(keyword = Color(r = 255, g = 123, b = 114), type = Color(r = 255, g = 166, b = 87), function = Color(r = 210, g = 168, b = 255), constant = Color(r = 121, g = 192, b = 255), string = Color(r = 165, g = 214, b = 255), number = Color(r = 121, g = 192, b = 255), comment = Color(r = 139, g = 148, b = 158))
             }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "theme", modifier = Modifier)
             }
@@ -1042,12 +1052,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f4dd7e7fb524a5b784c8d28e117eca93
+pass sha256:52da5b09d82e0795f2685ca9e6a1b1d1
 -- run/go/fyne --
-pass sha256:d0f51dfb50da5bf0936e52154accdbf8
+pass sha256:247bc1b13a4508fa7756ad1a090edde4
 -- run/go/gtk4 --
-pass sha256:5ac2a16c5ab08d829c9ea73ffb5b51ad
+pass sha256:97c65300fa5c943be000806e497fdfbb
 -- run/kotlin/android --
-pass sha256:396b4900205792c91eecc8f15c47e59a
+pass sha256:ff767d85bd8f3bcf6569aeeb42dcda8e
 -- run/none/html --
 pass sha256:d226a21ec189c973db38fbe636e5ad6e

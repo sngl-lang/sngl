@@ -11,6 +11,10 @@ import (
 // ExprToStaticValueIR extracts a static literal value from an IR expression,
 // returning "" for non-literals.
 func ExprToStaticValueIR(e ir.Expr) string {
+	// A Style field the program wrote is an option holding the value.
+	if conv, ok := e.(*ir.Conversion); ok && ir.IsOptionWrap(conv) {
+		return ExprToStaticValueIR(conv.Operand)
+	}
 	if sl, ok := e.(*ir.StructLit); ok {
 		if css, ok := colorStructToCSS(sl); ok {
 			return css
@@ -23,6 +27,10 @@ func ExprToStaticValueIR(e ir.Expr) string {
 	// identifier camelCase, so `inlineBlock` is `inline-block` — the member
 	// is the value, not the text of the value.
 	if id, ok := e.(*ir.Ident); ok && id.Member != "" {
+		// `unset` leads every Style enum and writes nothing, as null does.
+		if id.Member == "unset" {
+			return ""
+		}
 		return kebabCase(id.Member)
 	}
 	if b, ok := e.(*ir.Binary); ok {

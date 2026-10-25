@@ -23,7 +23,7 @@ component badge(
     size    string = "", // "small" or "medium"
     style   Style = Style{},
 ) node {
-    text(value=value, style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px, ...style})
+    text(value=value, style=style.over({display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px}))
 }
 
 component _example_badge node {
@@ -46,7 +46,7 @@ component chip(
     @click(),
     @remove(), // the remove affordance was used
 ) node {
-    hbox(style={
+    hbox(style=style.over({
         alignItems = center,
         gap = 4px,
         paddingY = 4px,
@@ -55,8 +55,7 @@ component chip(
         borderWidth = 1px,
         borderColor = selected ? #0066CC : #CCCCCC,
         opacity = disabled ? 0.5 : 1.0,
-        ...style,
-    }) {
+    })) {
         text(value=label, @click { click() })
         if removable {
             button(text="×", disabled=disabled, focusable=focusable, @click { remove() })
@@ -99,7 +98,7 @@ component avatar(
         fallback {
             text(
                 value = initials,
-                style = {
+                style = style.over({
                     display = inlineFlex,
                     alignItems = center,
                     justifyContent = center,
@@ -108,8 +107,7 @@ component avatar(
                     textAlign = center,
                     borderRadius = _avatarRadius(size, variant),
                     background = #CCCCCC,
-                    ...style,
-                },
+                }),
                 @click { click() },
             )
         }
@@ -117,12 +115,11 @@ component avatar(
         image(
             alt = alt,
             fit = cover,
-            style = {
+            style = style.over({
                 width = _avatarSide(size),
                 height = _avatarSide(size),
                 borderRadius = _avatarRadius(size, variant),
-                ...style,
-            },
+            }),
             @click { click() },
             @error(e) { failed = true },
         ) {

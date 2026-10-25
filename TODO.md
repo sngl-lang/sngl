@@ -2,40 +2,11 @@
 
 ## Style fields, translated in SNGL
 
-P-1's third part, on !257's branch (`refactor/android-select-state`), which
-already lets a target package's override hold state, writes android's select
-as an override, takes every gtk4 setter from GIR, and has `match` merged in.
-
-### Where it stands
-
-Each platform's Go switches on `ui.Style` field names, and drops every field
-it does not name with no diagnostic. On android, bubbletea and fyne the work
-is done twice: a Style written as a literal is mapped field by field in Go,
-and a Style held in a value goes through a runtime helper the Go writes out
-(Kotlin `Modifier.snglStyle`, Go `__styleLipgloss`, `__styleTheme`). The two
-copies disagree:
-
-- android's helper drops flex, fontFamily, borderRadius and button colours,
-  and maps textAlign center/right only.
-- bubbletea's helper renders `opacity=1` faint.
-- All three helpers read `.px` and ignore em and rem.
-
-What each platform answers today:
-
-| Platform  | Fields it maps (of 52)                               |
-|-----------|------------------------------------------------------|
-| html      | all, in Go (htmlutil); stays there, see step 5       |
-| android   | done in SNGL (style.sngl); `unstyled` lists the rest |
-| bubbletea | done in SNGL (style.sngl); `unstyled` lists the rest |
-| fyne      | done in SNGL (style.sngl); `unstyled` lists the rest |
-| gtk4      | done in SNGL (style.sngl); `unstyled` lists the rest |
-
 The places to read first: `codegen/iterate.go` (`NodeStyleFieldsOf`, which
-decides literal vs held), `codegen/measurement.go`, android's finished
-`lib/platform/android/style.sngl` and bubbletea's as the pattern, fyne's
-`spec.go`, `layout.go`, `theme.go` and `pkg/go/fynetheme`, gtk4's
-`lib/platform/gtk4/style.sngl` and `pkg/go/gtk4rt/look.go`,
-and `internal/htmlutil/style.go`.
+decides literal vs held), `codegen/measurement.go`, the platforms'
+`lib/platform/<name>/style.sngl`, fyne's `spec.go`, `layout.go`, `theme.go`
+and `pkg/go/fynetheme`, `pkg/go/gtk4rt/look.go`, and html's
+`internal/htmlutil/style.go` and `codegen/platform/html/stylewrite.go`.
 
 ### The design
 
@@ -44,8 +15,7 @@ No new language feature. Each platform package translates a Style with a
 `#[kt.native]` Modifier and TextStyle calls on android, `#[go.native]`
 lipgloss methods on bubbletea, fynetheme on fyne -- and every override calls
 it on its `style`. `match` reads an enum field (fontWeight, textAlign) into
-the host's constant. One function serves a literal and a held Style alike, so
-the two copies above become one. html is the exception (step 5).
+the host's constant. One function serves a literal and a held Style alike. html is the exception (step 5).
 
 Fields a parent consumes -- `flex`, fyne's `margin`, Compose's
 `Modifier.weight`, which exists only in a Row or Column scope -- are answered
@@ -119,30 +89,24 @@ Each is a commit series on the branch; one MR, so CI runs once.
    when the widget lands there, and GTK splits the free space evenly: a
    weighted share is a layout of gtk4rt's own. A box's `alignItems` is put
    on each child it holds, later ones included.
-5. **html** stays in Go until a Style can say "unset". Tried and dropped: a
-   `css` function in SNGL answered every field, but a function of a Style
-   cannot tell a written `0px` from an omitted one, and on html, where the
-   browser has defaults of its own, that is a loss rather than a no-op --
-   `padding=0px` on a card, `alignItems=start`, `display=flex` on a text,
-   `listStyleType=none`, `fontWeight=normal` on a header cell and black
-   would each write nothing. A style reading state would also ship with none
-   of its static CSS in the markup, since the whole call runs where the page
-   does, and a held literal carries all 52 fields. Folding the function per
-   node per page cost the docs site 35% more allocation (12.6 GB against
-   9.3), most of it the interpreter rebinding an environment per call. The
-   way back is step 7, then a fold cache keyed on a const call's arguments.
+5. **html**, now that a Style can say "unset" (step 7). The css translation
+   moves into SNGL, replacing `internal/htmlutil/style.go`: a written `0px`
+   is kept, and a style reading state still ships its static CSS in the
+   markup. Measured against the docs site's allocation, which sank the last
+   try (12.6 GB against 9.3): folding a function per node per page was most
+   of it, the interpreter rebinding an environment per call.
 6. The coverage test across all six, and CLAUDE.md's platform sections.
-7. **A Style that can say "unset".** Every style function reads a field at
-   its type's zero as unset, so a written zero and an enum's first member are
-   lost: `alignItems=start` stretches on fyne and gtk4, `textAlign=left` leaves
-   a fyne button centered, an explicit `#000000` is unset everywhere, a side
-   written `0px` beside a non-zero whole takes the whole, and html cannot move
-   at all (step 5). An `unset` member leading each Style enum, as
-   `markup.SpanStyle`'s `inherit` does, answers the enums; a measurement and
-   a color need option fields or an unset value of their own. With it, a
-   JavaScript struct literal can write every field
-   (`js_struct_omitted_fields`), since nothing would read a field's presence
-   any more.
+7. **A Style that can say "unset".** Done. The checker writes every field a
+   struct literal leaves out (`ir.FillOmittedFields`), so nothing after it
+   reads a field's presence. `ui.Style`'s lengths, colors and `flex`,
+   `opacity`, `zIndex` and `maxLines` are options, null when unset; each of
+   its enums leads with `unset`; a string is unset empty. Each platform's
+   style.sngl takes a side as the first of its own field, its axis's and the
+   whole box's that is set, so `{padding=16px, paddingTop=0px}` is 0 on top
+   everywhere, and `alignItems=start`, `textAlign=left`, `fontWeight=normal`
+   and `#000000` each mean what they say. A component that takes the
+   caller's Style on top of its own writes `style.over({…})`, since a spread
+   writes the caller's unset fields too.
 
 ### Found on the way, not yet fixed
 
@@ -156,14 +120,6 @@ Each is a commit series on the branch; one MR, so CI runs once.
   content arriving through a slot, a nav page of several nodes -- provides no
   `flexShare`, so a `flex` child there fills the screen; a page under an hbox
   inherits the Row's closure. Both took a Column weight before.
-- A side written `0px` beside a non-zero whole (`{padding=16px, paddingTop=0px}`) reads as unset, so it is 16 on android and 0 on html: zero
-  is unset in every Style.
-- A Go struct literal leaves an omitted enum field `""`, not the first
-  member: `S{n=1}` then fails `s.t == Tone.calm` on every Go target, where
-  the interpreter passes. bubbletea's style.sngl never compares against a
-  first member for that reason. Writing the member in every literal would
-  put twelve fields in each Go Style; spelling the first member `""` would
-  change what `"{e}"` prints.
 - The interpreter, and the fold, print a color as `{r = 51, g = 102, b = 153, a = 255}`; every compiled target prints `#336699`.
 - A struct spread in a library function is not lowered on a target withholding
   `structSpread`: LibFuncs brings the function into the package after
@@ -183,9 +139,6 @@ Each is a commit series on the branch; one MR, so CI runs once.
 - On fyne a widget added to a container already under a Box's theme keeps
   the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
   render slot appending into a styled vbox meets it.
-- On fyne an explicit `#000000` is unset, as the color zero is, and so are
-  `alignItems=start` (stretches) and `textAlign=left` (a button stays
-  centered): each is its type's zero.
 - On gtk4 `flex` shares the free space evenly whatever the weights, and
   `justifyContent` is listed as not answered yet. A `fontSize` is written in
   points, as Pango reads a span's, so 1em is GTK's default text, while every
@@ -197,14 +150,12 @@ Each is a commit series on the branch; one MR, so CI runs once.
 - The shake keeps a library body reachable through a node handle's component
   type, so a program holding `#d` on a datepicker keeps `LookOf` and its
   helpers on gtk4 though nothing calls them.
-- A JavaScript struct literal writes only the fields it names, so an omitted
-  one reads undefined where Go and Kotlin read its zero
-  (`testdata/js_struct_omitted_fields.txtar`). Writing every field is a
-  small change in the JS emitter, but html's held-Style helper reads a
-  field's presence as having been set, so it waits on step 5.
 - html writes a Style field the build cannot fold with `setProperty` after the
   static attribute, in the literal's field order: `{padding=p, paddingTop=4px}`
   with `p` state resets the side on every write.
+- On Go, `==` between two structs holding a list does not compile
+  (`struct containing []string cannot be compared`), where the interpreter
+  compares them field by field.
 - The optimizer interprets a const function per call, and a lambda call
   snapshots the environment: a `.filter(func…)` in a function folded per node
   was most of a 7 GB increase on the docs site.

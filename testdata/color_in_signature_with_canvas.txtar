@@ -174,9 +174,9 @@ fun MainScreen() {
 
 fun bgOf(on: Boolean): Color {
     if (on) {
-    	return Color(r = 45, g = 255, b = 170, a = 255)
+    	return Color(r = 45, g = 255, b = 170)
     }
-    return Color(r = 24, g = 60, b = 52, a = 255)
+    return Color(r = 24, g = 60, b = 52)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
 package test.sngl.app
@@ -328,4 +328,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:520330117e2c4990fdb7ebdb71d79446
+pass sha256:26d10339683e9197cf815161c40fac3d

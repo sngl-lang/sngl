@@ -267,7 +267,7 @@ func (c *Frame__slot0Instance) Set__p0(__v float64) {
 
 func (c *Frame__slot0Instance) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(20.0, 20.0, c.__prop___p0)
 	ctx.Restore()
 }
@@ -785,7 +785,7 @@ func (c *Frame__slot0Instance) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(20.0), C.double(20.0), C.double(c.__prop___p0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -1060,8 +1060,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:03c1a39b8f11db40b88abf0c228a1d33
+pass sha256:b8c89789109d7c29b3d5b0f4ec0fe43c
 -- run/go/gtk4 --
-pass sha256:0d9e1abbe535d50547ddcb66fde00a46
+pass sha256:9fb95b7efef2af6e4ac0c4d5b0dbf326
 -- run/none/html --
 pass sha256:4c7b7575af06afb11fcf9896f3612b7d

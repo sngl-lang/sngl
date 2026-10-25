@@ -24,8 +24,8 @@ func BuildCSSStyleIR(props []ir.Arg) string {
 	add := func(field string, value ir.Expr) {
 		if css := StylePropToCSSIR(field, value); css != "" {
 			groups = append(groups, group{field, css})
+			styled[field] = true
 		}
-		styled[field] = true
 	}
 	for _, p := range props {
 		if p.Name == "" {

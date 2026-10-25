@@ -145,6 +145,9 @@ window.__sngl_boot = () => {
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
+  function Style_over(s, base) {
+    return { padding: s.padding !== null ? s.padding : base.padding, paddingTop: s.paddingTop !== null ? s.paddingTop : base.paddingTop, paddingRight: s.paddingRight !== null ? s.paddingRight : base.paddingRight, paddingBottom: s.paddingBottom !== null ? s.paddingBottom : base.paddingBottom, paddingLeft: s.paddingLeft !== null ? s.paddingLeft : base.paddingLeft, paddingX: s.paddingX !== null ? s.paddingX : base.paddingX, paddingY: s.paddingY !== null ? s.paddingY : base.paddingY, margin: s.margin !== null ? s.margin : base.margin, marginTop: s.marginTop !== null ? s.marginTop : base.marginTop, marginRight: s.marginRight !== null ? s.marginRight : base.marginRight, marginBottom: s.marginBottom !== null ? s.marginBottom : base.marginBottom, marginLeft: s.marginLeft !== null ? s.marginLeft : base.marginLeft, marginX: s.marginX !== null ? s.marginX : base.marginX, marginY: s.marginY !== null ? s.marginY : base.marginY, gap: s.gap !== null ? s.gap : base.gap, width: s.width !== null ? s.width : base.width, minWidth: s.minWidth !== null ? s.minWidth : base.minWidth, height: s.height !== null ? s.height : base.height, maxWidth: s.maxWidth !== null ? s.maxWidth : base.maxWidth, maxHeight: s.maxHeight !== null ? s.maxHeight : base.maxHeight, flex: s.flex !== null ? s.flex : base.flex, flexDirection: s.flexDirection !== "unset" ? s.flexDirection : base.flexDirection, alignItems: s.alignItems !== "unset" ? s.alignItems : base.alignItems, justifyContent: s.justifyContent !== "unset" ? s.justifyContent : base.justifyContent, position: s.position !== "unset" ? s.position : base.position, top: s.top !== null ? s.top : base.top, bottom: s.bottom !== null ? s.bottom : base.bottom, left: s.left !== null ? s.left : base.left, right: s.right !== null ? s.right : base.right, zIndex: s.zIndex !== null ? s.zIndex : base.zIndex, color: s.color !== null ? s.color : base.color, fontSize: s.fontSize !== null ? s.fontSize : base.fontSize, fontFamily: s.fontFamily !== "" ? s.fontFamily : base.fontFamily, fontWeight: s.fontWeight !== "unset" ? s.fontWeight : base.fontWeight, fontStyle: s.fontStyle !== "unset" ? s.fontStyle : base.fontStyle, textAlign: s.textAlign !== "unset" ? s.textAlign : base.textAlign, maxLines: s.maxLines !== null ? s.maxLines : base.maxLines, whiteSpace: s.whiteSpace !== "unset" ? s.whiteSpace : base.whiteSpace, background: s.background !== null ? s.background : base.background, borderRadius: s.borderRadius !== null ? s.borderRadius : base.borderRadius, borderColor: s.borderColor !== null ? s.borderColor : base.borderColor, borderWidth: s.borderWidth !== null ? s.borderWidth : base.borderWidth, border: s.border !== "" ? s.border : base.border, borderBottom: s.borderBottom !== "" ? s.borderBottom : base.borderBottom, borderLeft: s.borderLeft !== "" ? s.borderLeft : base.borderLeft, borderCollapse: s.borderCollapse !== "" ? s.borderCollapse : base.borderCollapse, borderStyle: s.borderStyle !== "unset" ? s.borderStyle : base.borderStyle, opacity: s.opacity !== null ? s.opacity : base.opacity, cursor: s.cursor !== "" ? s.cursor : base.cursor, display: s.display !== "unset" ? s.display : base.display, overflow: s.overflow !== "unset" ? s.overflow : base.overflow, listStyleType: s.listStyleType !== "unset" ? s.listStyleType : base.listStyleType };
+  }
   function cssColor(c) {
     return "rgba(" + String(c.r) + "," + String(c.g) + "," + String(c.b) + "," + String(parseFloat(c.a) / 255) + ")";
   }
@@ -170,7 +173,7 @@ window.__sngl_boot = () => {
     return { px: _avatarSide(size).px * 0.5, em: _avatarSide(size).em * 0.5, rem: _avatarSide(size).rem * 0.5 };
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { red, cssColor, _avatarSide, _avatarRadius });
+    Object.assign(window, { red, Style_over, cssColor, _avatarSide, _avatarRadius });
   }
   var __slot0 = [];
   var __rendering0 = false;
@@ -288,7 +291,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:803fbbc4184e13de680cf01f4c5a4cf6
+pass sha256:e4caf2d7e07a3da0d6304795415b3b61
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
 sha256:790725e86d9b28e93718d4fa4771a68e
 {

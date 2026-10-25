@@ -193,7 +193,7 @@ var _canvasSurface0 snglcanvas.Surface
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	for __copy0, k := range m.ws {
 		ctx.Save()
-		ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+		ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		ctx.Rect(0.0, 0.0, float64(func() Pic {
 			if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
@@ -783,7 +783,7 @@ func (m *Model) __snglTeardown() {
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	for __copy0, k := range m.ws {
 		ctx.Save()
-		ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+		ApplyStyle(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		ctx.Rect(0.0, 0.0, float64(func() Pic {
 			if __v, __ok := m.p__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
@@ -1428,7 +1428,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 			}
 			return Pic{}
 		}().N)), C.double(k))
-		Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+		Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		C.cairo_restore(ctx)
 	}
 }
@@ -1545,7 +1545,7 @@ window.__sngl_boot = () => {
   }
   function __effect1_unmount() {
     let __copyKey = __effect1_key;
-    close(state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : {});
+    close(state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : { n: 0 });
   }
   function __effect2_update() {
     let __copyKey = __effect2_key.copy;
@@ -1560,8 +1560,8 @@ window.__sngl_boot = () => {
     }
     ;
     let __new0 = load(Math.trunc(k__at0));
-    let __old1 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : {};
-    let __cell1_p__inst0 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : {};
+    let __old1 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : { n: 0 };
+    let __cell1_p__inst0 = state.p__inst0.has(__copyKey) ? state.p__inst0.get(__copyKey) : { n: 0 };
     __cell1_p__inst0 = __new0;
     state.p__inst0.set(__copyKey, __cell1_p__inst0);
     close(__old1);
@@ -1578,7 +1578,7 @@ window.__sngl_boot = () => {
   var __effect1_key = "";
   var __effect1_live = [];
   var __effect1_desired = [];
-  var __effect2_key = {};
+  var __effect2_key = { copy: "", on: 0 };
   var __effect2_dirty = false;
   var __effect2_keys = /* @__PURE__ */ new Map([]);
   var __effect2_rekey = false;
@@ -1606,7 +1606,7 @@ window.__sngl_boot = () => {
         __effect0_fresh = __effect0_live[__effect0_desired.length] !== String(__copy0);
       }
       if (__effect0_fresh) {
-        let __cell2_p__inst0 = state.p__inst0.has(String(__copy0)) ? state.p__inst0.get(String(__copy0)) : {};
+        let __cell2_p__inst0 = state.p__inst0.has(String(__copy0)) ? state.p__inst0.get(String(__copy0)) : { n: 0 };
         __cell2_p__inst0 = load(Math.trunc(k));
         state.p__inst0.set(String(__copy0), __cell2_p__inst0);
       }
@@ -1736,10 +1736,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e3a373f56c8a32dee27e696f03e8ea2e
+pass sha256:abb95fd90b494b53ff09082eb844e8b8
 -- run/go/fyne --
-pass sha256:1575f2ca1bfbf3c14adc6b5ee0dc88a2
+pass sha256:4242af24920a942658db14900b74a6c9
 -- run/go/gtk4 --
-pass sha256:9bbe8b994915c5c6fb2294086b353736
+pass sha256:f4dd12e04d18a416b58db9f0c17ecd87
 -- run/none/html --
-pass sha256:79a49d3f3ec2b45f6a4885cca3e5d1cd
+pass sha256:136f5ab66dd7aeb3cd90dc76442846fd

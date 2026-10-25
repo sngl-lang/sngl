@@ -85,54 +85,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -175,94 +175,112 @@ func Check__inst0() {
 }
 
 func LookOf(s Style) fynelayout.Look {
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	var __lt0 float32
+	if s.Flex == nil {
+		__lt0 = 0.0
+	} else {
+		__lt0 = float32((*(s.Flex)))
+	}
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
 	return look
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) float32 {
-	var __lt1 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt1 = own
+func Side(all *Measurement, axis *Measurement, own *Measurement) float32 {
+	var __lt2 *Measurement
+	if own != nil {
+		__lt2 = own
 	} else {
-		var __lt0 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt0 = axis
+		var __lt1 *Measurement
+		if axis != nil {
+			__lt1 = axis
 		} else {
-			__lt0 = all
+			__lt1 = all
 		}
-		__lt1 = __lt0
+		__lt2 = __lt1
 	}
-	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+	return Inset(__lt2)
 }
 
-func CrossOf(a string) int {
-	var __lt2 int
-	switch a {
-	case "center":
-		__lt2 = 2
-	case "end":
-		__lt2 = 3
-	default:
-		__lt2 = 0
-	}
-	return __lt2
-}
-
-func JustifyOf(j string) int {
-	var __lt3 int
-	switch j {
-	case "center":
-		__lt3 = 1
-	case "end":
-		__lt3 = 2
-	case "spaceBetween":
-		__lt3 = 3
-	case "spaceAround":
-		__lt3 = 4
-	case "spaceEvenly":
-		__lt3 = 5
-	default:
-		__lt3 = 0
+func Inset(m__r0 *Measurement) float32 {
+	var __lt3 float32
+	if m__r0 == nil {
+		__lt3 = 0.0
+	} else {
+		__lt3 = float32(max(((*(m__r0)).Px + (14.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0))
 	}
 	return __lt3
 }
 
-func Paint(c__r0 snglcolor.Color) snglcolor.Color {
-	var __lt4 snglcolor.Color
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
-	} else {
-		__lt4 = c__r0
+func CrossOf(a string) int {
+	var __lt4 int
+	switch a {
+	case "start":
+		__lt4 = 1
+	case "center":
+		__lt4 = 2
+	case "end":
+		__lt4 = 3
+	default:
+		__lt4 = 0
 	}
 	return __lt4
 }
 
-func TextAlignOf(a string) int {
+func JustifyOf(j string) int {
 	var __lt5 int
-	switch a {
+	switch j {
 	case "center":
-		__lt5 = 2
-	case "right":
-		__lt5 = 3
-	case "justify":
 		__lt5 = 1
+	case "end":
+		__lt5 = 2
+	case "spaceBetween":
+		__lt5 = 3
+	case "spaceAround":
+		__lt5 = 4
+	case "spaceEvenly":
+		__lt5 = 5
 	default:
 		__lt5 = 0
 	}
 	return __lt5
 }
 
-func WrapOf(w string) int {
-	var __lt6 int
-	switch w {
-	case "pre", "nowrap":
-		__lt6 = 1
-	case "preWrap", "preLine":
-		__lt6 = 2
-	default:
-		__lt6 = 0
+func Paint(c__r0 *snglcolor.Color) snglcolor.Color {
+	var __lt6 snglcolor.Color
+	if c__r0 == nil {
+		__lt6 = snglcolor.Color{}
+	} else {
+		__lt6 = (*(c__r0))
 	}
 	return __lt6
+}
+
+func TextAlignOf(a string) int {
+	var __lt7 int
+	switch a {
+	case "left", "justify":
+		__lt7 = 1
+	case "center":
+		__lt7 = 2
+	case "right":
+		__lt7 = 3
+	default:
+		__lt7 = 0
+	}
+	return __lt7
+}
+
+func WrapOf(w string) int {
+	var __lt8 int
+	switch w {
+	case "pre", "nowrap":
+		__lt8 = 1
+	case "preWrap", "preLine":
+		__lt8 = 2
+	default:
+		__lt8 = 0
+	}
+	return __lt8
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -544,6 +562,6 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e54a8a33feae3e48eec5e995158bd590
+pass sha256:290ecb0fd11ca0bc26f3b180e6227abf
 -- run/none/html --
 pass sha256:57b1c970e464c821a49947d5b313a1f3

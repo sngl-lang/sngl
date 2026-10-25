@@ -338,9 +338,9 @@ const component ui.spinner[platform](style) {
 const component ui.badge[platform](value, style) {
     Badge(
         modifier = surfaceModifierOf(style, flexShare),
-        containerColor = style.background != unset.background ? composeOf(style.background) : badgeContainerColor,
-        contentColor = style.color != unset.color ? composeOf(style.color) : contentColorFor(
-            style.background != unset.background ? composeOf(style.background) : badgeContainerColor,
+        containerColor = style.background != null ? composeOf(style.background) : badgeContainerColor,
+        contentColor = style.color != null ? composeOf(style.color) : contentColorFor(
+            style.background != null ? composeOf(style.background) : badgeContainerColor,
         ),
     ) {
         Text(text=value) {}

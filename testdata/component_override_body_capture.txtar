@@ -116,54 +116,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -209,228 +209,240 @@ func (m *Model) bump__inst0() {
 	m.count__inst0 = (m.count__inst0 + 100)
 }
 
-func RowsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt1 int
-	if px <= 0.0 {
-		__lt1 = 0
+func RowsOf(m__r0 *Measurement) int {
+	var __lt2 float64
+	if m__r0 == nil {
+		__lt2 = 0.0
 	} else {
-		__lt1 = max(1, (int(px) / 16))
+		__lt2 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
 	}
-	return __lt1
+	var px float64 = __lt2
+	var __lt3 int
+	if px <= 0.0 {
+		__lt3 = 0
+	} else {
+		__lt3 = max(1, (int(px) / 16))
+	}
+	return __lt3
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if (s == Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
 		l = l.Italic(true)
 	}
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
-		var __lt2 lipgloss.Position
+		var __lt4 lipgloss.Position
 		switch s.TextAlign {
 		case "center":
-			__lt2 = lipgloss.Center
+			__lt4 = lipgloss.Center
 		case "right":
-			__lt2 = lipgloss.Right
+			__lt4 = lipgloss.Right
 		default:
-			__lt2 = lipgloss.Left
+			__lt4 = lipgloss.Left
 		}
-		l = l.AlignHorizontal(__lt2)
+		l = l.AlignHorizontal(__lt4)
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
-		var __lt3 lipgloss.Border
+	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		var __lt5 lipgloss.Border
 		switch s.BorderStyle {
 		case "double":
-			__lt3 = lipgloss.DoubleBorder()
+			__lt5 = lipgloss.DoubleBorder()
 		case "dashed", "dotted":
-			__lt3 = tui.DashedBorder()
+			__lt5 = tui.DashedBorder()
 		default:
-			var __lt4 lipgloss.Border
-			if (s.BorderRadius != Measurement{Px: 0}) {
-				__lt4 = lipgloss.RoundedBorder()
+			var __lt6 lipgloss.Border
+			if s.BorderRadius != nil {
+				__lt6 = lipgloss.RoundedBorder()
 			} else {
-				__lt4 = lipgloss.NormalBorder()
+				__lt6 = lipgloss.NormalBorder()
 			}
-			__lt3 = __lt4
+			__lt5 = __lt6
 		}
-		l = l.Border(__lt3)
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		l = l.Border(__lt5)
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	var __lt6 Measurement
-	if (s.MarginTop != Measurement{Px: 0}) {
-		__lt6 = s.MarginTop
+	var __lt8 *Measurement
+	if s.MarginTop != nil {
+		__lt8 = s.MarginTop
 	} else {
-		var __lt5 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt5 = s.MarginY
-		} else {
-			__lt5 = s.Margin
-		}
-		__lt6 = __lt5
-	}
-	l = l.MarginTop(CellsOf(__lt6))
-	var __lt8 Measurement
-	if (s.MarginRight != Measurement{Px: 0}) {
-		__lt8 = s.MarginRight
-	} else {
-		var __lt7 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt7 = s.MarginX
+		var __lt7 *Measurement
+		if s.MarginY != nil {
+			__lt7 = s.MarginY
 		} else {
 			__lt7 = s.Margin
 		}
 		__lt8 = __lt7
 	}
-	l = l.MarginRight(CellsOf(__lt8))
-	var __lt10 Measurement
-	if (s.MarginBottom != Measurement{Px: 0}) {
-		__lt10 = s.MarginBottom
+	l = l.MarginTop(CellsOf(__lt8))
+	var __lt10 *Measurement
+	if s.MarginRight != nil {
+		__lt10 = s.MarginRight
 	} else {
-		var __lt9 Measurement
-		if (s.MarginY != Measurement{Px: 0}) {
-			__lt9 = s.MarginY
+		var __lt9 *Measurement
+		if s.MarginX != nil {
+			__lt9 = s.MarginX
 		} else {
 			__lt9 = s.Margin
 		}
 		__lt10 = __lt9
 	}
-	l = l.MarginBottom(CellsOf(__lt10))
-	var __lt12 Measurement
-	if (s.MarginLeft != Measurement{Px: 0}) {
-		__lt12 = s.MarginLeft
+	l = l.MarginRight(CellsOf(__lt10))
+	var __lt12 *Measurement
+	if s.MarginBottom != nil {
+		__lt12 = s.MarginBottom
 	} else {
-		var __lt11 Measurement
-		if (s.MarginX != Measurement{Px: 0}) {
-			__lt11 = s.MarginX
+		var __lt11 *Measurement
+		if s.MarginY != nil {
+			__lt11 = s.MarginY
 		} else {
 			__lt11 = s.Margin
 		}
 		__lt12 = __lt11
 	}
-	l = l.MarginLeft(CellsOf(__lt12))
-	var __lt14 Measurement
-	if (s.PaddingTop != Measurement{Px: 0}) {
-		__lt14 = s.PaddingTop
+	l = l.MarginBottom(CellsOf(__lt12))
+	var __lt14 *Measurement
+	if s.MarginLeft != nil {
+		__lt14 = s.MarginLeft
 	} else {
-		var __lt13 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt13 = s.PaddingY
+		var __lt13 *Measurement
+		if s.MarginX != nil {
+			__lt13 = s.MarginX
 		} else {
-			__lt13 = s.Padding
+			__lt13 = s.Margin
 		}
 		__lt14 = __lt13
 	}
-	l = l.PaddingTop(CellsOf(__lt14))
-	var __lt16 Measurement
-	if (s.PaddingRight != Measurement{Px: 0}) {
-		__lt16 = s.PaddingRight
+	l = l.MarginLeft(CellsOf(__lt14))
+	var __lt16 *Measurement
+	if s.PaddingTop != nil {
+		__lt16 = s.PaddingTop
 	} else {
-		var __lt15 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt15 = s.PaddingX
+		var __lt15 *Measurement
+		if s.PaddingY != nil {
+			__lt15 = s.PaddingY
 		} else {
 			__lt15 = s.Padding
 		}
 		__lt16 = __lt15
 	}
-	l = l.PaddingRight(CellsOf(__lt16))
-	var __lt18 Measurement
-	if (s.PaddingBottom != Measurement{Px: 0}) {
-		__lt18 = s.PaddingBottom
+	l = l.PaddingTop(CellsOf(__lt16))
+	var __lt18 *Measurement
+	if s.PaddingRight != nil {
+		__lt18 = s.PaddingRight
 	} else {
-		var __lt17 Measurement
-		if (s.PaddingY != Measurement{Px: 0}) {
-			__lt17 = s.PaddingY
+		var __lt17 *Measurement
+		if s.PaddingX != nil {
+			__lt17 = s.PaddingX
 		} else {
 			__lt17 = s.Padding
 		}
 		__lt18 = __lt17
 	}
-	l = l.PaddingBottom(CellsOf(__lt18))
-	var __lt20 Measurement
-	if (s.PaddingLeft != Measurement{Px: 0}) {
-		__lt20 = s.PaddingLeft
+	l = l.PaddingRight(CellsOf(__lt18))
+	var __lt20 *Measurement
+	if s.PaddingBottom != nil {
+		__lt20 = s.PaddingBottom
 	} else {
-		var __lt19 Measurement
-		if (s.PaddingX != Measurement{Px: 0}) {
-			__lt19 = s.PaddingX
+		var __lt19 *Measurement
+		if s.PaddingY != nil {
+			__lt19 = s.PaddingY
 		} else {
 			__lt19 = s.Padding
 		}
 		__lt20 = __lt19
 	}
-	l = l.PaddingLeft(CellsOf(__lt20))
-	if (s.Width != Measurement{Px: 0}) {
+	l = l.PaddingBottom(CellsOf(__lt20))
+	var __lt22 *Measurement
+	if s.PaddingLeft != nil {
+		__lt22 = s.PaddingLeft
+	} else {
+		var __lt21 *Measurement
+		if s.PaddingX != nil {
+			__lt21 = s.PaddingX
+		} else {
+			__lt21 = s.Padding
+		}
+		__lt22 = __lt21
+	}
+	l = l.PaddingLeft(CellsOf(__lt22))
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt25 int
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt27 int
 		if RowsOf(s.MaxHeight) == 0 {
-			var __lt21 int
-			if s.MaxLines == 0 {
-				__lt21 = 0
+			var __lt23 int
+			if s.MaxLines == nil {
+				__lt23 = 0
 			} else {
-				__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
+				__lt23 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 			}
-			__lt25 = __lt21
+			__lt27 = __lt23
 		} else {
-			var __lt22 int
-			if s.MaxLines == 0 {
-				__lt22 = 0
-			} else {
-				__lt22 = (s.MaxLines + l.GetVerticalFrameSize())
-			}
 			var __lt24 int
-			if __lt22 == 0 {
-				__lt24 = RowsOf(s.MaxHeight)
+			if s.MaxLines == nil {
+				__lt24 = 0
 			} else {
-				var __lt23 int
-				if s.MaxLines == 0 {
-					__lt23 = 0
-				} else {
-					__lt23 = (s.MaxLines + l.GetVerticalFrameSize())
-				}
-				__lt24 = min(RowsOf(s.MaxHeight), __lt23)
+				__lt24 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 			}
-			__lt25 = __lt24
+			var __lt26 int
+			if __lt24 == 0 {
+				__lt26 = RowsOf(s.MaxHeight)
+			} else {
+				var __lt25 int
+				if s.MaxLines == nil {
+					__lt25 = 0
+				} else {
+					__lt25 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+				}
+				__lt26 = min(RowsOf(s.MaxHeight), __lt25)
+			}
+			__lt27 = __lt26
 		}
-		l = l.MaxHeight(__lt25)
+		l = l.MaxHeight(__lt27)
 	}
 	return l
 }
 
-func CellsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt26 int
-	if px <= 0.0 {
-		__lt26 = 0
+func CellsOf(m__r1 *Measurement) int {
+	var __lt28 float64
+	if m__r1 == nil {
+		__lt28 = 0.0
 	} else {
-		__lt26 = max(1, (int(px) / 8))
+		__lt28 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt26
+	var px float64 = __lt28
+	var __lt29 int
+	if px <= 0.0 {
+		__lt29 = 0
+	} else {
+		__lt29 = max(1, (int(px) / 8))
+	}
+	return __lt29
 }
 
 func (m *Model) __focusNext() {
@@ -586,7 +598,7 @@ func (m Model) View() tea.View {
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
+		content_0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		content_0_1Focused := (m.__focusID == 0)
@@ -594,15 +606,15 @@ func (m Model) View() tea.View {
 		if content_0_1Focused {
 			content_0_1Prefix = ">"
 		}
-		content_0_1 = BoxLook(Style{}, true).Render(content_0_1Prefix + " " + fmt.Sprint("+"))
+		content_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0_1Prefix + " " + fmt.Sprint("+"))
 		content_0Children = append(content_0Children, content_0_1)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-		content_0 = BoxLook(Style{}, true).Render(content_0)
+		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
+		content_1_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		content_1_1Focused := (m.__focusID == 1)
@@ -610,13 +622,13 @@ func (m Model) View() tea.View {
 		if content_1_1Focused {
 			content_1_1Prefix = ">"
 		}
-		content_1_1 = BoxLook(Style{}, true).Render(content_1_1Prefix + " " + fmt.Sprint("+"))
+		content_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1_1Prefix + " " + fmt.Sprint("+"))
 		content_1Children = append(content_1Children, content_1_1)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-		content_1 = BoxLook(Style{}, true).Render(content_1)
+		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{}, true).Render(content)
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -708,6 +720,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dbaa5e341246ac732e6e8cad5ff21551
+pass sha256:24f805b5c1d88d78250f74878eed4365
 -- run/none/html --
 pass sha256:c0e027384958b52ee1282ec734416397

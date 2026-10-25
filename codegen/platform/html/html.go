@@ -1725,13 +1725,17 @@ func (g *htmlGen) rootFlexes() bool {
 			if sf.Name != "flex" {
 				continue
 			}
-			if sf.Value == nil {
+			v := sf.Value
+			if conv, ok := v.(*ir.Conversion); ok && ir.IsOptionWrap(conv) {
+				v = conv.Operand
+			}
+			if v == nil || ir.IsNullLiteral(v) {
 				continue
 			}
 			// `flex` is a float, so the question is numeric. An expression
 			// nobody can read at build time may ask for a share at runtime,
 			// and handing over the viewport costs a page that does not.
-			if v, ok := codegen.IRLiteralNumber(sf.Value); ok && v == 0 {
+			if n, ok := codegen.IRLiteralNumber(v); ok && n == 0 {
 				continue
 			}
 			return true

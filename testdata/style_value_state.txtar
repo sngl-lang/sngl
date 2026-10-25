@@ -88,6 +88,10 @@ import (
 	"os"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -95,54 +99,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -169,9 +173,9 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.s = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, FontSize: Measurement{Px: 14}}
+	m.s = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontSize: snglSome(Measurement{Px: 14}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	m.on = false
-	m.kept = []Style{Style{Background: snglcolor.Color{R: 0, G: 255, B: 255, A: 255}}}
+	m.kept = []Style{Style{Background: snglSome(snglcolor.Color{G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}}
 	m.rows = []string{"a"}
 	m.visible__inst0 = true
 	m.__focusID = 0
@@ -184,21 +188,31 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
+func GrowOf(flex *float64) float64 {
+	var __lt0 float64
+	if flex == nil {
+		__lt0 = 0.0
+	} else {
+		__lt0 = (*(flex))
+	}
+	return __lt0
+}
+
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if (s == Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -207,10 +221,10 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -221,111 +235,121 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt0 int
-		if s.MaxLines == 0 {
-			__lt0 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt1 int
+		if s.MaxLines == nil {
+			__lt1 = 0
 		} else {
-			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt1 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt1 lipgloss.Position
+	var __lt2 lipgloss.Position
 	switch a {
 	case "center":
-		__lt1 = lipgloss.Center
+		__lt2 = lipgloss.Center
 	case "right":
-		__lt1 = lipgloss.Right
+		__lt2 = lipgloss.Right
 	default:
-		__lt1 = lipgloss.Left
-	}
-	return __lt1
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt2 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt2 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt2 = tui.DashedBorder()
-	default:
-		var __lt3 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt3 = lipgloss.RoundedBorder()
-		} else {
-			__lt3 = lipgloss.NormalBorder()
-		}
-		__lt2 = __lt3
+		__lt2 = lipgloss.Left
 	}
 	return __lt2
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt5 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt5 = own
-	} else {
-		var __lt4 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt4 = axis
+func BorderOf(s Style) lipgloss.Border {
+	var __lt3 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt3 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt3 = tui.DashedBorder()
+	default:
+		var __lt4 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt4 = lipgloss.RoundedBorder()
 		} else {
-			__lt4 = all
+			__lt4 = lipgloss.NormalBorder()
 		}
-		__lt5 = __lt4
+		__lt3 = __lt4
 	}
-	return CellsOf(__lt5)
+	return __lt3
 }
 
-func CellsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt6 int
-	if px <= 0.0 {
-		__lt6 = 0
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt6 *Measurement
+	if own != nil {
+		__lt6 = own
 	} else {
-		__lt6 = max(1, (int(px) / 8))
+		var __lt5 *Measurement
+		if axis != nil {
+			__lt5 = axis
+		} else {
+			__lt5 = all
+		}
+		__lt6 = __lt5
 	}
-	return __lt6
+	return CellsOf(__lt6)
 }
 
-func RowsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+func CellsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
 	var __lt7 int
 	if px <= 0.0 {
 		__lt7 = 0
 	} else {
-		__lt7 = max(1, (int(px) / 16))
+		__lt7 = max(1, (int(px) / 8))
 	}
 	return __lt7
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func RowsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 16))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
+}
+
+func PxOf(m__r2 *Measurement) float64 {
+	var __lt11 float64
+	if m__r2 == nil {
+		__lt11 = 0.0
+	} else {
+		__lt11 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+	}
+	return __lt11
 }
 
 func (m *Model) __focusNext() {
@@ -460,10 +484,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.s = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}, FontSize: Measurement{Px: 20}, FontWeight: "bold"}
+			m.s = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontSize: snglSome(Measurement{Px: 20}), FontWeight: "bold", FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 			m.on = !m.on
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.s.Color = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+			m.s.Color = snglSome(snglcolor.Color{G: 255, A: 255})
 			m.rows = []string{"a", "b"}
 		}
 	}
@@ -480,7 +504,7 @@ func (m Model) View() tea.View {
 		if contentPart_0Focused {
 			contentPart_0Prefix = ">"
 		}
-		contentPart_0 = BoxLook(Style{}, true).Render(contentPart_0Prefix + " " + fmt.Sprint("swap"))
+		contentPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_0Prefix + " " + fmt.Sprint("swap"))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 1)
@@ -488,26 +512,26 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
+		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		contentPart_2 = BoxLook(m.s, true).Render(fmt.Sprint("styled"))
 		contentParts = append(contentParts, contentPart_2)
-		var __lt10 Style
+		var __lt12 Style
 		if m.on {
-			__lt10 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+			__lt12 = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 		} else {
-			__lt10 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+			__lt12 = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 		}
-		var __lt11 Style
+		var __lt13 Style
 		if m.on {
-			__lt11 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+			__lt13 = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 		} else {
-			__lt11 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+			__lt13 = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 		}
 		var contentPart_7 string
-		_ = __lt11
-		contentPart_7 = BoxLook(__lt10, true).Render(fmt.Sprint("picked"))
+		_ = __lt13
+		contentPart_7 = BoxLook(__lt12, true).Render(fmt.Sprint("picked"))
 		contentParts = append(contentParts, contentPart_7)
 		var contentPart_8 string
 		contentPart_8 = BoxLook(m.kept[0], true).Render(fmt.Sprint("kept"))
@@ -554,6 +578,10 @@ import (
 	"os"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -561,54 +589,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -643,9 +671,9 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.s = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, FontSize: Measurement{Px: 14}}
+	m.s = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontSize: snglSome(Measurement{Px: 14}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	m.on = false
-	m.kept = []Style{Style{Background: snglcolor.Color{R: 0, G: 255, B: 255, A: 255}}}
+	m.kept = []Style{Style{Background: snglSome(snglcolor.Color{G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}}
 	m.rows = []string{"a"}
 	m.visible__inst0 = true
 	m.__slot0 = nil
@@ -657,94 +685,112 @@ func New() *Model {
 }
 
 func LookOf(s Style) fynelayout.Look {
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	var __lt0 float32
+	if s.Flex == nil {
+		__lt0 = 0.0
+	} else {
+		__lt0 = float32((*(s.Flex)))
+	}
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
 	return look
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) float32 {
-	var __lt1 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt1 = own
+func Side(all *Measurement, axis *Measurement, own *Measurement) float32 {
+	var __lt2 *Measurement
+	if own != nil {
+		__lt2 = own
 	} else {
-		var __lt0 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt0 = axis
+		var __lt1 *Measurement
+		if axis != nil {
+			__lt1 = axis
 		} else {
-			__lt0 = all
+			__lt1 = all
 		}
-		__lt1 = __lt0
+		__lt2 = __lt1
 	}
-	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+	return Inset(__lt2)
 }
 
-func CrossOf(a string) int {
-	var __lt2 int
-	switch a {
-	case "center":
-		__lt2 = 2
-	case "end":
-		__lt2 = 3
-	default:
-		__lt2 = 0
-	}
-	return __lt2
-}
-
-func JustifyOf(j string) int {
-	var __lt3 int
-	switch j {
-	case "center":
-		__lt3 = 1
-	case "end":
-		__lt3 = 2
-	case "spaceBetween":
-		__lt3 = 3
-	case "spaceAround":
-		__lt3 = 4
-	case "spaceEvenly":
-		__lt3 = 5
-	default:
-		__lt3 = 0
+func Inset(m__r0 *Measurement) float32 {
+	var __lt3 float32
+	if m__r0 == nil {
+		__lt3 = 0.0
+	} else {
+		__lt3 = float32(max(((*(m__r0)).Px + (14.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0))
 	}
 	return __lt3
 }
 
-func Paint(c__r0 snglcolor.Color) snglcolor.Color {
-	var __lt4 snglcolor.Color
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt4 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
-	} else {
-		__lt4 = c__r0
+func CrossOf(a string) int {
+	var __lt4 int
+	switch a {
+	case "start":
+		__lt4 = 1
+	case "center":
+		__lt4 = 2
+	case "end":
+		__lt4 = 3
+	default:
+		__lt4 = 0
 	}
 	return __lt4
 }
 
-func TextAlignOf(a string) int {
+func JustifyOf(j string) int {
 	var __lt5 int
-	switch a {
+	switch j {
 	case "center":
-		__lt5 = 2
-	case "right":
-		__lt5 = 3
-	case "justify":
 		__lt5 = 1
+	case "end":
+		__lt5 = 2
+	case "spaceBetween":
+		__lt5 = 3
+	case "spaceAround":
+		__lt5 = 4
+	case "spaceEvenly":
+		__lt5 = 5
 	default:
 		__lt5 = 0
 	}
 	return __lt5
 }
 
-func WrapOf(w string) int {
-	var __lt6 int
-	switch w {
-	case "pre", "nowrap":
-		__lt6 = 1
-	case "preWrap", "preLine":
-		__lt6 = 2
-	default:
-		__lt6 = 0
+func Paint(c__r0 *snglcolor.Color) snglcolor.Color {
+	var __lt6 snglcolor.Color
+	if c__r0 == nil {
+		__lt6 = snglcolor.Color{}
+	} else {
+		__lt6 = (*(c__r0))
 	}
 	return __lt6
+}
+
+func TextAlignOf(a string) int {
+	var __lt7 int
+	switch a {
+	case "left", "justify":
+		__lt7 = 1
+	case "center":
+		__lt7 = 2
+	case "right":
+		__lt7 = 3
+	default:
+		__lt7 = 0
+	}
+	return __lt7
+}
+
+func WrapOf(w string) int {
+	var __lt8 int
+	switch w {
+	case "pre", "nowrap":
+		__lt8 = 1
+	case "preWrap", "preLine":
+		__lt8 = 2
+	default:
+		__lt8 = 0
+	}
+	return __lt8
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -814,23 +860,23 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n6_click_handler() {
-	m.s = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}, FontSize: Measurement{Px: 20}, FontWeight: "bold"}
+	m.s = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontSize: snglSome(Measurement{Px: 20}), FontWeight: "bold", FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	m.__n2__box.SetLook(LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
 	m.on = !m.on
-	var __lt7 Style
+	var __lt9 Style
 	if m.on {
-		__lt7 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt9 = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt7 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt9 = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
-	m.__n3__box.SetLook(LookOf(__lt7))
+	m.__n3__box.SetLook(LookOf(__lt9))
 }
 
 func (m *Model) __n7_click_handler() {
-	m.s.Color = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+	m.s.Color = snglSome(snglcolor.Color{G: 255, A: 255})
 	m.__n2__box.SetLook(LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
@@ -902,16 +948,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetText("styled")
 	m.__n2__box.SetLook(LookOf(m.s))
 	m.__n1.Add(m.__n2__box)
-	var __lt8 Style
+	var __lt10 Style
 	if m.on {
-		__lt8 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt10 = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt8 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt10 = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
 	m.__n3 = widget.NewLabel("")
 	m.__n3__box = fynelayout.NewBox(m.__n3)
 	m.__n3.SetText("picked")
-	m.__n3__box.SetLook(LookOf(__lt8))
+	m.__n3__box.SetLook(LookOf(__lt10))
 	m.__n1.Add(m.__n3__box)
 	m.__n4 = widget.NewLabel("")
 	m.__n4__box = fynelayout.NewBox(m.__n4)
@@ -996,6 +1042,10 @@ import (
 	"fmt"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1003,54 +1053,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -1082,9 +1132,9 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.s = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, FontSize: Measurement{Px: 14}}
+	m.s = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontSize: snglSome(Measurement{Px: 14}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	m.on = false
-	m.kept = []Style{Style{Background: snglcolor.Color{R: 0, G: 255, B: 255, A: 255}}}
+	m.kept = []Style{Style{Background: snglSome(snglcolor.Color{G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}}
 	m.rows = []string{"a"}
 	m.visible__inst0 = true
 	m.__slot0 = nil
@@ -1101,180 +1151,212 @@ func LookOf(s Style) gtk4rt.Look {
 }
 
 func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	var __lt0 float64
+	if s.Flex == nil {
+		__lt0 = 0.0
+	} else {
+		__lt0 = (*(s.Flex))
+	}
+	var __lt1 int
+	if s.MaxLines == nil {
+		__lt1 = 0
+	} else {
+		__lt1 = (*(s.MaxLines))
+	}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
 	return look
 }
 
 func CssOf(s Style) string {
-	var __lt0 string
-	if s.Opacity == 0.0 {
-		__lt0 = ""
+	var __lt2 string
+	if s.Opacity == nil {
+		__lt2 = ""
 	} else {
-		__lt0 = fmt.Sprint(s.Opacity)
+		__lt2 = fmt.Sprint((*(s.Opacity)))
 	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt0))
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt2))
 	return css
 }
 
-func CrossOf(a string) int {
-	var __lt1 int
-	switch a {
-	case "center":
-		__lt1 = 2
-	case "end":
-		__lt1 = 3
-	case "baseline":
-		__lt1 = 4
-	default:
-		__lt1 = 0
-	}
-	return __lt1
-}
-
-func TextAlignOf(a string) int {
-	var __lt2 int
-	switch a {
-	case "center":
-		__lt2 = 1
-	case "right":
-		__lt2 = 2
-	case "justify":
-		__lt2 = 3
-	default:
-		__lt2 = 0
-	}
-	return __lt2
-}
-
-func WrapOf(w string) int {
-	var __lt3 int
-	switch w {
-	case "pre", "nowrap":
-		__lt3 = 1
-	case "preWrap", "preLine":
-		__lt3 = 2
-	default:
-		__lt3 = 0
+func Inset(m__r0 *Measurement) float64 {
+	var __lt3 float64
+	if m__r0 == nil {
+		__lt3 = 0.0
+	} else {
+		__lt3 = max(((*(m__r0)).Px + (11.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
 	}
 	return __lt3
 }
 
-func ClipOf(o string) bool {
-	var __lt4 bool
-	switch o {
-	case "hidden", "scroll", "auto":
-		__lt4 = true
+func CrossOf(a string) int {
+	var __lt4 int
+	switch a {
+	case "start":
+		__lt4 = 1
+	case "center":
+		__lt4 = 2
+	case "end":
+		__lt4 = 3
+	case "baseline":
+		__lt4 = 4
 	default:
-		__lt4 = false
+		__lt4 = 0
 	}
 	return __lt4
 }
 
-func Decl(name string, value string) string {
-	var __lt5 string
-	if value == "" {
-		__lt5 = ""
-	} else {
-		__lt5 = (((name + ": ") + value) + "; ")
+func TextAlignOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "center":
+		__lt5 = 1
+	case "right":
+		__lt5 = 2
+	case "justify":
+		__lt5 = 3
+	case "left":
+		__lt5 = 4
+	default:
+		__lt5 = 0
 	}
 	return __lt5
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
-		} else {
-			__lt6 = all
-		}
-		__lt7 = __lt6
+func WrapOf(w string) int {
+	var __lt6 int
+	switch w {
+	case "pre", "nowrap":
+		__lt6 = 1
+	case "preWrap", "preLine":
+		__lt6 = 2
+	default:
+		__lt6 = 0
 	}
-	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
+	return __lt6
 }
 
-func Length(v float64) string {
+func ClipOf(o string) bool {
+	var __lt7 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt7 = true
+	default:
+		__lt7 = false
+	}
+	return __lt7
+}
+
+func Decl(name string, value string) string {
 	var __lt8 string
-	if v == 0.0 {
+	if value == "" {
 		__lt8 = ""
 	} else {
-		__lt8 = (fmt.Sprint(v) + "px")
+		__lt8 = (((name + ": ") + value) + "; ")
 	}
 	return __lt8
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt9 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt9 = ""
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt10 *Measurement
+	if own != nil {
+		__lt10 = own
 	} else {
-		__lt9 = c__r0.Hex()
+		var __lt9 *Measurement
+		if axis != nil {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
 	}
-	return __lt9
+	return Length(__lt10)
 }
 
-func Points(v float64) string {
-	var __lt10 string
-	if v == 0.0 {
-		__lt10 = ""
-	} else {
-		__lt10 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt10
-}
-
-func WeightOf(w string) string {
+func Length(m__r1 *Measurement) string {
 	var __lt11 string
-	switch w {
-	case "bold":
-		__lt11 = "bold"
-	case "bolder":
-		__lt11 = "bolder"
-	case "lighter":
-		__lt11 = "lighter"
-	default:
+	if m__r1 == nil {
 		__lt11 = ""
+	} else {
+		__lt11 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt11
 }
 
-func SlantOf(s string) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt12 string
-	switch s {
-	case "italic":
-		__lt12 = "italic"
-	case "oblique":
-		__lt12 = "oblique"
-	default:
+	if c__r0 == nil {
 		__lt12 = ""
+	} else {
+		__lt12 = (*(c__r0)).Hex()
 	}
 	return __lt12
 }
 
-func LineOf(s Style) string {
+func Points(m__r2 *Measurement) string {
 	var __lt13 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt13 = "solid"
-	case "dashed":
-		__lt13 = "dashed"
-	case "dotted":
-		__lt13 = "dotted"
-	case "double":
-		__lt13 = "double"
-	default:
-		var __lt14 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt14 = "solid"
-		} else {
-			__lt14 = ""
-		}
-		__lt13 = __lt14
+	if m__r2 == nil {
+		__lt13 = ""
+	} else {
+		__lt13 = (fmt.Sprint(Inset(m__r2)) + "pt")
 	}
 	return __lt13
+}
+
+func WeightOf(w string) string {
+	var __lt14 string
+	switch w {
+	case "normal":
+		__lt14 = "normal"
+	case "bold":
+		__lt14 = "bold"
+	case "bolder":
+		__lt14 = "bolder"
+	case "lighter":
+		__lt14 = "lighter"
+	default:
+		__lt14 = ""
+	}
+	return __lt14
+}
+
+func SlantOf(s string) string {
+	var __lt15 string
+	switch s {
+	case "normal":
+		__lt15 = "normal"
+	case "italic":
+		__lt15 = "italic"
+	case "oblique":
+		__lt15 = "oblique"
+	default:
+		__lt15 = ""
+	}
+	return __lt15
+}
+
+func LineOf(s Style) string {
+	var __lt16 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt16 = "solid"
+	case "dashed":
+		__lt16 = "dashed"
+	case "dotted":
+		__lt16 = "dotted"
+	case "double":
+		__lt16 = "double"
+	case "none":
+		__lt16 = "none"
+	default:
+		var __lt17 string
+		if s.BorderWidth != nil {
+			__lt17 = "solid"
+		} else {
+			__lt17 = ""
+		}
+		__lt16 = __lt17
+	}
+	return __lt16
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1344,23 +1426,23 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n6_clicked_handler() {
-	m.s = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}, FontSize: Measurement{Px: 20}, FontWeight: "bold"}
+	m.s = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontSize: snglSome(Measurement{Px: 20}), FontWeight: "bold", FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
 	m.on = !m.on
-	var __lt15 Style
+	var __lt18 Style
 	if m.on {
-		__lt15 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt18 = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt15 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt18 = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
-	gtk4rt.SetLook(m.__n3, LookOf(__lt15))
+	gtk4rt.SetLook(m.__n3, LookOf(__lt18))
 }
 
 func (m *Model) __n7_clicked_handler() {
-	m.s.Color = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+	m.s.Color = snglSome(snglcolor.Color{G: 255, A: 255})
 	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
@@ -1478,16 +1560,16 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
-	var __lt16 Style
+	var __lt19 Style
 	if m.on {
-		__lt16 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		__lt19 = Style{Color: snglSome(snglcolor.Color{R: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt16 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		__lt19 = Style{Color: snglSome(snglcolor.Color{B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "picked")
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.SetLook(m.__n3, LookOf(__lt16))
+	gtk4rt.SetLook(m.__n3, LookOf(__lt19))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n4, "kept")
@@ -1556,58 +1638,58 @@ data class Measurement(
 )
 
 data class Style(
-    var padding: Measurement = Measurement(),
-    var paddingTop: Measurement = Measurement(),
-    var paddingRight: Measurement = Measurement(),
-    var paddingBottom: Measurement = Measurement(),
-    var paddingLeft: Measurement = Measurement(),
-    var paddingX: Measurement = Measurement(),
-    var paddingY: Measurement = Measurement(),
-    var margin: Measurement = Measurement(),
-    var marginTop: Measurement = Measurement(),
-    var marginRight: Measurement = Measurement(),
-    var marginBottom: Measurement = Measurement(),
-    var marginLeft: Measurement = Measurement(),
-    var marginX: Measurement = Measurement(),
-    var marginY: Measurement = Measurement(),
-    var gap: Measurement = Measurement(),
-    var width: Measurement = Measurement(),
-    var minWidth: Measurement = Measurement(),
-    var height: Measurement = Measurement(),
-    var maxWidth: Measurement = Measurement(),
-    var maxHeight: Measurement = Measurement(),
-    var flex: Double = 0.0,
-    var flexDirection: SnglFlexDirection = SnglFlexDirection.ROW,
-    var alignItems: SnglAlignment = SnglAlignment.START,
-    var justifyContent: SnglJustification = SnglJustification.START,
-    var position: SnglPosition = SnglPosition.STATIC,
-    var top: Measurement = Measurement(),
-    var bottom: Measurement = Measurement(),
-    var left: Measurement = Measurement(),
-    var right: Measurement = Measurement(),
-    var zIndex: Int = 0,
-    var color: Color = Color(),
-    var fontSize: Measurement = Measurement(),
+    var padding: Measurement? = null,
+    var paddingTop: Measurement? = null,
+    var paddingRight: Measurement? = null,
+    var paddingBottom: Measurement? = null,
+    var paddingLeft: Measurement? = null,
+    var paddingX: Measurement? = null,
+    var paddingY: Measurement? = null,
+    var margin: Measurement? = null,
+    var marginTop: Measurement? = null,
+    var marginRight: Measurement? = null,
+    var marginBottom: Measurement? = null,
+    var marginLeft: Measurement? = null,
+    var marginX: Measurement? = null,
+    var marginY: Measurement? = null,
+    var gap: Measurement? = null,
+    var width: Measurement? = null,
+    var minWidth: Measurement? = null,
+    var height: Measurement? = null,
+    var maxWidth: Measurement? = null,
+    var maxHeight: Measurement? = null,
+    var flex: Double? = null,
+    var flexDirection: SnglFlexDirection = SnglFlexDirection.UNSET,
+    var alignItems: SnglAlignment = SnglAlignment.UNSET,
+    var justifyContent: SnglJustification = SnglJustification.UNSET,
+    var position: SnglPosition = SnglPosition.UNSET,
+    var top: Measurement? = null,
+    var bottom: Measurement? = null,
+    var left: Measurement? = null,
+    var right: Measurement? = null,
+    var zIndex: Int? = null,
+    var color: Color? = null,
+    var fontSize: Measurement? = null,
     var fontFamily: String = "",
-    var fontWeight: SnglFontWeight = SnglFontWeight.NORMAL,
-    var fontStyle: SnglFontStyle = SnglFontStyle.NORMAL,
-    var textAlign: SnglTextAlign = SnglTextAlign.LEFT,
-    var maxLines: Int = 0,
-    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.NORMAL,
-    var background: Color = Color(),
-    var borderRadius: Measurement = Measurement(),
-    var borderColor: Color = Color(),
-    var borderWidth: Measurement = Measurement(),
+    var fontWeight: SnglFontWeight = SnglFontWeight.UNSET,
+    var fontStyle: SnglFontStyle = SnglFontStyle.UNSET,
+    var textAlign: SnglTextAlign = SnglTextAlign.UNSET,
+    var maxLines: Int? = null,
+    var whiteSpace: SnglWhiteSpace = SnglWhiteSpace.UNSET,
+    var background: Color? = null,
+    var borderRadius: Measurement? = null,
+    var borderColor: Color? = null,
+    var borderWidth: Measurement? = null,
     var border: String = "",
     var borderBottom: String = "",
     var borderLeft: String = "",
     var borderCollapse: String = "",
-    var borderStyle: SnglBorderStyle = SnglBorderStyle.NONE,
-    var opacity: Double = 0.0,
+    var borderStyle: SnglBorderStyle = SnglBorderStyle.UNSET,
+    var opacity: Double? = null,
     var cursor: String = "",
-    var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
-    var listStyleType: SnglListStyle = SnglListStyle.NONE
+    var display: SnglDisplay = SnglDisplay.UNSET,
+    var overflow: SnglOverflow = SnglOverflow.UNSET,
+    var listStyleType: SnglListStyle = SnglListStyle.UNSET
 )
 
 data class Color(
@@ -1627,6 +1709,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 enum class SnglFlexDirection(private val sngl: String) {
+    UNSET("unset"),
     ROW("row"),
     COLUMN("column"),
     ROWREVERSE("rowReverse"),
@@ -1636,6 +1719,7 @@ enum class SnglFlexDirection(private val sngl: String) {
 }
 
 enum class SnglAlignment(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -1646,6 +1730,7 @@ enum class SnglAlignment(private val sngl: String) {
 }
 
 enum class SnglJustification(private val sngl: String) {
+    UNSET("unset"),
     START("start"),
     CENTER("center"),
     END("end"),
@@ -1657,6 +1742,7 @@ enum class SnglJustification(private val sngl: String) {
 }
 
 enum class SnglPosition(private val sngl: String) {
+    UNSET("unset"),
     STATIC("static"),
     RELATIVE("relative"),
     ABSOLUTE("absolute"),
@@ -1667,6 +1753,7 @@ enum class SnglPosition(private val sngl: String) {
 }
 
 enum class SnglFontWeight(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     BOLD("bold"),
     LIGHTER("lighter"),
@@ -1676,6 +1763,7 @@ enum class SnglFontWeight(private val sngl: String) {
 }
 
 enum class SnglFontStyle(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     ITALIC("italic"),
     OBLIQUE("oblique");
@@ -1684,6 +1772,7 @@ enum class SnglFontStyle(private val sngl: String) {
 }
 
 enum class SnglTextAlign(private val sngl: String) {
+    UNSET("unset"),
     LEFT("left"),
     CENTER("center"),
     RIGHT("right"),
@@ -1693,6 +1782,7 @@ enum class SnglTextAlign(private val sngl: String) {
 }
 
 enum class SnglWhiteSpace(private val sngl: String) {
+    UNSET("unset"),
     NORMAL("normal"),
     PRE("pre"),
     PREWRAP("preWrap"),
@@ -1703,6 +1793,7 @@ enum class SnglWhiteSpace(private val sngl: String) {
 }
 
 enum class SnglBorderStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     SOLID("solid"),
     DASHED("dashed"),
@@ -1713,6 +1804,7 @@ enum class SnglBorderStyle(private val sngl: String) {
 }
 
 enum class SnglDisplay(private val sngl: String) {
+    UNSET("unset"),
     FLEX("flex"),
     BLOCK("block"),
     INLINE("inline"),
@@ -1725,6 +1817,7 @@ enum class SnglDisplay(private val sngl: String) {
 }
 
 enum class SnglOverflow(private val sngl: String) {
+    UNSET("unset"),
     VISIBLE("visible"),
     HIDDEN("hidden"),
     SCROLL("scroll"),
@@ -1734,6 +1827,7 @@ enum class SnglOverflow(private val sngl: String) {
 }
 
 enum class SnglListStyle(private val sngl: String) {
+    UNSET("unset"),
     NONE("none"),
     DISC("disc"),
     CIRCLE("circle"),
@@ -1746,9 +1840,9 @@ enum class SnglListStyle(private val sngl: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var s by remember { mutableStateOf(Style(color = Color(r = 255, g = 0, b = 0, a = 255), fontSize = Measurement(px = 14.0))) }
+    var s by remember { mutableStateOf(Style(color = Color(r = 255), fontSize = Measurement(px = 14.0))) }
     var on by remember { mutableStateOf(false) }
-    val kept = remember { mutableStateListOf(Style(background = Color(r = 0, g = 255, b = 255, a = 255))) }
+    val kept = remember { mutableStateListOf(Style(background = Color(g = 255, b = 255))) }
     val rows = remember { mutableStateListOf("a") }
     var visible__inst0 by remember { mutableStateOf(true) }
 
@@ -1762,22 +1856,22 @@ fun MainScreen() {
         }
         Column {
             Button(onClick = {
-                s = Style(color = Color(r = 0, g = 0, b = 255, a = 255), fontSize = Measurement(px = 20.0), fontWeight = SnglFontWeight.BOLD)
+                s = Style(color = Color(b = 255), fontSize = Measurement(px = 20.0), fontWeight = SnglFontWeight.BOLD)
                 on = !on
             }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "swap", modifier = Modifier)
             }
             Button(onClick = {
-                s = s.copy(color = Color(r = 0, g = 255, b = 0, a = 255))
+                s = s.copy(color = Color(g = 255))
                 (listOf("a", "b")).let { __v -> rows.clear(); rows.addAll(__v) }
             }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "tint", modifier = Modifier)
             }
-            Text(text = "styled", modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, true)) else (if ((s == Style())) Modifier else styleModifier(s, true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != Color()) || (s.fontSize != Measurement(px = 0.0))) || (s.fontWeight != SnglFontWeight.NORMAL)) || (s.fontStyle != SnglFontStyle.NORMAL)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((s.color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color.r.toInt(), green = s.color.g.toInt(), blue = s.color.b.toInt(), alpha = s.color.a.toInt())), fontSize = (if ((s.fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((s.fontSize.px + (16.0 * (s.fontSize.em + s.fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
-            Text(text = "picked", modifier = (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).flex == 0.0)) (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))) == Style())) Modifier else styleModifier((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))), true)) else (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))) == Style())) Modifier else styleModifier((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))), true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!(((((((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color != Color()) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize != Measurement(px = 0.0))) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontWeight != SnglFontWeight.NORMAL)) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontStyle != SnglFontStyle.NORMAL)) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontFamily != "")) || ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.r.toInt(), green = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.g.toInt(), blue = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.b.toInt(), alpha = (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).color.a.toInt())), fontSize = (if (((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit(((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize.px + (16.0 * ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize.em + (if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when ((if (on) Style(color = Color(r = 255, g = 0, b = 0, a = 255)) else Style(color = Color(r = 0, g = 0, b = 255, a = 255))).textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
-            Text(text = "kept", modifier = (if ((kept[0].flex == 0.0)) (if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)) else (if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((kept[0].color != Color()) || (kept[0].fontSize != Measurement(px = 0.0))) || (kept[0].fontWeight != SnglFontWeight.NORMAL)) || (kept[0].fontStyle != SnglFontStyle.NORMAL)) || (kept[0].fontFamily != "")) || (kept[0].textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((kept[0].color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = kept[0].color.r.toInt(), green = kept[0].color.g.toInt(), blue = kept[0].color.b.toInt(), alpha = kept[0].color.a.toInt())), fontSize = (if ((kept[0].fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((kept[0].fontSize.px + (16.0 * (kept[0].fontSize.em + kept[0].fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (kept[0].fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (kept[0].fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (kept[0].fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (kept[0].textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "styled", modifier = (if (((s.flex == null) || (s.flex!! <= 0.0))) (if ((s == Style())) Modifier else styleModifier(s, true)) else (if ((s == Style())) Modifier else styleModifier(s, true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "picked", modifier = (if ((((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).flex == null) || ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).flex!! <= 0.0))) (if (((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))) == Style())) Modifier else styleModifier((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))), true)) else (if (((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))) == Style())) Modifier else styleModifier((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))), true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!(((((((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).color != null) || ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontSize != null)) || ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontWeight != SnglFontWeight.UNSET)) || ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontStyle != SnglFontStyle.UNSET)) || ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontFamily != "")) || ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if (((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = (if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).color!!.r.toInt(), green = (if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).color!!.g.toInt(), blue = (if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).color!!.b.toInt(), alpha = (if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).color!!.a.toInt())), fontSize = (if (((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontSize == null)) TextUnit.Unspecified else TextUnit(((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontSize!!.px + (16.0 * ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontSize!!.em + (if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when ((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))).textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "kept", modifier = (if (((kept[0].flex == null) || (kept[0].flex!! <= 0.0))) (if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)) else (if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((kept[0].color != null) || (kept[0].fontSize != null)) || (kept[0].fontWeight != SnglFontWeight.UNSET)) || (kept[0].fontStyle != SnglFontStyle.UNSET)) || (kept[0].fontFamily != "")) || (kept[0].textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((kept[0].color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = kept[0].color!!.r.toInt(), green = kept[0].color!!.g.toInt(), blue = kept[0].color!!.b.toInt(), alpha = kept[0].color!!.a.toInt())), fontSize = (if ((kept[0].fontSize == null)) TextUnit.Unspecified else TextUnit((kept[0].fontSize!!.px + (16.0 * (kept[0].fontSize!!.em + kept[0].fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (kept[0].fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (kept[0].fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (kept[0].fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (kept[0].textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
             for (r in rows) {
-                Text(text = r, modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, true)) else (if ((s == Style())) Modifier else styleModifier(s, true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != Color()) || (s.fontSize != Measurement(px = 0.0))) || (s.fontWeight != SnglFontWeight.NORMAL)) || (s.fontStyle != SnglFontStyle.NORMAL)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.LEFT))) TextStyle.Default else TextStyle(color = (if ((s.color == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color.r.toInt(), green = s.color.g.toInt(), blue = s.color.b.toInt(), alpha = s.color.a.toInt())), fontSize = (if ((s.fontSize == Measurement(px = 0.0))) TextUnit.Unspecified else TextUnit((s.fontSize.px + (16.0 * (s.fontSize.em + s.fontSize.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.NORMAL -> null; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.NORMAL -> null; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.LEFT -> TextAlign.Unspecified; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+                Text(text = r, modifier = (if (((s.flex == null) || (s.flex!! <= 0.0))) (if ((s == Style())) Modifier else styleModifier(s, true)) else (if ((s == Style())) Modifier else styleModifier(s, true)).then(Modifier.fillMaxSize())).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
             }
         }
     }
@@ -1785,49 +1879,49 @@ fun MainScreen() {
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
-    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
-    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
-    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    var top = (if ((s.marginTop != null)) s.marginTop else (if ((s.marginY != null)) s.marginY else s.margin))
+    var right = (if ((s.marginRight != null)) s.marginRight else (if ((s.marginX != null)) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
+    if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
-    if ((s.zIndex != 0)) {
-    	m = m.zIndex(s.zIndex.toFloat())
+    if ((s.zIndex != null)) {
+    	m = m.zIndex(s.zIndex!!.toFloat())
     }
-    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
-    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    if (((s.minWidth != null) || (s.maxWidth != null))) {
+    	m = m.widthIn((if ((s.minWidth != null)) Dp((s.minWidth!!.px + (16.0 * (s.minWidth!!.em + s.minWidth!!.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != null)) Dp((s.maxWidth!!.px + (16.0 * (s.maxWidth!!.em + s.maxWidth!!.rem))).toFloat()) else Dp.Unspecified))
     }
-    if ((s.maxHeight != Measurement(px = 0.0))) {
-    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    if ((s.maxHeight != null)) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight!!.px + (16.0 * (s.maxHeight!!.em + s.maxHeight!!.rem))).toFloat()))
     }
-    if ((s.width != Measurement(px = 0.0))) {
-    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    if ((s.width != null)) {
+    	m = m.width(Dp((s.width!!.px + (16.0 * (s.width!!.em + s.width!!.rem))).toFloat()))
     }
-    if ((s.height != Measurement(px = 0.0))) {
-    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    if ((s.height != null)) {
+    	m = m.height(Dp((s.height!!.px + (16.0 * (s.height!!.em + s.height!!.rem))).toFloat()))
     }
-    if ((s.opacity != 0.0)) {
-    	m = m.alpha(s.opacity.toFloat())
+    if ((s.opacity != null)) {
+    	m = m.alpha(s.opacity!!.toFloat())
     }
-    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
-    if ((s.borderRadius != Measurement(px = 0.0))) {
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == null)) RectangleShape else RoundedCornerShape(Dp((s.borderRadius!!.px + (16.0 * (s.borderRadius!!.em + s.borderRadius!!.rem))).toFloat())))
+    if ((s.borderRadius != null)) {
     	m = m.clip(shape)
     }
     var edge = 0.0
-    if ((s.borderWidth != Measurement(px = 0.0))) {
-    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
-    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    if ((s.borderWidth != null)) {
+    	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).r.toInt(), green = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).g.toInt(), blue = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).b.toInt(), alpha = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).a.toInt()), shape)
     }
-    if ((paints && (s.background != Color()))) {
-    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    if ((paints && (s.background != null))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
     }
-    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
-    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
-    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
-    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    top = (if ((s.paddingTop != null)) s.paddingTop else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != null)) s.paddingRight else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
+    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
@@ -1859,8 +1953,8 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { s: null, on: false, kept: null, rows: ["a"], visible__inst0: true };
-  state.s = { color: { r: 255, g: 0, b: 0, a: 255 }, fontSize: { px: 14, em: 0, rem: 0 } };
-  state.kept = [{ background: { r: 0, g: 255, b: 255, a: 255 } }];
+  state.s = { color: { r: 255, g: 0, b: 0, a: 255 }, fontSize: { px: 14, em: 0, rem: 0 }, padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" };
+  state.kept = [{ background: { r: 0, g: 255, b: 255, a: 255 }, padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, color: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }];
   function __merge_Style(base, ov) {
     const r = { ...base };
     if (ov.padding != null) r.padding = ov.padding;
@@ -2045,12 +2139,12 @@ body { font-family: system-ui, sans-serif; }
     if (s.maxWidth != null) d.push("max-width:" + _snglStyleLength(s.maxWidth));
     if (s.maxHeight != null) d.push("max-height:" + _snglStyleLength(s.maxHeight));
     if (s.flex != null) d.push("flex:" + s.flex);
-    if (s.flex != null && s.minWidth == null) d.push("min-width:0");
+    if (s.flex != null && (s.minWidth == null || s.minWidth === "" || s.minWidth === "unset")) d.push("min-width:0");
     if (s.flex != null) d.push("min-height:0");
-    if (s.flexDirection != null) d.push("flex-direction:" + _snglStyleKeyword(s.flexDirection));
-    if (s.alignItems != null) d.push("align-items:" + _snglStyleKeyword(s.alignItems));
-    if (s.justifyContent != null) d.push("justify-content:" + _snglStyleKeyword(s.justifyContent));
-    if (s.position != null) d.push("position:" + _snglStyleKeyword(s.position));
+    if (s.flexDirection != null && s.flexDirection !== "unset") d.push("flex-direction:" + _snglStyleKeyword(s.flexDirection));
+    if (s.alignItems != null && s.alignItems !== "unset") d.push("align-items:" + _snglStyleKeyword(s.alignItems));
+    if (s.justifyContent != null && s.justifyContent !== "unset") d.push("justify-content:" + _snglStyleKeyword(s.justifyContent));
+    if (s.position != null && s.position !== "unset") d.push("position:" + _snglStyleKeyword(s.position));
     if (s.top != null) d.push("top:" + _snglStyleLength(s.top));
     if (s.bottom != null) d.push("bottom:" + _snglStyleLength(s.bottom));
     if (s.left != null) d.push("left:" + _snglStyleLength(s.left));
@@ -2059,42 +2153,45 @@ body { font-family: system-ui, sans-serif; }
     if (s.color != null) d.push("color:" + _snglStyleColor(s.color));
     if (s.fontSize != null) d.push("font-size:" + _snglStyleLength(s.fontSize));
     if (s.fontFamily != null) d.push("font-family:" + s.fontFamily);
-    if (s.fontWeight != null) d.push("font-weight:" + _snglStyleKeyword(s.fontWeight));
-    if (s.fontStyle != null) d.push("font-style:" + _snglStyleKeyword(s.fontStyle));
-    if (s.textAlign != null) d.push("text-align:" + _snglStyleKeyword(s.textAlign));
+    if (s.fontWeight != null && s.fontWeight !== "unset") d.push("font-weight:" + _snglStyleKeyword(s.fontWeight));
+    if (s.fontStyle != null && s.fontStyle !== "unset") d.push("font-style:" + _snglStyleKeyword(s.fontStyle));
+    if (s.textAlign != null && s.textAlign !== "unset") d.push("text-align:" + _snglStyleKeyword(s.textAlign));
     if (s.maxLines != null) d.push("-webkit-line-clamp:" + s.maxLines);
-    if (s.maxLines != null && s.overflow == null) d.push("overflow:hidden");
-    if (s.maxLines != null && s.display == null) d.push("display:-webkit-box");
+    if (s.maxLines != null && (s.overflow == null || s.overflow === "" || s.overflow === "unset")) d.push("overflow:hidden");
+    if (s.maxLines != null && (s.display == null || s.display === "" || s.display === "unset")) d.push("display:-webkit-box");
     if (s.maxLines != null) d.push("-webkit-box-orient:vertical");
-    if (s.whiteSpace != null) d.push("white-space:" + _snglStyleKeyword(s.whiteSpace));
+    if (s.whiteSpace != null && s.whiteSpace !== "unset") d.push("white-space:" + _snglStyleKeyword(s.whiteSpace));
     if (s.background != null) d.push("background-color:" + _snglStyleColor(s.background));
     if (s.borderRadius != null) d.push("border-radius:" + _snglStyleLength(s.borderRadius));
     if (s.borderColor != null) d.push("border-color:" + _snglStyleColor(s.borderColor));
     if (s.borderWidth != null) d.push("border-width:" + _snglStyleLength(s.borderWidth));
-    if (s.borderWidth != null && s.borderStyle == null && s.border == null) d.push("border-style:solid");
+    if (s.borderWidth != null && (s.borderStyle == null || s.borderStyle === "" || s.borderStyle === "unset") && (s.border == null || s.border === "" || s.border === "unset")) d.push("border-style:solid");
     if (s.borderCollapse != null) d.push("border-collapse:" + s.borderCollapse);
-    if (s.borderStyle != null) d.push("border-style:" + _snglStyleKeyword(s.borderStyle));
+    if (s.borderStyle != null && s.borderStyle !== "unset") d.push("border-style:" + _snglStyleKeyword(s.borderStyle));
     if (s.opacity != null) d.push("opacity:" + s.opacity);
     if (s.cursor != null) d.push("cursor:" + s.cursor);
-    if (s.display != null) d.push("display:" + _snglStyleKeyword(s.display));
-    if (s.overflow != null) d.push("overflow:" + _snglStyleKeyword(s.overflow));
-    if (s.listStyleType != null) d.push("list-style-type:" + _snglStyleKeyword(s.listStyleType));
+    if (s.display != null && s.display !== "unset") d.push("display:" + _snglStyleKeyword(s.display));
+    if (s.overflow != null && s.overflow !== "unset") d.push("overflow:" + _snglStyleKeyword(s.overflow));
+    if (s.listStyleType != null && s.listStyleType !== "unset") d.push("list-style-type:" + _snglStyleKeyword(s.listStyleType));
     if (s.borderBottom != null) d.push("border-bottom:" + s.borderBottom);
     if (s.borderLeft != null) d.push("border-left:" + s.borderLeft);
     return d.join(";");
   }
   function _snglStyleColor(c) {
+    if (c == null) return "";
     if (typeof c === "string") return c;
     if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
     return "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
   }
   function _snglStyleLength(v) {
+    if (v == null) return "";
     if (typeof v === "number") return v + "px";
     const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
     if (t.length === 0) return "0px";
     return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
   }
   function _snglStyleKeyword(m) {
+    if (m == null || m === "unset") return "";
     return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
   }
   var $0 = document.getElementById("$0");
@@ -2105,7 +2202,7 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
-    state.s = { color: { r: 0, g: 0, b: 255, a: 255 }, fontSize: { px: 20, em: 0, rem: 0 }, fontWeight: "bold" };
+    state.s = { color: { r: 0, g: 0, b: 255, a: 255 }, fontSize: { px: 20, em: 0, rem: 0 }, fontWeight: "bold", padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, fontFamily: "", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" };
     __n2.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
     for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
       ;
@@ -2113,7 +2210,7 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
     state.on = !state.on;
-    __n3.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 } } : { color: { r: 0, g: 0, b: 255, a: 255 } }));
+    __n3.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 }, padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } : { color: { r: 0, g: 0, b: 255, a: 255 }, padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }));
   });
   $1.addEventListener("click", function() {
     state.s.color = { r: 0, g: 255, b: 0, a: 255 };
@@ -2128,7 +2225,7 @@ body { font-family: system-ui, sans-serif; }
   });
   function __sngl_init() {
     __n2.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
-    __n3.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 } } : { color: { r: 0, g: 0, b: 255, a: 255 } }));
+    __n3.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 }, padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" } : { color: { r: 0, g: 0, b: 255, a: 255 }, padding: null, paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null, paddingX: null, paddingY: null, margin: null, marginTop: null, marginRight: null, marginBottom: null, marginLeft: null, marginX: null, marginY: null, gap: null, width: null, minWidth: null, height: null, maxWidth: null, maxHeight: null, flex: null, flexDirection: "unset", alignItems: "unset", justifyContent: "unset", position: "unset", top: null, bottom: null, left: null, right: null, zIndex: null, fontSize: null, fontFamily: "", fontWeight: "unset", fontStyle: "unset", textAlign: "unset", maxLines: null, whiteSpace: "unset", background: null, borderRadius: null, borderColor: null, borderWidth: null, border: "", borderBottom: "", borderLeft: "", borderCollapse: "", borderStyle: "unset", opacity: null, cursor: "", display: "unset", overflow: "unset", listStyleType: "unset" }));
     __n4.style.cssText = _snglStyleCSS(__merge_Style({}, state.kept[0]));
   }
   __sngl_init();
@@ -2137,12 +2234,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:56eebc5f19ae40ae41a4d6ee68300553
+pass sha256:f7158c3a11395e9f7cc356d0879ae52d
 -- run/go/fyne --
-pass sha256:336410584ece220ba1828dbe9518c3f1
+pass sha256:910d02696ab1370ee836f7f1aa7d1a50
 -- run/go/gtk4 --
-pass sha256:7cfd9abfeb2afda5cc0b050478bc1ef8
+pass sha256:f64ff4fc71ce5ec1c9665c45a4855a49
 -- run/kotlin/android --
-pass sha256:ce5f510aca5ec3ee0fd19704e1f0ab7c
+pass sha256:13f675272f6113586e9b152b8d90fbca
 -- run/none/html --
-pass sha256:c41b27f67dbcdaf02f9cd3443fa79eb4
+pass sha256:454af2c9242553e57572d4438a13fb29

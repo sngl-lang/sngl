@@ -106,11 +106,11 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(5.0, 5.0, 2.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{B: 255, R: 0, G: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{B: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 0.0, 4.0, 4.0)
 	ctx.Restore()
 }
@@ -287,6 +287,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:53a723b2b1374679f37013a8d05b2af1
+pass sha256:f1726989eb7e276551cdd2e2b73f300f
 -- run/none/html --
 pass sha256:23a4ced57ed8ab7e45a0861b65da56df

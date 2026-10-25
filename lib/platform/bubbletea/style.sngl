@@ -6,7 +6,8 @@ import markup "sngl:ui/markup"
 // hbox places and spaces its children, and the cascade a flow of rich text
 // starts from.
 
-const unset ui.Style = {}
+// A Style that writes nothing.
+const blank ui.Style = {}
 
 // What a Style may say that a terminal does not answer:
 //
@@ -52,25 +53,31 @@ const unstyled list[string] = [
 
 // A length in cells, as codegen.MeasurementPx reads one for this target: an
 // em is 16px and a cell 8px wide, so an em is two cells. Anything visible is
-// at least one.
-const func cellsOf(m ui.measurement) int {
-    var px = m.px + 16.0 * (m.em + m.rem)
+// at least one, and an unset length none.
+const func cellsOf(m option[ui.measurement]) int {
+    var px = pxOf(m)
     return px <= 0.0 ? 0 : int.max(1, int(px) / 8)
 }
+
+const func pxOf(m option[ui.measurement]) => m == null ? 0.0 : m.px + 16.0 * (m.em + m.rem)
 
 // A length down the screen, in rows: a cell is twice as tall as it is wide
 // (tui.Picture draws two pixels to one), so a row is 16px. A 192px image was
 // 24 rows around a picture of 12, and a column's 16px gap two blank lines.
-const func rowsOf(m ui.measurement) int {
-    var px = m.px + 16.0 * (m.em + m.rem)
+const func rowsOf(m option[ui.measurement]) int {
+    var px = pxOf(m)
     return px <= 0.0 ? 0 : int.max(1, int(px) / 16)
 }
 
-// One side of a margin or a padding: its own field, else its axis's, else the
-// whole box's, as CSS reads them.
-const func side(all ui.measurement, axis ui.measurement, own ui.measurement) int {
-    return cellsOf(own != unset.margin ? own : axis != unset.margin ? axis : all)
+// One side of a margin or a padding: the first of its own field, its axis's
+// and the whole box's that is set, as CSS reads them.
+const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement]) int {
+    return cellsOf(own != null ? own : axis != null ? axis : all)
 }
+
+// The share of its parent's free space a `flex` child grows into; none where
+// the Style names none.
+const func growOf(flex option[float]) => flex == null ? 0.0 : flex
 
 const func hue(c color) => hueOf(c.hex())
 
@@ -78,12 +85,10 @@ const func borderOf(s ui.Style) Border {
     return match s.borderStyle {
         double => doubleBorder()
         dashed, dotted => dashedBorder()
-        else => s.borderRadius != unset.borderRadius ? roundedBorder() : normalBorder()
+        else => s.borderRadius != null ? roundedBorder() : normalBorder()
     }
 }
 
-// These name the members that do something rather than compare against the
-// first: an enum field a Go struct literal leaves out is "", not that member.
 const func slanted(st ui.FontStyle) => st == ui.FontStyle.italic || st == ui.FontStyle.oblique
 
 const func outlined(b ui.BorderStyle) => b == ui.BorderStyle.solid || b == ui.BorderStyle.dashed || b == ui.BorderStyle.dotted || b == ui.BorderStyle.double
@@ -92,7 +97,7 @@ const func alignOf(a ui.TextAlign) Position {
     return match a {
         center => posCenter
         right => posRight
-        left, justify => posLeft
+        unset, left, justify => posLeft
     }
 }
 
@@ -105,20 +110,20 @@ const func lookOf(s ui.Style) => boxLook(s, true)
 const func flowLookOf(s ui.Style) => boxLook(s, false)
 
 const func boxLook(s ui.Style, words bool) Look {
-    if s == unset {
+    if s == blank {
         return newStyle()
     }
     var l = newStyle()
-    if words && s.color != unset.color {
+    if words && s.color != null {
         l = l.foreground(hue(s.color))
     }
-    if s.background != unset.background {
+    if s.background != null {
         l = l.background(hue(s.background))
     }
     if words && (s.fontWeight == ui.FontWeight.bold || s.fontWeight == ui.FontWeight.bolder) {
         l = l.bold(true)
     }
-    if words && s.fontWeight == ui.FontWeight.lighter || s.opacity != 0.0 && s.opacity < 1.0 {
+    if words && s.fontWeight == ui.FontWeight.lighter || s.opacity != null && s.opacity < 1.0 {
         l = l.faint(true)
     }
     if words && slanted(s.fontStyle) {
@@ -127,9 +132,9 @@ const func boxLook(s ui.Style, words bool) Look {
     if s.textAlign == ui.TextAlign.center || s.textAlign == ui.TextAlign.right {
         l = l.alignHorizontal(alignOf(s.textAlign))
     }
-    if s.borderWidth != unset.borderWidth || outlined(s.borderStyle) {
+    if s.borderWidth != null || outlined(s.borderStyle) {
         l = l.border(borderOf(s))
-        if s.borderColor != unset.borderColor {
+        if s.borderColor != null {
             l = l.borderForeground(hue(s.borderColor))
         }
     }
@@ -141,18 +146,18 @@ const func boxLook(s ui.Style, words bool) Look {
     l = l.paddingRight(side(s.padding, s.paddingX, s.paddingRight))
     l = l.paddingBottom(side(s.padding, s.paddingY, s.paddingBottom))
     l = l.paddingLeft(side(s.padding, s.paddingX, s.paddingLeft))
-    if s.width != unset.width {
+    if s.width != null {
         l = l.width(cellsOf(s.width))
     }
-    if s.height != unset.height {
+    if s.height != null {
         l = l.height(rowsOf(s.height))
     }
-    if s.maxWidth != unset.maxWidth {
+    if s.maxWidth != null {
         l = l.maxWidth(cellsOf(s.maxWidth))
     }
-    if s.maxHeight != unset.maxHeight || s.maxLines != 0 {
+    if s.maxHeight != null || s.maxLines != null {
         // maxLines counts the text, and lipgloss caps the box with its frame.
-        l = l.maxHeight(lineCap(rowsOf(s.maxHeight), s.maxLines == 0 ? 0 : s.maxLines + l.verticalFrame()))
+        l = l.maxHeight(lineCap(rowsOf(s.maxHeight), s.maxLines == null ? 0 : s.maxLines + l.verticalFrame()))
     }
     return l
 }
@@ -168,19 +173,24 @@ const func crossOf(a ui.Alignment) float {
     return match a {
         center => 0.5
         end => 1.0
-        start, stretch, baseline => 0.0
+        unset, start, stretch, baseline => 0.0
     }
 }
 
 // What a flow's words start from: the fields of its Style a run of words carries.
 const func seedOf(s ui.Style) markup.SpanStyle {
     return {
-        color = s.color == unset.color ? color{a=0} : s.color,
+        color = s.color == null ? color{a=0} : s.color,
         fontWeight = match s.fontWeight {
             bold, bolder => markup.Weight.bold
             lighter => markup.Weight.lighter
-            normal => markup.Weight.inherit
+            normal => markup.Weight.normal
+            unset => markup.Weight.inherit
         },
-        fontStyle = slanted(s.fontStyle) ? markup.Slant.italic : markup.Slant.inherit,
+        fontStyle = match s.fontStyle {
+            italic, oblique => markup.Slant.italic
+            normal => markup.Slant.normal
+            unset => markup.Slant.inherit
+        },
     }
 }

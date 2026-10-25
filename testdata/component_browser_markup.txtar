@@ -714,6 +714,7 @@ window.__sngl_boot = () => {
     }
   }
   function _snglStyleKeyword(m) {
+    if (m == null || m === "unset") return "";
     return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
   }
   var $10 = document.getElementById("$10");
@@ -778,9 +779,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9d32ae3eebcdfc92121dd8e841dfcc71
+pass sha256:0a6a5521d7a9e0e0564fc1fffeeadfcc
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:7698d9622f7f2554844a17ebdbf73c40
+sha256:c49f2a798325b9797019d3203cd2258b
 {
   "results": [
     {

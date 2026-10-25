@@ -93,7 +93,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.n__inst0 = 1
-	m.f__inst0 = File{Fd: 0}
+	m.f__inst0 = File{}
 	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
@@ -258,4 +258,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:a1eb7a5e644cc516b099db3b7b2b6658
+pass sha256:360b983dfab2b56946616c456db5f15e

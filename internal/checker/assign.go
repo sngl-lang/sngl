@@ -74,6 +74,13 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 		if adapted, ok := adaptLiteralZero(val, want); ok {
 			return adapted
 		}
+		// `padding=0` to an option[measurement] is the unit's 0, wrapped as
+		// any value of the element type is.
+		if want.Kind == ir.TypeOption && len(want.Elems) == 1 {
+			if adapted, ok := adaptLiteralZero(val, want.Elems[0]); ok {
+				return c.shape(adapted, want, s)
+			}
+		}
 		if written != nil {
 			if call, _ := c.implicitCall(written, got, want); call != nil {
 				return c.shape(c.checkExpr(call), want, s)

@@ -13,7 +13,8 @@ import ui "sngl:ui"
 // called with the closure. Anywhere else it is the screen.
 context #flexShare(func(w float32) => modifier.fillMaxSize())
 
-const unset ui.Style = {}
+// A Style that writes nothing.
+const blank ui.Style = {}
 
 // What a Style may say that this platform does not answer:
 //
@@ -55,22 +56,23 @@ const func magnitude(m ui.measurement) => m.px + 16.0 * (m.em + m.rem)
 const func length(m ui.measurement) => dpOf(float32(magnitude(m)))
 
 // Compose's padding throws on a negative one, which CSS allows for a margin.
-const func inset(m ui.measurement, extra float) => dpOf(float32(nonNegative(magnitude(m)) + extra))
+// An unset side is none.
+const func inset(m option[ui.measurement], extra float) => dpOf(float32(nonNegative(m == null ? 0.0 : magnitude(m)) + extra))
 
 const func nonNegative(v float) => v < 0.0 ? 0.0 : v
 
-const func fontSizeOf(m ui.measurement) TextUnit {
-    return m == unset.fontSize ? unspecifiedTextUnit : textUnitOf(float32(magnitude(m)), spUnit)
+const func fontSizeOf(m option[ui.measurement]) TextUnit {
+    return m == null ? unspecifiedTextUnit : textUnitOf(float32(magnitude(m)), spUnit)
 }
 
-// One side of a margin or a padding: its own field, else its axis's, else the
-// whole box's, as CSS reads them.
-const func side(all ui.measurement, axis ui.measurement, own ui.measurement) ui.measurement {
-    return own != unset.margin ? own : axis != unset.margin ? axis : all
+// One side of a margin or a padding: the first of its own field, its axis's
+// and the whole box's that is set, as CSS reads them.
+const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement]) option[ui.measurement] {
+    return own != null ? own : axis != null ? axis : all
 }
 
 const func shapeOf(s ui.Style) Shape {
-    return s.borderRadius == unset.borderRadius ? rectangleShape : roundedCorners(length(s.borderRadius))
+    return s.borderRadius == null ? rectangleShape : roundedCorners(length(s.borderRadius))
 }
 
 // The Modifier a Style asks for, outermost first: the margin, the box's size,
@@ -83,51 +85,52 @@ const func styleModifier(s ui.Style, paints bool) Modifier {
     var right = side(s.margin, s.marginX, s.marginRight)
     var bottom = side(s.margin, s.marginY, s.marginBottom)
     var left = side(s.margin, s.marginX, s.marginLeft)
-    if top != unset.margin || right != unset.margin || bottom != unset.margin || left != unset.margin {
+    if top != null || right != null || bottom != null || left != null {
         m = m.paddingEach(inset(left, 0.0), inset(top, 0.0), inset(right, 0.0), inset(bottom, 0.0))
     }
-    if s.zIndex != 0 {
+    if s.zIndex != null {
         m = m.zIndex(float32(s.zIndex))
     }
     // A bound before the size, since `width` fixes the constraints a later
     // `widthIn` could only be clamped into.
-    if s.minWidth != unset.minWidth || s.maxWidth != unset.maxWidth {
+    if s.minWidth != null || s.maxWidth != null {
         m = m.widthIn(
-            s.minWidth != unset.minWidth ? length(s.minWidth) : unspecifiedDp,
-            s.maxWidth != unset.maxWidth ? length(s.maxWidth) : unspecifiedDp,
+            s.minWidth != null ? length(s.minWidth) : unspecifiedDp,
+            s.maxWidth != null ? length(s.maxWidth) : unspecifiedDp,
         )
     }
-    if s.maxHeight != unset.maxHeight {
+    if s.maxHeight != null {
         m = m.heightIn(unspecifiedDp, length(s.maxHeight))
     }
-    if s.width != unset.width {
+    if s.width != null {
         m = m.width(length(s.width))
     }
-    if s.height != unset.height {
+    if s.height != null {
         m = m.height(length(s.height))
     }
-    if s.opacity != 0.0 {
+    if s.opacity != null {
         m = m.alpha(float32(s.opacity))
     }
     var shape = shapeOf(s)
-    if s.borderRadius != unset.borderRadius {
+    if s.borderRadius != null {
         m = m.clip(shape)
     }
     // Compose draws a border over the content; CSS insets the content by it,
-    // so its width joins the padding below.
+    // so its width joins the padding below. Its color is the text's where it
+    // names none, as CSS's currentColor.
     var edge = 0.0
-    if s.borderWidth != unset.borderWidth {
+    if s.borderWidth != null {
         edge = magnitude(s.borderWidth)
-        m = m.border(length(s.borderWidth), composeOf(s.borderColor != unset.borderColor ? s.borderColor : s.color), shape)
+        m = m.border(length(s.borderWidth), composeOf(s.borderColor != null ? s.borderColor : s.color != null ? s.color : #000000), shape)
     }
-    if paints && s.background != unset.background {
+    if paints && s.background != null {
         m = m.background(composeOf(s.background), shape)
     }
     top = side(s.padding, s.paddingY, s.paddingTop)
     right = side(s.padding, s.paddingX, s.paddingRight)
     bottom = side(s.padding, s.paddingY, s.paddingBottom)
     left = side(s.padding, s.paddingX, s.paddingLeft)
-    if edge != 0.0 || top != unset.padding || right != unset.padding || bottom != unset.padding || left != unset.padding {
+    if edge != 0.0 || top != null || right != null || bottom != null || left != null {
         m = m.paddingEach(inset(left, edge), inset(top, edge), inset(right, edge), inset(bottom, edge))
     }
     return m
@@ -136,10 +139,10 @@ const func styleModifier(s ui.Style, paints bool) Modifier {
 // A Column's or a Row's children placed down or along it, as `gap` and
 // `justifyContent` say: Compose's Arrangement, which no Modifier says. A spread
 // of the free space leaves the gap to it, as CSS's minimum between children is
-// no more than what spreads them. `start` is Compose's default, and the zero
-// a Style leaves.
+// no more than what spreads them. An unset one is the start, Compose's
+// default and CSS's.
 const func columnArrangement(s ui.Style) VerticalArrangement {
-    return s.gap == unset.gap ? columnPlacement(s.justifyContent) : columnSpacing(s.justifyContent, length(s.gap))
+    return s.gap == null ? columnPlacement(s.justifyContent) : columnSpacing(s.justifyContent, length(s.gap))
 }
 
 const func columnPlacement(j ui.Justification) VerticalArrangement {
@@ -149,7 +152,7 @@ const func columnPlacement(j ui.Justification) VerticalArrangement {
         spaceEvenly => arrangeSpaceEvenlyV
         center => arrangeCenterV
         end => arrangeBottom
-        start => arrangeTop
+        unset, start => arrangeTop
     }
 }
 
@@ -160,12 +163,12 @@ const func columnSpacing(j ui.Justification, gap Dp) VerticalArrangement {
         spaceEvenly => arrangeSpaceEvenlyV
         center => spacedByAlignedV(gap, alignCenterVertically)
         end => spacedByAlignedV(gap, alignBottom)
-        start => spacedByV(gap)
+        unset, start => spacedByV(gap)
     }
 }
 
 const func rowArrangement(s ui.Style) HorizontalArrangement {
-    return s.gap == unset.gap ? rowPlacement(s.justifyContent) : rowSpacing(s.justifyContent, length(s.gap))
+    return s.gap == null ? rowPlacement(s.justifyContent) : rowSpacing(s.justifyContent, length(s.gap))
 }
 
 const func rowPlacement(j ui.Justification) HorizontalArrangement {
@@ -175,7 +178,7 @@ const func rowPlacement(j ui.Justification) HorizontalArrangement {
         spaceEvenly => arrangeSpaceEvenlyH
         center => arrangeCenterH
         end => arrangeEnd
-        start => arrangeStart
+        unset, start => arrangeStart
     }
 }
 
@@ -186,19 +189,18 @@ const func rowSpacing(j ui.Justification, gap Dp) HorizontalArrangement {
         spaceEvenly => arrangeSpaceEvenlyH
         center => spacedByAlignedH(gap, alignCenterHorizontally)
         end => spacedByAlignedH(gap, alignHorizontalEnd)
-        start => spacedByH(gap)
+        unset, start => spacedByH(gap)
     }
 }
 
-// Where `alignItems` puts a Column's or a Row's children across it. `start`
-// is the zero a Style leaves as well as a value, so it is read as CSS's
-// default, stretch: Compose's own default is the start, and a child that
-// flexes fills the cross axis itself (stretches).
+// Where `alignItems` puts a Column's or a Row's children across it. Compose
+// has no stretch: an unset alignment is CSS's default, stretch, which a child
+// that flexes answers by filling the cross axis itself (stretches).
 const func columnAlignment(a ui.Alignment) HorizontalAlignment {
     return match a {
         center => alignCenterHorizontally
         end => alignHorizontalEnd
-        start, stretch, baseline => alignStart
+        unset, start, stretch, baseline => alignStart
     }
 }
 
@@ -206,32 +208,35 @@ const func rowAlignment(a ui.Alignment) VerticalAlignment {
     return match a {
         center => alignCenterVertically
         end => alignBottom
-        start, stretch, baseline => alignTop
+        unset, start, stretch, baseline => alignTop
     }
 }
 
-// Whether a flex child fills its parent's cross axis, CSS's stretch. A parent
-// aligning its children otherwise gives the share alone: filling is the most
-// the parent may be, not the size of its largest child, which made a stats
-// bar in a centred row the whole screen.
-const func stretches(s ui.Style) => s.alignItems != ui.Alignment.center && s.alignItems != ui.Alignment.end
+// Whether a flex child fills its parent's cross axis, CSS's stretch, which an
+// unset alignment is. A parent aligning its children otherwise gives the
+// share alone: filling is the most the parent may be, not the size of its
+// largest child, which made a stats bar in a centered row the whole screen.
+const func stretches(s ui.Style) => s.alignItems == ui.Alignment.unset || s.alignItems == ui.Alignment.stretch
 
-const func flexed(m Modifier, flex float, share func(float32) Modifier) Modifier {
-    return flex == 0.0 ? m : chain(m, share(float32(flex)))
+// Compose's weight throws on a share that is not positive, which CSS reads as
+// none.
+const func flexed(m Modifier, flex option[float], share func(float32) Modifier) Modifier {
+    return flex == null || flex <= 0.0 ? m : chain(m, share(float32(flex)))
 }
 
 const func modifierOf(s ui.Style, share func(float32) Modifier) Modifier {
-    return flexed(s == unset ? modifier : styleModifier(s, true), s.flex, share)
+    return flexed(s == blank ? modifier : styleModifier(s, true), s.flex, share)
 }
 
 // modifierOf for a widget that paints its own surface.
 const func surfaceModifierOf(s ui.Style, share func(float32) Modifier) Modifier {
-    return flexed(s == unset ? modifier : styleModifier(s, false), s.flex, share)
+    return flexed(s == blank ? modifier : styleModifier(s, false), s.flex, share)
 }
 
 const func fontWeightOf(w ui.FontWeight) option[FontWeight] {
     return match w {
-        normal => null
+        unset => null
+        normal => weightNormal
         bold => weightBold
         lighter => weightLight
         bolder => weightExtraBold
@@ -242,7 +247,8 @@ const func fontWeightOf(w ui.FontWeight) option[FontWeight] {
 // which is what a font with no true italic is synthesized into anyway.
 const func fontStyleOf(st ui.FontStyle) option[FontStyle] {
     return match st {
-        normal => null
+        unset => null
+        normal => slantNormal
         italic, oblique => slantItalic
     }
 }
@@ -262,19 +268,20 @@ const func fontFamilyOf(name string) option[FontFamily] {
 
 const func textAlignOf(a ui.TextAlign) TextAlign {
     return match a {
-        left => alignUnspecified
+        unset => alignUnspecified
+        left => alignStartText
         center => alignCenter
         right => alignEnd
         justify => alignJustify
     }
 }
 
-const func colorOf(c color) ComposeColor {
-    return c == unset.color ? unspecifiedColor : composeOf(c)
+const func colorOf(c option[color]) ComposeColor {
+    return c == null ? unspecifiedColor : composeOf(c)
 }
 
 const func typeset(s ui.Style) bool {
-    return s.color != unset.color || s.fontSize != unset.fontSize || s.fontWeight != unset.fontWeight || s.fontStyle != unset.fontStyle || s.fontFamily != unset.fontFamily || s.textAlign != unset.textAlign
+    return s.color != null || s.fontSize != null || s.fontWeight != ui.FontWeight.unset || s.fontStyle != ui.FontStyle.unset || s.fontFamily != "" || s.textAlign != ui.TextAlign.unset
 }
 
 const func textStyle(s ui.Style) TextStyle {
@@ -291,5 +298,5 @@ const func textStyle(s ui.Style) TextStyle {
 // A Material button is a stadium -- its shape token is CornerFull, which no
 // theme changes -- unless the Style names its corners.
 const func buttonShapeOf(s ui.Style) Shape {
-    return s.borderRadius == unset.borderRadius ? circleShape : roundedCorners(length(s.borderRadius))
+    return s.borderRadius == null ? circleShape : roundedCorners(length(s.borderRadius))
 }

@@ -338,7 +338,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(20.0, 20.0, float64(m.frame))
 	ctx.Restore()
 }
@@ -604,6 +604,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ef14fc3ab17083f64136b3f1d0e6d174
+pass sha256:719a4f42ea1e9313902a5bfd4cf17e72
 -- run/none/html --
 pass sha256:92e53af97a7246e0fa0d8ce4443aacdb

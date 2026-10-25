@@ -63,54 +63,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -162,32 +162,32 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func RowsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt2 int
+func RowsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
+	var __lt3 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt3 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt3 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt3
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if (s == Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -196,10 +196,10 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -210,100 +210,110 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt3 int
-		if s.MaxLines == 0 {
-			__lt3 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt4 int
+		if s.MaxLines == nil {
+			__lt4 = 0
 		} else {
-			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt4 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt4))
 	}
 	return l
 }
 
-func AlignOf(a string) lipgloss.Position {
-	var __lt4 lipgloss.Position
-	switch a {
-	case "center":
-		__lt4 = lipgloss.Center
-	case "right":
-		__lt4 = lipgloss.Right
-	default:
-		__lt4 = lipgloss.Left
-	}
-	return __lt4
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt5 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt5 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt5 = tui.DashedBorder()
-	default:
-		var __lt6 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt6 = lipgloss.RoundedBorder()
-		} else {
-			__lt6 = lipgloss.NormalBorder()
-		}
-		__lt5 = __lt6
+func PxOf(m__r1 *Measurement) float64 {
+	var __lt5 float64
+	if m__r1 == nil {
+		__lt5 = 0.0
+	} else {
+		__lt5 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
 	return __lt5
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt8 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt8 = own
-	} else {
-		var __lt7 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt7 = axis
-		} else {
-			__lt7 = all
-		}
-		__lt8 = __lt7
+func AlignOf(a string) lipgloss.Position {
+	var __lt6 lipgloss.Position
+	switch a {
+	case "center":
+		__lt6 = lipgloss.Center
+	case "right":
+		__lt6 = lipgloss.Right
+	default:
+		__lt6 = lipgloss.Left
 	}
-	return CellsOf(__lt8)
+	return __lt6
 }
 
-func CellsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
-	var __lt9 int
-	if px <= 0.0 {
-		__lt9 = 0
-	} else {
-		__lt9 = max(1, (int(px) / 8))
+func BorderOf(s Style) lipgloss.Border {
+	var __lt7 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt7 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt7 = tui.DashedBorder()
+	default:
+		var __lt8 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt8 = lipgloss.RoundedBorder()
+		} else {
+			__lt8 = lipgloss.NormalBorder()
+		}
+		__lt7 = __lt8
 	}
-	return __lt9
+	return __lt7
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt10 *Measurement
+	if own != nil {
+		__lt10 = own
+	} else {
+		var __lt9 *Measurement
+		if axis != nil {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
+	}
+	return CellsOf(__lt10)
+}
+
+func CellsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
+	} else {
+		__lt11 = max(1, (int(px) / 8))
+	}
+	return __lt11
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt11 int
+	var __lt13 int
 	if height__r0 == 0 {
-		__lt11 = lines
+		__lt13 = lines
 	} else {
-		var __lt10 int
+		var __lt12 int
 		if lines == 0 {
-			__lt10 = height__r0
+			__lt12 = height__r0
 		} else {
-			__lt10 = min(height__r0, lines)
+			__lt12 = min(height__r0, lines)
 		}
-		__lt11 = __lt10
+		__lt13 = __lt12
 	}
-	return __lt11
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -429,22 +439,22 @@ func (m Model) View() tea.View {
 		if content_0Focused {
 			content_0Prefix = ">"
 		}
-		content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("flip"))
+		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("flip"))
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
-		content_1 = BoxLook(Style{}, true).Render(fmt.Sprint(m.greeting))
+		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.greeting))
 		contentChildren = append(contentChildren, content_1)
-		var __lt12 string
+		var __lt14 string
 		if m.on {
-			__lt12 = "x"
+			__lt14 = "x"
 		} else {
-			__lt12 = "y"
+			__lt14 = "y"
 		}
 		var content_4 string
-		content_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
+		content_4 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt14))
 		contentChildren = append(contentChildren, content_4)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = BoxLook(Style{}, true).Render(content)
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -519,13 +529,13 @@ func (m *Model) home_visible_handler(__visible bool) {
 
 func (m *Model) __n3_click_handler() {
 	m.on = !m.on
-	var __lt8 string
+	var __lt10 string
 	if m.on {
-		__lt8 = "x"
+		__lt10 = "x"
 	} else {
-		__lt8 = "y"
+		__lt10 = "y"
 	}
-	m.__n1.SetText(__lt8)
+	m.__n1.SetText(__lt10)
 }
 
 // homeClosed invokes the OnClosed callback on the #home widget; for tests.
@@ -595,14 +605,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.greeting)
 	m.__n2.Add(m.__n0)
-	var __lt9 string
+	var __lt11 string
 	if m.on {
-		__lt9 = "x"
+		__lt11 = "x"
 	} else {
-		__lt9 = "y"
+		__lt11 = "y"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt9)
+	m.__n1.SetText(__lt11)
 	m.__n2.Add(m.__n1)
 	m.home.Add(m.__n2)
 	fynelayout.AppAttach(m.home)
@@ -683,13 +693,13 @@ func (m *Model) home_visible_handler(__visible bool) {
 
 func (m *Model) __n3_clicked_handler() {
 	m.on = !m.on
-	var __lt17 string
+	var __lt20 string
 	if m.on {
-		__lt17 = "x"
+		__lt20 = "x"
 	} else {
-		__lt17 = "y"
+		__lt20 = "y"
 	}
-	gtk4rt.LabelSetLabel(m.__n1, __lt17)
+	gtk4rt.LabelSetLabel(m.__n1, __lt20)
 }
 
 func (m *Model) On() bool {
@@ -745,14 +755,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetLabel(m.__n0, m.greeting)
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n0)
-	var __lt18 string
+	var __lt21 string
 	if m.on {
-		__lt18 = "x"
+		__lt21 = "x"
 	} else {
-		__lt18 = "y"
+		__lt21 = "y"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n1, __lt18)
+	gtk4rt.LabelSetLabel(m.__n1, __lt21)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	gtk4rt.BoxAppend(m.home, m.__n2)
@@ -766,8 +776,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:49a0f8dae108dd36075f1b471d738de4
+pass sha256:f03c0ceeb02b82845dbeb6cf3bebd52d
 -- run/go/fyne --
-pass sha256:a83038ccbacc8be15baa51cfc3d1f578
+pass sha256:76b2d11ca45c6a6433d795dd6fa381d5
 -- run/go/gtk4 --
-pass sha256:acae38f3a70b9fedc45c1ecdc791c7e3
+pass sha256:3e58145ef5a78469d4686af754812345

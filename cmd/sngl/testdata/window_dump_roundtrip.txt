@@ -23,7 +23,7 @@ stdout 'out.sngl: ok'
 sngl dump --stage checked --format sngl route.sngl
 stdout 'title ?= ?"User"'
 stdout 'href ?= ?"/u/\\{id\\}"'
-stdout 'params ?= ?PageParams\{\}'
+stdout 'params ?= ?PageParams\{id ?= ?""\}'
 stdout 'component content\(v\)'
 
 # Not checked again: a node written qualified (`nav.page`) dumps under its local

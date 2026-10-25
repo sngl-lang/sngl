@@ -28,7 +28,7 @@ output {
 }
 
 component cell(value string, style = ui.Style{}) ui.node {
-    ui.text(value=value, style={width=80px, ...style})
+    ui.text(value=value, style=style.over({width=80px}))
 }
 
 ui.window {
@@ -78,6 +78,10 @@ import (
 	"fmt"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -90,54 +94,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -180,7 +184,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.on = false
-	m.held = Style{FontSize: Measurement{Px: 20}, Color: snglcolor.Color{R: 170, G: 0, B: 0, A: 255}}
+	m.held = Style{FontSize: snglSome(Measurement{Px: 20}), Color: snglSome(snglcolor.Color{R: 170, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	m.names = []string{"a", "b"}
 	m.picture__inst0 = gtk4rt.LoadPicture("https://example.com/dot.png")
 	m.visible__inst0 = true
@@ -204,181 +208,213 @@ func LookOf(s Style) gtk4rt.Look {
 	return look
 }
 
+func Inset(m__r0 *Measurement) float64 {
+	var __lt1 float64
+	if m__r0 == nil {
+		__lt1 = 0.0
+	} else {
+		__lt1 = max(((*(m__r0)).Px + (11.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
+	}
+	return __lt1
+}
+
 func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	var __lt2 float64
+	if s.Flex == nil {
+		__lt2 = 0.0
+	} else {
+		__lt2 = (*(s.Flex))
+	}
+	var __lt3 int
+	if s.MaxLines == nil {
+		__lt3 = 0
+	} else {
+		__lt3 = (*(s.MaxLines))
+	}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt2, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt3, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
 	return look
 }
 
 func CssOf(s Style) string {
-	var __lt1 string
-	if s.Opacity == 0.0 {
-		__lt1 = ""
+	var __lt4 string
+	if s.Opacity == nil {
+		__lt4 = ""
 	} else {
-		__lt1 = fmt.Sprint(s.Opacity)
+		__lt4 = fmt.Sprint((*(s.Opacity)))
 	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt4))
 	return css
 }
 
 func CrossOf(a string) int {
-	var __lt2 int
+	var __lt5 int
 	switch a {
+	case "start":
+		__lt5 = 1
 	case "center":
-		__lt2 = 2
+		__lt5 = 2
 	case "end":
-		__lt2 = 3
+		__lt5 = 3
 	case "baseline":
-		__lt2 = 4
+		__lt5 = 4
 	default:
-		__lt2 = 0
-	}
-	return __lt2
-}
-
-func TextAlignOf(a string) int {
-	var __lt3 int
-	switch a {
-	case "center":
-		__lt3 = 1
-	case "right":
-		__lt3 = 2
-	case "justify":
-		__lt3 = 3
-	default:
-		__lt3 = 0
-	}
-	return __lt3
-}
-
-func WrapOf(w string) int {
-	var __lt4 int
-	switch w {
-	case "pre", "nowrap":
-		__lt4 = 1
-	case "preWrap", "preLine":
-		__lt4 = 2
-	default:
-		__lt4 = 0
-	}
-	return __lt4
-}
-
-func ClipOf(o string) bool {
-	var __lt5 bool
-	switch o {
-	case "hidden", "scroll", "auto":
-		__lt5 = true
-	default:
-		__lt5 = false
+		__lt5 = 0
 	}
 	return __lt5
 }
 
-func Decl(name string, value string) string {
-	var __lt6 string
-	if value == "" {
-		__lt6 = ""
-	} else {
-		__lt6 = (((name + ": ") + value) + "; ")
+func TextAlignOf(a string) int {
+	var __lt6 int
+	switch a {
+	case "center":
+		__lt6 = 1
+	case "right":
+		__lt6 = 2
+	case "justify":
+		__lt6 = 3
+	case "left":
+		__lt6 = 4
+	default:
+		__lt6 = 0
 	}
 	return __lt6
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt8 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt8 = own
-	} else {
-		var __lt7 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt7 = axis
-		} else {
-			__lt7 = all
-		}
-		__lt8 = __lt7
+func WrapOf(w string) int {
+	var __lt7 int
+	switch w {
+	case "pre", "nowrap":
+		__lt7 = 1
+	case "preWrap", "preLine":
+		__lt7 = 2
+	default:
+		__lt7 = 0
 	}
-	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+	return __lt7
 }
 
-func Length(v float64) string {
+func ClipOf(o string) bool {
+	var __lt8 bool
+	switch o {
+	case "hidden", "scroll", "auto":
+		__lt8 = true
+	default:
+		__lt8 = false
+	}
+	return __lt8
+}
+
+func Decl(name string, value string) string {
 	var __lt9 string
-	if v == 0.0 {
+	if value == "" {
 		__lt9 = ""
 	} else {
-		__lt9 = (fmt.Sprint(v) + "px")
+		__lt9 = (((name + ": ") + value) + "; ")
 	}
 	return __lt9
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
-	var __lt10 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
-		__lt10 = ""
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt11 *Measurement
+	if own != nil {
+		__lt11 = own
 	} else {
-		__lt10 = c__r0.Hex()
+		var __lt10 *Measurement
+		if axis != nil {
+			__lt10 = axis
+		} else {
+			__lt10 = all
+		}
+		__lt11 = __lt10
 	}
-	return __lt10
+	return Length(__lt11)
 }
 
-func Points(v float64) string {
-	var __lt11 string
-	if v == 0.0 {
-		__lt11 = ""
-	} else {
-		__lt11 = (fmt.Sprint(v) + "pt")
-	}
-	return __lt11
-}
-
-func WeightOf(w string) string {
+func Length(m__r2 *Measurement) string {
 	var __lt12 string
-	switch w {
-	case "bold":
-		__lt12 = "bold"
-	case "bolder":
-		__lt12 = "bolder"
-	case "lighter":
-		__lt12 = "lighter"
-	default:
+	if m__r2 == nil {
 		__lt12 = ""
+	} else {
+		__lt12 = (fmt.Sprint(Inset(m__r2)) + "px")
 	}
 	return __lt12
 }
 
-func SlantOf(s string) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt13 string
-	switch s {
-	case "italic":
-		__lt13 = "italic"
-	case "oblique":
-		__lt13 = "oblique"
-	default:
+	if c__r0 == nil {
 		__lt13 = ""
+	} else {
+		__lt13 = (*(c__r0)).Hex()
 	}
 	return __lt13
 }
 
-func LineOf(s Style) string {
+func Points(m__r3 *Measurement) string {
 	var __lt14 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt14 = "solid"
-	case "dashed":
-		__lt14 = "dashed"
-	case "dotted":
-		__lt14 = "dotted"
-	case "double":
-		__lt14 = "double"
-	default:
-		var __lt15 string
-		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt15 = "solid"
-		} else {
-			__lt15 = ""
-		}
-		__lt14 = __lt15
+	if m__r3 == nil {
+		__lt14 = ""
+	} else {
+		__lt14 = (fmt.Sprint(Inset(m__r3)) + "pt")
 	}
 	return __lt14
+}
+
+func WeightOf(w string) string {
+	var __lt15 string
+	switch w {
+	case "normal":
+		__lt15 = "normal"
+	case "bold":
+		__lt15 = "bold"
+	case "bolder":
+		__lt15 = "bolder"
+	case "lighter":
+		__lt15 = "lighter"
+	default:
+		__lt15 = ""
+	}
+	return __lt15
+}
+
+func SlantOf(s string) string {
+	var __lt16 string
+	switch s {
+	case "normal":
+		__lt16 = "normal"
+	case "italic":
+		__lt16 = "italic"
+	case "oblique":
+		__lt16 = "oblique"
+	default:
+		__lt16 = ""
+	}
+	return __lt16
+}
+
+func LineOf(s Style) string {
+	var __lt17 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt17 = "solid"
+	case "dashed":
+		__lt17 = "dashed"
+	case "dotted":
+		__lt17 = "dotted"
+	case "double":
+		__lt17 = "double"
+	case "none":
+		__lt17 = "none"
+	default:
+		var __lt18 string
+		if s.BorderWidth != nil {
+			__lt18 = "solid"
+		} else {
+			__lt18 = ""
+		}
+		__lt17 = __lt18
+	}
+	return __lt17
 }
 
 func (m *Model) __effect0_unmount() {
@@ -495,26 +531,956 @@ func (m *Model) __n8_click_handler() {
 func (m *Model) __n8_load_handler() {
 }
 
-func (m *Model) __n8_failed_handler(m__r2 string) {
+func (m *Model) __n8_failed_handler(m__r4 string) {
 }
 
 func (m *Model) __n9_clicked_handler() {
 	m.on = !m.on
-	var __lt18 snglcolor.Color
+	var __lt176 snglcolor.Color
 	if m.on {
-		__lt18 = snglcolor.Color{R: 204, G: 0, B: 0, A: 255}
+		__lt176 = snglcolor.Color{R: 204, A: 255}
 	} else {
-		__lt18 = snglcolor.Color{R: 0, G: 0, B: 204, A: 255}
+		__lt176 = snglcolor.Color{B: 204, A: 255}
 	}
-	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: Measurement{Px: 28}, FontWeight: "bold", Color: __lt18}))
-	var __lt19 snglcolor.Color
+	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: snglSome(Measurement{Px: 28}), FontWeight: "bold", Color: snglSome(__lt176), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	var __lt177 snglcolor.Color
 	if m.on {
-		__lt19 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt177 = snglcolor.Color{R: 255, A: 255}
 	} else {
-		__lt19 = snglcolor.Color{R: 0, G: 170, B: 0, A: 255}
+		__lt177 = snglcolor.Color{G: 170, A: 255}
 	}
-	gtk4rt.SetLook(m.__n2, LookOf(Style{Display: "inlineBlock", PaddingY: Measurement{Px: 2}, PaddingX: Measurement{Px: 8}, BorderRadius: Measurement{Px: 12}, Background: __lt19, Color: snglcolor.Color{R: 255, G: 255, B: 255, A: 255}}))
-	m.held = Style{FontSize: Measurement{Em: 1}}
+	var __lt179 *Measurement
+	if (Style{Background: snglSome(__lt177), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Padding != nil) {
+		var __lt178 snglcolor.Color
+		if m.on {
+			__lt178 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt178 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt179 = Style{Background: snglSome(__lt178), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Padding
+	} else {
+		__lt179 = nil
+	}
+	var __lt180 snglcolor.Color
+	if m.on {
+		__lt180 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt180 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt182 *Measurement
+	if (Style{Background: snglSome(__lt180), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingTop != nil) {
+		var __lt181 snglcolor.Color
+		if m.on {
+			__lt181 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt181 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt182 = Style{Background: snglSome(__lt181), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingTop
+	} else {
+		__lt182 = nil
+	}
+	var __lt183 snglcolor.Color
+	if m.on {
+		__lt183 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt183 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt185 *Measurement
+	if (Style{Background: snglSome(__lt183), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingRight != nil) {
+		var __lt184 snglcolor.Color
+		if m.on {
+			__lt184 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt184 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt185 = Style{Background: snglSome(__lt184), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingRight
+	} else {
+		__lt185 = nil
+	}
+	var __lt186 snglcolor.Color
+	if m.on {
+		__lt186 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt186 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt188 *Measurement
+	if (Style{Background: snglSome(__lt186), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingBottom != nil) {
+		var __lt187 snglcolor.Color
+		if m.on {
+			__lt187 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt187 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt188 = Style{Background: snglSome(__lt187), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingBottom
+	} else {
+		__lt188 = nil
+	}
+	var __lt189 snglcolor.Color
+	if m.on {
+		__lt189 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt189 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt191 *Measurement
+	if (Style{Background: snglSome(__lt189), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingLeft != nil) {
+		var __lt190 snglcolor.Color
+		if m.on {
+			__lt190 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt190 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt191 = Style{Background: snglSome(__lt190), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingLeft
+	} else {
+		__lt191 = nil
+	}
+	var __lt192 snglcolor.Color
+	if m.on {
+		__lt192 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt192 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt194 *Measurement
+	if (Style{Background: snglSome(__lt192), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingX != nil) {
+		var __lt193 snglcolor.Color
+		if m.on {
+			__lt193 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt193 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt194 = Style{Background: snglSome(__lt193), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingX
+	} else {
+		__lt194 = snglSome(Measurement{Px: 8})
+	}
+	var __lt195 snglcolor.Color
+	if m.on {
+		__lt195 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt195 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt197 *Measurement
+	if (Style{Background: snglSome(__lt195), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingY != nil) {
+		var __lt196 snglcolor.Color
+		if m.on {
+			__lt196 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt196 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt197 = Style{Background: snglSome(__lt196), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingY
+	} else {
+		__lt197 = snglSome(Measurement{Px: 2})
+	}
+	var __lt198 snglcolor.Color
+	if m.on {
+		__lt198 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt198 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt200 *Measurement
+	if (Style{Background: snglSome(__lt198), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Margin != nil) {
+		var __lt199 snglcolor.Color
+		if m.on {
+			__lt199 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt199 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt200 = Style{Background: snglSome(__lt199), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Margin
+	} else {
+		__lt200 = nil
+	}
+	var __lt201 snglcolor.Color
+	if m.on {
+		__lt201 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt201 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt203 *Measurement
+	if (Style{Background: snglSome(__lt201), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginTop != nil) {
+		var __lt202 snglcolor.Color
+		if m.on {
+			__lt202 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt202 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt203 = Style{Background: snglSome(__lt202), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginTop
+	} else {
+		__lt203 = nil
+	}
+	var __lt204 snglcolor.Color
+	if m.on {
+		__lt204 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt204 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt206 *Measurement
+	if (Style{Background: snglSome(__lt204), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginRight != nil) {
+		var __lt205 snglcolor.Color
+		if m.on {
+			__lt205 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt205 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt206 = Style{Background: snglSome(__lt205), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginRight
+	} else {
+		__lt206 = nil
+	}
+	var __lt207 snglcolor.Color
+	if m.on {
+		__lt207 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt207 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt209 *Measurement
+	if (Style{Background: snglSome(__lt207), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginBottom != nil) {
+		var __lt208 snglcolor.Color
+		if m.on {
+			__lt208 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt208 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt209 = Style{Background: snglSome(__lt208), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginBottom
+	} else {
+		__lt209 = nil
+	}
+	var __lt210 snglcolor.Color
+	if m.on {
+		__lt210 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt210 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt212 *Measurement
+	if (Style{Background: snglSome(__lt210), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginLeft != nil) {
+		var __lt211 snglcolor.Color
+		if m.on {
+			__lt211 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt211 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt212 = Style{Background: snglSome(__lt211), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginLeft
+	} else {
+		__lt212 = nil
+	}
+	var __lt213 snglcolor.Color
+	if m.on {
+		__lt213 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt213 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt215 *Measurement
+	if (Style{Background: snglSome(__lt213), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginX != nil) {
+		var __lt214 snglcolor.Color
+		if m.on {
+			__lt214 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt214 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt215 = Style{Background: snglSome(__lt214), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginX
+	} else {
+		__lt215 = nil
+	}
+	var __lt216 snglcolor.Color
+	if m.on {
+		__lt216 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt216 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt218 *Measurement
+	if (Style{Background: snglSome(__lt216), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginY != nil) {
+		var __lt217 snglcolor.Color
+		if m.on {
+			__lt217 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt217 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt218 = Style{Background: snglSome(__lt217), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginY
+	} else {
+		__lt218 = nil
+	}
+	var __lt219 snglcolor.Color
+	if m.on {
+		__lt219 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt219 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt221 *Measurement
+	if (Style{Background: snglSome(__lt219), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Gap != nil) {
+		var __lt220 snglcolor.Color
+		if m.on {
+			__lt220 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt220 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt221 = Style{Background: snglSome(__lt220), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Gap
+	} else {
+		__lt221 = nil
+	}
+	var __lt222 snglcolor.Color
+	if m.on {
+		__lt222 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt222 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt224 *Measurement
+	if (Style{Background: snglSome(__lt222), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Width != nil) {
+		var __lt223 snglcolor.Color
+		if m.on {
+			__lt223 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt223 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt224 = Style{Background: snglSome(__lt223), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Width
+	} else {
+		__lt224 = nil
+	}
+	var __lt225 snglcolor.Color
+	if m.on {
+		__lt225 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt225 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt227 *Measurement
+	if (Style{Background: snglSome(__lt225), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MinWidth != nil) {
+		var __lt226 snglcolor.Color
+		if m.on {
+			__lt226 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt226 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt227 = Style{Background: snglSome(__lt226), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MinWidth
+	} else {
+		__lt227 = nil
+	}
+	var __lt228 snglcolor.Color
+	if m.on {
+		__lt228 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt228 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt230 *Measurement
+	if (Style{Background: snglSome(__lt228), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Height != nil) {
+		var __lt229 snglcolor.Color
+		if m.on {
+			__lt229 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt229 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt230 = Style{Background: snglSome(__lt229), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Height
+	} else {
+		__lt230 = nil
+	}
+	var __lt231 snglcolor.Color
+	if m.on {
+		__lt231 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt231 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt233 *Measurement
+	if (Style{Background: snglSome(__lt231), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxWidth != nil) {
+		var __lt232 snglcolor.Color
+		if m.on {
+			__lt232 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt232 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt233 = Style{Background: snglSome(__lt232), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxWidth
+	} else {
+		__lt233 = nil
+	}
+	var __lt234 snglcolor.Color
+	if m.on {
+		__lt234 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt234 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt236 *Measurement
+	if (Style{Background: snglSome(__lt234), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxHeight != nil) {
+		var __lt235 snglcolor.Color
+		if m.on {
+			__lt235 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt235 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt236 = Style{Background: snglSome(__lt235), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxHeight
+	} else {
+		__lt236 = nil
+	}
+	var __lt237 snglcolor.Color
+	if m.on {
+		__lt237 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt237 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt239 *float64
+	if (Style{Background: snglSome(__lt237), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Flex != nil) {
+		var __lt238 snglcolor.Color
+		if m.on {
+			__lt238 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt238 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt239 = Style{Background: snglSome(__lt238), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Flex
+	} else {
+		__lt239 = nil
+	}
+	var __lt240 snglcolor.Color
+	if m.on {
+		__lt240 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt240 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt242 string
+	if (Style{Background: snglSome(__lt240), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FlexDirection != "unset") {
+		var __lt241 snglcolor.Color
+		if m.on {
+			__lt241 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt241 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt242 = Style{Background: snglSome(__lt241), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FlexDirection
+	} else {
+		__lt242 = "unset"
+	}
+	var __lt243 snglcolor.Color
+	if m.on {
+		__lt243 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt243 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt245 string
+	if (Style{Background: snglSome(__lt243), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.AlignItems != "unset") {
+		var __lt244 snglcolor.Color
+		if m.on {
+			__lt244 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt244 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt245 = Style{Background: snglSome(__lt244), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.AlignItems
+	} else {
+		__lt245 = "unset"
+	}
+	var __lt246 snglcolor.Color
+	if m.on {
+		__lt246 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt246 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt248 string
+	if (Style{Background: snglSome(__lt246), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.JustifyContent != "unset") {
+		var __lt247 snglcolor.Color
+		if m.on {
+			__lt247 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt247 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt248 = Style{Background: snglSome(__lt247), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.JustifyContent
+	} else {
+		__lt248 = "unset"
+	}
+	var __lt249 snglcolor.Color
+	if m.on {
+		__lt249 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt249 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt251 string
+	if (Style{Background: snglSome(__lt249), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Position != "unset") {
+		var __lt250 snglcolor.Color
+		if m.on {
+			__lt250 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt250 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt251 = Style{Background: snglSome(__lt250), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Position
+	} else {
+		__lt251 = "unset"
+	}
+	var __lt252 snglcolor.Color
+	if m.on {
+		__lt252 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt252 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt254 *Measurement
+	if (Style{Background: snglSome(__lt252), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Top != nil) {
+		var __lt253 snglcolor.Color
+		if m.on {
+			__lt253 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt253 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt254 = Style{Background: snglSome(__lt253), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Top
+	} else {
+		__lt254 = nil
+	}
+	var __lt255 snglcolor.Color
+	if m.on {
+		__lt255 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt255 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt257 *Measurement
+	if (Style{Background: snglSome(__lt255), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Bottom != nil) {
+		var __lt256 snglcolor.Color
+		if m.on {
+			__lt256 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt256 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt257 = Style{Background: snglSome(__lt256), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Bottom
+	} else {
+		__lt257 = nil
+	}
+	var __lt258 snglcolor.Color
+	if m.on {
+		__lt258 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt258 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt260 *Measurement
+	if (Style{Background: snglSome(__lt258), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Left != nil) {
+		var __lt259 snglcolor.Color
+		if m.on {
+			__lt259 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt259 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt260 = Style{Background: snglSome(__lt259), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Left
+	} else {
+		__lt260 = nil
+	}
+	var __lt261 snglcolor.Color
+	if m.on {
+		__lt261 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt261 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt263 *Measurement
+	if (Style{Background: snglSome(__lt261), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Right != nil) {
+		var __lt262 snglcolor.Color
+		if m.on {
+			__lt262 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt262 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt263 = Style{Background: snglSome(__lt262), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Right
+	} else {
+		__lt263 = nil
+	}
+	var __lt264 snglcolor.Color
+	if m.on {
+		__lt264 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt264 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt266 *int
+	if (Style{Background: snglSome(__lt264), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ZIndex != nil) {
+		var __lt265 snglcolor.Color
+		if m.on {
+			__lt265 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt265 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt266 = Style{Background: snglSome(__lt265), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ZIndex
+	} else {
+		__lt266 = nil
+	}
+	var __lt267 snglcolor.Color
+	if m.on {
+		__lt267 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt267 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt269 *snglcolor.Color
+	if (Style{Background: snglSome(__lt267), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Color != nil) {
+		var __lt268 snglcolor.Color
+		if m.on {
+			__lt268 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt268 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt269 = Style{Background: snglSome(__lt268), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Color
+	} else {
+		__lt269 = nil
+	}
+	var __lt270 snglcolor.Color
+	if m.on {
+		__lt270 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt270 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt272 *Measurement
+	if (Style{Background: snglSome(__lt270), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontSize != nil) {
+		var __lt271 snglcolor.Color
+		if m.on {
+			__lt271 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt271 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt272 = Style{Background: snglSome(__lt271), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontSize
+	} else {
+		__lt272 = nil
+	}
+	var __lt273 snglcolor.Color
+	if m.on {
+		__lt273 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt273 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt275 string
+	if (Style{Background: snglSome(__lt273), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontFamily != "") {
+		var __lt274 snglcolor.Color
+		if m.on {
+			__lt274 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt274 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt275 = Style{Background: snglSome(__lt274), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontFamily
+	} else {
+		__lt275 = ""
+	}
+	var __lt276 snglcolor.Color
+	if m.on {
+		__lt276 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt276 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt278 string
+	if (Style{Background: snglSome(__lt276), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontWeight != "unset") {
+		var __lt277 snglcolor.Color
+		if m.on {
+			__lt277 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt277 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt278 = Style{Background: snglSome(__lt277), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontWeight
+	} else {
+		__lt278 = "unset"
+	}
+	var __lt279 snglcolor.Color
+	if m.on {
+		__lt279 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt279 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt281 string
+	if (Style{Background: snglSome(__lt279), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontStyle != "unset") {
+		var __lt280 snglcolor.Color
+		if m.on {
+			__lt280 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt280 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt281 = Style{Background: snglSome(__lt280), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontStyle
+	} else {
+		__lt281 = "unset"
+	}
+	var __lt282 snglcolor.Color
+	if m.on {
+		__lt282 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt282 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt284 string
+	if (Style{Background: snglSome(__lt282), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.TextAlign != "unset") {
+		var __lt283 snglcolor.Color
+		if m.on {
+			__lt283 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt283 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt284 = Style{Background: snglSome(__lt283), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.TextAlign
+	} else {
+		__lt284 = "unset"
+	}
+	var __lt285 snglcolor.Color
+	if m.on {
+		__lt285 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt285 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt287 *int
+	if (Style{Background: snglSome(__lt285), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxLines != nil) {
+		var __lt286 snglcolor.Color
+		if m.on {
+			__lt286 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt286 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt287 = Style{Background: snglSome(__lt286), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxLines
+	} else {
+		__lt287 = nil
+	}
+	var __lt288 snglcolor.Color
+	if m.on {
+		__lt288 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt288 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt290 string
+	if (Style{Background: snglSome(__lt288), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.WhiteSpace != "unset") {
+		var __lt289 snglcolor.Color
+		if m.on {
+			__lt289 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt289 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt290 = Style{Background: snglSome(__lt289), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.WhiteSpace
+	} else {
+		__lt290 = "unset"
+	}
+	var __lt291 snglcolor.Color
+	if m.on {
+		__lt291 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt291 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt293 *snglcolor.Color
+	if (Style{Background: snglSome(__lt291), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Background != nil) {
+		var __lt292 snglcolor.Color
+		if m.on {
+			__lt292 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt292 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt293 = Style{Background: snglSome(__lt292), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Background
+	} else {
+		__lt293 = nil
+	}
+	var __lt294 snglcolor.Color
+	if m.on {
+		__lt294 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt294 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt296 *Measurement
+	if (Style{Background: snglSome(__lt294), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderRadius != nil) {
+		var __lt295 snglcolor.Color
+		if m.on {
+			__lt295 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt295 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt296 = Style{Background: snglSome(__lt295), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderRadius
+	} else {
+		__lt296 = snglSome(Measurement{Px: 12})
+	}
+	var __lt297 snglcolor.Color
+	if m.on {
+		__lt297 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt297 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt299 *snglcolor.Color
+	if (Style{Background: snglSome(__lt297), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderColor != nil) {
+		var __lt298 snglcolor.Color
+		if m.on {
+			__lt298 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt298 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt299 = Style{Background: snglSome(__lt298), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderColor
+	} else {
+		__lt299 = nil
+	}
+	var __lt300 snglcolor.Color
+	if m.on {
+		__lt300 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt300 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt302 *Measurement
+	if (Style{Background: snglSome(__lt300), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderWidth != nil) {
+		var __lt301 snglcolor.Color
+		if m.on {
+			__lt301 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt301 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt302 = Style{Background: snglSome(__lt301), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderWidth
+	} else {
+		__lt302 = nil
+	}
+	var __lt303 snglcolor.Color
+	if m.on {
+		__lt303 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt303 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt305 string
+	if (Style{Background: snglSome(__lt303), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Border != "") {
+		var __lt304 snglcolor.Color
+		if m.on {
+			__lt304 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt304 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt305 = Style{Background: snglSome(__lt304), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Border
+	} else {
+		__lt305 = ""
+	}
+	var __lt306 snglcolor.Color
+	if m.on {
+		__lt306 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt306 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt308 string
+	if (Style{Background: snglSome(__lt306), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderBottom != "") {
+		var __lt307 snglcolor.Color
+		if m.on {
+			__lt307 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt307 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt308 = Style{Background: snglSome(__lt307), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderBottom
+	} else {
+		__lt308 = ""
+	}
+	var __lt309 snglcolor.Color
+	if m.on {
+		__lt309 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt309 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt311 string
+	if (Style{Background: snglSome(__lt309), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderLeft != "") {
+		var __lt310 snglcolor.Color
+		if m.on {
+			__lt310 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt310 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt311 = Style{Background: snglSome(__lt310), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderLeft
+	} else {
+		__lt311 = ""
+	}
+	var __lt312 snglcolor.Color
+	if m.on {
+		__lt312 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt312 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt314 string
+	if (Style{Background: snglSome(__lt312), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderCollapse != "") {
+		var __lt313 snglcolor.Color
+		if m.on {
+			__lt313 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt313 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt314 = Style{Background: snglSome(__lt313), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderCollapse
+	} else {
+		__lt314 = ""
+	}
+	var __lt315 snglcolor.Color
+	if m.on {
+		__lt315 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt315 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt317 string
+	if (Style{Background: snglSome(__lt315), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderStyle != "unset") {
+		var __lt316 snglcolor.Color
+		if m.on {
+			__lt316 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt316 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt317 = Style{Background: snglSome(__lt316), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderStyle
+	} else {
+		__lt317 = "unset"
+	}
+	var __lt318 snglcolor.Color
+	if m.on {
+		__lt318 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt318 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt320 *float64
+	if (Style{Background: snglSome(__lt318), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Opacity != nil) {
+		var __lt319 snglcolor.Color
+		if m.on {
+			__lt319 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt319 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt320 = Style{Background: snglSome(__lt319), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Opacity
+	} else {
+		__lt320 = nil
+	}
+	var __lt321 snglcolor.Color
+	if m.on {
+		__lt321 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt321 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt323 string
+	if (Style{Background: snglSome(__lt321), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Cursor != "") {
+		var __lt322 snglcolor.Color
+		if m.on {
+			__lt322 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt322 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt323 = Style{Background: snglSome(__lt322), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Cursor
+	} else {
+		__lt323 = ""
+	}
+	var __lt324 snglcolor.Color
+	if m.on {
+		__lt324 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt324 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt326 string
+	if (Style{Background: snglSome(__lt324), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Display != "unset") {
+		var __lt325 snglcolor.Color
+		if m.on {
+			__lt325 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt325 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt326 = Style{Background: snglSome(__lt325), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Display
+	} else {
+		__lt326 = "inlineBlock"
+	}
+	var __lt327 snglcolor.Color
+	if m.on {
+		__lt327 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt327 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt329 string
+	if (Style{Background: snglSome(__lt327), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Overflow != "unset") {
+		var __lt328 snglcolor.Color
+		if m.on {
+			__lt328 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt328 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt329 = Style{Background: snglSome(__lt328), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Overflow
+	} else {
+		__lt329 = "unset"
+	}
+	var __lt330 snglcolor.Color
+	if m.on {
+		__lt330 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt330 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt332 string
+	if (Style{Background: snglSome(__lt330), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ListStyleType != "unset") {
+		var __lt331 snglcolor.Color
+		if m.on {
+			__lt331 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt331 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt332 = Style{Background: snglSome(__lt331), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ListStyleType
+	} else {
+		__lt332 = "unset"
+	}
+	gtk4rt.SetLook(m.__n2, LookOf(Style{Padding: __lt179, PaddingTop: __lt182, PaddingRight: __lt185, PaddingBottom: __lt188, PaddingLeft: __lt191, PaddingX: __lt194, PaddingY: __lt197, Margin: __lt200, MarginTop: __lt203, MarginRight: __lt206, MarginBottom: __lt209, MarginLeft: __lt212, MarginX: __lt215, MarginY: __lt218, Gap: __lt221, Width: __lt224, MinWidth: __lt227, Height: __lt230, MaxWidth: __lt233, MaxHeight: __lt236, Flex: __lt239, FlexDirection: __lt242, AlignItems: __lt245, JustifyContent: __lt248, Position: __lt251, Top: __lt254, Bottom: __lt257, Left: __lt260, Right: __lt263, ZIndex: __lt266, Color: __lt269, FontSize: __lt272, FontFamily: __lt275, FontWeight: __lt278, FontStyle: __lt281, TextAlign: __lt284, MaxLines: __lt287, WhiteSpace: __lt290, Background: __lt293, BorderRadius: __lt296, BorderColor: __lt299, BorderWidth: __lt302, Border: __lt305, BorderBottom: __lt308, BorderLeft: __lt311, BorderCollapse: __lt314, BorderStyle: __lt317, Opacity: __lt320, Cursor: __lt323, Display: __lt326, Overflow: __lt329, ListStyleType: __lt332}))
+	m.held = Style{FontSize: snglSome(Measurement{Em: 1}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	gtk4rt.SetLook(m.__n3, LookOf(m.held))
 }
 
@@ -571,27 +1537,957 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n7, 12)
 	gtk4rt.SetLook(m.__n7, gtk4rt.Look{Css: "padding-top: 16px; padding-right: 16px; padding-bottom: 16px; padding-left: 16px; "})
-	var __lt16 snglcolor.Color
+	var __lt19 snglcolor.Color
 	if m.on {
-		__lt16 = snglcolor.Color{R: 204, G: 0, B: 0, A: 255}
+		__lt19 = snglcolor.Color{R: 204, A: 255}
 	} else {
-		__lt16 = snglcolor.Color{R: 0, G: 0, B: 204, A: 255}
+		__lt19 = snglcolor.Color{B: 204, A: 255}
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, "title")
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
-	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: Measurement{Px: 28}, FontWeight: "bold", Color: __lt16}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: snglSome(Measurement{Px: 28}), FontWeight: "bold", Color: snglSome(__lt19), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	gtk4rt.BoxAppend(m.__n7, m.__n1)
-	var __lt17 snglcolor.Color
+	var __lt20 snglcolor.Color
 	if m.on {
-		__lt17 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt20 = snglcolor.Color{R: 255, A: 255}
 	} else {
-		__lt17 = snglcolor.Color{R: 0, G: 170, B: 0, A: 255}
+		__lt20 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt22 *Measurement
+	if (Style{Background: snglSome(__lt20), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Padding != nil) {
+		var __lt21 snglcolor.Color
+		if m.on {
+			__lt21 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt21 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt22 = Style{Background: snglSome(__lt21), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Padding
+	} else {
+		__lt22 = nil
+	}
+	var __lt23 snglcolor.Color
+	if m.on {
+		__lt23 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt23 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt25 *Measurement
+	if (Style{Background: snglSome(__lt23), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingTop != nil) {
+		var __lt24 snglcolor.Color
+		if m.on {
+			__lt24 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt24 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt25 = Style{Background: snglSome(__lt24), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingTop
+	} else {
+		__lt25 = nil
+	}
+	var __lt26 snglcolor.Color
+	if m.on {
+		__lt26 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt26 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt28 *Measurement
+	if (Style{Background: snglSome(__lt26), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingRight != nil) {
+		var __lt27 snglcolor.Color
+		if m.on {
+			__lt27 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt27 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt28 = Style{Background: snglSome(__lt27), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingRight
+	} else {
+		__lt28 = nil
+	}
+	var __lt29 snglcolor.Color
+	if m.on {
+		__lt29 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt29 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt31 *Measurement
+	if (Style{Background: snglSome(__lt29), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingBottom != nil) {
+		var __lt30 snglcolor.Color
+		if m.on {
+			__lt30 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt30 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt31 = Style{Background: snglSome(__lt30), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingBottom
+	} else {
+		__lt31 = nil
+	}
+	var __lt32 snglcolor.Color
+	if m.on {
+		__lt32 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt32 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt34 *Measurement
+	if (Style{Background: snglSome(__lt32), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingLeft != nil) {
+		var __lt33 snglcolor.Color
+		if m.on {
+			__lt33 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt33 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt34 = Style{Background: snglSome(__lt33), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingLeft
+	} else {
+		__lt34 = nil
+	}
+	var __lt35 snglcolor.Color
+	if m.on {
+		__lt35 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt35 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt37 *Measurement
+	if (Style{Background: snglSome(__lt35), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingX != nil) {
+		var __lt36 snglcolor.Color
+		if m.on {
+			__lt36 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt36 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt37 = Style{Background: snglSome(__lt36), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingX
+	} else {
+		__lt37 = snglSome(Measurement{Px: 8})
+	}
+	var __lt38 snglcolor.Color
+	if m.on {
+		__lt38 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt38 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt40 *Measurement
+	if (Style{Background: snglSome(__lt38), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingY != nil) {
+		var __lt39 snglcolor.Color
+		if m.on {
+			__lt39 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt39 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt40 = Style{Background: snglSome(__lt39), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.PaddingY
+	} else {
+		__lt40 = snglSome(Measurement{Px: 2})
+	}
+	var __lt41 snglcolor.Color
+	if m.on {
+		__lt41 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt41 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt43 *Measurement
+	if (Style{Background: snglSome(__lt41), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Margin != nil) {
+		var __lt42 snglcolor.Color
+		if m.on {
+			__lt42 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt42 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt43 = Style{Background: snglSome(__lt42), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Margin
+	} else {
+		__lt43 = nil
+	}
+	var __lt44 snglcolor.Color
+	if m.on {
+		__lt44 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt44 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt46 *Measurement
+	if (Style{Background: snglSome(__lt44), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginTop != nil) {
+		var __lt45 snglcolor.Color
+		if m.on {
+			__lt45 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt45 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt46 = Style{Background: snglSome(__lt45), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginTop
+	} else {
+		__lt46 = nil
+	}
+	var __lt47 snglcolor.Color
+	if m.on {
+		__lt47 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt47 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt49 *Measurement
+	if (Style{Background: snglSome(__lt47), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginRight != nil) {
+		var __lt48 snglcolor.Color
+		if m.on {
+			__lt48 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt48 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt49 = Style{Background: snglSome(__lt48), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginRight
+	} else {
+		__lt49 = nil
+	}
+	var __lt50 snglcolor.Color
+	if m.on {
+		__lt50 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt50 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt52 *Measurement
+	if (Style{Background: snglSome(__lt50), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginBottom != nil) {
+		var __lt51 snglcolor.Color
+		if m.on {
+			__lt51 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt51 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt52 = Style{Background: snglSome(__lt51), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginBottom
+	} else {
+		__lt52 = nil
+	}
+	var __lt53 snglcolor.Color
+	if m.on {
+		__lt53 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt53 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt55 *Measurement
+	if (Style{Background: snglSome(__lt53), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginLeft != nil) {
+		var __lt54 snglcolor.Color
+		if m.on {
+			__lt54 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt54 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt55 = Style{Background: snglSome(__lt54), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginLeft
+	} else {
+		__lt55 = nil
+	}
+	var __lt56 snglcolor.Color
+	if m.on {
+		__lt56 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt56 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt58 *Measurement
+	if (Style{Background: snglSome(__lt56), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginX != nil) {
+		var __lt57 snglcolor.Color
+		if m.on {
+			__lt57 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt57 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt58 = Style{Background: snglSome(__lt57), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginX
+	} else {
+		__lt58 = nil
+	}
+	var __lt59 snglcolor.Color
+	if m.on {
+		__lt59 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt59 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt61 *Measurement
+	if (Style{Background: snglSome(__lt59), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginY != nil) {
+		var __lt60 snglcolor.Color
+		if m.on {
+			__lt60 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt60 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt61 = Style{Background: snglSome(__lt60), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MarginY
+	} else {
+		__lt61 = nil
+	}
+	var __lt62 snglcolor.Color
+	if m.on {
+		__lt62 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt62 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt64 *Measurement
+	if (Style{Background: snglSome(__lt62), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Gap != nil) {
+		var __lt63 snglcolor.Color
+		if m.on {
+			__lt63 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt63 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt64 = Style{Background: snglSome(__lt63), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Gap
+	} else {
+		__lt64 = nil
+	}
+	var __lt65 snglcolor.Color
+	if m.on {
+		__lt65 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt65 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt67 *Measurement
+	if (Style{Background: snglSome(__lt65), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Width != nil) {
+		var __lt66 snglcolor.Color
+		if m.on {
+			__lt66 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt66 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt67 = Style{Background: snglSome(__lt66), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Width
+	} else {
+		__lt67 = nil
+	}
+	var __lt68 snglcolor.Color
+	if m.on {
+		__lt68 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt68 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt70 *Measurement
+	if (Style{Background: snglSome(__lt68), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MinWidth != nil) {
+		var __lt69 snglcolor.Color
+		if m.on {
+			__lt69 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt69 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt70 = Style{Background: snglSome(__lt69), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MinWidth
+	} else {
+		__lt70 = nil
+	}
+	var __lt71 snglcolor.Color
+	if m.on {
+		__lt71 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt71 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt73 *Measurement
+	if (Style{Background: snglSome(__lt71), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Height != nil) {
+		var __lt72 snglcolor.Color
+		if m.on {
+			__lt72 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt72 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt73 = Style{Background: snglSome(__lt72), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Height
+	} else {
+		__lt73 = nil
+	}
+	var __lt74 snglcolor.Color
+	if m.on {
+		__lt74 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt74 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt76 *Measurement
+	if (Style{Background: snglSome(__lt74), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxWidth != nil) {
+		var __lt75 snglcolor.Color
+		if m.on {
+			__lt75 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt75 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt76 = Style{Background: snglSome(__lt75), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxWidth
+	} else {
+		__lt76 = nil
+	}
+	var __lt77 snglcolor.Color
+	if m.on {
+		__lt77 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt77 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt79 *Measurement
+	if (Style{Background: snglSome(__lt77), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxHeight != nil) {
+		var __lt78 snglcolor.Color
+		if m.on {
+			__lt78 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt78 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt79 = Style{Background: snglSome(__lt78), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxHeight
+	} else {
+		__lt79 = nil
+	}
+	var __lt80 snglcolor.Color
+	if m.on {
+		__lt80 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt80 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt82 *float64
+	if (Style{Background: snglSome(__lt80), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Flex != nil) {
+		var __lt81 snglcolor.Color
+		if m.on {
+			__lt81 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt81 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt82 = Style{Background: snglSome(__lt81), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Flex
+	} else {
+		__lt82 = nil
+	}
+	var __lt83 snglcolor.Color
+	if m.on {
+		__lt83 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt83 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt85 string
+	if (Style{Background: snglSome(__lt83), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FlexDirection != "unset") {
+		var __lt84 snglcolor.Color
+		if m.on {
+			__lt84 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt84 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt85 = Style{Background: snglSome(__lt84), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FlexDirection
+	} else {
+		__lt85 = "unset"
+	}
+	var __lt86 snglcolor.Color
+	if m.on {
+		__lt86 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt86 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt88 string
+	if (Style{Background: snglSome(__lt86), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.AlignItems != "unset") {
+		var __lt87 snglcolor.Color
+		if m.on {
+			__lt87 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt87 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt88 = Style{Background: snglSome(__lt87), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.AlignItems
+	} else {
+		__lt88 = "unset"
+	}
+	var __lt89 snglcolor.Color
+	if m.on {
+		__lt89 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt89 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt91 string
+	if (Style{Background: snglSome(__lt89), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.JustifyContent != "unset") {
+		var __lt90 snglcolor.Color
+		if m.on {
+			__lt90 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt90 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt91 = Style{Background: snglSome(__lt90), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.JustifyContent
+	} else {
+		__lt91 = "unset"
+	}
+	var __lt92 snglcolor.Color
+	if m.on {
+		__lt92 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt92 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt94 string
+	if (Style{Background: snglSome(__lt92), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Position != "unset") {
+		var __lt93 snglcolor.Color
+		if m.on {
+			__lt93 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt93 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt94 = Style{Background: snglSome(__lt93), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Position
+	} else {
+		__lt94 = "unset"
+	}
+	var __lt95 snglcolor.Color
+	if m.on {
+		__lt95 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt95 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt97 *Measurement
+	if (Style{Background: snglSome(__lt95), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Top != nil) {
+		var __lt96 snglcolor.Color
+		if m.on {
+			__lt96 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt96 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt97 = Style{Background: snglSome(__lt96), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Top
+	} else {
+		__lt97 = nil
+	}
+	var __lt98 snglcolor.Color
+	if m.on {
+		__lt98 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt98 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt100 *Measurement
+	if (Style{Background: snglSome(__lt98), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Bottom != nil) {
+		var __lt99 snglcolor.Color
+		if m.on {
+			__lt99 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt99 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt100 = Style{Background: snglSome(__lt99), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Bottom
+	} else {
+		__lt100 = nil
+	}
+	var __lt101 snglcolor.Color
+	if m.on {
+		__lt101 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt101 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt103 *Measurement
+	if (Style{Background: snglSome(__lt101), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Left != nil) {
+		var __lt102 snglcolor.Color
+		if m.on {
+			__lt102 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt102 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt103 = Style{Background: snglSome(__lt102), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Left
+	} else {
+		__lt103 = nil
+	}
+	var __lt104 snglcolor.Color
+	if m.on {
+		__lt104 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt104 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt106 *Measurement
+	if (Style{Background: snglSome(__lt104), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Right != nil) {
+		var __lt105 snglcolor.Color
+		if m.on {
+			__lt105 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt105 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt106 = Style{Background: snglSome(__lt105), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Right
+	} else {
+		__lt106 = nil
+	}
+	var __lt107 snglcolor.Color
+	if m.on {
+		__lt107 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt107 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt109 *int
+	if (Style{Background: snglSome(__lt107), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ZIndex != nil) {
+		var __lt108 snglcolor.Color
+		if m.on {
+			__lt108 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt108 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt109 = Style{Background: snglSome(__lt108), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ZIndex
+	} else {
+		__lt109 = nil
+	}
+	var __lt110 snglcolor.Color
+	if m.on {
+		__lt110 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt110 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt112 *snglcolor.Color
+	if (Style{Background: snglSome(__lt110), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Color != nil) {
+		var __lt111 snglcolor.Color
+		if m.on {
+			__lt111 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt111 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt112 = Style{Background: snglSome(__lt111), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Color
+	} else {
+		__lt112 = nil
+	}
+	var __lt113 snglcolor.Color
+	if m.on {
+		__lt113 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt113 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt115 *Measurement
+	if (Style{Background: snglSome(__lt113), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontSize != nil) {
+		var __lt114 snglcolor.Color
+		if m.on {
+			__lt114 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt114 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt115 = Style{Background: snglSome(__lt114), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontSize
+	} else {
+		__lt115 = nil
+	}
+	var __lt116 snglcolor.Color
+	if m.on {
+		__lt116 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt116 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt118 string
+	if (Style{Background: snglSome(__lt116), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontFamily != "") {
+		var __lt117 snglcolor.Color
+		if m.on {
+			__lt117 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt117 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt118 = Style{Background: snglSome(__lt117), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontFamily
+	} else {
+		__lt118 = ""
+	}
+	var __lt119 snglcolor.Color
+	if m.on {
+		__lt119 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt119 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt121 string
+	if (Style{Background: snglSome(__lt119), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontWeight != "unset") {
+		var __lt120 snglcolor.Color
+		if m.on {
+			__lt120 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt120 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt121 = Style{Background: snglSome(__lt120), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontWeight
+	} else {
+		__lt121 = "unset"
+	}
+	var __lt122 snglcolor.Color
+	if m.on {
+		__lt122 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt122 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt124 string
+	if (Style{Background: snglSome(__lt122), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontStyle != "unset") {
+		var __lt123 snglcolor.Color
+		if m.on {
+			__lt123 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt123 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt124 = Style{Background: snglSome(__lt123), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.FontStyle
+	} else {
+		__lt124 = "unset"
+	}
+	var __lt125 snglcolor.Color
+	if m.on {
+		__lt125 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt125 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt127 string
+	if (Style{Background: snglSome(__lt125), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.TextAlign != "unset") {
+		var __lt126 snglcolor.Color
+		if m.on {
+			__lt126 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt126 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt127 = Style{Background: snglSome(__lt126), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.TextAlign
+	} else {
+		__lt127 = "unset"
+	}
+	var __lt128 snglcolor.Color
+	if m.on {
+		__lt128 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt128 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt130 *int
+	if (Style{Background: snglSome(__lt128), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxLines != nil) {
+		var __lt129 snglcolor.Color
+		if m.on {
+			__lt129 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt129 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt130 = Style{Background: snglSome(__lt129), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.MaxLines
+	} else {
+		__lt130 = nil
+	}
+	var __lt131 snglcolor.Color
+	if m.on {
+		__lt131 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt131 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt133 string
+	if (Style{Background: snglSome(__lt131), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.WhiteSpace != "unset") {
+		var __lt132 snglcolor.Color
+		if m.on {
+			__lt132 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt132 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt133 = Style{Background: snglSome(__lt132), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.WhiteSpace
+	} else {
+		__lt133 = "unset"
+	}
+	var __lt134 snglcolor.Color
+	if m.on {
+		__lt134 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt134 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt136 *snglcolor.Color
+	if (Style{Background: snglSome(__lt134), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Background != nil) {
+		var __lt135 snglcolor.Color
+		if m.on {
+			__lt135 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt135 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt136 = Style{Background: snglSome(__lt135), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Background
+	} else {
+		__lt136 = nil
+	}
+	var __lt137 snglcolor.Color
+	if m.on {
+		__lt137 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt137 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt139 *Measurement
+	if (Style{Background: snglSome(__lt137), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderRadius != nil) {
+		var __lt138 snglcolor.Color
+		if m.on {
+			__lt138 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt138 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt139 = Style{Background: snglSome(__lt138), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderRadius
+	} else {
+		__lt139 = snglSome(Measurement{Px: 12})
+	}
+	var __lt140 snglcolor.Color
+	if m.on {
+		__lt140 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt140 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt142 *snglcolor.Color
+	if (Style{Background: snglSome(__lt140), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderColor != nil) {
+		var __lt141 snglcolor.Color
+		if m.on {
+			__lt141 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt141 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt142 = Style{Background: snglSome(__lt141), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderColor
+	} else {
+		__lt142 = nil
+	}
+	var __lt143 snglcolor.Color
+	if m.on {
+		__lt143 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt143 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt145 *Measurement
+	if (Style{Background: snglSome(__lt143), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderWidth != nil) {
+		var __lt144 snglcolor.Color
+		if m.on {
+			__lt144 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt144 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt145 = Style{Background: snglSome(__lt144), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderWidth
+	} else {
+		__lt145 = nil
+	}
+	var __lt146 snglcolor.Color
+	if m.on {
+		__lt146 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt146 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt148 string
+	if (Style{Background: snglSome(__lt146), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Border != "") {
+		var __lt147 snglcolor.Color
+		if m.on {
+			__lt147 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt147 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt148 = Style{Background: snglSome(__lt147), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Border
+	} else {
+		__lt148 = ""
+	}
+	var __lt149 snglcolor.Color
+	if m.on {
+		__lt149 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt149 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt151 string
+	if (Style{Background: snglSome(__lt149), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderBottom != "") {
+		var __lt150 snglcolor.Color
+		if m.on {
+			__lt150 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt150 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt151 = Style{Background: snglSome(__lt150), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderBottom
+	} else {
+		__lt151 = ""
+	}
+	var __lt152 snglcolor.Color
+	if m.on {
+		__lt152 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt152 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt154 string
+	if (Style{Background: snglSome(__lt152), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderLeft != "") {
+		var __lt153 snglcolor.Color
+		if m.on {
+			__lt153 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt153 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt154 = Style{Background: snglSome(__lt153), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderLeft
+	} else {
+		__lt154 = ""
+	}
+	var __lt155 snglcolor.Color
+	if m.on {
+		__lt155 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt155 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt157 string
+	if (Style{Background: snglSome(__lt155), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderCollapse != "") {
+		var __lt156 snglcolor.Color
+		if m.on {
+			__lt156 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt156 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt157 = Style{Background: snglSome(__lt156), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderCollapse
+	} else {
+		__lt157 = ""
+	}
+	var __lt158 snglcolor.Color
+	if m.on {
+		__lt158 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt158 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt160 string
+	if (Style{Background: snglSome(__lt158), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderStyle != "unset") {
+		var __lt159 snglcolor.Color
+		if m.on {
+			__lt159 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt159 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt160 = Style{Background: snglSome(__lt159), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.BorderStyle
+	} else {
+		__lt160 = "unset"
+	}
+	var __lt161 snglcolor.Color
+	if m.on {
+		__lt161 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt161 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt163 *float64
+	if (Style{Background: snglSome(__lt161), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Opacity != nil) {
+		var __lt162 snglcolor.Color
+		if m.on {
+			__lt162 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt162 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt163 = Style{Background: snglSome(__lt162), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Opacity
+	} else {
+		__lt163 = nil
+	}
+	var __lt164 snglcolor.Color
+	if m.on {
+		__lt164 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt164 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt166 string
+	if (Style{Background: snglSome(__lt164), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Cursor != "") {
+		var __lt165 snglcolor.Color
+		if m.on {
+			__lt165 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt165 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt166 = Style{Background: snglSome(__lt165), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Cursor
+	} else {
+		__lt166 = ""
+	}
+	var __lt167 snglcolor.Color
+	if m.on {
+		__lt167 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt167 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt169 string
+	if (Style{Background: snglSome(__lt167), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Display != "unset") {
+		var __lt168 snglcolor.Color
+		if m.on {
+			__lt168 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt168 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt169 = Style{Background: snglSome(__lt168), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Display
+	} else {
+		__lt169 = "inlineBlock"
+	}
+	var __lt170 snglcolor.Color
+	if m.on {
+		__lt170 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt170 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt172 string
+	if (Style{Background: snglSome(__lt170), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Overflow != "unset") {
+		var __lt171 snglcolor.Color
+		if m.on {
+			__lt171 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt171 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt172 = Style{Background: snglSome(__lt171), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.Overflow
+	} else {
+		__lt172 = "unset"
+	}
+	var __lt173 snglcolor.Color
+	if m.on {
+		__lt173 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt173 = snglcolor.Color{G: 170, A: 255}
+	}
+	var __lt175 string
+	if (Style{Background: snglSome(__lt173), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ListStyleType != "unset") {
+		var __lt174 snglcolor.Color
+		if m.on {
+			__lt174 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt174 = snglcolor.Color{G: 170, A: 255}
+		}
+		__lt175 = Style{Background: snglSome(__lt174), Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}.ListStyleType
+	} else {
+		__lt175 = "unset"
 	}
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n2, "badge")
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
-	gtk4rt.SetLook(m.__n2, LookOf(Style{Display: "inlineBlock", PaddingY: Measurement{Px: 2}, PaddingX: Measurement{Px: 8}, BorderRadius: Measurement{Px: 12}, Background: __lt17, Color: snglcolor.Color{R: 255, G: 255, B: 255, A: 255}}))
+	gtk4rt.SetLook(m.__n2, LookOf(Style{Padding: __lt22, PaddingTop: __lt25, PaddingRight: __lt28, PaddingBottom: __lt31, PaddingLeft: __lt34, PaddingX: __lt37, PaddingY: __lt40, Margin: __lt43, MarginTop: __lt46, MarginRight: __lt49, MarginBottom: __lt52, MarginLeft: __lt55, MarginX: __lt58, MarginY: __lt61, Gap: __lt64, Width: __lt67, MinWidth: __lt70, Height: __lt73, MaxWidth: __lt76, MaxHeight: __lt79, Flex: __lt82, FlexDirection: __lt85, AlignItems: __lt88, JustifyContent: __lt91, Position: __lt94, Top: __lt97, Bottom: __lt100, Left: __lt103, Right: __lt106, ZIndex: __lt109, Color: __lt112, FontSize: __lt115, FontFamily: __lt118, FontWeight: __lt121, FontStyle: __lt124, TextAlign: __lt127, MaxLines: __lt130, WhiteSpace: __lt133, Background: __lt136, BorderRadius: __lt139, BorderColor: __lt142, BorderWidth: __lt145, Border: __lt148, BorderBottom: __lt151, BorderLeft: __lt154, BorderCollapse: __lt157, BorderStyle: __lt160, Opacity: __lt163, Cursor: __lt166, Display: __lt169, Overflow: __lt172, ListStyleType: __lt175}))
 	gtk4rt.BoxAppend(m.__n7, m.__n2)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "held")
@@ -630,4 +2526,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:0beb76aabe0f6650ad9498d9442c53fd
+pass sha256:34ab54c8be3e26ed879d01a76688d79b

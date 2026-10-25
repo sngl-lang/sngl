@@ -5,8 +5,6 @@ import ui "sngl:ui"
 // padding around the widget, puts its text under a theme of its own, and is
 // what a vbox's or hbox's layout reads a `flex` share off.
 
-const unset ui.Style = {}
-
 // What a Style may say that Fyne does not answer:
 //
 //   - flexDirection: vbox and hbox are the axis.
@@ -46,27 +44,25 @@ const unstyled list[string] = [
 const func px(m ui.measurement) => m.px + 14.0 * (m.em + m.rem)
 
 // Fyne lays nothing outside the box its parent gives a child, so a negative
-// margin, which CSS allows, is none.
-const func inset(m ui.measurement) => float32(float.max(px(m), 0.0))
+// margin, which CSS allows, is none, and so is an unset length.
+const func inset(m option[ui.measurement]) => m == null ? float32(0.0) : float32(float.max(px(m), 0.0))
 
-// One side of a margin or a padding: its own field, else its axis's, else the
-// whole box's, as CSS reads them.
-const func side(all ui.measurement, axis ui.measurement, own ui.measurement) float32 {
-    return inset(own != unset.margin ? own : axis != unset.margin ? axis : all)
+// One side of a margin or a padding: the first of its own field, its axis's
+// and the whole box's that is set, as CSS reads them.
+const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement]) float32 {
+    return inset(own != null ? own : axis != null ? axis : all)
 }
 
-// A color the Style left out is the color zero, which SNGL holds as opaque
-// black and a Go literal as alpha zero; both are unset, as zero is in every
-// Style, and a Look reads alpha zero as none.
-const func paint(c color) => c.a == 0 || c == #000000 ? color{a=0} : c
+// A Look reads a color of alpha zero as none, which is what an unset one is.
+const func paint(c option[color]) => c == null ? color{a=0} : c
 
-// These name the members that do something rather than compare against the
-// first: an enum field a Go struct literal leaves out is "", not that member.
+// An unset alignment is CSS's default, stretch.
 const func crossOf(a ui.Alignment) int {
     return match a {
+        start => 1
         center => 2
         end => 3
-        start, stretch, baseline => 0
+        unset, stretch, baseline => 0
     }
 }
 
@@ -77,16 +73,16 @@ const func justifyOf(j ui.Justification) int {
         spaceBetween => 3
         spaceAround => 4
         spaceEvenly => 5
-        start => 0
+        unset, start => 0
     }
 }
 
 const func textAlignOf(a ui.TextAlign) int {
     return match a {
+        left, justify => 1
         center => 2
         right => 3
-        justify => 1
-        left => 0
+        unset => 0
     }
 }
 
@@ -94,7 +90,7 @@ const func wrapOf(w ui.WhiteSpace) int {
     return match w {
         pre, nowrap => 1
         preWrap, preLine => 2
-        normal => 0
+        unset, normal => 0
     }
 }
 
@@ -115,7 +111,7 @@ const func lookOf(s ui.Style) Look {
         minWidth = inset(s.minWidth),
         maxWidth = inset(s.maxWidth),
         maxHeight = inset(s.maxHeight),
-        grow = float32(s.flex),
+        grow = s.flex == null ? float32(0.0) : float32(s.flex),
         gap = inset(s.gap),
         cross = crossOf(s.alignItems),
         justify = justifyOf(s.justifyContent),

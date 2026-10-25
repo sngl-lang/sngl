@@ -134,7 +134,7 @@ func Touched(b []byte) string {
 }
 
 func Pages() string {
-	p := Page{Title: "t"}
+	p := Page{Title: "t", Body: []byte(nil)}
 	p.Body = append(append(p.Body, "one"...), '\n')
 	q := func(_s1 Page) Page { _s1.Body = append([]byte(nil), _s1.Body...); return _s1 }(p)
 	q.Body = append(append(q.Body, "two"...), '\n')
@@ -392,7 +392,7 @@ window.__sngl_boot = () => {
     return b;
   }
   function pages() {
-    let p = { title: "t" };
+    let p = { title: "t", body: "" };
     p.body += "one\n";
     let q = { ...p };
     q.body += "two\n";
@@ -423,8 +423,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:c7d9b2a1f6cf9897d90fa9a25b8a99a4
+pass sha256:15813eb7acac030295a4c83b412b6ef3
 -- run/kotlin/android --
 pass sha256:c60d76ef5ac9be4da7298a6f548f1d99
 -- run/none/html --
-pass sha256:e5ea679481abb1a2705f65af3bbdc0a1
+pass sha256:fdd27e231db29be79807b2064a1d0a16

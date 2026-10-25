@@ -57,54 +57,54 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        Measurement
-	PaddingTop     Measurement
-	PaddingRight   Measurement
-	PaddingBottom  Measurement
-	PaddingLeft    Measurement
-	PaddingX       Measurement
-	PaddingY       Measurement
-	Margin         Measurement
-	MarginTop      Measurement
-	MarginRight    Measurement
-	MarginBottom   Measurement
-	MarginLeft     Measurement
-	MarginX        Measurement
-	MarginY        Measurement
-	Gap            Measurement
-	Width          Measurement
-	MinWidth       Measurement
-	Height         Measurement
-	MaxWidth       Measurement
-	MaxHeight      Measurement
-	Flex           float64
+	Padding        *Measurement
+	PaddingTop     *Measurement
+	PaddingRight   *Measurement
+	PaddingBottom  *Measurement
+	PaddingLeft    *Measurement
+	PaddingX       *Measurement
+	PaddingY       *Measurement
+	Margin         *Measurement
+	MarginTop      *Measurement
+	MarginRight    *Measurement
+	MarginBottom   *Measurement
+	MarginLeft     *Measurement
+	MarginX        *Measurement
+	MarginY        *Measurement
+	Gap            *Measurement
+	Width          *Measurement
+	MinWidth       *Measurement
+	Height         *Measurement
+	MaxWidth       *Measurement
+	MaxHeight      *Measurement
+	Flex           *float64
 	FlexDirection  string
 	AlignItems     string
 	JustifyContent string
 	Position       string
-	Top            Measurement
-	Bottom         Measurement
-	Left           Measurement
-	Right          Measurement
-	ZIndex         int
-	Color          snglcolor.Color
-	FontSize       Measurement
+	Top            *Measurement
+	Bottom         *Measurement
+	Left           *Measurement
+	Right          *Measurement
+	ZIndex         *int
+	Color          *snglcolor.Color
+	FontSize       *Measurement
 	FontFamily     string
 	FontWeight     string
 	FontStyle      string
 	TextAlign      string
-	MaxLines       int
+	MaxLines       *int
 	WhiteSpace     string
-	Background     snglcolor.Color
-	BorderRadius   Measurement
-	BorderColor    snglcolor.Color
-	BorderWidth    Measurement
+	Background     *snglcolor.Color
+	BorderRadius   *Measurement
+	BorderColor    *snglcolor.Color
+	BorderWidth    *Measurement
 	Border         string
 	BorderBottom   string
 	BorderLeft     string
 	BorderCollapse string
 	BorderStyle    string
-	Opacity        float64
+	Opacity        *float64
 	Cursor         string
 	Display        string
 	Overflow       string
@@ -157,20 +157,20 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
-	if (s == Style{}) {
+	if (s == Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}) {
 		return lipgloss.NewStyle()
 	}
 	l := lipgloss.NewStyle()
-	if words && (s.Color != snglcolor.Color{}) {
-		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	if words && (s.Color != nil) {
+		l = l.Foreground(lipgloss.Color((*(s.Color)).Hex()))
 	}
-	if (s.Background != snglcolor.Color{}) {
-		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	if s.Background != nil {
+		l = l.Background(lipgloss.Color((*(s.Background)).Hex()))
 	}
 	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
 		l = l.Bold(true)
 	}
-	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != nil) && ((*(s.Opacity)) < 1.0)) {
 		l = l.Faint(true)
 	}
 	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
@@ -179,10 +179,10 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
 		l = l.Border(BorderOf(s))
-		if (s.BorderColor != snglcolor.Color{}) {
-			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		if s.BorderColor != nil {
+			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
 	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
@@ -193,111 +193,121 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
 	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
 	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
-	if (s.Width != Measurement{Px: 0}) {
+	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
-	if (s.Height != Measurement{Px: 0}) {
+	if s.Height != nil {
 		l = l.Height(RowsOf(s.Height))
 	}
-	if (s.MaxWidth != Measurement{Px: 0}) {
+	if s.MaxWidth != nil {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
-	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt1 int
-		if s.MaxLines == 0 {
-			__lt1 = 0
+	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
+		var __lt2 int
+		if s.MaxLines == nil {
+			__lt2 = 0
 		} else {
-			__lt1 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt2 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
+	var __lt3 lipgloss.Position
 	switch a {
 	case "center":
-		__lt2 = lipgloss.Center
+		__lt3 = lipgloss.Center
 	case "right":
-		__lt2 = lipgloss.Right
+		__lt3 = lipgloss.Right
 	default:
-		__lt2 = lipgloss.Left
-	}
-	return __lt2
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt3 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt3 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt3 = tui.DashedBorder()
-	default:
-		var __lt4 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt4 = lipgloss.RoundedBorder()
-		} else {
-			__lt4 = lipgloss.NormalBorder()
-		}
-		__lt3 = __lt4
+		__lt3 = lipgloss.Left
 	}
 	return __lt3
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt6 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt6 = own
-	} else {
-		var __lt5 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt5 = axis
+func BorderOf(s Style) lipgloss.Border {
+	var __lt4 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt4 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt4 = tui.DashedBorder()
+	default:
+		var __lt5 lipgloss.Border
+		if s.BorderRadius != nil {
+			__lt5 = lipgloss.RoundedBorder()
 		} else {
-			__lt5 = all
+			__lt5 = lipgloss.NormalBorder()
 		}
-		__lt6 = __lt5
+		__lt4 = __lt5
 	}
-	return CellsOf(__lt6)
+	return __lt4
 }
 
-func CellsOf(m__r0 Measurement) int {
-	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
+func Side(all *Measurement, axis *Measurement, own *Measurement) int {
+	var __lt7 *Measurement
+	if own != nil {
+		__lt7 = own
 	} else {
-		__lt7 = max(1, (int(px) / 8))
+		var __lt6 *Measurement
+		if axis != nil {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
 	}
-	return __lt7
+	return CellsOf(__lt7)
 }
 
-func RowsOf(m__r1 Measurement) int {
-	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+func CellsOf(m__r0 *Measurement) int {
+	var px float64 = PxOf(m__r0)
 	var __lt8 int
 	if px <= 0.0 {
 		__lt8 = 0
 	} else {
-		__lt8 = max(1, (int(px) / 16))
+		__lt8 = max(1, (int(px) / 8))
 	}
 	return __lt8
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
-	if height__r0 == 0 {
-		__lt10 = lines
+func RowsOf(m__r1 *Measurement) int {
+	var px float64 = PxOf(m__r1)
+	var __lt9 int
+	if px <= 0.0 {
+		__lt9 = 0
 	} else {
-		var __lt9 int
-		if lines == 0 {
-			__lt9 = height__r0
-		} else {
-			__lt9 = min(height__r0, lines)
-		}
-		__lt10 = __lt9
+		__lt9 = max(1, (int(px) / 16))
 	}
-	return __lt10
+	return __lt9
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt11 int
+	if height__r0 == 0 {
+		__lt11 = lines
+	} else {
+		var __lt10 int
+		if lines == 0 {
+			__lt10 = height__r0
+		} else {
+			__lt10 = min(height__r0, lines)
+		}
+		__lt11 = __lt10
+	}
+	return __lt11
+}
+
+func PxOf(m__r2 *Measurement) float64 {
+	var __lt12 float64
+	if m__r2 == nil {
+		__lt12 = 0.0
+	} else {
+		__lt12 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+	}
+	return __lt12
 }
 
 func (m Model) Flag() bool {
@@ -398,7 +408,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(len(m.ys))))
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint(len(m.ys))))
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -446,6 +456,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1a5ad037150016e8d8bc162a38e725a6
+pass sha256:4ed3477ad3cd0e776c4426a3ff84bf6f
 -- run/none/html --
 pass sha256:23fa9738549eca441c9fafad570916ea
