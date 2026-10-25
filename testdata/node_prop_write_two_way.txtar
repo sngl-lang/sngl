@@ -113,7 +113,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -733,13 +732,13 @@ func (m *Model) free_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.free) != m.checked__inst0 {
 		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.free)
 		gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
-		var __lt16 string
+		var __lt15 string
 		if m.checked__inst0 {
-			__lt16 = "on"
+			__lt15 = "on"
 		} else {
-			__lt16 = "off"
+			__lt15 = "off"
 		}
-		gtk4rt.LabelSetLabel(m.seen, __lt16)
+		gtk4rt.LabelSetLabel(m.seen, __lt15)
 	}
 }
 
@@ -748,13 +747,13 @@ func (m *Model) flip_clicked_handler() {
 	gtk4rt.CheckButtonSetActive(m.bound, m.shown__inst0)
 	m.checked__inst0 = !m.checked__inst0
 	gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
-	var __lt18 string
+	var __lt17 string
 	if m.checked__inst0 {
-		__lt18 = "on"
+		__lt17 = "on"
 	} else {
-		__lt18 = "off"
+		__lt17 = "off"
 	}
-	gtk4rt.LabelSetLabel(m.seen, __lt18)
+	gtk4rt.LabelSetLabel(m.seen, __lt17)
 }
 
 func (m *Model) Shown__inst0() bool {
@@ -803,14 +802,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.CheckButtonSetActive(m.free, m.checked__inst0)
 	gtk4rt.Connect(m.free, "toggled", m.free_toggled_handler)
 	gtk4rt.BoxAppend(m.__n1, m.free)
-	var __lt17 string
+	var __lt16 string
 	if m.checked__inst0 {
-		__lt17 = "on"
+		__lt16 = "on"
 	} else {
-		__lt17 = "off"
+		__lt16 = "off"
 	}
 	m.seen = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.seen, __lt17)
+	gtk4rt.LabelSetLabel(m.seen, __lt16)
 	gtk4rt.LabelSetXAlign(m.seen, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.seen)
 	m.flip = gtk4rt.ButtonNew()
@@ -987,11 +986,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:65d3646db0fb865b129d20aedaef61a0
+pass sha256:fdd3f195573f248eca86004f0e9f9aca
 -- run/go/fyne --
 pass sha256:d557cb5a726f48670b0b90eae68f7827
 -- run/go/gtk4 --
-pass sha256:fa1224ea1b6d24f39242710eef17615c
+pass sha256:b4daf1e4ac5ac8d7f4fbbc5e9f64dce6
 -- run/kotlin/android --
 pass sha256:0b297a5c5df8cd0eeabf5c0da9eef3e1
 -- run/none/html --

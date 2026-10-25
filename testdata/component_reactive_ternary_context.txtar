@@ -123,7 +123,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -568,20 +567,20 @@ func New() *Model {
 
 func (m *Model) __n3_clicked_handler() {
 	m.dark = !m.dark
+	var __lt15 string
+	if m.dark {
+		__lt15 = "dark"
+	} else {
+		__lt15 = "light"
+	}
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt15))
 	var __lt16 string
 	if m.dark {
 		__lt16 = "dark"
 	} else {
 		__lt16 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt16))
-	var __lt17 string
-	if m.dark {
-		__lt17 = "dark"
-	} else {
-		__lt17 = "light"
-	}
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt17))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt16))
 }
 
 func (m *Model) Dark() bool {
@@ -604,24 +603,24 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(__n3, "toggle")
 	gtk4rt.Connect(__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(__n2, __n3)
+	var __lt17 string
+	if m.dark {
+		__lt17 = "dark"
+	} else {
+		__lt17 = "light"
+	}
+	m.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt17))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
+	gtk4rt.BoxAppend(__n2, m.__n0)
 	var __lt18 string
 	if m.dark {
 		__lt18 = "dark"
 	} else {
 		__lt18 = "light"
 	}
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt18))
-	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
-	gtk4rt.BoxAppend(__n2, m.__n0)
-	var __lt19 string
-	if m.dark {
-		__lt19 = "dark"
-	} else {
-		__lt19 = "light"
-	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt19))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt18))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
@@ -779,11 +778,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2bb5ecf22bf4597d657fcb06b7892d19
+pass sha256:4b9461ace8c3ba60ef1fe8f0de9fb711
 -- run/go/fyne --
 pass sha256:7facd906216767304266c3856b896ee2
 -- run/go/gtk4 --
-pass sha256:5f15f6162cfee643e4b0c8f8baeca674
+pass sha256:d91db1376d25d9a9f2f6485edf5e4277
 -- run/kotlin/android --
 pass sha256:4901c5b481509fa084b31a3d1d344c19
 -- run/none/html --

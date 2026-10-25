@@ -193,7 +193,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -2279,7 +2278,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -2429,15 +2427,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -2725,24 +2714,25 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
-  <span class="sngl-image sngl-image-cover" style="display:inline-block;overflow:hidden" aria-label="Logo" role="img">
+  <span class="sngl-image sngl-image-cover" style="display:inline-block" aria-label="Logo" role="img">
     <img alt="" src="logo.svg"/>
   </span>
-  <span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="Remote" role="img">
+  <span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="Remote" role="img">
     <img id="__n1" data-sngl-id="__n1" alt=""/>
   </span>
-  <span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="Dot" role="img">
+  <span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="Dot" role="img">
     <img id="$4" alt=""/>
   </span>
   <span data-sngl-slot="1" style="display:contents"></span>
   <canvas id="$5" style="height:32px;width:32px" height="32" width="32">
   </canvas>
-  <p style="margin:0px;white-space:pre-wrap"><span>see </span><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="logo" role="img"><img alt="" src="logo.svg"/></span></p>
+  <p style="margin:0px;white-space:pre-wrap"><span>see </span><span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="logo" role="img"><img alt="" src="logo.svg"/></span></p>
   <button id="$8">
     <span>grow</span>
   </button>
 </div>
 <style>
+.sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
 .sngl-image-fill img { object-fit: fill; }
@@ -2835,7 +2825,7 @@ body { font-family: system-ui, sans-serif; }
     __n3.setAttribute("class", "sngl-image sngl-image-cover");
     __n3.setAttribute("role", "img");
     __n3.setAttribute("aria-label", "");
-    __n3.setAttribute("style", "border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px");
+    __n3.setAttribute("style", "border-radius:20px;display:inline-block;height:40px;width:40px");
     __n3.addEventListener("click", () => {
     });
     __n3.addEventListener("error", (__on0_0) => {
@@ -3062,12 +3052,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:57f742a61f2ac433fc122044fd19aca6
+pass sha256:f2281b980ccbbadff3723bb1b0d47f8c
 -- run/go/fyne --
 pass sha256:6a3780d357b9106625b5ef2e2bbd36ed
 -- run/go/gtk4 --
 pass sha256:bc794e16d5f3a745e38c6fe2408dcc60
 -- run/kotlin/android --
-pass sha256:f095afdc067dbeeba41f1c86078dc049
+pass sha256:aeefe898052217434123f9468ae1949a
 -- run/none/html --
-pass sha256:5c1024e805106749a8a5c2ba9a06d0fe
+pass sha256:272c411b228ec67e9083f781ac5d8aa5

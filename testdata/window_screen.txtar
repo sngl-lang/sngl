@@ -113,7 +113,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -462,6 +461,6 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:aa8fb0eee05d8bbacbd9a65008db15d9
+pass sha256:4cb1c21308c879f4fd58279ac4e4faeb
 -- run/kotlin/android --
 pass sha256:9283dd9339874c55b885741b97b053df

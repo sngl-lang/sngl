@@ -43,7 +43,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="$0" style="overflow:auto">
+<div id="$0" class="sngl-scroll">
   <span id="__n1" data-sngl-id="__n1">
   </span>
   <sngl-reach-end>
@@ -52,6 +52,9 @@ body { font-family: system-ui, sans-serif; }
 <button id="$2">
   <span>hit</span>
 </button>
+<style>
+.sngl-scroll { overflow: auto; }
+</style>
 
 <script>
 (() => {
@@ -123,4 +126,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f834afa0e309924d2bc57319478adfb7
+pass sha256:9b32ee06e0ef87ca0971ff93c92ee2a4

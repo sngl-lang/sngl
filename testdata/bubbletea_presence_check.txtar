@@ -185,7 +185,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -915,4 +914,4 @@ func TestPresence(t *testing.T) {
 
 func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:040688fb47a3a20a61659532546182dd
+pass sha256:142408d6de824c9feb9c0ec234fb9c3f

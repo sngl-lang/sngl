@@ -133,7 +133,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1376,23 +1375,23 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_clicked_handler() {
 	m.b__inst0 = true
-	var __lt19 string
+	var __lt18 string
 	if !m.a__inst0 && !m.b__inst0 {
+		__lt18 = "asks: empty"
+	} else {
+		__lt18 = "asks: full"
+	}
+	gtk4rt.LabelSetLabel(m.two, __lt18)
+	m.__renderSlot1(m.__n7)
+	m.__renderSlot2(m.__n7)
+	m.xs__inst0 = []int{7}
+	var __lt19 string
+	if len(m.xs__inst0) == 0 {
 		__lt19 = "asks: empty"
 	} else {
 		__lt19 = "asks: full"
 	}
-	gtk4rt.LabelSetLabel(m.two, __lt19)
-	m.__renderSlot1(m.__n7)
-	m.__renderSlot2(m.__n7)
-	m.xs__inst0 = []int{7}
-	var __lt20 string
-	if len(m.xs__inst0) == 0 {
-		__lt20 = "asks: empty"
-	} else {
-		__lt20 = "asks: full"
-	}
-	gtk4rt.LabelSetLabel(m.loop, __lt20)
+	gtk4rt.LabelSetLabel(m.loop, __lt19)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 }
@@ -1446,14 +1445,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	var __lt16 string
+	var __lt15 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt16 = "asks: empty"
+		__lt15 = "asks: empty"
 	} else {
-		__lt16 = "asks: full"
+		__lt15 = "asks: full"
 	}
 	m.two = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.two, __lt16)
+	gtk4rt.LabelSetLabel(m.two, __lt15)
 	gtk4rt.LabelSetXAlign(m.two, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.two)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -1463,14 +1462,14 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
-	var __lt17 string
+	var __lt16 string
 	if len(m.xs__inst0) == 0 {
-		__lt17 = "asks: empty"
+		__lt16 = "asks: empty"
 	} else {
-		__lt17 = "asks: full"
+		__lt16 = "asks: full"
 	}
 	m.loop = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.loop, __lt17)
+	gtk4rt.LabelSetLabel(m.loop, __lt16)
 	gtk4rt.LabelSetXAlign(m.loop, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.loop)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -1479,9 +1478,9 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
-	__lt18 := "asks: empty"
+	__lt17 := "asks: empty"
 	m.lifetime = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.lifetime, __lt18)
+	gtk4rt.LabelSetLabel(m.lifetime, __lt17)
 	gtk4rt.LabelSetXAlign(m.lifetime, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.lifetime)
 	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -1989,11 +1988,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7d5aedd9ca655302a357effc29609aaf
+pass sha256:ddf4bde618a7a882d65e8c9d9de7eacd
 -- run/go/fyne --
 pass sha256:d5007a19ce974efe25f4adc443ae59f7
 -- run/go/gtk4 --
-pass sha256:953853ea8b196310f5c4d16b81143145
+pass sha256:2f44c7ee1fc21fb1e39f3a9d3ba74500
 -- run/kotlin/android --
 pass sha256:caff83eee833d3fb1dfdad8e584724c7
 -- run/none/html --

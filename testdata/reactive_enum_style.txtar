@@ -157,7 +157,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -871,7 +870,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -989,15 +987,6 @@ enum class SnglDisplay(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
-
-    override fun toString(): String = sngl
-}
-
 enum class SnglListStyle(private val sngl: String) {
     NONE("none"),
     DISC("disc"),
@@ -1106,6 +1095,6 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     return m
 }
 -- run/go/bubbletea --
-pass sha256:07e7d198096166aa8313621dd6e91d73
+pass sha256:785479bea525614970c4d3d286062cb0
 -- run/kotlin/android --
-pass sha256:71b4ccddc3523ff83fe4ac9a97605760
+pass sha256:6e11b40036e3cabe37a280c1f5150463

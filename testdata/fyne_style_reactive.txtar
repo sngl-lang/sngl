@@ -136,7 +136,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -616,4 +615,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:8199661a0cec3e1d44fe296254f810f6
+pass sha256:6d6f182deba49e61521b0a8d5d88c4a4

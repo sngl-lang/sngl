@@ -132,7 +132,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -250,15 +249,6 @@ enum class SnglDisplay(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
-
-    override fun toString(): String = sngl
-}
-
 enum class SnglListStyle(private val sngl: String) {
     NONE("none"),
     DISC("disc"),
@@ -355,4 +345,4 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     return m
 }
 -- run/kotlin/android --
-pass sha256:d19ad557362eb77347a42690e21a5e41
+pass sha256:71d865fa5563cdf0f874ce08afb0833a

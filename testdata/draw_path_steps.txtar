@@ -146,7 +146,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1113,11 +1112,11 @@ func (m *Model) __n2_clicked_handler() {
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	at := Point{X: 0.0, Y: 0.0}
 	C.cairo_save(ctx)
-	var __lt15 []_step__record
+	var __lt14 []_step__record
 	if m.closed__inst0 {
-		__lt15 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
+		__lt14 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
 	} else {
-		__lt15 = []_step__record{}
+		__lt14 = []_step__record{}
 	}
 	for _, c__r3 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
@@ -1127,7 +1126,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 			}(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt15) {
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt14) {
 		if c__r3.Op == "moveTo" {
 			C.cairo_move_to(ctx, C.double(c__r3.X), C.double(c__r3.Y))
 			at = Point{X: c__r3.X, Y: c__r3.Y}
@@ -1714,11 +1713,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:324a5ee184e86178cb8ef8d2da62213e
+pass sha256:e6df48deebfda9823e4bb9bb5174e318
 -- run/go/fyne --
 pass sha256:e23a0966eee6cc3500d750365b598d04
 -- run/go/gtk4 --
-pass sha256:82f60b00b83d32636d4be744bcf9add6
+pass sha256:0f383e93bb0c2b677d374c437202fab5
 -- run/kotlin/android --
 pass sha256:14498a9a2d8878adfb2fa243e11ee351
 -- run/none/html --

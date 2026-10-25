@@ -138,7 +138,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1109,7 +1108,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:1182cdc66ca6a405b6119df3ba7a5af2
+pass sha256:eefec101b973156e29c2e4571859aaab
 -- run/go/fyne --
 pass sha256:fc3b6cef86f1abfcea39fd4d0e122561
 -- run/go/gtk4 --

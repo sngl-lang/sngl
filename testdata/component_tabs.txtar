@@ -129,7 +129,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -606,7 +605,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1092,7 +1090,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1138,7 +1135,7 @@ func LookOf(s Style) gtk4rt.Look {
 }
 
 func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
 	return look
 }
 
@@ -1196,122 +1193,111 @@ func WrapOf(w string) int {
 	return __lt4
 }
 
-func ClipOf(o string) bool {
-	var __lt5 bool
-	switch o {
-	case "hidden", "scroll", "auto":
-		__lt5 = true
-	default:
-		__lt5 = false
+func Decl(name string, value string) string {
+	var __lt5 string
+	if value == "" {
+		__lt5 = ""
+	} else {
+		__lt5 = (((name + ": ") + value) + "; ")
 	}
 	return __lt5
 }
 
-func Decl(name string, value string) string {
-	var __lt6 string
-	if value == "" {
-		__lt6 = ""
-	} else {
-		__lt6 = (((name + ": ") + value) + "; ")
-	}
-	return __lt6
-}
-
 func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt8 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt8 = own
+		__lt7 = own
 	} else {
-		var __lt7 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt7 = axis
+			__lt6 = axis
 		} else {
-			__lt7 = all
+			__lt6 = all
 		}
-		__lt8 = __lt7
+		__lt7 = __lt6
 	}
-	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
 }
 
 func Length(v float64) string {
-	var __lt9 string
+	var __lt8 string
 	if v == 0.0 {
+		__lt8 = ""
+	} else {
+		__lt8 = (fmt.Sprint(v) + "px")
+	}
+	return __lt8
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt9 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
 		__lt9 = ""
 	} else {
-		__lt9 = (fmt.Sprint(v) + "px")
+		__lt9 = c__r0.Hex()
 	}
 	return __lt9
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
+func Points(v float64) string {
 	var __lt10 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+	if v == 0.0 {
 		__lt10 = ""
 	} else {
-		__lt10 = c__r0.Hex()
+		__lt10 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt10
 }
 
-func Points(v float64) string {
+func WeightOf(w string) string {
 	var __lt11 string
-	if v == 0.0 {
+	switch w {
+	case "bold":
+		__lt11 = "bold"
+	case "bolder":
+		__lt11 = "bolder"
+	case "lighter":
+		__lt11 = "lighter"
+	default:
 		__lt11 = ""
-	} else {
-		__lt11 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt11
 }
 
-func WeightOf(w string) string {
+func SlantOf(s string) string {
 	var __lt12 string
-	switch w {
-	case "bold":
-		__lt12 = "bold"
-	case "bolder":
-		__lt12 = "bolder"
-	case "lighter":
-		__lt12 = "lighter"
+	switch s {
+	case "italic":
+		__lt12 = "italic"
+	case "oblique":
+		__lt12 = "oblique"
 	default:
 		__lt12 = ""
 	}
 	return __lt12
 }
 
-func SlantOf(s string) string {
-	var __lt13 string
-	switch s {
-	case "italic":
-		__lt13 = "italic"
-	case "oblique":
-		__lt13 = "oblique"
-	default:
-		__lt13 = ""
-	}
-	return __lt13
-}
-
 func LineOf(s Style) string {
-	var __lt14 string
+	var __lt13 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt14 = "solid"
+		__lt13 = "solid"
 	case "dashed":
-		__lt14 = "dashed"
+		__lt13 = "dashed"
 	case "dotted":
-		__lt14 = "dotted"
+		__lt13 = "dotted"
 	case "double":
-		__lt14 = "double"
+		__lt13 = "double"
 	default:
-		var __lt15 string
+		var __lt14 string
 		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt15 = "solid"
+			__lt14 = "solid"
 		} else {
-			__lt15 = ""
+			__lt14 = ""
 		}
-		__lt14 = __lt15
+		__lt13 = __lt14
 	}
-	return __lt14
+	return __lt13
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1462,15 +1448,15 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__prop___on0 = __a___on0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt18 string
+	var __lt17 string
 	if c.__prop___p1 == c.__prop___p2 {
-		__lt18 = "bold"
+		__lt17 = "bold"
 	} else {
-		__lt18 = "normal"
+		__lt17 = "normal"
 	}
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt18}))
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt17}))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -1486,6 +1472,17 @@ func (c *__child0Instance) Set__p0(__v Tab__record) {
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
+	var __lt15 string
+	if c.__prop___p1 == c.__prop___p2 {
+		__lt15 = "bold"
+	} else {
+		__lt15 = "normal"
+	}
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt15}))
+}
+
+func (c *__child0Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
 	var __lt16 string
 	if c.__prop___p1 == c.__prop___p2 {
 		__lt16 = "bold"
@@ -1493,17 +1490,6 @@ func (c *__child0Instance) Set__p1(__v int) {
 		__lt16 = "normal"
 	}
 	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt16}))
-}
-
-func (c *__child0Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt17 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt17 = "bold"
-	} else {
-		__lt17 = "normal"
-	}
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt17}))
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -1953,11 +1939,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b6e6623bd17dd92b806367b5bfb1fbc9
+pass sha256:1d56024e815092e8048b8e794a666042
 -- run/go/fyne --
-pass sha256:372ac1f489e15279cf0c938d21e76d5d
+pass sha256:f3e0d5042e4f8e84ca0acff56e454d10
 -- run/go/gtk4 --
-pass sha256:974096ee407996c4155bd7073a859c3d
+pass sha256:07275d56471e30f1db4a42f62e73e3c3
 -- run/kotlin/android --
 pass sha256:90f2d70e3e40cbc0a0c29d96716f3364
 -- run/none/html --

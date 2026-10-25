@@ -139,7 +139,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -699,13 +698,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_clicked_handler() {
 	m.shown__inst0 = true
-	var __lt17 string
+	var __lt16 string
 	if !m.shown__inst0 {
-		__lt17 = "boxed empty"
+		__lt16 = "boxed empty"
 	} else {
-		__lt17 = "boxed full"
+		__lt16 = "boxed full"
 	}
-	gtk4rt.LabelSetLabel(m.__n1, __lt17)
+	gtk4rt.LabelSetLabel(m.__n1, __lt16)
 	m.__renderSlot0(m.__n0)
 }
 
@@ -734,23 +733,23 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	__lt15 := "boxed full"
+	__lt14 := "boxed full"
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n3, __lt15)
+	gtk4rt.LabelSetLabel(m.__n3, __lt14)
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n4, "inner")
 	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
-	var __lt16 string
+	var __lt15 string
 	if !m.shown__inst0 {
-		__lt16 = "boxed empty"
+		__lt15 = "boxed empty"
 	} else {
-		__lt16 = "boxed full"
+		__lt15 = "boxed full"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n1, __lt16)
+	gtk4rt.LabelSetLabel(m.__n1, __lt15)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__renderSlot0(m.__n0)
@@ -915,11 +914,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:95c69a70a6380fe40fe904f6f0b75073
+pass sha256:38d1e7ab73eebf0fc329179e97b6a88e
 -- run/go/fyne --
 pass sha256:18a994b569cc62fcfceffaa444cd148f
 -- run/go/gtk4 --
-pass sha256:28bfe3fdf0ce1aaa1192727cc3d4c0ad
+pass sha256:18580ab0b7d202dca8c59d5139c09120
 -- run/kotlin/android --
 pass sha256:a360a74258f8a1864105f0ba433cf28c
 -- run/none/html --

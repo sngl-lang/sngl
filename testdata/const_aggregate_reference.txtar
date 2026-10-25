@@ -130,7 +130,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -679,13 +678,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 func (m *Model) __n5_clicked_handler() {
 	m.pick = ((m.pick + 1) % 2)
 	gtk4rt.LabelSetLabel(m.__n1, m.entries[m.pick].Title)
-	var __lt16 string
+	var __lt15 string
 	if m.pick == 0 {
-		__lt16 = "home"
+		__lt15 = "home"
 	} else {
-		__lt16 = "about"
+		__lt15 = "about"
 	}
-	m.key = __lt16
+	m.key = __lt15
 	gtk4rt.LabelSetLabel(m.__n2, func() string {
 		if __v, __ok := m.labels[m.key]; __ok {
 			return __v
@@ -812,10 +811,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c587b342b6ed53c08c6e644f94e1ff33
+pass sha256:c43bd99a749cb342fb1a21547c1d7e84
 -- run/go/fyne --
 pass sha256:9fe6f41dbce5ec3e3bb23a56c914f040
 -- run/go/gtk4 --
-pass sha256:50e619f3b8162a03ca9b587b143778e3
+pass sha256:431677e8fdddea264f7eca3ea870e4d2
 -- run/none/html --
 pass sha256:2608b26bd2bc03c32f990746024e9d6e

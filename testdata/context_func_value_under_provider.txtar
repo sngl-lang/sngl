@@ -132,7 +132,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -478,7 +477,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -592,15 +590,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -833,8 +822,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:722e72d1331e9e28a71cbe6dafc1655a
+pass sha256:2591f8f113909b438e44c9873c08715b
 -- run/kotlin/android --
-pass sha256:3452ed741d0ea247887a82b83c10a928
+pass sha256:b391bfe315cfc774221ced791cc0140c
 -- run/none/html --
 pass sha256:8fd67c5ab3fd71ee018eb404550bb9b2

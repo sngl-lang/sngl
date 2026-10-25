@@ -32,8 +32,6 @@ typedef struct {
     gboolean wrap0;
     int lines0;
     PangoEllipsizeMode ellipsize0;
-    gboolean clipped;
-    GtkOverflow overflow0;
     gboolean hidden, visible0;
     gboolean cursor;
 } SnglLook;
@@ -323,9 +321,9 @@ static void sngl_look_size_label(GtkWidget *w, SnglLook *l, int wrap) {
 }
 
 static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
-                          int cross, int align, int lines, int wrap, int clip, int hidden, const char *cursor) {
+                          int cross, int align, int lines, int wrap, int hidden, const char *cursor) {
     SnglLook *l = sngl_look_of(w);
-    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !clip && !hidden && !*cursor)
+    if (!l && !*css && !width && !height && grow <= 0 && !cross && !align && !lines && !wrap && !hidden && !*cursor)
         return;
     l = sngl_look_ensure(w);
     sngl_look_set_css(w, l, css);
@@ -343,11 +341,6 @@ static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, 
     sngl_look_set_cross(w, l, cross);
     sngl_look_set_text(w, l, align, lines, wrap);
     sngl_look_size_label(w, l, wrap);
-    if (clip && !l->clipped) {
-        l->clipped = TRUE;
-        l->overflow0 = gtk_widget_get_overflow(w);
-    }
-    if (l->clipped) gtk_widget_set_overflow(w, clip ? GTK_OVERFLOW_HIDDEN : l->overflow0);
     if (hidden && !l->hidden) {
         l->visible0 = gtk_widget_get_visible(w);
         gtk_widget_set_visible(w, FALSE);
@@ -388,7 +381,6 @@ type Look struct {
 	Lines int
 	// Wrap is a label's: 1 one line, 2 wrapped.
 	Wrap   int
-	Clip   bool
 	Hidden bool
 	Cursor string
 }
@@ -401,7 +393,7 @@ func SetLook(w Handle, l Look) {
 	cursor, freeCursor := cstr(l.Cursor)
 	defer freeCursor()
 	C.sngl_set_look(widget(w), css, C.int(math.Round(l.Width)), C.int(math.Round(l.Height)), C.double(l.Grow),
-		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Clip)), C.int(bool01(l.Hidden)), cursor)
+		C.int(l.Cross), C.int(l.TextAlign), C.int(l.Lines), C.int(l.Wrap), C.int(bool01(l.Hidden)), cursor)
 }
 
 func bool01(b bool) int {

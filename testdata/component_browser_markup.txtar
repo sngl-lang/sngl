@@ -140,7 +140,7 @@ body { font-family: system-ui, sans-serif; }
   <input id="__n0" data-sngl-id="__n0" type="checkbox"/>
   <span>ok</span>
 </label>
-<span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="pic" role="img" class="sngl-image sngl-image-contain" data-sngl-id="image">
+<span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="pic" role="img" class="sngl-image sngl-image-contain" data-sngl-id="image">
   <img alt="" src="/x.png"/>
 </span>
 <a href="/" data-sngl-id="link">
@@ -193,6 +193,7 @@ body { font-family: system-ui, sans-serif; }
 <hr data-sngl-id="divider"/>
 <span class="sngl-badge" style="padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px;border-radius:12px;display:inline-block" class="sngl-badge" data-sngl-id="badge">3</span>
 <style>
+.sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
 .sngl-image-fill img { object-fit: fill; }
@@ -778,7 +779,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9d32ae3eebcdfc92121dd8e841dfcc71
+pass sha256:9d471335b22c9f2f9d785b23ebb8bb39
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
 sha256:7698d9622f7f2554844a17ebdbf73c40
 {

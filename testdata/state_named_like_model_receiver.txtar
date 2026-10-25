@@ -122,7 +122,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1131,7 +1130,7 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:5635fcd36aeef84493ba5d5bfeb92015
+pass sha256:28d6a950eaa2793ba72b05b7f70fc94d
 -- run/go/fyne --
 pass sha256:8c546caf280cc3a8982209900d1735b9
 -- run/go/gtk4 --

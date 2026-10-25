@@ -2288,13 +2288,13 @@ func (m *Model) __n10_clicked_handler() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
-				var __lt15 string
+				var __lt14 string
 				if r.ParentBreed != nil {
-					__lt15 = (*(r.ParentBreed)).Name
+					__lt14 = (*(r.ParentBreed)).Name
 				} else {
-					__lt15 = "nothing"
+					__lt14 = "nothing"
 				}
-				m.from__inst0 = __lt15
+				m.from__inst0 = __lt14
 				__ctmp3 := C.CString(m.from__inst0)
 				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp3)
 				C.free(unsafe.Pointer(__ctmp3))
@@ -4388,7 +4388,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:9747906784536788b35974d936a442a6
 -- run/go/gtk4 --
-pass sha256:336d67068e0b37017f048c2fad6ee10f
+pass sha256:cf8f761ccab9e6f4594d72269791ae39
 -- run/kotlin/android --
 pass sha256:a3d9ca76ff015475f5ce1ea3fef7c8e0
 -- run/none/html --

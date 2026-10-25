@@ -161,7 +161,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -275,15 +274,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -540,4 +530,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:7ce7d120be2d598bdb8def99ccd7ae4f
+pass sha256:074db74c5ef49d8de94beecb1bef3fc6

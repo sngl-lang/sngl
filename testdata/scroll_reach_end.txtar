@@ -138,7 +138,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -757,7 +756,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -871,15 +869,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -1051,13 +1040,16 @@ body { display: flex; flex-direction: column; }
   </style>
 </head><body>
 
-<div style="flex:1;min-width:0;min-height:0;overflow:auto" data-sngl-id="list">
+<div class="sngl-scroll" style="flex:1;min-width:0;min-height:0" class="sngl-scroll" data-sngl-id="list">
   <div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
   <sngl-reach-end id="$1">
   </sngl-reach-end>
 </div>
+<style>
+.sngl-scroll { overflow: auto; }
+</style>
 
 <script>
 window.__snglErrors = [];
@@ -1240,12 +1232,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b8b22f58e493dcb9883d996190e23038
+pass sha256:658dc1a46681fd184a1c7d82441559e1
 -- run/go/fyne --
 pass sha256:0f8b6539dd153daa55a3b0cf298515d1
 -- run/go/gtk4 --
 pass sha256:0659a56b8fa18606cf6bf8a8094a54ee
 -- run/kotlin/android --
-pass sha256:a12d9222f3396a706de306a5f0224865
+pass sha256:b36fb4d6235399c1cbb0a07aa4fca3b3
 -- run/none/html --
-pass sha256:aa51060536d43daed931d36745e06f64
+pass sha256:da04b6a7a0ef67d89b59751614e045f0

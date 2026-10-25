@@ -84,7 +84,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="overflow:auto">
+<div class="sngl-scroll">
   <div style="display:flex;flex-direction:column;gap:12px">
     <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
@@ -124,7 +124,7 @@ body { font-family: system-ui, sans-serif; }
       </tbody>
     </table>
     <hr/>
-    <p style="margin:0px;white-space:pre-wrap"><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="a duck" role="img"><img alt="" src="duck.png"/></span></p>
+    <p style="margin:0px;white-space:pre-wrap"><span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="a duck" role="img"><img alt="" src="duck.png"/></span></p>
   </div>
   <sngl-reach-end>
   </sngl-reach-end>
@@ -138,11 +138,13 @@ body { font-family: system-ui, sans-serif; }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-type) { color:#ffa657 } }
 :where(.sngl-tok-number) { color:#0550ae }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-number) { color:#79c0ff } }
+.sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
 .sngl-image-fill img { object-fit: fill; }
 .sngl-image-none img { object-fit: none; }
 .sngl-image-scaleDown img { object-fit: scale-down; }
+.sngl-scroll { overflow: auto; }
 </style>
 
 <script>
@@ -193,4 +195,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ffa50f695268447176d07a101e4d04e6
+pass sha256:c35ade8cbb0137b017ded5d9a0b6d0d4

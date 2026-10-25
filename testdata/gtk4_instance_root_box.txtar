@@ -235,13 +235,13 @@ func (m *Model) __n2_visible_handler(__visible bool) {
 func (m *Model) __n7_clicked_handler() {
 	m.panels = [][]string{[]string{"z"}}
 	m.__renderSlot2(m.__n6)
-	var __lt16 []string
+	var __lt15 []string
 	if len(m.names) == 2 {
-		__lt16 = []string{"c"}
+		__lt15 = []string{"c"}
 	} else {
-		__lt16 = []string{"a", "b"}
+		__lt15 = []string{"a", "b"}
 	}
-	m.names = slices.Clone(__lt16)
+	m.names = slices.Clone(__lt15)
 	m.__renderSlot1(m.__n6)
 }
 
@@ -524,4 +524,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- run/go/gtk4 --
-pass sha256:3a03c7794f2e6adde1a05be948815f9b
+pass sha256:4bdae07684fb8df1033705b141b9f022

@@ -99,10 +99,10 @@ body { font-family: system-ui, sans-serif; }
   <span>x</span>
 </div>
 <div style="display:flex;flex-direction:column">
-  <span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="dot" role="img" class="sngl-image sngl-image-contain" data-sngl-id="d">
+  <span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="dot" role="img" class="sngl-image sngl-image-contain" data-sngl-id="d">
     <img id="$7" alt=""/>
   </span>
-  <span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="remote" role="img" class="sngl-image sngl-image-contain" data-sngl-id="remote">
+  <span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="remote" role="img" class="sngl-image sngl-image-contain" data-sngl-id="remote">
     <img id="__n1" data-sngl-id="__n1" alt=""/>
   </span>
   <div style="display:flex;flex-direction:column" data-sngl-id="avatar">
@@ -113,6 +113,7 @@ body { font-family: system-ui, sans-serif; }
   </button>
 </div>
 <style>
+.sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
 .sngl-image-fill img { object-fit: fill; }
@@ -288,7 +289,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:803fbbc4184e13de680cf01f4c5a4cf6
+pass sha256:ecb85054fef527f031511365d5809072
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
 sha256:790725e86d9b28e93718d4fa4771a68e
 {

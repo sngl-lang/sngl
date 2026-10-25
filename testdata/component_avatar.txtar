@@ -106,7 +106,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -688,7 +687,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -802,15 +800,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -1071,6 +1060,7 @@ body { font-family: system-ui, sans-serif; }
   <span data-sngl-slot="2" style="display:contents"></span>
 </div>
 <style>
+.sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
 .sngl-image-fill img { object-fit: fill; }
@@ -1162,7 +1152,7 @@ body { font-family: system-ui, sans-serif; }
             __n4.setAttribute("class", "sngl-image sngl-image-cover");
             __n4.setAttribute("role", "img");
             __n4.setAttribute("aria-label", "");
-            __n4.setAttribute("style", "border-radius:4px;display:inline-block;height:40px;overflow:hidden;width:40px");
+            __n4.setAttribute("style", "border-radius:4px;display:inline-block;height:40px;width:40px");
             __n4.addEventListener("click", () => {
             });
             __n4.addEventListener("error", (e) => {
@@ -1243,10 +1233,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:cb5be8d3676549aedf8a2dd47a8b13dc
+pass sha256:5161f6eff936db43323a4f395c815596
 -- run/go/fyne --
 pass sha256:20b2603ce444655812e8b62365ddce8d
 -- run/kotlin/android --
-pass sha256:25be0da1ade66507a4daeac54d7ce7aa
+pass sha256:7d72fabdb91ceae671804f97ad46b927
 -- run/none/html --
-pass sha256:13ffb6fb13864dadd0507e431be8b221
+pass sha256:b9edec5c93ee92919772343ce2483867

@@ -161,7 +161,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1343,13 +1342,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								for __inst0_live_ui, _ := range m.__inst0_live {
 									m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 								}
-								var __lt18 string
+								var __lt17 string
 								if c__r1 == "3" {
-									__lt18 = "/"
+									__lt17 = "/"
 								} else {
-									__lt18 = ((("/" + r.Name) + "/") + c__r1)
+									__lt17 = ((("/" + r.Name) + "/") + c__r1)
 								}
-								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt18, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt17, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 								m.__renderSlot0(m.__n1)
 								m.__renderSlot1(m.__n1)
@@ -1534,14 +1533,14 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__prop___p2 = __a___p2
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt22 string
+	var __lt21 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt22 = "showing"
+		__lt21 = "showing"
 	} else {
-		__lt22 = "hidden"
+		__lt21 = "hidden"
 	}
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(c.__n0, __lt22)
+	gtk4rt.LabelSetLabel(c.__n0, __lt21)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1550,6 +1549,17 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 
 func (c *__child1Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
+	var __lt18 string
+	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
+		__lt18 = "showing"
+	} else {
+		__lt18 = "hidden"
+	}
+	gtk4rt.LabelSetLabel(c.__n0, __lt18)
+}
+
+func (c *__child1Instance) Set__p1(__v int) {
+	c.__prop___p1 = __v
 	var __lt19 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt19 = "showing"
@@ -1559,8 +1569,8 @@ func (c *__child1Instance) Set__p0(__v _page__value) {
 	gtk4rt.LabelSetLabel(c.__n0, __lt19)
 }
 
-func (c *__child1Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
+func (c *__child1Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
 	var __lt20 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt20 = "showing"
@@ -1568,17 +1578,6 @@ func (c *__child1Instance) Set__p1(__v int) {
 		__lt20 = "hidden"
 	}
 	gtk4rt.LabelSetLabel(c.__n0, __lt20)
-}
-
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt21 string
-	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt21 = "showing"
-	} else {
-		__lt21 = "hidden"
-	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt21)
 }
 
 func (c *__child1Instance) Destroy() {
@@ -1844,10 +1843,10 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:2d90581e4649750e3678fc013fe5866e
+pass sha256:87891109c014cb2e63fa0ad1bd12b7ec
 -- run/go/fyne --
 pass sha256:fcd203c83e87f70cdbbe56a8b848d682
 -- run/go/gtk4 --
-pass sha256:8b47492f974ffbaa37fb4838e991a136
+pass sha256:a07f4cf05c79fbd40c5dbacab99340db
 -- run/kotlin/android --
 pass sha256:0a8a2589fec852e0597a10ac0c166bc6

@@ -118,7 +118,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1027,13 +1026,13 @@ func (m *Model) box_toggled_handler() {
 	if gtk4rt.CheckButtonGetActive(m.box) != m.checked__inst0 {
 		m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
 		gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
-		var __lt16 string
+		var __lt15 string
 		if m.checked__inst0 {
-			__lt16 = "on"
+			__lt15 = "on"
 		} else {
-			__lt16 = "off"
+			__lt15 = "off"
 		}
-		gtk4rt.LabelSetLabel(m.__n2, __lt16)
+		gtk4rt.LabelSetLabel(m.__n2, __lt15)
 	}
 }
 
@@ -1146,14 +1145,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 	gtk4rt.Connect(m.box, "toggled", m.box_toggled_handler)
 	gtk4rt.BoxAppend(m.__n5, m.box)
-	var __lt17 string
+	var __lt16 string
 	if m.checked__inst0 {
-		__lt17 = "on"
+		__lt16 = "on"
 	} else {
-		__lt17 = "off"
+		__lt16 = "off"
 	}
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n2, __lt17)
+	gtk4rt.LabelSetLabel(m.__n2, __lt16)
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n5, m.__n2)
 	m.__n3 = gtk4rt.CheckButtonNew()
@@ -1430,11 +1429,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:57f66b66e6752a445f310a0eee41d5eb
+pass sha256:18c8d1ec45c42a505b12dc8ba5b4d4da
 -- run/go/fyne --
 pass sha256:1219f4df2a5149742abc0dc1b1071fb7
 -- run/go/gtk4 --
-pass sha256:0877a43a15295e4b719c4ec9240a2127
+pass sha256:4e27399821e55a4a356449d277de00e1
 -- run/kotlin/android --
 pass sha256:d6cc0dbd6c42e4c50ccc886e0b37db77
 -- run/none/html --

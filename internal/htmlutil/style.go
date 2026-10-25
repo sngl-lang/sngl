@@ -221,8 +221,6 @@ func PropToCSS(prop string) string {
 		return "left"
 	case "right":
 		return "right"
-	case "overflow":
-		return "overflow"
 	case "zIndex":
 		return "z-index"
 	case "alignItems":

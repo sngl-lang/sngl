@@ -143,7 +143,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -512,6 +511,6 @@ fun TreeView(node: Node? = null, __ctx_flexShare: (Float) -> androidx.compose.ui
     }
 }
 -- run/go/bubbletea --
-pass sha256:1ff533e8fdc7152945e1687c1b3fcbbe
+pass sha256:c14055b842c4c165d4cf0bc04bf5ceb8
 -- run/kotlin/android --
 pass sha256:81fb6540c58bdadd9b20e35b8ed35576

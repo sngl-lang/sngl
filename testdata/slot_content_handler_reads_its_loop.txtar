@@ -159,7 +159,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -2206,15 +2205,15 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt18 string
+	var __lt17 string
 	if c.__prop___p1 == "" {
-		__lt18 = fmt.Sprint(c.__prop___p2)
+		__lt17 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt18 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt17 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.cell = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.cell, c.__prop___p0)
-	c.__model.__list_cell(__lt18, c.cell)
+	c.__model.__list_cell(__lt17, c.cell)
 	gtk4rt.Connect(c.cell, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -2231,6 +2230,17 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
+	var __lt15 string
+	if c.__prop___p1 == "" {
+		__lt15 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt15 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_cell(__lt15, c.cell)
+}
+
+func (c *__child0Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
 	var __lt16 string
 	if c.__prop___p1 == "" {
 		__lt16 = fmt.Sprint(c.__prop___p2)
@@ -2238,17 +2248,6 @@ func (c *__child0Instance) Set__p1(__v string) {
 		__lt16 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_cell(__lt16, c.cell)
-}
-
-func (c *__child0Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt17 string
-	if c.__prop___p1 == "" {
-		__lt17 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt17 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_cell(__lt17, c.cell)
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -2304,15 +2303,15 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt21 string
+	var __lt20 string
 	if c.__prop___p1 == "" {
-		__lt21 = fmt.Sprint(c.__prop___p2)
+		__lt20 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt21 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt20 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.mark = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.mark, c.__prop___p0)
-	c.__model.__list_mark(__lt21, c.mark)
+	c.__model.__list_mark(__lt20, c.mark)
 	gtk4rt.Connect(c.mark, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -2329,6 +2328,17 @@ func (c *__child1Instance) Set__p0(__v string) {
 
 func (c *__child1Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
+	var __lt18 string
+	if c.__prop___p1 == "" {
+		__lt18 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt18 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_mark(__lt18, c.mark)
+}
+
+func (c *__child1Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
 	var __lt19 string
 	if c.__prop___p1 == "" {
 		__lt19 = fmt.Sprint(c.__prop___p2)
@@ -2336,17 +2346,6 @@ func (c *__child1Instance) Set__p1(__v string) {
 		__lt19 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_mark(__lt19, c.mark)
-}
-
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt20 string
-	if c.__prop___p1 == "" {
-		__lt20 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt20 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_mark(__lt20, c.mark)
 }
 
 func (c *__child1Instance) Set__on0(__v func()) {
@@ -3333,11 +3332,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:10c86bcb1f2385ed8d2023306e75e851
+pass sha256:1046bd1238866ab3c2a9aa612f979618
 -- run/go/fyne --
 pass sha256:63ed7f9bea6e6abd84eabe7ee6934ea2
 -- run/go/gtk4 --
-pass sha256:036ab916c2392c69c8acc2f4423043a7
+pass sha256:eec767c1ec332cd6240905acafad220f
 -- run/kotlin/android --
 pass sha256:cbb4c4d56ad81f6bc51bcc4cc46d8b4b
 -- run/none/html --

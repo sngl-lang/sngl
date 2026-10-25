@@ -105,7 +105,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -426,4 +425,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:600a55e320af2ee3d502a8aee290c1ed
+pass sha256:2672b35c70d9c451e6945bb6c7aa019e

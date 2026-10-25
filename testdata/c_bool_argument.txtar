@@ -106,7 +106,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -724,13 +723,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.on = !m.on
-	var __lt15 int
+	var __lt14 int
 	if m.on {
-		__lt15 = 1
+		__lt14 = 1
 	} else {
-		__lt15 = 0
+		__lt14 = 0
 	}
-	m.v = int(C.abs(C.int(__lt15)))
+	m.v = int(C.abs(C.int(__lt14)))
 	__ctmp1 := C.CString(fmt.Sprint(m.v))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __ctmp1)
 	C.free(unsafe.Pointer(__ctmp1))
@@ -786,8 +785,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:7717574e61587e53b892f7acbc994224
+pass sha256:a52afbd9224892e52cb8633f56d5ac54
 -- run/go/fyne --
 pass sha256:d92da3a33da6d81cf4df7d1fdfad610a
 -- run/go/gtk4 --
-pass sha256:92c726d7164db48e293092adb808a5f1
+pass sha256:28b87e13aa0710ce3888e07bbaa82d75

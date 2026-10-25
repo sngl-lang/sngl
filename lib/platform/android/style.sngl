@@ -26,7 +26,6 @@ const unset ui.Style = {}
 //   - borderStyle: Compose draws a solid border only.
 //   - cursor: a touch screen shows no pointer.
 //   - display: a node is laid out by the composable it is.
-//   - overflow: scrolling is ui.scroll's, and clipping a shape's.
 //   - listStyleType: no widget here draws a list marker.
 const unstyled list[string] = [
     "flexDirection",
@@ -44,7 +43,6 @@ const unstyled list[string] = [
     "borderStyle",
     "cursor",
     "display",
-    "overflow",
     "listStyleType",
 ]
 

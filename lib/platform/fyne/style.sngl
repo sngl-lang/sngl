@@ -19,7 +19,6 @@ const unset ui.Style = {}
 //   - opacity: Fyne fades no widget it draws.
 //   - cursor: not answered yet; a desktop.Cursorable box would have to sit
 //     above the widget a pointer reaches.
-//   - overflow: Fyne clips only a scroll's content, which is ui.scroll's.
 //   - listStyleType: no widget here draws a list marker.
 const unstyled list[string] = [
     "flexDirection",
@@ -37,7 +36,6 @@ const unstyled list[string] = [
     "borderStyle",
     "opacity",
     "cursor",
-    "overflow",
     "listStyleType",
 ]
 

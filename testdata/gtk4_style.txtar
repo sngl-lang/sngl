@@ -140,7 +140,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -205,7 +204,7 @@ func LookOf(s Style) gtk4rt.Look {
 }
 
 func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
 	return look
 }
 
@@ -263,122 +262,111 @@ func WrapOf(w string) int {
 	return __lt4
 }
 
-func ClipOf(o string) bool {
-	var __lt5 bool
-	switch o {
-	case "hidden", "scroll", "auto":
-		__lt5 = true
-	default:
-		__lt5 = false
+func Decl(name string, value string) string {
+	var __lt5 string
+	if value == "" {
+		__lt5 = ""
+	} else {
+		__lt5 = (((name + ": ") + value) + "; ")
 	}
 	return __lt5
 }
 
-func Decl(name string, value string) string {
-	var __lt6 string
-	if value == "" {
-		__lt6 = ""
-	} else {
-		__lt6 = (((name + ": ") + value) + "; ")
-	}
-	return __lt6
-}
-
 func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt8 Measurement
+	var __lt7 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt8 = own
+		__lt7 = own
 	} else {
-		var __lt7 Measurement
+		var __lt6 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt7 = axis
+			__lt6 = axis
 		} else {
-			__lt7 = all
+			__lt6 = all
 		}
-		__lt8 = __lt7
+		__lt7 = __lt6
 	}
-	return Length(max((__lt8.Px + (11.0 * (__lt8.Em + __lt8.Rem))), 0.0))
+	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
 }
 
 func Length(v float64) string {
-	var __lt9 string
+	var __lt8 string
 	if v == 0.0 {
+		__lt8 = ""
+	} else {
+		__lt8 = (fmt.Sprint(v) + "px")
+	}
+	return __lt8
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt9 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
 		__lt9 = ""
 	} else {
-		__lt9 = (fmt.Sprint(v) + "px")
+		__lt9 = c__r0.Hex()
 	}
 	return __lt9
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
+func Points(v float64) string {
 	var __lt10 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+	if v == 0.0 {
 		__lt10 = ""
 	} else {
-		__lt10 = c__r0.Hex()
+		__lt10 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt10
 }
 
-func Points(v float64) string {
+func WeightOf(w string) string {
 	var __lt11 string
-	if v == 0.0 {
+	switch w {
+	case "bold":
+		__lt11 = "bold"
+	case "bolder":
+		__lt11 = "bolder"
+	case "lighter":
+		__lt11 = "lighter"
+	default:
 		__lt11 = ""
-	} else {
-		__lt11 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt11
 }
 
-func WeightOf(w string) string {
+func SlantOf(s string) string {
 	var __lt12 string
-	switch w {
-	case "bold":
-		__lt12 = "bold"
-	case "bolder":
-		__lt12 = "bolder"
-	case "lighter":
-		__lt12 = "lighter"
+	switch s {
+	case "italic":
+		__lt12 = "italic"
+	case "oblique":
+		__lt12 = "oblique"
 	default:
 		__lt12 = ""
 	}
 	return __lt12
 }
 
-func SlantOf(s string) string {
-	var __lt13 string
-	switch s {
-	case "italic":
-		__lt13 = "italic"
-	case "oblique":
-		__lt13 = "oblique"
-	default:
-		__lt13 = ""
-	}
-	return __lt13
-}
-
 func LineOf(s Style) string {
-	var __lt14 string
+	var __lt13 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt14 = "solid"
+		__lt13 = "solid"
 	case "dashed":
-		__lt14 = "dashed"
+		__lt13 = "dashed"
 	case "dotted":
-		__lt14 = "dotted"
+		__lt13 = "dotted"
 	case "double":
-		__lt14 = "double"
+		__lt13 = "double"
 	default:
-		var __lt15 string
+		var __lt14 string
 		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt15 = "solid"
+			__lt14 = "solid"
 		} else {
-			__lt15 = ""
+			__lt14 = ""
 		}
-		__lt14 = __lt15
+		__lt13 = __lt14
 	}
-	return __lt14
+	return __lt13
 }
 
 func (m *Model) __effect0_unmount() {
@@ -500,20 +488,20 @@ func (m *Model) __n8_failed_handler(m__r2 string) {
 
 func (m *Model) __n9_clicked_handler() {
 	m.on = !m.on
+	var __lt17 snglcolor.Color
+	if m.on {
+		__lt17 = snglcolor.Color{R: 204, G: 0, B: 0, A: 255}
+	} else {
+		__lt17 = snglcolor.Color{R: 0, G: 0, B: 204, A: 255}
+	}
+	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: Measurement{Px: 28}, FontWeight: "bold", Color: __lt17}))
 	var __lt18 snglcolor.Color
 	if m.on {
-		__lt18 = snglcolor.Color{R: 204, G: 0, B: 0, A: 255}
+		__lt18 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt18 = snglcolor.Color{R: 0, G: 0, B: 204, A: 255}
+		__lt18 = snglcolor.Color{R: 0, G: 170, B: 0, A: 255}
 	}
-	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: Measurement{Px: 28}, FontWeight: "bold", Color: __lt18}))
-	var __lt19 snglcolor.Color
-	if m.on {
-		__lt19 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
-	} else {
-		__lt19 = snglcolor.Color{R: 0, G: 170, B: 0, A: 255}
-	}
-	gtk4rt.SetLook(m.__n2, LookOf(Style{Display: "inlineBlock", PaddingY: Measurement{Px: 2}, PaddingX: Measurement{Px: 8}, BorderRadius: Measurement{Px: 12}, Background: __lt19, Color: snglcolor.Color{R: 255, G: 255, B: 255, A: 255}}))
+	gtk4rt.SetLook(m.__n2, LookOf(Style{Display: "inlineBlock", PaddingY: Measurement{Px: 2}, PaddingX: Measurement{Px: 8}, BorderRadius: Measurement{Px: 12}, Background: __lt18, Color: snglcolor.Color{R: 255, G: 255, B: 255, A: 255}}))
 	m.held = Style{FontSize: Measurement{Em: 1}}
 	gtk4rt.SetLook(m.__n3, LookOf(m.held))
 }
@@ -571,27 +559,27 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n7, 12)
 	gtk4rt.SetLook(m.__n7, gtk4rt.Look{Css: "padding-top: 16px; padding-right: 16px; padding-bottom: 16px; padding-left: 16px; "})
-	var __lt16 snglcolor.Color
+	var __lt15 snglcolor.Color
 	if m.on {
-		__lt16 = snglcolor.Color{R: 204, G: 0, B: 0, A: 255}
+		__lt15 = snglcolor.Color{R: 204, G: 0, B: 0, A: 255}
 	} else {
-		__lt16 = snglcolor.Color{R: 0, G: 0, B: 204, A: 255}
+		__lt15 = snglcolor.Color{R: 0, G: 0, B: 204, A: 255}
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, "title")
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
-	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: Measurement{Px: 28}, FontWeight: "bold", Color: __lt16}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{TextAlign: "center", FontSize: Measurement{Px: 28}, FontWeight: "bold", Color: __lt15}))
 	gtk4rt.BoxAppend(m.__n7, m.__n1)
-	var __lt17 snglcolor.Color
+	var __lt16 snglcolor.Color
 	if m.on {
-		__lt17 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		__lt16 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 	} else {
-		__lt17 = snglcolor.Color{R: 0, G: 170, B: 0, A: 255}
+		__lt16 = snglcolor.Color{R: 0, G: 170, B: 0, A: 255}
 	}
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n2, "badge")
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
-	gtk4rt.SetLook(m.__n2, LookOf(Style{Display: "inlineBlock", PaddingY: Measurement{Px: 2}, PaddingX: Measurement{Px: 8}, BorderRadius: Measurement{Px: 12}, Background: __lt17, Color: snglcolor.Color{R: 255, G: 255, B: 255, A: 255}}))
+	gtk4rt.SetLook(m.__n2, LookOf(Style{Display: "inlineBlock", PaddingY: Measurement{Px: 2}, PaddingX: Measurement{Px: 8}, BorderRadius: Measurement{Px: 12}, Background: __lt16, Color: snglcolor.Color{R: 255, G: 255, B: 255, A: 255}}))
 	gtk4rt.BoxAppend(m.__n7, m.__n2)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "held")
@@ -630,4 +618,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:0beb76aabe0f6650ad9498d9442c53fd
+pass sha256:4a05c428bbc4921ecc8c232cfdc47641

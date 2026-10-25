@@ -2435,6 +2435,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if g.pkg != nil && rendersReachEnd(g.pkg) {
 		b.WriteString(reachEndHelper + "\n")
+		for _, r := range scrollRules {
+			g.AddStyle(r)
+		}
 	}
 	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
 		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")

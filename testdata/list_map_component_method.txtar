@@ -121,7 +121,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -508,7 +507,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -799,7 +797,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -913,15 +910,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -1110,10 +1098,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2790f43967c37b2820a5662bfdae80ff
+pass sha256:de068269dc65c5eb49a2d501acc9d001
 -- run/go/fyne --
-pass sha256:d04071768f8045d594c966b88e0fda53
+pass sha256:9b499d060bf9d1f626d8fba38f474bdc
 -- run/kotlin/android --
-pass sha256:618f3c0b6fbc1ed2a1e7eb09f61e918c
+pass sha256:92241e5127ec5a17b93d7cbc4d6b05b2
 -- run/none/html --
 pass sha256:59f292d128828d21e1c77d941bccf84f

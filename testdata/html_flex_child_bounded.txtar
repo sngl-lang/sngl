@@ -51,7 +51,7 @@ body { display: flex; flex-direction: column; }
 
 <div style="padding:8px;display:flex;flex-direction:column;flex:1;min-width:0;min-height:0">
   <span>items</span>
-  <div style="flex:1;min-width:0;min-height:0;overflow:auto">
+  <div class="sngl-scroll" style="flex:1;min-width:0;min-height:0">
     <div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
       <span data-sngl-slot="0" style="display:contents"></span>
     </div>
@@ -59,6 +59,9 @@ body { display: flex; flex-direction: column; }
     </sngl-reach-end>
   </div>
 </div>
+<style>
+.sngl-scroll { overflow: auto; }
+</style>
 
 <script>
 (() => {
@@ -210,4 +213,4 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d5fcf35e9d1792a1cda47f1bf95ff3a3
+pass sha256:ec2a4e22884f47debd04bdc5de2961dc

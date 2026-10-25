@@ -17,10 +17,11 @@ const (
 	imageDrawHelper       = "_snglImageDraw"
 )
 
-// imageRules fill an image's frame with the picture it shows, fitted as the
-// frame's class says. The frame carries the description, so the `<img>` has
-// none of its own.
+// imageRules clip an image's frame and fill it with the picture it shows,
+// fitted as the frame's class says. The frame carries the description, so
+// the `<img>` has none of its own.
 var imageRules = []string{
+	".sngl-image { overflow: hidden; }",
 	".sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }",
 	".sngl-image-cover img { object-fit: cover; }",
 	".sngl-image-fill img { object-fit: fill; }",

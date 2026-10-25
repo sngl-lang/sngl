@@ -109,7 +109,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -397,6 +396,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e90540c9060e49b720929a5bec39b4f8
+pass sha256:f8922e403586b3c205292dabd0c81433
 -- run/none/html --
 pass sha256:745a838c2c00d8aaee7718c5b546b335

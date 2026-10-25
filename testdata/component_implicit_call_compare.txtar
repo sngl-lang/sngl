@@ -108,7 +108,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -494,14 +493,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	var __lt15 string
+	var __lt14 string
 	if m.count() > 0 {
-		__lt15 = "some"
+		__lt14 = "some"
 	} else {
-		__lt15 = "none"
+		__lt14 = "none"
 	}
 	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(__n0, __lt15)
+	gtk4rt.LabelSetLabel(__n0, __lt14)
 	gtk4rt.LabelSetXAlign(__n0, 0.0)
 	gtk4rt.BoxAppend(m.__root, __n0)
 }
@@ -634,11 +633,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:537216da93d015ac38ab1642433e6a0c
+pass sha256:68e4781c1172e52f2318a5cbdbcd9200
 -- run/go/fyne --
 pass sha256:3922062e2878a631aad59cbdf1b5c87f
 -- run/go/gtk4 --
-pass sha256:92daa3f2a1fb3462ad44be2ebb235c63
+pass sha256:ac69b65b658379627928f8d4504db25e
 -- run/kotlin/android --
 pass sha256:6aa272ffdd6396f8ab9c90610d6a9f73
 -- run/none/html --

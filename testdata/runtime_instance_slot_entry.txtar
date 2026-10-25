@@ -151,7 +151,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -1782,7 +1781,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:beb80b1222abc2552b9b0db6793aecbb
+pass sha256:729ba4eafa51e9363664dda601d703ea
 -- run/go/fyne --
 pass sha256:cd7b7cc5f048e2e11ac25ac7aa720b75
 -- run/go/gtk4 --

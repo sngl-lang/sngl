@@ -25,7 +25,6 @@ const unset ui.Style = {}
 //   - cursor: a terminal shows no pointer.
 //   - display: not answered yet; `none` is a node rendering nothing, which a
 //     look cannot say.
-//   - overflow: not answered yet; a maximum width or height already clips.
 //   - listStyleType: no widget here draws a list marker.
 const unstyled list[string] = [
     "minWidth",
@@ -46,7 +45,6 @@ const unstyled list[string] = [
     "borderCollapse",
     "cursor",
     "display",
-    "overflow",
     "listStyleType",
 ]
 

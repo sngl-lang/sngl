@@ -68,6 +68,12 @@ const reachEndHelper = `if (!customElements.get("sngl-reach-end")) customElement
 });
 `
 
+// scrollRules scroll the box ui.scroll's override writes, which renders
+// reachEndTag in every one, so a page defining the element needs them.
+var scrollRules = []string{
+	".sngl-scroll { overflow: auto; }",
+}
+
 // rendersReachEnd reports whether the page writes reachEndTag anywhere, which
 // is when it needs the element defined.
 func rendersReachEnd(pkg *ir.Package) bool {

@@ -307,9 +307,10 @@ const component ui.spacer[platform](style) {
 // DOM event at all: `sngl-reach-end` is an element the page defines
 // (codegen/platform/html/reachend.go), written after the content, that
 // dispatches `reachEnd` as it comes within half the box's height of showing
-// and as the content resizes while it is there.
+// and as the content resizes while it is there. The box scrolls by its
+// class, whose rule the page writes beside the element's definition.
 const component ui.scroll[platform](style, @scroll, @scrollEnd, @reachEnd, content) {
-    html.div(style={...style, overflow=auto}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
+    html.div(class="sngl-scroll", style={...style}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
         content
         html.element(tag="sngl-reach-end", @reachEnd { reachEnd() }) {}
     }
@@ -334,12 +335,12 @@ const component ui.button[platform](text, disabled, style, @click, @longPress) {
 // An image is a frame around the `<img>` its source renders: the frame carries
 // the style, the click and the description, as an `img` role, so the
 // placeholder stands in the same box where there is no source. The page's
-// rules fill the frame with the picture and fit it by the frame's class.
+// rules clip the frame, fill it with the picture and fit it by its class.
 const component ui.image[platform](alt, fit, style, @click, src) {
     html.span(
         class = "sngl-image sngl-image-" + string(fit),
         attrs = {"role"="img", "aria-label"=alt},
-        style = {display=inlineBlock, overflow=hidden, ...style},
+        style = {display=inlineBlock, ...style},
         @click { click() },
     ) {
         #[family.crosses]

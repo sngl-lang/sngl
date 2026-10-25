@@ -110,7 +110,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -867,10 +866,11 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="test" role="img" class="sngl-image sngl-image-contain">
+<span class="sngl-image sngl-image-contain" style="display:inline-block" aria-label="test" role="img" class="sngl-image sngl-image-contain">
   <img id="__n0" data-sngl-id="__n0" alt=""/>
 </span>
 <style>
+.sngl-image { overflow: hidden; }
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
 .sngl-image-fill img { object-fit: fill; }
@@ -910,7 +910,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:13e4f4fdc8e52df290f1aac4252d5a47
+pass sha256:6f1b9ddb6f3b0d9a45a56191cd5b8d5f
 -- run/go/fyne --
 pass sha256:04d9788d26d2f126511f55531eb43846
 -- run/go/gtk4 --
@@ -918,7 +918,7 @@ pass sha256:28096ff9006ecf739b121bf508640a84
 -- run/kotlin/android --
 pass sha256:f6527fcf772077b26ec0cbf8f47f01bf
 -- run/none/html --
-pass sha256:39cb31e49e0e1d5d71c35443be794f5f
+pass sha256:aaa9f46d671e4348bf95c9fc24e71117
 -- testrun/html/none/component_image.sngl/main/1 --
 sha256:a3d0e2c73dc3d4fc1892136ad532bde0
 {

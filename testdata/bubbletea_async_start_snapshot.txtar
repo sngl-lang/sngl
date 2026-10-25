@@ -123,7 +123,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -532,4 +531,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:8f8bf281911faead1c266ac2b58bd4fa
+pass sha256:5f88f985e41b492189850e28f3fd93d9

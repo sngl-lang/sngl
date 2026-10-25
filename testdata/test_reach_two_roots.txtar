@@ -131,7 +131,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -575,7 +574,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -891,7 +889,6 @@ type Style struct {
 	Opacity        float64
 	Cursor         string
 	Display        string
-	Overflow       string
 	ListStyleType  string
 }
 
@@ -926,7 +923,7 @@ func LookOf(s Style) gtk4rt.Look {
 }
 
 func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor}
 	return look
 }
 
@@ -984,122 +981,111 @@ func WrapOf(w string) int {
 	return __lt3
 }
 
-func ClipOf(o string) bool {
-	var __lt4 bool
-	switch o {
-	case "hidden", "scroll", "auto":
-		__lt4 = true
-	default:
-		__lt4 = false
+func Decl(name string, value string) string {
+	var __lt4 string
+	if value == "" {
+		__lt4 = ""
+	} else {
+		__lt4 = (((name + ": ") + value) + "; ")
 	}
 	return __lt4
 }
 
-func Decl(name string, value string) string {
-	var __lt5 string
-	if value == "" {
-		__lt5 = ""
-	} else {
-		__lt5 = (((name + ": ") + value) + "; ")
-	}
-	return __lt5
-}
-
 func Side(all Measurement, axis Measurement, own Measurement) string {
-	var __lt7 Measurement
+	var __lt6 Measurement
 	if (own != Measurement{Px: 0}) {
-		__lt7 = own
+		__lt6 = own
 	} else {
-		var __lt6 Measurement
+		var __lt5 Measurement
 		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
+			__lt5 = axis
 		} else {
-			__lt6 = all
+			__lt5 = all
 		}
-		__lt7 = __lt6
+		__lt6 = __lt5
 	}
-	return Length(max((__lt7.Px + (11.0 * (__lt7.Em + __lt7.Rem))), 0.0))
+	return Length(max((__lt6.Px + (11.0 * (__lt6.Em + __lt6.Rem))), 0.0))
 }
 
 func Length(v float64) string {
-	var __lt8 string
+	var __lt7 string
 	if v == 0.0 {
+		__lt7 = ""
+	} else {
+		__lt7 = (fmt.Sprint(v) + "px")
+	}
+	return __lt7
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt8 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
 		__lt8 = ""
 	} else {
-		__lt8 = (fmt.Sprint(v) + "px")
+		__lt8 = c__r0.Hex()
 	}
 	return __lt8
 }
 
-func CssColor(c__r0 snglcolor.Color) string {
+func Points(v float64) string {
 	var __lt9 string
-	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+	if v == 0.0 {
 		__lt9 = ""
 	} else {
-		__lt9 = c__r0.Hex()
+		__lt9 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt9
 }
 
-func Points(v float64) string {
+func WeightOf(w string) string {
 	var __lt10 string
-	if v == 0.0 {
+	switch w {
+	case "bold":
+		__lt10 = "bold"
+	case "bolder":
+		__lt10 = "bolder"
+	case "lighter":
+		__lt10 = "lighter"
+	default:
 		__lt10 = ""
-	} else {
-		__lt10 = (fmt.Sprint(v) + "pt")
 	}
 	return __lt10
 }
 
-func WeightOf(w string) string {
+func SlantOf(s string) string {
 	var __lt11 string
-	switch w {
-	case "bold":
-		__lt11 = "bold"
-	case "bolder":
-		__lt11 = "bolder"
-	case "lighter":
-		__lt11 = "lighter"
+	switch s {
+	case "italic":
+		__lt11 = "italic"
+	case "oblique":
+		__lt11 = "oblique"
 	default:
 		__lt11 = ""
 	}
 	return __lt11
 }
 
-func SlantOf(s string) string {
-	var __lt12 string
-	switch s {
-	case "italic":
-		__lt12 = "italic"
-	case "oblique":
-		__lt12 = "oblique"
-	default:
-		__lt12 = ""
-	}
-	return __lt12
-}
-
 func LineOf(s Style) string {
-	var __lt13 string
+	var __lt12 string
 	switch s.BorderStyle {
 	case "solid":
-		__lt13 = "solid"
+		__lt12 = "solid"
 	case "dashed":
-		__lt13 = "dashed"
+		__lt12 = "dashed"
 	case "dotted":
-		__lt13 = "dotted"
+		__lt12 = "dotted"
 	case "double":
-		__lt13 = "double"
+		__lt12 = "double"
 	default:
-		var __lt14 string
+		var __lt13 string
 		if (s.BorderWidth != Measurement{Px: 0}) {
-			__lt14 = "solid"
+			__lt13 = "solid"
 		} else {
-			__lt14 = ""
+			__lt13 = ""
 		}
-		__lt13 = __lt14
+		__lt12 = __lt13
 	}
-	return __lt13
+	return __lt12
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -1271,7 +1257,6 @@ data class Style(
     var opacity: Double = 0.0,
     var cursor: String = "",
     var display: SnglDisplay = SnglDisplay.FLEX,
-    var overflow: SnglOverflow = SnglOverflow.VISIBLE,
     var listStyleType: SnglListStyle = SnglListStyle.NONE
 )
 
@@ -1385,15 +1370,6 @@ enum class SnglDisplay(private val sngl: String) {
     INLINEFLEX("inlineFlex"),
     NONE("none"),
     GRID("grid");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglOverflow(private val sngl: String) {
-    VISIBLE("visible"),
-    HIDDEN("hidden"),
-    SCROLL("scroll"),
-    AUTO("auto");
 
     override fun toString(): String = sngl
 }
@@ -1603,12 +1579,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:da7f35833ea32790a299e3d83d20a6ed
+pass sha256:154d28162688cd40ad331718efa14efe
 -- run/go/fyne --
-pass sha256:8f8a7dc3b94c1b01d47bde35e95286d3
+pass sha256:639d279245c31d93be7fde9dcec39107
 -- run/go/gtk4 --
-pass sha256:b76208d89e518cdbcf0aa56bb8bb5d5d
+pass sha256:3012e4319571bd1a3ab8cc3c84bbaf3d
 -- run/kotlin/android --
-pass sha256:079b187433796f23a5a19d3d319cb230
+pass sha256:43b4a1e34f48ce624c9602199b6ecbd5
 -- run/none/html --
 pass sha256:672d8f43eb4e4b7725ee3ccda4ba5c16
