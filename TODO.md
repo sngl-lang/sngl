@@ -209,6 +209,151 @@ Each is a commit series on the branch; one MR, so CI runs once.
   snapshots the environment: a `.filter(func…)` in a function folded per node
   was most of a 7 GB increase on the docs site.
 
+## The Pokédex as an Android app
+
+On a phone `examples/pokedex` reads as a web page drawn in Compose. There is a
+row of two selects over the content, a "‹ Back" button, tabs that change only
+when tapped, and panels cut off at the right edge. The goal is an app that
+looks like one built in Android Studio. Each gap below is a library gap that
+other programs will hit too, so each is fixed in `lib/` and the example is
+the first user.
+
+### Where it stands
+
+- **No app bar.** `Pokedex` puts `ui.select #languagePick` in an hbox above
+  the stack, and `homePage` puts `#dexPick` above the search box. android's
+  `ui.window` is a bare `Screen`: `title` and `favicon` are not read there,
+  and `output(icon=…)` goes only to the launcher. There is no Scaffold and
+  no TopAppBar. `detailPage` draws its own `#backButton`, though the system
+  back already pops the NavHost.
+- **No setting outlives the process.** `language` starts at
+  `i18n.defaultLocale()` and `dexName` at `"national"` on every launch.
+  Nothing in `lib/` persists a value. The persistence example in
+  getting-started uses a `go:` import, which android miscompiles
+  (ISSUES.md 5).
+- **Tabs do not swipe.** android's `ui.tabs` is a TabRow over the selected
+  panel, with no pager.
+- **No target scrolls sideways.** `ui.scroll`'s `direction` and the `scroll`
+  prop on `ui.hbox`/`ui.vbox` are declared in `lib/ui/layout.sngl`, but no
+  override reads them. `SnglScroll` is `verticalScroll` only, and html's is
+  `overflow=auto` in both directions by accident. The panels that overflow a
+  360dp screen are the Sprites rows (4 × 112px plus gaps), the Evolution
+  rows (a branching chain like Eevee's), and the Moves table.
+
+### The design
+
+1. **An app bar the window draws.** The window is already "the chrome every
+   page shares" (`lib/ui/window.sngl`), so the bar belongs to it, not to a
+   new component the program places.
+   - `ui.window` gains a `menu ...component ui.menuItem` slot: the window's
+     menu, whose top-level entries carry the submenus.
+   - android draws `title`, `favicon` (the output's icon where none is
+     given) and the menu as a Material3 `Scaffold` with a `TopAppBar`. Each
+     top-level entry is an action whose submenu is a `DropdownMenu`.
+   - gtk4 draws the menu as its own (a `GMenu` behind the header bar's menu
+     button, or the application menu bar), and win32 will use its menu bar
+     the same way. fyne uses its main menu, html a `<header>` over
+     `ui.menu`, and bubbletea a title line.
+   - `ui.menuItem` gains `checked bool` so a submenu can mark the language
+     or Pokédex chosen. `ui.menu` and `ui.menubar` are empty overrides on
+     android and fyne today, so both get real ones.
+   - The up arrow is the window's, from two props:
+     `ui.window(canGoBack=pages.canGoBack(), @back { pages.back() })`, with
+     nav adding `stack.canGoBack()`. On android the system back runs `@back`
+     while `canGoBack` holds and closes the window otherwise, as the NavHost
+     does now. `sngl:ui` cannot name `nav.stack`, since nav imports ui, and
+     `@back` may mean more than a pop (leaving a search). The Pokédex folds
+     `Pokedex` into its window so `pages` and `language` are in scope there,
+     which the `menu` needs anyway. This is a stopgap; see *Window and nav,
+     later*.
+2. **Settings as state: `sngl:settings`.** A component that binds a var,
+   following the pattern `poke.pokemonRetrieve(:value=…)` already uses:
+   `settings.kept(key="language", :value=language)`. On mount it loads the
+   stored value into the var if one exists, and it writes the var back on
+   every change. The var keeps its own initializer as the default, so
+   `var x = expr` still means what it means. `T` is anything `sngl:json`
+   can encode.
+   - Where a value is kept is a `settings.store` context. Its default is the
+     platform's own place for the app, named by the `output`:
+     - android: SharedPreferences, or DataStore if a coroutine load can be
+       gated before the first frame.
+     - html: `localStorage`; on a `--lang go` server, a cookie.
+     - fyne: `App.Preferences`.
+     - gtk4 and bubbletea: a JSON file under `$XDG_CONFIG_HOME/<output name>`.
+       GSettings needs an installed schema, which a `go build` binary does
+       not have.
+     - The interpreter: memory, per run.
+   - A program, or a test with `t.setContext`, provides another store: a
+     scope of its own, or a seeded one in memory. The trust rules in
+     `design/trust.md` decide whether writing a file needs a grant.
+3. **Tabs that swipe and stay loaded.** A tab's panel is mounted with the
+   tabs and kept mounted while another is selected; selecting one shows it.
+   That changes `ui.tabs` in `lib/ui/nav.sngl`, whose body and doc say a
+   panel is "shown while this tab is selected" and render only that one,
+   and every override that does the same. The doc may say that a platform
+   which cannot keep a panel loaded mounts it on selection, but keeping it
+   loaded is what is preferred.
+   - android's `ui.tabs` becomes a `HorizontalPager` synced with
+     `selected` under the same TabRow, with `beyondViewportPageCount` set to
+     every page so none is disposed.
+   - html keeps hidden panels in the DOM and swipes with pointer events.
+     The desktop targets keep their notebooks' pages, which they already
+     hold.
+   - In the Pokédex, every tab's requests then go out when a detail page
+     opens. Moves is the costly one: a `moveRetrieve` per move, plus their
+     types. Measure that against the recorded runs, and decide whether the
+     moves table should load its facts as rows come into view.
+4. **Horizontal scroll, implemented everywhere.**
+   - `ui.scroll(direction=)` uses `horizontalScroll`/both on android
+     (`SnglScroll` takes the axis, and a sideways `@reachEnd` measures
+     width), `container.NewHScroll` on fyne, the scrolled window's policy
+     on gtk4, and `overflow-x` or `overflow-y` on html. bubbletea cuts
+     content off as it does today.
+   - The `scroll` props of `ui.hbox` and `ui.vbox` are deleted. A
+     scrolling box is a `ui.scroll` around it. vbox's `refreshing` and
+     `@refresh` stay.
+
+### Order
+
+Do each fixture first, and confirm it fails with the change reverted. One
+branch with one commit series per step, then re-record the runs that change.
+
+1. **Horizontal scroll.** Write `testdata/scroll_direction*.txtar` for each
+   target, plus an android recorded run. Then wrap the Sprites, Evolution
+   and Moves panels in `ui.scroll(direction="horizontal")`.
+2. **Settings.** Write the spec section and `design/` note first. Then
+   `lib/settings`, the interpreter, and the targets in the order above, with
+   a `sngl test` that seeds a setting and reads it back across a remount,
+   plus a CLI script test that runs a generated program twice. Then
+   `language` and `dexName` in the Pokédex become kept settings.
+3. **Tabs.** The `ui.tabs` doc and body first, with a fixture that holds a
+   panel's state across a switch away and back. Then android's pager, html,
+   and a recorded android run that swipes.
+4. **The app bar.** Write the `ui.window` prop and slot in the spec, then
+   implement android, gtk4, html, fyne and bubbletea, and the up arrow. In
+   the Pokédex, move the language and the dex choice into the window's `menu`, delete
+   `#backButton`, and set the title to `pages.current.title`; detail's
+   title should be the species' name rather than "Pokémon", which needs a
+   page title that can be computed from its params. The six
+   `#languagePick`/`#dexPick`/`#backButton` uses in `pokedex_test.sngl`
+   move with them.
+5. Re-record the Pokédex's android, html, gtk4 and fyne runs and its
+   screenshots, and update `examples/pokedex/README.md`.
+
+## Window and nav, later
+
+How a window and `sngl:ui/nav` meet needs a redesign of its own. The current
+shape was written with static html foremost -- a page is an address, a link
+an `<a href>`, the window's title read off `pages.current` -- and the other
+targets fit around it: android's NavHost, desktop windows that want the stack
+in a sidebar or a header bar, a terminal with one screen. Each platform wants
+the navigation in a different place and handles going back differently. The
+`canGoBack`/`@back` props above are what the Pokédex needs until then, not
+the answer; a redesign should decide whether a window finds its stack itself,
+whether a stack can own the chrome on targets where that is the idiom, and
+what html's addresses become when they are one target's concern rather than
+the model.
+
 ## `match`, later
 
 `match` is implemented: the rules are in CLAUDE.md's *Match* section and the
