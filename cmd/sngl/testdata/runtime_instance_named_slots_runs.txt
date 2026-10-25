@@ -279,7 +279,7 @@ sha256:1ba550fb34da981e0167fdb9918c492a
   }
 }
 -- testrun/bubbletea/go/rebind.sngl/main/1 --
-sha256:cf3fcca8288aed99725bc58cc71a7840
+sha256:0b790ac6fcfb00615aa85512d9d2921f
 {
   "results": [
     {

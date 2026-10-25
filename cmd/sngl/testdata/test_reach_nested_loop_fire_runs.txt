@@ -58,7 +58,7 @@ func testTapOpensItsCell(t test.Test, c host) {
     t.assert(c.opened == "b")
 }
 -- testrun/android/kotlin/app.sngl/host/1 --
-sha256:553fbf325dbb279867b9526aa309438b
+sha256:6434bea7eca19244ec07184ae5027e89
 {
   "results": [
     {
@@ -68,7 +68,7 @@ sha256:553fbf325dbb279867b9526aa309438b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/host/1 --
-sha256:695fa7cd5f0002d353d2d5a086b655f2
+sha256:2730c99e2ee0f5a6ec87feee6077f79e
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:695fa7cd5f0002d353d2d5a086b655f2
   ]
 }
 -- testrun/fyne/go/app.sngl/host/1 --
-sha256:33f66862408eec613f7a44dc89a609ed
+sha256:59a494ae1f7a4d0e2d86a0508b9fc6b9
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:33f66862408eec613f7a44dc89a609ed
   ]
 }
 -- testrun/gtk4/go/app.sngl/host/1 --
-sha256:219c9df5ceffe2b713ee872a6d939181
+sha256:4d4652b94952c33fcb95ab0b181e576f
 {
   "results": [
     {

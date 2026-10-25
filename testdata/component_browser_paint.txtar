@@ -301,7 +301,7 @@ sha256:790725e86d9b28e93718d4fa4771a68e
   ]
 }
 -- testrun/html/none/component_browser_paint.sngl/sources/1 --
-sha256:579e3f77547895b7c6a4bf8917534981
+sha256:65e8b9eef68e7e448c6661fc5ee0ceb3
 {
   "results": [
     {

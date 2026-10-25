@@ -920,7 +920,7 @@ pass sha256:f6527fcf772077b26ec0cbf8f47f01bf
 -- run/none/html --
 pass sha256:aaa9f46d671e4348bf95c9fc24e71117
 -- testrun/html/none/component_image.sngl/main/1 --
-sha256:a3d0e2c73dc3d4fc1892136ad532bde0
+sha256:7b17cbfd9187161a1424aab8f9bae1af
 {
   "results": [
     {
