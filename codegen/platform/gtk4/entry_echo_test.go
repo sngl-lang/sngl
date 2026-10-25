@@ -2,10 +2,7 @@
 
 package gtk4
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 // The input lives in a runtime instance, whose changed handler writes the
 // bound value back to the entry; the root model's does not. The canvas keeps
@@ -95,7 +92,7 @@ func TestTypingUpdatesOnce(t *testing.T) {
 func TestTypingIntoATwoWayEntryDoesNotRecurse(t *testing.T) {
 	withCgo(t)
 	files := goFiles(generateGTK4FilesBuilt(t, entryEchoSrc))
-	if !strings.Contains(files["model.go"], "C.gtk_entry_new") {
+	if !onCgoPath(files["model.go"]) {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])
 	}
 	files["entry.go"] = "package main\n\nfunc main() {}\n"

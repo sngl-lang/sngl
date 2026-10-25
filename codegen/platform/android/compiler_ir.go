@@ -51,7 +51,7 @@ type Config struct {
 	Nav bool
 	// accent is Color as the program wrote it, before withDefaults fills in
 	// the launcher's default: the theme's primary where it is set, and the
-	// device's own colours where it is not.
+	// device's own colors where it is not.
 	accent    string
 	defaulted bool
 }
@@ -569,7 +569,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 
 	// Under --lang go the user's functions are emitted into the gomobile
-	// module, exported and capitalised, so a Kotlin call site has to name them
+	// module, exported and capitalized, so a Kotlin call site has to name them
 	// there. Without this the module held `func Fib(n int) int` and the Kotlin
 	// called a bare `fib(k)` that existed in neither file.
 	//
@@ -591,9 +591,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// name the file imports is aliased around it rather than capturing it.
 	reserveDeclared(kc, ctx.Pkg)
 	// Conditional imports derived from IR analysis (no code scanning needed).
-	if len(info.Timers) > 0 {
-		kc.RequireImport("kotlinx.coroutines.delay")
-	}
 	if info.NeedsToast {
 		kc.RequireImport("android.widget.Toast")
 	}
@@ -690,7 +687,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// ErrorEvent is emitted when any error-handling construct is present
 	// (see bubbletea comment). The stdlib struct is not flowed through
-	// user output, so materialise it here.
+	// user output, so materialize it here.
 	if ctx.Pkg.UsesErrorHandling {
 		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
 		body.WriteString("class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)\n\n")
@@ -912,33 +909,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("        onDispose {\n")
 		for _, line := range kc.EvalStmt(&ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: td}}) {
 			fmt.Fprintf(&body, "            %s\n", line)
-		}
-		body.WriteString("        }\n")
-		body.WriteString("    }\n\n")
-	}
-
-	// Timers
-	for _, t := range info.Timers {
-		// The gate as an expression, not the bare variable name it used to be
-		// reduced to. `enabled=true` names no variable, and neither does a gate
-		// folded from an enclosing branch -- both produced an empty ActiveVar,
-		// which came out as `LaunchedEffect() { while () {`. That is not Kotlin,
-		// and no golden covered an android timer to say so.
-		//
-		// EvalExpr routes idents through the same rewrite map the body uses, so
-		// a var that lives on the hoisted state object in test mode is spelled
-		// the way the body spells it.
-		gate := "true"
-		if t.Enabled != nil {
-			gate = kc.EvalExpr(t.Enabled)
-		}
-		fmt.Fprintf(&body, "    %s(%s) {\n", kc.Name(ktLaunchedEffect), gate)
-		fmt.Fprintf(&body, "        while (%s) {\n", gate)
-		fmt.Fprintf(&body, "            delay(%dL)\n", t.IntervalMs)
-		for _, stmt := range t.Body {
-			for _, line := range kc.EvalStmt(stmt) {
-				fmt.Fprintf(&body, "            %s\n", line)
-			}
 		}
 		body.WriteString("        }\n")
 		body.WriteString("    }\n\n")

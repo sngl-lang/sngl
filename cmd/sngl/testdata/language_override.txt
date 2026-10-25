@@ -10,7 +10,7 @@ grep 'html x' out_hg/server.go
 
 # The override reached a Go file, so compile it. Only html's output: fyne's
 # needs the toolkit module, which this fixture does not vendor.
-exec go build ./out_hg/
+gobuild ./out_hg/
 
 # The language override, on a platform that has none.
 sngl generate --platform fyne --lang go -o out_fg app.sngl
@@ -71,3 +71,6 @@ component Badge[go.language](value) {
 window #w(title="t") {
     Badge(value="x")
 }
+-- testrun/gobuild/out_hg/1 --
+sha256:bc5a5c2d6f7d8cf378bf2b332e5c199a
+{}

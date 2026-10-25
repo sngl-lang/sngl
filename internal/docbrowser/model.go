@@ -10,7 +10,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"strings"
 )
 
 type Measurement struct {
@@ -134,15 +133,26 @@ func (m Model) entry() lookup.Entry {
 	return lookup.Resolve(m.path, m.ident1, m.ident2)
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt2 int
+	if px <= 0.0 {
+		__lt2 = 0
+	} else {
+		__lt2 = max(1, (int(px) / 8))
+	}
+	return __lt2
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -186,85 +196,85 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt2 int
+		var __lt3 int
 		if s.MaxLines == 0 {
-			__lt2 = 0
+			__lt3 = 0
 		} else {
-			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt3 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt3 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt3 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt3 = lipgloss.Left
-	}
-	return __lt3
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt4 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt4 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt4 = tui.DashedBorder()
-	default:
-		var __lt5 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt5 = lipgloss.RoundedBorder()
-		} else {
-			__lt5 = lipgloss.NormalBorder()
-		}
-		__lt4 = __lt5
+		__lt4 = lipgloss.Left
 	}
 	return __lt4
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt6 = lipgloss.RoundedBorder()
 		} else {
-			__lt6 = all
+			__lt6 = lipgloss.NormalBorder()
 		}
-		__lt7 = __lt6
+		__lt5 = __lt6
 	}
-	return CellsOf(__lt7)
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return CellsOf(__lt8)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
+	var __lt10 int
 	if height__r0 == 0 {
-		__lt9 = lines
+		__lt10 = lines
 	} else {
-		var __lt8 int
+		var __lt9 int
 		if lines == 0 {
-			__lt8 = height__r0
+			__lt9 = height__r0
 		} else {
-			__lt8 = min(height__r0, lines)
+			__lt9 = min(height__r0, lines)
 		}
-		__lt9 = __lt8
+		__lt10 = __lt9
 	}
-	return __lt9
+	return __lt10
 }
 
 func (m *Model) __focusNext() {
@@ -506,7 +516,7 @@ func (m Model) View() tea.View {
 				content_2_5Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
 				content_2_5Items = append(content_2_5Items, content_2_5Item)
 			}
-			content_2_5 = strings.Join(content_2_5Items, "\n")
+			content_2_5 = tui.Spaced(false, lipgloss.Left, 0, content_2_5Items...)
 			if content_2_5 != "" {
 				content_2Children = append(content_2Children, content_2_5)
 			}
@@ -524,7 +534,7 @@ func (m Model) View() tea.View {
 				content_2_8Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  " + t__r0.Name) + " — ") + t__r0.Doc)))
 				content_2_8Items = append(content_2_8Items, content_2_8Item)
 			}
-			content_2_8 = strings.Join(content_2_8Items, "\n")
+			content_2_8 = tui.Spaced(false, lipgloss.Left, 0, content_2_8Items...)
 			if content_2_8 != "" {
 				content_2Children = append(content_2Children, content_2_8)
 			}
@@ -542,7 +552,7 @@ func (m Model) View() tea.View {
 				content_2_11Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  " + e.Name) + " — ") + e.Doc)))
 				content_2_11Items = append(content_2_11Items, content_2_11Item)
 			}
-			content_2_11 = strings.Join(content_2_11Items, "\n")
+			content_2_11 = tui.Spaced(false, lipgloss.Left, 0, content_2_11Items...)
 			if content_2_11 != "" {
 				content_2Children = append(content_2Children, content_2_11)
 			}
@@ -560,7 +570,7 @@ func (m Model) View() tea.View {
 				content_2_14Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  " + f.Name) + " — ") + f.Doc)))
 				content_2_14Items = append(content_2_14Items, content_2_14Item)
 			}
-			content_2_14 = strings.Join(content_2_14Items, "\n")
+			content_2_14 = tui.Spaced(false, lipgloss.Left, 0, content_2_14Items...)
 			if content_2_14 != "" {
 				content_2Children = append(content_2Children, content_2_14)
 			}
@@ -578,7 +588,7 @@ func (m Model) View() tea.View {
 				content_2_17Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
 				content_2_17Items = append(content_2_17Items, content_2_17Item)
 			}
-			content_2_17 = strings.Join(content_2_17Items, "\n")
+			content_2_17 = tui.Spaced(false, lipgloss.Left, 0, content_2_17Items...)
 			if content_2_17 != "" {
 				content_2Children = append(content_2Children, content_2_17)
 			}
@@ -596,7 +606,7 @@ func (m Model) View() tea.View {
 				content_2_20Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  " + d.Name) + " — ") + d.Doc)))
 				content_2_20Items = append(content_2_20Items, content_2_20Item)
 			}
-			content_2_20 = strings.Join(content_2_20Items, "\n")
+			content_2_20 = tui.Spaced(false, lipgloss.Left, 0, content_2_20Items...)
 			if content_2_20 != "" {
 				content_2Children = append(content_2Children, content_2_20)
 			}
@@ -626,7 +636,7 @@ func (m Model) View() tea.View {
 				content_3_3Item = BoxLook(Style{}, true).Render(fmt.Sprint(((((("  " + p.Name) + "  ") + p.Type) + "  ") + p.Doc)))
 				content_3_3Items = append(content_3_3Items, content_3_3Item)
 			}
-			content_3_3 = strings.Join(content_3_3Items, "\n")
+			content_3_3 = tui.Spaced(false, lipgloss.Left, 0, content_3_3Items...)
 			if content_3_3 != "" {
 				content_3Children = append(content_3Children, content_3_3)
 			}
@@ -641,7 +651,7 @@ func (m Model) View() tea.View {
 				content_3_5Item = BoxLook(Style{}, true).Render(fmt.Sprint(((((("  " + sl.Name) + "  ") + sl.Type) + "  ") + sl.Doc)))
 				content_3_5Items = append(content_3_5Items, content_3_5Item)
 			}
-			content_3_5 = strings.Join(content_3_5Items, "\n")
+			content_3_5 = tui.Spaced(false, lipgloss.Left, 0, content_3_5Items...)
 			if content_3_5 != "" {
 				content_3Children = append(content_3Children, content_3_5)
 			}
@@ -656,7 +666,7 @@ func (m Model) View() tea.View {
 				content_3_7Item = BoxLook(Style{}, true).Render(fmt.Sprint(((((("  @" + e.Name) + "  ") + e.Payload) + "  ") + e.Doc)))
 				content_3_7Items = append(content_3_7Items, content_3_7Item)
 			}
-			content_3_7 = strings.Join(content_3_7Items, "\n")
+			content_3_7 = tui.Spaced(false, lipgloss.Left, 0, content_3_7Items...)
 			if content_3_7 != "" {
 				content_3Children = append(content_3Children, content_3_7)
 			}
@@ -686,7 +696,7 @@ func (m Model) View() tea.View {
 				content_4_3Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  " + f.Name) + "  ") + f.Type)))
 				content_4_3Items = append(content_4_3Items, content_4_3Item)
 			}
-			content_4_3 = strings.Join(content_4_3Items, "\n")
+			content_4_3 = tui.Spaced(false, lipgloss.Left, 0, content_4_3Items...)
 			if content_4_3 != "" {
 				content_4Children = append(content_4Children, content_4_3)
 			}
@@ -695,13 +705,13 @@ func (m Model) View() tea.View {
 			content_4Children = append(content_4Children, content_4_4)
 			var content_4_5 string
 			var content_4_5Items []string
-			for _, m__r1 := range m.entry().TypeDoc.Methods {
-				_ = m__r1
+			for _, m__r2 := range m.entry().TypeDoc.Methods {
+				_ = m__r2
 				var content_4_5Item string
-				content_4_5Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  ." + m__r1.Short) + "  ") + m__r1.Doc)))
+				content_4_5Item = BoxLook(Style{}, true).Render(fmt.Sprint(((("  ." + m__r2.Short) + "  ") + m__r2.Doc)))
 				content_4_5Items = append(content_4_5Items, content_4_5Item)
 			}
-			content_4_5 = strings.Join(content_4_5Items, "\n")
+			content_4_5 = tui.Spaced(false, lipgloss.Left, 0, content_4_5Items...)
 			if content_4_5 != "" {
 				content_4Children = append(content_4Children, content_4_5)
 			}
@@ -722,13 +732,13 @@ func (m Model) View() tea.View {
 			content_5Children = append(content_5Children, content_5_1)
 			var content_5_2 string
 			var content_5_2Items []string
-			for _, m__r2 := range m.entry().EnumDoc.Members {
-				_ = m__r2
+			for _, m__r3 := range m.entry().EnumDoc.Members {
+				_ = m__r3
 				var content_5_2Item string
-				content_5_2Item = BoxLook(Style{}, true).Render(fmt.Sprint(("  • " + m__r2.Name)))
+				content_5_2Item = BoxLook(Style{}, true).Render(fmt.Sprint(("  • " + m__r3.Name)))
 				content_5_2Items = append(content_5_2Items, content_5_2Item)
 			}
-			content_5_2 = strings.Join(content_5_2Items, "\n")
+			content_5_2 = tui.Spaced(false, lipgloss.Left, 0, content_5_2Items...)
 			if content_5_2 != "" {
 				content_5Children = append(content_5Children, content_5_2)
 			}

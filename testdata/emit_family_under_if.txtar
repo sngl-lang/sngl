@@ -10,8 +10,8 @@ unmounted when it turns false, and settled on nothing while it is gone.
 In a root component the members function is the component's own, so the
 inliner renames what it reads with everything else the component declares:
 `ticks` is `ticks__inst0` in it, as it is in the component's body. Its reads
-are analysed against the component's state as well as the package's, so a
-click writing `ticks` settles the effect keyed on the members: analysed
+are analyzed against the component's state as well as the package's, so a
+click writing `ticks` settles the effect keyed on the members: analyzed
 against the package's alone, the function read nothing, and the bar never
 changed after it started.
 

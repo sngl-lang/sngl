@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -68,7 +69,11 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 	fmt.Fprintf(&body, "package %s\n\n", pkgName)
 
 	extraImports := gc.Imports()
+	if req.Main {
+		extraImports = append(slices.Clone(extraImports), "fmt", "log", "net")
+	}
 	sort.Strings(extraImports)
+	extraImports = slices.Compact(extraImports)
 	fmt.Fprintln(&body, "import (")
 	fmt.Fprintln(&body, `	"net/http"`)
 	for _, imp := range extraImports {
@@ -82,10 +87,7 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 
 	body.Write(routeBody.Bytes())
 	if req.Main {
-		fmt.Fprintln(&body)
-		fmt.Fprintln(&body, `func main() {`)
-		fmt.Fprintln(&body, `	http.ListenAndServe(":8080", Handler())`)
-		fmt.Fprintln(&body, `}`)
+		writeServerMain(&body, req.Listen)
 	}
 
 	// The route path assembles bytes by hand rather than through fileEmitter,
@@ -96,6 +98,30 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 	}
 
 	return []*codegen.OutputFile{codegen.BytesFile("server.go", formatted)}, nil
+}
+
+// writeServerMain writes the main() a server build runs: it serves Handler()
+// at listen, ":8080" when empty, and prints the address it serves at -- the
+// one a ":0" chose -- as a URL on its first line of output, which is what
+// html's static server prints too.
+func writeServerMain(b *bytes.Buffer, listen string) {
+	if listen == "" {
+		listen = ":8080"
+	}
+	fmt.Fprintf(b, `
+func main() {
+	ln, err := net.Listen("tcp", %q)
+	if err != nil {
+		log.Fatal(err)
+	}
+	host, port, _ := net.SplitHostPort(ln.Addr().String())
+	if ip := net.ParseIP(host); ip == nil || ip.IsUnspecified() {
+		host = "localhost"
+	}
+	fmt.Println("http://" + net.JoinHostPort(host, port))
+	log.Fatal(http.Serve(ln, Handler()))
+}
+`, listen)
 }
 
 // writeRouteParamTypes declares the structs a route's path parameters arrive

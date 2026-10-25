@@ -17,7 +17,7 @@ import (
 // repository ships, not whatever GTK the host carries. Which classes and setter
 // links a system GIR records varies by GTK version -- CI runs an older one than
 // a typical development box -- so a test naming host vocabulary asserts GTK's
-// catalogue rather than this platform's behaviour, and fails on the wrong
+// catalog rather than this platform's behavior, and fails on the wrong
 // machine. The rules below are asserted over every entry of the fixture instead.
 func bundledGIR(t *testing.T) *gir.TypeRegistry {
 	t.Helper()
@@ -610,7 +610,8 @@ func TestWidgetSource_DeclaresConstructors(t *testing.T) {
 // Under the cgo option, each class with a single-widget adder is given an
 // append calling it, the
 // receiver cast to the class declaring the call, and a remove beside it where
-// GTK has one and the class holds more than one child.
+// GTK has one and the class holds more than one child. A box takes a child
+// through gtk4rt's BoxAppend on cgo too, which applies its alignItems.
 func TestWidgetSource_DeclaresChildOps(t *testing.T) {
 	reg, err := rulesGIR(t).gir()
 	if err != nil {
@@ -618,8 +619,7 @@ func TestWidgetSource_DeclaresChildOps(t *testing.T) {
 	}
 	src := string(widgetSource(reg, true))
 	for _, want := range []string{
-		"#[macro.cnative(\"gtk_box_append\")]\nfunc _gtk_box_append(parent _p_GtkBox, child _p_GtkWidget)\n",
-		"#[gen.protocol(append)]\nfunc _append_GtkBox(parent GtkBox, child ui.node) {\n    _gtk_box_append(_as_GtkBox(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))\n}\n",
+		"#[gen.protocol(append)]\nfunc _append_GtkBox(parent GtkBox, child ui.node) {\n    _rtBoxAppend(parent, child)\n}\n",
 		"#[gen.protocol(remove)]\nfunc _remove_GtkBox(parent GtkBox, child ui.node) {\n    _gtk_box_remove(_as_GtkBox(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))\n}\n",
 		// A replacing adder, and one a subclass inherits from its parent.
 		"func _append_GtkFrame(parent GtkFrame, child ui.node) {\n    _gtk_frame_set_child(_as_GtkFrame(_ptr_GtkFrame(parent)), _as_GtkWidget(_widget(child)))\n}\n",
@@ -633,6 +633,7 @@ func TestWidgetSource_DeclaresChildOps(t *testing.T) {
 		}
 	}
 	for _, deny := range []string{
+		"_gtk_box_append",   // a box's append is gtk4rt's
 		"_append_GtkLabel",  // GTK puts no child in a label
 		"_remove_GtkFrame",  // a frame's one child is replaced
 		"_remove_GtkButton", // nor a button's

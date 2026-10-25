@@ -85,7 +85,7 @@ func New(width, height int) *Context {
 // NewScaled creates a Context of pw x ph pixels that a drawing placed in a
 // w x h coordinate space is scaled into, per mode.
 //
-// The point of it is that the shapes are rasterised at the size they are shown
+// The point of it is that the shapes are rasterized at the size they are shown
 // rather than drawn small and resampled up: an edge lands where it lands
 // instead of being interpolated from where it landed at another size. mode is
 // the SNGL scalingMode -- "fit", "fill", "stretch", or "" for none.
@@ -144,7 +144,7 @@ func (s *Surface) Begin(pw, ph int, w, h float64, mode string) *Context {
 		return s.ctx
 	}
 	// Reused, so the last drawing is still in it. Zeroing the pixels is the
-	// clear -- gg's own fills with the current colour, which is a paint.
+	// clear -- gg's own fills with the current color, which is a paint.
 	if img, ok := s.ctx.dc.Image().(*image.RGBA); ok {
 		clear(img.Pix)
 	}

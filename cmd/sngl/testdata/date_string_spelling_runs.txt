@@ -43,7 +43,7 @@ func testSpelling(t Test, c main) {
     t.assert(string(c.dt) == "2024-03-05T09:30:00Z")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:ad6fa8279e0a080b211f7959761c21d6
+sha256:ac763710b505c0d6f2732089eb80ca51
 {
   "results": [
     {
@@ -53,7 +53,7 @@ sha256:ad6fa8279e0a080b211f7959761c21d6
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:749aff0f8763a0eb027ddcc9f7b03c1c
+sha256:177c9e1156dde475d82be67b482be85a
 {
   "results": [
     {
@@ -63,7 +63,7 @@ sha256:749aff0f8763a0eb027ddcc9f7b03c1c
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:7c7a3927d7f6664ee61a648edb6811de
+sha256:bdc86799bc5c7bbc6134b0b47c32dfb3
 {
   "results": [
     {

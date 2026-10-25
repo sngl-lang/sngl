@@ -29,6 +29,9 @@ ui.window #home(title="t") {
 package main
 
 import (
+	"fmt"
+	"log"
+	"net"
 	"net/http"
 )
 
@@ -45,7 +48,16 @@ func handleHome(__w http.ResponseWriter, _ *http.Request) {
 }
 
 func main() {
-	http.ListenAndServe(":8080", Handler())
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	host, port, _ := net.SplitHostPort(ln.Addr().String())
+	if ip := net.ParseIP(host); ip == nil || ip.IsUnspecified() {
+		host = "localhost"
+	}
+	fmt.Println("http://" + net.JoinHostPort(host, port))
+	log.Fatal(http.Serve(ln, Handler()))
 }
 -- run/go/html --
-pass sha256:81cea76648581c555aa770770d1c3b57
+pass sha256:06a49d3771dbcf89bf784455e2750680

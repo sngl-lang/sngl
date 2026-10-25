@@ -110,11 +110,14 @@ struct Arg {
 }
 
 // The Go setter method one value prop becomes: `Setter{prop="text",
-// call="SetText"}` emits `w.SetText(v)`. A prop with no Setter has no Fyne
-// surface to reach, so the assignment is dropped.
+// call="SetText"}` emits `w.SetText(v)`, and one naming a function in place
+// of a method, `fn`, emits `fn(w, v)` -- for a widget fyne gives no method,
+// a grid's column count. A prop with no Setter has no Fyne surface to reach,
+// so the assignment is dropped.
 struct Setter {
     prop    string
     call    string
+    fn      Native
     // current is the Go field holding what `call` writes, for a widget whose
     // setter fires its own change callback even for the value it holds:
     // the write is skipped then.
@@ -207,7 +210,7 @@ struct Look {
 //
 // #[intrinsic] is what makes these primitives rather than wrappers over one:
 // they carry no body, so the inliner leaves them in place, and the emitter
-// recognises them by the id rather than by their names.
+// recognizes them by the id rather than by their names.
 
 #[gen.renders(identity)]
 #[intrinsic("fyne:Widget")]
@@ -411,6 +414,16 @@ const component Hyperlink(style ui.Style = ui.Style{}) ui.node {
     ) {}
 }
 
+const component Separator(style ui.Style = ui.Style{}) ui.node {
+    Widget(
+        spec = Spec{
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewSeparator"},
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*Separator"},
+        },
+        look = lookOf(style),
+    ) {}
+}
+
 const component Spacer(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
@@ -455,6 +468,7 @@ const component Grid(columns int = 1, style ui.Style = ui.Style{}, children ...c
             args = [Arg{prop="number", raw="1"}],
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
+            setters = [Setter{prop="number", fn=Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="SetGridColumns"}}],
         },
         number = columns,
         look = lookOf(style),
@@ -480,7 +494,7 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
 // A vertical scroll reporting the end of its content coming within half a
 // viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports a scroll
 // and nothing about the content growing, which is what a handler adding a page
-// does.
+// does, so the scroll watches its content itself and posts what it sees.
 const component ReachScroll(style ui.Style = ui.Style{}, @reachEnd(), content ...component option[ui.node]) ui.node {
     Wrapper(
         spec = Spec{
@@ -624,7 +638,7 @@ const component ui.menu[platform](style) {
 // A table is a grid of labels a column per heading, the headings first and
 // then each row's cells, so a cell lines up under its heading. Fyne's own
 // Table reads its cells through callbacks a Spec cannot spell; the grid's
-// column count is a constructor argument, fixed where the table is built.
+// column count is a constructor argument, set again where the columns change.
 const component ui.table[platform](style, columns, rows) {
     Grid(columns=columns.length(), style=style) {
         for var col = columns {
@@ -652,8 +666,14 @@ const component ui.text[platform](value, style) {
     Label(text=value, style=style) {}
 }
 
+// A divider is Fyne's separator, a line; one with a caption is the caption.
+// A blank label stood for the line, a row of nothing.
 const component ui.divider[platform](style, label) {
-    Label(text=label, style=style) {}
+    if label == "" {
+        Separator(style=style)
+    } else {
+        Label(text=label, style=style) {}
+    }
 }
 
 const component ui.spinner[platform](label, style) {

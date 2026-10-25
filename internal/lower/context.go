@@ -1064,7 +1064,7 @@ func funcValueUnder(id *ir.Ident, fn *ir.Func, active map[*ir.Context]ir.Expr, p
 	return &ir.Lambda{Type: id.Type, Func: wrapper}
 }
 
-// testSetContext recognises `t.setContext(ctx, value)`, returning the context
+// testSetContext recognizes `t.setContext(ctx, value)`, returning the context
 // and the argument holding the value. The context argument names the context
 // rather than reading it, so it becomes the name: a read would outlive the
 // pass, and a test lowering needs only which context it was.

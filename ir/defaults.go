@@ -21,6 +21,8 @@ func ZeroExpr(t *Type) Expr {
 		return &Literal{Type: TypNull, Value: "null"}
 	case TypeList:
 		return &ListLit{Type: t, Elems: nil}
+	case TypeMap:
+		return &MapLitIR{Type: t}
 	case TypeStruct:
 		// date/time/datetime are string-representable stdlib structs (like
 		// color); their zero value is a canonical-form string literal rather

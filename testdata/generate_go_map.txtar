@@ -1,5 +1,5 @@
 Go codegen for `map[K, V]`: literal, index and method dispatch. The field is
-declared on the Model as map[string]int, New() initialises it from the map
+declared on the Model as map[string]int, New() initializes it from the map
 literal, and `scores.length()` dispatches to len(m.scores).
 
 `scores.get(key, default)` dispatches to an inline if-ok idiom wrapped in a
@@ -173,7 +173,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -185,7 +185,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -249,20 +249,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -399,7 +410,7 @@ func (m Model) View() tea.View {
 		var contentPart_2 string
 		contentPart_2 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(m.size__inst0)))
 		contentParts = append(contentParts, contentPart_2)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -415,4 +426,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:8738ea9587e1a0408b5dd974fa292a6d
+pass sha256:d1150b681558cfb42dc905ab296bf3c2

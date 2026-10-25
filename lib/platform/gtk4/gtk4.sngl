@@ -184,8 +184,10 @@ func setEntryText(e gtk.GtkEntry, text string)
 #[marks.intrinsic("gtk4.calendarDate")]
 func calendarDate(c gtk.GtkCalendar) option[time.date]
 
+// A text starts at the left of its box, as html's does: a GtkLabel centers
+// its words in whatever room it is given.
 const component ui.text[platform](value, style) {
-    gtk.GtkLabel(label=value, look=lookOf(style)) {}
+    gtk.GtkLabel(label=value, xalign=0.0, look=lookOf(style)) {}
 }
 
 const component ui.button[platform](text, style, @click) {
@@ -895,7 +897,7 @@ const component shapes.line[platform](x1, y1, x2, y2, style) {
 }
 
 // The corner is solved by `sngl:ui/draw`, which two targets need and neither
-// host has: cairo takes a centre and two angles where the command gives three
+// host has: cairo takes a center and two angles where the command gives three
 // points and a radius. What is left here is the cairo half -- the line in, the
 // arc, and the point the path is left at.
 func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.Point, r float) shapes.Point {
@@ -951,7 +953,7 @@ const component shapes.canvasText[platform](x, y, content, style) {
         e.ctx.save()
         // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
         // fontFamily nowhere before this, so a program's font choice was
-        // honoured on three targets and dropped here (#223).
+        // honored on three targets and dropped here (#223).
         e.ctx.selectFontFace(style.fontFamily, toFontSlant(0), toFontWeight(0))
         e.ctx.setFontSize(style.fontSize)
         source(e.ctx, style.fill)
@@ -968,7 +970,8 @@ const component shapes.canvasText[platform](x, y, content, style) {
 // source is a GtkPicture showing the texture its bytes or its drawing make --
 // a file the program carries, one fetched, or a picture a drawing paints --
 // and reports to the image whether it arrived. Appended to a window, it is the
-// window's icon.
+// window's icon. A width and a height in its style are its size, whatever its
+// picture's.
 #[marks.intrinsic("gtk4:Image")]
 component Image(
     fit     string,

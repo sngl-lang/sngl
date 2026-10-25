@@ -110,14 +110,14 @@ if about != null {
 The header needs only the species -- its artwork through `artwork`, its name
 and genus, its national number as `#001` -- but for its types, which wait for
 the Pokémon and are asked for by name (see [Languages](#languages)). A type
-is a `typeBadge`, a `ui.badge` in the type's own colour (`typeColors` in
+is a `typeBadge`, a `ui.badge` in the type's own color (`typeColors` in
 `names.sngl`), its name dark over the light types and white over the rest.
 Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves.
 
 **About** is the species' newest description in the reader's language on one
 line (the games
 break a description with newlines and form feeds where their text box did),
-the Pokémon's height and weight in metres and kilograms -- `unit length { m }`
+the Pokémon's height and weight in meters and kilograms -- `unit length { m }`
 and `unit mass { kg }`, since PokéAPI gives tenths of each -- its abilities with
 a hidden one marked, the species' habitat (which may be `null`), egg groups,
 gender ratio (from `gender_rate`, eighths female or -1 for none) and capture
@@ -192,7 +192,7 @@ if form != "" && mon != null && mon.forms.length() > 0 {
 }
 ```
 
-**Sprites** is a labelled gallery of the Pokémon's pictures, four to a row:
+**Sprites** is a labeled gallery of the Pokémon's pictures, four to a row:
 front and back, normal and shiny, female where it looks different (Pikachu
 does, Bulbasaur not, whose female pictures PokéAPI gives as `null`), its
 official artwork normal and shiny, and its Home picture, normal, shiny and
@@ -255,7 +255,7 @@ ui.select #languagePick(:value=language) {
         ui.choice(label=l.label)
     }
 }
-i18n.locale(localeLabelled(language)) {
+i18n.locale(localeLabeled(language)) {
     nav.stack #pages { … }
 }
 ```
@@ -338,7 +338,7 @@ The Moves select's labels are the app's own words, and the way chosen is
 PokéAPI's name for it: choosing a label maps it back by comparing it with the
 same `$"..."` labels (`methodNamed`), and an `effect` keyed on `i18n.locale`
 writes the label of the way shown again as the language changes
-(`methodLabelled`), so a language chosen while the tab shows the machine's
+(`methodLabeled`), so a language chosen while the tab shows the machine's
 moves still shows them, under "CT". Learn methods are therefore never asked
 for.
 
@@ -350,14 +350,14 @@ page's title off its route's declaration, so it is a constant.
 
 ## Where each target stands
 
-| target      | what runs                                                                                                                                     |
-|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `none`      | the interpreter, all of it                                                                                                                    |
-| `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages                                                                      |
-| `bubbletea` | all of it, a sprite as half-block cells; a row's columns and badges are written with no space between them, and the artwork leaves blank rows |
-| `fyne`      | all of it; a badge is its text alone, since Fyne paints no label's background, and a card's lines are not centred                             |
-| `gtk4`      | all of it, laid out by GTK alone: gtk4 reads no style but `flex`, so sizes, gaps, faces and colours are GTK's own                             |
-| `android`   | all of it; the manifest asks for `INTERNET` because the program fetches                                                                       |
+| target      | what runs                                                                                                                                                                                                                                         |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `none`      | the interpreter, all of it                                                                                                                                                                                                                        |
+| `html`      | a Go server (`--lang go`), `/pokemon/{name}` a route; tests run as pages; a card opens on Enter or Space as on a click, and not on a click its button took                                                                                        |
+| `bubbletea` | all of it, a sprite as half-block cells; a row's columns line up, its badges are spaced, and a box's `alignItems` centers its parts, so an evolution card's name sits under its picture; a test that waits sees a timer tick and a picture arrive |
+| `fyne`      | all of it; a badge is drawn on its color, a card's lines are centered, and a table's columns follow the list they are read from                                                                                                                   |
+| `gtk4`      | all of it, styled: sizes, gaps, padding, fonts, colors and rounded corners; a line starts at the left as on html, `alignItems` and `textAlign` place it, and a label given a width wraps inside it                                                |
+| `android`   | all of it; the manifest asks for `INTERNET` because the program fetches; a test that waits moves Compose's clock, so a timer ticks                                                                                                                |
 
 `--lang none` on html is refused where the detail page is written: a static
 site writes one document per page, and `/pokemon/{name}` is a pattern no file

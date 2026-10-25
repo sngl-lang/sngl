@@ -8138,7 +8138,7 @@ state3:
 //	# ── Types ─────────────────────────────────────────────────────────────────────
 //
 //	# A slot is an ordinary parameter whose type is a component type, so the type
-//	# carries the whole of a slot's contract: the parenthesised list is what the slot
+//	# carries the whole of a slot's contract: the parenthesized list is what the slot
 //	# is *invoked* with, the trailing Type is the tree it *accepts*, and an `...`
 //	# prefix is the count bound collecting the children a caller writes bare.
 //	#

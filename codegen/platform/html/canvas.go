@@ -151,7 +151,7 @@ func canvasWatchStmt(m *canvasutil.Meta) ir.Stmt {
 // The cache hangs off the function rather than sitting beside it as a `const`,
 // because only the function declaration is hoisted: a synthesized slot runs
 // its own render inline, above where these helpers are written, so a canvas
-// image inside one reached the map before the `const` initialised and threw.
+// image inside one reached the map before the `const` initialized and threw.
 // `snglCanvasHelper` is immune for the same reason this now is -- it is a
 // function declaration.
 const snglDrawImageHelper = `function _snglDrawImage(ctx,src,x,y,w,h){
@@ -171,7 +171,7 @@ const snglDrawImageHelper = `function _snglDrawImage(ctx,src,x,y,w,h){
 // backing store stretched by CSS -- resamples a small image up to a big one,
 // and a drawing of hard edges comes out soft. So the backing store is sized
 // to the box instead, at device resolution, and the shapes are scaled on the
-// way in: every edge is rasterised where it lands rather than interpolated
+// way in: every edge is rasterized where it lands rather than interpolated
 // from where it landed at another size.
 //
 // `center` keeps the backing store the author's, which is what a canvas that

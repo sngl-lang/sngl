@@ -1,5 +1,5 @@
 # A test drives a select on every target: `c.pick.change("Banana")` chooses
-# the choice labelled Banana, which the `:value` binding writes back and the
+# the choice labeled Banana, which the `:value` binding writes back and the
 # program's @change hears, once -- including where the choices are state that
 # arrives after the select is built, and through an instance.
 #
@@ -68,7 +68,7 @@ func testChangeReachesThroughAnInstance(t test.Test, c wrapped) {
     t.assert(c.inner.chosen == "Cherry")
 }
 -- testrun/android/kotlin/app.sngl/chooser/1 --
-sha256:e265891a7f961a82fdfab0e09c49e784
+sha256:227b8c561005b11fe9d96f2f7673803d
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:e265891a7f961a82fdfab0e09c49e784
   ]
 }
 -- testrun/android/kotlin/app.sngl/wrapped/1 --
-sha256:606e79709590756269c0dad27790ced5
+sha256:120c3854bdb938333358488d1b3b0d31
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:606e79709590756269c0dad27790ced5
   ]
 }
 -- testrun/bubbletea/go/app.sngl/chooser/1 --
-sha256:75df35c5f1131835287c009189b9eebf
+sha256:c5d008c1799042702d348b19093408b7
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:75df35c5f1131835287c009189b9eebf
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:d2ea708ae02140142e879edf5b0506d3
+sha256:646cc0241607d386f036a7853987d25b
 {
   "results": [
     {
@@ -108,7 +108,7 @@ sha256:d2ea708ae02140142e879edf5b0506d3
   ]
 }
 -- testrun/fyne/go/app.sngl/chooser/1 --
-sha256:f7435d50a2cd887a411797d7c7bf0b78
+sha256:5bf42a0ec3427ed96838940fa659e7de
 {
   "results": [
     {
@@ -118,7 +118,7 @@ sha256:f7435d50a2cd887a411797d7c7bf0b78
   ]
 }
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:2289b70c4e209745a9009fd65e93c50e
+sha256:95ed9c94cdb6d7ee156f0063841c9726
 {
   "results": [
     {
@@ -128,7 +128,7 @@ sha256:2289b70c4e209745a9009fd65e93c50e
   ]
 }
 -- testrun/gtk4/go/app.sngl/chooser/1 --
-sha256:e14b6fdd4be30b0229640f3218cff703
+sha256:adaa12fd281757f799d015cd3cab443c
 {
   "results": [
     {
@@ -138,7 +138,7 @@ sha256:e14b6fdd4be30b0229640f3218cff703
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:7267ecf94332bce3a79f0a633fa62491
+sha256:128a88128530928946ca7eb8fb0fa33e
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:7267ecf94332bce3a79f0a633fa62491
   ]
 }
 -- testrun/html/none/app.sngl/chooser/1 --
-sha256:8035462d2b491e416c893bc1d2747135
+sha256:0c949523970a1341d08bdaec4d05a764
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:8035462d2b491e416c893bc1d2747135
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:fa06ae03216fbd6bb2a204faa35b8a35
+sha256:445e232b86262bc688fb7aa134be06de
 {
   "results": [
     {

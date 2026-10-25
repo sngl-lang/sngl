@@ -1422,7 +1422,7 @@ type Param struct {
 	Default Expr // nil if no default
 	// Receiver marks the synthetic first parameter the checker prepends when
 	// desugaring a nested method (`func Type.m()`) or a bare component func
-	// into top-level form. Codegen/interp/lowering test this flag to recognise
+	// into top-level form. Codegen/interp/lowering test this flag to recognize
 	// the implicit receiver structurally, rather than matching its name.
 	Receiver bool
 	// Const is the `const` prefix: the argument is a compile-time value at

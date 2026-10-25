@@ -68,7 +68,7 @@ func testPlain(t test.Test, c plain) {
     t.assert(c.t.value == "x")
 }
 -- testrun/android/kotlin/app.sngl/greeting/1 --
-sha256:93f04ac1e8df8064d84d36c32de2a850
+sha256:fff22cba07e9e6c2739086c0cb8a0629
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:93f04ac1e8df8064d84d36c32de2a850
   ]
 }
 -- testrun/android/kotlin/app.sngl/plain/1 --
-sha256:5273e1dec2c3666c6781e7da9787aaea
+sha256:38c6e8935d3b866f8533399e86f4eab8
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:5273e1dec2c3666c6781e7da9787aaea
   ]
 }
 -- testrun/bubbletea/go/app.sngl/greeting/1 --
-sha256:9994a6f678bb6ffcbba7f5efb5ed9714
+sha256:0f1e575d722ae6e16b586b6c9e75293d
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:9994a6f678bb6ffcbba7f5efb5ed9714
   ]
 }
 -- testrun/bubbletea/go/app.sngl/plain/1 --
-sha256:b7f857d9a8c92e7dadc7cbc7a4de2f08
+sha256:dd9b6bdab8a1543059fe6b771120d2bd
 {
   "results": [
     {
@@ -108,7 +108,7 @@ sha256:b7f857d9a8c92e7dadc7cbc7a4de2f08
   ]
 }
 -- testrun/fyne/go/app.sngl/greeting/1 --
-sha256:9c6eb7e419b7e253527da21c449571b8
+sha256:13c047dd32c56b7684bc72dd1ea483b5
 {
   "results": [
     {
@@ -118,7 +118,7 @@ sha256:9c6eb7e419b7e253527da21c449571b8
   ]
 }
 -- testrun/fyne/go/app.sngl/plain/1 --
-sha256:6bcbd1ebce13f1bb185031238a690e9f
+sha256:6510846dd774216dfae06cc1660a7bbf
 {
   "results": [
     {
@@ -128,7 +128,7 @@ sha256:6bcbd1ebce13f1bb185031238a690e9f
   ]
 }
 -- testrun/gtk4/go/app.sngl/greeting/1 --
-sha256:f45383f6316eb4b6a8e432fdeba8e770
+sha256:8eee4e24c1b3ec63d6fc73c802aab4f4
 {
   "results": [
     {
@@ -138,7 +138,7 @@ sha256:f45383f6316eb4b6a8e432fdeba8e770
   ]
 }
 -- testrun/gtk4/go/app.sngl/plain/1 --
-sha256:57211c8775fc84ce5e9e73eca7b1daff
+sha256:3dec580416524130eab285cd779fd275
 {
   "results": [
     {
@@ -148,7 +148,7 @@ sha256:57211c8775fc84ce5e9e73eca7b1daff
   ]
 }
 -- testrun/html/none/app.sngl/greeting/1 --
-sha256:bd749beebbf7a8efd23dfa5862ac1c77
+sha256:026707675a1020809da47ff9cb47ca7a
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:bd749beebbf7a8efd23dfa5862ac1c77
   ]
 }
 -- testrun/html/none/app.sngl/plain/1 --
-sha256:b80cdd0d1ff647055a9ff0f973216711
+sha256:f412d85c193507484c6737d685add925
 {
   "results": [
     {

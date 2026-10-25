@@ -584,7 +584,7 @@ component RadioButton(
 // `label` is the floating caption, and it is a slot rather than a prop
 // because Compose takes content there, not text. An override that leaves it
 // empty gets no `label` argument at all, which is not the same widget as one
-// labelled with nothing.
+// labeled with nothing.
 #[gen.renders(identity)]
 #[kt.native("OutlinedTextField", "androidx.compose.material3.OutlinedTextField")]
 component OutlinedTextField(

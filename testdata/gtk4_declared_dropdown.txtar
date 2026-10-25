@@ -190,31 +190,6 @@ static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     g_date_time_unref(dt);
 }
 
-// The label a drop-down has selected, or "" where it has none.
-static const char *sngl_drop_down_label(GtkDropDown *d) {
-    gpointer item = gtk_drop_down_get_selected_item(d);
-    if (item == NULL || !GTK_IS_STRING_OBJECT(item)) return "";
-    return gtk_string_object_get_string(GTK_STRING_OBJECT(item));
-}
-
-// Selects the choice labelled label, as a click on it does; one no choice
-// carries selects nothing. The selection's handler may render the page the
-// drop-down is on afresh, which drops the drop-down while GTK is still
-// setting it, so it is held until the selection is done.
-static void sngl_drop_down_select(GtkDropDown *d, const char *label) {
-    GListModel *m = gtk_drop_down_get_model(d);
-    if (m == NULL || !GTK_IS_STRING_LIST(m)) return;
-    guint n = g_list_model_get_n_items(m);
-    for (guint i = 0; i < n; i++) {
-        if (strcmp(gtk_string_list_get_string(GTK_STRING_LIST(m), i), label) == 0) {
-            g_object_ref(d);
-            gtk_drop_down_set_selected(d, i);
-            g_object_unref(d);
-            return;
-        }
-    }
-}
-
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -516,7 +491,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) drop_notifySelected_handler() {
-	v := C.GoString(C.sngl_drop_down_label((*C.GtkDropDown)(unsafe.Pointer(m.drop))))
+	v := gtk4rt.DropDownLabel(gtk4rt.Handle(unsafe.Pointer(m.drop)))
 	if (v != "") && (v != m.pick) {
 		m.pick = v
 	}
@@ -597,11 +572,9 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 
-// dropChange selects the choice labelled v on the #drop widget; for tests.
+// dropChange selects the choice labeled v on the #drop widget; for tests.
 func (m *Model) dropChange(v string) {
-	__v := C.CString(v)
-	defer C.free(unsafe.Pointer(__v))
-	C.sngl_drop_down_select((*C.GtkDropDown)(unsafe.Pointer(m.drop)), __v)
+	gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(m.drop)), v)
 }
 -- run/go/gtk4 --
-pass sha256:dfa89b17f0b18b551a92df6f8c6efd33
+pass sha256:e2dae520609f1d3619231eea2e7b6663

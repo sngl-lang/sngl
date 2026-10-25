@@ -105,7 +105,7 @@ func TestShmCarriesTranslucentPixelsStraight(t *testing.T) {
 }
 
 func TestStraightRGBAKeepsInvisiblePixelsClear(t *testing.T) {
-	// Premultiplied by zero leaves no colour to divide back out, and dividing
+	// Premultiplied by zero leaves no color to divide back out, and dividing
 	// would be by zero.
 	img := image.NewRGBA(image.Rect(0, 0, 1, 2))
 	img.Pix[4], img.Pix[5], img.Pix[6], img.Pix[7] = 0x40, 0x40, 0x40, 0xff

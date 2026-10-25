@@ -213,7 +213,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -225,7 +225,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -289,20 +289,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -388,30 +399,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) showClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
-		__lt9 := "boxed full"
+		__lt10 := "boxed full"
 		var contentPart_1 string
-		contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt9))
+		contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		contentPart_2 = BoxLook(Style{}, true).Render(fmt.Sprint("inner"))
 		contentParts = append(contentParts, contentPart_2)
-		var __lt10 string
+		var __lt11 string
 		if !m.shown__inst0 {
-			__lt10 = "boxed empty"
+			__lt11 = "boxed empty"
 		} else {
-			__lt10 = "boxed full"
+			__lt11 = "boxed full"
 		}
 		var contentPart_5 string
-		contentPart_5 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
+		contentPart_5 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 		contentParts = append(contentParts, contentPart_5)
 		var contentPart_6 string
 		if m.shown__inst0 {
@@ -428,7 +441,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_7 = BoxLook(Style{}, true).Render(contentPart_7Prefix + " " + fmt.Sprint("show"))
 		contentParts = append(contentParts, contentPart_7)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -491,21 +504,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				if m.shown__inst0 {
+					__n2 := widget.NewLabel("")
+					__n2.SetText("shown")
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
+					m.__slot0 = append(m.__slot0, __n2)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			if m.shown__inst0 {
-				__n2 := widget.NewLabel("")
-				__n2.SetText("shown")
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
-				m.__slot0 = append(m.__slot0, __n2)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -649,21 +666,26 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				if m.shown__inst0 {
+					__n2 := gtk4rt.New("GtkLabel")
+					gtk4rt.LabelSetLabel(__n2, "shown")
+					gtk4rt.LabelSetXAlign(__n2, 0.0)
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
+					m.__slot0 = append(m.__slot0, __n2)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			if m.shown__inst0 {
-				__n2 := gtk4rt.New("GtkLabel")
-				gtk4rt.LabelSetLabel(__n2, "shown")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
-				m.__slot0 = append(m.__slot0, __n2)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -715,9 +737,11 @@ func (m *Model) buildWidgetTree() {
 	__lt15 := "boxed full"
 	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, __lt15)
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n4 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n4, "inner")
+	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
 	var __lt16 string
 	if !m.shown__inst0 {
@@ -727,6 +751,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, __lt16)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__renderSlot0(m.__n0)
 	m.show = gtk4rt.New("GtkButton")
@@ -842,32 +867,35 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.shown__inst0) {
-          let __n2 = document.createElement("span");
-          __n2.textContent = "shown";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.shown__inst0) {
+            let __n2 = document.createElement("span");
+            __n2.textContent = "shown";
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n2) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n2, __place0_i_ref0);
+            }
+            __slot0.push(__n2);
           }
-          if (__place0_i_ref0 === __n2) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n2, __place0_i_ref0);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot0.push(__n2);
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var $0 = document.getElementById("$0");
@@ -887,12 +915,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ee185c083bc73518168ec57123fcc086
+pass sha256:95c69a70a6380fe40fe904f6f0b75073
 -- run/go/fyne --
-pass sha256:fb23c690f0cbbcc8a8f5ca4f30802600
+pass sha256:18a994b569cc62fcfceffaa444cd148f
 -- run/go/gtk4 --
-pass sha256:83f70f5d14fb3cd0671f6786818e3727
+pass sha256:e26c4102e78203fcdadb1dde25864a4a
 -- run/kotlin/android --
 pass sha256:a360a74258f8a1864105f0ba433cf28c
 -- run/none/html --
-pass sha256:330e90112979a386f3af39fac1f45cf6
+pass sha256:419e46fb3f6d3d19b03db5bcae67b383

@@ -648,7 +648,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 
 // builtinOf returns the BuiltinKind of t's backing StructDef, or
 // BuiltinNone. The mark is stamped by the #[builtin] macro, so string-repr
-// and generic behaviour travel with the type rather than with a hardcoded name.
+// and generic behavior travel with the type rather than with a hardcoded name.
 func builtinOf(t *Type) BuiltinKind {
 	if t == nil {
 		return BuiltinNone
@@ -660,7 +660,7 @@ func builtinOf(t *Type) BuiltinKind {
 	return sd.Builtin
 }
 
-// IsColorStruct reports whether t is the color value type. A colour is a
+// IsColorStruct reports whether t is the color value type. A color is a
 // TypeStruct backed by its stdlib StructDef and marked #[builtin("color")];
 // call this to detect the shape.
 func IsColorStruct(t *Type) bool { return builtinOf(t) == BuiltinColor }

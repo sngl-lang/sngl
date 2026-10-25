@@ -1,7 +1,7 @@
 An event is usable where a function is expected, and it still emits.
 
 `tick` alone names nothing: an event is not a value, and `tick()` is an emit
-recognised in call position. So a component handing its own event to something
+recognized in call position. So a component handing its own event to something
 that takes a callback had to write `func() { tick() }`, which says the same
 thing twice and says it in a form the reader decodes before seeing that the
 callback *is* the event. html's timer override, whose mount is

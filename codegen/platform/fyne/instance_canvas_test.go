@@ -44,7 +44,7 @@ window {
 }
 
 // TestInstanceCanvasBelongsToTheRecord asserts a canvas inside a runtime
-// instance rasterises through the record that holds it, in both of the two
+// instance rasterizes through the record that holds it, in both of the two
 // widgets a canvas becomes: an unscaled one is a canvas.Image drawn once, a
 // scaled one a canvas.Raster whose generator draws at the size Fyne asks for.
 //

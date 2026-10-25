@@ -112,7 +112,7 @@ window {
     failing
 }
 -- testrun/android/kotlin/app.sngl/failing/1 --
-sha256:6f57d9fc476ee3f555660ec9201df917
+sha256:932cd75c64c4ce6abbc2ffca83f2ceee
 {
   "results": [
     {
@@ -122,7 +122,7 @@ sha256:6f57d9fc476ee3f555660ec9201df917
   ]
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:32284b645166dd18d5ba6d5c083dd213
+sha256:aa31aeed6570a0ee87670c6bcf8e8a6c
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:32284b645166dd18d5ba6d5c083dd213
   ]
 }
 -- testrun/bubbletea/go/app.sngl/failing/1 --
-sha256:8575756bd0c21fbdf7060f858ad04be9
+sha256:52088f111b71e2f0e07f1c3b7059fff2
 {
   "results": [
     {
@@ -142,7 +142,7 @@ sha256:8575756bd0c21fbdf7060f858ad04be9
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:88a41eca3db286b6e8614e369fdf61a7
+sha256:51df2100b76e04c6d3b401923c9c3184
 {
   "results": [
     {
@@ -152,7 +152,7 @@ sha256:88a41eca3db286b6e8614e369fdf61a7
   ]
 }
 -- testrun/fyne/go/app.sngl/failing/1 --
-sha256:1eb42fe9335c300803c79cc80348fcf2
+sha256:d448bd00811baf4019f6a757d31e51d1
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:1eb42fe9335c300803c79cc80348fcf2
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:8b029aaa33e016243670e151b65c78e8
+sha256:b79bcd170fe3af616cc25cec9078fb04
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:8b029aaa33e016243670e151b65c78e8
   ]
 }
 -- testrun/gtk4/go/app.sngl/failing/1 --
-sha256:01e053fd9e532b91362f0da1282548c8
+sha256:4e7af09f45bfc23a7b652e152d30125b
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:01e053fd9e532b91362f0da1282548c8
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:32fb65354dbaf444afdf75c87f1451bf
+sha256:8f12bbb0df54ef49fc691e747ee63375
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:32fb65354dbaf444afdf75c87f1451bf
   ]
 }
 -- testrun/html/none/app.sngl/failing/1 --
-sha256:14573bcc81c7fa64a02b9456a3c99a5a
+sha256:387167bcd7b4942b749e5eaaeea38396
 {
   "results": [
     {
@@ -202,7 +202,7 @@ sha256:14573bcc81c7fa64a02b9456a3c99a5a
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:ba4dc469edf9d0e924541f60d417b6a8
+sha256:c8110e045ea96032c342b161c6f3a568
 {
   "results": [
     {

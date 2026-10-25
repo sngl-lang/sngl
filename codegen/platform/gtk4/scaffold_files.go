@@ -49,13 +49,10 @@ func modelPreamble(d scaffoldData) string {
 		return ""
 	}
 	var b strings.Builder
-	b.Grow(len(cgoModelHead) + len(d.CLinks) + len(cgoPreamble) + len(cgoDropDown) + len(cgoSlotAnchor) + len(cgoEntryText) + len(cgoGObjectSet) + len(cgoCanvas) + len(cgoModelTail))
+	b.Grow(len(cgoModelHead) + len(d.CLinks) + len(cgoPreamble) + len(cgoSlotAnchor) + len(cgoEntryText) + len(cgoGObjectSet) + len(cgoCanvas) + len(cgoModelTail))
 	b.WriteString(cgoModelHead)
 	b.WriteString(d.CLinks)
 	b.WriteString(cgoPreamble)
-	if d.NeedsDropDown {
-		b.WriteString(cgoDropDown)
-	}
 	if d.NeedsSlotAnchor {
 		b.WriteString(cgoSlotAnchor)
 	}
@@ -297,35 +294,6 @@ static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
     g_date_time_unref(dt);
 }`
 
-// cgoDropDown is a select's drop-down, for gtk4's dropDownLabel and a test's
-// invoker; gtk4rt offers it its choices (gtk4rt.DropDownOffer).
-const cgoDropDown = `
-
-// The label a drop-down has selected, or "" where it has none.
-static const char *sngl_drop_down_label(GtkDropDown *d) {
-    gpointer item = gtk_drop_down_get_selected_item(d);
-    if (item == NULL || !GTK_IS_STRING_OBJECT(item)) return "";
-    return gtk_string_object_get_string(GTK_STRING_OBJECT(item));
-}
-
-// Selects the choice labelled label, as a click on it does; one no choice
-// carries selects nothing. The selection's handler may render the page the
-// drop-down is on afresh, which drops the drop-down while GTK is still
-// setting it, so it is held until the selection is done.
-static void sngl_drop_down_select(GtkDropDown *d, const char *label) {
-    GListModel *m = gtk_drop_down_get_model(d);
-    if (m == NULL || !GTK_IS_STRING_LIST(m)) return;
-    guint n = g_list_model_get_n_items(m);
-    for (guint i = 0; i < n; i++) {
-        if (strcmp(gtk_string_list_get_string(GTK_STRING_LIST(m), i), label) == 0) {
-            g_object_ref(d);
-            gtk_drop_down_set_selected(d, i);
-            g_object_unref(d);
-            return;
-        }
-    }
-}`
-
 const cgoSlotAnchor = `
 
 static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
@@ -335,14 +303,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     g_object_ref_sink(w);
     gtk_box_append(box, w);
     return w;
-}
-
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
 }
 
 static GtkBox *sngl_slot_box(GtkBox *b) {

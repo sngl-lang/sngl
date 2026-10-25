@@ -51,14 +51,14 @@ component counter ui.node {
     }
 }
 
-component labelled(label string) ui.node {
+component labeled(label string) ui.node {
     ui.text #lbl(value=label)
 }
 
 component pair ui.node {
     ui.vbox {
-        labelled #first(label="a")
-        labelled #second(label="b")
+        labeled #first(label="a")
+        labeled #second(label="b")
     }
 }
 
@@ -81,8 +81,8 @@ func testQualifiedChildCall(t test.Test, c pair) {
 
 component pair ui.node {
     ui.vbox {
-        w.labelled #a(label="a")
-        w.labelled #b(label="b")
+        w.labeled #a(label="a")
+        w.labeled #b(label="b")
     }
 }
 
@@ -100,7 +100,7 @@ component inner(label string) u.node {
     u.text #lbl(value=label)
 }
 
-component labelled(label string) u.node {
+component labeled(label string) u.node {
     inner #core(label=label)
 }
 -- sibling/main.sngl --
@@ -118,8 +118,8 @@ func testSiblingFileChild(t test.Test, c pair) {
 
 component pair ui.node {
     ui.vbox {
-        labelled #a(label="a")
-        labelled #b(label="b")
+        labeled #a(label="a")
+        labeled #b(label="b")
     }
 }
 
@@ -129,6 +129,6 @@ ui.window {
 -- sibling/other.sngl --
 import u "sngl:ui"
 
-component labelled(label string) u.node {
+component labeled(label string) u.node {
     u.text #lbl(value=label)
 }

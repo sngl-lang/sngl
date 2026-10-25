@@ -94,58 +94,61 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.show) {
-          let label__1 = document.createElement("span");
-          label__1.setAttribute("data-sngl-id", "label__1");
-          label__1.textContent = "node";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.show) {
+            let label__1 = document.createElement("span");
+            label__1.setAttribute("data-sngl-id", "label__1");
+            label__1.textContent = "node";
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === label__1) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(label__1, __place0_i_ref0);
+            }
+            __slot0.push(label__1);
+            let tag__1 = document.createElement("span");
+            tag__1.setAttribute("data-sngl-id", "tag__1");
+            tag__1.textContent = "inner";
+            let __place0_i_ref1 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref1 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref1 === tag__1) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(tag__1, __place0_i_ref1);
+            }
+            __slot0.push(tag__1);
+            let __n1 = document.createElement("span");
+            __n1.textContent = "reads " + tag__1.value;
+            let __place0_i_ref2 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref2 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref2 === __n1) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n1, __place0_i_ref2);
+            }
+            __slot0.push(__n1);
           }
-          if (__place0_i_ref0 === label__1) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(label__1, __place0_i_ref0);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot0.push(label__1);
-          let tag__1 = document.createElement("span");
-          tag__1.setAttribute("data-sngl-id", "tag__1");
-          tag__1.textContent = "inner";
-          let __place0_i_ref1 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref1 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref1 === tag__1) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(tag__1, __place0_i_ref1);
-          }
-          __slot0.push(tag__1);
-          let __n1 = document.createElement("span");
-          __n1.textContent = "reads " + tag__1.value;
-          let __place0_i_ref2 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref2 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref2 === __n1) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n1, __place0_i_ref2);
-          }
-          __slot0.push(__n1);
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
@@ -159,4 +162,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1e648b0a226c78416b4b57555b6a35d0
+pass sha256:d10422f76092771a6f838f6068dfc713

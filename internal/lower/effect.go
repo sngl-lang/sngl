@@ -1108,10 +1108,10 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 
 // colorAsync re-runs the async fixpoint over the functions this pass built.
 //
-// The checker coloured the program it was given; the settle chain did not exist
+// The checker colored the program it was given; the settle chain did not exist
 // then. A handler that awaits is lifted into __effectN_mount, which
 // __effectN_up calls, which the group settle calls, which the body and every
-// injected settle call -- and one link left uncoloured is an `await` in a
+// injected settle call -- and one link left uncolored is an `await` in a
 // function nothing marked async, which is text no bundler accepts.
 func (st *effectState) colorAsync() {
 	funcs := st.allOwnerFuncs()

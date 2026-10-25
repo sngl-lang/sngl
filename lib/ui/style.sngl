@@ -72,7 +72,7 @@ enum BorderStyle { none, solid, dashed, dotted, double }
 // `normal` is what every host does by default. `preWrap` is the one a flow of
 // rich text asks for: the characters an author wrote are literal -- two spaces
 // are two spaces and a newline ends the line -- and the text still wraps to
-// the width it is given. A host with no such notion honours the text as
+// the width it is given. A host with no such notion honors the text as
 // written already and has nothing to do here.
 enum WhiteSpace { normal, pre, preWrap, preLine, nowrap }
 

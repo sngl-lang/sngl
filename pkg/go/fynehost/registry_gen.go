@@ -40,5 +40,6 @@ func Ctors() map[string]any {
 		"fyne.io/fyne/v2/widget.NewLabel":                  widget.NewLabel,
 		"fyne.io/fyne/v2/widget.NewMultiLineEntry":         widget.NewMultiLineEntry,
 		"fyne.io/fyne/v2/widget.NewSelect":                 widget.NewSelect,
+		"fyne.io/fyne/v2/widget.NewSeparator":              widget.NewSeparator,
 	}
 }

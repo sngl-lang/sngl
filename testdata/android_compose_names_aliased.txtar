@@ -1,6 +1,6 @@
 Every Compose name the android screen writes reaches it through Name, the
 emitter's own spellings and the library's declarations alike: the Modifier
-chain a Style builds, a Row's vertical alignment, a link's colour, a dialog's
+chain a Style builds, a Row's vertical alignment, a link's color, a dialog's
 shape. So a program may declare what those names are spelled as -- a
 component `modifier`, a struct `alignment` -- and keep its names, the
 imports aliased around them, where the platform used to reserve each and
@@ -9,7 +9,7 @@ rename the program's declaration.
 What `chain` and `args` wrote as Kotlin text are declarations now: `then`
 takes Modifier values a program builds from `#[kt.native]` calls, and a value
 SNGL had no way to write -- `Alignment.CenterVertically`, a `MaterialTheme`
-colour or shape -- is a host const a typed prop takes.
+color or shape -- is a host const a typed prop takes.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `__r\d` -- nothing the program declares is renamed
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `^import androidx\.compose\.ui\.Modifier$` -- the program's Modifier owns the simple name

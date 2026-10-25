@@ -67,7 +67,7 @@ func TestAcquireBuildToken_ReleasesForReuse(t *testing.T) {
 }
 
 // A caller that gives up waiting must say so rather than block forever.
-func TestAcquireBuildToken_HonoursContext(t *testing.T) {
+func TestAcquireBuildToken_HonorsContext(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	buildTokenSlots = syncOnceInt(func() int { return 1 })
 

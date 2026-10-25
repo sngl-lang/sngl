@@ -14,7 +14,7 @@
 # true. Before the fix that run reports four failures and the other two pass,
 # which is the whole point of asking three backends the same question.
 #
-# `cancelled` is the case that separates two right-looking implementations: its
+# `canceled` is the case that separates two right-looking implementations: its
 # em was added and subtracted away, so the interpreter's map holds no em key at
 # all where the JS and Go records hold a zero. A base absent on one side and
 # present-but-zero on the other has to compare equal, and a comparison written
@@ -52,13 +52,13 @@ component main ui.node {
     var b ui.measurement = 3px
     var wide ui.measurement = 3px + 2em
     var wider ui.measurement = 3px + 5em
-    var cancelled ui.measurement = 3px + 2em - 2em
+    var canceled ui.measurement = 3px + 2em - 2em
 
     var sameIsEqual = false
     var sameIsNotUnequal = true
     var oneBaseApartIsUnequal = false
     var oneBaseApartIsNotEqual = true
-    var cancelledMatchesPlain = false
+    var canceledMatchesPlain = false
     var wideDiffersFromPlain = false
 
     effect(@mount {
@@ -66,7 +66,7 @@ component main ui.node {
         sameIsNotUnequal = a != b
         oneBaseApartIsUnequal = wide != wider
         oneBaseApartIsNotEqual = wide == wider
-        cancelledMatchesPlain = cancelled == a
+        canceledMatchesPlain = canceled == a
         wideDiffersFromPlain = wide != a
     })
 
@@ -87,10 +87,10 @@ func testValuesDifferingInOneBaseCompareUnequal(t Test, c main) {
     t.assert(!c.oneBaseApartIsNotEqual)
 }
 
-// A base that cancelled to zero is the same value as one never written, so a
+// A base that canceled to zero is the same value as one never written, so a
 // record carrying a zero em equals one carrying no em at all.
-func testACancelledBaseEqualsAnAbsentOne(t Test, c main) {
-    t.assert(c.cancelledMatchesPlain)
+func testACanceledBaseEqualsAnAbsentOne(t Test, c main) {
+    t.assert(c.canceledMatchesPlain)
     t.assert(c.wideDiffersFromPlain)
 }
 
@@ -98,11 +98,11 @@ ui.window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:5cd5804257a0d95f2c26ba02e94f6c63
+sha256:38720a129c437c605700ede3379efe50
 {
   "results": [
     {
-      "Desc": "ACancelledBaseEqualsAnAbsentOne",
+      "Desc": "ACanceledBaseEqualsAnAbsentOne",
       "Passed": true
     },
     {
@@ -116,11 +116,11 @@ sha256:5cd5804257a0d95f2c26ba02e94f6c63
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:47737bc834fd868001315153235b9e7c
+sha256:091e304118fac4a877eb8ec50eeb2658
 {
   "results": [
     {
-      "Desc": "ACancelledBaseEqualsAnAbsentOne",
+      "Desc": "ACanceledBaseEqualsAnAbsentOne",
       "Passed": true
     },
     {

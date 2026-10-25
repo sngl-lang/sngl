@@ -5,7 +5,7 @@ import "sngl:platform/bubbletea"
 // A component-body func is a method, and every route to one resolves the
 // receiver as a bare name -- so an override written through a qualified alias
 // has nowhere to attach a helper. Refused where the helper is written, rather
-// than reported as the unknown type "circle" that the synthesised receiver
+// than reported as the unknown type "circle" that the synthesized receiver
 // used to produce: that named a type the author had not written.
 //
 // The var is the counterpart: state in a qualified override is unaffected,

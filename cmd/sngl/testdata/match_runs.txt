@@ -170,7 +170,7 @@ window {
     panel
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:99f7a497a798bde052761c7dc6ce0f5d
+sha256:17e6b352cd8967ba97a88defcda3979d
 {
   "results": [
     {
@@ -180,7 +180,7 @@ sha256:99f7a497a798bde052761c7dc6ce0f5d
   ]
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:02cb2692fd393ad8dd962d9ebbf10ac5
+sha256:0c42b6b3a9f253f01742121cecd7cbcc
 {
   "results": [
     {
@@ -206,7 +206,7 @@ sha256:02cb2692fd393ad8dd962d9ebbf10ac5
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:0bd71e9fd9471a778a91158d5436ead8
+sha256:294d1c6dc5c35419221bd7b890bd562d
 {
   "results": [
     {
@@ -216,7 +216,7 @@ sha256:0bd71e9fd9471a778a91158d5436ead8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:58899b161d29432684899e5fa3db9056
+sha256:be590c9e9a72c9cf760dd56967a372e6
 {
   "results": [
     {
@@ -242,7 +242,7 @@ sha256:58899b161d29432684899e5fa3db9056
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:671a53cc9e57ac86ab7f6a3dfc9d926c
+sha256:26507510e5f4ebebfc1ab2f284b28771
 {
   "results": [
     {
@@ -252,7 +252,7 @@ sha256:671a53cc9e57ac86ab7f6a3dfc9d926c
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:6bcf638f51719fd4ec89f1842ccb9088
+sha256:01bd7dd6291611115ab4f528df06f6b7
 {
   "results": [
     {
@@ -278,7 +278,7 @@ sha256:6bcf638f51719fd4ec89f1842ccb9088
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:c16e61bf454745ccd5aaedaa5d55f559
+sha256:a238f83d64da2322a00757882f58db1e
 {
   "results": [
     {
@@ -288,7 +288,7 @@ sha256:c16e61bf454745ccd5aaedaa5d55f559
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:9cf51e3f52f41db30309d20106c7f146
+sha256:b62e4db020134fc9b52e5c0d906a5b02
 {
   "results": [
     {
@@ -314,7 +314,7 @@ sha256:9cf51e3f52f41db30309d20106c7f146
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:b82268d23bc96c5b2e9cc78e6d602d55
+sha256:eb0b0a38396d2b37b1d7b0278989de13
 {
   "results": [
     {
@@ -324,7 +324,7 @@ sha256:b82268d23bc96c5b2e9cc78e6d602d55
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:afae5a4d8e8ede63d5262ee9f7f3c6cd
+sha256:3adf06ef59407334a2a7781de0b58da5
 {
   "results": [
     {

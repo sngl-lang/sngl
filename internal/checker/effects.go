@@ -198,6 +198,7 @@ func callIsFallible(call *ir.Call) bool {
 // against the current scope. Nested errorBoundaries push their handler.
 func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 	for _, s := range stmts {
+		resolveRenderExprs(s, scope)
 		// A boundary is the one transparent statement that is not: it pushes
 		// its handler onto the scope, which is the whole of what it does. The
 		// fallback is under that handler too -- passBoundaryFailed lowers it to
@@ -240,6 +241,32 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 			resolveCall(x.Call, scope, false)
 		}
 	}
+}
+
+// resolveRenderExprs resolves the calls a view statement's own expressions
+// make -- a prop's value, a loop's list, a condition -- against the handlers
+// around it. A raise there is the render's: it reaches the boundary around
+// what rendered, whatever write asked for the render, and the render goes on
+// (ErrorRender). With no handler in this component it names none, for lower's
+// passErrorScope or the interpreter to resolve against the tree the instance
+// renders in.
+// The statements it holds are walkVisualErrors' to visit, and a lambda or a
+// handler runs where it is called, not where it renders.
+//
+// Unresolved, such a raise was caught by no target: it panicked a Go build,
+// went uncaught on a page, and the interpreter dropped it.
+func resolveRenderExprs(s ir.Stmt, scope []*ir.EventHandler) {
+	ir.RenderCalls(s, func(c *ir.Call) {
+		// A `fails` native's error result is its own story: a view reads one
+		// through the result it declares.
+		if c.ErrorMode != ir.ErrorNone || c.ErrorHandler != nil || c.Func == nil || c.Func.HasErrorReturn || !callIsFallible(c) {
+			return
+		}
+		c.ErrorMode = ir.ErrorRender
+		if len(scope) > 0 {
+			c.ResolvedHandler = scope[0]
+		}
+	})
 }
 
 // resolveHandlerBody resolves the calls in one handler body against the

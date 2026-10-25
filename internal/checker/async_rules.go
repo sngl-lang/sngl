@@ -30,7 +30,7 @@ import (
 //     async call, handed to a parameter of a native or an intrinsic whose
 //     result the host uses (refuseAsyncIntoHostCallbacks). Anywhere else an
 //     async function may go wherever a function may: a func-typed slot is
-//     coloured by what flows into it (colorAsyncSlots), and a call through it
+//     colored by what flows into it (colorAsyncSlots), and a call through it
 //     waits.
 func (c *checker) checkAsyncRules() {
 	pkg := c.pkg

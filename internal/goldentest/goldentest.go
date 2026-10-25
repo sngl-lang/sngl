@@ -69,7 +69,7 @@
 //     a program: `sngl test`'s own reporting, `sngl build`'s artifacts, the
 //     `--skip-platform` flag. The *generated code* being compiled is no longer
 //     a reason to stay — that is what the record above is — but the CLI's
-//     behaviour around it still is.
+//     behavior around it still is.
 //   - A fixture whose imports reach outside the archive. A `go:` or `c:`
 //     import is resolved by shelling out to the host toolchain against the
 //     working directory, and this harness has an fstest.MapFS and no

@@ -7,6 +7,7 @@ The population is read by lower.DataFamilies before the first optimize, into
 the select's `options` prop; the overrides map the records to their labels.
 
 deny * `__list\d+` -- a prop's map is an expression, not a hoisted accumulator
+deny out/go/gtk4/model.go `sngl_drop_down_\w+` -- gtk4's drop-down C is gtk4rt's alone, in cgo mode too
 -- app.sngl --
 import ui "sngl:ui"
 
@@ -162,13 +163,13 @@ func (m *Model) resizeWidgets() {
 	m.widget0.SetSize(tui.WidgetWidth(m.width), tui.WidgetHeight(m.height))
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
 }
@@ -214,7 +215,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -226,7 +227,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -279,20 +280,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt7)
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 8))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusNext() {
@@ -900,7 +912,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 
-// dropChange selects the choice labelled v on the #drop widget; for tests.
+// dropChange selects the choice labeled v on the #drop widget; for tests.
 func (m *Model) dropChange(v string) {
 	gtk4rt.DropDownSelect(m.drop, v)
 }
@@ -1095,54 +1107,57 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const opt of [{ label: "None" }, ...state.fruits.map((f) => ({ label: f }))]) {
-          let __n2 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n2 = __inst1_live[__inst1_i];
-            __n2.__set___p0(opt);
-            __n2.__set___p1(state.pick);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const opt of [{ label: "None" }, ...state.fruits.map((f) => ({ label: f }))]) {
+            let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n2 = __inst1_live[__inst1_i];
+              __n2.__set___p0(opt);
+              __n2.__set___p1(state.pick);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n2__new = __cf___child0({ __p0: opt, __p1: state.pick });
+              __n2 = __n2__new;
             }
-            let __n2__new = __cf___child0({ __p0: opt, __p1: state.pick });
-            __n2 = __n2__new;
+            __inst1_next.push(__n2);
+            __inst1_i = __inst1_i + 1;
+            let __n2__el = __n2.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n2__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n2__el, __place0_i_ref0);
+            }
+            __slot0.push(__n2__el);
           }
-          __inst1_next.push(__n2);
-          __inst1_i = __inst1_i + 1;
-          let __n2__el = __n2.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n2__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n2__el, __place0_i_ref0);
-          }
-          __slot0.push(__n2__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var $1 = document.getElementById("$1");
@@ -1166,12 +1181,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ad79957662d05cc808713754131f0d5f
+pass sha256:616fe3d5b3fba19a308049cdd3c001d5
 -- run/go/fyne --
 pass sha256:b5aa80684dbe5059c7b08f51ef9e5306
 -- run/go/gtk4 --
-pass sha256:cb25d6c1387cea680a4a0441ec7b10ed
+pass sha256:aa77f5ff0ca7f9c7a9f5fc8db0758fde
 -- run/kotlin/android --
 pass sha256:9158ece4b97314c15f0fe303536b2b7f
 -- run/none/html --
-pass sha256:8fbc588d0e0f03a0f5ab478f79f50e00
+pass sha256:c32d0491d0354c8065ddcb0f522ed0f2

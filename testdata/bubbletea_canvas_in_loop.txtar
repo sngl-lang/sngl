@@ -7,7 +7,7 @@ spliced component's cell is read through -- which no method can see, so the Go
 did not compile (`undefined: s`, `undefined: __copy0`).
 
 A loop canvas's drawing is written inline where the iteration binds them, as
-the rasteriser closure handed to tui. Each copy gets a surface of its own and a
+the rasterizer closure handed to tui. Each copy gets a surface of its own and a
 kitty image ID of its own, the canvas's in the low bits and the copy's ordinal
 above them; the transmit walks the view the way View does to reach every copy.
 codegen/platform/bubbletea/canvas_loop_run_test.go runs it.
@@ -208,33 +208,33 @@ func (m Model) __canvasTransmit() tea.Cmd {
 			ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
 			ctx.Save()
 			ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-			var __lt10 float64
+			var __lt11 float64
 			if func() bool {
 				if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
 				return false
 			}() {
-				__lt10 = (s * 2.0)
+				__lt11 = (s * 2.0)
 			} else {
-				__lt10 = s
+				__lt11 = s
 			}
-			ctx.Circle(8.0, 8.0, __lt10)
+			ctx.Circle(8.0, 8.0, __lt11)
 			ctx.Restore()
 			return ctx.Result()
 		}
 		__ctb.WriteString(tui.KittyTransmit(16, 8, 1|(__canvasAt0+1)<<16, __canvasRaster0))
-		var __lt10 float64
-		_ = __lt10
+		var __lt11 float64
+		_ = __lt11
 		if func() bool {
 			if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
 				return __v
 			}
 			return false
 		}() {
-			__lt10 = (s * 2.0)
+			__lt11 = (s * 2.0)
 		} else {
-			__lt10 = s
+			__lt11 = s
 		}
 	}
 	if __ctb.Len() == 0 {
@@ -243,13 +243,13 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
 }
@@ -303,7 +303,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -315,7 +315,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCapFunc(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCapFunc(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -368,20 +368,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt7)
 }
 
-func LineCapFunc(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 8))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __effect0_enter() {
@@ -590,18 +601,18 @@ func (m Model) View() tea.View {
 				ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
 				ctx.Save()
 				ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-				var __lt10 float64
+				var __lt11 float64
 				if func() bool {
 					if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
 					}
 					return false
 				}() {
-					__lt10 = (s * 2.0)
+					__lt11 = (s * 2.0)
 				} else {
-					__lt10 = s
+					__lt11 = s
 				}
-				ctx.Circle(8.0, 8.0, __lt10)
+				ctx.Circle(8.0, 8.0, __lt11)
 				ctx.Restore()
 				return ctx.Result()
 			}
@@ -620,7 +631,7 @@ func (m Model) View() tea.View {
 			part0_0Item = BoxLook(Style{}, true).Render(part0_0Item)
 			part0_0Items = append(part0_0Items, part0_0Item)
 		}
-		part0_0 = strings.Join(part0_0Items, "\n")
+		part0_0 = tui.Spaced(false, lipgloss.Left, 0, part0_0Items...)
 		if part0_0 != "" {
 			part0Children = append(part0Children, part0_0)
 		}
@@ -733,53 +744,56 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const s of state.sizes) {
-          let __n1 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n1 = __inst1_live[__inst1_i];
-            __n1.__set_r(s);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const s of state.sizes) {
+            let __n1 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n1 = __inst1_live[__inst1_i];
+              __n1.__set_r(s);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n1__new = __cf_Dot({ r: s });
+              __n1 = __n1__new;
             }
-            let __n1__new = __cf_Dot({ r: s });
-            __n1 = __n1__new;
+            __inst1_next.push(__n1);
+            __inst1_i = __inst1_i + 1;
+            let __n1__el = __n1.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n1__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n1__el, __place0_i_ref0);
+            }
+            __slot0.push(__n1__el);
           }
-          __inst1_next.push(__n1);
-          __inst1_i = __inst1_i + 1;
-          let __n1__el = __n1.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n1__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n1__el, __place0_i_ref0);
-          }
-          __slot0.push(__n1__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
@@ -827,6 +841,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:022ba0f7b9231cc7b7da967d4a77648a
+pass sha256:177d81889a192e1839b82e631b998762
 -- run/none/html --
-pass sha256:991f7987c4a4bcdb31561e6c92646953
+pass sha256:09aed8a4bbaab700a6aee78f4a177cde

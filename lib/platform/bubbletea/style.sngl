@@ -58,6 +58,14 @@ const func cellsOf(m ui.measurement) int {
     return px <= 0.0 ? 0 : int.max(1, int(px) / 8)
 }
 
+// A length down the screen, in rows: a cell is twice as tall as it is wide
+// (tui.Picture draws two pixels to one), so a row is 16px. A 192px image was
+// 24 rows around a picture of 12, and a column's 16px gap two blank lines.
+const func rowsOf(m ui.measurement) int {
+    var px = m.px + 16.0 * (m.em + m.rem)
+    return px <= 0.0 ? 0 : int.max(1, int(px) / 16)
+}
+
 // One side of a margin or a padding: its own field, else its axis's, else the
 // whole box's, as CSS reads them.
 const func side(all ui.measurement, axis ui.measurement, own ui.measurement) int {
@@ -137,14 +145,14 @@ const func boxLook(s ui.Style, words bool) Look {
         l = l.width(cellsOf(s.width))
     }
     if s.height != unset.height {
-        l = l.height(cellsOf(s.height))
+        l = l.height(rowsOf(s.height))
     }
     if s.maxWidth != unset.maxWidth {
         l = l.maxWidth(cellsOf(s.maxWidth))
     }
     if s.maxHeight != unset.maxHeight || s.maxLines != 0 {
         // maxLines counts the text, and lipgloss caps the box with its frame.
-        l = l.maxHeight(lineCap(cellsOf(s.maxHeight), s.maxLines == 0 ? 0 : s.maxLines + l.verticalFrame()))
+        l = l.maxHeight(lineCap(rowsOf(s.maxHeight), s.maxLines == 0 ? 0 : s.maxLines + l.verticalFrame()))
     }
     return l
 }

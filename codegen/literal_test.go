@@ -32,7 +32,7 @@ func TestIRLiteralStringReturnsTheValueAsWritten(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got, ok := IRLiteralString(&ir.Literal{Type: ir.TypString, Value: tc.raw})
 			if !ok {
-				t.Fatalf("not recognised as a string literal")
+				t.Fatalf("not recognized as a string literal")
 			}
 			if got != tc.raw {
 				t.Errorf("got %q, want %q", got, tc.raw)

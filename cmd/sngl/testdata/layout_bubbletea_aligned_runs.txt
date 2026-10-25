@@ -1,0 +1,65 @@
+# A box's alignItems on bubbletea: a card's lines centered in its width, a
+# row's short part centered down its tall one.
+#
+# bubbletea joined a column at its left and a row at its top whatever the
+# style said, so a card's name sat at the card's left edge and the label
+# beside a two-line block sat on its first line. The snapshot is the screen
+# as text.
+#
+# Confirmed against the codegen before: `fig` at the start of its line and
+# `beside` on the line of `one`.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+# The card is 14 columns wide: `fig` sits 5 in, and `a long name` 1 in.
+grep '(?m)^ {5}fig {6}$' app.sngl.snapshots/cards.ansi
+grep '(?m)^ a long name {2}$' app.sngl.snapshots/cards.ansi
+# `beside` is on the middle line of the three beside it.
+grep '(?m)^one +$' app.sngl.snapshots/cards.ansi
+grep '(?m)^two +beside *$' app.sngl.snapshots/cards.ansi
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+output { go { bubbletea } }
+
+component cards ui.node {
+    ui.vbox(style={gap=16px}) {
+        ui.vbox(style={alignItems=center, width=112px}) {
+            ui.text(value="fig")
+            ui.text(value="a long name")
+        }
+        ui.hbox(style={alignItems=center, gap=8px}) {
+            ui.vbox {
+                ui.text(value="one")
+                ui.text(value="two")
+                ui.text(value="three")
+            }
+            ui.text(value="beside")
+        }
+    }
+}
+
+func testCards(t test.Test, c cards) {
+    t.snapshot("cards")
+}
+
+ui.window {
+    cards
+}
+-- testrun/bubbletea/go/app.sngl/cards/1 --
+sha256:395d0f6da9100570f7a510780b8eef87
+{
+  "results": [
+    {
+      "Desc": "Cards",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "cards.ansi": "ICAgICBmaWcgICAgICAKIGEgbG9uZyBuYW1lICAKICAgICAgICAgICAgICAKb25lICAgICAgICAgICAKdHdvICAgYmVzaWRlICAKdGhyZWUgICAgICAgICA="
+  }
+}

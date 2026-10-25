@@ -187,7 +187,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -199,7 +199,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -263,20 +263,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -377,7 +388,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("Hide"))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -451,6 +462,6 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:99eaf8eff335087fb666cbd73d114434
+pass sha256:aa8fb0eee05d8bbacbd9a65008db15d9
 -- run/kotlin/android --
 pass sha256:9283dd9339874c55b885741b97b053df

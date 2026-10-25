@@ -2167,7 +2167,7 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 		}
 	case IDENT:
 		// true, false and null are declarations in sngl:builtin, not names
-		// the parser knows. Recognising them here made them unshadowable and
+		// the parser knows. Recognizing them here made them unshadowable and
 		// put three names in the grammar that the language does not reserve.
 		return &ast.IdentExpr{Pos: ast.Pos(pos), Name: tok.Literal}
 	}

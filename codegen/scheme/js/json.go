@@ -11,7 +11,7 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// loadJSON reads a .json file and synthesises a SNGL IR var named after
+// loadJSON reads a .json file and synthesizes a SNGL IR var named after
 // the file's basename, typed as a struct (object), list, or primitive
 // matching the JSON shape. abs is the resolved virtual path (used in
 // diagnostics + ast.Pos); rel is the io/fs.FS path used for reading.

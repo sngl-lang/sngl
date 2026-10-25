@@ -54,8 +54,6 @@ Known gaps, each refused or documented where it bites:
   member's handlers and a member holding children in code mode.
 - Emitter layers of `@run` (a family adding its own process start) do not
   exist; `none` and bubbletea do not declare `@run`.
-- html route mode under `--lang go`: `sngl run` serves the static files
-  rather than running the server.
 - bubbletea splices a stateful component in a page, or a window under an `if`,
   into the Model, so its state survives the page being left.
 - A handle read above its node has what the node's props bind, not what its

@@ -19,7 +19,7 @@ import (
 //
 // The rows are component instances, which is where the saving currently is: an
 // instance and the node it renders as are retained across the render, so the
-// cursor can recognise them. A plain node is still built fresh each time, so
+// cursor can recognize them. A plain node is still built fresh each time, so
 // nothing about it matches and it is placed like a new one -- reusing those is
 // a separate piece of work, and this test would report it arriving.
 //

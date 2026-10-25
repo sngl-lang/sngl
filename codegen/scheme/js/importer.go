@@ -53,7 +53,7 @@ const Scheme = "js"
 func (j *JSImporter) Scheme() string { return Scheme }
 
 // Resolve provides the legacy OS-rooted path. New callers should prefer
-// ResolveFS so behaviour is identical between CLI and playground.
+// ResolveFS so behavior is identical between CLI and playground.
 func (j *JSImporter) Resolve(uri, dir string) (*ir.NativeImport, error) {
 	return j.ResolveFS(uri, os.DirFS(dir), dir)
 }

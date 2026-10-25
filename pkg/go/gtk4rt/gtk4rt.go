@@ -54,7 +54,7 @@ static void sngl_gtk_idle_add(int idx) {
 }
 
 // G_SOURCE_CONTINUE where the idle trampoline returns G_SOURCE_REMOVE: a timer
-// is the same dispatch wired to a source that stays armed. Cancelling is
+// is the same dispatch wired to a source that stays armed. Canceling is
 // g_source_remove on the id this returns.
 static gboolean sngl_timeout_tramp(gpointer data) {
     snglRtDispatch(GPOINTER_TO_INT(data));
@@ -161,7 +161,7 @@ static const char *sngl_drop_down_label(GtkDropDown *d) {
     return gtk_string_object_get_string(GTK_STRING_OBJECT(item));
 }
 
-// Selects the choice labelled label, as a click on it does; one no choice
+// Selects the choice labeled label, as a click on it does; one no choice
 // carries selects nothing. The selection's handler may render the page the
 // drop-down is on afresh, which drops the drop-down while GTK is still
 // setting it, so it is held until the selection is done.
@@ -197,7 +197,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 extern void snglRtActivate(GtkApplication* app, gpointer data);
 
 // sngl_snapshot wraps the target widget in a GdkPaintable, snapshots it into a
-// render node, and rasterises via the cairo GSK renderer (no GdkSurface
+// render node, and rasterizes via the cairo GSK renderer (no GdkSurface
 // needed). Writes a PNG to path; returns 0 on success, non-zero on failure.
 static int sngl_snapshot(GtkWidget *widget, int width, int height, const char *path) {
     if (widget == NULL) return 1;
@@ -555,7 +555,7 @@ func DropDownOffer(dropDown Handle, labels, chosen string) {
 	C.sngl_drop_down_offer((*C.GtkDropDown)(p(dropDown)), l, c)
 }
 
-// DropDownSelect selects the choice labelled label on a GtkDropDown, as a
+// DropDownSelect selects the choice labeled label on a GtkDropDown, as a
 // click on it does; one no choice carries selects nothing.
 func DropDownSelect(dropDown Handle, label string) {
 	c, free := cstr(label)
@@ -605,7 +605,15 @@ func ScrolledWindowNew() Handle {
 	return Handle(unsafe.Pointer(C.gtk_scrolled_window_new()))
 }
 
+// ScrolledWindowSetChild sets sw's child. Content a scroll ScrollNew made
+// already holds is in its probe, whose parent the content's is, so a render
+// slot asking whether the scroll holds its box by the box's parent set it
+// again, and GTK refused a child that has a parent with a CRITICAL per render
+// (cmd/sngl/testdata/render_slot_container_runs.txt).
 func ScrolledWindowSetChild(sw, child Handle) {
+	if child != nil && scrollHolds(sw, child) {
+		return
+	}
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(p(sw)), widget(child))
 }
 
@@ -662,7 +670,7 @@ type Schedule struct {
 }
 
 // Every schedules fn on the GLib main loop every ms milliseconds until the
-// returned schedule is cancelled. A period of zero or less arms nothing and
+// returned schedule is canceled. A period of zero or less arms nothing and
 // answers nil, which Cancel accepts.
 func Every(ms int, fn func()) *Schedule {
 	if ms <= 0 {
@@ -833,7 +841,7 @@ func WindowHide(win Handle) {
 func Args() []string { return os.Args[1:] }
 
 // Init initializes GTK. It is idempotent (gtk_init may be called repeatedly)
-// and is used by the test-agent harness to materialise widgets outside a
+// and is used by the test-agent harness to materialize widgets outside a
 // running application (e.g. to fire event invokers against real GTK objects).
 func Init() { C.gtk_init() }
 
@@ -998,7 +1006,7 @@ func LabelSetWrap(label Handle, wrap bool) {
 	C.gtk_label_set_wrap((*C.GtkLabel)(p(label)), gbool(wrap))
 }
 
-// LabelSetXAlign puts the words at the start of the line rather than centred,
+// LabelSetXAlign puts the words at the start of the line rather than centered,
 // which is what a paragraph is and what every other target does with one.
 func LabelSetXAlign(label Handle, align float64) {
 	C.gtk_label_set_xalign((*C.GtkLabel)(p(label)), C.float(align))

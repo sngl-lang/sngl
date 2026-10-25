@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -72,7 +75,39 @@ func runRun(cmd *cobra.Command, args []string) error {
 			for i, a := range progArgs {
 				args[i] = a
 			}
-			return build.RunCommand(target, ir.BuiltinGenRun, outDir, args)
+			if testRuns == nil {
+				return build.RunCommand(target, ir.BuiltinGenRun, outDir, args)
+			}
+			out, err := testRuns.AnswerTool(toolKey("run", target, []string{file}), outDir, append(slices.Clone(optSlice), progArgs...), func() (string, error) {
+				return captureStdout(func() error {
+					return build.RunCommand(target, ir.BuiltinGenRun, outDir, args)
+				})
+			})
+			if testRuns.Replays() {
+				fmt.Print(out)
+			}
+			return err
 		},
 	})
+}
+
+// captureStdout runs fn, passing what it prints on and returning it too.
+func captureStdout(fn func() error) (string, error) {
+	orig := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		return "", err
+	}
+	os.Stdout = w
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		io.Copy(io.MultiWriter(&buf, orig), r)
+		close(done)
+	}()
+	err = fn()
+	w.Close()
+	<-done
+	os.Stdout = orig
+	return buf.String(), err
 }

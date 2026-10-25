@@ -5,7 +5,7 @@ input and datepicker are both Compose's OutlinedTextField. The placeholder is
 its `label`, which takes content rather than a value, so the intrinsic declares
 it as a slot -- and the override's `if placeholder != ""` is the whole of that
 slot's body, so a field given no placeholder passes no `label` argument at all.
-That is not the same widget as one labelled with nothing: `label = {}` still
+That is not the same widget as one labeled with nothing: `label = {}` still
 reserves the space and notches the outline. It only folds that way for a
 placeholder the compiler can see; a run-time one keeps the argument and the
 `if` inside it.

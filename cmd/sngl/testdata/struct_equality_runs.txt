@@ -1,8 +1,8 @@
-# `==` between two structs, colours included, compares them field by field on
+# `==` between two structs, colors included, compares them field by field on
 # every target, and a test reads a package const as the page does.
 #
 # JavaScript's === is an object's identity, and html wrote it for any struct
-# but a payload enum's payload, so two colours written alike were unequal. And
+# but a payload enum's payload, so two colors written alike were unequal. And
 # an html test runs in a module beside the page, which finds the page's names
 # on window: its funcs were published there and its consts were not, so a
 # test reading a const map -- or calling a func the optimizer inlined into a
@@ -51,7 +51,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:7a63a8d51878ddb3c6cec5f51abacbaa
+sha256:ed49551543b1a7ad2e09aff0735140ed
 {
   "results": [
     {
@@ -61,7 +61,7 @@ sha256:7a63a8d51878ddb3c6cec5f51abacbaa
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:a6ac35e2ae667ea89ead6a1b7e001638
+sha256:6c9c4d48315aa36fcbe2ca0e4028ae53
 {
   "results": [
     {
@@ -71,7 +71,7 @@ sha256:a6ac35e2ae667ea89ead6a1b7e001638
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:79147489e17706d8dea40e3132a56902
+sha256:e25b4a71b1bb682c6d55338ae769f397
 {
   "results": [
     {
@@ -81,7 +81,7 @@ sha256:79147489e17706d8dea40e3132a56902
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:27d8700b9e663ad93e3b68c82fe8ca48
+sha256:114afcace347fda7471dd657183514dd
 {
   "results": [
     {
@@ -91,7 +91,7 @@ sha256:27d8700b9e663ad93e3b68c82fe8ca48
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:287cbc3b5b81f0c9becf75125b4f63fc
+sha256:dac2b189e94132f9f55fe06d01513648
 {
   "results": [
     {

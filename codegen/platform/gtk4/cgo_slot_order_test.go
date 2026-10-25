@@ -39,12 +39,20 @@ const cgoSlotOrderProbe = `package main
 /*
 #cgo pkg-config: gtk4
 #include <gtk/gtk.h>
+
+// A GTK call refused (g_return_if_fail) ends the test rather than leaving a
+// line in its log: a re-render setting a scroll's child again was refused
+// on every render, and the labels it checks were still right.
+static void probe_init(void) {
+    g_log_set_always_fatal(G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_ERROR);
+    gtk_init();
+}
 */
 import "C"
 
 import "unsafe"
 
-func probeInit() { C.gtk_init() }
+func probeInit() { C.probe_init() }
 
 func labelTexts(w unsafe.Pointer, out *[]string) {
 	for c := C.gtk_widget_get_first_child((*C.GtkWidget)(w)); c != nil; c = C.gtk_widget_get_next_sibling(c) {
@@ -89,10 +97,7 @@ func TestASlotReRendersInPlace(t *testing.T) {
 func TestCgoSlotReRendersInPlace(t *testing.T) {
 	withCgo(t)
 	files := goFiles(generateGTK4FilesBuilt(t, cgoSlotOrderSrc))
-	// The widgets are C pointers on the cgo path. gtk4rt is still reached
-	// for its own primitives -- the scroll is gtk4rt's -- as it is for an
-	// image, so its name alone does not say which path the file took.
-	if !strings.Contains(files["model.go"], "*C.GtkBox") {
+	if !onCgoPath(files["model.go"]) {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])
 	}
 	files["entry.go"] = "package main\n\nfunc main() {}\n"
@@ -101,4 +106,11 @@ func TestCgoSlotReRendersInPlace(t *testing.T) {
 	if out, ok := runGo(t, "gtk4-cgo-slot-order-", files, true, "test", "-count=1", "."); !ok {
 		t.Errorf("%s\n--- model.go ---\n%s", out, files["model.go"])
 	}
+}
+
+// onCgoPath reports whether a generated model took the cgo path: its widgets
+// are C pointers there. gtk4rt is reached on both paths -- for a scroll, an
+// image, a style, a box's children -- so its name says nothing of which.
+func onCgoPath(model string) bool {
+	return strings.Contains(model, "*C.Gtk")
 }

@@ -94,7 +94,7 @@ func (w *walker) unionToIR(n *snglts.Node) (*ir.Type, string) {
 }
 
 // typeRefToIR resolves a TypeReference (named type with optional type args)
-// to an SNGL IR type. Recognises Promise<T>, Array<T>, Date; defers to
+// to an SNGL IR type. Recognizes Promise<T>, Array<T>, Date; defers to
 // pre-registered struct/enum names; otherwise unusable.
 func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 	name := typeRefName(n)

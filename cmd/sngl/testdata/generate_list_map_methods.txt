@@ -18,7 +18,7 @@ grep '\.getOrDefault\(' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
 
 [!exec:go] skip 'go toolchain required'
 sngl build --lang=go --platform=bubbletea --opt name=lm bt.sngl
-exists lm
+[toolchain] exists lm
 
 -- app.sngl --
 import . "sngl:ui"
@@ -74,3 +74,6 @@ component main node {
 window {
     main
 }
+-- testrun/build/bubbletea/go/bt.sngl/1 --
+sha256:9ee65af8edc2e0d95a5174f13c93031f
+{}

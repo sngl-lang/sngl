@@ -59,7 +59,7 @@ func unrepresentable(t *testing.T, js, reason string) {
 		t.Errorf("%s was encoded as %s", js, doc)
 	}
 	if !strings.Contains(doc, "other\t1.0") {
-		t.Errorf("a neighbouring key was lost with %s:\n%s", js, doc)
+		t.Errorf("a neighboring key was lost with %s:\n%s", js, doc)
 	}
 	if !strings.Contains(stderr, reason) {
 		t.Errorf("%s failed without saying %q:\n%s", js, reason, stderr)

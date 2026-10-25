@@ -186,11 +186,11 @@ var _canvasSurface0 snglcanvas.Surface
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
 	ApplyStyle(ctx, Style__draw{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	var __lt9 []_step__record
+	var __lt10 []_step__record
 	if m.closed__inst0 {
-		__lt9 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
+		__lt10 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
 	} else {
-		__lt9 = []_step__record{}
+		__lt10 = []_step__record{}
 	}
 	for _, c := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
@@ -200,7 +200,7 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 			}(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt9) {
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt10) {
 		if c.Op == "moveTo" {
 			ctx.MoveTo(c.X, c.Y)
 		}
@@ -283,7 +283,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -295,7 +295,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCapFunc(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCapFunc(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -359,20 +359,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCapFunc(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -491,7 +502,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("close"))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1702,7 +1713,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:32cc86e75d8f64d3383527ba229234fe
+pass sha256:324a5ee184e86178cb8ef8d2da62213e
 -- run/go/fyne --
 pass sha256:e23a0966eee6cc3500d750365b598d04
 -- run/go/gtk4 --

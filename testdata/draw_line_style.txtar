@@ -1,7 +1,7 @@
 A stroke's cap and join and a path step's op are enums of sngl:ui/draw, and each
 target maps the member to its own drawing API: cairo's enum values on gtk4,
 Compose's StrokeCap and StrokeJoin on android, the Canvas2D strings on html,
-and the Go rasteriser's names on fyne and bubbletea.
+and the Go rasterizer's names on fyne and bubbletea.
 
 -- draw_line_style.sngl --
 import ui "sngl:ui"

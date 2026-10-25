@@ -21,7 +21,7 @@ import (
 // rather than the caller. A var read there, or a call to a function that is
 // not const, is a positioned error.
 
-// renderCheck walks one render and reports its first offence.
+// renderCheck walks one render and reports its first offense.
 type renderCheck struct {
 	c *checker
 	// what names the render in the diagnostic: "const component badge".

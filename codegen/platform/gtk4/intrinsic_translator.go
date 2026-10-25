@@ -24,8 +24,8 @@ type emitShared struct {
 	// calendarDate: a handler reads a GtkCalendar's day through
 	// calendarDateHelper.
 	calendarDate bool
-	// dropDown: the program builds a GtkDropDown, which the preamble's
-	// drop-down helpers serve.
+	// dropDown: the program builds a GtkDropDown, which snglDropDownOffer and
+	// gtk4rt's drop-down functions serve.
 	dropDown bool
 	errs     []error
 	seen     map[string]bool
@@ -545,7 +545,7 @@ func nativeCall(nativeName string, ret *ir.Type, args ...ir.Expr) *ir.Call {
 }
 
 // cgoCast wraps an expression in `(*C.<typeName>)(unsafe.Pointer(expr))`, as
-// an ir.Conversion to a NativePointer type that evalConversion recognises.
+// an ir.Conversion to a NativePointer type that evalConversion recognizes.
 func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 	return &ir.Conversion{
 		Type:    ir.NativePointerOf(typeName),
@@ -955,7 +955,9 @@ func (t *gtk4Translator) appendChild(parent, child, call ir.Expr) []ir.Stmt {
 		if t.wrapped {
 			return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
 		}
-		call := nativeCall("sngl_insert_before", ir.TypVoid, cgoCast("GtkBox", parent), t.slotAnchor, cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
+		// Through gtk4rt on cgo too: a box's alignItems is its, and a child
+		// inserted with GTK's own call sat where GTK put it.
+		call := rtCall("InsertBefore", ir.TypVoid, t.rtHandle(parent), t.rtHandle(t.slotAnchor), t.rtHandle(t.qualifyNodeExpr(child)))
 		return []ir.Stmt{&ir.CallStmt{Call: call}}
 	}
 	if call != nil {
@@ -963,6 +965,9 @@ func (t *gtk4Translator) appendChild(parent, child, call ir.Expr) []ir.Stmt {
 	}
 	if t.wrapped {
 		return []ir.Stmt{rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))}
+	}
+	if adder.Func == "gtk_box_append" {
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("BoxAppend", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(parent)), t.rtHandle(t.qualifyNodeExpr(child)))}}
 	}
 	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
@@ -1554,6 +1559,12 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 	} else {
 		t.shared.needSlotAnchor()
 		set = &ir.CallStmt{Call: nativeCall(adder.Func, ir.TypVoid, cgoCast(adderReceiver(adder, cType), parent), cgoCast("GtkWidget", box))}
+		// A scroll is gtk4rt's, which holds its content in a probe: the box's
+		// parent is never the scroll, and GTK refused setting its child again
+		// on every render.
+		if adder.Func == "gtk_scrolled_window_set_child" {
+			set = &ir.CallStmt{Call: rtCall("ScrolledWindowSetChild", ir.TypVoid, t.rtHandle(parent), t.rtHandle(box))}
+		}
 		slotBox = nativeCall("sngl_slot_box", ir.NativePointerOf("GtkWidget"), box)
 		parentOf = nativeCall("gtk_widget_get_parent", ir.NativePointerOf("GtkWidget"), cgoCast("GtkWidget", box))
 		parentArg = cgoCast("GtkWidget", parent)

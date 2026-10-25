@@ -207,13 +207,13 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
 }
@@ -267,7 +267,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -279,7 +279,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCapFunc(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCapFunc(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -332,20 +332,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt7)
 }
 
-func LineCapFunc(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 8))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __effect0_mount() {
@@ -1395,7 +1406,6 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 
 package test.sngl.app
 
-import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.nativeCanvas
@@ -1408,13 +1418,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -1494,13 +1506,6 @@ fun MainScreen() {
     var frame by remember { mutableStateOf(0) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
-    LaunchedEffect(true) {
-        while (true) {
-            delay(100L)
-            frame = (frame + 1)
-        }
-    }
-
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
@@ -1510,6 +1515,15 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
+            val __tick1 = rememberUpdatedState({
+                frame = (frame + 1)
+            })
+            LaunchedEffect(true) {
+                while (true) {
+                    delay(100L)
+                    __tick1.value()
+                }
+            }
             Canvas(modifier = Modifier.size(40.dp, 40.dp)) {
                 drawCircle(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 255, alpha = 255), radius = frame.toDouble().toFloat(), center = Offset(20.0.toFloat(), 20.0.toFloat()))
             }
@@ -1850,12 +1864,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ec2a1dce31bdee7e6244a2e24faf9867
+pass sha256:1c07be7b978b6365070b44f54ac2c769
 -- run/go/fyne --
 pass sha256:c64dd224a399bd836030533de0ba032f
 -- run/go/gtk4 --
 pass sha256:e4471a3c0758770732547a1fcc8798c8
 -- run/kotlin/android --
-pass sha256:d3892cc6de406efd67ecbf85c1ab9ad2
+pass sha256:5459bef561305365aa6beaa55b16ba81
 -- run/none/html --
 pass sha256:c0734e24e4c62eb54ec0d72b6bc15710

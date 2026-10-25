@@ -1,4 +1,4 @@
-Async colouring crosses the boundary from a native import into SNGL. `loadAll`
+Async coloring crosses the boundary from a native import into SNGL. `loadAll`
 declares nothing about async, but it calls a `js:` function that is declared
 async, so it is emitted as `async function loadAll` with the native call
 awaited at the site.

@@ -15,7 +15,7 @@ import (
 //
 // It is also what tells a struct from a map. Both were map[string]any, so
 // nothing downstream could say which of the two it held; the struct type name
-// travelled in a "__type" entry among the fields, and a struct reached the map
+// traveled in a "__type" entry among the fields, and a struct reached the map
 // paths that index by key and read a zero value on a miss.
 //
 // Fields are a slice rather than a map: order is part of what the checker

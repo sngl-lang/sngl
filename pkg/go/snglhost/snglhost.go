@@ -63,7 +63,7 @@ func (k Key) Iter(id string) Key {
 //
 // Nothing here carries IR: a host gets a NodeDesc and a Key, never a *Node,
 // because the out-of-process one is a separate program and everything it holds
-// must survive serialisation.
+// must survive serialization.
 //
 // Called from one goroutine. A host's own events must reach a Session through a
 // queue rather than directly.
@@ -644,7 +644,7 @@ func serveOne(h Host, method string, raw json.RawMessage) error {
 	return fmt.Errorf("unknown op %q", method)
 }
 
-// structMarker is the key a WireStruct is recognised by after a round trip.
+// structMarker is the key a WireStruct is recognized by after a round trip.
 // JSON has no struct type, so a decoded one arrives as an ordinary object and
 // would render as `map[Fields:[...]]` rather than `{x = 1}` -- the two sides
 // would disagree while holding the same data.

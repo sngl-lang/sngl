@@ -52,7 +52,6 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Measurement struct {
@@ -204,7 +203,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -216,7 +215,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -269,20 +268,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt7)
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 16))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusNext() {
@@ -419,27 +429,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) aClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 // bClick activates the #b widget the way a keypress does; for tests.
 func (m *Model) bClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 // cClick activates the #c widget the way a keypress does; for tests.
 func (m *Model) cClick() {
 	prev := m.__focusID
 	m.__focusID = 2
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 func (m Model) View() tea.View {
@@ -465,7 +481,7 @@ func (m Model) View() tea.View {
 			}
 			contentPart_0Part_1 = BoxLook(Style{}, true).Render(contentPart_0Part_1Prefix + " " + fmt.Sprint("B"))
 			contentPart_0Parts = append(contentPart_0Parts, contentPart_0Part_1)
-			contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Parts...)
+			contentPart_0 = tui.Spaced(false, lipgloss.Left, 0, contentPart_0Parts...)
 		}
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
@@ -494,14 +510,14 @@ func (m Model) View() tea.View {
 			contentPart_3_0Item_1 = BoxLook(Style{}, true).Render(fmt.Sprint("|"))
 			contentPart_3_0Items = append(contentPart_3_0Items, contentPart_3_0Item_1)
 		}
-		contentPart_3_0 = strings.Join(contentPart_3_0Items, "")
+		contentPart_3_0 = tui.Spaced(true, lipgloss.Top, 0, contentPart_3_0Items...)
 		if contentPart_3_0 != "" {
 			contentPart_3Children = append(contentPart_3Children, contentPart_3_0)
 		}
 		contentPart_3 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_3Children...)
 		contentPart_3 = BoxLook(Style{}, true).Render(contentPart_3)
 		contentParts = append(contentParts, contentPart_3)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -517,4 +533,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:b9eab5c6788f3910dab9f472f5486d35
+pass sha256:76d467f0b320f6bb78ac754f928de1be

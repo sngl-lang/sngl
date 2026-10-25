@@ -10,11 +10,11 @@ operand, so `&nextBox()` does not compile, and where it does compile it aliases
 reach what the holder kept.
 
 The read back out is the narrowing unwrap, here through a field: `*` binds
-looser than a selector in Go, so the deref parenthesises itself.
+looser than a selector in Go, so the deref parenthesizes itself.
 
 deny out/go/bubbletea/model.go `Inner: &` -- the promotion boxes a copy, and & would hand the option a window onto the operand
 deny out/go/bubbletea/model.go `\(\*Box\)\(` -- a cast is what the generic conversion path emits and it does not compile
-deny out/go/bubbletea/model.go `\*\(m\.h\.Inner\)\.Value` -- an unparenthesised deref of a narrowed path reads the field, not the pointer
+deny out/go/bubbletea/model.go `\*\(m\.h\.Inner\)\.Value` -- an unparenthesized deref of a narrowed path reads the field, not the pointer
 
 -- app.sngl --
 import . "sngl:ui"
@@ -222,7 +222,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -234,7 +234,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -298,20 +298,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -444,7 +455,7 @@ func (m Model) View() tea.View {
 		var contentPart_1 string
 		contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(m.seen__inst0)))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -571,7 +582,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8adcc9187bd413e2bfde56f7aa4d9162
+pass sha256:6eff0b07b1bd79f0f8f0f9a0b8d67864
 -- run/kotlin/android --
 pass sha256:82a45f9615e28e08f8e303074aaeeebe
 -- run/none/html --

@@ -53,7 +53,6 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Measurement struct {
@@ -144,13 +143,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
 }
@@ -196,7 +195,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -208,7 +207,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -261,20 +260,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt7)
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 8))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m Model) Xs__inst0() []int {
@@ -353,7 +363,7 @@ func (m Model) View() tea.View {
 				content_0Item = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(i)))
 				content_0Items = append(content_0Items, content_0Item)
 			}
-			content_0 = strings.Join(content_0Items, "\n")
+			content_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Items...)
 		}
 		if content_0 != "" {
 			contentChildren = append(contentChildren, content_0)
@@ -429,28 +439,34 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			if len(m.xs__inst0) == 0 {
-				__n1 := gtk4rt.New("GtkLabel")
-				gtk4rt.LabelSetLabel(__n1, "nothing here")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
-				m.__slot0 = append(m.__slot0, __n1)
-			} else {
-				for _, i := range m.xs__inst0 {
-					__n2 := gtk4rt.New("GtkLabel")
-					gtk4rt.LabelSetLabel(__n2, fmt.Sprint(i))
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
-					m.__slot0 = append(m.__slot0, __n2)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				if len(m.xs__inst0) == 0 {
+					__n1 := gtk4rt.New("GtkLabel")
+					gtk4rt.LabelSetLabel(__n1, "nothing here")
+					gtk4rt.LabelSetXAlign(__n1, 0.0)
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
+					m.__slot0 = append(m.__slot0, __n1)
+				} else {
+					for _, i := range m.xs__inst0 {
+						__n2 := gtk4rt.New("GtkLabel")
+						gtk4rt.LabelSetLabel(__n2, fmt.Sprint(i))
+						gtk4rt.LabelSetXAlign(__n2, 0.0)
+						gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
+						m.__slot0 = append(m.__slot0, __n2)
+					}
 				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -561,68 +577,71 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        if (state.xs__inst0.length === 0) {
-          let __n2 = document.createElement("span");
-          __n2.textContent = "nothing here";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref0 === __n2) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n2, __place0_i_ref0);
-          }
-          __slot0.push(__n2);
-        } else {
-          for (const i of state.xs__inst0) {
-            let __n3 = null;
-            if (__inst1_live.length > __inst1_i) {
-              __n3 = __inst1_live[__inst1_i];
-              __n3.__set___p0(i);
-            } else {
-              if (__inst1_live.length > __inst1_i) {
-                __inst1_live[__inst1_i].__destroy();
-              }
-              let __n3__new = __cf___child0({ __p0: i });
-              __n3 = __n3__new;
-            }
-            __inst1_next.push(__n3);
-            __inst1_i = __inst1_i + 1;
-            let __n3__el = __n3.__root;
-            let __place0_i_ref1 = null;
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          if (state.xs__inst0.length === 0) {
+            let __n2 = document.createElement("span");
+            __n2.textContent = "nothing here";
+            let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
-              __place0_i_ref1 = __place0_prev[__place0_i];
+              __place0_i_ref0 = __place0_prev[__place0_i];
             }
-            if (__place0_i_ref1 === __n3__el) {
+            if (__place0_i_ref0 === __n2) {
               __place0_i = __place0_i + 1;
             } else {
-              parent.insertBefore(__n3__el, __place0_i_ref1);
+              parent.insertBefore(__n2, __place0_i_ref0);
             }
-            __slot0.push(__n3__el);
+            __slot0.push(__n2);
+          } else {
+            for (const i of state.xs__inst0) {
+              let __n3 = null;
+              if (__inst1_live.length > __inst1_i) {
+                __n3 = __inst1_live[__inst1_i];
+                __n3.__set___p0(i);
+              } else {
+                if (__inst1_live.length > __inst1_i) {
+                  __inst1_live[__inst1_i].__destroy();
+                }
+                let __n3__new = __cf___child0({ __p0: i });
+                __n3 = __n3__new;
+              }
+              __inst1_next.push(__n3);
+              __inst1_i = __inst1_i + 1;
+              let __n3__el = __n3.__root;
+              let __place0_i_ref1 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref1 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref1 === __n3__el) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n3__el, __place0_i_ref1);
+              }
+              __slot0.push(__n3__el);
+            }
+          }
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
+          }
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -635,8 +654,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e686d8c0fb5be5aa504f0c8884415572
+pass sha256:55a8106f0f17fa4c2355e2a4aa2281e4
 -- run/go/gtk4 --
-pass sha256:651aaba8b6790d26865f521032a65a1a
+pass sha256:3a64e52f5271fd95ce884458a57b722c
 -- run/none/html --
-pass sha256:4f4c6df8842de7da82c9a2fd57eb263f
+pass sha256:db50fbd2d5885b9ea0c5b75674f37ec3

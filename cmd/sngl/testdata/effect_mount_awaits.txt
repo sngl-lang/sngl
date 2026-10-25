@@ -2,7 +2,7 @@
 # settle chain above it starts it without waiting for it (ir.Call.Detached).
 #
 # The handler body is lifted into __effectN_mount, which __effectN_up calls,
-# which the group settle calls. The checker coloured the program before any of
+# which the group settle calls. The checker colored the program before any of
 # those existed, so the mount was emitted as a plain `function` while its body
 # wrote `await`. A settle that waited on the mount instead would hold every
 # other bracket until the request answered. esbuild is what checks the bundle

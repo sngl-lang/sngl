@@ -56,13 +56,16 @@ type Renderer interface {
 	BreakText(n *ir.Break) string
 
 	// — Stmt blocks (walker controls body recursion, indent, close)
-	// ForHead opens a loop, labelled with n.Label where the language's
+	// ForHead opens a loop, labeled with n.Label where the language's
 	// BreakText names one.
 	ForHead(n *ir.For, iterStr string) string
 	IfHead(n *ir.If, condStr string) string
 	// Catch renders a catch block (If.Catch set): body is the rendered Body,
 	// and the renderer renders the handler itself.
 	Catch(n *ir.If, body []string) []string
+	// Finally renders body, then finally however body ends (If.Finally set),
+	// both already rendered.
+	Finally(n *ir.If, body, finally []string) []string
 	ElseHead() string
 	// Match renders a match statement as the language's own switch: its
 	// subject rendered ("" for a headless match), each arm's patterns
@@ -215,41 +218,47 @@ func evalFor(r Renderer, n *ir.For) []string {
 		child = child.Scoped(n.Value)
 	}
 	lines := []string{r.ForHead(n, iter)}
-	indent := r.Indent()
-	for _, stmt := range n.Body {
-		for _, l := range EvalStmt(child, stmt) {
-			lines = append(lines, indent+l)
-		}
-	}
+	lines = append(lines, IndentLines(r.Indent(), EvalBlock(child, n.Body))...)
 	if end := r.BlockEnd(); end != "" {
 		lines = append(lines, end)
 	}
 	return lines
 }
 
-func evalIf(r Renderer, n *ir.If) []string {
-	if n.Catch != nil {
-		var body []string
-		for _, s := range n.Body {
-			body = append(body, EvalStmt(r, s)...)
+// EvalBlock renders a block's statements in order, each local it declares a
+// local of r from its declaration on (Renderer.Scoped). An emitter that binds
+// nothing of a body up front still reads a nested `var count` as the local
+// and a read of the page's `count` before it as the page's: one path that
+// bound no body locals read the local as the page's var of its name.
+func EvalBlock(r Renderer, stmts []ir.Stmt) []string {
+	var lines []string
+	for _, s := range stmts {
+		lines = append(lines, EvalStmt(r, s)...)
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil && lv.Name != "" {
+			r = r.Scoped(lv.Name)
 		}
-		return r.Catch(n, body)
+	}
+	return lines
+}
+
+func evalIf(r Renderer, n *ir.If) []string {
+	if len(n.Finally) > 0 {
+		body := EvalBlock(r, n.Body)
+		if n.Catch != nil {
+			body = r.Catch(n, body)
+		}
+		return r.Finally(n, body, EvalBlock(r, n.Finally))
+	}
+	if n.Catch != nil {
+		return r.Catch(n, EvalBlock(r, n.Body))
 	}
 	cond := EvalExpr(r, n.Cond)
 	lines := []string{r.IfHead(n, cond)}
 	indent := r.Indent()
-	for _, s := range n.Body {
-		for _, l := range EvalStmt(r, s) {
-			lines = append(lines, indent+l)
-		}
-	}
+	lines = append(lines, IndentLines(indent, EvalBlock(r, n.Body))...)
 	if len(n.Else) > 0 {
 		lines = append(lines, r.ElseHead())
-		for _, s := range n.Else {
-			for _, l := range EvalStmt(r, s) {
-				lines = append(lines, indent+l)
-			}
-		}
+		lines = append(lines, IndentLines(indent, EvalBlock(r, n.Else))...)
 	}
 	if end := r.BlockEnd(); end != "" {
 		lines = append(lines, end)
@@ -268,9 +277,7 @@ func evalMatch(r Renderer, n *ir.Match) []string {
 		for _, p := range arm.Patterns {
 			patterns[i] = append(patterns[i], EvalExpr(r, p))
 		}
-		for _, s := range arm.Body {
-			bodies[i] = append(bodies[i], EvalStmt(r, s)...)
-		}
+		bodies[i] = EvalBlock(r, arm.Body)
 	}
 	if lines := r.Match(n, subject, patterns, bodies); lines != nil {
 		return lines

@@ -4,7 +4,7 @@ user interaction.
 
 The generated script holds one state object carrying the var's initial value,
 a single __sngl_init() containing the inlined DOM write, and a call to it at
-the bottom of the script. A binding that is only ever initialised no longer
+the bottom of the script. A binding that is only ever initialized no longer
 gets a per-prop updater function of its own:
 
 deny out/none/html/index.html `\$u__n0_text` -- an init-only binding has no per-prop updater; its write is inlined into __sngl_init

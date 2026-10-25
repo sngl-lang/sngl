@@ -83,7 +83,7 @@ func glyphOf(ch string) Glyph {
 }
 
 // Cells the entry needs: everything but the point, which hangs off its
-// neighbour.
+// neighbor.
 func cellsWide(entry string) int {
     return string.length(string.replace(entry, ".", ""))
 }

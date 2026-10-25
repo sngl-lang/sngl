@@ -151,7 +151,7 @@ func TestAHandlerInsideAComponentsWindowOffloadsToo(t *testing.T) {
 // asyncFuncvarSrc calls the blocking function through a state var rather than
 // by name. The call names no declaration at all -- the callee is the variable
 // -- so IsAsync is not there to read, and the only record of what the call may
-// reach is the slot colour the checker's points-to analysis left behind.
+// reach is the slot color the checker's points-to analysis left behind.
 // Asking for the flag alone emitted `m.greeting = m.handler()` straight onto
 // the drawing thread, with no goroutine and no diagnostic: the outcome the
 // mark exists to prevent, in the one spelling nothing was watching.
@@ -182,7 +182,7 @@ window {
 // call in it. `var handler func() string = host` emits `m.handler = m.host()`
 // -- the Go backend calls the function where it should take a reference to it
 // -- and the program is rejected by the Go compiler before any of this runs.
-// That is a separate bug about funcvar initialisation and is not fixed here;
+// That is a separate bug about funcvar initialization and is not fixed here;
 // what is asserted here is that the offload sees through the funcvar, which is
 // the half that was silent.
 func TestABlockingCallThroughAFuncvarLeavesTheThreadToo(t *testing.T) {

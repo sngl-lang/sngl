@@ -31,7 +31,7 @@ grep '<button>go</button>' out/server.go
 ! grep 'open=' out/server.go
 
 # All of the above is a claim about a Go file, so compile it.
-exec go build ./...
+gobuild ./...
 
 -- go.mod --
 module example.com/route-raw
@@ -64,3 +64,6 @@ component main root {
 }
 
 main()
+-- testrun/gobuild/.../1 --
+sha256:e13b7040c4356b29ddd54f641f0a4f71
+{}

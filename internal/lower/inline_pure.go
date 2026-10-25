@@ -21,7 +21,7 @@ import (
 // passReactivity because passReactivity eagerly invokes the declarative
 // lowering for renderSlot bodies — once a NodeInst has been flattened
 // into LocalVar(CreateNode("<tag>")) + Assigns + CallStmts, this pass
-// can no longer recognise the wrapper call and substitute its body.
+// can no longer recognize the wrapper call and substitute its body.
 // Runs after passToggle/passLambda/etc. so the wrapper body the pass
 // sees has already had high-level shapes (toggles, ternaries) lowered.
 var passInlinePure = pass{
@@ -1803,7 +1803,7 @@ func freshNodeHandles(body []ir.Stmt, renames map[ir.Symbol]ir.Symbol) {
 // neither a catch block nor the root of a spliced instance.
 func decidedBranch(n *ir.If) ([]ir.Stmt, bool) {
 	lit, ok := n.Cond.(*ir.Literal)
-	if !ok || lit.Type != ir.TypBool || n.Catch != nil || n.FromTernary || len(n.Instances) > 0 {
+	if !ok || lit.Type != ir.TypBool || n.Guarded() || n.FromTernary || len(n.Instances) > 0 {
 		return nil, false
 	}
 	taken := n.Else

@@ -112,6 +112,7 @@ const (
 	rtStr rtSetterKind = iota
 	rtBool
 	rtInt
+	rtFloat
 	rtOrient
 )
 
@@ -122,6 +123,7 @@ var rtSetterTable = map[string]struct {
 	kind rtSetterKind
 }{
 	"gtk_label_set_label":            {"LabelSetLabel", rtStr},
+	"gtk_label_set_xalign":           {"LabelSetXAlign", rtFloat},
 	"gtk_button_set_label":           {"ButtonSetLabel", rtStr},
 	"gtk_check_button_set_label":     {"CheckButtonSetLabel", rtStr},
 	"gtk_check_button_set_active":    {"CheckButtonSetActive", rtBool},
@@ -156,7 +158,7 @@ func rtChildAppendCall(adder gir.ChildAdder, parent, child ir.Expr) ir.Stmt {
 	return &ir.CallStmt{Call: rtCall("ChildCall", ir.TypVoid, &ir.Literal{Type: ir.TypString, Value: adder.Func}, parent, child)}
 }
 
-// rtEventGetterExpr is the wrapped-mode analogue of cgoEventGetterExpr: it
+// rtEventGetterExpr is the wrapped-mode analog of cgoEventGetterExpr: it
 // reads a widget's bound value through gtk4rt rather than cgo. Returns nil when
 // the widget's read-back isn't wrapped (→ fallback).
 func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
@@ -175,7 +177,7 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 	return nil
 }
 
-// emitBuildUIWrapped is the wrapped-mode analogue of emitBuildUI: it emits the
+// emitBuildUIWrapped is the wrapped-mode analog of emitBuildUI: it emits the
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
 // widget-tree body (buildBuf) was already emitted in wrapped mode by the
 // translator, so only the surrounding scaffolding is produced here.

@@ -67,7 +67,7 @@ func inBrowser(t *testing.T, src string, drive func(page *rod.Page)) {
 	case !update && !verify && have == nil:
 		t.Fatalf("%s: no record of this browser run; rerun with -update on a host with Chromium", record)
 	case !update && !verify:
-		t.Fatalf("%s: the page or the test changed since it ran; rerun with -update", record)
+		t.Fatalf("%s: the page or the test changed since it ran; rerun with -update -- `go tool verify -update` rerecords every package's", record)
 	}
 
 	mux := http.NewServeMux()

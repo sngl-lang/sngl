@@ -124,7 +124,7 @@ func (s docScope) componentSchema(name string) *checker.ComponentSchema {
 
 // styleFields is the Style struct's fields, in declaration order: the order an
 // author reads them in the source, which groups spacing with spacing and
-// colour with colour where alphabetical would not.
+// color with color where alphabetical would not.
 func styleFields() []*ir.StructField {
 	pkg := checker.LibPackage(stylePkg)
 	if pkg == nil {

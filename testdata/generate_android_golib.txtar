@@ -1,6 +1,6 @@
 
 Under --lang go the user's functions are emitted into the gomobile module,
-exported and capitalised, and emitIR does not emit them as Kotlin. So a Kotlin
+exported and capitalized, and emitIR does not emit them as Kotlin. So a Kotlin
 call site has to name them there. It did not: the module held `func Fib` and
 the Kotlin called a bare `fib(k)`, defined in neither file.
 

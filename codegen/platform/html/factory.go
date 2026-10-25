@@ -279,7 +279,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			Name:   fn.Name,
 			Params: params,
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, tr),
-			// The colour the call sites read, as html.go's synthesized funcs
+			// The color the call sites read, as html.go's synthesized funcs
 			// keep it: a waiting query's mount in a component built at run
 			// time lost it, an await in a sync function.
 			IsAsync: fn.IsAsync,

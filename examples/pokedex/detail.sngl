@@ -46,7 +46,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
         return display(name)
     }
 
-    // The Pokémon's pictures, labelled.
+    // The Pokémon's pictures, labeled.
     func pictures() list[Sprite] {
         return mon != null ? gallery(mon.sprites) : []
     }
@@ -134,7 +134,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                         poke.abilityRetrieve(id=a.ability.name, @load(got) { names["ability/{got.name}"] = abilityNamed(got.names) })
                                     }
                                     fact(label=$"Height") {
-                                        ui.text #height(value=mon.height != null ? metres(heightOf(mon.height)) : $"Unknown")
+                                        ui.text #height(value=mon.height != null ? meters(heightOf(mon.height)) : $"Unknown")
                                     }
                                     fact(label=$"Weight") {
                                         ui.text #weight(value=mon.weight != null ? kilograms(weightOf(mon.weight)) : $"Unknown")
@@ -263,7 +263,7 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                 // The way is PokéAPI's name, and the select
                                 // shows its label in the reader's language,
                                 // written again as the language changes.
-                                effect(on=i18n.locale, @mount(l) { methodLabel = methodLabelled(method) })
+                                effect(on=i18n.locale, @mount(l) { methodLabel = methodLabeled(method) })
                                 ui.select #methodPick(:value=methodLabel, @change(v) { method = methodNamed(v) }) {
                                     for var m = learnMethods() {
                                         ui.choice(label=m.label)
@@ -294,8 +294,8 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     }
 }
 
-// A type as a badge in the type's own colour: `value`, its name in the
-// reader's language, and `kind`, PokéAPI's, which picks the colour.
+// A type as a badge in the type's own color: `value`, its name in the
+// reader's language, and `kind`, PokéAPI's, which picks the color.
 component typeBadge(kind string, value string) ui.node {
     ui.badge(value=value, style={background=typeColor(kind), color=typeInk(kind)})
 }

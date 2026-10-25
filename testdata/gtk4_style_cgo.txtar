@@ -633,6 +633,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Look{Cross: 3})
 	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n3)), "literal")
+	gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(m.__n3)), 0.0)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n3)), gtk4rt.Look{Css: "padding-top: 4px; padding-right: 4px; padding-bottom: 4px; padding-left: 4px; color: #336699; background: #eeeeee; "})
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
@@ -663,4 +664,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:5be67eb2f42e5ec30fe4a052c84dc961
+pass sha256:14721481b2bfd3c3fe35bb5605e164b8

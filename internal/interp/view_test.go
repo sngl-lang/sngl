@@ -494,3 +494,90 @@ component main node {
 		t.Errorf("FindAny(#l) returned %d nodes, want 1", got)
 	}
 }
+
+// TestChoosingPressesByTheRuleTheTargetsDo: a trigger of an event no node
+// reports presses the copy ir.PressedNode names -- what lower.NamePresses
+// presses on the compiled targets -- and nothing where that rule names none.
+// Only a library body is ever pressed (a program component's trigger runs its
+// call site's handler), and the library's one such body agrees with either
+// rule, so the rule is pinned here, on the view, rather than by a program.
+func TestChoosingPressesByTheRuleTheTargetsDo(t *testing.T) {
+	src := `import . "sngl:ui"
+
+component chip(label string, onPick func()) node {
+    button(text=label, @click {
+        onPick()
+    })
+}
+
+component strip(@change(index int)) node {
+    vbox {
+        for var k, l = ["a", "b", "c"] {
+            button(text=l, @click {
+                change(k)
+            })
+        }
+    }
+}
+
+component reporting(@change(value string)) node {
+    select(value="a", @change(v) {
+        change(v)
+    }) {
+        choice(label="a")
+        choice(label="b")
+    }
+    for var k, l = ["a", "b"] {
+        button(text=l, @click {
+            change(l)
+        })
+    }
+}
+
+component byValue(@change(index int)) node {
+    vbox {
+        for var n = [5, 6, 7] {
+            button(text="{n}", @click {
+                change(n)
+            })
+        }
+    }
+}
+
+component calling(@pick(index int)) node {
+    vbox {
+        for var k, l = ["a", "b", "c"] {
+            chip(label=l, onPick=func() {
+                pick(k)
+            })
+        }
+    }
+}
+`
+	choose := func(comp, event string, arg any) (*Node, string) {
+		t.Helper()
+		env, _ := envFor(t, src, comp)
+		v, err := Mount(env)
+		if err != nil {
+			t.Fatalf("Mount(%s): %v", comp, err)
+		}
+		return v.Choosing(event, arg)
+	}
+
+	if n, fires := choose("strip", "change", 1); n == nil || fires != "click" || n.Props["text"] != "b" {
+		t.Errorf("strip: pressed %v firing %q, want the button at 1 clicked", n, fires)
+	}
+	// The body's first node, which the call site's id lands on, reports the
+	// event itself, so a trigger reaches it and presses nothing.
+	if n, _ := choose("reporting", "change", "b"); n != nil {
+		t.Errorf("reporting: pressed %q, though its first node reports change", n.Name)
+	}
+	// An element names a value, not a copy: 6 is no index of the loop.
+	if n, _ := choose("byValue", "change", 6); n != nil {
+		t.Errorf("byValue: pressed %q by the element it was handed", n.Name)
+	}
+	// A callback taking nothing that emits the index is called by a click.
+	if n, fires := choose("calling", "pick", 2); n == nil || fires != "click" || n.Props["label"] != "c" {
+		t.Errorf("calling: pressed %v firing %q, want the chip at 2 clicked", n, fires)
+	}
+}

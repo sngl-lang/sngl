@@ -115,7 +115,6 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Measurement struct {
@@ -242,15 +241,26 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt2 int
+	if px <= 0.0 {
+		__lt2 = 0
+	} else {
+		__lt2 = max(1, (int(px) / 8))
+	}
+	return __lt2
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -294,85 +304,85 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt2 int
+		var __lt3 int
 		if s.MaxLines == 0 {
-			__lt2 = 0
+			__lt3 = 0
 		} else {
-			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt3 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt3 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt3 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt3 = lipgloss.Left
-	}
-	return __lt3
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt4 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt4 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt4 = tui.DashedBorder()
-	default:
-		var __lt5 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt5 = lipgloss.RoundedBorder()
-		} else {
-			__lt5 = lipgloss.NormalBorder()
-		}
-		__lt4 = __lt5
+		__lt4 = lipgloss.Left
 	}
 	return __lt4
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt6 = lipgloss.RoundedBorder()
 		} else {
-			__lt6 = all
+			__lt6 = lipgloss.NormalBorder()
 		}
-		__lt7 = __lt6
+		__lt5 = __lt6
 	}
-	return CellsOf(__lt7)
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return CellsOf(__lt8)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
+	var __lt10 int
 	if height__r0 == 0 {
-		__lt9 = lines
+		__lt10 = lines
 	} else {
-		var __lt8 int
+		var __lt9 int
 		if lines == 0 {
-			__lt8 = height__r0
+			__lt9 = height__r0
 		} else {
-			__lt8 = min(height__r0, lines)
+			__lt9 = min(height__r0, lines)
 		}
-		__lt9 = __lt8
+		__lt10 = __lt9
 	}
-	return __lt9
+	return __lt10
 }
 
 func (m *Model) __effect0_enter() {
@@ -709,7 +719,7 @@ func (m Model) View() tea.View {
 			part0_0Item = BoxLook(Style{}, true).Render(part0_0Item)
 			part0_0Items = append(part0_0Items, part0_0Item)
 		}
-		part0_0 = strings.Join(part0_0Items, "\n")
+		part0_0 = tui.Spaced(false, lipgloss.Left, 0, part0_0Items...)
 		if part0_0 != "" {
 			part0Children = append(part0Children, part0_0)
 		}
@@ -824,48 +834,52 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__inst0_next := []*PickerInstance{}
-			var __inst0_i int = 0
-			for _, x := range m.xs {
-				var __n6 *PickerInstance
-				if len(m.__inst0_live) > __inst0_i {
-					__n6 = m.__inst0_live[__inst0_i]
-					__n6.SetPicked(func(v int) {
-						m.got = (v + x)
-						m.__n5.SetText(("got=" + fmt.Sprint(m.got)))
-					})
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*PickerInstance{}
+				var __inst0_i int = 0
+				for _, x := range m.xs {
+					var __n6 *PickerInstance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n6 = m.__inst0_live[__inst0_i]
+						__n6.SetPicked(func(v int) {
+							m.got = (v + x)
+							m.__n5.SetText(("got=" + fmt.Sprint(m.got)))
+						})
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n6__new := newPickerInstance(m, func(v int) {
+							m.got = (v + x)
+							m.__n5.SetText(("got=" + fmt.Sprint(m.got)))
+						})
+						__n6 = __n6__new
 					}
-					__n6__new := newPickerInstance(m, func(v int) {
-						m.got = (v + x)
-						m.__n5.SetText(("got=" + fmt.Sprint(m.got)))
-					})
-					__n6 = __n6__new
+					__inst0_next = append(__inst0_next, __n6)
+					__inst0_i = (__inst0_i + 1)
+					__n6__el := __n6.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n6__el)
+					m.__slot0 = append(m.__slot0, __n6__el)
 				}
-				__inst0_next = append(__inst0_next, __n6)
-				__inst0_i = (__inst0_i + 1)
-				__n6__el := __n6.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n6__el)
-				m.__slot0 = append(m.__slot0, __n6__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1096,48 +1110,52 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*PickerInstance{}
-			var __inst0_i int = 0
-			for _, x := range m.xs {
-				var __n6 *PickerInstance
-				if len(m.__inst0_live) > __inst0_i {
-					__n6 = m.__inst0_live[__inst0_i]
-					__n6.SetPicked(func(v int) {
-						m.got = (v + x)
-						gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
-					})
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*PickerInstance{}
+				var __inst0_i int = 0
+				for _, x := range m.xs {
+					var __n6 *PickerInstance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n6 = m.__inst0_live[__inst0_i]
+						__n6.SetPicked(func(v int) {
+							m.got = (v + x)
+							gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
+						})
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n6__new := newPickerInstance(m, func(v int) {
+							m.got = (v + x)
+							gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
+						})
+						__n6 = __n6__new
 					}
-					__n6__new := newPickerInstance(m, func(v int) {
-						m.got = (v + x)
-						gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
-					})
-					__n6 = __n6__new
+					__inst0_next = append(__inst0_next, __n6)
+					__inst0_i = (__inst0_i + 1)
+					__n6__el := __n6.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n6__el)
+					m.__slot0 = append(m.__slot0, __n6__el)
 				}
-				__inst0_next = append(__inst0_next, __n6)
-				__inst0_i = (__inst0_i + 1)
-				__n6__el := __n6.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n6__el)
-				m.__slot0 = append(m.__slot0, __n6__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1197,6 +1215,7 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	gtk4rt.BoxSetSpacing(__n8, 6)
 	__n0 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n0, ("w" + fmt.Sprint(c.width__inst0)))
+	gtk4rt.LabelSetXAlign(__n0, 0.0)
 	gtk4rt.BoxAppend(__n8, __n0)
 	c.__n1 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n1, ("tap " + fmt.Sprint(c.taps)))
@@ -1291,6 +1310,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n11, 6)
 	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, ("opened " + fmt.Sprint(m.opened__inst0)))
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n11, m.__n3)
 	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, ("named " + fmt.Sprint(m.hits__inst0)))
@@ -1299,6 +1319,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n7, m.__n11)
 	m.__n5 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
+	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
 	gtk4rt.BoxAppend(m.__n7, m.__n5)
 	gtk4rt.BoxAppend(m.__n2, m.__n7)
 	gtk4rt.AppAttach(m.__n2)
@@ -1494,59 +1515,62 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const x of state.xs) {
-          let __n6 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n6 = __inst1_live[__inst1_i];
-            __n6.__set_picked((v) => {
-              state.got = v + x;
-              __n5.textContent = "got=" + String(state.got);
-            });
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const x of state.xs) {
+            let __n6 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n6 = __inst1_live[__inst1_i];
+              __n6.__set_picked((v) => {
+                state.got = v + x;
+                __n5.textContent = "got=" + String(state.got);
+              });
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n6__new = __cf_Picker({ picked: (v) => {
+                state.got = v + x;
+                __n5.textContent = "got=" + String(state.got);
+              } });
+              __n6 = __n6__new;
             }
-            let __n6__new = __cf_Picker({ picked: (v) => {
-              state.got = v + x;
-              __n5.textContent = "got=" + String(state.got);
-            } });
-            __n6 = __n6__new;
+            __inst1_next.push(__n6);
+            __inst1_i = __inst1_i + 1;
+            let __n6__el = __n6.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n6__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n6__el, __place0_i_ref0);
+            }
+            __slot0.push(__n6__el);
           }
-          __inst1_next.push(__n6);
-          __inst1_i = __inst1_i + 1;
-          let __n6__el = __n6.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n6__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n6__el, __place0_i_ref0);
-          }
-          __slot0.push(__n6__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -1583,12 +1607,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bcddb152cce046eaf8ad48a0f42054d7
+pass sha256:f8b3e3e9f72f19e238206ef244adf257
 -- run/go/fyne --
-pass sha256:b592fa226b1dc286e7f0c88de375b1a8
+pass sha256:1c09a8d37a9730728bac8035673ba2f0
 -- run/go/gtk4 --
-pass sha256:03585d441d61951dd19608e652eae323
+pass sha256:69ec6f34e450a354e5ffb0c69dd99f3c
 -- run/kotlin/android --
 pass sha256:fe3334edbc5f4279826411e00236086e
 -- run/none/html --
-pass sha256:416c59163b7c4b82c8a7159cda7341c7
+pass sha256:2c586ad814124360370169391b2f950d

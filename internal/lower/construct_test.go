@@ -98,7 +98,7 @@ func TestConstructPropGetsNoSetter(t *testing.T) {
 //
 // Nothing in the language reaches this today -- every unmarked prop is
 // promoted, and every marked one rebuilds -- so the state is staged here: the
-// mark is honoured while the setters are built and then cleared, which is
+// mark is honored while the setters are built and then cleared, which is
 // exactly a prop with no setter and no mark. Before this guard that program
 // generated cleanly and ignored the write, which is how the class stayed
 // invisible.

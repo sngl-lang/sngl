@@ -1,4 +1,4 @@
-// The count wrappers are recognised by their #[builtin] kind, never by name, so
+// The count wrappers are recognized by their #[builtin] kind, never by name, so
 // a user declaration of either name shadows them like any other built-in.
 //
 // `option` here is an ordinary generic struct. Shadowed, it is not a wrapper
@@ -18,7 +18,7 @@ component frame(badge component option[int]) node { // ERROR(check) "a slot acce
     }
 }
 
-// The insertion count is recognised the same way: shadowed, `option[…]` around a
+// The insertion count is recognized the same way: shadowed, `option[…]` around a
 // slot counts nothing.
 component tip(hint option[component]) node { // ERROR(check) "option[…] around a slot is not the builtin option, so it counts nothing"
     vbox {

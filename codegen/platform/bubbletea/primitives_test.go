@@ -10,7 +10,7 @@ import (
 
 // btPrimitives is every primitive the view renderer dispatches on. Each must
 // carry the #[intrinsic] id btIntrinsic reads off the declaration. Without the
-// mark the renderer stops recognising the node and emits it as an ordinary
+// mark the renderer stops recognizing the node and emits it as an ordinary
 // component reference — which changes generated output without failing
 // anything else, so this is the assertion that catches a dropped mark.
 var btPrimitives = []string{"Layout", "Styled", "Widget", "Overlay"}
@@ -54,7 +54,7 @@ func TestPrimitivesCarryTheirIntrinsicID(t *testing.T) {
 		want := "bubbletea:" + name
 		switch {
 		case len(got) == 0:
-			t.Errorf("%s: no #[intrinsic] mark; btIntrinsic will not recognise it", name)
+			t.Errorf("%s: no #[intrinsic] mark; btIntrinsic will not recognize it", name)
 		case len(got) != 1:
 			t.Errorf("%s: %d #[intrinsic] marks, want 1: %v", name, len(got), got)
 		case got[0] != want:

@@ -45,7 +45,7 @@ const attrsProp = "attrs"
 // is created with until its `tag` names one.
 const elementName = "element"
 
-// isElement reports whether a component is html's `element`. It is recognised
+// isElement reports whether a component is html's `element`. It is recognized
 // by the two props html gave it, for the reason their names are constants
 // here: they are html's own, and nothing else html renders declares them.
 // TestElementDeclaresTagProp holds this to the declaration.

@@ -13,7 +13,7 @@ const gtk4SnapshotCgo = `/*
 #include <stdlib.h>
 
 // sngl_snapshot wraps the target widget in a GdkPaintable, snapshots
-// it into a render node, and rasterises via the cairo GSK renderer
+// it into a render node, and rasterizes via the cairo GSK renderer
 // (which needs no GdkSurface — works offscreen). The PNG is written
 // to ` + "`path`" + `; returns 0 on success, non-zero on failure.
 static int sngl_snapshot(GtkWidget *widget, int width, int height, const char *path) {

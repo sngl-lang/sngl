@@ -152,9 +152,9 @@ window {
 		`gtk4rt.ChildCall("gtk_popover_set_child", `,
 		`"autohide", `,
 		// table and splitview: rows and panes in homogeneous boxes, cells
-		// left-aligned
+		// left-aligned through the setter gtk4rt wraps
 		`"homogeneous", `,
-		`"xalign", `,
+		"gtk4rt.LabelSetXAlign(",
 		// table, tree, radio and select mark a selection with a check button
 		"gtk4rt.CheckButtonSetActive(",
 		`"toggled", func() {`,

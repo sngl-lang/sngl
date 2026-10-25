@@ -62,7 +62,7 @@ func runKts(t *testing.T, script string) []string {
 	return lines
 }
 
-func TestKotlinListBoundsBehaviour(t *testing.T) {
+func TestKotlinListBoundsBehavior(t *testing.T) {
 	slice := emitKt(t, "list.slice",
 		[]string{"xs", "lo", "hi"},
 		[]*ir.Type{ir.ListOf(ir.TypInt), ir.TypInt, ir.TypInt})

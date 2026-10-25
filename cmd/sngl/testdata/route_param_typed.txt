@@ -17,7 +17,7 @@
 
 sngl generate --lang go --platform html -o out app.sngl
 
-exec go build ./...
+gobuild ./...
 
 grep 'v.Slug = __r.PathValue\("slug"\)' out/server.go
 grep 'strconv.Atoi\(__r.PathValue\("page"\)\)' out/server.go
@@ -60,3 +60,6 @@ window(title=pages.current.title) {
         }
     }
 }
+-- testrun/gobuild/.../1 --
+sha256:9344f63e9616909c0fafce3ee22e61fe
+{}

@@ -206,14 +206,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     return w;
 }
 
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
 static GtkBox *sngl_slot_box(GtkBox *b) {
     if (b != NULL) return b;
     GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
@@ -379,25 +371,30 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
+				}
+				m.__slot0 = nil
+				m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
+				if m.shown {
+					__n1 := (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
+					gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(__n1)), func() {
+					})
+					__n2 := (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
+					gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n2)), "maybe")
+					gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(__n2)), 0.0)
+					gtk4rt.ScrolledWindowSetChild(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(__n2)))
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n1)))
+					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
-			if m.shown {
-				__n1 := (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
-				gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(__n1)), func() {
-				})
-				__n2 := (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
-				gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n2)), "maybe")
-				gtk4rt.ScrolledWindowSetChild(gtk4rt.Handle(unsafe.Pointer(__n1)), gtk4rt.Handle(unsafe.Pointer(__n2)))
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
-				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -472,6 +469,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)), m.list_reachEnd_handler)
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n4)), "rows")
+	gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(m.__n4)), 0.0)
 	gtk4rt.ScrolledWindowSetChild(gtk4rt.Handle(unsafe.Pointer(m.list)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.list)))
 	m.__renderSlot0(m.__n0)
@@ -493,4 +491,4 @@ func (m *Model) listReachEnd() {
 	gtk4rt.ScrollReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)))
 }
 -- run/go/gtk4 --
-pass sha256:9e05d591443dd6d4a34a7e3c8dd9e0da
+pass sha256:913012887bea789894ebd3fb483183e1

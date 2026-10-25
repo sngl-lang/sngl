@@ -225,14 +225,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     return w;
 }
 
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
-}
-
 static GtkBox *sngl_slot_box(GtkBox *b) {
     if (b != NULL) return b;
     GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
@@ -481,51 +473,55 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
-			}
-			m.__slot0 = nil
-			m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
-			__inst0_next := []*__remote_state1Instance{}
-			var __inst0_i int = 0
-			for _, u := range m.more__inst0 {
-				__n3 := (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
-				gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(__n3)), "contain")
-				gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(__n3)), func() {
-				})
-				gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(__n3)), func() {
-				})
-				gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r2 string) {
-				})
-				var __n4 *__remote_state1Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n4 = m.__inst0_live[__inst0_i]
-					__n4.SetUrl(u)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
+				}
+				m.__slot0 = nil
+				m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
+				__inst0_next := []*__remote_state1Instance{}
+				var __inst0_i int = 0
+				for _, u := range m.more__inst0 {
+					__n3 := (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
+					gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(__n3)), "contain")
+					gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(__n3)), func() {
+					})
+					gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(__n3)), func() {
+					})
+					gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(__n3)), func(m__r2 string) {
+					})
+					var __n4 *__remote_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n4 = m.__inst0_live[__inst0_i]
+						__n4.SetUrl(u)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n4__new := new__remote_state1Instance(m, u)
+						__n4 = __n4__new
 					}
-					__n4__new := new__remote_state1Instance(m, u)
-					__n4 = __n4__new
+					__inst0_next = append(__inst0_next, __n4)
+					__inst0_i = (__inst0_i + 1)
+					__n4__el := __n4.Root
+					gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Handle(unsafe.Pointer(__n4__el)))
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n3)))
+					m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n3)))
 				}
-				__inst0_next = append(__inst0_next, __n4)
-				__inst0_i = (__inst0_i + 1)
-				__n4__el := __n4.Root
-				gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Handle(unsafe.Pointer(__n4__el)))
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n3)))
-				m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n3)))
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -797,4 +793,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:66ccd594f2c1c91689c1aafc194df363
+pass sha256:ec7706e30a0c20c8d80cb2e151349c3c

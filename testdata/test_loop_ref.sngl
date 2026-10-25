@@ -2,7 +2,7 @@
 // ref[T] into the list, so field/whole-element writes update the original
 // element by index. Reads auto-deref. Plain `for t` stays a value copy
 // (enforced for compiled targets; the headless interpreter models structs
-// as references, so only the &-write-through behaviour is asserted here).
+// as references, so only the &-write-through behavior is asserted here).
 
 import . "sngl:ui"
 import . "sngl:test"

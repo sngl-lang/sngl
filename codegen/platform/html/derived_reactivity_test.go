@@ -9,7 +9,7 @@ import (
 // a var that func transitively reads is mutated. Regression for the tutorial
 // "derived state" lesson: `func isLong() => name.length > 3` gating
 // `if isLong { ... }`, with an input bound to `name`. Two bugs combined here:
-//   - the checker analysed component methods against package-only vars, so
+//   - the checker analyzed component methods against package-only vars, so
 //     isLong was mis-typed PurityPure with empty Reads — the optimizer then
 //     const-folded `if isLong()` to a static node that never updated;
 //   - reactivity's dep gather didn't follow a call into the func's reads, so

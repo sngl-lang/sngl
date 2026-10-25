@@ -31,7 +31,7 @@ import (
 // ordinary cells and survive; the pixel data must instead be written to the tty
 // out of band (bubbletea: tea.Raw(KittyTransmit(...)) from Init/Update).
 //
-// render is a deferred rasteriser: it is called ONLY when the pixels are
+// render is a deferred rasterizer: it is called ONLY when the pixels are
 // actually needed (the half-block path). On kitty the placeholder grid depends
 // only on cols/rows/id, so render is never invoked and the (constant) grid is
 // served from a cache — making the per-frame View cost on kitty negligible.
@@ -75,7 +75,7 @@ var (
 
 type placeholderKey struct{ cols, rows, id int }
 
-// cachedPlaceholders memoises the placeholder grid: it is constant for a given
+// cachedPlaceholders memoizes the placeholder grid: it is constant for a given
 // (cols, rows, id), so View can return it without rebuilding ~cols*rows cells
 // every frame.
 func cachedPlaceholders(cols, rows, id int) string {
@@ -212,7 +212,7 @@ func detectKitty() {
 	}
 }
 
-// kittyTerminals is what the environment can be recognised by, and whether that
+// kittyTerminals is what the environment can be recognized by, and whether that
 // terminal takes a frame as shared memory.
 var kittyTerminals = []struct {
 	name string
@@ -243,7 +243,7 @@ const placeholderRune = 0x10EEEE
 //
 // Two transports, and which one is reachable decides the encoding as well.
 // Shared memory carries the frame beside the pty rather than through it, so it
-// can hand over the raw pixels (f=32) the rasteriser already produced -- no
+// can hand over the raw pixels (f=32) the rasterizer already produced -- no
 // compression, no base64, and nothing proportional to the image in the terminal
 // stream. Down the pty every byte is base64, which inflates by a third, so the
 // pixels have to be compressed first (f=100) or a redraw would cost most of a
@@ -314,7 +314,7 @@ func straightRGBA(dst []byte, src *image.RGBA) {
 		case 0xff:
 			dst[i], dst[i+1], dst[i+2] = p[i], p[i+1], p[i+2]
 		case 0:
-			// Premultiplied by zero keeps no colour to recover, and the pixel is
+			// Premultiplied by zero keeps no color to recover, and the pixel is
 			// invisible either way.
 			dst[i], dst[i+1], dst[i+2] = 0, 0, 0
 		default:

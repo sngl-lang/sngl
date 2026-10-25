@@ -3,7 +3,7 @@
 // when the list is empty and none at all otherwise — the same shape as an `if`,
 // and the exact opposite of the loop it is written on.
 //
-// The lowering had no frame flavour for "the else of a loop", so the else
+// The lowering had no frame flavor for "the else of a loop", so the else
 // inherited the loop's frame and the settle rebuilt the position AS the loop:
 // the bracket mounted once per element of a list it was placed to react to the
 // absence of. The interpreter reached the else through the mounter and got it

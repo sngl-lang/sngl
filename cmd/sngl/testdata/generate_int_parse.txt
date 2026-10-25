@@ -15,7 +15,7 @@ grep 'toIntOrNull\(16\)' outkt/app/src/main/java/test/sngl/app/MainScreen.kt
 
 [!exec:go] skip 'go toolchain required'
 sngl build --lang=go --platform=bubbletea --opt name=np bt.sngl
-exists np
+[toolchain] exists np
 
 -- app.sngl --
 import . "sngl:ui"
@@ -41,3 +41,6 @@ component main node {
 window {
     main
 }
+-- testrun/build/bubbletea/go/bt.sngl/1 --
+sha256:4eb0132429af27f14f324c9ae96360b4
+{}

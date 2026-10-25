@@ -23,26 +23,35 @@ const (
 )
 
 // agentPosts is what a test build declares beside the model for t.wait: it
-// turns the queue on, for what the program and fynelayout post, and runs what
-// arrived.
+// turns the queue on where the program posts, and runs what arrived; where
+// nothing arrives it only lets time pass.
+//
+// What the runtime posts (fynelayout.Post: a scroll's @reachEnd) is queued
+// too, on a queue of its own, since fyne's test driver runs fyne.Do at once
+// and a report made while the snapshot lays the tree out would run there.
 //
 // Each test starts from a fresh Model, so what the last test's Model posted
 // and the last test never waited for is dropped as the next one starts
 // (dropPostsFunc), rather than drawn inside the next test's waits.
 func agentPosts(pkg *ir.Package) string {
-	decl := ""
-	if !usesPosts(pkg) {
-		decl = "\nvar " + testPostsVar + " chan func()\n"
+	programPosts, drain := "", ""
+	if usesPosts(pkg) {
+		programPosts = `
+	case f := <-` + testPostsVar + `:
+		f()`
+		drain = `
+		case <-` + testPostsVar + `:`
 	}
-	return decl + `
+	return `
+var ` + layoutPostsVar + ` = make(chan func(), 256)
+
 func init() {
-	` + testPostsVar + ` = make(chan func(), 256)
-	fynelayout.Post = func(f func()) { ` + testPostsVar + ` <- f }
+	fynelayout.Post = func(f func()) { ` + layoutPostsVar + ` <- f }` + initPosts(pkg) + `
 }
 
 func ` + runPostsFunc + `(d time.Duration) {
-	select {
-	case f := <-` + testPostsVar + `:
+	select {` + programPosts + `
+	case f := <-` + layoutPostsVar + `:
 		f()
 	case <-time.After(d):
 	}
@@ -50,14 +59,25 @@ func ` + runPostsFunc + `(d time.Duration) {
 
 func ` + dropPostsFunc + `() {
 	for {
-		select {
-		case <-` + testPostsVar + `:
+		select {` + drain + `
+		case <-` + layoutPostsVar + `:
 		default:
 			return
 		}
 	}
 }
 `
+}
+
+// layoutPostsVar is the queue a test build gives fynelayout.Post.
+const layoutPostsVar = "__snglLayoutPosts"
+
+// initPosts turns the program's queue on, where it posts.
+func initPosts(pkg *ir.Package) string {
+	if !usesPosts(pkg) {
+		return ""
+	}
+	return "\n\t" + testPostsVar + " = make(chan func(), 256)"
 }
 
 func init() {

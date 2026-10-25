@@ -89,25 +89,29 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			for _, it := range m.items__inst0 {
-				__n2 := widget.NewButton("", nil)
-				__n2.SetText(it)
-				__n2.OnTapped = func() {
-					m.picked__inst0 = it
-					m.__n1.SetText(m.picked__inst0)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
 				}
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
-				m.__slot0 = append(m.__slot0, __n2)
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				for _, it := range m.items__inst0 {
+					__n2 := widget.NewButton("", nil)
+					__n2.SetText(it)
+					__n2.OnTapped = func() {
+						m.picked__inst0 = it
+						m.__n1.SetText(m.picked__inst0)
+					}
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
+					m.__slot0 = append(m.__slot0, __n2)
+				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -225,25 +229,29 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				for _, it := range m.items__inst0 {
+					__n2 := gtk4rt.New("GtkButton")
+					gtk4rt.ButtonSetLabel(__n2, it)
+					gtk4rt.Connect(__n2, "clicked", func() {
+						m.picked__inst0 = it
+						gtk4rt.LabelSetLabel(m.__n1, m.picked__inst0)
+					})
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
+					m.__slot0 = append(m.__slot0, __n2)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			for _, it := range m.items__inst0 {
-				__n2 := gtk4rt.New("GtkButton")
-				gtk4rt.ButtonSetLabel(__n2, it)
-				gtk4rt.Connect(__n2, "clicked", func() {
-					m.picked__inst0 = it
-					gtk4rt.LabelSetLabel(m.__n1, m.picked__inst0)
-				})
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
-				m.__slot0 = append(m.__slot0, __n2)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -295,6 +303,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, m.picked__inst0)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -306,6 +315,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:0dc40c924881cf39b8a7c52344a2a832
+pass sha256:14b4991172e3242f0ae6eacfe6d00217
 -- run/go/gtk4 --
-pass sha256:1b9c715098fe24b43d7503da53c3164c
+pass sha256:03933e0eb558511b84d640f902b2bd78

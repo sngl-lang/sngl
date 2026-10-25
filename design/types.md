@@ -155,7 +155,7 @@ It was **five** answers, not one per target. A var-held `500ms` printed
 interpreter; a `const` one printed `500` on all four, because
 `optimize.evalConversion` folded a unit to the bare float64 its magnitude is
 and spelled that back with `%v`. Go's apparent agreement was a coincidence of
-the value: `time.Duration.String` normalises across units, so 1100ms prints
+the value: `time.Duration.String` normalizes across units, so 1100ms prints
 `1.1s` for a unit whose declared base is ms. And a multi-base value had no
 chosen spelling anywhere — `{3 2 0 0 0}` on Go, `[object Object]` on
 JavaScript, `Measurement(px=3.0, …)` on Kotlin — because nothing had ever
@@ -260,7 +260,7 @@ denies. `cmd/sngl/testdata/unit_equality_runs.txt` runs the comparisons under
 bubbletea, the interpreter and a real Chromium, because a golden shows the
 emitted text and only executing it shows the answer.
 
-The case that separates two plausible implementations is a base that cancelled
+The case that separates two plausible implementations is a base that canceled
 to zero: the interpreter's map holds no key for it where the JS and Go records
 hold a zero, so a comparison written over *the bases a value carries* rather
 than over the unit's declared bases disagrees with the other three.

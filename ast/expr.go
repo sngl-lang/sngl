@@ -166,7 +166,7 @@ func SlotType(t TypeExpr) (ct *ComponentType, rest, ok bool) {
 
 // SlotWrapper is the `option[…]` or `list[…]` written around a slot's component
 // type, which counts the slot's insertions, or nil. Written around a rest slot's
-// `...` it is still recognised, so the checker can refuse it: the rest slot is
+// `...` it is still recognized, so the checker can refuse it: the rest slot is
 // inserted exactly once. Matched by shape: a component
 // type is no type argument anywhere else, so whether the name is the builtin is
 // the checker's question, not this one's.

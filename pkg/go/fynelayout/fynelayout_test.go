@@ -213,3 +213,75 @@ func TestAChangedGrowRelaysTheParent(t *testing.T) {
 		t.Errorf("the child that now grows is %v high, want the free space", got)
 	}
 }
+
+// Nothing -- an instance whose body renders no node -- takes no room and no
+// gap in either kind of box.
+func TestNothingTakesNoRoom(t *testing.T) {
+	a, b := box(10, 10), box(10, 10)
+	l := &fynelayout.Weighted{Gap: 6}
+	objects := []fyne.CanvasObject{a, fynelayout.Nothing(), b}
+	l.Layout(objects, fyne.NewSize(100, 200))
+	if got := b.Position().Y; got != 16 {
+		t.Errorf("child after Nothing starts at %v, want 10 + one gap 6", got)
+	}
+	if got := l.MinSize(objects).Height; got != 26 {
+		t.Errorf("min height %v, want 10 + 6 + 10", got)
+	}
+
+	c := container.NewVBox(box(10, 10), fynelayout.Nothing(), box(10, 10))
+	if got, want := c.MinSize().Height, 20+theme.Padding(); got != want {
+		t.Errorf("Fyne's box with Nothing in it is %v tall, want %v", got, want)
+	}
+}
+
+// counted is a widget that counts its refreshes.
+type counted struct {
+	widget.Label
+	refreshes int
+}
+
+func newCounted() *counted {
+	c := &counted{}
+	c.ExtendBaseWidget(c)
+	return c
+}
+
+func (c *counted) Refresh() {
+	c.refreshes++
+	c.Label.Refresh()
+}
+
+// A render slot inserting a row lays its box out again, and refreshes none of
+// the rows already there: a refresh reaches every child, a theme override
+// refreshed is a new theme scope for Fyne's text cache, and a table filled
+// row by row measured all its text again for each row -- seconds for a
+// table of fifteen.
+func TestInsertingRefreshesNoOtherChild(t *testing.T) {
+	old := newCounted()
+	c := fynelayout.NewVBox(old)
+	c.Resize(fyne.NewSize(100, 200))
+	anchor := fynelayout.SlotAnchor(c, nil)
+	before := old.refreshes
+	added := box(10, 30)
+	fynelayout.InsertBefore(c, anchor, added)
+	if old.refreshes != before {
+		t.Errorf("inserting a row refreshed the row already there %d times", old.refreshes-before)
+	}
+	if got, want := added.Position().Y, old.MinSize().Height+theme.Padding(); got != want {
+		t.Errorf("the inserted row is at %v, want laid out after the first, at %v", got, want)
+	}
+}
+
+// A grid given another column count lays its children out that many to a row.
+func TestSetGridColumnsLaysOutThatManyToARow(t *testing.T) {
+	a, b, c := box(10, 10), box(10, 10), box(10, 10)
+	g := container.NewGridWithColumns(2, a, b, c)
+	g.Resize(fyne.NewSize(300, 100))
+	if c.Position().Y == a.Position().Y {
+		t.Fatalf("with two columns the third child should start a row: %v %v", a.Position(), c.Position())
+	}
+	fynelayout.SetGridColumns(g, 3)
+	if c.Position().Y != a.Position().Y {
+		t.Errorf("with three columns the third child should share the first's row: %v %v", a.Position(), c.Position())
+	}
+}

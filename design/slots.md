@@ -37,7 +37,7 @@ A builtin's kind can say more than its declaration: a nav page's content is
 mounted only while its stack shows the page, so `ir.Component.InsertsOf`
 reads it as an option, bare children and population alike.
 
-The parenthesised list reuses `FuncTypeParamList`, so a parameter there may be
+The parenthesized list reuses `FuncTypeParamList`, so a parameter there may be
 named (`cell component(row Row)`) — and **the name is contract, not
 documentation**, because a slot's structural match is by name (Jonathan's call:
 a call already assigns by name, `add(b = 2, a = 1)`). So `ir.SlotDecl.Params`

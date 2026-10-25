@@ -20,7 +20,7 @@ component document(children ...component block) node {
 }
 
 // A member that hosts a different family — the rich-text case the mechanism
-// was generalised for.
+// was generalized for.
 component para(children ...component inline) block {
     #[family.crosses]
     children

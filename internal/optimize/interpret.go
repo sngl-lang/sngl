@@ -227,7 +227,7 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			// `#[kt.native("androidx.compose.ui.graphics.Color", "")]` names a
 			// class the emitter already imports -- so this folder ran the body
 			// anyway, got nothing back from the native, and folded the call to
-			// its return type's zero. That is how every constant-coloured
+			// its return type's zero. That is how every constant-colored
 			// Compose shape became `drawRect(color = null, ...)`, which is no
 			// Kotlin that compiles.
 			if x.Func == nil || x.Func.Foreign.Path != "" || isUnfoldableNative(x.Func) {
@@ -462,7 +462,7 @@ func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 // interpEnv is the environment a pure func is interpreted in: ctx.pkg's consts,
 // evaluated. Built once per package per run and shared, because building it
 // evaluates every const's initializer and a highlighted code block interprets
-// a token's colour once per token -- 160000 builds of a site's search index.
+// a token's color once per token -- 160000 builds of a site's search index.
 // A call runs in a snapshot of it (CallUserFuncValues), so none writes it.
 func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	if ctx.interpEnvs == nil {

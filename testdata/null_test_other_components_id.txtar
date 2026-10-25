@@ -271,22 +271,26 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				m.s = nil
+				if m.shown__inst0 {
+					m.s = widget.NewLabel("")
+					m.s.SetText("q")
+					fynelayout.InsertBefore(__parent, m.__slot0_at, m.s)
+					m.__slot0 = append(m.__slot0, m.s)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			m.s = nil
-			if m.shown__inst0 {
-				m.s = widget.NewLabel("")
-				m.s.SetText("q")
-				fynelayout.InsertBefore(__parent, m.__slot0_at, m.s)
-				m.__slot0 = append(m.__slot0, m.s)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -480,33 +484,36 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.shown__inst0) {
-          let s = document.createElement("span");
-          s.setAttribute("data-sngl-id", "s");
-          s.textContent = "q";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.shown__inst0) {
+            let s = document.createElement("span");
+            s.setAttribute("data-sngl-id", "s");
+            s.textContent = "q";
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === s) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(s, __place0_i_ref0);
+            }
+            __slot0.push(s);
           }
-          if (__place0_i_ref0 === s) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(s, __place0_i_ref0);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot0.push(s);
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var $0 = document.getElementById("$0");
@@ -537,6 +544,6 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:01c017be6c5626c48f76328b06528f8b
+pass sha256:e54a8a33feae3e48eec5e995158bd590
 -- run/none/html --
-pass sha256:4e0b0f26bb1cb437c479f5f0c83b40a9
+pass sha256:57b1c970e464c821a49947d5b313a1f3

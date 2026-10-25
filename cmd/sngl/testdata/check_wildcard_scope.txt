@@ -10,7 +10,7 @@ stdout 'td\(attrs=\{"bgcolor"='
 ! stdout 'td\(bgcolor='
 
 # 2. An HTML tag name is lowercase, so a camelCase identifier reaching the
-# element wildcard is a misspelling rather than a tag nobody has standardised
+# element wildcard is a misspelling rather than a tag nobody has standardized
 # yet. The wildcard is reached by naming the package, which is the only way
 # now that nothing injects it as a fallback scope.
 ! sngl dump --stage checked --lang none --platform html typo.sngl

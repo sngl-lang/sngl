@@ -16,7 +16,7 @@ start, one keyed on `render(members())`. So the re-render is an effect rekeyed
 by a write to what the members read, and a click is a closure posted to the
 drawing thread -- nothing either host had to learn.
 
-`labelled` has a body and composes: its `text` is reached with its props bound.
+`labeled` has a body and composes: its `text` is reached with its props bound.
 
 deny out/go/fyne/model.go `(?i)\bbar\b` -- the host itself reaches no backend
 deny out/go/gtk4/model.go `(?i)\bbar\b` -- likewise
@@ -39,7 +39,7 @@ component block build.family
 
 component text(full string, color string = "", @click(button int)) block
 
-component labelled(label string, n int) block {
+component labeled(label string, n int) block {
     text(full="{label}={n}")
 }
 
@@ -135,7 +135,7 @@ bar {
         })
     }
     if n > 0 {
-        labelled(label="n", n=n)
+        labeled(label="n", n=n)
     }
 }
 
@@ -654,6 +654,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -668,4 +669,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:da8a79d15bb83314677fa3e6ed3e2c46
 -- run/go/gtk4 --
-pass sha256:6d496f117aabeb40b67255fbdfbd40e3
+pass sha256:f9573b5d050f588c6fafc106b94c68dc

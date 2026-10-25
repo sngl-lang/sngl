@@ -13,7 +13,7 @@ import (
 //
 // A golden shows absence but does not state it, and no reader reliably
 // notices that something is not there. `! grep 'held := \[\]int'` said
-// "nothing materialises a list to walk a sequence" — that claim is the point
+// "nothing materializes a list to walk a sequence" — that claim is the point
 // of the change, and a reviewer reading the golden has no way to know it was
 // ever being made. So the claim stays, written down, with its reason.
 //
@@ -31,7 +31,7 @@ type deny struct {
 
 // parseDenies reads the `deny` directives out of the archive comment.
 //
-//	deny out/go/bubbletea/model.go `held := \[\]int` -- nothing materialises a list
+//	deny out/go/bubbletea/model.go `held := \[\]int` -- nothing materializes a list
 //	deny * `\.toList\(\)` -- no target copies a progression into a list
 //
 // The pattern is backquoted so a generated-code regex needs no escaping past

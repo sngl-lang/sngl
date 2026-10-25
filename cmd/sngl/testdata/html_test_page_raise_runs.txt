@@ -60,7 +60,7 @@ ui.window {
     main
 }
 -- testrun/html/none/click.sngl/main/1 --
-sha256:d56bd12d107de90c5daf1502f8695562
+sha256:64def781e3e919b904b9e1149f56956f
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:d56bd12d107de90c5daf1502f8695562
   ]
 }
 -- testrun/html/none/load.sngl/main/1 --
-sha256:4d62d41d456e9fc6bb5a19f9192d1b50
+sha256:3a3a3ae54a4f2c50a138d8055fecb5a0
 {
   "results": [
     {

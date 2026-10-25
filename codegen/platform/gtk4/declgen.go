@@ -269,7 +269,9 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
-	if !o.cgo {
+	// A box's alignItems is gtk4rt's to apply as a child arrives, so a box
+	// takes one through gtk4rt on cgo too: GTK's own call left it unaligned.
+	if !o.cgo || call.Func == "gtk_box_append" {
 		o.rtOp(b, info, op, call)
 		return
 	}
@@ -369,7 +371,7 @@ func (o *childOps) native(b *strings.Builder, name, decl string) {
 // rtSet is the call of gtk4rt's wrapper of p's setter, which takes the
 // widget as a Handle and the value as Go holds it.
 func (o *childOps) rtSet(b *strings.Builder, reg *gir.TypeRegistry, p gir.Prop, n, fn string, kind rtSetterKind) string {
-	typ, value := map[rtSetterKind]string{rtStr: "string", rtBool: "bool", rtInt: "int", rtOrient: "int"}[kind], n
+	typ, value := map[rtSetterKind]string{rtStr: "string", rtBool: "bool", rtInt: "int", rtFloat: "float", rtOrient: "int"}[kind], n
 	if kind == rtOrient {
 		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
 	}

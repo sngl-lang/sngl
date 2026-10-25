@@ -16,7 +16,7 @@ import (
 //
 // Run after the purity fixpoint, where the const(...) assertions are, so what
 // it reports is judged against every declaration's final Const. Each body is
-// asked once, at its first offence: past it the function is already not what
+// asked once, at its first offense: past it the function is already not what
 // it says, and a list of every read would bury the one that matters.
 func (c *checker) checkConstFuncs(funcs []*ir.Func) {
 	for _, fn := range funcs {

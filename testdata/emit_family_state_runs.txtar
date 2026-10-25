@@ -26,7 +26,7 @@ component block build.family
 
 component text(full string, color string = "", @click(button int)) block
 
-component labelled(label string, n int) block {
+component labeled(label string, n int) block {
     text(full="{label}={n}")
 }
 
@@ -122,7 +122,7 @@ bar {
         })
     }
     if n > 0 {
-        labelled(label="n", n=n)
+        labeled(label="n", n=n)
     }
 }
 
@@ -649,6 +649,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -661,6 +662,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:836af405c0ebca8bc87a3a7f2c391aba
+pass sha256:c10ff28607424c4b609cfb6abbdf69ee
 -- run/go/gtk4 --
-pass sha256:ef741c43564f2904b8e2cabaa27071d1
+pass sha256:ac92763b060aad7597a439906ecfbc96

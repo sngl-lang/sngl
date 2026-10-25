@@ -90,7 +90,7 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 	switch x := e.(type) {
 	case *Call:
 		// Direct call to a known async func, or through a value whose
-		// signature is coloured async.
+		// signature is colored async.
 		if !x.Detached && (x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x)) {
 			return true
 		}
@@ -158,7 +158,7 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 	case *Lambda, *Closure:
 		// Constructing a closure is not calling it. What blocks is whatever
 		// eventually invokes the closure, and the closure's own Func is
-		// coloured in its own right -- so descending here colours the
+		// colored in its own right -- so descending here colors the
 		// *enclosing* function for work it only handed over. On Go that turned
 		// `handle = every(d, func(){ …blocking… })` into an async statement,
 		// which passAsyncOffload then refused for sitting inside the `if`
@@ -255,7 +255,7 @@ func ExprHasAsyncCall(e Expr) bool {
 }
 
 // CallsAsyncValue reports whether call is a call through a func value whose
-// signature the checker coloured async: an async function may flow into the
+// signature the checker colored async: an async function may flow into the
 // slot it reads (checker.colorAsyncSlots).
 //
 // A function literal called where it stands -- a func-typed prop's argument

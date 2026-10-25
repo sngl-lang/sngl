@@ -364,6 +364,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.details, m.details_visible_handler)
 	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, (("closed " + fmt.Sprint(m.closes)) + " times"))
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.details, m.__n0)
 	m.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n2, "Hide")
@@ -381,6 +382,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.other, m.other_visible_handler)
 	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("shown " + fmt.Sprint(m.shown)))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.other, m.__n1)
 	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "Details")
@@ -482,6 +484,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:b9dbf3049cced3bf3bb03a3f33727cbf
 -- run/go/gtk4 --
-pass sha256:6fb5c7a611d122aeb1736f9e32ca6bca
+pass sha256:ac556934eccbcd7155de8e5f6c20b739
 -- run/none/html --
 pass sha256:7a27a764f1c5ac5efcbc6cb8423ca902

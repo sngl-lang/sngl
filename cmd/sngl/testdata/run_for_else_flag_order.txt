@@ -6,7 +6,7 @@
 #
 # This runs the generated Go rather than reading it, because the invariant is
 # about order and a grep over the output is position-blind. The interpreter
-# cannot see it either -- it honours For.Else natively and never runs the pass
+# cannot see it either -- it honors For.Else natively and never runs the pass
 # -- so the assertion has to come from a compiled target.
 #
 # The state has to be a component var. A plain function over a literal list
@@ -60,7 +60,7 @@ func testContinueMeansTheBodyRan(t Test, c box) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/box/1 --
-sha256:cc25abd7245fa8e819bb1e794aa26355
+sha256:e2da0fca092f2acd42fc5dab665a726b
 {
   "results": [
     {

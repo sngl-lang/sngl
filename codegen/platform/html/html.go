@@ -1280,7 +1280,7 @@ func (g *htmlGen) generate() (string, error) {
 		}
 		// A window shown inside the document is a `<dialog>` with the
 		// browser's own look, which the reset above takes the margin that
-		// centres it and the padding of: given them back.
+		// centers it and the padding of: given them back.
 		if g.showsDialog() {
 			defaultCSS += "dialog { margin: auto; padding: 1em; }\n"
 		}
@@ -2610,7 +2610,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			Params: fn.Params,
 			Block:  body,
 			// The rebuilt func stands in for fn at emission, so it has to carry
-			// fn's colour: a call site writes `await` off the callee's flag,
+			// fn's color: a call site writes `await` off the callee's flag,
 			// and a definition that lost it is an await in a sync function.
 			IsAsync: fn.IsAsync,
 		}

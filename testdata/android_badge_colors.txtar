@@ -1,10 +1,10 @@
 A Material Badge paints its own pill, so a Style's background drawn by the
 Modifier was a rectangle behind it and the pill stayed the theme's error red:
-a row of coloured badges was all red. Its colours are Compose's arguments,
+a row of colored badges was all red. Its colors are Compose's arguments,
 `containerColor` the Style's background and `contentColor` its color, and
 the Modifier draws no background.
 
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `Badge\(modifier = Modifier\.background` -- the pill takes the colour, not a rectangle behind it
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `Badge\(modifier = Modifier\.background` -- the pill takes the color, not a rectangle behind it
 
 -- m.sngl --
 import ui "sngl:ui"

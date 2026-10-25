@@ -118,7 +118,7 @@ func testView(t Test, c panel) {
     t.assert(c.named != null)
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:abe5c17857fc6a9cd1cae005c10d55de
+sha256:431f88c9fb85b47aa0a4ba7ca23001a6
 {
   "results": [
     {
@@ -140,7 +140,7 @@ sha256:abe5c17857fc6a9cd1cae005c10d55de
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:69370bf41358f985f1a08caefcf89be8
+sha256:6259dcd5e2fa8869f8393229e73281bb
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:69370bf41358f985f1a08caefcf89be8
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:ab131824e794c32e672064ea9a887239
+sha256:2dcb282b9f2e34a8ec898b6c4d8d42a9
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:ab131824e794c32e672064ea9a887239
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:31c20302af6cd1f39582b66f657cdb12
+sha256:6fe6d718a47dc9425d0843a845f70833
 {
   "results": [
     {
@@ -206,7 +206,7 @@ sha256:31c20302af6cd1f39582b66f657cdb12
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:1ecc17616bc555e42fc48b9ef52892dc
+sha256:d1bfa9c24b54f0dca0fdaebfc0516705
 {
   "results": [
     {

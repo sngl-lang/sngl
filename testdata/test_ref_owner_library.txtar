@@ -179,22 +179,27 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				m.cal = nil
+				if m.shown {
+					m.cal = gtk4rt.New("GtkLabel")
+					gtk4rt.LabelSetLabel(m.cal, "c")
+					gtk4rt.LabelSetXAlign(m.cal, 0.0)
+					gtk4rt.InsertBefore(parent, m.__slot0_at, m.cal)
+					m.__slot0 = append(m.__slot0, m.cal)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			m.cal = nil
-			if m.shown {
-				m.cal = gtk4rt.New("GtkLabel")
-				gtk4rt.LabelSetLabel(m.cal, "c")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, m.cal)
-				m.__slot0 = append(m.__slot0, m.cal)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -270,4 +275,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:ae693cdc23ebc0159efedc8fa18050a5
+pass sha256:5ebef11a31c8f44069007899109bc13c

@@ -61,7 +61,7 @@ func testComesBack(t test.Test, c main) {
     t.assert(c.c != null && c.c.shown() == "picked b")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:4407c77772acdcf590e40046b148103a
+sha256:28bcd451892772bfebb2d92ebf6e9de7
 {
   "results": [
     {
@@ -71,7 +71,7 @@ sha256:4407c77772acdcf590e40046b148103a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:35452e70302aa4425dc67289b91bb587
+sha256:2c3238dbf3d5571ed885b0bab0d7c737
 {
   "results": [
     {
@@ -81,7 +81,7 @@ sha256:35452e70302aa4425dc67289b91bb587
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:d059140497377e8f431bf2835ac9e572
+sha256:024f7e5517f0cc41b962d1af08b32aed
 {
   "results": [
     {
@@ -91,7 +91,7 @@ sha256:d059140497377e8f431bf2835ac9e572
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:94a7b1edf352d63c741855e837521e13
+sha256:8b54d6918baa91b03b3823f796f50a7d
 {
   "results": [
     {
@@ -101,7 +101,7 @@ sha256:94a7b1edf352d63c741855e837521e13
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:f3afaff890e0fc8a3ec9e63a10246387
+sha256:276a42c721c5440db7b6653b1812be4b
 {
   "results": [
     {

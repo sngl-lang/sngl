@@ -48,7 +48,7 @@ func enumSelectJS(member, operand string) string {
 // enumEqualJS is == or != between two values of a payload enum or a struct,
 // or options of one: the same member and equal payloads, or equal fields,
 // each compared as its type compares, since JavaScript's === is an object's
-// identity -- two colours written alike were unequal.
+// identity -- two colors written alike were unequal.
 func enumEqualJS(n *ir.Binary, left, right string) (string, bool) {
 	lt, rt := n.Left.ExprType(), n.Right.ExprType()
 	t := optionElemJS(lt)

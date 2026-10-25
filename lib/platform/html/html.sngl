@@ -10,6 +10,7 @@ import math "sngl:math"
 import gen "sngl:x/gen"
 import nav "sngl:ui/nav"
 import family "sngl:family"
+import static "sngl:language/none"
 
 // Serves dir over HTTP at listen, ":0" when empty, printing the address, until
 // the process is stopped. What `sngl run` does with a site. Declared above the
@@ -64,7 +65,8 @@ component platform(
     const main          bool,
     // Route mode: HTTP framework (default "net/http").
     const framework     string,
-    // Route mode: host:port for `sngl run` to listen on.
+    // Host:port `sngl run` listens on: the static server's, ":0" when
+    // empty, or the route server's, ":8080" when empty.
     const listen        string,
     // Minify emitted HTML and inline JS via esbuild.
     const minify        bool,
@@ -107,7 +109,11 @@ component platform(
         "clearInterval",
         "requestAnimationFrame",
     ],
-) build.platform {
+) build.platform
+
+// A static site is served from the directory it was written to. A server
+// language's build is a program of its own, which its language runs.
+const component platform[static.language](listen) {
     gen.run(@run(dir, args) {
         serve(dir, listen)
     })
@@ -122,6 +128,37 @@ struct Event {
     // The element the handler was attached to.
     currentTarget Target
 }
+
+// A key pressed while an element has the focus, as `@keydown` hands it: the
+// key's name as the DOM spells it -- "Enter", " " for the space bar -- and
+// the phase it is heard in, 2 when the element the listener is on has the
+// focus itself and 3 when it bubbled up from something inside it.
+#[js.native("KeyboardEvent")]
+struct KeyEvent {
+    key        string
+    eventPhase int
+}
+
+// A click as `@click` hands it: the element it landed on, and the one the
+// handler hearing it was attached to.
+#[js.native("MouseEvent")]
+struct ClickEvent {
+    target        Element
+    currentTarget Element
+}
+
+// An element a click went through, as far as a card asks of it.
+#[js.native("Element")]
+struct Element {}
+
+// The nearest of this element and those it is in that matches selector.
+#[js.native("closest", "", method)]
+func Element.closest(selector string) Element
+
+// Keeps the browser from doing what the key does by default: the space bar
+// scrolling the page.
+#[js.native("preventDefault", "", method)]
+func KeyEvent.preventDefault()
 
 // The element an event was dispatched to, as far as a control reports its
 // state through it: the text of an input, a textarea or a select, and whether
@@ -202,7 +239,7 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     attrs map[string, string],
 
-    @click(),
+    @click(e ClickEvent),
     @input(e Event),
     @change(e Event),
     @focus(),
@@ -213,6 +250,7 @@ component element(
     @error(e error),
     @close(),
     @select(),
+    @keydown(e KeyEvent),
     // Dispatched by `sngl-reach-end`, an element the page defines rather than
     // the DOM (codegen/platform/html/reachend.go). Declared because it is
     // camelCase, which the wildcard below refuses, and it is camelCase so a
@@ -698,13 +736,26 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
 
 // A clickable card is a button to assistive technology and the keyboard's
 // focus order, and shows the pointer a link does: one element either way, with
-// the difference in its attributes.
+// the difference in its attributes. As a button does, it takes Enter and the
+// space bar as a click, which a div with a role is not given -- pressed on the
+// card itself: one pressed in a field or a button inside it is theirs.
+//
+// A click a control inside the card handled -- a button, a link, a field, a
+// clickable card -- is that control's, and the card does not hear it: the
+// DOM bubbles it up to the card, and a button's click, by mouse or by Enter,
+// clicked the card as well.
 const component ui.card[platform](style, clickable, @click, content) {
     html.div(
         attrs = clickable ? {"role"="button", "tabindex"="0"} : {},
         style = {borderRadius=8px, padding=16px, cursor=clickable ? "pointer" : "auto", ...style},
-        @click {
-            if clickable {
+        @click(e) {
+            if clickable && e.target.closest(controls) == e.currentTarget {
+                click()
+            }
+        },
+        @keydown(e) {
+            if clickable && e.eventPhase == 2 && (e.key == "Enter" || e.key == " ") {
+                e.preventDefault()
                 click()
             }
         },
@@ -712,6 +763,9 @@ const component ui.card[platform](style, clickable, @click, content) {
         content
     }
 }
+
+// What takes a click for itself: a card hears none that landed in one.
+const controls = "a, button, input, select, textarea, label, summary, [role=button], [role=link], [role=checkbox], [role=switch], [role=tab]"
 
 // --- Rich text ---
 //
@@ -1098,13 +1152,13 @@ component drawSource(
 
 // `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
 // page's `_snglColor` helper, because being pure is what lets a constant style
-// fold: a literal colour becomes the string `"rgba(51,102,204,1)"` at build
+// fold: a literal color becomes the string `"rgba(51,102,204,1)"` at build
 // time, where a native call stays a call forever. The alpha channel is 0-255
 // in SNGL and 0-1 here, which is the whole reason it is a function.
 const func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
 
 // Fill and stroke are gated on alpha, which every other backend does and this
-// one did not: the old translation tested the colour *object* for truthiness,
+// one did not: the old translation tested the color *object* for truthiness,
 // and a JS object is always truthy, so a fill-only shape also painted an
 // invisible stroke (#225).
 // The style a shape shares, as a helper rather than repeated per shape. A
@@ -1145,7 +1199,7 @@ const component shapes.rect[platform](x, y, w, h, style) {
         if style.stroke.a > 0 {
             e.ctx.strokeStyle = cssColor(style.stroke)
             e.ctx.lineWidth = style.strokeWidth
-            // A rectangle has corners, so lineJoin is its to honour. No
+            // A rectangle has corners, so lineJoin is its to honor. No
             // lineCap: the path closes, so there are no ends for one to shape
             // -- which is also why circle and ellipse set neither.
             e.ctx.lineJoin = string(style.lineJoin)
@@ -1172,7 +1226,7 @@ const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
 }
 
 // A line has no interior, so `fill` is not read here at all rather than being
-// set and ignored. That is the declaration's documented behaviour, stated once
+// set and ignored. That is the declaration's documented behavior, stated once
 // in the override instead of as a special case in five emitters.
 const component shapes.line[platform](x1, y1, x2, y2, style) {
     html.draw(@draw(e) {

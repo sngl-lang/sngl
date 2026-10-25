@@ -202,13 +202,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
 }
@@ -279,7 +279,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -291,7 +291,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt5 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt5))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
@@ -344,20 +344,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt10)
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
-	if height__r0 == 0 {
-		__lt12 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
 	} else {
-		var __lt11 int
-		if lines == 0 {
-			__lt11 = height__r0
-		} else {
-			__lt11 = min(height__r0, lines)
-		}
-		__lt12 = __lt11
+		__lt11 = max(1, (int(px) / 8))
 	}
-	return __lt12
+	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -461,7 +472,7 @@ func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		contentLook := BoxLook(Style{}, true)
-		_, contentH := tui.Inner(contentLook, m.width, m.height)
+		_, contentH := tui.Inner(contentLook, tui.Avail(m.width), m.height)
 		var contentChildren []tui.Part
 		var content_0 string
 		content_0Focused := (m.__focusID == 0)
@@ -471,50 +482,50 @@ func (m Model) View() tea.View {
 		}
 		content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
 		contentChildren = append(contentChildren, tui.Fixed(content_0))
-		var __lt13 string
-		if m.on {
-			__lt13 = "bold"
-		} else {
-			__lt13 = "normal"
-		}
 		var __lt14 string
 		if m.on {
 			__lt14 = "bold"
 		} else {
 			__lt14 = "normal"
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt14}.Flex, func(content_5Cells int) string {
-			var content_5 string
-			content_5 = tui.Sized(BoxLook(Style{FontWeight: __lt13}, true), false, content_5Cells).Render(fmt.Sprint("weight"))
-			return content_5
-		}))
 		var __lt15 string
 		if m.on {
-			__lt15 = "italic"
+			__lt15 = "bold"
 		} else {
 			__lt15 = "normal"
 		}
+		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt15}.Flex, func(content_5Cells int) string {
+			var content_5 string
+			content_5 = tui.Sized(BoxLook(Style{FontWeight: __lt14}, true), false, content_5Cells).Render(fmt.Sprint("weight"))
+			return content_5
+		}))
 		var __lt16 string
 		if m.on {
-			__lt16 = "center"
+			__lt16 = "italic"
 		} else {
-			__lt16 = "right"
+			__lt16 = "normal"
 		}
 		var __lt17 string
 		if m.on {
-			__lt17 = "italic"
+			__lt17 = "center"
 		} else {
-			__lt17 = "normal"
+			__lt17 = "right"
 		}
 		var __lt18 string
 		if m.on {
-			__lt18 = "center"
+			__lt18 = "italic"
 		} else {
-			__lt18 = "right"
+			__lt18 = "normal"
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontStyle: __lt17, TextAlign: __lt18}.Flex, func(content_14Cells int) string {
+		var __lt19 string
+		if m.on {
+			__lt19 = "center"
+		} else {
+			__lt19 = "right"
+		}
+		contentChildren = append(contentChildren, tui.Grow(Style{FontStyle: __lt18, TextAlign: __lt19}.Flex, func(content_14Cells int) string {
 			var content_14 string
-			content_14 = tui.Sized(BoxLook(Style{FontStyle: __lt15, TextAlign: __lt16}, true), false, content_14Cells).Render(fmt.Sprint("slant"))
+			content_14 = tui.Sized(BoxLook(Style{FontStyle: __lt16, TextAlign: __lt17}, true), false, content_14Cells).Render(fmt.Sprint("slant"))
 			return content_14
 		}))
 		var content_15 string
@@ -526,127 +537,127 @@ func (m Model) View() tea.View {
 		var content_17 string
 		content_17 = BoxLook(Style{TextAlign: "justify"}, true).Render(fmt.Sprint("justified"))
 		contentChildren = append(contentChildren, tui.Fixed(content_17))
-		var __lt20 string
+		var __lt21 string
 		if m.on {
-			__lt20 = "center"
+			__lt21 = "center"
 		} else {
-			var __lt19 string
+			var __lt20 string
 			if m.n > 2 {
-				__lt19 = "left"
+				__lt20 = "left"
 			} else {
-				__lt19 = "right"
+				__lt20 = "right"
 			}
-			__lt20 = __lt19
+			__lt21 = __lt20
 		}
-		var __lt22 string
+		var __lt23 string
 		if m.on {
-			__lt22 = "center"
+			__lt23 = "center"
 		} else {
-			var __lt21 string
+			var __lt22 string
 			if m.n > 2 {
-				__lt21 = "left"
+				__lt22 = "left"
 			} else {
-				__lt21 = "right"
+				__lt22 = "right"
 			}
-			__lt22 = __lt21
+			__lt23 = __lt22
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{TextAlign: __lt22}.Flex, func(content_22Cells int) string {
+		contentChildren = append(contentChildren, tui.Grow(Style{TextAlign: __lt23}.Flex, func(content_22Cells int) string {
 			var content_22 string
-			content_22 = tui.Sized(BoxLook(Style{TextAlign: __lt20}, true), false, content_22Cells).Render(fmt.Sprint("nested"))
+			content_22 = tui.Sized(BoxLook(Style{TextAlign: __lt21}, true), false, content_22Cells).Render(fmt.Sprint("nested"))
 			return content_22
 		}))
-		var __lt23 Measurement
-		if m.on {
-			__lt23 = Measurement{Px: 20}
-		} else {
-			__lt23 = Measurement{Px: 10}
-		}
 		var __lt24 Measurement
 		if m.on {
 			__lt24 = Measurement{Px: 20}
 		} else {
 			__lt24 = Measurement{Px: 10}
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontSize: Measurement{Px: __lt24.Px * 2, Em: __lt24.Em * 2, Rem: __lt24.Rem * 2}}.Flex, func(content_27Cells int) string {
-			var content_27 string
-			content_27 = tui.Sized(BoxLook(Style{FontSize: Measurement{Px: __lt23.Px * 2, Em: __lt23.Em * 2, Rem: __lt23.Rem * 2}}, true), false, content_27Cells).Render(fmt.Sprint("grown"))
-			return content_27
-		}))
 		var __lt25 Measurement
 		if m.on {
-			__lt25 = Measurement{Px: 16}
+			__lt25 = Measurement{Px: 20}
 		} else {
-			__lt25 = Measurement{Px: 8}
+			__lt25 = Measurement{Px: 10}
 		}
+		contentChildren = append(contentChildren, tui.Grow(Style{FontSize: Measurement{Px: __lt25.Px * 2, Em: __lt25.Em * 2, Rem: __lt25.Rem * 2}}.Flex, func(content_27Cells int) string {
+			var content_27 string
+			content_27 = tui.Sized(BoxLook(Style{FontSize: Measurement{Px: __lt24.Px * 2, Em: __lt24.Em * 2, Rem: __lt24.Rem * 2}}, true), false, content_27Cells).Render(fmt.Sprint("grown"))
+			return content_27
+		}))
 		var __lt26 Measurement
 		if m.on {
-			__lt26 = Measurement{Px: 160}
+			__lt26 = Measurement{Px: 16}
 		} else {
-			__lt26 = Measurement{Px: 80}
+			__lt26 = Measurement{Px: 8}
 		}
 		var __lt27 Measurement
 		if m.on {
-			__lt27 = Measurement{Px: 20}
+			__lt27 = Measurement{Px: 160}
 		} else {
-			__lt27 = Measurement{Px: 12}
+			__lt27 = Measurement{Px: 80}
 		}
-		var __lt28 float64
+		var __lt28 Measurement
 		if m.on {
-			__lt28 = 0.5
+			__lt28 = Measurement{Px: 20}
 		} else {
-			__lt28 = 1.0
+			__lt28 = Measurement{Px: 12}
 		}
-		var __lt29 Measurement
+		var __lt29 float64
 		if m.on {
-			__lt29 = Measurement{Px: 1}
+			__lt29 = 0.5
 		} else {
-			__lt29 = Measurement{Px: 0}
+			__lt29 = 1.0
 		}
-		var __lt30 snglcolor.Color
+		var __lt30 Measurement
 		if m.on {
-			__lt30 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+			__lt30 = Measurement{Px: 1}
 		} else {
-			__lt30 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+			__lt30 = Measurement{Px: 0}
 		}
-		var __lt31 Measurement
+		var __lt31 snglcolor.Color
 		if m.on {
-			__lt31 = Measurement{Px: 16}
+			__lt31 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 		} else {
-			__lt31 = Measurement{Px: 8}
+			__lt31 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
 		}
 		var __lt32 Measurement
 		if m.on {
-			__lt32 = Measurement{Px: 160}
+			__lt32 = Measurement{Px: 16}
 		} else {
-			__lt32 = Measurement{Px: 80}
+			__lt32 = Measurement{Px: 8}
 		}
 		var __lt33 Measurement
 		if m.on {
-			__lt33 = Measurement{Px: 20}
+			__lt33 = Measurement{Px: 160}
 		} else {
-			__lt33 = Measurement{Px: 12}
+			__lt33 = Measurement{Px: 80}
 		}
-		var __lt34 float64
+		var __lt34 Measurement
 		if m.on {
-			__lt34 = 0.5
+			__lt34 = Measurement{Px: 20}
 		} else {
-			__lt34 = 1.0
+			__lt34 = Measurement{Px: 12}
 		}
-		var __lt35 Measurement
+		var __lt35 float64
 		if m.on {
-			__lt35 = Measurement{Px: 1}
+			__lt35 = 0.5
 		} else {
-			__lt35 = Measurement{Px: 0}
+			__lt35 = 1.0
 		}
-		var __lt36 snglcolor.Color
+		var __lt36 Measurement
 		if m.on {
-			__lt36 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+			__lt36 = Measurement{Px: 1}
 		} else {
-			__lt36 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+			__lt36 = Measurement{Px: 0}
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{Padding: __lt31, Width: __lt32, FontSize: __lt33, Opacity: __lt34, BorderWidth: __lt35, Color: __lt36}.Flex, func(content_52Cells int) string {
+		var __lt37 snglcolor.Color
+		if m.on {
+			__lt37 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		} else {
+			__lt37 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+		}
+		contentChildren = append(contentChildren, tui.Grow(Style{Padding: __lt32, Width: __lt33, FontSize: __lt34, Opacity: __lt35, BorderWidth: __lt36, Color: __lt37}.Flex, func(content_52Cells int) string {
 			var content_52 string
-			content_52 = tui.Sized(BoxLook(Style{Padding: __lt25, Width: __lt26, FontSize: __lt27, Opacity: __lt28, BorderWidth: __lt29, Color: __lt30}, true), false, content_52Cells).Render(fmt.Sprint("box"))
+			content_52 = tui.Sized(BoxLook(Style{Padding: __lt26, Width: __lt27, FontSize: __lt28, Opacity: __lt29, BorderWidth: __lt30, Color: __lt31}, true), false, content_52Cells).Render(fmt.Sprint("box"))
 			return content_52
 		}))
 		contentChildren = append(contentChildren, tui.Grow(Style{PaddingLeft: Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}}.Flex, func(content_53Cells int) string {
@@ -654,87 +665,87 @@ func (m Model) View() tea.View {
 			content_53 = tui.Sized(BoxLook(Style{PaddingLeft: Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}}, true), false, content_53Cells).Render(fmt.Sprint("scaled"))
 			return content_53
 		}))
-		var __lt37 string
+		var __lt38 string
 		if m.on {
-			__lt37 = "bold"
+			__lt38 = "bold"
 		} else {
-			__lt37 = "normal"
+			__lt38 = "normal"
 		}
-		var __lt38 Measurement
+		var __lt39 Measurement
 		if m.on {
-			__lt38 = Measurement{Px: 20}
+			__lt39 = Measurement{Px: 20}
 		} else {
-			__lt38 = Measurement{Px: 12}
+			__lt39 = Measurement{Px: 12}
 		}
-		var __lt39 string
+		var __lt40 string
 		if m.on {
-			__lt39 = "bold"
+			__lt40 = "bold"
 		} else {
-			__lt39 = "normal"
+			__lt40 = "normal"
 		}
-		var __lt40 Measurement
+		var __lt41 Measurement
 		if m.on {
-			__lt40 = Measurement{Px: 20}
+			__lt41 = Measurement{Px: 20}
 		} else {
-			__lt40 = Measurement{Px: 12}
+			__lt41 = Measurement{Px: 12}
 		}
-		var __lt41 string
+		var __lt42 string
 		if m.on {
-			__lt41 = "bold"
+			__lt42 = "bold"
 		} else {
-			__lt41 = "normal"
+			__lt42 = "normal"
 		}
-		var __lt42 Measurement
+		var __lt43 Measurement
 		if m.on {
-			__lt42 = Measurement{Px: 20}
+			__lt43 = Measurement{Px: 20}
 		} else {
-			__lt42 = Measurement{Px: 12}
+			__lt43 = Measurement{Px: 12}
 		}
-		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt41, FontSize: __lt42}.Flex, func(content_66Cells int) string {
+		contentChildren = append(contentChildren, tui.Grow(Style{FontWeight: __lt42, FontSize: __lt43}.Flex, func(content_66Cells int) string {
 			var content_66 string
-			content_66Seed := SeedOf(Style{FontWeight: __lt39, FontSize: __lt40})
+			content_66Seed := SeedOf(Style{FontWeight: __lt40, FontSize: __lt41})
 			_ = content_66Seed
 			_ = content_66Seed
 			_ = content_66Seed
 			content_66 = ""
 			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique")).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint("flow "))
-			var __lt43 string
-			if m.on {
-				__lt43 = "inherit"
-			} else {
-				__lt43 = "lighter"
-			}
 			var __lt44 string
 			if m.on {
-				__lt44 = "italic"
-			} else {
 				__lt44 = "inherit"
-			}
-			var __lt45 Measurement
-			if m.on {
-				__lt45 = Measurement{Px: 18}
 			} else {
-				__lt45 = Measurement{Px: 0}
+				__lt44 = "lighter"
 			}
-			_ = __lt45
-			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((__lt43 == "bold" || __lt43 == "bolder" || __lt43 != "normal" && (content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder"))).Italic((__lt44 == "italic" || __lt44 == "oblique" || __lt44 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline((content_66Seed.Underline || m.on)).Strikethrough(content_66Seed.Strike).Faint((__lt43 == "lighter" || __lt43 != "normal" && (content_66Seed.FontWeight == "lighter"))).Render(fmt.Sprint("run"))
+			var __lt45 string
 			if m.on {
-				var __lt46 string
+				__lt45 = "italic"
+			} else {
+				__lt45 = "inherit"
+			}
+			var __lt46 Measurement
+			if m.on {
+				__lt46 = Measurement{Px: 18}
+			} else {
+				__lt46 = Measurement{Px: 0}
+			}
+			_ = __lt46
+			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((__lt44 == "bold" || __lt44 == "bolder" || __lt44 != "normal" && (content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder"))).Italic((__lt45 == "italic" || __lt45 == "oblique" || __lt45 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline((content_66Seed.Underline || m.on)).Strikethrough(content_66Seed.Strike).Faint((__lt44 == "lighter" || __lt44 != "normal" && (content_66Seed.FontWeight == "lighter"))).Render(fmt.Sprint("run"))
+			if m.on {
+				var __lt47 string
 				if m.n > 2 {
-					__lt46 = "italic"
+					__lt47 = "italic"
 				} else {
-					__lt46 = "normal"
+					__lt47 = "normal"
 				}
-				content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((__lt46 == "italic" || __lt46 == "oblique" || __lt46 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" gated"))
+				content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_66Seed.Color.Or(""))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((__lt47 == "italic" || __lt47 == "oblique" || __lt47 != "normal" && (content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique"))).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" gated"))
 			}
-			var __lt47 snglcolor.Color
+			var __lt48 snglcolor.Color
 			if m.on {
-				__lt47 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+				__lt48 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
 			} else {
-				__lt47 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+				__lt48 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
 			}
-			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt47.Or(content_66Seed.Color.Or("")))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique")).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" tinted"))
-			content_66 = tui.Sized(BoxLook(Style{FontWeight: __lt37, FontSize: __lt38}, false), false, content_66Cells).Render(content_66)
+			content_66 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt48.Or(content_66Seed.Color.Or("")))).Bold((content_66Seed.FontWeight == "bold" || content_66Seed.FontWeight == "bolder")).Italic((content_66Seed.FontStyle == "italic" || content_66Seed.FontStyle == "oblique")).Underline(content_66Seed.Underline).Strikethrough(content_66Seed.Strike).Faint((content_66Seed.FontWeight == "lighter")).Render(fmt.Sprint(" tinted"))
+			content_66 = tui.Sized(BoxLook(Style{FontWeight: __lt38, FontSize: __lt39}, false), false, content_66Cells).Render(content_66)
 			return content_66
 		}))
 		content = tui.Join(false, lipgloss.Left, 0, contentH, contentChildren)
@@ -1095,6 +1106,6 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     return m
 }
 -- run/go/bubbletea --
-pass sha256:0b9019527f405931087342608b5e30cf
+pass sha256:07e7d198096166aa8313621dd6e91d73
 -- run/kotlin/android --
 pass sha256:71b4ccddc3523ff83fe4ac9a97605760

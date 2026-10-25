@@ -51,6 +51,7 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		}}
 		sp.CtorOnly = map[string]bool{"kind": true, "spanStyle": true}
 		sp.Setters["text"] = "SetText"
+		sp.Setters["kind"] = "SetToken"
 		sp.Setters["href"] = "SetHref"
 		// A style the constructor could read off a literal is said there; one
 		// computed while the program runs -- a run's styles read from data, as

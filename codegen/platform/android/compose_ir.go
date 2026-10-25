@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/irwalk"
 	"duckfam.us/sngl/codegen/lang/kotlin"
 	"duckfam.us/sngl/internal/androidtc"
 	"duckfam.us/sngl/ir"
@@ -42,6 +43,9 @@ type irComposeContext struct {
 	// a call site renders is handed the entry it registers under
 	// (emitInstanceRegistration).
 	reads []codegen.InstanceRead
+	// tickSeq names each timer's handler uniquely within a composable, so
+	// two timers' don't collide.
+	tickSeq int
 }
 
 func (cc *irComposeContext) line(format string, args ...any) {
@@ -51,11 +55,8 @@ func (cc *irComposeContext) line(format string, args ...any) {
 func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		// A schedule is not a composable. The timer primitive stays in the
-		// tree so the branch around it is answered there; AnalyzeCommon reads
-		// it and the LaunchedEffect it becomes is emitted with the model,
-		// not here.
 		if ir.IsTimerPrimitive(s.Component) {
+			cc.renderTimer(s)
 			return
 		}
 		if cc.screen != nil && s == cc.screen.Node {
@@ -90,6 +91,59 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	default:
 		panic(fmt.Sprintf("android.renderStmt: unhandled ir.Stmt %T", s))
 	}
+}
+
+// renderTimer renders a timer where it was written, as the LaunchedEffect it
+// is: restarted when its gate changes, and cancelled when the branch it is in
+// or the copy of the loop it is under leaves the composition. Its handler
+// reads the loop's variables where it stands. Each schedule used to be hoisted
+// to the top of the screen with the branches around it folded into its gate,
+// which had none of a loop's variables to read, so a timer under a loop was
+// dropped -- and one an instance's own composable renders was hoisted into
+// the screen, naming the instance's state from outside it
+// (cmd/sngl/testdata/timer_tab_loop_wait_runs.txt).
+func (cc *irComposeContext) renderTimer(n *ir.NodeInst) {
+	// The schedule the primitive describes, its branches left to the
+	// composition; one with no @tick describes none.
+	for _, t := range codegen.CollectTimers([]ir.Stmt{n}) {
+		cc.renderSchedule(t)
+	}
+}
+
+// renderSchedule is one schedule's LaunchedEffect, gated by t.Enabled.
+func (cc *irComposeContext) renderSchedule(t codegen.ScheduledTimer) {
+	tick := t.Handler
+	gate := "true"
+	if t.Enabled != nil {
+		gate = cc.kc.EvalExpr(t.Enabled)
+	}
+	cc.kc.RequireImport("kotlinx.coroutines.delay")
+	kc := cc.kc
+	for _, name := range codegen.BodyLocals(tick.Block) {
+		kc = kc.WithLocal(name)
+	}
+	// The effect outlives the composition that started it -- it restarts
+	// only when its gate changes -- so the handler it runs is the latest
+	// composition's: under a loop, the copy at that position is handed
+	// another element when the list changes, and the tick reads the one it
+	// holds now rather than the one the effect began with
+	// (cmd/sngl/testdata/timer_loop_reads_current_copy_runs.txt).
+	cc.tickSeq++
+	handler := fmt.Sprintf("__tick%d", cc.tickSeq)
+	cc.line("val %s = %s({", handler, cc.kc.Name(ktRememberUpdated))
+	for _, l := range irwalk.EvalBlock(kc, tick.Block) {
+		cc.line("    %s", l)
+	}
+	cc.line("})")
+	cc.line("%s(%s) {", cc.kc.Name(ktLaunchedEffect), gate)
+	cc.line("    while (%s) {", gate)
+	// The interval is an expression: a copy's wrapper hands it in as a param
+	// (passImplicitState), and reading only a literal made that a delay of
+	// 0, which spun Compose's test clock forever.
+	cc.line("        delay(%s)", cc.kc.EvalExpr(t.Interval))
+	cc.line("        %s.value()", handler)
+	cc.line("    }")
+	cc.line("}")
 }
 
 func (cc *irComposeContext) renderIf(s *ir.If) {
@@ -608,7 +662,7 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst) string {
 	if cc.atRoot {
 		// A phone's window is not a rectangle: a status bar sits over the top
 		// of it and a cutout over part of that. Last in the chain, so it
-		// insets the content and not the background -- the colour still
+		// insets the content and not the background -- the color still
 		// reaches the edges and only what is drawn inside is kept clear.
 		tail += "." + cc.kc.Name(ktSafeDrawingPadding) + "()"
 	}

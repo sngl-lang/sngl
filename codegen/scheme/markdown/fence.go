@@ -41,7 +41,7 @@ const liveLanguage = "sngl"
 // trailer costs the default path nothing: the fence still reports `sngl` and
 // still highlights through the chroma path every other fence uses.
 //
-// A trailer this does not recognise is left alone rather than refused. The
+// A trailer this does not recognize is left alone rather than refused. The
 // info line is shared vocabulary -- a doc site renderer reads `title=` and
 // `linenos` off it -- and refusing one would turn a document that renders
 // everywhere else into a build failure. The cost is that `mod=island` is

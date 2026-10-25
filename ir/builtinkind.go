@@ -298,7 +298,7 @@ func AllBuiltinKinds() []BuiltinKind {
 }
 
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
-// not an unrecognised string).
+// not an unrecognized string).
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
 		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst()

@@ -46,7 +46,7 @@ func testALocalIsNotThePagesVar(t test.Test, c page) {
     t.assert(c.count == 2)
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:a19f5fa8175220399f8dd69904f70fd4
+sha256:7fb96ff2a9445c14992e036800b960b3
 {
   "results": [
     {
@@ -56,7 +56,7 @@ sha256:a19f5fa8175220399f8dd69904f70fd4
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:a57c2f7749072f3bd643d3df0f6eeb9c
+sha256:b7b7fbb519016b1076c4ed41f27f74a1
 {
   "results": [
     {
@@ -66,7 +66,7 @@ sha256:a57c2f7749072f3bd643d3df0f6eeb9c
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:51fdc3c4ed96507e8c8f53fc5f039ba1
+sha256:f4c9b7e331ca3e3b6b691cd1c0aeba81
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:b44b0be517160c1ece745022d81e9501
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:f38523fe08458378159dbec49ab8350b
+sha256:481daa4dabd8933685950f1eb8b67c28
 {
   "results": [
     {

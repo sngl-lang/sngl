@@ -11,7 +11,7 @@ import (
 // to survive the wrapping a platform generator puts around it. A skip that
 // stops matching becomes a failure; one that matches too much hides a real
 // break -- both directions are asserted.
-func TestUnimplementedComponentIsRecognisableWhenWrapped(t *testing.T) {
+func TestUnimplementedComponentIsRecognizableWhenWrapped(t *testing.T) {
 	missing := &UnimplementedComponent{Component: "badge", Platform: "gtk4"}
 
 	if got, want := missing.Error(), `component "badge" has no gtk4 implementation`; got != want {
@@ -27,7 +27,7 @@ func TestUnimplementedComponentIsRecognisableWhenWrapped(t *testing.T) {
 	for i, err := range wrapped {
 		got, ok := errors.AsType[*UnimplementedComponent](err)
 		if !ok {
-			t.Errorf("case %d: not recognised through the wrapping: %v", i, err)
+			t.Errorf("case %d: not recognized through the wrapping: %v", i, err)
 			continue
 		}
 		if got.Component != "badge" || got.Platform != "gtk4" {
