@@ -110,7 +110,7 @@ func TestKittyTransmitSuppressedWithoutSupport(t *testing.T) {
 		t.Errorf("KittyTransmit on a non-kitty terminal must be empty, got %.30q", got)
 	}
 	if called {
-		t.Errorf("KittyTransmit must not rasterise (call render) when kitty is unsupported")
+		t.Errorf("KittyTransmit must not rasterize (call render) when kitty is unsupported")
 	}
 }
 
@@ -141,13 +141,13 @@ func TestKittyTransmitSkipsUnchanged(t *testing.T) {
 	}
 }
 
-func TestRenderTerminalKittySkipsRasterise(t *testing.T) {
+func TestRenderTerminalKittySkipsRasterize(t *testing.T) {
 	t.Setenv("KITTY_WINDOW_ID", "1")
 	resetKittyDetection()
 	called := false
 	out := RenderTerminal(5, 3, 1, func() image.Image { called = true; return nil })
 	if called {
-		t.Errorf("kitty path must not rasterise — placeholders need no pixels")
+		t.Errorf("kitty path must not rasterize — placeholders need no pixels")
 	}
 	if !strings.Contains(out, string(rune(placeholderRune))) {
 		t.Errorf("kitty RenderTerminal must return the placeholder grid")

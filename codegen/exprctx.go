@@ -316,7 +316,12 @@ func (ctx *ExprCtx) ShadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
 // read as the state var of its name where there is one -- `state.label` and
 // `m.label` in a free function of a test build rooted at a component with a
 // `label` prop (cmd/sngl/testdata/func_local_named_like_state_runs.txt). A
-// read of the state itself is told apart by its symbol (ShadowedStateVar).
+// read or write of the state itself is told apart by its symbol
+// (ShadowedStateVar), on every language: Kotlin asked a read by name, so a
+// page var read before a nested local of its name read the local
+// (cmd/sngl/testdata/state_read_before_nested_local_runs.txt). An emitter
+// that binds none of this still reads a nested block's local as one from its
+// declaration on (irwalk.EvalBlock).
 func BodyLocals(block []ir.Stmt) []string {
 	var out []string
 	_ = ir.WalkStmts(block, func(s ir.Stmt) error {

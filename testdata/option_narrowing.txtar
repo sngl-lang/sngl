@@ -3,7 +3,7 @@ cannot be null it is a `T`, which before this was not expressible at all --
 `option` declares no methods and every reader in the library is a total
 function taking a default.
 
-The judgement is not purely type-level, which is the whole reason this is a
+The judgment is not purely type-level, which is the whole reason this is a
 golden rather than a checker test. `option[T]` is a nullable representation on
 two targets and a pointer on the third, so the read a null test earns is spelled
 three ways: Go's `*(m.maybe)`, Kotlin's `maybe!!`, and JavaScript's bare read of
@@ -193,7 +193,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -205,7 +205,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -269,20 +269,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -390,7 +401,7 @@ func (m Model) View() tea.View {
 		if contentPart_2 != "" {
 			contentParts = append(contentParts, contentPart_2)
 		}
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -530,53 +541,56 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        if (state.maybe__inst0 !== null) {
-          let __n2 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n2 = __inst1_live[__inst1_i];
-            __n2.__set___p0(state.maybe__inst0);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          if (state.maybe__inst0 !== null) {
+            let __n2 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n2 = __inst1_live[__inst1_i];
+              __n2.__set___p0(state.maybe__inst0);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n2__new = __cf___child0({ __p0: state.maybe__inst0 });
+              __n2 = __n2__new;
             }
-            let __n2__new = __cf___child0({ __p0: state.maybe__inst0 });
-            __n2 = __n2__new;
+            __inst1_next.push(__n2);
+            __inst1_i = __inst1_i + 1;
+            let __n2__el = __n2.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n2__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n2__el, __place0_i_ref0);
+            }
+            __slot0.push(__n2__el);
           }
-          __inst1_next.push(__n2);
-          __inst1_i = __inst1_i + 1;
-          let __n2__el = __n2.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n2__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n2__el, __place0_i_ref0);
-          }
-          __slot0.push(__n2__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -585,32 +599,35 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place2_prev = __slot1;
-        let __place2_i = 0;
-        __slot1 = [];
-        if (state.maybe__inst0 !== null && state.maybe__inst0 > 2) {
-          let __n3 = document.createElement("span");
-          __n3.textContent = "big";
-          let __place2_i_ref0 = null;
-          if (__place2_i < __place2_prev.length) {
-            __place2_i_ref0 = __place2_prev[__place2_i];
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place2_prev = __slot1;
+          let __place2_i = 0;
+          __slot1 = [];
+          if (state.maybe__inst0 !== null && state.maybe__inst0 > 2) {
+            let __n3 = document.createElement("span");
+            __n3.textContent = "big";
+            let __place2_i_ref0 = null;
+            if (__place2_i < __place2_prev.length) {
+              __place2_i_ref0 = __place2_prev[__place2_i];
+            }
+            if (__place2_i_ref0 === __n3) {
+              __place2_i = __place2_i + 1;
+            } else {
+              parent.insertBefore(__n3, __place2_i_ref0);
+            }
+            __slot1.push(__n3);
           }
-          if (__place2_i_ref0 === __n3) {
-            __place2_i = __place2_i + 1;
-          } else {
-            parent.insertBefore(__n3, __place2_i_ref0);
+          for (const __place2_prev_e of __place2_prev) {
+            if (__slot1.indexOf(__place2_prev_e) < 0) {
+              parent.removeChild(__place2_prev_e);
+            }
           }
-          __slot1.push(__n3);
         }
-        for (const __place2_prev_e of __place2_prev) {
-          if (__slot1.indexOf(__place2_prev_e) < 0) {
-            parent.removeChild(__place2_prev_e);
-          }
-        }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function String(v) {
@@ -631,8 +648,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8fd5fe6a92f965b5f5a95c092a685806
+pass sha256:6a652abfafde960971cbf0c001caef2a
 -- run/kotlin/android --
 pass sha256:0eba1eb15507bc2223391fe46350cf3b
 -- run/none/html --
-pass sha256:32f1ec2b3812bdb255540d81f525308b
+pass sha256:0f74b5213f514155e9017ad69f8a4dc3

@@ -31,7 +31,7 @@ grep 'About this app' both/about/index.html
 
 # A component instantiated with no block parses as a call statement, not a
 # visual node -- `counter()` is an *ast.CallStmt -- and it is the shape a
-# window usually has: composition at the top, behaviour in components (which is
+# window usually has: composition at the top, behavior in components (which is
 # also what a test names, since a composition root has no instance to hand a
 # test).
 # The instance's state is renamed per instance by the inliner, which is what a

@@ -73,7 +73,7 @@ func UnitStringFn(ud *ir.UnitDef) string { return "snglStr" + ExportName(ud.Name
 // UnitStringConversion reports the unit a string conversion renders, if it
 // renders one. Go's own spelling is unusable for either shape a unit takes
 // here: fmt.Sprint of the generated struct prints `{3 2 0 0 0}`, and
-// time.Duration's String normalises 1100ms to "1.1s" where the declared base
+// time.Duration's String normalizes 1100ms to "1.1s" where the declared base
 // is ms.
 func UnitStringConversion(n *ir.Conversion) *ir.UnitDef {
 	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeString || n.Operand == nil {

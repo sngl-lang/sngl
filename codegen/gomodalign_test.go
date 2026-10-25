@@ -67,7 +67,7 @@ import _ "fyne.io/fyne/v2"
 }
 
 // A replace only takes effect for a module the main module requires, so
-// the synthesised go.mod must carry a require alongside every replace.
+// the synthesized go.mod must carry a require alongside every replace.
 func TestWriteGoMod_ReplaceGetsMatchingRequire(t *testing.T) {
 	root := writeHostModule(t, "module "+snglModulePath+"\n\ngo 1.26.1\n", "")
 

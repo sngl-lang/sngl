@@ -397,6 +397,14 @@ type If struct {
 	// an alias -- the handler belongs to a call, a boundary or a window, and
 	// walks reach it there.
 	Catch *EventHandler `json:"-"`
+	// Finally runs after Body whether Body finished or raised, and a raise
+	// carries on from there: a `try`/`finally`, which no program writes and
+	// a lowering does where state it set must be put back however Body ends
+	// -- a slot's render clearing its re-entry guard (lower's renderOnce). Cond
+	// is the literal true, as for Catch, so a walk that does not know the
+	// field reads Body as run once; ir.Walk visits it. Body holds no `return`
+	// or `break` leaving it, since Go says it as a deferred call in a closure.
+	Finally []Stmt `json:",omitempty"`
 	// Instances is NodeInst.Instances, for an `if` at the root of a spliced
 	// body: the instance renders where the `if` stands, whichever branch it
 	// takes.
@@ -404,6 +412,11 @@ type If struct {
 }
 
 func (*If) stmtNode() {}
+
+// Guarded reports whether n is a block its Catch or Finally runs around
+// rather than a condition: its Cond is the literal true by construction, and
+// a fold taking the branch in its place would drop what guards it.
+func (n *If) Guarded() bool { return n.Catch != nil || len(n.Finally) > 0 }
 
 // InstancesOf is where s records the instances whose spliced bodies it is a
 // root of: a node, an `if`, a `for` or a boundary. Nil for any other statement.
@@ -567,7 +580,7 @@ func DeriveIterKind(n *For) IterKind {
 // The step is a constant because nothing else can pick the comparison: `i <
 // end` and `i > end` are different loop heads, and a step whose sign is only
 // known at run time chooses between them at run time. Such a loop keeps the
-// materialising form instead, which is correct for either sign.
+// materializing form instead, which is correct for either sign.
 type Counted struct {
 	Start Expr
 	End   Expr
@@ -581,7 +594,7 @@ type Counted struct {
 // Dispatch is on the #[intrinsic] id, not the function's name: `seq.range` is
 // an ordinary package function, so a program's own `range` reaches here too.
 // The arguments are read positionally, which the checker has already made
-// safe -- it normalises a named-argument call into declaration order.
+// safe -- it normalizes a named-argument call into declaration order.
 //
 // The two-variable form counts too: the ordinal beside each number is another
 // counter, not a reason to build the numbers.

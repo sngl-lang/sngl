@@ -18,7 +18,7 @@ const buildDirTTL = 7 * 24 * time.Hour
 
 // buildDirSlots bounds how many concurrent holders one key can have.
 // Each slot is a distinct stable path, so concurrent builds of the same
-// key still get cache-friendly directories instead of serialising.
+// key still get cache-friendly directories instead of serializing.
 // Slots past the first are only created under contention.
 const buildDirSlots = 8
 

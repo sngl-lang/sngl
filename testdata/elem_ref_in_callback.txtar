@@ -21,7 +21,7 @@ callback.
 The gate is gone rather than widened, which is what makes it general: any
 argument may be a callback, an assignment may hold one
 (`handle = setInterval(func() { … })`, which is how html schedules), and a
-local's initialiser may too. isAsyncOffloadCall existed only to name the
+local's initializer may too. isAsyncOffloadCall existed only to name the
 special case and is deleted with it.
 
 The walk stops at the outermost callback, since WalkLowered on its block

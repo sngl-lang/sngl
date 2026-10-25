@@ -17,7 +17,7 @@ import (
 // repository ships, not whatever GTK the host carries. Which classes and setter
 // links a system GIR records varies by GTK version -- CI runs an older one than
 // a typical development box -- so a test naming host vocabulary asserts GTK's
-// catalogue rather than this platform's behaviour, and fails on the wrong
+// catalog rather than this platform's behavior, and fails on the wrong
 // machine. The rules below are asserted over every entry of the fixture instead.
 func bundledGIR(t *testing.T) *gir.TypeRegistry {
 	t.Helper()

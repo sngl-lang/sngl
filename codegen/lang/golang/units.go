@@ -118,7 +118,7 @@ func LowerUnitLiteralGo(lit *ir.Literal) (string, bool) {
 // (Millisecond/Second/Minute/Hour) so the source `1s` reads as
 // `1*time.Second` instead of `1000*time.Millisecond`.
 //
-// Parenthesised because the form is a product: unbracketed, `d / 1s` came out
+// Parenthesized because the form is a product: unbracketed, `d / 1s` came out
 // as `d / time.Duration(1000) * time.Millisecond`, which Go groups as
 // `(d / 1000) * time.Millisecond` and is off by a factor of a million.
 func durationLiteralGo(lit *ir.Literal, mag float64) string {
@@ -204,7 +204,7 @@ func LowerVarInit(v *ir.Var, gc *GoIRContext) string {
 // LowerBindInit is LowerVarInit for a binding that is not a declaration: a
 // a document's route parameters are the *ir.Param its slot population declares,
 // and a target with no request stores them as a Model field like any other,
-// initialised to the zero of their type because nothing in the program writes
+// initialized to the zero of their type because nothing in the program writes
 // one.
 func LowerBindInit(t *ir.Type, init ir.Expr, gc *GoIRContext) string {
 	v := &ir.Var{Type: t, Init: init}

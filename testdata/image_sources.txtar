@@ -14,7 +14,7 @@ What each target does with them:
   data URL, again on every write of what it reads. The document's drawn
   favicon is a `<link rel="icon">` in the head, written the same way.
 - fyne: a runtime Image widget whose box shows the source, fitted by the
-  frame; a drawing's picture is rasterised and handed to it on each repaint.
+  frame; a drawing's picture is rasterized and handed to it on each repaint.
   The window's icon is the source's picture.
 - gtk4: a gtk4rt image box and a GtkPicture per source, which fits itself to
   the image it lands in; the program draws, so the build is inline cgo and
@@ -275,13 +275,13 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
 }
@@ -335,7 +335,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -347,7 +347,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt5 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCapFunc(CellsOf(s.MaxHeight), __lt5))
+		l = l.MaxHeight(LineCapFunc(RowsOf(s.MaxHeight), __lt5))
 	}
 	return l
 }
@@ -400,20 +400,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt10)
 }
 
-func LineCapFunc(height__r0 int, lines int) int {
-	var __lt12 int
-	if height__r0 == 0 {
-		__lt12 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
 	} else {
-		var __lt11 int
-		if lines == 0 {
-			__lt11 = height__r0
-		} else {
-			__lt11 = min(height__r0, lines)
-		}
-		__lt12 = __lt11
+		__lt11 = max(1, (int(px) / 8))
 	}
-	return __lt12
+	return __lt11
+}
+
+func LineCapFunc(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -553,20 +564,24 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
+		content_0Look := BoxLook(Style{}, true)
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = tui.Picture("logo.svg", 24, 12)
+		content_0_0Cols, content_0_0Rows := tui.PictureBox(content_0Look, 24, 12)
+		content_0_0 = tui.Picture("logo.svg", content_0_0Cols, content_0_0Rows)
 		content_0Children = append(content_0Children, content_0_0)
 		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-		content_0 = BoxLook(Style{}, true).Render(content_0)
+		content_0 = content_0Look.Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
+		content_1Look := BoxLook(Style{}, true)
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0 = tui.Picture(m.url__inst0, 24, 12)
+		content_1_0Cols, content_1_0Rows := tui.PictureBox(content_1Look, 24, 12)
+		content_1_0 = tui.Picture(m.url__inst0, content_1_0Cols, content_1_0Rows)
 		content_1Children = append(content_1Children, content_1_0)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-		content_1 = BoxLook(Style{}, true).Render(content_1)
+		content_1 = content_1Look.Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
 		var content_2Children []string
@@ -733,57 +748,61 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-			__inst0_next := []*__child0Instance{}
-			var __inst0_i int = 0
-			if m.failed__inst0 || !m.hasPhoto__inst0 {
-				__n4 := widget.NewLabel("")
-				__n4__box := fynelayout.NewBox(__n4)
-				__n4.SetText("JD")
-				__n4__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Radius: 20.0, TextAlign: 2})
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__box)
-				m.__slot1 = append(m.__slot1, __n4__box)
-			} else {
-				var __n5 *__child0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n5 = m.__inst0_live[__inst0_i]
-					__n5.Set__on0(func(m__r2 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
-					})
-					__n5.Set__p0(m.hasPhoto__inst0)
-					__n5.Set__p1(m.url__inst0)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				__inst0_next := []*__child0Instance{}
+				var __inst0_i int = 0
+				if m.failed__inst0 || !m.hasPhoto__inst0 {
+					__n4 := widget.NewLabel("")
+					__n4__box := fynelayout.NewBox(__n4)
+					__n4.SetText("JD")
+					__n4__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Radius: 20.0, TextAlign: 2})
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__box)
+					m.__slot1 = append(m.__slot1, __n4__box)
 				} else {
+					var __n5 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n5 = m.__inst0_live[__inst0_i]
+						__n5.Set__on0(func(m__r2 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n6)
+						})
+						__n5.Set__p0(m.hasPhoto__inst0)
+						__n5.Set__p1(m.url__inst0)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r2 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n6)
+						})
+						__n5 = __n5__new
 					}
-					__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r2 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n6)
-					})
-					__n5 = __n5__new
+					__inst0_next = append(__inst0_next, __n5)
+					__inst0_i = (__inst0_i + 1)
+					__n5__el := __n5.Root
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n5__el)
+					m.__slot1 = append(m.__slot1, __n5__el)
 				}
-				__inst0_next = append(__inst0_next, __n5)
-				__inst0_i = (__inst0_i + 1)
-				__n5__el := __n5.Root
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n5__el)
-				m.__slot1 = append(m.__slot1, __n5__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -1043,21 +1062,25 @@ func (c *__child0Instance) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		c.__rendering0 = true
 		c.__renderAgain0 = true
-		for c.__renderAgain0 {
-			c.__renderAgain0 = false
-			for _, __entry := range c.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				c.__rendering0 = false
+			}()
+			for c.__renderAgain0 {
+				c.__renderAgain0 = false
+				for _, __entry := range c.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				c.__slot0 = nil
+				c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
+				if c.__prop___p0 {
+					__n2 := fynelayout.NewImageSource()
+					__n2.SetURL(c.__prop___p1)
+					fynelayout.InsertBefore(__parent, c.__slot0_at, __n2)
+					c.__slot0 = append(c.__slot0, __n2)
+				}
 			}
-			c.__slot0 = nil
-			c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
-			if c.__prop___p0 {
-				__n2 := fynelayout.NewImageSource()
-				__n2.SetURL(c.__prop___p1)
-				fynelayout.InsertBefore(__parent, c.__slot0_at, __n2)
-				c.__slot0 = append(c.__slot0, __n2)
-			}
-		}
-		c.__rendering0 = false
+		}()
 	}
 }
 
@@ -1243,14 +1266,6 @@ static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     g_object_ref_sink(w);
     gtk_box_append(box, w);
     return w;
-}
-
-static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
-    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
-        gtk_box_append(box, child);
-        return;
-    }
-    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
 }
 
 static GtkBox *sngl_slot_box(GtkBox *b) {
@@ -1614,56 +1629,61 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
-			}
-			m.__slot1 = nil
-			m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
-			__inst1_next := []*__child0Instance{}
-			var __inst1_i int = 0
-			if m.failed__inst0 || !m.hasPhoto__inst0 {
-				__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr3)
-				gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n6)), gtk4rt.Look{Css: "background: #cccccc; border-radius: 20px; ", Width: 40.0, Height: 40.0, Cross: 2, TextAlign: 1})
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n6)))
-				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n6)))
-			} else {
-				var __n7 *__child0Instance
-				if len(m.__inst1_live) > __inst1_i {
-					__n7 = m.__inst1_live[__inst1_i]
-					__n7.Set__on0(func(m__r2 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n8)
-					})
-					__n7.Set__p0(m.hasPhoto__inst0)
-					__n7.Set__p1(m.url__inst0)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				}
+				m.__slot1 = nil
+				m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
+				__inst1_next := []*__child0Instance{}
+				var __inst1_i int = 0
+				if m.failed__inst0 || !m.hasPhoto__inst0 {
+					__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr3)
+					C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n6)), C.float(0.0))
+					gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n6)), gtk4rt.Look{Css: "background: #cccccc; border-radius: 20px; ", Width: 40.0, Height: 40.0, Cross: 2, TextAlign: 1})
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot1_at)), gtk4rt.Handle(unsafe.Pointer(__n6)))
+					m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n6)))
 				} else {
+					var __n7 *__child0Instance
 					if len(m.__inst1_live) > __inst1_i {
-						m.__inst1_live[__inst1_i].Destroy()
+						__n7 = m.__inst1_live[__inst1_i]
+						__n7.Set__on0(func(m__r2 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n8)
+						})
+						__n7.Set__p0(m.hasPhoto__inst0)
+						__n7.Set__p1(m.url__inst0)
+					} else {
+						if len(m.__inst1_live) > __inst1_i {
+							m.__inst1_live[__inst1_i].Destroy()
+						}
+						__n7__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r2 string) {
+							m.failed__inst0 = true
+							m.__renderSlot1(m.__n8)
+						})
+						__n7 = __n7__new
 					}
-					__n7__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r2 string) {
-						m.failed__inst0 = true
-						m.__renderSlot1(m.__n8)
-					})
-					__n7 = __n7__new
+					__inst1_next = append(__inst1_next, __n7)
+					__inst1_i = (__inst1_i + 1)
+					__n7__el := __n7.Root
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot1_at)), gtk4rt.Handle(unsafe.Pointer(__n7__el)))
+					m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
 				}
-				__inst1_next = append(__inst1_next, __n7)
-				__inst1_i = (__inst1_i + 1)
-				__n7__el := __n7.Root
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
-				m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n7__el)))
-			}
-			for __inst1_i_d, _ := range m.__inst1_live {
-				var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
-				if __inst1_i_j >= __inst1_i {
-					m.__inst1_live[__inst1_i_j].Destroy()
+				for __inst1_i_d, _ := range m.__inst1_live {
+					var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
+					if __inst1_i_j >= __inst1_i {
+						m.__inst1_live[__inst1_i_j].Destroy()
+					}
 				}
+				m.__inst1_live = __inst1_next
 			}
-			m.__inst1_live = __inst1_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -1944,42 +1964,46 @@ func (c *__child0Instance) __renderSlot0(parent *C.GtkBox) {
 	} else {
 		c.__rendering0 = true
 		c.__renderAgain0 = true
-		for c.__renderAgain0 {
-			c.__renderAgain0 = false
-			for _, __entry := range c.__slot0 {
-				C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
-			}
-			c.__slot0 = nil
-			c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
-			__inst0_next := []*__remote_state1Instance{}
-			var __inst0_i int = 0
-			if c.__prop___p0 {
-				var __n4 *__remote_state1Instance
-				if len(c.__inst0_live) > __inst0_i {
-					__n4 = c.__inst0_live[__inst0_i]
-					__n4.SetUrl(c.__prop___p1)
-				} else {
+		func() {
+			defer func() {
+				c.__rendering0 = false
+			}()
+			for c.__renderAgain0 {
+				c.__renderAgain0 = false
+				for _, __entry := range c.__slot0 {
+					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+				}
+				c.__slot0 = nil
+				c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
+				__inst0_next := []*__remote_state1Instance{}
+				var __inst0_i int = 0
+				if c.__prop___p0 {
+					var __n4 *__remote_state1Instance
 					if len(c.__inst0_live) > __inst0_i {
-						c.__inst0_live[__inst0_i].Destroy()
+						__n4 = c.__inst0_live[__inst0_i]
+						__n4.SetUrl(c.__prop___p1)
+					} else {
+						if len(c.__inst0_live) > __inst0_i {
+							c.__inst0_live[__inst0_i].Destroy()
+						}
+						__n4__new := new__remote_state1Instance(c.__model, c.__prop___p1)
+						__n4 = __n4__new
 					}
-					__n4__new := new__remote_state1Instance(c.__model, c.__prop___p1)
-					__n4 = __n4__new
+					__inst0_next = append(__inst0_next, __n4)
+					__inst0_i = (__inst0_i + 1)
+					__n4__el := __n4.Root
+					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(c.__slot0_at)), gtk4rt.Handle(unsafe.Pointer(__n4__el)))
+					c.__slot0 = append(c.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
 				}
-				__inst0_next = append(__inst0_next, __n4)
-				__inst0_i = (__inst0_i + 1)
-				__n4__el := __n4.Root
-				C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
-				c.__slot0 = append(c.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
-			}
-			for __inst0_i_d, _ := range c.__inst0_live {
-				var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					c.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range c.__inst0_live {
+					var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						c.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				c.__inst0_live = __inst0_next
 			}
-			c.__inst0_live = __inst0_next
-		}
-		c.__rendering0 = false
+		}()
 	}
 }
 
@@ -2085,8 +2109,8 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_failed_handler)
 	m.__n2 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.picture__inst0__inst0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n9)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n9)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n9)))
 	m.__n10 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "contain")
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_click_handler)
@@ -2094,8 +2118,8 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_failed_handler)
 	m.__n3 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImageSourceSetPicture(gtk4rt.Handle(unsafe.Pointer(m.__n3)), m.picture__inst1__inst0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n10)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n10)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n10)))
 	m.__n11 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n11)), "contain")
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n11)), m.__n11_click_handler)
@@ -2105,8 +2129,8 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n12)), 16, 16, func(cr unsafe.Pointer) {
 		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
 	})
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n11)), (*C.GtkWidget)(unsafe.Pointer(m.__n12)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n11)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n11)), gtk4rt.Handle(unsafe.Pointer(m.__n12)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n11)))
 	m.__renderSlot1(m.__n8)
 	m.__n13 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n13, C.int(32))
@@ -2116,18 +2140,18 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw1(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n13), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n13)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n13)))
 	m.__n14 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_wrap((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.gboolean(1))
 	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.float(0.0))
 	C.gtk_label_set_markup((*C.GtkLabel)(unsafe.Pointer(m.__n14)), __cstr0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n14)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n14)))
 	m.__n17 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n17)), __cstr1)
 	snglCallbacks = append(snglCallbacks, m.__n17_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n17), __cstr2, C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n8)), (*C.GtkWidget)(unsafe.Pointer(m.__n17)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n8)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n17)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n8)))
 	m.__n18 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
 	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n18)), 16, 16, func(cr unsafe.Pointer) {
 		m._canvasDraw2((*C.cairo_t)(unsafe.Pointer(cr)))
@@ -2775,33 +2799,36 @@ body { font-family: system-ui, sans-serif; }
       } else {
         __rendering0 = true;
         __renderAgain0 = true;
-        while (__renderAgain0) {
-          __renderAgain0 = false;
-          let __place0_prev = __slot0;
-          let __place0_i = 0;
-          __slot0 = [];
-          if (__prop___p0) {
-            let __n2 = document.createElement("img");
-            __n2.setAttribute("alt", "");
-            __n2.src = __prop___p1;
-            let __place0_i_ref0 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref0 = __place0_prev[__place0_i];
+        try {
+          while (__renderAgain0) {
+            __renderAgain0 = false;
+            let __place0_prev = __slot0;
+            let __place0_i = 0;
+            __slot0 = [];
+            if (__prop___p0) {
+              let __n2 = document.createElement("img");
+              __n2.setAttribute("alt", "");
+              __n2.src = __prop___p1;
+              let __place0_i_ref0 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref0 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref0 === __n2) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n2, __place0_i_ref0);
+              }
+              __slot0.push(__n2);
             }
-            if (__place0_i_ref0 === __n2) {
-              __place0_i = __place0_i + 1;
-            } else {
-              parent.insertBefore(__n2, __place0_i_ref0);
+            for (const __place0_prev_e of __place0_prev) {
+              if (__slot0.indexOf(__place0_prev_e) < 0) {
+                parent.removeChild(__place0_prev_e);
+              }
             }
-            __slot0.push(__n2);
           }
-          for (const __place0_prev_e of __place0_prev) {
-            if (__slot0.indexOf(__place0_prev_e) < 0) {
-              parent.removeChild(__place0_prev_e);
-            }
-          }
+        } finally {
+          __rendering0 = false;
         }
-        __rendering0 = false;
       }
     }
     let __n3 = document.createElement("span");
@@ -2868,77 +2895,80 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place1_prev = __slot1;
-        let __place1_i = 0;
-        __slot1 = [];
-        let __inst2_next = [];
-        let __inst2_i = 0;
-        if (state.failed__inst0 || !state.hasPhoto__inst0) {
-          let __n4 = document.createElement("span");
-          __n4.textContent = "JD";
-          __n4.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
-          __n4.addEventListener("click", () => {
-          });
-          let __place1_i_ref0 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref0 = __place1_prev[__place1_i];
-          }
-          if (__place1_i_ref0 === __n4) {
-            __place1_i = __place1_i + 1;
-          } else {
-            parent.insertBefore(__n4, __place1_i_ref0);
-          }
-          __slot1.push(__n4);
-        } else {
-          let __n5 = null;
-          if (__inst2_live.length > __inst2_i) {
-            __n5 = __inst2_live[__inst2_i];
-            __n5.__set___on0((e) => {
-              state.failed__inst0 = true;
-              __renderSlot1(__slotAnchor_1);
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place1_prev = __slot1;
+          let __place1_i = 0;
+          __slot1 = [];
+          let __inst2_next = [];
+          let __inst2_i = 0;
+          if (state.failed__inst0 || !state.hasPhoto__inst0) {
+            let __n4 = document.createElement("span");
+            __n4.textContent = "JD";
+            __n4.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+            __n4.addEventListener("click", () => {
             });
-            __n5.__set___p0(state.hasPhoto__inst0);
-            __n5.__set___p1(state.url__inst0);
-          } else {
-            if (__inst2_live.length > __inst2_i) {
-              __inst2_live[__inst2_i].__destroy();
+            let __place1_i_ref0 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref0 = __place1_prev[__place1_i];
             }
-            let __n5__new = __cf___child0({ __p0: state.hasPhoto__inst0, __p1: state.url__inst0, __on0: (e) => {
-              state.failed__inst0 = true;
-              __renderSlot1(__slotAnchor_1);
-            } });
-            __n5 = __n5__new;
-          }
-          __inst2_next.push(__n5);
-          __inst2_i = __inst2_i + 1;
-          let __n5__el = __n5.__root;
-          let __place1_i_ref1 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref1 = __place1_prev[__place1_i];
-          }
-          if (__place1_i_ref1 === __n5__el) {
-            __place1_i = __place1_i + 1;
+            if (__place1_i_ref0 === __n4) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n4, __place1_i_ref0);
+            }
+            __slot1.push(__n4);
           } else {
-            parent.insertBefore(__n5__el, __place1_i_ref1);
+            let __n5 = null;
+            if (__inst2_live.length > __inst2_i) {
+              __n5 = __inst2_live[__inst2_i];
+              __n5.__set___on0((e) => {
+                state.failed__inst0 = true;
+                __renderSlot1(__slotAnchor_1);
+              });
+              __n5.__set___p0(state.hasPhoto__inst0);
+              __n5.__set___p1(state.url__inst0);
+            } else {
+              if (__inst2_live.length > __inst2_i) {
+                __inst2_live[__inst2_i].__destroy();
+              }
+              let __n5__new = __cf___child0({ __p0: state.hasPhoto__inst0, __p1: state.url__inst0, __on0: (e) => {
+                state.failed__inst0 = true;
+                __renderSlot1(__slotAnchor_1);
+              } });
+              __n5 = __n5__new;
+            }
+            __inst2_next.push(__n5);
+            __inst2_i = __inst2_i + 1;
+            let __n5__el = __n5.__root;
+            let __place1_i_ref1 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref1 = __place1_prev[__place1_i];
+            }
+            if (__place1_i_ref1 === __n5__el) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n5__el, __place1_i_ref1);
+            }
+            __slot1.push(__n5__el);
           }
-          __slot1.push(__n5__el);
-        }
-        for (const [__inst2_i_d, _] of __inst2_live.entries()) {
-          let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
-          if (__inst2_i_j >= __inst2_i) {
-            __inst2_live[__inst2_i_j].__destroy();
+          for (const [__inst2_i_d, _] of __inst2_live.entries()) {
+            let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
+            if (__inst2_i_j >= __inst2_i) {
+              __inst2_live[__inst2_i_j].__destroy();
+            }
+          }
+          __inst2_live = __inst2_next;
+          for (const __place1_prev_e of __place1_prev) {
+            if (__slot1.indexOf(__place1_prev_e) < 0) {
+              parent.removeChild(__place1_prev_e);
+            }
           }
         }
-        __inst2_live = __inst2_next;
-        for (const __place1_prev_e of __place1_prev) {
-          if (__slot1.indexOf(__place1_prev_e) < 0) {
-            parent.removeChild(__place1_prev_e);
-          }
-        }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function _snglDrawImage(ctx, src, x, y, w, h) {
@@ -3032,12 +3062,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6ffa0cb95d1f1c536b3b7bc9791666b9
+pass sha256:57f742a61f2ac433fc122044fd19aca6
 -- run/go/fyne --
-pass sha256:10d808cf393bc58b95342b4fd4f899b8
+pass sha256:6a3780d357b9106625b5ef2e2bbd36ed
 -- run/go/gtk4 --
-pass sha256:ba7bfb34f9eabde3bc3655fdea70785b
+pass sha256:bc794e16d5f3a745e38c6fe2408dcc60
 -- run/kotlin/android --
 pass sha256:f095afdc067dbeeba41f1c86078dc049
 -- run/none/html --
-pass sha256:3310c471a8fea1fbe5b496a13f3bb199
+pass sha256:5c1024e805106749a8a5c2ba9a06d0fe

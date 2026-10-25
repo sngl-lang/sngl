@@ -55,7 +55,7 @@ ui.window {
 		}
 	}
 	// The surface is what keeps the buffer across frames; allocating one per
-	// rasterise is the thing it replaced.
+	// rasterize is the thing it replaced.
 	for _, unwanted := range []string{"snglcanvas.New("} {
 		if strings.Contains(out.String(), unwanted) {
 			t.Errorf("canvas allocates per frame (%q):\n%s", unwanted, out.String())

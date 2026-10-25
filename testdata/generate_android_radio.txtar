@@ -1,7 +1,7 @@
 
 radio's android body is declarative: the group is a for over the choices, the
 container is the one `direction` asks for, and each option is a RadioButton
-beside its label in a Row aligned on its centre. Nothing about radio is keyed
+beside its label in a Row aligned on its center. Nothing about radio is keyed
 on its name in compose_ir.go any more, so what this asserts is the override's
 own shape.
 

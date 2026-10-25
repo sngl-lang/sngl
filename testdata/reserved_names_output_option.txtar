@@ -294,14 +294,14 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
 		var __lt23 int
-		if CellsOf(s.MaxHeight) == 0 {
+		if RowsOf(s.MaxHeight) == 0 {
 			var __lt19 int
 			if s.MaxLines == 0 {
 				__lt19 = 0
@@ -318,7 +318,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 			}
 			var __lt22 int
 			if __lt20 == 0 {
-				__lt22 = CellsOf(s.MaxHeight)
+				__lt22 = RowsOf(s.MaxHeight)
 			} else {
 				var __lt21 int
 				if s.MaxLines == 0 {
@@ -326,7 +326,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 				} else {
 					__lt21 = (s.MaxLines + l.GetVerticalFrameSize())
 				}
-				__lt22 = min(CellsOf(s.MaxHeight), __lt21)
+				__lt22 = min(RowsOf(s.MaxHeight), __lt21)
 			}
 			__lt23 = __lt22
 		}
@@ -344,6 +344,17 @@ func CellsOf(m__r0 Measurement) int {
 		__lt24 = max(1, (int(px) / 8))
 	}
 	return __lt24
+}
+
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt25 int
+	if px <= 0.0 {
+		__lt25 = 0
+	} else {
+		__lt25 = max(1, (int(px) / 16))
+	}
+	return __lt25
 }
 
 func (m *Model) __focusNext() {
@@ -467,4 +478,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:6bb776435429c54206bd679c90ed6704
+pass sha256:eb0a8002cbb0a237dc7895544f24c6ce

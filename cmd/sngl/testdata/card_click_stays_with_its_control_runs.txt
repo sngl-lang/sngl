@@ -1,0 +1,128 @@
+# A click a control inside a clickable card handled is the control's: the
+# card's @click does not hear it, on any target, as decided with the user.
+#
+# html's card heard the DOM bubble a button's click up to it -- a mouse's,
+# and the one Enter on the button makes -- so pressing a card's button also
+# opened the card. Fyne, GTK, Compose and the terminal hand a click to the
+# innermost control already. codegen/platform/html/card_keys_browser_test.go
+# presses the keys in a browser.
+#
+# Confirmed against the html card before: the button's click clicked the
+# card as well.
+
+sngl test --platform=none app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component cardWithButton ui.node {
+    var cardClicks = 0
+    var buttonClicks = 0
+    ui.card #card(clickable=true, @click { cardClicks += 1 }) {
+        ui.text #label(value="a card")
+        ui.button #inner(text="inner", @click { buttonClicks += 1 })
+    }
+}
+
+func testTheButtonsClickIsTheButtons(t Test, c cardWithButton) {
+    c.inner.click()
+    t.assert(c.buttonClicks == 1)
+    t.assert(c.cardClicks == 0)
+}
+
+func testTheCardsClickIsTheCards(t Test, c cardWithButton) {
+    c.card.click()
+    t.assert(c.cardClicks == 1)
+    t.assert(c.buttonClicks == 0)
+}
+
+ui.window {
+    cardWithButton
+}
+-- testrun/android/kotlin/app.sngl/cardWithButton/1 --
+sha256:516962e2c627a0091b3e77d82233b85d
+{
+  "results": [
+    {
+      "Desc": "TheButtonsClickIsTheButtons",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCardsClickIsTheCards",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/cardWithButton/1 --
+sha256:cebb51a467183ddda0336f8de2d6774b
+{
+  "results": [
+    {
+      "Desc": "TheButtonsClickIsTheButtons",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCardsClickIsTheCards",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/cardWithButton/1 --
+sha256:1d32c9e8c7b8c19bbf87b54f224b8037
+{
+  "results": [
+    {
+      "Desc": "TheButtonsClickIsTheButtons",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCardsClickIsTheCards",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/cardWithButton/1 --
+sha256:9592a9008921c7b002720de4805ec4e4
+{
+  "results": [
+    {
+      "Desc": "TheButtonsClickIsTheButtons",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCardsClickIsTheCards",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/cardWithButton/1 --
+sha256:31b42b33690cb262640313ec98aac711
+{
+  "results": [
+    {
+      "Desc": "TheButtonsClickIsTheButtons",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCardsClickIsTheCards",
+      "Passed": true
+    }
+  ]
+}

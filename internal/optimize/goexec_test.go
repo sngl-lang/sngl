@@ -615,7 +615,7 @@ func TestRunConstEvalMissingBinaryIsNotExist(t *testing.T) {
 		t.Fatal("executing a missing binary succeeded")
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("a missing binary reported %v, which the rebuild-once path cannot recognise", err)
+		t.Errorf("a missing binary reported %v, which the rebuild-once path cannot recognize", err)
 	}
 }
 

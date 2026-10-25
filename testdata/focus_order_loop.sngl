@@ -1,6 +1,6 @@
 // A for-loop of focusable nodes reaches the loop-slot branch of the FocusOrder
 // lowering pass, which the static-slot fixtures do not. It asserts nothing
-// about focus behaviour itself: what it pins is that the pass produces valid
+// about focus behavior itself: what it pins is that the pass produces valid
 // IR, through validate_calibration_test.go, which lowers it with FocusOrder
 // enabled and runs ir.Validate over the result.
 

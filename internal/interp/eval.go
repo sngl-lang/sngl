@@ -114,7 +114,7 @@ func (lv *LambdaValue) params(args []any) []*ir.Param {
 type unitValue struct {
 	Amounts map[string]float64
 	// Suffix is the spelling the value was written with. It says which base a
-	// multi-base value's cast reads and nothing else -- display normalises to
+	// multi-base value's cast reads and nothing else -- display normalizes to
 	// the bases, since no compiled target carries a spelling to prefer.
 	Suffix string
 	Table  *unitTable
@@ -474,7 +474,7 @@ type Env struct {
 	// The compiled targets get this from passBoundaryFailed, which desugars
 	// the pair into a flag and a conditional. `sngl test` on the `none`
 	// platform runs the checked IR without lowering, the same reason the
-	// interpreter honours For.Else itself, so it answers the question here.
+	// interpreter honors For.Else itself, so it answers the question here.
 	caught map[*ir.EventHandler]bool
 	// inst is the instantiation this component scope was entered through, or
 	// nil at the root and for the children-less call form. It is what an emit
@@ -948,7 +948,7 @@ func (env *Env) evalI18nPrimitiveCall(method string, args []ir.CallArg) (any, bo
 
 // evalI18nCall dispatches a call to an i18n.* function using the env's locale.
 // Returns (result, handled, error). handled is false when the function name is
-// not a recognised i18n intrinsic, allowing the caller to fall through.
+// not a recognized i18n intrinsic, allowing the caller to fall through.
 func (env *Env) evalI18nCall(funcName string, args []ir.CallArg) (any, bool, error) {
 	tr := env.translatorFor()
 	switch funcName {
@@ -1912,9 +1912,59 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 	defer env.enterCall(call)()
 	v, err := env.evalCallSite(call)
 	if raised, ok := err.(*RaisedError); ok {
+		if call.ErrorMode == ir.ErrorRender {
+			return env.caughtRender(call, raised)
+		}
 		return nil, env.dispatchRaise(call, raised)
 	}
 	return v, err
+}
+
+// caughtRender is what a view's own expression is when its call raised: the
+// boundary around what rendered hears it, and the render goes on with the
+// call's zero value. The handler runs in the scope that rendered its
+// boundary, the frame mounting pushed -- a loop's row renders in a snapshot,
+// where its write was lost -- and one the checker named none for, its
+// component holding no boundary, is the nearest frame's. A handler raising
+// again is offered outward, as catchEscaped offers an event handler's.
+func (env *Env) caughtRender(call *ir.Call, raised *RaisedError) (any, error) {
+	frames, _ := env.ContextVals[raiseScope].([]raiseFrame)
+	i := 0
+	if h := call.ResolvedHandler; h != nil {
+		i = -1
+		for j, f := range frames {
+			if f.handler == h {
+				i = j
+				break
+			}
+		}
+		if i < 0 {
+			if err := env.invokeHandler(h, raised.Event); err != nil && !IsReturn(err) {
+				if again, ok := err.(*RaisedError); ok {
+					raised, i = again, len(frames)
+				} else {
+					return nil, err
+				}
+			} else {
+				return env.zeroOf(call.Type)
+			}
+		}
+	}
+	if i >= len(frames) {
+		return nil, raised
+	}
+	if err := catchEscaped(map[*ir.Context]any{raiseScope: frames[i:]}, raised); err != nil {
+		return nil, err
+	}
+	return env.zeroOf(call.Type)
+}
+
+// zeroOf is t's zero value, as the lowering spells it (ir.ZeroExpr).
+func (env *Env) zeroOf(t *ir.Type) (any, error) {
+	if z := ir.ZeroExpr(t); z != nil {
+		return env.Eval(z)
+	}
+	return zeroValueFor(t), nil
 }
 
 func (env *Env) evalCallSite(call *ir.Call) (any, error) {
@@ -1989,7 +2039,7 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 		// Bare named-function / component-method call, e.g. `bump()`. The
 		// checker leaves Func nil for component methods (they aren't in plain
 		// scope) and sets Callee to the bare ident. Resolve and invoke directly,
-		// honouring the call's args. This must precede Eval(callee): lookup()
+		// honoring the call's args. This must precede Eval(callee): lookup()
 		// auto-invokes a zero-arg function when its name is *read*, which would
 		// fire the body as a side effect here and then discard the result.
 		if id, ok := call.Callee.(*ir.Ident); ok && !env.varInScope(id.Sym) {
@@ -3240,7 +3290,7 @@ func zeroValueFor(t *ir.Type) any {
 // The value is evaluated in the scope *enclosing* the provider, which is what
 // lets `depth(depth + 1)` read the value it is overriding and accumulate
 // across nesting -- the same rule internal/lower/context.go applies on a
-// target that lowers contexts away. The interpreter honours providers itself,
+// target that lowers contexts away. The interpreter honors providers itself,
 // since passContext does not run for a target with no host language, so
 // without this a provider's value was never evaluated at all and every read
 // beneath one answered the context's default.

@@ -140,7 +140,7 @@ func parsePackage(source string) ([]*ast.Document, fs.FS, error) {
 	return append([]*ast.Document{doc}, siblings...), fsys, nil
 }
 
-// playgroundResolver is the in-memory analogue of cmd/sngl.cliResolver.
+// playgroundResolver is the in-memory analog of cmd/sngl.cliResolver.
 // It serves directory-style imports out of fsys and dispatches scheme
 // imports through registered FSAwareScheme implementations.
 type playgroundResolver struct {

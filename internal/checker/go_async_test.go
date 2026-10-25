@@ -12,7 +12,7 @@ import (
 
 // #[go.async] says a call blocks. The compiler records that as the same fact a
 // promise-returning import records — a call that does not complete now — because
-// the propagation rule is the same one, and the fixpoint that colours callers is
+// the propagation rule is the same one, and the fixpoint that colors callers is
 // already written against it.
 func TestGoAsyncMarksTheDeclarationAsync(t *testing.T) {
 	src := `import go "sngl:language/go"

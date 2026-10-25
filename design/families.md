@@ -50,7 +50,7 @@ hold `if`s, `for`s and components that compose records. Its name in a value
 position is its record (`Component.Record`, a struct `<name>__record` declared
 beside it, which `promoteForeignStructs` declares in a program that builds
 one), and in a family position (a return position, a slot's content) it is the
-component: `checker.dataRecord` asks `familyPosition`. `bindFamily` recognises
+component: `checker.dataRecord` asks `familyPosition`. `bindFamily` recognizes
 the self-reference, and refuses another *bodyless* component naming a data
 component as its family; `checkDataComponent` refuses a block and a slot of anything but
 records or content (below), since a record holds its props and nothing else. A slot
@@ -463,7 +463,7 @@ children (`cmd/sngl/testdata/boundary_in_render_slot_runs.txt`).
 
 **The interpreter answers it itself**, in `Env.caught`. `sngl test` on the
 `none` platform runs the *checked* IR with no lowering at all — the same reason
-the interpreter honours `For.Else` itself — so the pass is not in that path.
+the interpreter honors `For.Else` itself — so the pass is not in that path.
 The map is keyed by the boundary's `@error` handler, which is what a raise
 reaches through `Call.ResolvedHandler`, and held per scope so two
 instantiations of one component catch separately.
@@ -538,6 +538,38 @@ rendered in a callee's slot is resolved by the checker against the *caller's*
 boundaries, so where the caller has one it wins over a nearer boundary the
 callee wraps the slot in; only where the caller has none does the render tree
 answer.
+
+**A raise from a render is the render's.** The checker marks the calls a view
+statement's own expressions make -- a prop's value, a loop's list, a condition
+(`ir.RenderCalls`) -- `ir.ErrorRender`, resolved to the boundary around them
+(`resolveRenderExprs`), or to none where the component holds none; then
+`passErrorScope` names the boundary the instance renders under. It resolved
+none, so no target caught one: a Go build panicked, a page raised it uncaught,
+Compose threw, and the interpreter and bubbletea dropped it.
+`passRenderCatch` turns each such call into a closure called in place,
+`func() T { var v T; v = zero; if true { v = call } catch H; return v }()`,
+so the boundary around the expression hears it wherever the render runs --
+inside the handler whose write asked for it (html, fyne, gtk4), after it
+(bubbletea), or while Compose composes -- and the render goes on with the
+call's zero value (`ir.ZeroExpr`, an empty map among them; a kind with none
+is refused, since null was no value of the type on Kotlin). A raise belongs to
+no handler there: the write may sit under another boundary, or under none, as
+a timer's does. It runs after `passReactivity`, to which a closure is opaque.
+The handler has to run where its state is: a subtree that renders one is not
+lifted into a `__child` component (`rendersARaise`), and slot content copied
+into a component built at run time takes the call with it whole, as a prop the
+site computes (`liftValues`) -- copied, the handler wrote state the copy does
+not hold, which on Go did not build. One that component's own body renders
+answers no boundary, its body being shared by every instance: it is left the
+host's throw, as before, rather than refused (`componentEscapes`). The
+interpreter catches in `caughtRender`: the handler runs in the frame mounting
+pushed for its boundary -- a loop's row renders in a snapshot, where the
+write was lost -- one the checker named no handler for is the nearest
+frame's, and a handler raising again is offered outward
+(`cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt`,
+`render_raise_edges_runs.txt`, `testdata/error_raise_in_render.sngl`). The
+value is assigned rather than returned inside the catch: Go's catch body is a
+function of its own.
 
 A call in **expression position** that carries its own `@error`
 (`v = risky(7, @error(e) { … })`) is refused (`refuseExprErrorHandler`): the

@@ -504,7 +504,7 @@ func nodeInScope(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For, []scopedP
 				if n, ok := s.(*ir.NodeInst); ok {
 					around = append(slices.Clip(inner), slotProviders(n, b)...)
 				}
-				if n, at, found := walk(*b, BlockLoops(s, b, loops), around); n != nil {
+				if n, at, found := walk(*b, ir.BlockLoops(s, b, loops), around); n != nil {
 					return n, at, found
 				}
 			}

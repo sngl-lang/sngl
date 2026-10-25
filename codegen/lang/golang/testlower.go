@@ -189,7 +189,7 @@ func lowerTestFor(s *ir.For, gc *GoIRContext) []string {
 	return lines
 }
 
-// lowerTestSetContext recognises a `t.setContext(ctxName, value)` call and
+// lowerTestSetContext recognizes a `t.setContext(ctxName, value)` call and
 // emits a placeholder variable assignment for the context override. The
 // emitted var `__test_ctx_<name>` records the intended value so it is
 // visible in the generated source, but does NOT yet wire the override into
@@ -214,7 +214,7 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 	fieldName := "__ctx_" + ctxName
 	// Find the component-typed test param to assign on. Tests typically
 	// declare a single component param (e.g. `c Counter`); for multiple,
-	// emit one assignment per matching receiver to keep behaviour explicit.
+	// emit one assignment per matching receiver to keep behavior explicit.
 	var receivers []string
 	for name := range gc.Ctx.RawFieldAccess {
 		receivers = append(receivers, name)
@@ -269,7 +269,7 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	return fmt.Sprintf("%s.%s(%s)", tt.Recv, methodName, strings.Join(args, ", ")), true
 }
 
-// lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a
+// lowerTestSnapshot recognizes a `t.snapshot(name)` call and emits a
 // `t.Snapshot(name)` invocation. The capitalized method matches the
 // runtime exposed by *testing.T-style wrappers (testagent.T.Snapshot in
 // agent mode; native mode uses a small shim — see platform code).

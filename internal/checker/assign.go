@@ -13,7 +13,7 @@ import (
 // position.
 //
 // Each position used to restate the rule, and each restatement drifted: the
-// implicit call reached arguments and props but not initializers, a colour
+// implicit call reached arguments and props but not initializers, a color
 // literal was validated in a var and not a const, a prop default refused the
 // literal 0, and a func parameter's or struct field's default was not checked
 // at all.

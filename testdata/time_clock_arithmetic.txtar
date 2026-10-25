@@ -17,7 +17,7 @@ Those two produce RFC3339 and read something wider, and both halves are
 deliberate. `toISOString` and `Instant.toString` write the offset; a SNGL
 datetime *literal* may be written without one, and an offsetless date-time is
 read as **local** time by `Date.parse` and refused outright by `Instant.parse`.
-So the parse normalises first, and normalises by supplying Z *only when no
+So the parse normalizes first, and normalizes by supplying Z *only when no
 offset is there* -- which is what `offsetGap` is here to hold. Appending one
 unconditionally is the shorter spelling and turns `...+05:00` into a string
 `Date.parse` answers `NaN` for, propagating into rendered output with nothing
@@ -33,7 +33,7 @@ second is `NaN` there, a panic on Go and an error in the interpreter. Anchoring
 that pattern means settling what a datetime literal's grammar actually is,
 which is a language decision and not this change's to make.
 
-Each normaliser evaluates its operand once -- a replacement function in
+Each normalizer evaluates its operand once -- a replacement function in
 JavaScript, index tests in Kotlin, both inside a `let`/callback -- because the
 operand is an arbitrary expression. Kotlin avoids a `Regex` because these land
 inside `derivedStateOf`, which re-runs on recomposition.
@@ -289,7 +289,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -301,7 +301,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -365,20 +365,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __focusNext() {
@@ -509,7 +520,7 @@ func (m Model) View() tea.View {
 		var contentPart_1 string
 		contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(((((((((fmt.Sprint(m.left__inst0()) + "/") + fmt.Sprint(m.elapsed__inst0())) + "/") + fmt.Sprint(m.caughtUp__inst0())) + "/") + snglStrDuration(m.half__inst0())) + "/") + fmt.Sprint(m.offsetGap__inst0()))))
 		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -642,7 +653,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c490ec0c9ef00f027bb959b4a3aa546f
+pass sha256:f57edfc08aa78f98a6e8c83987925ef7
 -- run/kotlin/android --
 pass sha256:954e2b7df29aa7fb038c82031c164b0d
 -- run/none/html --

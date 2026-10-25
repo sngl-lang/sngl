@@ -143,6 +143,7 @@ const (
 	rtStr rtSetterKind = iota
 	rtBool
 	rtInt
+	rtFloat
 	rtOrient
 )
 
@@ -153,6 +154,7 @@ var rtSetterTable = map[string]struct {
 	kind rtSetterKind
 }{
 	"gtk_label_set_label":            {"LabelSetLabel", rtStr},
+	"gtk_label_set_xalign":           {"LabelSetXAlign", rtFloat},
 	"gtk_button_set_label":           {"ButtonSetLabel", rtStr},
 	"gtk_check_button_set_label":     {"CheckButtonSetLabel", rtStr},
 	"gtk_check_button_set_active":    {"CheckButtonSetActive", rtBool},
@@ -163,12 +165,12 @@ var rtSetterTable = map[string]struct {
 }
 
 // rtSetterValue adapts an OnPropAssign value expression to the wrapped setter's
-// Go-native argument. String/bool/int values pass through unchanged (the golang
-// IR context renders them as Go string/bool/int); orientation maps a string
+// Go-native argument. String/bool/int/float values pass through unchanged (the
+// golang IR context renders them as Go string/bool/int/float64); orientation maps a string
 // literal to the gtk4rt constant. ok=false → not adaptable, fall back.
 func rtSetterValue(kind rtSetterKind, value ir.Expr) (ir.Expr, bool) {
 	switch kind {
-	case rtStr, rtBool, rtInt:
+	case rtStr, rtBool, rtInt, rtFloat:
 		return value, true
 	case rtOrient:
 		if lit, ok := value.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeString {
@@ -211,7 +213,7 @@ func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool
 	return nil, false
 }
 
-// rtEventGetterExpr is the wrapped-mode analogue of cgoEventGetterExpr: it
+// rtEventGetterExpr is the wrapped-mode analog of cgoEventGetterExpr: it
 // reads a widget's bound value through gtk4rt rather than cgo. Returns nil when
 // the widget's read-back isn't wrapped (→ fallback).
 func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
@@ -239,7 +241,7 @@ func rtEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
 }
 
 // rtOrientationConst maps a SNGL orientation string literal to the gtk4rt
-// constant ident, and ok=false for anything unrecognised.
+// constant ident, and ok=false for anything unrecognized.
 func rtOrientationConst(value string) (ir.Expr, bool) {
 	switch value {
 	case "vertical":
@@ -250,7 +252,7 @@ func rtOrientationConst(value string) (ir.Expr, bool) {
 	return nil, false
 }
 
-// emitBuildUIWrapped is the wrapped-mode analogue of emitBuildUI: it emits the
+// emitBuildUIWrapped is the wrapped-mode analog of emitBuildUI: it emits the
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
 // widget-tree body (buildBuf) was already emitted in wrapped mode by the
 // translator, so only the surrounding scaffolding is produced here.

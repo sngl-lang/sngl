@@ -85,23 +85,27 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				if m.on {
+					__n0 := fynetext.NewFlow()
+					__n1 := fynetext.NewSpan(fynetext.Style())
+					__n1.SetText("hello")
+					__n0.Add(__n1)
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
+					m.__slot0 = append(m.__slot0, __n0)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			if m.on {
-				__n0 := fynetext.NewFlow()
-				__n1 := fynetext.NewSpan(fynetext.Style())
-				__n1.SetText("hello")
-				__n0.Add(__n1)
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
-				m.__slot0 = append(m.__slot0, __n0)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -219,23 +223,27 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				if m.on {
+					__n0 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetWrap(__n0, true)
+					gtk4rt.LabelSetXAlign(__n0, 0.0)
+					gtk4rt.LabelSetMarkup(__n0, "hello")
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
+					m.__slot0 = append(m.__slot0, __n0)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			if m.on {
-				__n0 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetWrap(__n0, true)
-				gtk4rt.LabelSetXAlign(__n0, 0.0)
-				gtk4rt.LabelSetMarkup(__n0, "hello")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
-				m.__slot0 = append(m.__slot0, __n0)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -282,6 +290,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:27be964e185f593357379c61342cf108
+pass sha256:4950356c3f5a85cfdddb2d853f3ac5c2
 -- run/go/gtk4 --
-pass sha256:11cedafa46db71a87360412be76df2fe
+pass sha256:3fdab01789692deb0eb4574458ddbaed

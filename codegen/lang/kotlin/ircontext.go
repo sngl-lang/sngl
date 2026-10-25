@@ -760,19 +760,30 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 		}
 		return n.Name
 	}
-	// A write names the var it writes, so a same-named lambda parameter in
-	// scope (android's checkbox hands its lambda `on`) does not shadow it --
-	// and a function's own local is not the page's var of its name:
-	// sngl:http's `checked()` wrote its `kind` as `state.kind`.
-	if v, isVar := n.Sym.(*ir.Var); isVar && kc.declared(v) {
-		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
-			return rewritten
-		}
+	if rewritten, ok := kc.stateRewrite(n); ok {
+		return rewritten
 	}
 	if rewritten, ok := kc.identRewrite(n.Name); ok {
 		return rewritten
 	}
 	return n.Name
+}
+
+// stateRewrite is the rewrite of an identifier naming a var the page's state
+// declares, by its symbol rather than its name: a same-named lambda parameter
+// in scope (android's checkbox hands its lambda `on`) does not shadow it, nor
+// does a local of the function -- which codegen.BodyLocals binds for the
+// whole body, so `seen = count` before a nested `var count` read the local
+// that was not yet there, and sngl:http's `checked()` wrote its own `kind`
+// as `state.kind` until a write asked the symbol. A read and a write ask the
+// same.
+func (kc *KtIRContext) stateRewrite(n *ir.Ident) (string, bool) {
+	v, isVar := n.Sym.(*ir.Var)
+	if !isVar || !kc.declared(v) {
+		return "", false
+	}
+	rewritten, ok := kc.IdentRewrites[n.Name]
+	return rewritten, ok
 }
 
 // declared reports whether v is a var the package or one of its components
@@ -881,6 +892,9 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	name := n.Name
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
+	}
+	if rewritten, ok := kc.stateRewrite(n); ok {
+		return rewritten
 	}
 	if rewritten, ok := kc.identRewrite(name); ok && !isParamRef(n) {
 		return funcReference(n.Sym, rewritten)
@@ -1155,7 +1169,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 	// `receiver(args)`.
 	if n.AST != nil {
 		if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
-			// Nothing above recognised it, so this is the generic emission
+			// Nothing above recognized it, so this is the generic emission
 			// and the same guard the other paths carry applies.
 			codegen.RequireIntrinsicFallback(langKt, n.Func)
 			return receiver + "." + sel.Field + "(" + strings.Join(args, ", ") + ")"
@@ -1166,7 +1180,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 
 // evalErrorAwareCall emits Kotlin statements for a fallible call whose
 // error handler was resolved by effect analysis. Only error.raise is
-// recognised in MVP; returns nil otherwise (callers fall back to normal
+// recognized in MVP; returns nil otherwise (callers fall back to normal
 // expression emission).
 func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	if call == nil || call.Func == nil {
@@ -1200,6 +1214,15 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 		return kc.emitHandlerInvoke(evt, call.ErrorHandler)
 	}
 	return nil
+}
+
+// Finally renders a finally block as try/finally.
+func (kc *KtIRContext) Finally(_ *ir.If, body, finally []string) []string {
+	lines := []string{"try {"}
+	lines = append(lines, irwalk.IndentLines("\t", body)...)
+	lines = append(lines, "} finally {")
+	lines = append(lines, irwalk.IndentLines("\t", finally)...)
+	return append(lines, "}")
 }
 
 // Catch renders a catch block as try/catch over SnglRaise, the exception a
@@ -2056,7 +2079,7 @@ const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
 // without a conversion per channel.
 const colorKtType = "Color"
 
-// toString mirrors snglcolor.Color.String: a colour is its complete value, so
+// toString mirrors snglcolor.Color.String: a color is its complete value, so
 // a translucent one keeps its alpha rather than printing as an opaque one.
 const ColorDecl = `data class ` + colorKtType + `(
     var r: Int = 0,

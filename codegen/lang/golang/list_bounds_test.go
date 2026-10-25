@@ -18,7 +18,7 @@ import (
 // declaration promises a clamp or a no-op.
 //
 // These tests emit each form, drop it into a real program and run it. Emitted
-// text is not the subject — behaviour is.
+// text is not the subject — behavior is.
 
 // runGo compiles and runs body as the whole of main() and returns its stdout.
 func runGo(t *testing.T, imports []string, body string) string {

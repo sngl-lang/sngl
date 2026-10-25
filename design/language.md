@@ -321,7 +321,7 @@ that pass as an ordinary view conditional and a reactive iterable makes it a
 render slot — which is what re-asks the question when the list changes.
 Leaving the else to the platform emitters was the previous answer and only
 bubbletea implemented it; fyne, gtk4, android and html on `--lang none` each
-emitted the loop and nothing at all, silently, since the interpreter honours
+emitted the loop and nothing at all, silently, since the interpreter honors
 `Else` itself and `sngl test` passed everywhere.
 
 Which blocks each pass rewrites is `blocks.go`'s answer: `imperativeBlocks`
@@ -461,14 +461,14 @@ the *old* bug rather than a new one: the callback is not an entry point and a
 blocking call in it stays on the drawing thread, which
 `testdata/timer_tick_async_offload.txtar` denies on both Go platforms.
 
-**Constructing a closure is not calling it**, which is the colouring half of
+**Constructing a closure is not calling it**, which is the coloring half of
 the same change. `ir.ExprHasAsyncCall` read through an `ir.Lambda` into its
 body, so `handle = every(d, func(){ …blocking… })` was an async statement and
-the function holding it was coloured async -- for a body that hands work over
+the function holding it was colored async -- for a body that hands work over
 and blocks on nothing. On Go that reached `passAsyncOffload`, which refuses a
 blocking call inside the `if` an effect's `_up` wraps its mount in; on
 JavaScript it spread `async` from the arrow up through the settle. The closure's
-own `ir.Func` is coloured in its own right, which is what makes the descent
+own `ir.Func` is colored in its own right, which is what makes the descent
 redundant as well as wrong.
 
 ## Match
@@ -635,9 +635,9 @@ an undeclared `Response` and `Failure`
 
 **Async is inferred, never written.** A function is async when its body
 waits for an async call (`ir.Func.IsAsync`), and a func-typed slot -- a var,
-a parameter, a component's prop -- is coloured async when points-to says an
+a parameter, a component's prop -- is colored async when points-to says an
 async function may flow into it (`colorAsyncSlots`, stamping
-`FuncSig.Color`). The colour travels with the type, so a call through the
+`FuncSig.Color`). The color travels with the type, so a call through the
 slot waits (`ir.CallsAsyncValue`) after a lowering has moved it somewhere
 points-to never saw, as an instance built at run time does with its props
 (`testdata/funcvar_prop_async.txtar`). The one refusal is rule 3: a function
@@ -663,7 +663,7 @@ writes nothing.
 The general things it needed, each of its own:
 
 - **An effect's handler is started, not awaited** (`ir.Call.Detached`, written
-  by `startOf` in the effect lowering). A call marked so colours nothing async
+  by `startOf` in the effect lowering). A call marked so colors nothing async
   (`ExprHasAsyncCall`, `exprHasFuncvarAsyncCall`, passAsyncOffload's
   `callWaits`) and JavaScript writes it without `await`, so a mount runs to
   its first wait and the settle goes on. Awaited, the settle held every other
@@ -681,14 +681,14 @@ The general things it needed, each of its own:
   substituted into the mount as `(lambda)(key)`, which was neither awaited nor
   offloaded. And rule 2 of `checkAsyncRules` does not read a lambda handed to a
   prop as a call made by the render. Points-to binds no library component's
-  prop, so `fetch`'s signature is never coloured: it is every check's
+  prop, so `fetch`'s signature is never colored: it is every check's
   declaration, and the call through it is a direct or a literal call by the
   time it is emitted.
 - **A query built at run time waits as its fetch does** (`passAsyncProps`): a
   query written straight under a `for` is the instance itself, so `fetch`
-  stays its prop, which nothing coloured. A func-typed prop of a component
+  stays its prop, which nothing colored. A func-typed prop of a component
   built at run time is typed as a function that waits wherever a call site
-  hands it one, before passEffect colours the mount; html read the Promise
+  hands it one, before passEffect colors the mount; html read the Promise
   its fetch returned as the answer, fyne and gtk4 fetched on the drawing
   thread, and android's composable took a suspend function as a plain one;
   Kotlin spells a function type that waits `suspend`. The value the call goes

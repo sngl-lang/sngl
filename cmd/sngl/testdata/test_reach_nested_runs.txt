@@ -81,7 +81,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:880f01991b0455e1a92d4d9b2fc24ef9
+sha256:a981012a49ec42f43c121d73496bb6ef
 {
   "results": [
     {
@@ -99,7 +99,7 @@ sha256:880f01991b0455e1a92d4d9b2fc24ef9
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:8857767bfe69399ce257a338bb078974
+sha256:b39d799743a67ade0c07707796b3c035
 {
   "results": [
     {
@@ -117,7 +117,7 @@ sha256:8857767bfe69399ce257a338bb078974
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:370c41b4296a84df7d60722bc8efe0e2
+sha256:7af32ae8d07fc6314a9b87e69aad3349
 {
   "results": [
     {
@@ -135,7 +135,7 @@ sha256:370c41b4296a84df7d60722bc8efe0e2
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:9d57aac3def57e72c32ce73cb13a0c2f
+sha256:4d8709f3f65f1fb6dc0fcfd6abac2c47
 {
   "results": [
     {
@@ -153,7 +153,7 @@ sha256:9d57aac3def57e72c32ce73cb13a0c2f
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:4d2ce917b52382207b2776bf7f8b3a36
+sha256:6c9b3a4485475c963f4039313d5796b3
 {
   "results": [
     {

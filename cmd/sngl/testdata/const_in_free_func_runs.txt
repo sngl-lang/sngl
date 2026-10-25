@@ -48,7 +48,7 @@ func testRanks(t test.Test, c main) {
     t.assert(rank("kiwi") == 3)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:c152bdc07d1b4ea130b1de5364c329ca
+sha256:2c8e077dafc1a31e9c8f2d8bff57c164
 {
   "results": [
     {
@@ -58,7 +58,7 @@ sha256:c152bdc07d1b4ea130b1de5364c329ca
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:95aec0ac096d45bd52b7c5b7c6b409ae
+sha256:f5f52ebbcfaebf7d6c822cd39978b00f
 {
   "results": [
     {
@@ -68,7 +68,7 @@ sha256:95aec0ac096d45bd52b7c5b7c6b409ae
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:c46928c72bb986c42ce72adb734dc266
+sha256:65301916070a4191b8f0da1cfbcd7689
 {
   "results": [
     {
@@ -78,7 +78,7 @@ sha256:c46928c72bb986c42ce72adb734dc266
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:25c39f1753041ac064aaedf84b8d51e4
+sha256:4e4083f30b3bfb1fc381c03e2b77ab5d
 {
   "results": [
     {
@@ -88,7 +88,7 @@ sha256:25c39f1753041ac064aaedf84b8d51e4
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:ef4086326bd49e176001e1cddfc42a0a
+sha256:7b5121d0b9f0e8171addc71c1b0b9517
 {
   "results": [
     {

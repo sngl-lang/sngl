@@ -22,8 +22,8 @@ import (
 // reaches here, so nothing in this package translates one.
 //
 // bubbletea is a RenderModel: View() re-runs on every update, so the canvas is
-// rasterised inline in View() each frame — no persistent widget, no reactive
-// redraw. The shared pkg/go/canvas runtime (snglcanvas) rasterises the shapes
+// rasterized inline in View() each frame — no persistent widget, no reactive
+// redraw. The shared pkg/go/canvas runtime (snglcanvas) rasterizes the shapes
 // into an image.Image; pkg/go/tui (tui) renders that image into a terminal
 // string (kitty escapes when supported, else truecolor half-blocks) that is
 // woven into the lipgloss View output like any other node's string fragment.
@@ -78,7 +78,7 @@ func canvasStdlibDecls(structs []*ir.StructDef) string {
 }
 
 // renderCanvas weaves a canvas node into the View string output: allocate a
-// snglcanvas.Context sized to the canvas, run the draw func to rasterise the
+// snglcanvas.Context sized to the canvas, run the draw func to rasterize the
 // shapes, then render the resulting image into a terminal string fragment via
 // pkg/go/tui. The string is assigned to resultVar like any other node's
 // rendered output, so it joins into the surrounding lipgloss layout normally.
@@ -97,21 +97,21 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 		vc.line("%s = tui.RenderTerminal(%d, %d, %s, %s)", resultVar, cols, rows, id, raster)
 		return
 	}
-	// Rasterisation is deferred into a closure so the kitty path (which needs
+	// Rasterization is deferred into a closure so the kitty path (which needs
 	// only the constant, cached placeholder grid) never runs it every frame;
 	// only the half-block fallback invokes it.
-	vc.line("%s = tui.RenderTerminal(%d, %d, %d, %s)", resultVar, cols, rows, canvasImageID(c), canvasRasteriser(c))
+	vc.line("%s = tui.RenderTerminal(%d, %d, %d, %s)", resultVar, cols, rows, canvasImageID(c), canvasRasterizer(c))
 }
 
-// canvasRasteriser returns a Go `func() image.Image` literal that draws the
-// node's shapes into its canvas surface and returns the rasterised image.
+// canvasRasterizer returns a Go `func() image.Image` literal that draws the
+// node's shapes into its canvas surface and returns the rasterized image.
 // Shared by the View placeholder path and the out-of-band transmit method; both
 // pass it to tui, which calls it only when pixels are actually required.
 //
 // A terminal canvas never rescales -- the cell grid is computed from the
 // declared size -- so the surface is asked for the size it already has and the
 // buffer survives every frame after the first.
-func canvasRasteriser(c *codegen.Canvas) string {
+func canvasRasterizer(c *codegen.Canvas) string {
 	return fmt.Sprintf("func() image.Image { __c := %s.Begin(%d, %d, 0, 0, \"\"); m.%s(__c); return __c.Result() }",
 		canvasSurfaceVar(c), c.Width, c.Height, c.Name)
 }
@@ -127,7 +127,7 @@ func canvasSurfaceVar(c *codegen.Canvas) string {
 // emitCanvasSurfaceDecls declares one reusable drawing surface per canvas, and
 // one per copy of a canvas a loop renders.
 //
-// tui calls the rasteriser on every frame it cannot serve from cache, and a
+// tui calls the rasterizer on every frame it cannot serve from cache, and a
 // context allocated per call throws the whole image away per keypress -- most
 // of a megabyte for a readout across a wide terminal.
 func emitCanvasSurfaceDecls(b *strings.Builder, draws *codegen.CanvasDraws, inLoop map[*ir.NodeInst]bool) {
@@ -188,8 +188,8 @@ func canvasSeqVar(c *codegen.Canvas) string {
 }
 
 // emitLoopCanvasRaster writes, where a loop has bound the copy's variables,
-// the rasteriser for the next copy of c, and returns the kitty image ID and the
-// rasteriser to hand tui. A copy's ID keeps its canvas's own in the low bits,
+// the rasterizer for the next copy of c, and returns the kitty image ID and the
+// rasterizer to hand tui. A copy's ID keeps its canvas's own in the low bits,
 // so it collides with no other canvas's.
 func emitLoopCanvasRaster(line func(string, ...any), c *codegen.Canvas, gc *golang.GoIRContext) (id, raster string) {
 	seq := canvasSeqVar(c)
@@ -250,7 +250,7 @@ func canvasImageID(c *codegen.Canvas) int {
 const canvasTransmitMethodName = "__canvasTransmit"
 
 // emitCanvasTransmitMethod emits `func (m Model) __canvasTransmit() tea.Cmd`,
-// which rasterises every canvas in the package, builds each one's kitty
+// which rasterizes every canvas in the package, builds each one's kitty
 // transmit escape (via tui.KittyTransmit — empty on non-kitty terminals), and
 // returns them as a single tea.Raw command. Init/Update return this so the
 // image data is written raw to the tty, out of the cell compositor that would
@@ -271,10 +271,10 @@ func emitCanvasTransmitMethod(b *strings.Builder, ctx *codegen.CodegenCtx, inLoo
 			continue
 		}
 		cols, rows := terminalCells(c.Width, c.Height)
-		// KittyTransmit calls the rasteriser only when it actually needs to
+		// KittyTransmit calls the rasterizer only when it actually needs to
 		// re-encode (kitty + pixels changed), so a static or off-screen canvas
 		// costs nothing here.
-		fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, canvasImageID(c), canvasRasteriser(c))
+		fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, canvasImageID(c), canvasRasterizer(c))
 	}
 	if view := viewStmts(ctx); len(view) > 0 {
 		w := &viewWalk{b: b, indent: 1, wants: func(n *ir.NodeInst) bool { return inLoop[n] }}

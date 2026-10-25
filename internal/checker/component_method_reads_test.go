@@ -8,7 +8,7 @@ import (
 )
 
 // A component method that reads a component var (referenced bare) must be
-// analysed against a scope that includes that var: its purity must reflect the
+// analyzed against a scope that includes that var: its purity must reflect the
 // read (PurityReadonly, not PurityPure) and Reads must list the var. Computing
 // these against package-only vars marked such methods Pure with empty Reads,
 // which let the optimizer const-fold calls to them and blinded reactivity to
@@ -65,7 +65,7 @@ component main node {
 
 // A `var` written in a block of a component's view is that component's state
 // until passHoistState moves it there, as one in the package body's view is
-// the package's: a method writing it is impure and writes it. Analysed against
+// the package's: a method writing it is impure and writes it. Analyzed against
 // the component's top-level vars alone, it came out pure, which is
 // const-foldable and settles nothing.
 func TestComponentMethodSeesViewBlockVars(t *testing.T) {

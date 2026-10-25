@@ -1,0 +1,89 @@
+// A raise from a view's own expression -- a loop's list, a prop's value --
+// reaches the boundary around what rendered, whatever write asked for the
+// render: the button's boundary hears nothing, since its click did nothing
+// wrong. The call is its type's zero value and the render goes on, so the
+// next write draws again.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+func labels(n int) list[string] {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return ["n{n}"]
+}
+
+func label(n int) string {
+    if n == 1 {
+        error.raise("one is refused", "bad")
+    }
+    return "n{n}"
+}
+
+component split node {
+    var n = 0
+    var saveError = ""
+    var listError = ""
+    boundary(@error(e) { saveError = e.message }) {
+        button #add(text="Add", @click { n += 1 })
+    }
+    boundary(@error(e) { listError = e.message }) {
+        for var l = labels(n) {
+            text #shown(value=l)
+        }
+        text #single(value=label(n))
+    }
+}
+
+component shows(n int) node {
+    text(value=label(n))
+}
+
+// A row's raise is heard: its handler runs where the boundary rendered, not
+// in the row's own scope, where its write was lost.
+component rows node {
+    var ns = [0, 1, 2]
+    var listError = ""
+    boundary(@error(e) { listError = e.message }) {
+        for var i = ns {
+            text(value=label(i))
+        }
+    }
+}
+
+// So is one from a component with no boundary of its own.
+component across node {
+    var listError = ""
+    boundary(@error(e) { listError = e.message }) {
+        shows(n=1)
+    }
+}
+
+component first node {
+    var listError = ""
+    boundary(@error(e) { listError = e.message }) {
+        text(value=label(1))
+    }
+}
+
+func testTheRenderNotTheClickHearsIt(t Test, c split) {
+    c.add.click()
+    t.assert(c.listError == "one is refused")
+    t.assert(c.saveError == "")
+    t.assert(c.single.value == "")
+    c.add.click()
+    t.assert(c.single.value == "n2")
+}
+
+func testTheFirstDrawIsHeard(t Test, c first) {
+    t.assert(c.listError == "one is refused")
+}
+
+func testARowIsHeard(t Test, c rows) {
+    t.assert(c.listError == "one is refused")
+}
+
+func testAComponentWithNoBoundaryIsHeard(t Test, c across) {
+    t.assert(c.listError == "one is refused")
+}

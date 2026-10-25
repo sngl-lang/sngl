@@ -1,7 +1,7 @@
 A child asking for a share of a Compose Row is weight(), and CSS stretches a
 flex child across the row too, which fillMaxHeight() stood in for. But
 fillMaxHeight() fills the most the row may be, not its tallest child, so a
-bar in a stats row centred by `alignItems` took the whole screen.
+bar in a stats row centered by `alignItems` took the whole screen.
 A row whose Style names an alignment other than `stretch` gives the share
 alone; one that names none still stretches.
 

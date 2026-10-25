@@ -8,7 +8,7 @@
 #
 # The fetch waits on a request to the script harness's server, and html's
 # factory for a component built at run time wrote each of its functions
-# without its colour: the query's mount, which awaits, was a sync function
+# without its color: the query's mount, which awaits, was a sync function
 # holding an `await`, which esbuild refused.
 
 sngl test --platform=none app.sngl
@@ -74,7 +74,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:79af83003d8e284557bccf0288784ce8
+sha256:829e774a91fb071de50387c09188c952
 {
   "results": [
     {
@@ -84,7 +84,7 @@ sha256:79af83003d8e284557bccf0288784ce8
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:a2d149b979d9c13cec5205a5146dd3b6
+sha256:b78cca53752b4dfbe8064c14ca1e8bd1
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:a2d149b979d9c13cec5205a5146dd3b6
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:02554089ef0b39c4b2171e7b97114103
+sha256:355fcd0e333397e2f453cb7b316b6628
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:02554089ef0b39c4b2171e7b97114103
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:3e7ba821d2b626d2500cded04dc6a0c0
+sha256:239f2094f0b6f718c229460c4cca7c1d
 {
   "results": [
     {
@@ -114,7 +114,7 @@ sha256:3e7ba821d2b626d2500cded04dc6a0c0
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:54797eee36cb98f029f8c762cdac1e8e
+sha256:9e229dab3ce4ef7a9e55b883ecff91fb
 {
   "results": [
     {

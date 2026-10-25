@@ -264,7 +264,7 @@ func Check(doc *ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 
 // splitByFile groups a document's statements by the file they were parsed
 // from, preserving order. A statement with no position joins the group being
-// built, so a synthesized declaration stays with its neighbours.
+// built, so a synthesized declaration stays with its neighbors.
 func splitByFile(doc *ast.Document) []*ast.Document {
 	var out []*ast.Document
 	cur, curFile := (*ast.Document)(nil), ""
@@ -321,8 +321,8 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.analyzeErrors()
 	c.analyzeAsync()
 	analyzePointsTo(c.pkg)
-	// A slot coloured async makes a call through it async, which may make
-	// another function async and so colour another slot.
+	// A slot colored async makes a call through it async, which may make
+	// another function async and so color another slot.
 	for {
 		c.analyzeAsyncWithPointsTo()
 		if !colorAsyncSlots(c.pkg.PointsTo) {
@@ -1586,7 +1586,7 @@ func (c *checker) pass1() {
 				c.registerRootVisualNode(s)
 			case *ast.CallStmt:
 				// A context declaration is a call statement by syntax and a
-				// declaration by meaning, so it is recognised before anything
+				// declaration by meaning, so it is recognized before anything
 				// else. Everything left is the package's body: `counter()` -- a
 				// component instantiated with no block -- parses as a call, and is
 				// the composition a top-level body is usually made of.
@@ -1800,7 +1800,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// sees it. Without that, `../calc` inside an imported `keypad/`
 		// resolved against the root and looked for a sibling of the program.
 		// A bare path stays as written -- that is what a replace target is,
-		// and it names a package rather than a neighbour.
+		// and it names a package rather than a neighbor.
 		dirPath := uri
 		if strings.HasPrefix(uri, "./") || strings.HasPrefix(uri, "../") {
 			dirPath = path.Join(c.cfg.PkgPath, uri)
@@ -3595,7 +3595,7 @@ func firstStmtPos(stmts []ast.Stmt) ast.Pos {
 // what makes these built-ins shadowable (design doc D3): a user
 // `component timer` resolves first and is treated as an ordinary component.
 // Qualified targets (`sngl.timer`) are never built-in nodes, matching the
-// bare-name-only behaviour this replaces.
+// bare-name-only behavior this replaces.
 func (c *checker) builtinNodeKind(name string) ir.BuiltinKind {
 	kind, _ := c.builtinNode(name)
 	return kind
@@ -3828,7 +3828,7 @@ func (c *checker) fillStructFieldDefaults(sd *ir.StructDef) {
 		for _, name := range f.Names {
 			// By name rather than by position: one AST group declares several
 			// names, and a rejected duplicate leaves the two lists a different
-			// length, which silently gave a field its neighbour's default.
+			// length, which silently gave a field its neighbor's default.
 			if field, ok := byName[name]; ok {
 				field.Default = c.checkExprAs(f.Default, field.Type, slot{pos: *f.Default.ExprPos(), mismatch: func(want, got string) string {
 					return "default value type " + got + " does not match field type " + want
@@ -3840,7 +3840,7 @@ func (c *checker) fillStructFieldDefaults(sd *ir.StructDef) {
 
 // pass2 checks the program's package: the declarations every package has,
 // then what only a program has -- its tests, its package body, its build
-// directive and plugins -- and then the analyses over all of it.
+// directive and plugins -- and then the analyzes over all of it.
 //
 // A library package gets the two declaration halves and nothing between them
 // (loadStdlibPackage). One checker, two entry points: what differs is what a
@@ -4427,7 +4427,7 @@ func propParam(p *ir.Prop) *ir.Param {
 
 // bodyOwnerName names the body a declaration written mid-statement belongs to.
 // A function's body wins over the component it sits in: that is the nearer
-// scope, and it is the name a reader of the generated code will recognise.
+// scope, and it is the name a reader of the generated code will recognize.
 func (c *checker) bodyOwnerName() string {
 	switch {
 	case c.currentFunc != nil && c.currentFunc.Name != "":

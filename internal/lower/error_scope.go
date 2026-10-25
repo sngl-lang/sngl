@@ -43,6 +43,7 @@ type errorScopeState struct {
 
 func (st *errorScopeState) stmts(stmts []ir.Stmt, scope []*ir.EventHandler) {
 	for _, s := range stmts {
+		resolveRenderEscapes(s, scope)
 		switch n := s.(type) {
 		case *ir.ErrorBoundary:
 			inner := scope
@@ -103,6 +104,23 @@ func resolveEscapes(root any, scope []*ir.EventHandler) {
 			x.ResolvedHandler = scope[0]
 		}
 		return nil
+	})
+}
+
+// resolveRenderEscapes points every render's raise in s's own expressions --
+// a prop's value, a loop's list, a condition -- that its component's checker
+// pass found no boundary for at the nearest handler in scope. A lambda among
+// them is a handler, which resolveEscapes answers. One a component built at
+// run time renders answers nothing here, its body being shared; it is left
+// native rather than refused, as it was before render raises were caught.
+func resolveRenderEscapes(s ir.Stmt, scope []*ir.EventHandler) {
+	if len(scope) == 0 {
+		return
+	}
+	ir.RenderCalls(s, func(c *ir.Call) {
+		if c.ErrorMode == ir.ErrorRender && c.ResolvedHandler == nil {
+			c.ResolvedHandler = scope[0]
+		}
 	})
 }
 

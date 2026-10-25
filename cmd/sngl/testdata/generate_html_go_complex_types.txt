@@ -13,7 +13,7 @@ exists out/server.go
 
 # The claim is that the generated Go compiles, so compile it. `exists` said
 # only that a file was written.
-exec go build ./...
+gobuild ./...
 
 -- go.mod --
 module example.com/wasm-complex
@@ -62,3 +62,6 @@ component main root {
 }
 
 main()
+-- testrun/gobuild/.../1 --
+sha256:5fafd24986596c1551241b4e73b2f3c7
+{}

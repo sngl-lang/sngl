@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"path"
 	"reflect"
 	"slices"
 	"strings"
@@ -883,12 +884,19 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	// The constructor answers the write it was built from, and a copy of
 	// that write a pass made: the expression, not the pointer, is the value.
-	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) {
+	// A write reading state is the same expression when the state has
+	// moved, though, and was dropped -- a document's run kept the kind it
+	// was built with -- so one with a setter goes to it. One with none, a
+	// drawn image's size, is still the constructor's.
+	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) && !(readsState(value) && hasSetter(sp, prop)) {
 		return nil
 	}
 	// A window that names no title is built with none.
 	if lit, ok := value.(*ir.Literal); ok && sp.toplevel && prop == "title" && lit.Value == "" {
 		return nil
+	}
+	if fn, ok := sp.SetterFuncs[prop]; ok {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt(path.Base(fn.Path)+"."+fn.Name, fn.Path, []ir.Expr{t.nodeRefFor(bareID), value}, ir.TypVoid)}}
 	}
 	methodName, ok := sp.Setters[prop]
 	if !ok {
@@ -1173,4 +1181,35 @@ func (t *fyneTranslator) copiesType(id string) *ir.Type {
 		return ft
 	}
 	return ir.NativeGoNamed(copyMapType(t.fieldType(id).Meta.(ir.NativeTypeRef).Name))
+}
+
+// readsState reports whether e reads a var or a parameter, or calls anything:
+// a value that may differ each time the write runs.
+func readsState(e ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		switch y := x.(type) {
+		case *ir.Call, *ir.Lambda:
+			found = true
+		case *ir.Ident:
+			switch sym := y.Sym.(type) {
+			case *ir.Var:
+				found = found || !sym.IsConst
+			case *ir.Param:
+				found = true
+			}
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// hasSetter reports whether sp names something that writes prop.
+func hasSetter(sp *fyneSpec, prop string) bool {
+	_, method := sp.Setters[prop]
+	_, fn := sp.SetterFuncs[prop]
+	return method || fn
 }

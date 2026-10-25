@@ -102,7 +102,7 @@ window.__sngl_boot();
 -- run/none/html --
 pass sha256:6e974fe75223a48c1e6b9d5beddd642a
 -- testrun/html/none/component_js_native.sngl/main/1 --
-sha256:b2f0f96cfc333d634a497a0d2de0f3bc
+sha256:aca80000105ff9ebbb7da1e0944e7047
 {
   "results": [
     {

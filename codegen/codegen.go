@@ -437,8 +437,11 @@ type HTTPRequest struct {
 	Main    bool        // generate standalone server with main()
 	// Executable says the build becomes a binary, so the package is main.
 	Executable bool
-	Framework  string      // HTTP framework: "net/http", "gin", "echo"
-	Routes     []HTTPRoute // window → route mapping
+	Framework  string // HTTP framework: "net/http", "gin", "echo"
+	// Listen is the host:port main() serves on, the language's default when
+	// empty.
+	Listen string
+	Routes []HTTPRoute // window → route mapping
 	// RenderHTML returns a baked static HTML body for a route. It serves
 	// routes with no server actions, where the page is a constant; a route
 	// that has them renders through HTTPRoute.Render instead, whose IR-expr

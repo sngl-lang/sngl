@@ -162,13 +162,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt2 int
 	if px <= 0.0 {
 		__lt2 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 8))
+		__lt2 = max(1, (int(px) / 16))
 	}
 	return __lt2
 }
@@ -214,7 +214,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -226,7 +226,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
@@ -279,20 +279,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt8)
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt10 int
-	if height__r0 == 0 {
-		__lt10 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt9 int
+	if px <= 0.0 {
+		__lt9 = 0
 	} else {
-		var __lt9 int
-		if lines == 0 {
-			__lt9 = height__r0
-		} else {
-			__lt9 = min(height__r0, lines)
-		}
-		__lt10 = __lt9
+		__lt9 = max(1, (int(px) / 8))
 	}
-	return __lt10
+	return __lt9
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt11 int
+	if height__r0 == 0 {
+		__lt11 = lines
+	} else {
+		var __lt10 int
+		if lines == 0 {
+			__lt10 = height__r0
+		} else {
+			__lt10 = min(height__r0, lines)
+		}
+		__lt11 = __lt10
+	}
+	return __lt11
 }
 
 func (m *Model) __focusNext() {
@@ -423,14 +434,14 @@ func (m Model) View() tea.View {
 		var content_1 string
 		content_1 = BoxLook(Style{}, true).Render(fmt.Sprint(m.greeting))
 		contentChildren = append(contentChildren, content_1)
-		var __lt11 string
+		var __lt12 string
 		if m.on {
-			__lt11 = "x"
+			__lt12 = "x"
 		} else {
-			__lt11 = "y"
+			__lt12 = "y"
 		}
 		var content_4 string
-		content_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
+		content_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
 		contentChildren = append(contentChildren, content_4)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 		content = BoxLook(Style{}, true).Render(content)
@@ -732,6 +743,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n0, m.greeting)
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n0)
 	var __lt18 string
 	if m.on {
@@ -741,6 +753,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, __lt18)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	gtk4rt.BoxAppend(m.home, m.__n2)
 	gtk4rt.AppAttach(m.home)
@@ -753,8 +766,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:fce9ec19204c57d7244ec6cdfc12e3a2
+pass sha256:49a0f8dae108dd36075f1b471d738de4
 -- run/go/fyne --
 pass sha256:a83038ccbacc8be15baa51cfc3d1f578
 -- run/go/gtk4 --
-pass sha256:9e417ceb0f053212765bfe36871c63b4
+pass sha256:acae38f3a70b9fedc45c1ecdc791c7e3

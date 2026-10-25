@@ -188,7 +188,11 @@ follows from the tree being rendered rather than written out:
   construction. fyne's span answers it with `SetSpanStyle`, the
   `markup.SpanStyle` handed over a field at a time (`spanStyleArgs`, the
   spec's `SetterArgs`) since the runtime has no type for it, and the flow
-  rebuilds its segments. gtk4 refuses every `md.document`, a label's markup
+  rebuilds its segments. A token's kind read from data is `SetToken`. A
+  write the constructor was built from is the constructor's only when it
+  reads no state: one reading state is the same expression after the state
+  moved, and was dropped, so a run kept the kind and style it was built with
+  (`testdata/fyne_markup_reactive_kind.txtar`). gtk4 refuses every `md.document`, a label's markup
   being one expression that a `for` among spans cannot be.
 - **A loop's library structs are declared.** A target that runs the loop
   holds `[]_Block{…}` as a value, and Go's literal names its type, so

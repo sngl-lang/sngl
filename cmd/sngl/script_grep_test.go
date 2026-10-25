@@ -45,7 +45,7 @@ func TestScriptGrepsNameAFile(t *testing.T) {
 	}
 }
 
-// operands splits a command's arguments and drops the flags, honouring the
+// operands splits a command's arguments and drops the flags, honoring the
 // single and double quotes a pattern is written in.
 func operands(args string) []string {
 	var out []string

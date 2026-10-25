@@ -158,7 +158,7 @@ func bodiedPackage() *Package {
 		Vars: []*Var{{}},
 		Funcs: []*Func{{
 			Block: []Stmt{
-				&If{Body: body("If.Body"), Else: body("If.Else")},
+				&If{Body: body("If.Body"), Else: body("If.Else"), Finally: body("If.Finally")},
 				&For{Body: body("For.Body"), Else: body("For.Else")},
 				&ErrorBoundary{
 					Handler:  h("ErrorBoundary.Handler"),

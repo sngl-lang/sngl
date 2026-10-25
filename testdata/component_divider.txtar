@@ -2,6 +2,11 @@ A component fixture: the source, the code every target generates from it,
 and the record saying a host toolchain built that and ran whatever tests it
 carries.
 
+On fyne a divider with no caption is a separator: it was a blank label, a
+row of nothing where the line should be.
+
+deny out/go/fyne/model.go `SetText\(""\)` -- no divider is a blank label
+
 -- component_divider.sngl --
 import . "sngl:ui"
 
@@ -133,13 +138,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
 }
@@ -185,7 +190,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -197,7 +202,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt2))
 	}
 	return l
 }
@@ -250,20 +255,31 @@ func Side(all Measurement, axis Measurement, own Measurement) int {
 	return CellsOf(__lt7)
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 8))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m Model) Visible__inst0() bool {
@@ -365,10 +381,10 @@ type Model struct {
 	__n0    *fynelayout.Toplevel
 	__n1    *fyne.Container
 	__n2    *widget.Label
-	__n3    *widget.Label
-	__n4    *widget.Label
+	__n3    *widget.Separator
 	__n5    *widget.Label
-	__n6    *widget.Label
+	__n7    *widget.Label
+	__n8    *widget.Label
 	__built bool
 }
 
@@ -409,18 +425,17 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = widget.NewLabel("")
 	m.__n2.SetText("Section 1")
 	m.__n1.Add(m.__n2)
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("")
+	m.__n3 = widget.NewSeparator()
 	m.__n1.Add(m.__n3)
-	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText("Section 2")
-	m.__n1.Add(m.__n4)
 	m.__n5 = widget.NewLabel("")
-	m.__n5.SetText("OR")
+	m.__n5.SetText("Section 2")
 	m.__n1.Add(m.__n5)
-	m.__n6 = widget.NewLabel("")
-	m.__n6.SetText("Section 3")
-	m.__n1.Add(m.__n6)
+	m.__n7 = widget.NewLabel("")
+	m.__n7.SetText("OR")
+	m.__n1.Add(m.__n7)
+	m.__n8 = widget.NewLabel("")
+	m.__n8.SetText("Section 3")
+	m.__n1.Add(m.__n8)
 	m.__n0.Add(m.__n1)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
@@ -596,7 +611,10 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 }
 */
 import "C"
-import "unsafe"
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"unsafe"
+)
 
 var (
 	__cstr0 = C.CString("Section 1")
@@ -651,18 +669,21 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
 	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n2)), __cstr0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.float(0.0))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkSeparator)(unsafe.Pointer(C.gtk_separator_new(0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n4)), __cstr1)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.float(0.0))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n4)))
 	m.__n5 = (*C.GtkSeparator)(unsafe.Pointer(C.gtk_separator_new(0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n5)))
 	m.__n6 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n6)), __cstr2)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n6)), C.float(0.0))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n6)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -753,11 +774,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c9816802fe65e6f0c880625ec1370f0c
+pass sha256:ccb8a5eea60935e6ade8b20477b5be86
 -- run/go/fyne --
-pass sha256:94e33d855d087a1eaed99c68f6e5b1fd
+pass sha256:5a958ff39a0e9e26b51f28d6524ae965
 -- run/go/gtk4 --
-pass sha256:1eb19defe459556cb3251f96485b5387
+pass sha256:302228502ca8c2d019ce37281eb688c2
 -- run/kotlin/android --
 pass sha256:aa9ac985728271166fd422e7fd109fae
 -- run/none/html --

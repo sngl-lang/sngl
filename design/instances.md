@@ -184,7 +184,7 @@ checked in its load and never reach pass2.
 
 **A helper needs the base reachable by its bare name**, which an override
 written through a qualified alias does not have: a component-body func is a
-method, and the synthesised receiver type, `AttachMethod` and `lookupBodyMethod`
+method, and the synthesized receiver type, `AttachMethod` and `lookupBodyMethod`
 all resolve the receiver as a bare name. So `component draw.circle[…]` may
 declare vars and types but not funcs, and `reportOverrideFuncUnreachableReceiver`
 says so where the helper is written. Binding the bare name for the body's
@@ -287,6 +287,15 @@ that answers at once runs the call site's `@load` there. One writing what the
 slot renders asked for the render it was inside; re-entered, that render built
 the instance afresh, since the list it reuses from is set at its end, until
 the stack overflowed (`cmd/sngl/testdata/slot_render_reentered_runs.txt`).
+The guard is cleared in a finally (`ir.If.Finally`, a `defer` in Go and
+`try`/`finally` in JavaScript and Kotlin): a render that raised -- a prop read
+through a function that raises, caught by the handler whose write asked for
+the render -- left it set, and every later render of the slot was taken for a
+re-entry and drew nothing
+(`cmd/sngl/testdata/slot_render_raise_draws_again_runs.txt`). The IR had no
+`finally` to say it with; it is a field of `If` beside `Catch`, its condition
+the literal true, so the optimizer's fold, which runs after lowering too,
+leaves a guarded `if` alone (`If.Guarded`).
 A reused instance is handed its function props first: each setter settles
 it, and a key written first mounted with the handler the last render handed
 over, so an `@load` reading its loop variable wrote under the last key
@@ -583,7 +592,7 @@ branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
 `bubbletea/focus_recursion_run_test.go`,
 `cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
-rasteriser View hands tui rather than as a `_canvasDrawN` method, with a
+rasterizer View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy
 through the same walk (`bubbletea/viewwalk.go`,
 `testdata/bubbletea_canvas_in_loop.txtar`).

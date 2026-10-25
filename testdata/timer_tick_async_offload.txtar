@@ -36,7 +36,7 @@ so `os.Hostname()` ran on the thread the toolkit draws on -- fyne's own
 goroutine, gtk4's main loop. A poll of anything slower than a hostname lookup
 freezes the window, and the generated code compiles and runs.
 
-The third thing this pins is what the lambda does *not* make async. Colouring
+The third thing this pins is what the lambda does *not* make async. Coloring
 once read through a closure, so `handle = every(d, func(){ ...blocking... })`
 was itself an async statement -- and passAsyncOffload refuses one inside the
 `if` its caller wraps it in, for a mount that hands work over and blocks on
@@ -590,6 +590,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n0, m.name__inst0)
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(m.main, m.__n0)
 	gtk4rt.AppAttach(m.main)
 	m.__effects0_settle()
@@ -604,4 +605,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:123cb637cc9927759f753223625f8b06
 -- run/go/gtk4 --
-pass sha256:5f9a89383c86381352f1d026f700fafb
+pass sha256:307041dc398155cc4fbc74e44678e823

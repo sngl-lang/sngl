@@ -139,7 +139,7 @@ type trailingMark struct {
 }
 
 // writeTrailing writes a comment after the code on the current line, and notes
-// where it landed so the alignment pass can line it up with its neighbours.
+// where it landed so the alignment pass can line it up with its neighbors.
 func (f *formatter) writeTrailing(c *ast.Comment) {
 	if c == nil {
 		return

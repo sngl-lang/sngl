@@ -25,6 +25,7 @@ typedef struct {
     int cross;
     GListModel *kids;
     gulong kids_id;
+    gboolean label_sized;
     gboolean text_saved;
     float xalign0;
     GtkJustification justify0;
@@ -288,6 +289,39 @@ static void sngl_look_set_text(GtkWidget *w, SnglLook *l, int align, int lines, 
     gtk_label_set_wrap(lb, lines > 0 || wrap == 2 ? TRUE : wrap == 1 ? FALSE : l->wrap0);
 }
 
+// A label sized by its look is that size, its words wrapping inside the
+// width as html's do: a size request is only the least a widget is, and a
+// long line widened it. It is measured and allocated by GtkLabel's own code,
+// given the width it is.
+static GtkWidgetClass *sngl_label_class(void) {
+    return GTK_WIDGET_CLASS(g_type_class_peek(GTK_TYPE_LABEL));
+}
+static void sngl_label_measure(GtkWidget *w, GtkOrientation o, int for_size,
+        int *min, int *nat, int *min_base, int *nat_base) {
+    SnglLook *l = sngl_look_of(w);
+    int width = l ? l->width : 0, height = l ? l->height : 0;
+    if (o == GTK_ORIENTATION_VERTICAL && width > 0) for_size = width;
+    sngl_label_class()->measure(w, o, for_size, min, nat, min_base, nat_base);
+    int want = o == GTK_ORIENTATION_HORIZONTAL ? width : height;
+    if (want > 0) *min = *nat = want;
+}
+static void sngl_label_allocate(GtkWidget *w, int width, int height, int baseline) {
+    sngl_label_class()->size_allocate(w, width, height, baseline);
+}
+static GtkSizeRequestMode sngl_label_mode(GtkWidget *w) {
+    return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
+}
+static void sngl_look_size_label(GtkWidget *w, SnglLook *l, int wrap) {
+    if (!GTK_IS_LABEL(w) || (!l->width && !l->height && !l->label_sized)) return;
+    if (!l->label_sized) {
+        l->label_sized = TRUE;
+        gtk_widget_set_layout_manager(w,
+            gtk_custom_layout_new(sngl_label_mode, sngl_label_measure, sngl_label_allocate));
+    }
+    if (l->width > 0 && wrap != 1) gtk_label_set_wrap(GTK_LABEL(w), TRUE);
+    gtk_widget_queue_resize(w);
+}
+
 static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
                           int cross, int align, int lines, int wrap, int clip, int hidden, const char *cursor) {
     SnglLook *l = sngl_look_of(w);
@@ -308,6 +342,7 @@ static void sngl_set_look(GtkWidget *w, const char *css, int width, int height, 
     sngl_look_place(w);
     sngl_look_set_cross(w, l, cross);
     sngl_look_set_text(w, l, align, lines, wrap);
+    sngl_look_size_label(w, l, wrap);
     if (clip && !l->clipped) {
         l->clipped = TRUE;
         l->overflow0 = gtk_widget_get_overflow(w);

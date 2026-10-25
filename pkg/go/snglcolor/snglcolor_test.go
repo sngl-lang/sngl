@@ -2,10 +2,10 @@ package snglcolor
 
 import "testing"
 
-// Hex is what a program sees when it prints a colour, and it has to agree with
+// Hex is what a program sees when it prints a color, and it has to agree with
 // the compiler's own folding of the same call. It dropped alpha until the
-// channels became part of the value, so two different colours printed alike.
-func TestHexHonoursAlpha(t *testing.T) {
+// channels became part of the value, so two different colors printed alike.
+func TestHexHonorsAlpha(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		c    Color

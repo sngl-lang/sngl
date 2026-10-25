@@ -38,6 +38,9 @@ output {
 package main
 
 import (
+	"fmt"
+	"log"
+	"net"
 	"net/http"
 )
 
@@ -54,7 +57,16 @@ func handleIndex(__w http.ResponseWriter, _ *http.Request) {
 }
 
 func main() {
-	http.ListenAndServe(":8080", Handler())
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	host, port, _ := net.SplitHostPort(ln.Addr().String())
+	if ip := net.ParseIP(host); ip == nil || ip.IsUnspecified() {
+		host = "localhost"
+	}
+	fmt.Println("http://" + net.JoinHostPort(host, port))
+	log.Fatal(http.Serve(ln, Handler()))
 }
 -- run/go/html --
-pass sha256:59d325cbd77aff89dda3dfeaca88f608
+pass sha256:79c4e578af91d73c0cc8cf79460c9e4c

@@ -49,13 +49,13 @@ func Alert.confirm(message string) bool
 // --- File ---
 
 // Opens a file-picker dialog and returns the chosen path, or an
-// empty string if cancelled. The dialog style (native, in-app) is
+// empty string if canceled. The dialog style (native, in-app) is
 // platform-defined. Not all platforms expose a file system — web
 // platforms may return a synthetic handle.
 #[marks.intrinsic("File.pick", readonly)]
 func File.pick() string
 
 // Opens a folder-picker dialog and returns the chosen path, or an
-// empty string if cancelled. Same platform caveats as `File.pick`.
+// empty string if canceled. Same platform caveats as `File.pick`.
 #[marks.intrinsic("File.pickFolder", readonly)]
 func File.pickFolder() string

@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-// A colour channel is a uint8, so the range is the type's rather than four
+// A color channel is a uint8, so the range is the type's rather than four
 // backends' agreement. It was an int, nothing checked it, and the JS emitter
 // formatted 300 as "12c" — a seven-digit "#12c8000".
 component main node {

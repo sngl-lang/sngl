@@ -28,7 +28,7 @@ stderr 'unexpected'
 stderr 'document.sngl'
 stderr '"x" is already bound at file scope by an import alias'
 
-# A trailer the importer does not recognise is left alone: the info line is
+# A trailer the importer does not recognize is left alone: the info line is
 # shared vocabulary, and refusing `title=` would turn a document that renders
 # on every other site into a build failure. So this is an ordinary fence.
 sngl check other_trailer.sngl

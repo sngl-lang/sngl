@@ -65,7 +65,7 @@ window {
     Greeter
 }
 -- testrun/bubbletea/go/app.sngl/Greeter/1 --
-sha256:328e4e2b2cffdce44f17b3fe6b6e2068
+sha256:d4a17913829753e9a49c9843f3143c4b
 {
   "results": [
     {
@@ -87,7 +87,7 @@ sha256:328e4e2b2cffdce44f17b3fe6b6e2068
   ]
 }
 -- testrun/html/none/app.sngl/Greeter/1 --
-sha256:2787cd5b6540e6bba0ff08843204cb2e
+sha256:cad31e717c9dec8ed7e9d6bb26a6dfeb
 {
   "results": [
     {

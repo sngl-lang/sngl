@@ -2206,6 +2206,13 @@ ui.window {
 }
 ```
 
+A raise in an event handler ends the handler. A raise from an expression the
+content renders — a prop's value, the list a `for` walks, an `if`'s condition —
+reaches the boundary around that expression, whatever write asked for the
+render and wherever that write was made: the handler runs, the call that
+raised is its type's zero value, and the rest of the render goes on. A raise
+on the first draw lands the same way as one on a later render.
+
 `boundary` is generic over the family of what it wraps: its content binds the
 family, and `failed` must belong to the same one, since it stands where the
 content stood. A window's `@error` is its outermost boundary, and it catches

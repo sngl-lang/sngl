@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -41,6 +42,9 @@ func Join(horizontal bool, align lipgloss.Position, gap int, avail int, parts []
 	if horizontal {
 		size = lipgloss.Width
 	}
+	// A part that draws nothing -- a request, a branch not taken -- takes no
+	// room and no gap, as an empty box takes none in CSS.
+	parts = slices.DeleteFunc(slices.Clone(parts), func(p Part) bool { return p.render == nil && p.text == "" })
 	free, shares := avail, 0.0
 	for _, p := range parts {
 		if p.render == nil {
@@ -77,6 +81,9 @@ func Spaced(horizontal bool, align lipgloss.Position, gap int, texts ...string) 
 }
 
 func joinSpaced(horizontal bool, align lipgloss.Position, gap int, texts []string) string {
+	// Joined, an empty text was a blank line where nothing was drawn: the
+	// panels of the tabs not shown, a loop's copies that render a request.
+	texts = slices.DeleteFunc(slices.Clone(texts), func(t string) bool { return t == "" })
 	if gap > 0 && len(texts) > 1 {
 		spacer := strings.Repeat("\n", gap-1)
 		if horizontal {
@@ -95,6 +102,29 @@ func joinSpaced(horizontal bool, align lipgloss.Position, gap int, texts []strin
 		return lipgloss.JoinHorizontal(align, texts...)
 	}
 	return lipgloss.JoinVertical(align, texts...)
+}
+
+// Avail is the width a terminal gives the view: the one it reported, or the
+// conventional 80 columns where it has said none -- a test's snapshot, a first
+// frame.
+func Avail(width int) int {
+	if width <= 0 {
+		return 80
+	}
+	return width
+}
+
+// PictureBox is the box, in cells, a picture shown in look is fitted into:
+// the width and height inside look's frame where it fixes them, else cols by
+// rows.
+func PictureBox(look lipgloss.Style, cols, rows int) (int, int) {
+	if w := look.GetWidth(); w > 0 {
+		cols = max(1, w-(look.GetHorizontalFrameSize()-look.GetHorizontalMargins()))
+	}
+	if h := look.GetHeight(); h > 0 {
+		rows = max(1, h-(look.GetVerticalFrameSize()-look.GetVerticalMargins()))
+	}
+	return cols, rows
 }
 
 // Inner is the extent inside look's frame of a box placed in w by h cells, or

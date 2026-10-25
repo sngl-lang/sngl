@@ -12,7 +12,7 @@ import (
 
 // A tree is a declaration and nothing here knows what drawing is, so a tree
 // with nothing to do with it works the same way. This stub declares the
-// rich-text tree the mechanism was generalised for: a `document` hosts `block`
+// rich-text tree the mechanism was generalized for: a `document` hosts `block`
 // members, a `para` is a block that hosts `inline` members, and a `bold` is an
 // inline.
 //

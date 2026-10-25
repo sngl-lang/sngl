@@ -18,7 +18,7 @@ import (
 //
 // Both narrowed reads are field reads rather than whole-value ones: `*` binds
 // looser than a selector in Go, so a narrowed path with a `.` after it is the
-// case the unwrap's parenthesisation decides.
+// case the unwrap's parenthesization decides.
 const optionWrapRunSrc = `
 import . "sngl:ui"
 

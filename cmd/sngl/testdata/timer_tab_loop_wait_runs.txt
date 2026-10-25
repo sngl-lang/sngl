@@ -1,0 +1,155 @@
+# A test waiting on a timer sees it tick, on every target: one in a `for` in
+# a tab's panel, and a component's own beside it, whose count is a cell per
+# copy on bubbletea and an instance's own state on android.
+#
+# bubbletea's test build ran no command the Model asked for -- its schedules
+# are tea.Tick commands Init and Update return, and a test calls the Model's
+# methods with no program running them -- so no timer ever ticked under a
+# test, in a tab or out. A waiting test settles the Model it holds each turn
+# now: Update after what the test did, its commands run off the test's
+# goroutine and their messages posted back to be delivered on it
+# (codegen/platform/bubbletea/post.go).
+#
+# android's test runner lowered no t.wait at all; it moves Compose's test
+# clock on while it asks the predicate. And android hoisted every timer to
+# the top of the screen, which dropped one under a loop -- it has none of the
+# loop's variables to read there -- and put one an instance renders in the
+# screen, naming the instance's state from outside it. Each is rendered where
+# it was written now, as the LaunchedEffect it is.
+
+sngl test --platform=none app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+-- app.sngl --
+import . "sngl:test"
+import time "sngl:time"
+import ui "sngl:ui"
+
+component spinner ui.node {
+    var n = 0
+    time.timer(interval=20ms, @tick {
+        n += 1
+    })
+    ui.text(value="{n}")
+}
+
+component main ui.node {
+    var idx = 0
+    var ticks = [0, 0]
+    var rows = [1, 2]
+    ui.tabs(:selected=idx) {
+        ui.tab(label="One") {
+            for var i, n = ticks {
+                time.timer(interval=20ms, @tick {
+                    ticks[i] = ticks[i] + 1
+                })
+                ui.text(value="{n}")
+            }
+            for var r = rows {
+                spinner #s()
+            }
+        }
+        ui.tab(label="Two") {
+            ui.text(value="two")
+        }
+    }
+}
+
+func testATimerInATabsLoopTicks(t Test, c main) {
+    t.wait(func() => c.ticks[0] > 1 && c.ticks[1] > 1, 3000)
+    t.assert(c.ticks[0] > 1 && c.ticks[1] > 1)
+}
+
+func testAStatefulTimerInATabsLoopTicks(t Test, c main) {
+    t.wait(func() => c.s[0].n > 1 && c.s[1].n > 1, 3000)
+    t.assert(c.s[0].n > 1 && c.s[1].n > 1)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:3b01d87f742044a46e660f7cc6f4f359
+{
+  "results": [
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:05cadab90c17354c44358b9255fdf4f8
+{
+  "results": [
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:9e8129aa4633f267177d4576acc49bbd
+{
+  "results": [
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:b3dd41f1eeefd407d9d8f39e4c1ef155
+{
+  "results": [
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:c50f6c267ee6870ea928a7706eb13d35
+{
+  "results": [
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}

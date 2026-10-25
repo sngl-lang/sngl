@@ -14,8 +14,8 @@ bubbletea's View, and in every walk Update and the test surface make of the
 view, as it is a when in android's composable. An initializer is no statement:
 Go calls a func literal holding the switch where it stands.
 
-deny out/go/bubbletea/model.go `if d == "down"` -- an arm that breaks out of the loop is a switch, the loop labelled
-deny out/none/html/index.html `if \(d === "down"\)` -- an arm that breaks out of the loop is a switch, the loop labelled
+deny out/go/bubbletea/model.go `if d == "down"` -- an arm that breaks out of the loop is a switch, the loop labeled
+deny out/none/html/index.html `if \(d === "down"\)` -- an arm that breaks out of the loop is a switch, the loop labeled
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `__loop|break@` -- Kotlin's when takes no break of its own, so the loop needs no label
 deny out/go/bubbletea/model.go `if n >= 90` -- a headless match is a tagless switch
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `if \(\(n >= 90\)\)` -- a headless match is a subjectless when
@@ -61,7 +61,7 @@ func grade(n int) string {
 }
 
 // A break in an arm leaves the loop around the match, which Go's and
-// JavaScript's switch would take as their own: the loop is labelled and the
+// JavaScript's switch would take as their own: the loop is labeled and the
 // break names it.
 func firstDown(ds list[Dir]) int {
     var at = -1
@@ -228,7 +228,6 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 func snglOptEq[T comparable](p *T, v T) bool {
@@ -447,7 +446,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -459,7 +458,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt1 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt1))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
 	}
 	return l
 }
@@ -523,20 +522,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt7
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 16))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusLoop2_len() int {
@@ -779,18 +789,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			var __lt12 string
+			var __lt13 string
 			switch m.d__inst0 {
 			case "up":
-				__lt12 = "right"
+				__lt13 = "right"
 			case "right":
-				__lt12 = "down"
+				__lt13 = "down"
 			case "down":
-				__lt12 = "left"
+				__lt13 = "left"
 			default:
-				__lt12 = "up"
+				__lt13 = "up"
 			}
-			m.d__inst0 = __lt12
+			m.d__inst0 = __lt13
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.taps__inst0 += 1
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
@@ -811,18 +821,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}()
 		case msg.Code == tea.KeyEnter && m.__focusID == 3:
-			var __lt14 string
+			var __lt15 string
 			switch m.d__inst1 {
 			case "up":
-				__lt14 = "right"
+				__lt15 = "right"
 			case "right":
-				__lt14 = "down"
+				__lt15 = "down"
 			case "down":
-				__lt14 = "left"
+				__lt15 = "left"
 			default:
-				__lt14 = "up"
+				__lt15 = "up"
 			}
-			m.d__inst1 = __lt14
+			m.d__inst1 = __lt15
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -832,18 +842,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) turnClick() {
 	prev := m.__focusID
 	m.__focusID = 0
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 // backClick activates the #back widget the way a keypress does; for tests.
 func (m *Model) backClick() {
 	prev := m.__focusID
 	m.__focusID = 1
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 // pickClick activates the last copy of #pick the way a keypress does; for tests.
@@ -881,9 +895,11 @@ func (m *Model) pickClick() {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+	_ = m.View()
+	_ = cmd
 }
 
 // pickClickAt activates the copy of #pick with the key the way a keypress does; for tests.
@@ -923,34 +939,38 @@ func (m *Model) pickClickAt(key string) {
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
 	m.__focusID, m.__focusLoop2_cursor = 2, pos
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+	_ = m.View()
+	_ = cmd
 }
 
 // spinClick activates the #spin widget the way a keypress does; for tests.
 func (m *Model) spinClick() {
 	prev := m.__focusID
 	m.__focusID = 3
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	nm, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID = prev
+	_ = m.View()
+	_ = cmd
 }
 
 func (m *Model) backPresent() bool {
-	var __lt11 string
-	_ = __lt11
+	var __lt12 string
+	_ = __lt12
 	if m.maybe__inst0 == nil {
-		__lt11 = "none"
+		__lt12 = "none"
 	} else {
-		var __lt10 string
-		_ = __lt10
+		var __lt11 string
+		_ = __lt11
 		if snglOptEq(m.maybe__inst0, "up") {
-			__lt10 = "up"
+			__lt11 = "up"
 		} else {
-			__lt10 = "other"
+			__lt11 = "other"
 		}
-		__lt11 = __lt10
+		__lt12 = __lt11
 	}
 	switch m.d__inst1 {
 	case "up":
@@ -958,31 +978,31 @@ func (m *Model) backPresent() bool {
 		return true
 	default:
 	}
-	var __lt13 string
-	_ = __lt13
+	var __lt14 string
+	_ = __lt14
 	switch m.d__inst1 {
 	case "up":
-		__lt13 = "facing up"
+		__lt14 = "facing up"
 	default:
-		__lt13 = "turned"
+		__lt14 = "turned"
 	}
 	return false
 }
 
 func (m *Model) northPresent() bool {
-	var __lt11 string
-	_ = __lt11
+	var __lt12 string
+	_ = __lt12
 	if m.maybe__inst0 == nil {
-		__lt11 = "none"
+		__lt12 = "none"
 	} else {
-		var __lt10 string
-		_ = __lt10
+		var __lt11 string
+		_ = __lt11
 		if snglOptEq(m.maybe__inst0, "up") {
-			__lt10 = "up"
+			__lt11 = "up"
 		} else {
-			__lt10 = "other"
+			__lt11 = "other"
 		}
-		__lt11 = __lt10
+		__lt12 = __lt11
 	}
 	switch m.d__inst1 {
 	case "up":
@@ -990,31 +1010,31 @@ func (m *Model) northPresent() bool {
 	case "down", "left":
 	default:
 	}
-	var __lt13 string
-	_ = __lt13
+	var __lt14 string
+	_ = __lt14
 	switch m.d__inst1 {
 	case "up":
-		__lt13 = "facing up"
+		__lt14 = "facing up"
 	default:
-		__lt13 = "turned"
+		__lt14 = "turned"
 	}
 	return false
 }
 
 func (m *Model) pickPresentAt(key string) bool {
-	var __lt11 string
-	_ = __lt11
+	var __lt12 string
+	_ = __lt12
 	if m.maybe__inst0 == nil {
-		__lt11 = "none"
+		__lt12 = "none"
 	} else {
-		var __lt10 string
-		_ = __lt10
+		var __lt11 string
+		_ = __lt11
 		if snglOptEq(m.maybe__inst0, "up") {
-			__lt10 = "up"
+			__lt11 = "up"
 		} else {
-			__lt10 = "other"
+			__lt11 = "other"
 		}
-		__lt11 = __lt10
+		__lt12 = __lt11
 	}
 	for __copy0, p := range m.picks__inst0 {
 		switch p {
@@ -1025,13 +1045,13 @@ func (m *Model) pickPresentAt(key string) bool {
 		default:
 		}
 	}
-	var __lt13 string
-	_ = __lt13
+	var __lt14 string
+	_ = __lt14
 	switch m.d__inst1 {
 	case "up":
-		__lt13 = "facing up"
+		__lt14 = "facing up"
 	default:
-		__lt13 = "turned"
+		__lt14 = "turned"
 	}
 	return false
 }
@@ -1046,20 +1066,20 @@ func (m Model) View() tea.View {
 		var contentPart_1 string
 		contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(m.axis__inst0))
 		contentParts = append(contentParts, contentPart_1)
-		var __lt11 string
+		var __lt12 string
 		if m.maybe__inst0 == nil {
-			__lt11 = "none"
+			__lt12 = "none"
 		} else {
-			var __lt10 string
+			var __lt11 string
 			if snglOptEq(m.maybe__inst0, "up") {
-				__lt10 = "up"
+				__lt11 = "up"
 			} else {
-				__lt10 = "other"
+				__lt11 = "other"
 			}
-			__lt11 = __lt10
+			__lt12 = __lt11
 		}
 		var contentPart_4 string
-		contentPart_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
+		contentPart_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
 		contentPart_5 = BoxLook(Style{}, true).Render(fmt.Sprint(Count(m.tally__inst0)))
@@ -1114,19 +1134,19 @@ func (m Model) View() tea.View {
 			}
 			contentPart_9Items = append(contentPart_9Items, contentPart_9Item)
 		}
-		contentPart_9 = strings.Join(contentPart_9Items, "")
+		contentPart_9 = tui.Spaced(false, lipgloss.Left, 0, contentPart_9Items...)
 		if contentPart_9 != "" {
 			contentParts = append(contentParts, contentPart_9)
 		}
-		var __lt13 string
+		var __lt14 string
 		switch m.d__inst1 {
 		case "up":
-			__lt13 = "facing up"
+			__lt14 = "facing up"
 		default:
-			__lt13 = "turned"
+			__lt14 = "turned"
 		}
 		var contentPart_12 string
-		contentPart_12 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt13))
+		contentPart_12 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt14))
 		contentParts = append(contentParts, contentPart_12)
 		var contentPart_13 string
 		contentPart_13Focused := (m.__focusID == 3)
@@ -1136,7 +1156,7 @@ func (m Model) View() tea.View {
 		}
 		contentPart_13 = BoxLook(Style{}, true).Render(contentPart_13Prefix + " " + fmt.Sprint("Spin"))
 		contentParts = append(contentParts, contentPart_13)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1214,7 +1234,7 @@ func TestDial(t *testing.T) {
 }
 
 
-func newTestComponent() Model { return New() }
+func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -1512,38 +1532,42 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			m.north = nil
-			m.back = nil
-			if m.d__inst1 == "up" {
-				m.north = widget.NewLabel("")
-				m.north.SetText("north")
-				fynelayout.InsertBefore(__parent, m.__slot0_at, m.north)
-				m.__slot0 = append(m.__slot0, m.north)
-			} else {
-				if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
-					m.back = widget.NewButton("", nil)
-					m.back.SetText("Back")
-					m.back.OnTapped = func() {
-						m.taps__inst0 += 1
-					}
-					fynelayout.InsertBefore(__parent, m.__slot0_at, m.back)
-					m.__slot0 = append(m.__slot0, m.back)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				m.north = nil
+				m.back = nil
+				if m.d__inst1 == "up" {
+					m.north = widget.NewLabel("")
+					m.north.SetText("north")
+					fynelayout.InsertBefore(__parent, m.__slot0_at, m.north)
+					m.__slot0 = append(m.__slot0, m.north)
 				} else {
-					__n6 := widget.NewLabel("")
-					__n6.SetText("east")
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n6)
-					m.__slot0 = append(m.__slot0, __n6)
+					if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
+						m.back = widget.NewButton("", nil)
+						m.back.SetText("Back")
+						m.back.OnTapped = func() {
+							m.taps__inst0 += 1
+						}
+						fynelayout.InsertBefore(__parent, m.__slot0_at, m.back)
+						m.__slot0 = append(m.__slot0, m.back)
+					} else {
+						__n6 := widget.NewLabel("")
+						__n6.SetText("east")
+						fynelayout.InsertBefore(__parent, m.__slot0_at, __n6)
+						m.__slot0 = append(m.__slot0, __n6)
+					}
 				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1553,33 +1577,37 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-			m.__copies_pick = nil
-			for __copy0, p := range m.picks__inst0 {
-				if p == "up" {
-					m.pick = widget.NewButton("", nil)
-					m.pick.SetText("Up")
-					m.__list_pick(fmt.Sprint(__copy0), m.pick)
-					m.pick.OnTapped = func() {
-						m.taps__inst0 += 1
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				m.__copies_pick = nil
+				for __copy0, p := range m.picks__inst0 {
+					if p == "up" {
+						m.pick = widget.NewButton("", nil)
+						m.pick.SetText("Up")
+						m.__list_pick(fmt.Sprint(__copy0), m.pick)
+						m.pick.OnTapped = func() {
+							m.taps__inst0 += 1
+						}
+						fynelayout.InsertBefore(__parent, m.__slot1_at, m.pick)
+						m.__slot1 = append(m.__slot1, m.pick)
+					} else {
+						__n7 := widget.NewLabel("")
+						__n7.SetText("other")
+						fynelayout.InsertBefore(__parent, m.__slot1_at, __n7)
+						m.__slot1 = append(m.__slot1, __n7)
 					}
-					fynelayout.InsertBefore(__parent, m.__slot1_at, m.pick)
-					m.__slot1 = append(m.__slot1, m.pick)
-				} else {
-					__n7 := widget.NewLabel("")
-					__n7.SetText("other")
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n7)
-					m.__slot1 = append(m.__slot1, __n7)
 				}
 			}
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -2304,38 +2332,44 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			m.north = nil
-			m.back = nil
-			if m.d__inst1 == "up" {
-				m.north = gtk4rt.LabelNew("")
-				gtk4rt.LabelSetLabel(m.north, "north")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, m.north)
-				m.__slot0 = append(m.__slot0, m.north)
-			} else {
-				if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
-					m.back = gtk4rt.ButtonNew()
-					gtk4rt.ButtonSetLabel(m.back, "Back")
-					gtk4rt.Connect(m.back, "clicked", func() {
-						m.taps__inst0 += 1
-					})
-					gtk4rt.InsertBefore(parent, m.__slot0_at, m.back)
-					m.__slot0 = append(m.__slot0, m.back)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				m.north = nil
+				m.back = nil
+				if m.d__inst1 == "up" {
+					m.north = gtk4rt.LabelNew("")
+					gtk4rt.LabelSetLabel(m.north, "north")
+					gtk4rt.LabelSetXAlign(m.north, 0.0)
+					gtk4rt.InsertBefore(parent, m.__slot0_at, m.north)
+					m.__slot0 = append(m.__slot0, m.north)
 				} else {
-					__n6 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetLabel(__n6, "east")
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
-					m.__slot0 = append(m.__slot0, __n6)
+					if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
+						m.back = gtk4rt.ButtonNew()
+						gtk4rt.ButtonSetLabel(m.back, "Back")
+						gtk4rt.Connect(m.back, "clicked", func() {
+							m.taps__inst0 += 1
+						})
+						gtk4rt.InsertBefore(parent, m.__slot0_at, m.back)
+						m.__slot0 = append(m.__slot0, m.back)
+					} else {
+						__n6 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetLabel(__n6, "east")
+						gtk4rt.LabelSetXAlign(__n6, 0.0)
+						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
+						m.__slot0 = append(m.__slot0, __n6)
+					}
 				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -2345,33 +2379,38 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-			m.__copies_pick = nil
-			for __copy0, p := range m.picks__inst0 {
-				if p == "up" {
-					m.pick = gtk4rt.ButtonNew()
-					gtk4rt.ButtonSetLabel(m.pick, "Up")
-					m.__list_pick(fmt.Sprint(__copy0), m.pick)
-					gtk4rt.Connect(m.pick, "clicked", func() {
-						m.taps__inst0 += 1
-					})
-					gtk4rt.InsertBefore(parent, m.__slot1_at, m.pick)
-					m.__slot1 = append(m.__slot1, m.pick)
-				} else {
-					__n7 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetLabel(__n7, "other")
-					gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
-					m.__slot1 = append(m.__slot1, __n7)
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+				m.__copies_pick = nil
+				for __copy0, p := range m.picks__inst0 {
+					if p == "up" {
+						m.pick = gtk4rt.ButtonNew()
+						gtk4rt.ButtonSetLabel(m.pick, "Up")
+						m.__list_pick(fmt.Sprint(__copy0), m.pick)
+						gtk4rt.Connect(m.pick, "clicked", func() {
+							m.taps__inst0 += 1
+						})
+						gtk4rt.InsertBefore(parent, m.__slot1_at, m.pick)
+						m.__slot1 = append(m.__slot1, m.pick)
+					} else {
+						__n7 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetLabel(__n7, "other")
+						gtk4rt.LabelSetXAlign(__n7, 0.0)
+						gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
+						m.__slot1 = append(m.__slot1, __n7)
+					}
 				}
 			}
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -2504,9 +2543,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n8 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n8, "left-handed")
+	gtk4rt.LabelSetXAlign(m.__n8, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, m.axis__inst0)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	var __lt17 string
 	if m.maybe__inst0 == nil {
@@ -2522,12 +2563,15 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n2, __lt17)
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, Count(m.tally__inst0))
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n4, Grade((FirstDown(m.flips__inst0) * 60)))
+	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
 	m.turn = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.turn, "Turn")
@@ -2543,6 +2587,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n5, __lt19)
+	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n5)
 	m.spin = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.spin, "Spin")
@@ -3294,70 +3339,73 @@ window.__sngl_boot = () => {
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.d__inst1 === "up") {
-          let north = document.createElement("span");
-          north.setAttribute("data-sngl-id", "north");
-          north.textContent = "north";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref0 === north) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(north, __place0_i_ref0);
-          }
-          __slot0.push(north);
-        } else {
-          if (state.d__inst1 === "down" || state.d__inst1 === "left") {
-            let back = document.createElement("button");
-            back.setAttribute("data-sngl-id", "back");
-            back.disabled = false;
-            back.addEventListener("click", () => {
-              state.taps__inst0 += 1;
-            });
-            back.addEventListener("contextmenu", () => {
-            });
-            let __n6 = document.createElement("span");
-            __n6.textContent = "Back";
-            back.appendChild(__n6);
-            let __place0_i_ref1 = null;
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.d__inst1 === "up") {
+            let north = document.createElement("span");
+            north.setAttribute("data-sngl-id", "north");
+            north.textContent = "north";
+            let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
-              __place0_i_ref1 = __place0_prev[__place0_i];
+              __place0_i_ref0 = __place0_prev[__place0_i];
             }
-            if (__place0_i_ref1 === back) {
+            if (__place0_i_ref0 === north) {
               __place0_i = __place0_i + 1;
             } else {
-              parent.insertBefore(back, __place0_i_ref1);
+              parent.insertBefore(north, __place0_i_ref0);
             }
-            __slot0.push(back);
+            __slot0.push(north);
           } else {
-            let __n7 = document.createElement("span");
-            __n7.textContent = "east";
-            let __place0_i_ref2 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref2 = __place0_prev[__place0_i];
-            }
-            if (__place0_i_ref2 === __n7) {
-              __place0_i = __place0_i + 1;
+            if (state.d__inst1 === "down" || state.d__inst1 === "left") {
+              let back = document.createElement("button");
+              back.setAttribute("data-sngl-id", "back");
+              back.disabled = false;
+              back.addEventListener("click", () => {
+                state.taps__inst0 += 1;
+              });
+              back.addEventListener("contextmenu", () => {
+              });
+              let __n6 = document.createElement("span");
+              __n6.textContent = "Back";
+              back.appendChild(__n6);
+              let __place0_i_ref1 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref1 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref1 === back) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(back, __place0_i_ref1);
+              }
+              __slot0.push(back);
             } else {
-              parent.insertBefore(__n7, __place0_i_ref2);
+              let __n7 = document.createElement("span");
+              __n7.textContent = "east";
+              let __place0_i_ref2 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref2 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref2 === __n7) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n7, __place0_i_ref2);
+              }
+              __slot0.push(__n7);
             }
-            __slot0.push(__n7);
+          }
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -3366,57 +3414,60 @@ window.__sngl_boot = () => {
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place1_prev = __slot1;
-        let __place1_i = 0;
-        __slot1 = [];
-        for (const [__copy0, p] of state.picks__inst0.entries()) {
-          if (p === "up") {
-            let pick = document.createElement("button");
-            pick.setAttribute("data-sngl-id", "pick");
-            pick.disabled = false;
-            pick.setAttribute("data-sngl-copy", String(__copy0));
-            pick.addEventListener("click", () => {
-              state.taps__inst0 += 1;
-            });
-            pick.addEventListener("contextmenu", () => {
-            });
-            let __n8 = document.createElement("span");
-            __n8.textContent = "Up";
-            pick.appendChild(__n8);
-            let __place1_i_ref0 = null;
-            if (__place1_i < __place1_prev.length) {
-              __place1_i_ref0 = __place1_prev[__place1_i];
-            }
-            if (__place1_i_ref0 === pick) {
-              __place1_i = __place1_i + 1;
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place1_prev = __slot1;
+          let __place1_i = 0;
+          __slot1 = [];
+          for (const [__copy0, p] of state.picks__inst0.entries()) {
+            if (p === "up") {
+              let pick = document.createElement("button");
+              pick.setAttribute("data-sngl-id", "pick");
+              pick.disabled = false;
+              pick.setAttribute("data-sngl-copy", String(__copy0));
+              pick.addEventListener("click", () => {
+                state.taps__inst0 += 1;
+              });
+              pick.addEventListener("contextmenu", () => {
+              });
+              let __n8 = document.createElement("span");
+              __n8.textContent = "Up";
+              pick.appendChild(__n8);
+              let __place1_i_ref0 = null;
+              if (__place1_i < __place1_prev.length) {
+                __place1_i_ref0 = __place1_prev[__place1_i];
+              }
+              if (__place1_i_ref0 === pick) {
+                __place1_i = __place1_i + 1;
+              } else {
+                parent.insertBefore(pick, __place1_i_ref0);
+              }
+              __slot1.push(pick);
             } else {
-              parent.insertBefore(pick, __place1_i_ref0);
+              let __n9 = document.createElement("span");
+              __n9.textContent = "other";
+              let __place1_i_ref1 = null;
+              if (__place1_i < __place1_prev.length) {
+                __place1_i_ref1 = __place1_prev[__place1_i];
+              }
+              if (__place1_i_ref1 === __n9) {
+                __place1_i = __place1_i + 1;
+              } else {
+                parent.insertBefore(__n9, __place1_i_ref1);
+              }
+              __slot1.push(__n9);
             }
-            __slot1.push(pick);
-          } else {
-            let __n9 = document.createElement("span");
-            __n9.textContent = "other";
-            let __place1_i_ref1 = null;
-            if (__place1_i < __place1_prev.length) {
-              __place1_i_ref1 = __place1_prev[__place1_i];
+          }
+          for (const __place1_prev_e of __place1_prev) {
+            if (__slot1.indexOf(__place1_prev_e) < 0) {
+              parent.removeChild(__place1_prev_e);
             }
-            if (__place1_i_ref1 === __n9) {
-              __place1_i = __place1_i + 1;
-            } else {
-              parent.insertBefore(__n9, __place1_i_ref1);
-            }
-            __slot1.push(__n9);
           }
         }
-        for (const __place1_prev_e of __place1_prev) {
-          if (__slot1.indexOf(__place1_prev_e) < 0) {
-            parent.removeChild(__place1_prev_e);
-          }
-        }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function String(v) {
@@ -3455,12 +3506,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eb8dbea733ecaba5c6eca00169cedae4
+pass sha256:9c6326c13e003c54188e99ea595d52a9
 -- run/go/fyne --
-pass sha256:e7b164d11cb273ecf09705ab86948905
+pass sha256:d666d5be053d5764fe6437db35929bf8
 -- run/go/gtk4 --
-pass sha256:ec245511b82283d68232d446d70e0198
+pass sha256:82ccbc4bac935bda5d90d8a536bf4535
 -- run/kotlin/android --
 pass sha256:5cc009040128faa8bfb2e15b1717144c
 -- run/none/html --
-pass sha256:86b3161b78c3dc11953befaabc8f6d09
+pass sha256:9b3ae1af9c503f725124605e3bb7a899

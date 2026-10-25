@@ -61,7 +61,6 @@ import (
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Measurement struct {
@@ -221,7 +220,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -233,7 +232,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt0))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt0))
 	}
 	return l
 }
@@ -297,20 +296,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt6
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt8 int
-	if height__r0 == 0 {
-		__lt8 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt7 int
+	if px <= 0.0 {
+		__lt7 = 0
 	} else {
-		var __lt7 int
-		if lines == 0 {
-			__lt7 = height__r0
-		} else {
-			__lt7 = min(height__r0, lines)
-		}
-		__lt8 = __lt7
+		__lt7 = max(1, (int(px) / 16))
 	}
-	return __lt8
+	return __lt7
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt9 int
+	if height__r0 == 0 {
+		__lt9 = lines
+	} else {
+		var __lt8 int
+		if lines == 0 {
+			__lt8 = height__r0
+		} else {
+			__lt8 = min(height__r0, lines)
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
 }
 
 func (m *Model) __effect0_enter() {
@@ -553,14 +563,14 @@ func (m Model) View() tea.View {
 			__focusPos0++
 			part0Part_0Items = append(part0Part_0Items, part0Part_0Item)
 		}
-		part0Part_0 = strings.Join(part0Part_0Items, "")
+		part0Part_0 = tui.Spaced(false, lipgloss.Left, 0, part0Part_0Items...)
 		if part0Part_0 != "" {
 			part0Parts = append(part0Parts, part0Part_0)
 		}
 		var part0Part_1 string
 		part0Part_1 = BoxLook(Style{}, true).Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
 		part0Parts = append(part0Parts, part0Part_1)
-		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
+		part0 = tui.Spaced(false, lipgloss.Left, 0, part0Parts...)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -630,53 +640,57 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__inst0_next := []*CardInstance{}
-			var __inst0_i int = 0
-			for _, n := range m.names__inst0 {
-				var __n3 *CardInstance
-				if len(m.__inst0_live) > __inst0_i {
-					__n3 = m.__inst0_live[__inst0_i]
-					__n3.SetPick(func(i int, l string) {
-						m.at__inst0 = i
-						m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-						m.picked__inst0 = l
-						m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-					})
-					__n3.SetLabel(n)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*CardInstance{}
+				var __inst0_i int = 0
+				for _, n := range m.names__inst0 {
+					var __n3 *CardInstance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n3 = m.__inst0_live[__inst0_i]
+						__n3.SetPick(func(i int, l string) {
+							m.at__inst0 = i
+							m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							m.picked__inst0 = l
+							m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+						})
+						__n3.SetLabel(n)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n3__new := newCardInstance(m, n, func(i int, l string) {
+							m.at__inst0 = i
+							m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							m.picked__inst0 = l
+							m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+						})
+						__n3 = __n3__new
 					}
-					__n3__new := newCardInstance(m, n, func(i int, l string) {
-						m.at__inst0 = i
-						m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-						m.picked__inst0 = l
-						m.__n2.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-					})
-					__n3 = __n3__new
+					__inst0_next = append(__inst0_next, __n3)
+					__inst0_i = (__inst0_i + 1)
+					__n3__el := __n3.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
+					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				__inst0_next = append(__inst0_next, __n3)
-				__inst0_i = (__inst0_i + 1)
-				__n3__el := __n3.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-				m.__slot0 = append(m.__slot0, __n3__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -858,53 +872,57 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*CardInstance{}
-			var __inst0_i int = 0
-			for _, n := range m.names__inst0 {
-				var __n3 *CardInstance
-				if len(m.__inst0_live) > __inst0_i {
-					__n3 = m.__inst0_live[__inst0_i]
-					__n3.SetPick(func(i int, l string) {
-						m.at__inst0 = i
-						gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-						m.picked__inst0 = l
-						gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-					})
-					__n3.SetLabel(n)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*CardInstance{}
+				var __inst0_i int = 0
+				for _, n := range m.names__inst0 {
+					var __n3 *CardInstance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n3 = m.__inst0_live[__inst0_i]
+						__n3.SetPick(func(i int, l string) {
+							m.at__inst0 = i
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							m.picked__inst0 = l
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+						})
+						__n3.SetLabel(n)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n3__new := newCardInstance(m, n, func(i int, l string) {
+							m.at__inst0 = i
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							m.picked__inst0 = l
+							gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+						})
+						__n3 = __n3__new
 					}
-					__n3__new := newCardInstance(m, n, func(i int, l string) {
-						m.at__inst0 = i
-						gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-						m.picked__inst0 = l
-						gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
-					})
-					__n3 = __n3__new
+					__inst0_next = append(__inst0_next, __n3)
+					__inst0_i = (__inst0_i + 1)
+					__n3__el := __n3.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
+					m.__slot0 = append(m.__slot0, __n3__el)
 				}
-				__inst0_next = append(__inst0_next, __n3)
-				__inst0_i = (__inst0_i + 1)
-				__n3__el := __n3.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-				m.__slot0 = append(m.__slot0, __n3__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1018,6 +1036,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	gtk4rt.AppAttach(m.__n1)
 }
@@ -1105,64 +1124,67 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        let __inst1_next = [];
-        let __inst1_i = 0;
-        for (const n of state.names__inst0) {
-          let __n3 = null;
-          if (__inst1_live.length > __inst1_i) {
-            __n3 = __inst1_live[__inst1_i];
-            __n3.__set_pick((i, l) => {
-              state.at__inst0 = i;
-              __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
-              state.picked__inst0 = l;
-              __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
-            });
-            __n3.__set_label(n);
-          } else {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          let __inst1_next = [];
+          let __inst1_i = 0;
+          for (const n of state.names__inst0) {
+            let __n3 = null;
             if (__inst1_live.length > __inst1_i) {
-              __inst1_live[__inst1_i].__destroy();
+              __n3 = __inst1_live[__inst1_i];
+              __n3.__set_pick((i, l) => {
+                state.at__inst0 = i;
+                __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+                state.picked__inst0 = l;
+                __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+              });
+              __n3.__set_label(n);
+            } else {
+              if (__inst1_live.length > __inst1_i) {
+                __inst1_live[__inst1_i].__destroy();
+              }
+              let __n3__new = __cf_card({ label: n, pick: (i, l) => {
+                state.at__inst0 = i;
+                __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+                state.picked__inst0 = l;
+                __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+              } });
+              __n3 = __n3__new;
             }
-            let __n3__new = __cf_card({ label: n, pick: (i, l) => {
-              state.at__inst0 = i;
-              __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
-              state.picked__inst0 = l;
-              __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
-            } });
-            __n3 = __n3__new;
+            __inst1_next.push(__n3);
+            __inst1_i = __inst1_i + 1;
+            let __n3__el = __n3.__root;
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n3__el) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n3__el, __place0_i_ref0);
+            }
+            __slot0.push(__n3__el);
           }
-          __inst1_next.push(__n3);
-          __inst1_i = __inst1_i + 1;
-          let __n3__el = __n3.__root;
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+          for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+            let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+            if (__inst1_i_j >= __inst1_i) {
+              __inst1_live[__inst1_i_j].__destroy();
+            }
           }
-          if (__place0_i_ref0 === __n3__el) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n3__el, __place0_i_ref0);
-          }
-          __slot0.push(__n3__el);
-        }
-        for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-          let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-          if (__inst1_i_j >= __inst1_i) {
-            __inst1_live[__inst1_i_j].__destroy();
-          }
-        }
-        __inst1_live = __inst1_next;
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
+          __inst1_live = __inst1_next;
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function String(v) {
@@ -1180,10 +1202,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:90553ebdec4e8362d2805588dcfddfae
+pass sha256:ade42ff091ac89cd03d09fd836260a06
 -- run/go/fyne --
-pass sha256:309c1686a33777784ffaeaa9227627a6
+pass sha256:6a33394bd44d05815d1a2b95d62a3b6b
 -- run/go/gtk4 --
-pass sha256:16677a2edc24cf4dd0c8bba351880034
+pass sha256:7f9f2e6998737539245a6c198af7c083
 -- run/none/html --
-pass sha256:5b3c63511633072050bc1e0bd14bf506
+pass sha256:ece199ae46ec94988362e5d7c5e1c2bb

@@ -17,7 +17,7 @@ follows, so a resize redraws.
 
 Fyne asks a Raster's generator for a picture at the pixel size it is about to
 upload, which is the one thing an Image cannot know -- so a scaled canvas is a
-Raster and the shapes are rasterised at the size they are shown. The surface
+Raster and the shapes are rasterized at the size they are shown. The surface
 outlives the drawing: Fyne calls back on every redraw, and a buffer allocated
 per call is the whole image thrown away per keypress. The minimum size is a
 floor rather than a size: without one the box gives a canvas nothing to scale
@@ -391,6 +391,7 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
@@ -531,7 +532,7 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw0(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n0), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.w)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.w)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.w)))
 }
 
@@ -883,7 +884,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:e1d3632de2bfbc11ec6b7c14da6fdd47
+pass sha256:2d438c4d6e4072e1c1be3656e0b2ec13
 -- run/kotlin/android --
 pass sha256:36e28049e3733ac5845c8e53751c4f78
 -- run/none/html --

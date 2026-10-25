@@ -6,7 +6,7 @@
 // NodeInst to a `lower.CreateNode("canvas")` LocalVar carrying a back-pointer
 // to it.
 //
-// Two pieces generalise across Go platforms and live here:
+// Two pieces generalize across Go platforms and live here:
 //
 //  1. the flattened canvas metadata in the shape these platforms read it
 //     (Collect / Meta), and

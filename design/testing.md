@@ -54,6 +54,25 @@ The digest does not cover `pkg/<lang>/` runtimes, which the generated program
 imports from the checkout -- a change there wants a `-verify` the digest will
 not ask for, the same gap a golden's record has.
 
+**One command rerecords every package's.** Records live in the goldens, the
+scripts and four packages beside them -- gtk4's `go_runs`, html's component
+and browser runs, `internal/build`'s library-sites run, `internal/lower`'s
+goldens -- and a codegen change moves them all, while the first two were the
+only ones anyone remembered to `-update`: the rest went stale until a full
+verify. `go tool verify -update` runs, under the headless compositor, the
+tests of every package whose tests declare an `update` flag with `-update`
+(`recordPackages`), and a stale record's failure names it.
+
+**A failure while the tree changed says so.** Some suites build from the live
+checkout -- `sngl` proxies to `./cmd/sngl`, `internal/optimize`'s evalstore
+and the scripts' `trust_eval` build modules that replace `duckfam.us/sngl`
+with it, the `serve` script command builds an out-of-tree `sngl` -- so an
+edit made mid-run is what they build, half-written or not. verify reads the
+size and time of every file git keeps before its test steps (`treeState`) and,
+when one fails, names what changed since (`reportTreeChange`). Building from a
+snapshot instead would cost every run a cold build cache, which keys on the
+absolute source directory, and write records into the copy.
+
 **Every Gradle build the compiler runs takes turns in one daemon**
 (`internal/gradle`): a file lock lets one build run at a time across every
 test binary, the first starts the daemon, and it exits five minutes after the
@@ -67,6 +86,25 @@ own: the examples are all `./...` reaches, and `examples_runs.txt` runs them
 on every target from its records. Run unrecorded in verify, every launch
 needed every toolchain and a display, so gtk4 failed in CI, where cage does
 not start, and a slow fyne run timed out there.
+
+**Nor does it compile what a record answers.** A script's `sngl build` and
+compiled `sngl run` are answered from a `testrun/build/…` or `testrun/run/…`
+record of the generated program and the arguments (`Records.AnswerTool`; a
+run's record holds what it printed), and compile only under `-update` and
+`-verify`, which the `[toolchain]` condition says: a step running the binary
+they built is guarded by it. A script that only checks generated Go compiles
+writes `gobuild <pkgs>` rather than `exec go build`, answered the same way
+(`testrun/gobuild/…`, of the script's whole tree); the go command's telemetry
+is off in a script's config so its counters do not move that digest. What still
+compiles in a plain run is sngl's own behavior: the `go://` const evaluator
+`trust_eval` runs, and `serve`'s build of sngl. And a package keeping a `testdata/test_run` --
+`pkg/go/gtk4rt`, whose tests link the host's GTK and skip in CI for want of a
+compositor -- is left out of the test step while that digest of what its tests
+build stands (`internal/cmd/verify/testrun.go`), `-update` running them and
+writing it again. Both compiled in CI: a GTK call CI's 4.8 lacked failed its
+link in three scripts and gtk4rt's own build, where every record stood.
+`go vet` still reads gtk4rt's C, which preprocesses it with the host's headers
+but links nothing.
 
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
@@ -144,7 +182,7 @@ timer, a `fmt.Println`, an `os.Exit` -- so it is a fixture of its own,
 
 Neither harness fixes a fixture whose input never reaches the branch it means
 to exercise: generated output is identical either way. Confirm a new fixture
-*fails* when the behaviour is reverted.
+*fails* when the behavior is reverted.
 
 **Know which harness sees platforms.** `TestFixtures` (root package, `internal/fixtures`) is the one walk over `testdata/*.sngl`: each fixture is read, parsed, formatted, checked, folded and LSP-marked once, as its own directives ask. It checks against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. No fixture gets the real import resolver — directory imports resolve through the stub in `internal/fixtures/resolver.go`. For that, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
 
@@ -187,6 +225,22 @@ These rules keep them agreeing:
   statement as well as on each read through the instance, since a read of
   package state goes through none -- a click that unmounted and remounted a
   branch left `asked.length()` unsettled (`testdata/async_query_loop.sngl`).
+- **A test waiting lets time pass as the program's loop would**: `t.wait`
+  asks its predicate between turns of whatever runs the target's schedules.
+  bubbletea's test build runs no program, so each turn settles the Model the
+  test holds -- Update after what the test did, the commands it returns run
+  off the test's goroutine and their messages posted back to it -- or its
+  timers, tea.Tick commands, never ticked; android's moves Compose's test
+  clock, where it lowered no wait at all
+  (`cmd/sngl/testdata/timer_tab_loop_wait_runs.txt`). `t.tick` is the
+  interpreter's alone.
+- **A bubbletea test draws its view when the program would**: as the Model is
+  made, after each invoker's Update, and after each settle's (`newTestComponent`,
+  `drawAfterUpdate`, `__snglDeliver`). It drew only to snapshot, so what a view
+  does as it draws had not happened when the test looked: a raise its render
+  makes was heard by no boundary
+  (`cmd/sngl/testdata/render_raise_reaches_its_boundary_runs.txt`), and a
+  picture started its fetch only at the first snapshot, which showed it blank.
 - **A member named `length` is a list's, a map's or a string's measure only
   on one of those** (`ir.HasLength`): read off an instance it is the
   program's var, which Go wrote as `len(c)`
@@ -352,7 +406,7 @@ annotation infers its type from its body on demand, as a program's does
 declarations bound again for every body in their scope -- reports once, the
 other read resolving quietly (`resolveTypeQuietly`, `declareBodyDecls`).
 
-When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
+When adding a fixture or directive, confirm it *fails* when the behavior is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
 Two ways that check passes for the wrong reason. `go test ./internal/checker/`
 does not evaluate a new `// ERROR(check)` fixture; the root package's

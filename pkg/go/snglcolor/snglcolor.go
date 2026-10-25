@@ -31,8 +31,8 @@ func (c Color) String() string {
 }
 
 // Hex renders the color as `#rrggbb`, or `#rrggbbaa` when it is not opaque.
-// Mirrors the SNGL stdlib `color.hex`: a colour is its complete value, and a
-// representation that drops alpha makes two different colours print the same.
+// Mirrors the SNGL stdlib `color.hex`: a color is its complete value, and a
+// representation that drops alpha makes two different colors print the same.
 func (c Color) Hex() string {
 	if c.A == 255 {
 		return fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B)

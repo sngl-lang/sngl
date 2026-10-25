@@ -319,106 +319,109 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place1_prev = __slot0;
-        let __place1_i = 0;
-        __slot0 = [];
-        let __inst2_next = [];
-        let __inst2_i = 0;
-        let __inst2_now___p0 = [];
-        for (const __x of [0]) {
-          let __n9 = null;
-          if (__inst2_live.length > __inst2_i && __inst2_was___p0[__inst2_i] === (state.big ? "section" : "div")) {
-            __n9 = __inst2_live[__inst2_i];
-            __n9.__set___on0((e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place1_prev = __slot0;
+          let __place1_i = 0;
+          __slot0 = [];
+          let __inst2_next = [];
+          let __inst2_i = 0;
+          let __inst2_now___p0 = [];
+          for (const __x of [0]) {
+            let __n9 = null;
+            if (__inst2_live.length > __inst2_i && __inst2_was___p0[__inst2_i] === (state.big ? "section" : "div")) {
+              __n9 = __inst2_live[__inst2_i];
+              __n9.__set___on0((e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
                 ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
                 ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
-              }
-              ;
-            });
-            __n9.__set___on1((e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+              });
+              __n9.__set___on1((e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
                 ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
                 ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
+              });
+              __n9.__set___p1(state.name);
+            } else {
+              if (__inst2_live.length > __inst2_i) {
+                __inst2_live[__inst2_i].__destroy();
               }
-              ;
-            });
-            __n9.__set___p1(state.name);
-          } else {
-            if (__inst2_live.length > __inst2_i) {
-              __inst2_live[__inst2_i].__destroy();
+              let __n9__new = __cf___child0({ __p0: state.big ? "section" : "div", __p1: state.name, __on0: (e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
+                ;
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
+                ;
+              }, __on1: (e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
+                ;
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
+                ;
+              } });
+              __n9 = __n9__new;
             }
-            let __n9__new = __cf___child0({ __p0: state.big ? "section" : "div", __p1: state.name, __on0: (e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
-                ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
-                ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
-              }
-              ;
-            }, __on1: (e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
-                ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
-                ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
-              }
-              ;
-            } });
-            __n9 = __n9__new;
+            __inst2_next.push(__n9);
+            __inst2_now___p0.push(state.big ? "section" : "div");
+            __inst2_i = __inst2_i + 1;
+            let __n9__el = __n9.__root;
+            let __place1_i_ref0 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref0 = __place1_prev[__place1_i];
+            }
+            if (__place1_i_ref0 === __n9__el) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n9__el, __place1_i_ref0);
+            }
+            __slot0.push(__n9__el);
           }
-          __inst2_next.push(__n9);
-          __inst2_now___p0.push(state.big ? "section" : "div");
-          __inst2_i = __inst2_i + 1;
-          let __n9__el = __n9.__root;
-          let __place1_i_ref0 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref0 = __place1_prev[__place1_i];
+          for (const [__inst2_i_d, _] of __inst2_live.entries()) {
+            let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
+            if (__inst2_i_j >= __inst2_i) {
+              __inst2_live[__inst2_i_j].__destroy();
+            }
           }
-          if (__place1_i_ref0 === __n9__el) {
-            __place1_i = __place1_i + 1;
-          } else {
-            parent.insertBefore(__n9__el, __place1_i_ref0);
-          }
-          __slot0.push(__n9__el);
-        }
-        for (const [__inst2_i_d, _] of __inst2_live.entries()) {
-          let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
-          if (__inst2_i_j >= __inst2_i) {
-            __inst2_live[__inst2_i_j].__destroy();
+          __inst2_live = __inst2_next;
+          __inst2_was___p0 = __inst2_now___p0;
+          for (const __place1_prev_e of __place1_prev) {
+            if (__slot0.indexOf(__place1_prev_e) < 0) {
+              parent.removeChild(__place1_prev_e);
+            }
           }
         }
-        __inst2_live = __inst2_next;
-        __inst2_was___p0 = __inst2_now___p0;
-        for (const __place1_prev_e of __place1_prev) {
-          if (__slot0.indexOf(__place1_prev_e) < 0) {
-            parent.removeChild(__place1_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -427,57 +430,60 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place3_prev = __slot1;
-        let __place3_i = 0;
-        __slot1 = [];
-        let __inst4_next = [];
-        let __inst4_i = 0;
-        let __inst4_now___p0 = [];
-        for (const __x of [0]) {
-          let __n10 = null;
-          if (__inst4_live.length > __inst4_i && __inst4_was___p0[__inst4_i] === (state.numbered ? "ol" : "ul")) {
-            __n10 = __inst4_live[__inst4_i];
-            __n10.__set___p1(state.numbered);
-            __n10.__set___p2(state.label);
-          } else {
-            if (__inst4_live.length > __inst4_i) {
-              __inst4_live[__inst4_i].__destroy();
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place3_prev = __slot1;
+          let __place3_i = 0;
+          __slot1 = [];
+          let __inst4_next = [];
+          let __inst4_i = 0;
+          let __inst4_now___p0 = [];
+          for (const __x of [0]) {
+            let __n10 = null;
+            if (__inst4_live.length > __inst4_i && __inst4_was___p0[__inst4_i] === (state.numbered ? "ol" : "ul")) {
+              __n10 = __inst4_live[__inst4_i];
+              __n10.__set___p1(state.numbered);
+              __n10.__set___p2(state.label);
+            } else {
+              if (__inst4_live.length > __inst4_i) {
+                __inst4_live[__inst4_i].__destroy();
+              }
+              let __n10__new = __cf___child1({ __p0: state.numbered ? "ol" : "ul", __p1: state.numbered, __p2: state.label });
+              __n10 = __n10__new;
             }
-            let __n10__new = __cf___child1({ __p0: state.numbered ? "ol" : "ul", __p1: state.numbered, __p2: state.label });
-            __n10 = __n10__new;
+            __inst4_next.push(__n10);
+            __inst4_now___p0.push(state.numbered ? "ol" : "ul");
+            __inst4_i = __inst4_i + 1;
+            let __n10__el = __n10.__root;
+            let __place3_i_ref0 = null;
+            if (__place3_i < __place3_prev.length) {
+              __place3_i_ref0 = __place3_prev[__place3_i];
+            }
+            if (__place3_i_ref0 === __n10__el) {
+              __place3_i = __place3_i + 1;
+            } else {
+              parent.insertBefore(__n10__el, __place3_i_ref0);
+            }
+            __slot1.push(__n10__el);
           }
-          __inst4_next.push(__n10);
-          __inst4_now___p0.push(state.numbered ? "ol" : "ul");
-          __inst4_i = __inst4_i + 1;
-          let __n10__el = __n10.__root;
-          let __place3_i_ref0 = null;
-          if (__place3_i < __place3_prev.length) {
-            __place3_i_ref0 = __place3_prev[__place3_i];
+          for (const [__inst4_i_d, _] of __inst4_live.entries()) {
+            let __inst4_i_j = __inst4_live.length - 1 - __inst4_i_d;
+            if (__inst4_i_j >= __inst4_i) {
+              __inst4_live[__inst4_i_j].__destroy();
+            }
           }
-          if (__place3_i_ref0 === __n10__el) {
-            __place3_i = __place3_i + 1;
-          } else {
-            parent.insertBefore(__n10__el, __place3_i_ref0);
-          }
-          __slot1.push(__n10__el);
-        }
-        for (const [__inst4_i_d, _] of __inst4_live.entries()) {
-          let __inst4_i_j = __inst4_live.length - 1 - __inst4_i_d;
-          if (__inst4_i_j >= __inst4_i) {
-            __inst4_live[__inst4_i_j].__destroy();
-          }
-        }
-        __inst4_live = __inst4_next;
-        __inst4_was___p0 = __inst4_now___p0;
-        for (const __place3_prev_e of __place3_prev) {
-          if (__slot1.indexOf(__place3_prev_e) < 0) {
-            parent.removeChild(__place3_prev_e);
+          __inst4_live = __inst4_next;
+          __inst4_was___p0 = __inst4_now___p0;
+          for (const __place3_prev_e of __place3_prev) {
+            if (__slot1.indexOf(__place3_prev_e) < 0) {
+              parent.removeChild(__place3_prev_e);
+            }
           }
         }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   function __renderSlot2(parent) {
@@ -486,104 +492,107 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering2 = true;
       __renderAgain2 = true;
-      while (__renderAgain2) {
-        __renderAgain2 = false;
-        let __place5_prev = __slot2;
-        let __place5_i = 0;
-        __slot2 = [];
-        let __inst6_next = [];
-        let __inst6_i = 0;
-        if (state.big) {
-          let __n11 = null;
-          if (__inst6_live.length > __inst6_i) {
-            __n11 = __inst6_live[__inst6_i];
-            __n11.__set___on0((e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
-                ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
-                ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
-              }
-              ;
-            });
-            __n11.__set___on1((e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
-                ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
-                ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
-              }
-              ;
-            });
-            __n11.__set___p0(state.k);
-            __n11.__set___p1(state.name);
-          } else {
+      try {
+        while (__renderAgain2) {
+          __renderAgain2 = false;
+          let __place5_prev = __slot2;
+          let __place5_i = 0;
+          __slot2 = [];
+          let __inst6_next = [];
+          let __inst6_i = 0;
+          if (state.big) {
+            let __n11 = null;
             if (__inst6_live.length > __inst6_i) {
-              __inst6_live[__inst6_i].__destroy();
+              __n11 = __inst6_live[__inst6_i];
+              __n11.__set___on0((e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
+                ;
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
+                ;
+              });
+              __n11.__set___on1((e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
+                ;
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
+                ;
+              });
+              __n11.__set___p0(state.k);
+              __n11.__set___p1(state.name);
+            } else {
+              if (__inst6_live.length > __inst6_i) {
+                __inst6_live[__inst6_i].__destroy();
+              }
+              let __n11__new = __cf___child2({ __p0: state.k, __p1: state.name, __on0: (e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
+                ;
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
+                ;
+              }, __on1: (e) => {
+                state.name = e.currentTarget.value;
+                for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
+                  ;
+                  __inst2_live[__inst2_live_ui].__set___p1(state.name);
+                }
+                ;
+                for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
+                  ;
+                  __inst6_live[__inst6_live_ui].__set___p1(state.name);
+                }
+                ;
+              } });
+              __n11 = __n11__new;
             }
-            let __n11__new = __cf___child2({ __p0: state.k, __p1: state.name, __on0: (e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
-                ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
-                ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
-              }
-              ;
-            }, __on1: (e) => {
-              state.name = e.currentTarget.value;
-              for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
-                ;
-                __inst2_live[__inst2_live_ui].__set___p1(state.name);
-              }
-              ;
-              for (const [__inst6_live_ui, _] of __inst6_live.entries()) {
-                ;
-                __inst6_live[__inst6_live_ui].__set___p1(state.name);
-              }
-              ;
-            } });
-            __n11 = __n11__new;
+            __inst6_next.push(__n11);
+            __inst6_i = __inst6_i + 1;
+            let __n11__el = __n11.__root;
+            let __place5_i_ref0 = null;
+            if (__place5_i < __place5_prev.length) {
+              __place5_i_ref0 = __place5_prev[__place5_i];
+            }
+            if (__place5_i_ref0 === __n11__el) {
+              __place5_i = __place5_i + 1;
+            } else {
+              parent.insertBefore(__n11__el, __place5_i_ref0);
+            }
+            __slot2.push(__n11__el);
           }
-          __inst6_next.push(__n11);
-          __inst6_i = __inst6_i + 1;
-          let __n11__el = __n11.__root;
-          let __place5_i_ref0 = null;
-          if (__place5_i < __place5_prev.length) {
-            __place5_i_ref0 = __place5_prev[__place5_i];
+          for (const [__inst6_i_d, _] of __inst6_live.entries()) {
+            let __inst6_i_j = __inst6_live.length - 1 - __inst6_i_d;
+            if (__inst6_i_j >= __inst6_i) {
+              __inst6_live[__inst6_i_j].__destroy();
+            }
           }
-          if (__place5_i_ref0 === __n11__el) {
-            __place5_i = __place5_i + 1;
-          } else {
-            parent.insertBefore(__n11__el, __place5_i_ref0);
-          }
-          __slot2.push(__n11__el);
-        }
-        for (const [__inst6_i_d, _] of __inst6_live.entries()) {
-          let __inst6_i_j = __inst6_live.length - 1 - __inst6_i_d;
-          if (__inst6_i_j >= __inst6_i) {
-            __inst6_live[__inst6_i_j].__destroy();
+          __inst6_live = __inst6_next;
+          for (const __place5_prev_e of __place5_prev) {
+            if (__slot2.indexOf(__place5_prev_e) < 0) {
+              parent.removeChild(__place5_prev_e);
+            }
           }
         }
-        __inst6_live = __inst6_next;
-        for (const __place5_prev_e of __place5_prev) {
-          if (__slot2.indexOf(__place5_prev_e) < 0) {
-            parent.removeChild(__place5_prev_e);
-          }
-        }
+      } finally {
+        __rendering2 = false;
       }
-      __rendering2 = false;
     }
   }
   function String(v) {
@@ -629,4 +638,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3b2c8f0f95f2c3a6ed8fa689ba276721
+pass sha256:b0df340e279760216a2f8453b66a20b7

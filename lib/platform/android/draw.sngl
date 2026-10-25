@@ -120,7 +120,7 @@ const func strokeStyle(style shapes.Style) DrawStyle {
 #[kt.native("toFloat", "", method)]
 const func f32(v float) float
 
-// The colour as Compose spells it. SNGL carries 0-255 channels and so does
+// The color as Compose spells it. SNGL carries 0-255 channels and so does
 // this overload, so it is a rename rather than a conversion.
 const func composeOf(c color) ComposeColor {
     return composeColor(int(c.r), int(c.g), int(c.b), int(c.a))
@@ -216,7 +216,7 @@ const component shapes.circle[platform](cx, cy, r, style) {
     })
 }
 
-// Compose has no ellipse: `drawOval` takes the bounding box, so the centre and
+// Compose has no ellipse: `drawOval` takes the bounding box, so the center and
 // radii become a top-left and a size.
 const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
     draw(@draw(e) {

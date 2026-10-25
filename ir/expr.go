@@ -91,7 +91,7 @@ type Call struct {
 	Args      []CallArg  // resolved arguments (for type-methods, Args[0] is the receiver)
 	// Detached says the call starts its callee and does not wait for it: the
 	// caller goes on while an async callee waits, and reads no answer. So the
-	// call colours nothing async, and a language that awaits writes it
+	// call colors nothing async, and a language that awaits writes it
 	// without. The effect lowering makes its calls of a bracket's handlers
 	// detached, since a lifetime begins when its mount starts, and a settle
 	// waiting on one request would hold every other bracket with it.
@@ -186,6 +186,15 @@ const (
 	// ErrorPropagateNative means no handler is reachable — codegen emits
 	// the target language's native throw (panic / throw).
 	ErrorPropagateNative
+	// ErrorRender means a call a view's own expression makes -- a prop's
+	// value, a loop's list, a condition -- whose raise the boundary or
+	// window around it resolves: that handler runs, the call is its type's
+	// zero value, and the render goes on. With no ResolvedHandler, its
+	// component has no boundary, and the tree it renders in answers:
+	// lower's passErrorScope, or the interpreter's raise frames. lower's
+	// passRenderCatch turns each into a caught call, or a native one where
+	// nothing answers, so no language sees this mode.
+	ErrorRender
 )
 
 // CatchingHandler is the handler a raise leaving this call is caught by at
@@ -194,7 +203,7 @@ func CatchingHandler(call *Call) *EventHandler {
 	switch call.ErrorMode {
 	case ErrorPerCall:
 		return call.ErrorHandler
-	case ErrorInvokeAndTerminate:
+	case ErrorInvokeAndTerminate, ErrorRender:
 		return call.ResolvedHandler
 	}
 	return nil

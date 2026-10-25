@@ -1,13 +1,17 @@
 // Command verify runs project checks and tests, reporting per-package coverage.
 //
 // Steps:
-//  1. go generate ./...
+//  1. go generate <packages>
 //  2. go mod tidy
-//  3. go fmt ./...
+//  3. go fmt <packages>
 //  4. go tool mdox fmt --soft-wraps <markdown files>
-//  5. go fix ./...
-//  6. go vet ./...
-//  7. go test -coverpkg=./... -coverprofile=... ./...
+//  5. go fix <packages>
+//  6. go vet <packages>
+//  7. go test -coverpkg=<packages> -coverprofile=... <packages>
+//
+// <packages> is ./... less what git ignores (goPackages): the go command
+// reads no .gitignore, so ./... built, vetted and counted the scratch packages
+// under the ignored tmp/.
 //
 // Step 5 collects cross-package coverage so packages exercised by integration
 // tests (e.g. codegen/lang/* through codegen/platform/*) are credited for the
@@ -32,12 +36,23 @@
 //
 // -only lint runs steps 1-6 and -only test step 7.
 //
-// Usage: go tool verify [-v] [-dry] [-full] [-only lint|test]
+// -update runs none of them. It reruns, under the same headless compositor,
+// the tests of every package that holds recorded runs or goldens -- each
+// declares an `update` flag (recordPackages) -- with -update, which rewrites
+// whichever records moved: the root goldens, cmd/sngl's scripts, and the
+// records gtk4, html, internal/build and internal/lower keep, which a codegen
+// change makes stale as surely as the first two. It also runs the tests of
+// each package keeping a testdata/test_run whose digest moved -- gtk4rt's,
+// which link the host's GTK -- and writes it again; step 7 leaves such a
+// package out while its digest stands (testrun.go).
+//
+// Usage: go tool verify [-v] [-dry] [-full] [-only lint|test] [-update]
 package main
 
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -109,6 +124,7 @@ func main() {
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
 	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric); default skips them")
 	only := flag.String("only", "", "run only the `lint` steps (1-6) or the `test` step (7); both when empty")
+	update := flag.Bool("update", false, "rerecord every package's recorded runs and goldens instead of verifying")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -125,15 +141,41 @@ func main() {
 	default:
 		log.Fatalf("-only %q: want lint or test", *only)
 	}
+	pkgs, err := goPackages(".")
+	if err != nil {
+		log.Fatalf("listing packages: %v", err)
+	}
+	if *update {
+		if !rerecord(recordPackages(pkgs), *verbose) || !rerecordTestRuns(recordedTestRuns(pkgs), *verbose) {
+			exit(1)
+		}
+		exit(0)
+	}
 	if *only != "test" {
-		lint(*dry)
+		lint(*dry, pkgs)
 	}
 	if *only == "lint" {
 		exit(0)
 	}
 
 	// Step 7: go test with coverage
-	runTests(*verbose, !*dry, *full)
+	// The tests build from the checkout -- `sngl` proxies to ./cmd/sngl, and
+	// a generated module replaces duckfam.us/sngl with it -- so an edit made
+	// while they run is what some of them build. What failed then is the
+	// tree's change and not the code's, and verify says so.
+	before, err := treeState(".")
+	if err != nil {
+		log.Fatalf("reading the tree: %v", err)
+	}
+	tested, err := withoutRecordedTestRuns(pkgs)
+	if err != nil {
+		log.Print(err)
+		exit(1)
+	}
+	if !runTests(*verbose, !*dry, *full, tested) {
+		reportTreeChange(".", before)
+		exit(1)
+	}
 
 	cleanup()
 }
@@ -180,7 +222,8 @@ func runCheckStep(name string, command string, args ...string) bool {
 	return true
 }
 
-func runTests(verbose, fmtDocs, full bool) {
+// runTests is step 7, and reports whether it passed.
+func runTests(verbose, fmtDocs, full bool, pkgs []string) bool {
 	profile, err := os.CreateTemp("", "sngl-verify-cover-*.out")
 	if err != nil {
 		log.Fatalf("create coverprofile: %v", err)
@@ -188,7 +231,7 @@ func runTests(verbose, fmtDocs, full bool) {
 	profile.Close()
 	cleanups = append(cleanups, func() { os.Remove(profile.Name()) })
 
-	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
+	args := []string{"test", "-coverpkg=" + strings.Join(pkgs, ","), "-coverprofile=" + profile.Name()}
 	// Default to -short so the routine run (and background sessions) skips the
 	// slow/heavy tests (android fixtures, Robolectric). `-full` opts into the
 	// complete suite. testing.Short() / the `[short]` scripttest cond do the
@@ -222,7 +265,7 @@ func runTests(verbose, fmtDocs, full bool) {
 	if verbose {
 		args = append(args, "-v")
 	}
-	args = append(args, "./...")
+	args = append(args, pkgs...)
 
 	// Run under a headless compositor when available so gtk4's window-present
 	// snapshot tests don't pop up on the user's desktop.
@@ -240,11 +283,11 @@ func runTests(verbose, fmtDocs, full bool) {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Print(err)
-		exit(1)
+		return false
 	}
 	if err := cmd.Start(); err != nil {
 		log.Print(err)
-		exit(1)
+		return false
 	}
 
 	failed := map[string]bool{}
@@ -304,8 +347,67 @@ func runTests(verbose, fmtDocs, full bool) {
 			100*float64(totalCovered)/float64(totalStmts), totalCovered, totalStmts, count)
 	}
 
-	if cmdErr != nil {
-		exit(1)
+	return cmdErr == nil
+}
+
+// treeState is each file under root git keeps -- tracked, or untracked and
+// not ignored -- with its size and modification time.
+func treeState(root string) (map[string]string, error) {
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files: %w", err)
+	}
+	state := map[string]string{}
+	for f := range strings.SplitSeq(string(out), "\x00") {
+		if f == "" {
+			continue
+		}
+		if info, err := os.Lstat(filepath.Join(root, f)); err == nil {
+			state[f] = fmt.Sprintf("%d %d", info.Size(), info.ModTime().UnixNano())
+		}
+	}
+	return state, nil
+}
+
+// changedFiles is what was written, added or removed between two treeStates,
+// sorted.
+func changedFiles(before, after map[string]string) []string {
+	var changed []string
+	for f, st := range after {
+		if before[f] != st {
+			changed = append(changed, f)
+		}
+	}
+	for f := range before {
+		if _, ok := after[f]; !ok {
+			changed = append(changed, f)
+		}
+	}
+	sort.Strings(changed)
+	return changed
+}
+
+// reportTreeChange says, after a failure, which files changed since before
+// was read: a test that built from the checkout may have built a half-made
+// edit, and fails for the edit rather than the code.
+func reportTreeChange(root string, before map[string]string) {
+	after, err := treeState(root)
+	if err != nil {
+		log.Printf("reading the tree again: %v", err)
+		return
+	}
+	changed := changedFiles(before, after)
+	if len(changed) == 0 {
+		return
+	}
+	const most = 20
+	shown := changed
+	if len(shown) > most {
+		shown = shown[:most]
+	}
+	log.Printf("the tree changed under the run, so a failure above may be the edit's and not the code's -- rerun with nothing editing it. Changed:\n  %s", strings.Join(shown, "\n  "))
+	if len(changed) > most {
+		log.Printf("  ... and %d more", len(changed)-most)
 	}
 }
 
@@ -408,6 +510,99 @@ func pkgPathDir(p string) string {
 	return path.Dir(p)
 }
 
+// goPackages is ./... under root less what git ignores, as relative package
+// paths ("./a/b"): the go command's own rules for what ./... holds, and git's
+// for what is the repository's. A package written but not yet added is the
+// repository's; one under tmp/ is not.
+func goPackages(root string) ([]string, error) {
+	list := exec.Command("go", "list", "-e", "-f", "{{.Dir}}", "./...")
+	list.Dir = root
+	out, err := list.Output()
+	if err != nil {
+		return nil, fmt.Errorf("go list: %w", err)
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	var dirs []string
+	for d := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		rel, err := filepath.Rel(abs, d)
+		if err != nil {
+			return nil, err
+		}
+		dirs = append(dirs, filepath.ToSlash(rel))
+	}
+	check := exec.Command("git", "-C", root, "check-ignore", "-z", "--stdin")
+	check.Stdin = strings.NewReader(strings.Join(dirs, "\x00") + "\x00")
+	ignoredOut, err := check.Output()
+	// check-ignore exits 1 when it ignores nothing.
+	if exit, ok := errors.AsType[*exec.ExitError](err); err != nil && !(ok && exit.ExitCode() == 1) {
+		return nil, fmt.Errorf("git check-ignore: %w", err)
+	}
+	ignored := map[string]bool{}
+	for d := range strings.SplitSeq(string(ignoredOut), "\x00") {
+		ignored[d] = true
+	}
+	var pkgs []string
+	for _, d := range dirs {
+		if ignored[d] {
+			continue
+		}
+		if d == "." {
+			pkgs = append(pkgs, ".")
+		} else {
+			pkgs = append(pkgs, "./"+d)
+		}
+	}
+	sort.Strings(pkgs)
+	return pkgs, nil
+}
+
+// recordPackages is those of pkgs whose tests declare an `update` flag: the
+// ones holding records a rerun rewrites.
+func recordPackages(pkgs []string) []string {
+	var out []string
+	for _, p := range pkgs {
+		tests, _ := filepath.Glob(filepath.Join(p, "*_test.go"))
+		for _, f := range tests {
+			b, err := os.ReadFile(f)
+			if err == nil && bytes.Contains(b, []byte(`flag.Bool("update"`)) {
+				out = append(out, p)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// rerecord runs pkgs' tests with -update under the headless compositor, so
+// gtk4's runs are recorded where verify reads them. A change that moves every
+// android run -- a merge of a codegen change -- relaunches Robolectric for
+// each script, one at a time in the shared Gradle daemon, which took
+// cmd/sngl past an hour.
+func rerecord(pkgs []string, verbose bool) bool {
+	args := []string{"test", "-timeout=4h", "-p=" + strconv.Itoa(codegen.BuildTokenSlots())}
+	if verbose {
+		args = append(args, "-v")
+	}
+	args = append(args, pkgs...)
+	args = append(args, "-args", "-update")
+	command, wrapped, env := wrapHeadless("go", args)
+	return runStepEnv("update", env, command, wrapped...)
+}
+
+// goFiles is the Go files directly in each of pkgs, for gofmt, which recurses
+// into a directory it is handed.
+func goFiles(pkgs []string) []string {
+	var files []string
+	for _, p := range pkgs {
+		m, _ := filepath.Glob(filepath.Join(p, "*.go"))
+		files = append(files, m...)
+	}
+	return files
+}
+
 // findMarkdownFiles walks root and returns all *.md files, skipping
 // build/output dirs and anything hidden.
 func findMarkdownFiles(root string) ([]string, error) {
@@ -448,10 +643,10 @@ func shortPkg(full string) string {
 }
 
 // lint is steps 1-6: what checks the source rather than running it.
-func lint(dry bool) {
+func lint(dry bool, pkgs []string) {
 	// Step 1: go generate (skip in dry mode)
 	if !dry {
-		if !runStep("generate", "go", "generate", "./...") {
+		if !runStep("generate", "go", append([]string{"generate"}, pkgs...)...) {
 			exit(1)
 		}
 	}
@@ -469,11 +664,11 @@ func lint(dry bool) {
 
 	// Step 3: go fmt
 	if dry {
-		if !runCheckStep("fmt", "gofmt", "-l", ".") {
+		if !runCheckStep("fmt", "gofmt", append([]string{"-l"}, goFiles(pkgs)...)...) {
 			exit(1)
 		}
 	} else {
-		if !runStep("fmt", "go", "fmt", "./...") {
+		if !runStep("fmt", "go", append([]string{"fmt"}, pkgs...)...) {
 			exit(1)
 		}
 	}
@@ -496,17 +691,17 @@ func lint(dry bool) {
 
 	// Step 5: go fix
 	if dry {
-		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
+		if !runCheckStep("fix", "go", append([]string{"fix", "-diff"}, pkgs...)...) {
 			exit(1)
 		}
 	} else {
-		if !runStep("fix", "go", "fix", "./...") {
+		if !runStep("fix", "go", append([]string{"fix"}, pkgs...)...) {
 			exit(1)
 		}
 	}
 
 	// Step 6: go vet
-	if !runStep("vet", "go", "vet", "./...") {
+	if !runStep("vet", "go", append([]string{"vet"}, pkgs...)...) {
 		exit(1)
 	}
 }

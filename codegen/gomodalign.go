@@ -128,7 +128,7 @@ func findGoMod(start string) string {
 	}
 }
 
-// WriteGoMod synthesises go.mod (and go.sum) for a temporary module in dir
+// WriteGoMod synthesizes go.mod (and go.sum) for a temporary module in dir
 // that builds SNGL-generated Go code.
 //
 // It seeds the module with the host module's full require list and go.sum,

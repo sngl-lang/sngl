@@ -260,7 +260,7 @@ type DocEntry struct {
 }
 
 // GenerateBatch produces screenshots for multiple documents, using batch
-// snapshotting when the platform supports it. This amortises expensive
+// snapshotting when the platform supports it. This amortizes expensive
 // build steps (go mod tidy, compilation) across all documents.
 func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 	if cfg.Width == 0 {

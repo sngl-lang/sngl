@@ -1,7 +1,7 @@
 # A context provider's value is evaluated in the scope enclosing it, so
 # `depth(depth + 1)` reads the value it is overriding and nesting accumulates.
 #
-# The interpreter honours providers itself -- passContext does not run for a
+# The interpreter honors providers itself -- passContext does not run for a
 # target with no host language, the same reason `for ... else` and a boundary
 # are answered there -- and it walked a provider's children without ever
 # evaluating its value. So on `none` a provider set nothing at all and every

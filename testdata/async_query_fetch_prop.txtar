@@ -2,7 +2,7 @@
 on the Go targets. The query is built per copy, so `fetch` is a prop of the
 instance it is, and the call through the prop runs on a goroutine with the
 rest of the mount posted back, as a fetch the query is spliced with does
-(async_query_go.txtar). Coloured by nothing, it ran on the drawing thread.
+(async_query_go.txtar). Colored by nothing, it ran on the drawing thread.
 The fetch is read off the instance before the goroutine starts, as the key
 is: a setter on the drawing thread writes it.
 
@@ -144,53 +144,57 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			__inst0_next := []*__query_state1Instance{}
-			var __inst0_i int = 0
-			for _, n := range m.names__inst0 {
-				var __n2 *__query_state1Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n2 = m.__inst0_live[__inst0_i]
-					__n2.SetFetch(Lookup)
-					__n2.SetLoad(func(got int) {
-						m.total__inst0 += got
-						m.__n1.SetText(fmt.Sprint(m.total__inst0))
-					})
-					__n2.SetOn(n)
-					__n2.Set__start_value(nil)
-					__n2.Set__start_pending(false)
-					__n2.Set__start_failure(nil)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				__inst0_next := []*__query_state1Instance{}
+				var __inst0_i int = 0
+				for _, n := range m.names__inst0 {
+					var __n2 *__query_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n2 = m.__inst0_live[__inst0_i]
+						__n2.SetFetch(Lookup)
+						__n2.SetLoad(func(got int) {
+							m.total__inst0 += got
+							m.__n1.SetText(fmt.Sprint(m.total__inst0))
+						})
+						__n2.SetOn(n)
+						__n2.Set__start_value(nil)
+						__n2.Set__start_pending(false)
+						__n2.Set__start_failure(nil)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
+							m.total__inst0 += got
+							m.__n1.SetText(fmt.Sprint(m.total__inst0))
+						})
+						__n2 = __n2__new
 					}
-					__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
-						m.total__inst0 += got
-						m.__n1.SetText(fmt.Sprint(m.total__inst0))
-					})
-					__n2 = __n2__new
+					__inst0_next = append(__inst0_next, __n2)
+					__inst0_i = (__inst0_i + 1)
+					__n2__el := __n2.Root
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				__inst0_next = append(__inst0_next, __n2)
-				__inst0_i = (__inst0_i + 1)
-				__n2__el := __n2.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-				m.__slot0 = append(m.__slot0, __n2__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -558,53 +562,57 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			__inst0_next := []*__query_state1Instance{}
-			var __inst0_i int = 0
-			for _, n := range m.names__inst0 {
-				var __n2 *__query_state1Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n2 = m.__inst0_live[__inst0_i]
-					__n2.SetFetch(Lookup)
-					__n2.SetLoad(func(got int) {
-						m.total__inst0 += got
-						gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
-					})
-					__n2.SetOn(n)
-					__n2.Set__start_value(nil)
-					__n2.Set__start_pending(false)
-					__n2.Set__start_failure(nil)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				__inst0_next := []*__query_state1Instance{}
+				var __inst0_i int = 0
+				for _, n := range m.names__inst0 {
+					var __n2 *__query_state1Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n2 = m.__inst0_live[__inst0_i]
+						__n2.SetFetch(Lookup)
+						__n2.SetLoad(func(got int) {
+							m.total__inst0 += got
+							gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
+						})
+						__n2.SetOn(n)
+						__n2.Set__start_value(nil)
+						__n2.Set__start_pending(false)
+						__n2.Set__start_failure(nil)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
+							m.total__inst0 += got
+							gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
+						})
+						__n2 = __n2__new
 					}
-					__n2__new := new__query_state1Instance(m, nil, false, nil, n, Lookup, func(got int) {
-						m.total__inst0 += got
-						gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
-					})
-					__n2 = __n2__new
+					__inst0_next = append(__inst0_next, __n2)
+					__inst0_i = (__inst0_i + 1)
+					__n2__el := __n2.Root
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+					m.__slot0 = append(m.__slot0, __n2__el)
 				}
-				__inst0_next = append(__inst0_next, __n2)
-				__inst0_i = (__inst0_i + 1)
-				__n2__el := __n2.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-				m.__slot0 = append(m.__slot0, __n2__el)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -871,6 +879,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n3)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n3, m.__n1)
 	m.__n4 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n4, "add")
@@ -887,6 +896,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:962d34c5e5ddd85970e46b34b57f241e
+pass sha256:2f6fea3b8048e35a1493d66d2e390eca
 -- run/go/gtk4 --
-pass sha256:ba0c3e5383e0825dee637190efa12395
+pass sha256:b23fe7fc2b1220388050a62f9d7cb2fa

@@ -617,11 +617,10 @@ func testAMoveGivesItsTypePowerAndAccuracy(t test.Test, c seed) {
         c.detail.tabs.change(4)
     }
     // Tackle's and Growl's answers may be the last of the fifteen moves' to
-    // arrive, and fyne lays the table out again for each: about five seconds
-    // all told, and longer on a busy host.
-    t.wait(func() => tackleAndGrowl(c.detail.moveRows()), 20000)
+    // arrive, and the table is drawn again for each.
+    t.wait(func() => tackleAndGrowl(c.detail.moveRows()), 5000)
     t.assert(tackleAndGrowl(c.detail.moveRows()))
-    // Each move's type is a badge in its own colour.
+    // Each move's type is a badge in its own color.
     t.assert(c.detail.moveRows()[0].kindSlug == "normal" && typeColor(c.detail.moveRows()[0].kindSlug) == #a8a77a)
 }
 
@@ -637,9 +636,9 @@ func tackleAndGrowl(rows list[MoveRow]) bool {
 }
 
 // A type's badge carries PokéAPI's name for the type, which picks its
-// colour: the type's own, its name dark over a light one and white over the
+// color: the type's own, its name dark over a light one and white over the
 // rest. No target hands a test the style a badge is drawn with.
-func testATypesBadgeTakesItsKindsColour(t test.Test, c seed) {
+func testATypesBadgeTakesItsKindsColor(t test.Test, c seed) {
     t.wait(func() => c.detail.types[0] != null && c.detail.types[1] != null, 5000)
     t.assert(c.detail.types[0] != null && c.detail.types[0].kind == "grass")
     t.assert(c.detail.types[1] != null && c.detail.types[1].kind == "poison")
@@ -684,7 +683,7 @@ func testTheMethodOutlivesALanguage(t test.Test, c seed) {
     t.setContext(i18n.locale, "fr")
     t.assert(c.detail.method == "machine")
     t.assert(c.detail.moveRows().length() == 9 && c.detail.moveRows()[0].level == "")
-    t.assert(methodLabelled("machine") == "CT" && methodLabelled("egg") == "Œuf")
+    t.assert(methodLabeled("machine") == "CT" && methodLabeled("egg") == "Œuf")
 }
 
 func testAMethodWithNoMoves(t test.Test, c seed) {
@@ -916,7 +915,7 @@ func testNames(t test.Test, c home) {
     t.assert(methodNamed("Machine") == "machine" && methodNamed("Nothing") == "level-up")
     t.assert(languageOf("fr_CA.UTF-8") == "fr" && languageOf("C") == "c")
     t.assert(pokeLanguages("ja-JP").join(",") == "ja,ja-hrkt,en" && pokeLanguages("pt-BR").join(",") == "en")
-    t.assert(languageLabel("de-AT") == "Deutsch" && languageLabel("C.UTF-8") == "English" && localeLabelled("日本語") == "ja")
+    t.assert(languageLabel("de-AT") == "Deutsch" && languageLabel("C.UTF-8") == "English" && localeLabeled("日本語") == "ja")
 }
 
 func testEveryNameDecodes(t test.Test, c named) {

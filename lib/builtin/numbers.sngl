@@ -108,7 +108,7 @@ const func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) :
 // --- Sized numerics ---
 //
 // A number of a stated width, for a value whose width is part of what it
-// means: a colour channel is a byte, and a host API handing over an int32
+// means: a color channel is a byte, and a host API handing over an int32
 // hands over 32 bits. Each is its own type: arithmetic mixes none of them with
 // another or with int and float, and a conversion, `int32(x)`, is how one
 // becomes another. A literal takes the type the position wants. Each target

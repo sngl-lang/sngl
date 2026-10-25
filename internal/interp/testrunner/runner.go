@@ -247,7 +247,7 @@ type componentValue struct {
 	// Used by walkChildren to enumerate direct visual statements.
 	body []ir.Stmt
 
-	// children is a memoised live slice — user-component entries are
+	// children is a memoized live slice — user-component entries are
 	// *componentValue wrappers, native entries are element-map dicts.
 	// Computed lazily on first GetField("children").
 	children []any

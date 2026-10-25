@@ -14,7 +14,7 @@ import (
 // whether the node already at the cursor *is* this node, so it can only ever
 // match something the render hands back the same handle for. A component
 // instance is that, because the registry holds it. A plain node is built fresh
-// every render, so the comparison never matches one and the whole optimisation
+// every render, so the comparison never matches one and the whole optimization
 // degrades to remove-all-append-all: focus, selection and scroll go with the
 // nodes, and appending one row to a list of a hundred touches a hundred and
 // one.
@@ -156,7 +156,7 @@ func (st *slotChildSynth) convertChildren(stmts []ir.Stmt) {
 // become a reactive slot inside the synthesized component, which changes what
 // re-renders and is a larger question than placement.
 func (st *slotChildSynth) convertible(n *ir.NodeInst) bool {
-	if n == nil || isInstanceNode(n) {
+	if n == nil || isInstanceNode(n) || rendersARaise(n) {
 		return false
 	}
 	simple := true
@@ -409,7 +409,10 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 		switch x := node.(type) {
 		case *ir.Call:
 			typ := x.ExprType()
-			if typ == nil || typ.Kind == ir.TypeVoid || !st.readsReactiveState(x) || readsAny(x, local) {
+			// A render's raise travels whole too: the boundary that hears it
+			// is the site's, whose state the lifted body does not hold.
+			lifts := st.readsReactiveState(x) || x.ErrorMode == ir.ErrorRender
+			if typ == nil || typ.Kind == ir.TypeVoid || !lifts || readsAny(x, local) {
 				return node, nil
 			}
 			key, ok := exprKey(x)

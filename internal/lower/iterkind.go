@@ -15,7 +15,7 @@ import "duckfam.us/sngl/ir"
 //
 // It also records the sequence an integer-range loop walks (ir.CountedSeq).
 // That is the same reading of the loop's final shape: whether a sngl:seq call
-// is still in the iterable to recognise depends on which pass touched it last.
+// is still in the iterable to recognize depends on which pass touched it last.
 var passIterKind = pass{
 	name:    "IterKind",
 	enabled: func(Features) bool { return true },

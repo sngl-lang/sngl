@@ -9,7 +9,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"strings"
 )
 
 type Measurement struct {
@@ -148,15 +147,26 @@ func (m Model) status() string {
 	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
 }
 
-func CellsOf(m__r0 Measurement) int {
+func RowsOf(m__r0 Measurement) int {
 	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
 	var __lt1 int
 	if px <= 0.0 {
 		__lt1 = 0
 	} else {
-		__lt1 = max(1, (int(px) / 8))
+		__lt1 = max(1, (int(px) / 16))
 	}
 	return __lt1
+}
+
+func CellsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt2 int
+	if px <= 0.0 {
+		__lt2 = 0
+	} else {
+		__lt2 = max(1, (int(px) / 8))
+	}
+	return __lt2
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -200,85 +210,85 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
-		var __lt2 int
+		var __lt3 int
 		if s.MaxLines == 0 {
-			__lt2 = 0
+			__lt3 = 0
 		} else {
-			__lt2 = (s.MaxLines + l.GetVerticalFrameSize())
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt2))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt3 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt3 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt3 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt3 = lipgloss.Left
-	}
-	return __lt3
-}
-
-func BorderOf(s Style) lipgloss.Border {
-	var __lt4 lipgloss.Border
-	switch s.BorderStyle {
-	case "double":
-		__lt4 = lipgloss.DoubleBorder()
-	case "dashed", "dotted":
-		__lt4 = tui.DashedBorder()
-	default:
-		var __lt5 lipgloss.Border
-		if (s.BorderRadius != Measurement{Px: 0}) {
-			__lt5 = lipgloss.RoundedBorder()
-		} else {
-			__lt5 = lipgloss.NormalBorder()
-		}
-		__lt4 = __lt5
+		__lt4 = lipgloss.Left
 	}
 	return __lt4
 }
 
-func Side(all Measurement, axis Measurement, own Measurement) int {
-	var __lt7 Measurement
-	if (own != Measurement{Px: 0}) {
-		__lt7 = own
-	} else {
-		var __lt6 Measurement
-		if (axis != Measurement{Px: 0}) {
-			__lt6 = axis
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	switch s.BorderStyle {
+	case "double":
+		__lt5 = lipgloss.DoubleBorder()
+	case "dashed", "dotted":
+		__lt5 = tui.DashedBorder()
+	default:
+		var __lt6 lipgloss.Border
+		if (s.BorderRadius != Measurement{Px: 0}) {
+			__lt6 = lipgloss.RoundedBorder()
 		} else {
-			__lt6 = all
+			__lt6 = lipgloss.NormalBorder()
 		}
-		__lt7 = __lt6
+		__lt5 = __lt6
 	}
-	return CellsOf(__lt7)
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt8 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt8 = own
+	} else {
+		var __lt7 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt7 = axis
+		} else {
+			__lt7 = all
+		}
+		__lt8 = __lt7
+	}
+	return CellsOf(__lt8)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
+	var __lt10 int
 	if height__r0 == 0 {
-		__lt9 = lines
+		__lt10 = lines
 	} else {
-		var __lt8 int
+		var __lt9 int
 		if lines == 0 {
-			__lt8 = height__r0
+			__lt9 = height__r0
 		} else {
-			__lt8 = min(height__r0, lines)
+			__lt9 = min(height__r0, lines)
 		}
-		__lt9 = __lt8
+		__lt10 = __lt9
 	}
-	return __lt9
+	return __lt10
 }
 
 func (m *Model) __effect0_enter() {
@@ -554,7 +564,7 @@ func (m Model) View() tea.View {
 		part0_1_1 = BoxLook(Style{}, true).Render(part0_1_1Prefix + " " + fmt.Sprint("Add"))
 		part0_1Children = append(part0_1Children, part0_1_1)
 		part0_1 = tui.Spaced(true, lipgloss.Center, 1, part0_1Children...)
-		part0_1 = BoxLook(Style{AlignItems: "center", Gap: Measurement{Px: 8}, TextAlign: "center"}, true).Render(part0_1)
+		part0_1 = BoxLook(Style{AlignItems: "center", Gap: Measurement{Px: 8}, TextAlign: "center"}, true).AlignVertical(lipgloss.Center).Render(part0_1)
 		part0Children = append(part0Children, part0_1)
 		var part0_2 string
 		var part0_2Children []string
@@ -575,7 +585,7 @@ func (m Model) View() tea.View {
 			__focusPos2++
 			part0_2_0Items = append(part0_2_0Items, part0_2_0Item)
 		}
-		part0_2_0 = strings.Join(part0_2_0Items, "\n")
+		part0_2_0 = tui.Spaced(false, lipgloss.Left, 1, part0_2_0Items...)
 		if part0_2_0 != "" {
 			part0_2Children = append(part0_2Children, part0_2_0)
 		}

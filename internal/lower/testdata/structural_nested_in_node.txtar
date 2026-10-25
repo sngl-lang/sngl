@@ -25,20 +25,22 @@ component main node {
         } else {
             __rendering0 = true
             __renderAgain0 = true
-            for __renderAgain0 {
-                __renderAgain0 = false
-                for var __entry = __slot0 {
-                    lower.RemoveChild(parent, __entry)
+            if true {
+                for __renderAgain0 {
+                    __renderAgain0 = false
+                    for var __entry = __slot0 {
+                        lower.RemoveChild(parent, __entry)
+                    }
+                    __slot0 = []
+                    if visible {
+                        var __n0 text = lower.CreateNode("text")
+                        __n0.value = "hi"
+                        lower.AppendChild(parent, __n0)
+                        list.push(__slot0, __n0)
+                    }
                 }
-                __slot0 = []
-                if visible {
-                    var __n0 text = lower.CreateNode("text")
-                    __n0.value = "hi"
-                    lower.AppendChild(parent, __n0)
-                    list.push(__slot0, __n0)
-                }
+                __rendering0 = false
             }
-            __rendering0 = false
         }
     }
     vbox #__n1(style=Style{gap=4px}) {

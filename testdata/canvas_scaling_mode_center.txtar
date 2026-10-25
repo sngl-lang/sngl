@@ -17,9 +17,9 @@ modifier -- because for them the unscaled case is the cheaper one.
 
 deny out/none/html/index.html `aspect-ratio` -- the element keeps the drawing's own size, so no box shape is reserved for it to scale into
 deny out/none/html/index.html `_snglCanvasWatch\(\$0,` -- an unscaled canvas is drawn once; nothing follows the layout box, so a resize has nothing to redraw
-deny out/go/fyne/model.go `canvas.NewRaster` -- with nothing to scale the canvas stays the cheaper Image, rasterised once rather than regenerated per redraw
+deny out/go/fyne/model.go `canvas.NewRaster` -- with nothing to scale the canvas stays the cheaper Image, rasterized once rather than regenerated per redraw
 deny out/go/gtk4/model.go `gtk_widget_set_hexpand` -- the drawing area takes its natural size, so it does not claim the extra room a scaled canvas needs
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `= null` -- a native has no body this compiler can run, so a constant colour reaches Compose as a Color(...) call; folding the call instead yields its return type's zero, and `null` is no Color at all
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `= null` -- a native has no body this compiler can run, so a constant color reaches Compose as a Color(...) call; folding the call instead yields its return type's zero, and `null` is no Color at all
 
 -- center.sngl --
 import . "sngl:ui"
@@ -377,6 +377,7 @@ static void sngl_emit_pressed(void* gesture) {
 */
 import "C"
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
@@ -515,7 +516,7 @@ func (m *Model) buildWidgetTree() {
 		m._canvasDraw0(cr)
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n0), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.w)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.w)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.w)))
 }
 
@@ -861,7 +862,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:d14e48b099171fc7211b1d85495e9c7d
 -- run/go/gtk4 --
-pass sha256:c8364e860494e163d84c2f45e92f94a3
+pass sha256:f508f9470bae1ff8b9eea9df11d5ed93
 -- run/kotlin/android --
 pass sha256:16d49e4cb6e064c132eefa857c62ba50
 -- run/none/html --

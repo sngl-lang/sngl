@@ -107,23 +107,27 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				for _, it := range m.items {
+					__n1 := fynelayout.NewHBox()
+					__n2 := widget.NewLabel("")
+					__n2.SetText(it)
+					__n1.Add(__n2)
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
+					m.__slot0 = append(m.__slot0, __n1)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			for _, it := range m.items {
-				__n1 := fynelayout.NewHBox()
-				__n2 := widget.NewLabel("")
-				__n2.SetText(it)
-				__n1.Add(__n2)
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
-				m.__slot0 = append(m.__slot0, __n1)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -133,52 +137,56 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-			__inst0_next := []*__checkbox_state0Instance{}
-			var __inst0_i int = 0
-			for _, it := range m.items {
-				__n3 := fynelayout.NewHBox()
-				__n3__box := fynelayout.NewBox(__n3)
-				__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
-				var __n4 *__checkbox_state0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n4 = m.__inst0_live[__inst0_i]
-					__n4.Set__start_checked(true)
-					__n4.SetDisabled(true)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+				__inst0_next := []*__checkbox_state0Instance{}
+				var __inst0_i int = 0
+				for _, it := range m.items {
+					__n3 := fynelayout.NewHBox()
+					__n3__box := fynelayout.NewBox(__n3)
+					__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
+					var __n4 *__checkbox_state0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n4 = m.__inst0_live[__inst0_i]
+						__n4.Set__start_checked(true)
+						__n4.SetDisabled(true)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n4__new := new__checkbox_state0Instance(m, true, true)
+						__n4 = __n4__new
 					}
-					__n4__new := new__checkbox_state0Instance(m, true, true)
-					__n4 = __n4__new
+					__inst0_next = append(__inst0_next, __n4)
+					__inst0_i = (__inst0_i + 1)
+					__n4__el := __n4.Root
+					__n3.Add(__n4__el)
+					__n5 := fynelayout.NewVBox()
+					__n6 := widget.NewLabel("")
+					__n6.SetText(it)
+					__n5.Add(__n6)
+					__n3.Add(__n5)
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
+					m.__slot1 = append(m.__slot1, __n3__box)
 				}
-				__inst0_next = append(__inst0_next, __n4)
-				__inst0_i = (__inst0_i + 1)
-				__n4__el := __n4.Root
-				__n3.Add(__n4__el)
-				__n5 := fynelayout.NewVBox()
-				__n6 := widget.NewLabel("")
-				__n6.SetText(it)
-				__n5.Add(__n6)
-				__n3.Add(__n5)
-				fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
-				m.__slot1 = append(m.__slot1, __n3__box)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -376,25 +384,30 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				for _, it := range m.items {
+					__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+					gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
+					gtk4rt.BoxSetSpacing(__n1, 6)
+					__n2 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetLabel(__n2, it)
+					gtk4rt.LabelSetXAlign(__n2, 0.0)
+					gtk4rt.BoxAppend(__n1, __n2)
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
+					m.__slot0 = append(m.__slot0, __n1)
+				}
 			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			for _, it := range m.items {
-				__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-				gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
-				gtk4rt.BoxSetSpacing(__n1, 6)
-				__n2 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetLabel(__n2, it)
-				gtk4rt.BoxAppend(__n1, __n2)
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
-				m.__slot0 = append(m.__slot0, __n1)
-			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -404,54 +417,59 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering1 = true
 		m.__renderAgain1 = true
-		for m.__renderAgain1 {
-			m.__renderAgain1 = false
-			for _, __entry := range m.__slot1 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot1 = nil
-			m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-			__inst0_next := []*__checkbox_state0Instance{}
-			var __inst0_i int = 0
-			for _, it := range m.items {
-				__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-				gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
-				gtk4rt.BoxSetSpacing(__n3, 8)
-				var __n4 *__checkbox_state0Instance
-				if len(m.__inst0_live) > __inst0_i {
-					__n4 = m.__inst0_live[__inst0_i]
-					__n4.Set__start_checked(true)
-					__n4.SetDisabled(true)
-				} else {
+		func() {
+			defer func() {
+				m.__rendering1 = false
+			}()
+			for m.__renderAgain1 {
+				m.__renderAgain1 = false
+				for _, __entry := range m.__slot1 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot1 = nil
+				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+				__inst0_next := []*__checkbox_state0Instance{}
+				var __inst0_i int = 0
+				for _, it := range m.items {
+					__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+					gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
+					gtk4rt.BoxSetSpacing(__n3, 8)
+					var __n4 *__checkbox_state0Instance
 					if len(m.__inst0_live) > __inst0_i {
-						m.__inst0_live[__inst0_i].Destroy()
+						__n4 = m.__inst0_live[__inst0_i]
+						__n4.Set__start_checked(true)
+						__n4.SetDisabled(true)
+					} else {
+						if len(m.__inst0_live) > __inst0_i {
+							m.__inst0_live[__inst0_i].Destroy()
+						}
+						__n4__new := new__checkbox_state0Instance(m, true, true)
+						__n4 = __n4__new
 					}
-					__n4__new := new__checkbox_state0Instance(m, true, true)
-					__n4 = __n4__new
+					__inst0_next = append(__inst0_next, __n4)
+					__inst0_i = (__inst0_i + 1)
+					__n4__el := __n4.Root
+					gtk4rt.BoxAppend(__n3, __n4__el)
+					__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+					gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
+					gtk4rt.BoxSetSpacing(__n5, 6)
+					__n6 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetLabel(__n6, it)
+					gtk4rt.LabelSetXAlign(__n6, 0.0)
+					gtk4rt.BoxAppend(__n5, __n6)
+					gtk4rt.BoxAppend(__n3, __n5)
+					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
+					m.__slot1 = append(m.__slot1, __n3)
 				}
-				__inst0_next = append(__inst0_next, __n4)
-				__inst0_i = (__inst0_i + 1)
-				__n4__el := __n4.Root
-				gtk4rt.BoxAppend(__n3, __n4__el)
-				__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-				gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
-				gtk4rt.BoxSetSpacing(__n5, 6)
-				__n6 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetLabel(__n6, it)
-				gtk4rt.BoxAppend(__n5, __n6)
-				gtk4rt.BoxAppend(__n3, __n5)
-				gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
-				m.__slot1 = append(m.__slot1, __n3)
-			}
-			for __inst0_i_d, _ := range m.__inst0_live {
-				var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
-				if __inst0_i_j >= __inst0_i {
-					m.__inst0_live[__inst0_i_j].Destroy()
+				for __inst0_i_d, _ := range m.__inst0_live {
+					var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+					if __inst0_i_j >= __inst0_i {
+						m.__inst0_live[__inst0_i_j].Destroy()
+					}
 				}
+				m.__inst0_live = __inst0_next
 			}
-			m.__inst0_live = __inst0_next
-		}
-		m.__rendering1 = false
+		}()
 	}
 }
 
@@ -571,6 +589,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:a3f2e9c178f4bda99e04eb57f8edf193
+pass sha256:c8f38d6347cb9a4c626c170e9533b330
 -- run/go/gtk4 --
-pass sha256:150b53b02bdb5e7dea17e3547b5253ce
+pass sha256:cafebd50ad21225f6df6bee9af86c2f3

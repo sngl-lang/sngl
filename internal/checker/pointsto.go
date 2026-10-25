@@ -104,8 +104,8 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 	case *ir.NodeInst:
 		// A component's func-typed prop is a parameter its body reads, so
 		// what a call site hands it flows there as an argument does. Not a
-		// library's: its declaration is every check's, and colouring the
-		// prop's signature would write it. Nothing needs the colour there --
+		// library's: its declaration is every check's, and coloring the
+		// prop's signature would write it. Nothing needs the color there --
 		// the body is spliced where it is written, and the call through the
 		// prop becomes a call of what the call site handed it.
 		if x.Component != nil {
@@ -381,7 +381,7 @@ func analyzePointsTo(pkg *ir.Package) *ir.PointsToInfo {
 
 // colorAsyncSlots stamps ColorAsync on the signature of every parameter --
 // a component's prop among them -- and var an async function may flow into,
-// and reports whether it stamped one it had not. The colour is inferred and
+// and reports whether it stamped one it had not. The color is inferred and
 // never written: what it buys is that it travels with the type, so a call
 // through the slot is still known to wait after a lowering has moved it into
 // a declaration points-to never saw.

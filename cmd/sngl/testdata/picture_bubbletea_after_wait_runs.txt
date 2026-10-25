@@ -1,0 +1,48 @@
+# A remote picture on bubbletea, snapshotted after a wait: the test draws its
+# view as the program does, so the fetch starts at the first draw and the
+# picture is there by the snapshot. A test drew the view only to snapshot,
+# so the first snapshot started the fetch and showed blank cells where the
+# program, which draws every frame, shows the picture; !275's screenshots
+# took a snapshot first to start the fetches.
+#
+# Confirmed against the codegen before: the snapshot was blank cells.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+grep '▀' app.sngl.snapshots/picture.ansi
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+output { go { bubbletea } }
+
+component picture ui.node {
+    ui.image(style={width=64px, height=32px}) {
+        ui.remote(url="http://127.0.0.1:47819/dot.png")
+    }
+}
+
+func testPicture(t test.Test, c picture) {
+    t.wait(func() => false, 1000)
+    t.snapshot("picture")
+}
+
+ui.window {
+    picture
+}
+-- testrun/bubbletea/go/app.sngl/picture/1 --
+sha256:897f032a7042e8017f3e3c6f5c8b980f
+{
+  "results": [
+    {
+      "Desc": "Picture",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "picture.ansi": "G1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1swbSAgICAKG1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1szODsyOzI1NTswOzBtG1s0ODsyOzI1NTswOzBt4paAG1swbSAgICA="
+  }
+}

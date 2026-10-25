@@ -108,6 +108,11 @@ func buildEmittedGo(t *testing.T, files map[string][]byte) (string, bool) {
 	if extra != "" {
 		mod += "\n" + extra + "\n"
 	}
+	// A cgo program still calls gtk4rt where the C is the runtime's alone --
+	// a drop-down's -- which the checkout's replace answers.
+	if strings.Contains(extra, "duckfam.us/sngl =>") {
+		mod += "\nrequire duckfam.us/sngl v0.0.0-00010101000000-000000000000\n"
+	}
 	build["go.mod"] = mod
 	return runGo(t, "gtk4-emitted-", build, false, "build", "./...")
 }

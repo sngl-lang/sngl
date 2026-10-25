@@ -313,6 +313,7 @@ func (s *stripper) stripStmt(st Stmt) {
 		s.stripExpr(st.Cond)
 		s.stripStmts(st.Body)
 		s.stripStmts(st.Else)
+		s.stripStmts(st.Finally)
 	case *Match:
 		st.AST = nil
 		s.stripExpr(st.Subject)

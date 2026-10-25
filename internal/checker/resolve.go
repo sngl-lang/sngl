@@ -956,7 +956,7 @@ func (c *checker) requireFamily(pos ast.Pos, t *ir.Type) *ir.Type {
 }
 
 // slotWrapper reports the count a wrapper names, and the type it wraps. The
-// wrappers are recognised by their #[builtin] kind so a user declaration of
+// wrappers are recognized by their #[builtin] kind so a user declaration of
 // either name shadows them like any other built-in.
 func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	name := nt.Name
@@ -1013,7 +1013,7 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 }
 
 // slotInserts reads the `option[…]` or `list[…]` written around a named slot's
-// component type. Like the node-count wrappers it is recognised by #[builtin]
+// component type. Like the node-count wrappers it is recognized by #[builtin]
 // kind, so a program's own `option` is no count and the slot is refused.
 func (c *checker) slotInserts(w *ast.NamedType) ir.SlotInserts {
 	if sym, ok := c.scope.Lookup(w.Name); ok {

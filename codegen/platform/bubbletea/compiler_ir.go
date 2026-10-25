@@ -729,7 +729,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	emitIRUpdate(&b, info, ctx, gc, cfg, func(inv btEventInvoker) {
 		eventInvokers = append(eventInvokers, inv)
 	})
-	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg))
+	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg), usesPosts(ctx.Pkg))
 	emitBtDirectInvokers(&b, viewStmts(ctx), eventInvokers, info, gc, codegen.TriggeredEvents(ctx.Pkg))
 	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
 	emitPresenceChecks(&b, ctx.Pkg, viewStmts(ctx), presentIDs, gc)
@@ -1302,7 +1302,7 @@ type btEventInvoker struct {
 }
 
 // teaKeyMsg is the message a press of key arrives as. It pairs with
-// teaKeyGuard: one says how Update recognises the key, the other how a test
+// teaKeyGuard: one says how Update recognizes the key, the other how a test
 // produces it, and they name the same constant.
 func teaKeyMsg(key string) string {
 	guard := teaKeyGuard(key)
@@ -1325,7 +1325,12 @@ func teaKeyMsg(key string) string {
 // What a test passes is taken and not read: the key is the input, and what it
 // produces is what the override reads off the widget's state -- a checkbox's
 // press is its `checked` flipped, whatever the test asked for.
-func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map[string][]*ir.Type) {
+//
+// Where the program posts back to its loop, the commands the key's Update
+// returns run as a waiting test runs the Model's (keepCmd): a click that
+// added a copy armed that copy's tick, and dropping the command left the
+// schedule marked live with nothing to tick it.
+func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map[string][]*ir.Type, posts bool) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
@@ -1338,16 +1343,18 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 			params = append(params, "_ "+golang.IRTypeToGo(t))
 		}
 		if inv.Cursor != "" {
-			emitBtLoopInvokers(b, inv, name, params)
+			emitBtLoopInvokers(b, inv, name, params, posts)
 			continue
 		}
 		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(params, ", "))
 		fmt.Fprintf(b, "\tprev := m.__focusID\n")
 		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
-		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
+		fmt.Fprintf(b, "\tnm, cmd := m.Update(%s)\n", inv.KeyExpr)
 		fmt.Fprintf(b, "\t*m = nm.(Model)\n")
 		fmt.Fprintf(b, "\tm.__focusID = prev\n")
+		drawAfterUpdate(b)
+		keepCmd(b, posts)
 		b.WriteString("}\n\n")
 	}
 }
@@ -1388,6 +1395,7 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 				}
 			}
 			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 		}
 		return true
@@ -1401,7 +1409,7 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 // put under a loop, a tab's panel -- and the `At` one, for a node a test
 // indexes, the copy with a key. What a test passes is taken and not read, as
 // every invoker here takes it: the key press is the input.
-func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string) {
+func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string, posts bool) {
 	drive := func(method string, lead []string, find string) {
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", method, strings.Join(append(lead, params...), ", "))
 		fmt.Fprintf(b, "\tcopies := %s\n\tpos := -1\n", inv.Copies)
@@ -1409,9 +1417,11 @@ func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, par
 		b.WriteString("\tif pos < 0 {\n\t\treturn\n\t}\n")
 		fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
 		fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, pos\n", inv.Cursor, inv.SlotIdx)
-		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
+		fmt.Fprintf(b, "\tnm, cmd := m.Update(%s)\n", inv.KeyExpr)
 		b.WriteString("\t*m = nm.(Model)\n")
 		fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
+		drawAfterUpdate(b)
+		keepCmd(b, posts)
 		b.WriteString("}\n\n")
 	}
 	fmt.Fprintf(b, "// %s activates the last copy of #%s the way a keypress does; for tests.\n", name, inv.IDLabel)
@@ -1551,6 +1561,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 				}
 			}
 			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
 				continue

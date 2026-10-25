@@ -142,6 +142,9 @@ var alwaysOn = []string{
 	"RefParams",
 	// An owned value a statement borrows is released on every target.
 	"ReleaseTemps",
+	// A render's raise reaches the boundary around it on every target,
+	// whether it renders inside the handler that asked or after it.
+	"RenderCatch",
 	// What a target reserves is read off its marks, and a target reserving
 	// nothing renames nothing; there is no capability to hold.
 	"ReservedNames",
@@ -214,7 +217,7 @@ var soleGate = map[string][]string{
 	"Reactivity": {"CanvasInstances", "ComponentProps", "InstanceBodies", "InstanceEvents", "InstanceSlots", "NoReactivity", "SlotChildInstances"},
 
 	// NodeEscape has no flag of its own: the escape analysis only has
-	// something to analyse once the tree is flat.
+	// something to analyze once the tree is flat.
 	"Declarative": {"NoDeclarative", "NodeEscape"},
 
 	"InlineComponents": {"NoInlineComponents"},

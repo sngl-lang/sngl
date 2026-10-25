@@ -11,7 +11,7 @@ import gen "sngl:x/gen"
 // The `bubbletea` node of a build directive: `output { go { bubbletea() } }`.
 // focusOrder: a TUI draws its own widgets, so nothing else tracks which one has
 // the keyboard. No reactiveCanvas: View() re-runs on every update and
-// re-rasterises with it, so an explicit redraw would be the second of two.
+// re-rasterizes with it, so an explicit redraw would be the second of two.
 // viewMatches: View() is Go statements, so a match there is a switch.
 // asyncPost: a closure posted back to the loop is a message Update runs.
 #[gen.can(viewMatches, asyncPost)]
@@ -109,7 +109,7 @@ struct Event {
 // declared here, so a rename here is a rename in blueprint.go.
 //
 // #[intrinsic] is what says these are the primitives rather than wrappers over
-// one: they carry no body, and the id is what the view renderer recognises them
+// one: they carry no body, and the id is what the view renderer recognizes them
 // by instead of their names.
 
 #[gen.renders(identity)]
@@ -209,7 +209,7 @@ const component ui.window[platform](visible, @error, @closed, content) {
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         children
     }
 }
@@ -221,7 +221,7 @@ const component ui.hbox[platform](style, children) {
 }
 
 const component ui.stack[platform](style, layers) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         layers
     }
 }
@@ -231,7 +231,7 @@ const component ui.spacer[platform](style) {
 }
 
 const component ui.scroll[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         content
     }
 }
@@ -257,7 +257,7 @@ const component ui.button[platform](text, style) {
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform](style, src) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         #[family.crosses]
         src
     }
@@ -319,7 +319,7 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform](style) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
     }
 }
 
@@ -468,7 +468,7 @@ const component ui.card[platform](style, clickable, @click, content) {
                 @click { click() },
             ) {}
         }
-        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+        Layout(join=JoinDir.vertical, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
             content
         }
     }
@@ -509,13 +509,13 @@ const component ui.tooltip[platform](style, text, trigger) {
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
-    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, tooltip=text, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         trigger
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
         content
     }
 }

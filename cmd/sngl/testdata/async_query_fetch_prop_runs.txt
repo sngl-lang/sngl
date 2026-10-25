@@ -2,7 +2,7 @@
 # waits, on every target.
 #
 # The query is the instance, so `fetch` stayed its prop, and a call through
-# a prop is coloured by nothing: html read the Promise the fetch returned as
+# a prop is colored by nothing: html read the Promise the fetch returned as
 # the answer, fyne and gtk4 fetched on the drawing thread
 # (testdata/async_query_fetch_prop.txtar shows the goroutine), and android's
 # composable took `::fetchBook`, a suspend function, as a plain one and did
@@ -84,7 +84,7 @@ func testEachBookIsAskedForOnce(t test.Test, c page) {
     t.assert(c.count != null && c.count.value == "2")
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:b7d72193bbc03b9d28156167e488ada7
+sha256:aec10fb4ad6ba0f9c64217789608fd6e
 {
   "results": [
     {
@@ -94,7 +94,7 @@ sha256:b7d72193bbc03b9d28156167e488ada7
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:6a028a6a260a89bcc428635d67ce8b39
+sha256:414435c22510144743b4d6d365bf46b8
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:6a028a6a260a89bcc428635d67ce8b39
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:3e6a7b4ef262020b205767bfe1c970c4
+sha256:7115f983c881c522b1217a6ad3043cb9
 {
   "results": [
     {
@@ -114,7 +114,7 @@ sha256:3e6a7b4ef262020b205767bfe1c970c4
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:5979907974a036ea7b908e06e9588981
+sha256:24402d299aa252153513272c4883af24
 {
   "results": [
     {
@@ -124,7 +124,7 @@ sha256:5979907974a036ea7b908e06e9588981
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:31299470d3efc680955519d5a0ebaff6
+sha256:3cdf4d89b737374686ecb5676576d412
 {
   "results": [
     {

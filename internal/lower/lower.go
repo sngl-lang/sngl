@@ -135,6 +135,7 @@ var passes = []pass{
 	passAsyncOffload,
 	passIndexedIter,
 	passForElse,
+	passRenderCatch,
 	passErrorCatch,
 	passReleaseTemps,
 	// Last: it reads every body the passes above finished rewriting.

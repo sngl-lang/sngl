@@ -279,7 +279,7 @@ func parseConstOption(raw string, t *ir.Type) (*ir.Literal, error) {
 		return &ir.Literal{Type: ir.TypFloat, Value: raw}, nil
 	}
 	if ir.IsColorStruct(t) {
-		// A colour arrives as a raw hex string, which is what ApplyOptions
+		// A color arrives as a raw hex string, which is what ApplyOptions
 		// reads out of .Value anyway.
 		return &ir.Literal{Type: ir.TypString, Value: raw}, nil
 	}

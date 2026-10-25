@@ -1,0 +1,31 @@
+# `sngl run` on html with a server language runs the server it generated, at
+# the address `listen` names, rather than serving the directory holding
+# server.go: a page whose href is a pattern is answered, which a static site
+# cannot do.
+
+serve run --platform html --lang go --opt listen=127.0.0.1:0 app.sngl
+fetch $URL/
+stdout '<!DOCTYPE html>'
+stdout 'the home page'
+! stdout 'server.go'
+fetch $URL/p/x
+stdout 'a pattern page'
+
+-- app.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+}
+
+ui.window {
+    nav.stack {
+        nav.page #pattern(href=`/p/{name}`, title="Pattern", params=Pkg{name="x"}) {
+            ui.text(value="a pattern page")
+        }
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="the home page")
+        }
+    }
+}

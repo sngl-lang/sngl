@@ -156,32 +156,35 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.a__inst0 === 0) {
-          let __n1 = document.createElement("span");
-          __n1.textContent = "ZERO";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.a__inst0 === 0) {
+            let __n1 = document.createElement("span");
+            __n1.textContent = "ZERO";
+            let __place0_i_ref0 = null;
+            if (__place0_i < __place0_prev.length) {
+              __place0_i_ref0 = __place0_prev[__place0_i];
+            }
+            if (__place0_i_ref0 === __n1) {
+              __place0_i = __place0_i + 1;
+            } else {
+              parent.insertBefore(__n1, __place0_i_ref0);
+            }
+            __slot0.push(__n1);
           }
-          if (__place0_i_ref0 === __n1) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n1, __place0_i_ref0);
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
-          __slot0.push(__n1);
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   function __renderSlot1(parent) {
@@ -190,32 +193,35 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering1 = true;
       __renderAgain1 = true;
-      while (__renderAgain1) {
-        __renderAgain1 = false;
-        let __place1_prev = __slot1;
-        let __place1_i = 0;
-        __slot1 = [];
-        if (state.a__inst0 === 1) {
-          let __n2 = document.createElement("span");
-          __n2.textContent = "ONE";
-          let __place1_i_ref0 = null;
-          if (__place1_i < __place1_prev.length) {
-            __place1_i_ref0 = __place1_prev[__place1_i];
+      try {
+        while (__renderAgain1) {
+          __renderAgain1 = false;
+          let __place1_prev = __slot1;
+          let __place1_i = 0;
+          __slot1 = [];
+          if (state.a__inst0 === 1) {
+            let __n2 = document.createElement("span");
+            __n2.textContent = "ONE";
+            let __place1_i_ref0 = null;
+            if (__place1_i < __place1_prev.length) {
+              __place1_i_ref0 = __place1_prev[__place1_i];
+            }
+            if (__place1_i_ref0 === __n2) {
+              __place1_i = __place1_i + 1;
+            } else {
+              parent.insertBefore(__n2, __place1_i_ref0);
+            }
+            __slot1.push(__n2);
           }
-          if (__place1_i_ref0 === __n2) {
-            __place1_i = __place1_i + 1;
-          } else {
-            parent.insertBefore(__n2, __place1_i_ref0);
+          for (const __place1_prev_e of __place1_prev) {
+            if (__slot1.indexOf(__place1_prev_e) < 0) {
+              parent.removeChild(__place1_prev_e);
+            }
           }
-          __slot1.push(__n2);
         }
-        for (const __place1_prev_e of __place1_prev) {
-          if (__slot1.indexOf(__place1_prev_e) < 0) {
-            parent.removeChild(__place1_prev_e);
-          }
-        }
+      } finally {
+        __rendering1 = false;
       }
-      __rendering1 = false;
     }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
@@ -228,4 +234,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:dd6d5682c04dd3781c33df4895bf10d4
+pass sha256:73ce0a6d87a1792620dddbd643e928d2

@@ -53,7 +53,7 @@ func testALocalNamedC(t Test) {
     t.assert(c.n == 2)
 }
 
-// So is `t`'s neighbour in a test that never asks for a component at all.
+// So is `t`'s neighbor in a test that never asks for a component at all.
 func testNoComponentParam(t Test) {
     t.assert(Counter{}.bump().n == 1)
 }
@@ -68,7 +68,7 @@ window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:fa474a0c1ccde3bc3c215fbcef49f0ee
+sha256:94b2441e238f19ea7e097f0bef234703
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:fa474a0c1ccde3bc3c215fbcef49f0ee
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:3b0771652698097372e194c4228ab02d
+sha256:ade9bce36e11199821f6570f62dc04cc
 {
   "results": [
     {

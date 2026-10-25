@@ -125,7 +125,7 @@ func isBundledNativePkg(pkg *ir.Package, nativePkg string) bool {
 
 // nativeBundledNamespaceAliasCtx resolves a namespace alias name to the
 // esbuild-compatible JS identifier when it maps to a bundled js: native
-// import. ExprCtx analogue of nativeBundledNamespaceAlias. Returns ("","")
+// import. ExprCtx analog of nativeBundledNamespaceAlias. Returns ("","")
 // when not applicable.
 func nativeBundledNamespaceAliasCtx(ctx *codegen.ExprCtx, nsName string) (jsAlias, importPath string) {
 	if ctx == nil || ctx.Pkg == nil {

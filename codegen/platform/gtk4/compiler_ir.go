@@ -554,9 +554,11 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 		Wrapped:           c.wrapped,
 		CLinks:            golang.CPreambleLines(ir.ReachedCLinks(c.ctx.Pkg)),
 	}
-	if c.wrapped {
+	if c.wrapped || c.shared.dropDown {
 		// Widget fields are gtk4rt.Handle; ensure the import is present even if
-		// (unusually) no gtk4rt call was emitted into this file.
+		// (unusually) no gtk4rt call was emitted into this file. A drop-down
+		// is gtk4rt's in either mode: snglDropDownOffer and its invoker call
+		// it.
 		td.Imports = append(td.Imports, gtk4rtPkg)
 	}
 	// Lang-tracked helpers + their imports.
@@ -916,18 +918,9 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 			Args: []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
 		}
 	case "GtkDropDown":
-		label := &ir.Call{
-			Type:     ir.NativePointerOf("char"),
-			Receiver: &ir.Ident{Name: "C"},
-			Func:     nativeFunc("sngl_drop_down_label"),
-			Args:     []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
-		}
-		return &ir.Call{
-			Type:     ir.TypString,
-			Receiver: &ir.Ident{Name: "C"},
-			Func:     nativeFunc("GoString"),
-			Args:     []ir.CallArg{{Value: label}},
-		}
+		// gtk4rt's, as wrapped mode reads it: the drop-down's C helpers are
+		// gtk4rt's alone.
+		return rtCall("DropDownLabel", ir.TypString, &ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", widgetRef)})
 	}
 	return nil
 }
@@ -1494,7 +1487,7 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		}
 		seen[methodName] = true
 		if inv.WidgetType == "GtkDropDown" {
-			fmt.Fprintf(b, "// %s selects the choice labelled v on the #%s widget; for tests.\n",
+			fmt.Fprintf(b, "// %s selects the choice labeled v on the #%s widget; for tests.\n",
 				methodName, inv.IDLabel)
 		} else if inv.RtFire != "" {
 			fmt.Fprintf(b, "// %s fires %q on the #%s widget; for tests.\n",
@@ -1545,7 +1538,7 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 		if wrapped {
 			preFire = fmt.Sprintf("gtk4rt.DropDownSelect(%s, v)", w)
 		} else {
-			preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_drop_down_select((*C.GtkDropDown)(unsafe.Pointer(%s)), __v)", w)
+			preFire = fmt.Sprintf("gtk4rt.DropDownSelect(gtk4rt.Handle(unsafe.Pointer(%s)), v)", w)
 		}
 	}
 	params := func(p string) string {

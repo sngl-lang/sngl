@@ -1,6 +1,6 @@
 import time "sngl:time"
 
-// Clickable button that triggers an action, labelled with `text`. Set
+// Clickable button that triggers an action, labeled with `text`. Set
 // `disabled=true` to suppress input and render the disabled styling.
 // `@click` fires on activation; `@longPress` fires after a sustained
 // press on pointer/touch platforms.

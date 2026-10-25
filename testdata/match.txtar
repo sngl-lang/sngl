@@ -285,7 +285,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Width(CellsOf(s.Width))
 	}
 	if (s.Height != Measurement{Px: 0}) {
-		l = l.Height(CellsOf(s.Height))
+		l = l.Height(RowsOf(s.Height))
 	}
 	if (s.MaxWidth != Measurement{Px: 0}) {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
@@ -297,7 +297,7 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		} else {
 			__lt1 = (s.MaxLines + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(CellsOf(s.MaxHeight), __lt1))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
 	}
 	return l
 }
@@ -361,20 +361,31 @@ func CellsOf(m__r0 Measurement) int {
 	return __lt7
 }
 
-func LineCap(height__r0 int, lines int) int {
-	var __lt9 int
-	if height__r0 == 0 {
-		__lt9 = lines
+func RowsOf(m__r1 Measurement) int {
+	var px float64 = (m__r1.Px + (16.0 * (m__r1.Em + m__r1.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
 	} else {
-		var __lt8 int
-		if lines == 0 {
-			__lt8 = height__r0
-		} else {
-			__lt8 = min(height__r0, lines)
-		}
-		__lt9 = __lt8
+		__lt8 = max(1, (int(px) / 16))
 	}
-	return __lt9
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __focusNext() {
@@ -509,14 +520,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				m.status__inst0 = "active"
 			}
-			var __lt12 string
+			var __lt13 string
 			switch m.roll__inst0() {
 			case "active":
-				__lt12 = m.label(m.status__inst0)
+				__lt13 = m.label(m.status__inst0)
 			default:
-				__lt12 = "rolled"
+				__lt13 = "rolled"
 			}
-			m.last__inst0 = __lt12
+			m.last__inst0 = __lt13
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -538,27 +549,27 @@ func (m Model) View() tea.View {
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
-		var __lt10 string
+		var __lt11 string
 		switch m.status__inst0 {
 		case "active":
-			__lt10 = "on"
+			__lt11 = "on"
 		default:
-			__lt10 = "not on"
+			__lt11 = "not on"
 		}
 		var contentPart_3 string
-		contentPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt10))
+		contentPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
 		contentParts = append(contentParts, contentPart_3)
-		var __lt11 string
+		var __lt12 string
 		switch {
 		case (m.rolls__inst0 > 10):
-			__lt11 = "many"
+			__lt12 = "many"
 		case (m.rolls__inst0 > 0):
-			__lt11 = Describe(m.rolls__inst0)
+			__lt12 = Describe(m.rolls__inst0)
 		default:
-			__lt11 = "none"
+			__lt12 = "none"
 		}
 		var contentPart_6 string
-		contentPart_6 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt11))
+		contentPart_6 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt12))
 		contentParts = append(contentParts, contentPart_6)
 		var contentPart_7 string
 		contentPart_7Focused := (m.__focusID == 0)
@@ -571,7 +582,7 @@ func (m Model) View() tea.View {
 		var contentPart_8 string
 		contentPart_8 = BoxLook(Style{}, true).Render(fmt.Sprint(m.last__inst0))
 		contentParts = append(contentParts, contentPart_8)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -686,33 +697,37 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				fynelayout.Remove(__parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-			if m.status__inst0 == "active" {
-				__n4 := widget.NewLabel("")
-				__n4.SetText("on")
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n4)
-				m.__slot0 = append(m.__slot0, __n4)
-			} else {
-				if m.status__inst0 == "inactive" {
-					__n5 := widget.NewLabel("")
-					__n5.SetText("off")
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n5)
-					m.__slot0 = append(m.__slot0, __n5)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					fynelayout.Remove(__parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+				if m.status__inst0 == "active" {
+					__n4 := widget.NewLabel("")
+					__n4.SetText("on")
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n4)
+					m.__slot0 = append(m.__slot0, __n4)
 				} else {
-					__n6 := widget.NewLabel("")
-					__n6.SetText("waiting")
-					fynelayout.InsertBefore(__parent, m.__slot0_at, __n6)
-					m.__slot0 = append(m.__slot0, __n6)
+					if m.status__inst0 == "inactive" {
+						__n5 := widget.NewLabel("")
+						__n5.SetText("off")
+						fynelayout.InsertBefore(__parent, m.__slot0_at, __n5)
+						m.__slot0 = append(m.__slot0, __n5)
+					} else {
+						__n6 := widget.NewLabel("")
+						__n6.SetText("waiting")
+						fynelayout.InsertBefore(__parent, m.__slot0_at, __n6)
+						m.__slot0 = append(m.__slot0, __n6)
+					}
 				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -968,33 +983,40 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	} else {
 		m.__rendering0 = true
 		m.__renderAgain0 = true
-		for m.__renderAgain0 {
-			m.__renderAgain0 = false
-			for _, __entry := range m.__slot0 {
-				gtk4rt.BoxRemove(parent, __entry)
-			}
-			m.__slot0 = nil
-			m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-			if m.status__inst0 == "active" {
-				__n4 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetLabel(__n4, "on")
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
-				m.__slot0 = append(m.__slot0, __n4)
-			} else {
-				if m.status__inst0 == "inactive" {
-					__n5 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetLabel(__n5, "off")
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
-					m.__slot0 = append(m.__slot0, __n5)
+		func() {
+			defer func() {
+				m.__rendering0 = false
+			}()
+			for m.__renderAgain0 {
+				m.__renderAgain0 = false
+				for _, __entry := range m.__slot0 {
+					gtk4rt.BoxRemove(parent, __entry)
+				}
+				m.__slot0 = nil
+				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+				if m.status__inst0 == "active" {
+					__n4 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetLabel(__n4, "on")
+					gtk4rt.LabelSetXAlign(__n4, 0.0)
+					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
+					m.__slot0 = append(m.__slot0, __n4)
 				} else {
-					__n6 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetLabel(__n6, "waiting")
-					gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
-					m.__slot0 = append(m.__slot0, __n6)
+					if m.status__inst0 == "inactive" {
+						__n5 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetLabel(__n5, "off")
+						gtk4rt.LabelSetXAlign(__n5, 0.0)
+						gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
+						m.__slot0 = append(m.__slot0, __n5)
+					} else {
+						__n6 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetLabel(__n6, "waiting")
+						gtk4rt.LabelSetXAlign(__n6, 0.0)
+						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
+						m.__slot0 = append(m.__slot0, __n6)
+					}
 				}
 			}
-		}
-		m.__rendering0 = false
+		}()
 	}
 }
 
@@ -1108,6 +1130,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, __lt18)
+	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	var __lt20 string
 	if m.rolls__inst0 > 10 {
@@ -1123,6 +1146,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n2, __lt20)
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n7 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n7, "Roll")
@@ -1130,6 +1154,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -1336,60 +1361,63 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __rendering0 = true;
       __renderAgain0 = true;
-      while (__renderAgain0) {
-        __renderAgain0 = false;
-        let __place0_prev = __slot0;
-        let __place0_i = 0;
-        __slot0 = [];
-        if (state.status__inst0 === "active") {
-          let __n4 = document.createElement("span");
-          __n4.textContent = "on";
-          let __place0_i_ref0 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref0 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref0 === __n4) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n4, __place0_i_ref0);
-          }
-          __slot0.push(__n4);
-        } else {
-          if (state.status__inst0 === "inactive") {
-            let __n5 = document.createElement("span");
-            __n5.textContent = "off";
-            let __place0_i_ref1 = null;
+      try {
+        while (__renderAgain0) {
+          __renderAgain0 = false;
+          let __place0_prev = __slot0;
+          let __place0_i = 0;
+          __slot0 = [];
+          if (state.status__inst0 === "active") {
+            let __n4 = document.createElement("span");
+            __n4.textContent = "on";
+            let __place0_i_ref0 = null;
             if (__place0_i < __place0_prev.length) {
-              __place0_i_ref1 = __place0_prev[__place0_i];
+              __place0_i_ref0 = __place0_prev[__place0_i];
             }
-            if (__place0_i_ref1 === __n5) {
+            if (__place0_i_ref0 === __n4) {
               __place0_i = __place0_i + 1;
             } else {
-              parent.insertBefore(__n5, __place0_i_ref1);
+              parent.insertBefore(__n4, __place0_i_ref0);
             }
-            __slot0.push(__n5);
+            __slot0.push(__n4);
           } else {
-            let __n6 = document.createElement("span");
-            __n6.textContent = "waiting";
-            let __place0_i_ref2 = null;
-            if (__place0_i < __place0_prev.length) {
-              __place0_i_ref2 = __place0_prev[__place0_i];
-            }
-            if (__place0_i_ref2 === __n6) {
-              __place0_i = __place0_i + 1;
+            if (state.status__inst0 === "inactive") {
+              let __n5 = document.createElement("span");
+              __n5.textContent = "off";
+              let __place0_i_ref1 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref1 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref1 === __n5) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n5, __place0_i_ref1);
+              }
+              __slot0.push(__n5);
             } else {
-              parent.insertBefore(__n6, __place0_i_ref2);
+              let __n6 = document.createElement("span");
+              __n6.textContent = "waiting";
+              let __place0_i_ref2 = null;
+              if (__place0_i < __place0_prev.length) {
+                __place0_i_ref2 = __place0_prev[__place0_i];
+              }
+              if (__place0_i_ref2 === __n6) {
+                __place0_i = __place0_i + 1;
+              } else {
+                parent.insertBefore(__n6, __place0_i_ref2);
+              }
+              __slot0.push(__n6);
             }
-            __slot0.push(__n6);
+          }
+          for (const __place0_prev_e of __place0_prev) {
+            if (__slot0.indexOf(__place0_prev_e) < 0) {
+              parent.removeChild(__place0_prev_e);
+            }
           }
         }
-        for (const __place0_prev_e of __place0_prev) {
-          if (__slot0.indexOf(__place0_prev_e) < 0) {
-            parent.removeChild(__place0_prev_e);
-          }
-        }
+      } finally {
+        __rendering0 = false;
       }
-      __rendering0 = false;
     }
   }
   var $0 = document.getElementById("$0");
@@ -1442,12 +1470,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a98e507da8d2c9318bc669005f3f516e
+pass sha256:9ea721136a0548cdda31270a9dda1638
 -- run/go/fyne --
-pass sha256:dd56aa8fd194dc424a15eecbd05884e8
+pass sha256:6ba9f96d62dc48338314f1a2940a03ca
 -- run/go/gtk4 --
-pass sha256:2bd0b6ce20cd62c2eaa4e32b84c85bef
+pass sha256:bfc8b9e447414a92b57e3f360f1be320
 -- run/kotlin/android --
 pass sha256:c3653b5a9d3e229d63aff68c3f8dd268
 -- run/none/html --
-pass sha256:cc22de39aea23c35392d97dddefedd49
+pass sha256:0434191529fcc3a69d6b0b3117219823

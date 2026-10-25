@@ -91,15 +91,15 @@ func TestReloadCarriesStateAndPatchesTheEdit(t *testing.T) {
 	if len(patches) != 1 || patches[0].Kind != PatchSetProp {
 		t.Fatalf("want one setprop, got %d:\n%s", len(patches), patchLines(patches))
 	}
-	// The count survived the reload: 1, not the initialiser's 0.
+	// The count survived the reload: 1, not the initializer's 0.
 	if patches[0].Value != "start = 1" {
 		t.Errorf("patched to %v; state was not carried across the reload", patches[0].Value)
 	}
 }
 
-// TestReloadReinitialisesAVarWhoseTypeChanged: carrying a value across a type
+// TestReloadReinitializesAVarWhoseTypeChanged: carrying a value across a type
 // change leaves a session holding something no expression could have produced.
-func TestReloadReinitialisesAVarWhoseTypeChanged(t *testing.T) {
+func TestReloadReinitializesAVarWhoseTypeChanged(t *testing.T) {
 	s := sessionFor(t, sessionSrc, "main")
 	if _, err := s.Invoke(s.View().Find("inc")[0].Key, "click"); err != nil {
 		t.Fatalf("Invoke: %v", err)
@@ -112,12 +112,12 @@ func TestReloadReinitialisesAVarWhoseTypeChanged(t *testing.T) {
 		t.Fatalf("Reload: %v", err)
 	}
 	if got := s.View().Find("out")[0].Props["value"]; got != "start: zero" {
-		t.Errorf("value is %v; a retyped var must be reinitialised, not carried", got)
+		t.Errorf("value is %v; a retyped var must be reinitialized, not carried", got)
 	}
 }
 
-// TestReloadRunsTheInitialiserForANewVar.
-func TestReloadRunsTheInitialiserForANewVar(t *testing.T) {
+// TestReloadRunsTheInitializerForANewVar.
+func TestReloadRunsTheInitializerForANewVar(t *testing.T) {
 	s := sessionFor(t, sessionSrc, "main")
 	added := strings.Replace(sessionSrc, `label = "start"`, "label = \"start\"\n        extra = 7", 1)
 	added = strings.Replace(added, `value="{label}: {count}"`, `value="{label}: {count}: {extra}"`, 1)
@@ -125,7 +125,7 @@ func TestReloadRunsTheInitialiserForANewVar(t *testing.T) {
 		t.Fatalf("Reload: %v", err)
 	}
 	if got := s.View().Find("out")[0].Props["value"]; got != "start: 0: 7" {
-		t.Errorf("value is %v, want the new var initialised to 7", got)
+		t.Errorf("value is %v, want the new var initialized to 7", got)
 	}
 }
 

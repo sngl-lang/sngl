@@ -275,7 +275,7 @@ module.exports = grammar({
       seq("(", optional($._param_list), ")"),
 
     // prec.right resolves the shift/reduce conflict the optional block creates
-    // at `component X • {` in favour of the shift; without it
+    // at `component X • {` in favor of the shift; without it
     // `tree-sitter generate` fails outright.
     component_declaration: ($) =>
       prec.right(seq(
@@ -453,7 +453,7 @@ module.exports = grammar({
         $.type_arguments
       ))
       )),
-      // A slot's type. The parenthesised list is what the slot is invoked
+      // A slot's type. The parenthesized list is what the slot is invoked
       // with; the trailing type is the tree it accepts. Parens are optional on
       // both keyword forms, which is unambiguous because "(" cannot begin a
       // type.

@@ -38,6 +38,14 @@ type irViewContext struct {
 	// Layout's free space it grows into.
 	availW, availH string
 	sizeTo         *growSize
+
+	// joinGap and joinAt are the Layout being rendered's spacing and where it
+	// puts its children across it, as Go: what a loop's copies and a branch's
+	// nodes among its children are joined with, being its parts too.
+	joinGap, joinAt string
+	// pictureLook names the look of the box a picture is shown in, whose size
+	// the picture is fitted to; "" where it is in no box.
+	pictureLook string
 }
 
 // pendingOverlay records one Overlay primitive deferred out of the inline join
@@ -102,7 +110,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		gc:      gc,
 		ctx:     ctx,
 		widgets: info.widgets,
-		availW:  "m.width",
+		availW:  "tui.Avail(m.width)",
 		availH:  "m.height",
 		buf:     &strings.Builder{},
 		indent:  1,
@@ -178,6 +186,11 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		params = append(params, bindName(p.Name)+" "+goType)
 	}
 	params = append(params, slotParams(cc.Component)...)
+	availW := ""
+	if componentGrows(cc.Component, nil) {
+		availW = availParam
+		params = append(params, availParam+" int")
+	}
 
 	fmt.Fprintf(b, "func (m Model) %s(%s) string {\n", methodName, strings.Join(params, ", "))
 
@@ -192,6 +205,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		buf:         &strings.Builder{},
 		indent:      1,
 		inComponent: true,
+		availW:      availW,
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -402,11 +416,25 @@ func (vc *irViewContext) renderBranch(stmts []ir.Stmt, resultVar string) {
 	list := resultVar + "Parts"
 	vc.line("var %s []string", list)
 	vc.renderSiblings(stmts, resultVar+"Part", list)
-	if vc.horizontal {
-		vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, list)
-	} else {
-		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, list)
+	vc.join(resultVar, list)
+}
+
+// join writes the parts in list into resultVar as the Layout they are in
+// joins its own: along its axis, its spacing apart, where it puts them
+// across it, leaving out a part that draws nothing.
+func (vc *irViewContext) join(resultVar, list string) {
+	vc.requireImport(tuiImportPath)
+	gap, at := vc.joinGap, vc.joinAt
+	if gap == "" {
+		gap = "0"
 	}
+	if at == "" {
+		at = "lipgloss.Left"
+		if vc.horizontal {
+			at = "lipgloss.Top"
+		}
+	}
+	vc.line(`%s = tui.Spaced(%t, %s, %s, %s...)`, resultVar, vc.horizontal, at, gap, list)
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
@@ -445,12 +473,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 
 	vc.indent--
 	vc.line("}")
-	sep := `""`
-	if vc.vertical {
-		sep = `"\n"`
-	}
-	vc.requireImport("strings")
-	vc.line(`%s = strings.Join(%s, %s)`, resultVar, loopVar, sep)
+	vc.join(resultVar, loopVar)
 
 	if len(s.Else) > 0 {
 		vc.line("if len(%s) == 0 {", iterExpr)
@@ -459,7 +482,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 			elseVar := resultVar + "Else"
 			vc.line("var %s []string", elseVar)
 			vc.renderSiblings(s.Else, resultVar+"Empty", elseVar)
-			vc.line(`%s = strings.Join(%s, %s)`, resultVar, elseVar, sep)
+			vc.join(resultVar, elseVar)
 		} else {
 			for _, child := range s.Else {
 				vc.renderStmt(child, resultVar)
@@ -499,7 +522,7 @@ func (vc *irViewContext) renderSiblings(stmts []ir.Stmt, partVar, list string) {
 }
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
-	// Canvas2D node — rasterise inline each frame into a terminal string.
+	// Canvas2D node — rasterize inline each frame into a terminal string.
 	if c := vc.ctx.Canvases.ForNode(n); c != nil {
 		vc.renderCanvas(n, c, resultVar)
 		return
@@ -608,7 +631,9 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		childrenVar := boxVar + "Children"
 		vc.line("var %s []string", childrenVar)
 		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+		prevGap, prevAt := vc.joinGap, vc.joinAt
 		vc.vertical, vc.horizontal = true, false
+		vc.joinGap, vc.joinAt = "", ""
 		savedW, savedH := vc.availW, vc.availH
 		vc.availW, vc.availH = "", ""
 		for i, child := range n.Children {
@@ -616,6 +641,7 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		}
 		vc.availW, vc.availH = savedW, savedH
 		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+		vc.joinGap, vc.joinAt = prevGap, prevAt
 		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
 		if style != plainLook {
 			vc.line(`%s = %s.Render(%s)`, boxVar, style, boxVar)
@@ -724,7 +750,7 @@ func grows(n *ir.NodeInst) bool {
 func growsWithin(s ir.Stmt) bool {
 	found := false
 	_ = ir.Walk([]ir.Stmt{s}, func(nd ir.Node) error {
-		if n, ok := nd.(*ir.NodeInst); ok && grows(n) {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, nil)) {
 			found = true
 			return ir.SkipAll
 		}
@@ -790,6 +816,31 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 		// Declared once the children say which of the two they read.
 		vc.buf = &strings.Builder{}
 	}
+	// A picture is fitted to the box it is shown in, where that box's look
+	// gives it a size.
+	prevPicture := vc.pictureLook
+	vc.pictureLook = ""
+	if slices.ContainsFunc(n.Children, isPicture) {
+		if style == plainLook {
+			vc.pictureLook = plainLook
+		} else {
+			if inner == "" {
+				look := resultVar + "Look"
+				vc.line("%s := %s", look, style)
+				style = look
+			}
+			vc.pictureLook = style
+		}
+	}
+	pos := vc.position(n, horizontal)
+	spacing := "0"
+	if v := codegen.NodeProp(n, "spacing"); v != nil {
+		if c, ok := codegen.IRLiteralNumber(v); !ok || c != 0 {
+			spacing = vc.gc.EvalExpr(v)
+		}
+	}
+	prevGap, prevAt := vc.joinGap, vc.joinAt
+	vc.joinGap, vc.joinAt = spacing, pos
 	parts := slices.ContainsFunc(n.Children, vc.directlyGrows)
 	childrenVar := resultVar + "Children"
 	if parts {
@@ -808,6 +859,8 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 		}
 	}
 	vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+	vc.joinGap, vc.joinAt = prevGap, prevAt
+	vc.pictureLook = prevPicture
 	// tooltip: reveal the body text (dim) below the trigger while the wrapped
 	// focusable descendant is focused. The `tooltip` prop carries the text;
 	// the focus expression comes from the focusable descendant's injected
@@ -824,13 +877,6 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			vc.line(`if %s {`, focusExpr)
 			vc.line(`%s = append(%s, %s)`, childrenVar, childrenVar, text)
 			vc.line(`}`)
-		}
-	}
-	pos := vc.position(n, horizontal)
-	spacing := "0"
-	if v := codegen.NodeProp(n, "spacing"); v != nil {
-		if c, ok := codegen.IRLiteralNumber(v); !ok || c != 0 {
-			spacing = vc.gc.EvalExpr(v)
 		}
 	}
 	main := ""
@@ -867,9 +913,51 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 		vc.buf.WriteString(body)
 	}
 	vc.availW, vc.availH = savedW, savedH
+	// A box wider or taller than its children puts them where it joins them
+	// across it: a card's names centered in its width, where they sat at its
+	// left edge.
+	if !strings.HasSuffix(pos, ".Left") && !strings.HasSuffix(pos, ".Top") {
+		if horizontal {
+			style += ".AlignVertical(" + pos + ")"
+		} else {
+			style += ".AlignHorizontal(" + pos + ")"
+		}
+	}
 	if style != plainLook {
 		vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
 	}
+}
+
+// isPicture reports whether s is a picture a URL names.
+func isPicture(s ir.Stmt) bool {
+	n, ok := s.(*ir.NodeInst)
+	return ok && btIntrinsic(n) == pictureIntrinsic
+}
+
+// availParam is a component's render method's parameter for the width it is
+// placed in, which a growing child inside it is handed a share of.
+const availParam = "__availW"
+
+// componentGrows reports whether c's body has a child growing into its
+// Layout's free space, which needs the width c is placed in. seen holds the
+// components already asked, for a recursive one.
+func componentGrows(c *ir.Component, seen map[*ir.Component]bool) bool {
+	if c == nil || seen[c] {
+		return false
+	}
+	if seen == nil {
+		seen = map[*ir.Component]bool{}
+	}
+	seen[c] = true
+	found := false
+	_ = ir.Walk(c.Body.Stmts, func(nd ir.Node) error {
+		if n, ok := nd.(*ir.NodeInst); ok && (grows(n) || componentGrows(n.Component, seen)) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // readsName reports whether the Go in body reads the local name: a selector
@@ -985,6 +1073,9 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 	if n.Component != nil {
 		args = append(args, vc.populationArgs(n, resultVar)...)
 	}
+	if componentGrows(n.Component, nil) {
+		args = append(args, extent(vc.availW))
+	}
 
 	vc.line(`%s = m.%s(%s)`, resultVar, methodName, strings.Join(args, ", "))
 }
@@ -1000,12 +1091,15 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 			childrenVar := resultVar + "Children"
 			vc.line("var %s []string", childrenVar)
 			prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+			prevGap, prevAt := vc.joinGap, vc.joinAt
 			vc.vertical = s == "vertical"
 			vc.horizontal = !vc.vertical
+			vc.joinGap, vc.joinAt = "", ""
 			for i, child := range n.Children {
 				vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 			}
 			vc.vertical, vc.horizontal = prevVertical, prevHorizontal
+			vc.joinGap, vc.joinAt = prevGap, prevAt
 			if s == "vertical" {
 				vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
 			} else {
