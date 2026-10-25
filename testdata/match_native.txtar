@@ -2332,14 +2332,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.north = nil
 				m.back = nil
 				if m.d__inst1 == "up" {
-					m.north = gtk4rt.LabelNew("")
+					m.north = gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(m.north, "north")
 					gtk4rt.LabelSetXAlign(m.north, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, m.north)
 					m.__slot0 = append(m.__slot0, m.north)
 				} else {
 					if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
-						m.back = gtk4rt.ButtonNew()
+						m.back = gtk4rt.New("GtkButton")
 						gtk4rt.ButtonSetLabel(m.back, "Back")
 						gtk4rt.Connect(m.back, "clicked", func() {
 							m.taps__inst0 += 1
@@ -2347,7 +2347,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						gtk4rt.InsertBefore(parent, m.__slot0_at, m.back)
 						m.__slot0 = append(m.__slot0, m.back)
 					} else {
-						__n6 := gtk4rt.LabelNew("")
+						__n6 := gtk4rt.New("GtkLabel")
 						gtk4rt.LabelSetLabel(__n6, "east")
 						gtk4rt.LabelSetXAlign(__n6, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
@@ -2379,7 +2379,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				m.__copies_pick = nil
 				for __copy0, p := range m.picks__inst0 {
 					if p == "up" {
-						m.pick = gtk4rt.ButtonNew()
+						m.pick = gtk4rt.New("GtkButton")
 						gtk4rt.ButtonSetLabel(m.pick, "Up")
 						m.__list_pick(fmt.Sprint(__copy0), m.pick)
 						gtk4rt.Connect(m.pick, "clicked", func() {
@@ -2388,7 +2388,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						gtk4rt.InsertBefore(parent, m.__slot1_at, m.pick)
 						m.__slot1 = append(m.__slot1, m.pick)
 					} else {
-						__n7 := gtk4rt.LabelNew("")
+						__n7 := gtk4rt.New("GtkLabel")
 						gtk4rt.LabelSetLabel(__n7, "other")
 						gtk4rt.LabelSetXAlign(__n7, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
@@ -2527,11 +2527,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n8 = gtk4rt.LabelNew("")
+	m.__n8 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n8, "left-handed")
 	gtk4rt.LabelSetXAlign(m.__n8, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, m.axis__inst0)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
@@ -2547,19 +2547,19 @@ func (m *Model) buildWidgetTree() {
 		}
 		__lt16 = __lt15
 	}
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, __lt16)
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, Count(m.tally__inst0))
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
-	m.__n4 = gtk4rt.LabelNew("")
+	m.__n4 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n4, Grade((FirstDown(m.flips__inst0) * 60)))
 	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
-	m.turn = gtk4rt.ButtonNew()
+	m.turn = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.turn, "Turn")
 	gtk4rt.Connect(m.turn, "clicked", m.turn_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.turn)
@@ -2571,11 +2571,11 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt18 = "turned"
 	}
-	m.__n5 = gtk4rt.LabelNew("")
+	m.__n5 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n5, __lt18)
 	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n5)
-	m.spin = gtk4rt.ButtonNew()
+	m.spin = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.spin, "Spin")
 	gtk4rt.Connect(m.spin, "clicked", m.spin_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.spin)
@@ -3486,7 +3486,7 @@ pass sha256:1276fd8433a4efca3ba68cb299656467
 -- run/go/fyne --
 pass sha256:a99b9be99497cb9259e9192e6ab9916f
 -- run/go/gtk4 --
-pass sha256:03ff36e942c289170114aa45f4de3451
+pass sha256:fcf22a7d350156bdb94b9dabb742806d
 -- run/kotlin/android --
 pass sha256:102e89c3418efee88129e7f7c0139298
 -- run/none/html --

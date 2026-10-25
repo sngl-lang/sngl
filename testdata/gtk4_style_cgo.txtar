@@ -264,13 +264,6 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
 
-var (
-	__cstr0 = C.CString("literal")
-	__cstr1 = C.CString("recolor")
-	__cstr2 = C.CString("clicked")
-	__cstr3 = C.CString("Style")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -580,6 +573,7 @@ func (m *Model) __n0_closed_handler() {
 
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 }
 
 func (m *Model) __n1_clicked_handler() {
@@ -616,21 +610,24 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(12))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
+	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "Style")
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
+	m.__n2 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n2)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n2)), 12)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Look{Cross: 3})
-	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __cstr0)
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.float(0.0))
+	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n3)), "literal")
+	gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(m.__n3)), 0.0)
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n3)), gtk4rt.Look{Css: "padding-top: 4px; padding-right: 4px; padding-bottom: 4px; padding-left: 4px; color: #336699; background: #eeeeee; "})
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
-	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __cstr1)
+	m.__n1 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "recolor")
 	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Color: m.tone, Flex: 1.0}))
-	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr2, C.int((len(snglCallbacks) - 1)))
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	m.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n4, C.int(40))
@@ -650,9 +647,9 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr3)
+	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:3a6c18eaa922241649c1a94ecb95b33d
+pass sha256:c60b269950be72801f437eac5317f58e

@@ -2020,10 +2020,10 @@ func newCard__slot0Instance(__model *Model, __a___p0 []string, __a___copy string
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
+	c.__n4 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n4, 1)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ("t " + fmt.Sprint(c.open)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.open = (c.open + 1)
@@ -2211,7 +2211,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	} else {
 		__lt17 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.cell = gtk4rt.ButtonNew()
+	c.cell = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.cell, c.__prop___p0)
 	c.__model.__list_cell(__lt17, c.cell)
 	gtk4rt.Connect(c.cell, "clicked", func() {
@@ -2309,7 +2309,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	} else {
 		__lt20 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
-	c.mark = gtk4rt.ButtonNew()
+	c.mark = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.mark, c.__prop___p0)
 	c.__model.__list_mark(__lt20, c.mark)
 	gtk4rt.Connect(c.mark, "clicked", func() {
@@ -2397,7 +2397,7 @@ func new__child2Instance(__model *Model, __a___p0 string, __a___on0 func()) *__c
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.tag = gtk4rt.ButtonNew()
+	c.tag = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.tag, ("x" + c.__prop___p0))
 	gtk4rt.Connect(c.tag, "clicked", func() {
 		c.__prop___on0()
@@ -2465,16 +2465,16 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
+	m.__n7 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n7, 1)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
-	m.swap = gtk4rt.ButtonNew()
+	m.swap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.swap, "swap")
 	gtk4rt.Connect(m.swap, "clicked", m.swap_clicked_handler)
 	gtk4rt.BoxAppend(m.__n7, m.swap)
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, m.log)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n7, m.__n1)
@@ -3336,7 +3336,7 @@ pass sha256:1046bd1238866ab3c2a9aa612f979618
 -- run/go/fyne --
 pass sha256:63ed7f9bea6e6abd84eabe7ee6934ea2
 -- run/go/gtk4 --
-pass sha256:eec767c1ec332cd6240905acafad220f
+pass sha256:a1c552844485fe4a815354a908a8d377
 -- run/kotlin/android --
 pass sha256:cbb4c4d56ad81f6bc51bcc4cc46d8b4b
 -- run/none/html --

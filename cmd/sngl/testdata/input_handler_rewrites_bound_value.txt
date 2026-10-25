@@ -38,7 +38,7 @@ func testRewriteRunsOnce(t Test, c editor) {
 window {
 }
 -- testrun/gtk4/go/app.sngl/editor/1 --
-sha256:7ab2d56a44b3881129de3496978547ec
+sha256:0d04b46dbeaf001ab3d9caa88fb6a2f6
 {
   "results": [
     {

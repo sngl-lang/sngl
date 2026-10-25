@@ -1373,7 +1373,7 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__chi
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.SetLook(c.__n0, LookOf(c.__prop___p1))
@@ -1451,15 +1451,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n6 = gtk4rt.ButtonNew()
+	m.__n6 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n6, "swap")
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n6)
-	m.__n7 = gtk4rt.ButtonNew()
+	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "tint")
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n7)
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, "styled")
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.SetLook(m.__n2, LookOf(m.s))
@@ -1470,12 +1470,12 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt15 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, "picked")
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.SetLook(m.__n3, LookOf(__lt15))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
-	m.__n4 = gtk4rt.LabelNew("")
+	m.__n4 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n4, "kept")
 	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.SetLook(m.__n4, LookOf(m.kept[0]))
@@ -2115,7 +2115,7 @@ pass sha256:269dafb12b2b5251332541aba680bb98
 -- run/go/fyne --
 pass sha256:1a22c549dcf5c8060ca51f061b155c09
 -- run/go/gtk4 --
-pass sha256:4a82b4315e452ca64f12a0fffefd4b05
+pass sha256:67e0d0cd0221979f2a39d235d004d450
 -- run/kotlin/android --
 pass sha256:586add4671a622d728ba3ab4257928dd
 -- run/none/html --

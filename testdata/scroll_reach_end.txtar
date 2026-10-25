@@ -644,7 +644,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.list = gtk4rt.ScrollNew()
-	gtk4rt.ScrollSetDirection(m.list, "")
+	gtk4rt.ScrollSetDirection(m.list, "vertical")
 	gtk4rt.SetLook(m.list, gtk4rt.Look{Grow: 1.0})
 	gtk4rt.ScrollOnReachEnd(m.list, m.list_reachEnd_handler)
 	m.__n1 = gtk4rt.New("GtkBox")
@@ -1258,7 +1258,7 @@ pass sha256:658dc1a46681fd184a1c7d82441559e1
 -- run/go/fyne --
 pass sha256:c8e32403f28d2065b0ec58aa2b3911e7
 -- run/go/gtk4 --
-pass sha256:cb54610e206faab14c4b3d82993b8b8a
+pass sha256:c1ccd22c863d125b614ac5ad88fd1ba0
 -- run/kotlin/android --
 pass sha256:de57300bddbae3766a0eba0a1c777341
 -- run/none/html --

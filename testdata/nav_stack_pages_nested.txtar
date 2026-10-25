@@ -1334,7 +1334,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 							__n3__el := __n3.Root
 							gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
 							m.__slot0 = append(m.__slot0, __n3__el)
-							m.pick = gtk4rt.ButtonNew()
+							m.pick = gtk4rt.New("GtkButton")
 							gtk4rt.ButtonSetLabel(m.pick, "pick")
 							gtk4rt.Connect(m.pick, "clicked", func() {
 								m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
@@ -1395,7 +1395,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				m.__slot1 = nil
 				m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 				if m.pages__current__inst0.Id == 1 {
-					__n4 := gtk4rt.LabelNew("")
+					__n4 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n4, "about")
 					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
@@ -1474,7 +1474,7 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 string, __a___p2
 	c.__prop___p2 = __a___p2
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.line = gtk4rt.LabelNew("")
+	c.line = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 	gtk4rt.LabelSetXAlign(c.line, 0.0)
 	c.Root = c.line
@@ -1539,7 +1539,7 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	} else {
 		__lt21 = "hidden"
 	}
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, __lt21)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
@@ -1637,15 +1637,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__renderSlot0(m.__n1)
 	m.__renderSlot1(m.__n1)
-	m.heading = gtk4rt.LabelNew("")
+	m.heading = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 	gtk4rt.LabelSetXAlign(m.heading, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.heading)
-	m.toAbout = gtk4rt.ButtonNew()
+	m.toAbout = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.toAbout, "About")
 	gtk4rt.Connect(m.toAbout, "clicked", m.toAbout_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.toAbout)
-	m.back = gtk4rt.ButtonNew()
+	m.back = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.back, "Back")
 	gtk4rt.Connect(m.back, "clicked", m.back_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.back)
@@ -1847,6 +1847,6 @@ pass sha256:87891109c014cb2e63fa0ad1bd12b7ec
 -- run/go/fyne --
 pass sha256:fcd203c83e87f70cdbbe56a8b848d682
 -- run/go/gtk4 --
-pass sha256:a07f4cf05c79fbd40c5dbacab99340db
+pass sha256:7d66ecbd15475aa9c793c715b9cf5b5a
 -- run/kotlin/android --
 pass sha256:0a8a2589fec852e0597a10ac0c166bc6

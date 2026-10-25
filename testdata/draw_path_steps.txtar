@@ -947,11 +947,6 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
 
-var (
-	__cstr0 = C.CString("close")
-	__cstr1 = C.CString("clicked")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1102,6 +1097,7 @@ func (m *Model) __n0_closed_handler() {
 
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -1179,7 +1175,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(60))
 	C.gtk_drawing_area_set_content_height(m.__n1, C.int(40))
@@ -1189,10 +1188,9 @@ func (m *Model) buildWidgetTree() {
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
-	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), __cstr0)
-	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n2), __cstr1, C.int((len(snglCallbacks) - 1)))
+	m.__n2 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "close")
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n2)), "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -1202,6 +1200,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
+	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -1717,7 +1716,7 @@ pass sha256:e6df48deebfda9823e4bb9bb5174e318
 -- run/go/fyne --
 pass sha256:e23a0966eee6cc3500d750365b598d04
 -- run/go/gtk4 --
-pass sha256:0f383e93bb0c2b677d374c437202fab5
+pass sha256:5710f4be1d6c7b9c639a1bcc33369ee3
 -- run/kotlin/android --
 pass sha256:14498a9a2d8878adfb2fa243e11ee351
 -- run/none/html --

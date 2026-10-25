@@ -596,10 +596,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n2, gtk4rt.OrientationVertical)
+	__n2 := gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(__n2, 1)
 	gtk4rt.BoxSetSpacing(__n2, 6)
-	__n3 := gtk4rt.ButtonNew()
+	__n3 := gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(__n3, "toggle")
 	gtk4rt.Connect(__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(__n2, __n3)
@@ -609,7 +609,7 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt17 = "light"
 	}
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt17))
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n0)
@@ -619,7 +619,7 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt18 = "light"
 	}
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt18))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(__n2, m.__n1)
@@ -782,7 +782,7 @@ pass sha256:4b9461ace8c3ba60ef1fe8f0de9fb711
 -- run/go/fyne --
 pass sha256:7facd906216767304266c3856b896ee2
 -- run/go/gtk4 --
-pass sha256:d91db1376d25d9a9f2f6485edf5e4277
+pass sha256:f7be33c92f75e47f352f2c2c1bb7a0c8
 -- run/kotlin/android --
 pass sha256:4901c5b481509fa084b31a3d1d344c19
 -- run/none/html --

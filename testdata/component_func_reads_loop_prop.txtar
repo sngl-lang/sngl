@@ -1265,7 +1265,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.__slot0 = nil
-	__n1 := gtk4rt.LabelNew("")
+	__n1 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n1, c.shout())
 	gtk4rt.LabelSetXAlign(__n1, 0.0)
 	c.Root = __n1
@@ -1316,19 +1316,19 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n0, gtk4rt.OrientationVertical)
+	m.__n0 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n0, 1)
 	gtk4rt.BoxSetSpacing(m.__n0, 6)
-	m.hide = gtk4rt.ButtonNew()
+	m.hide = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.hide, "h")
 	gtk4rt.Connect(m.hide, "clicked", m.hide_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.hide)
 	for _, x := range []string{"p", "q"} {
-		__n2 := gtk4rt.LabelNew("")
+		__n2 := gtk4rt.New("GtkLabel")
 		gtk4rt.LabelSetLabel(__n2, m.shout__inst0(x))
 		gtk4rt.LabelSetXAlign(__n2, 0.0)
 		gtk4rt.BoxAppend(m.__n0, __n2)
-		__n3 := gtk4rt.LabelNew("")
+		__n3 := gtk4rt.New("GtkLabel")
 		gtk4rt.LabelSetLabel(__n3, func() []string {
 			__out := make([]string, len([]string{"q"}))
 			for __i, __item := range []string{"q"} {
@@ -1898,7 +1898,7 @@ pass sha256:0e2752c3b3fdf140a1d19c2b6d751456
 -- run/go/fyne --
 pass sha256:c689231902bcde0fa1a0a17233f4c8dd
 -- run/go/gtk4 --
-pass sha256:2fece86f3906f0cd336c0618a1c05473
+pass sha256:956a9af9261b4ac2b355aa28ac75ff6a
 -- run/kotlin/android --
 pass sha256:39e7f7e32762eaaa50a52ec398785a00
 -- run/none/html --

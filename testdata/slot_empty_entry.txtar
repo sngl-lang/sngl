@@ -677,7 +677,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				if m.shown__inst0 {
-					__n2 := gtk4rt.LabelNew("")
+					__n2 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n2, "shown")
 					gtk4rt.LabelSetXAlign(__n2, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
@@ -734,11 +734,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	__lt14 := "boxed full"
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, __lt14)
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
-	m.__n4 = gtk4rt.LabelNew("")
+	m.__n4 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n4, "inner")
 	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
@@ -748,12 +748,12 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt15 = "boxed full"
 	}
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, __lt15)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__renderSlot0(m.__n0)
-	m.show = gtk4rt.ButtonNew()
+	m.show = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.show, "show")
 	gtk4rt.Connect(m.show, "clicked", m.show_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.show)
@@ -918,7 +918,7 @@ pass sha256:38d1e7ab73eebf0fc329179e97b6a88e
 -- run/go/fyne --
 pass sha256:18a994b569cc62fcfceffaa444cd148f
 -- run/go/gtk4 --
-pass sha256:18580ab0b7d202dca8c59d5139c09120
+pass sha256:b01110775efdd8a53b78edff5eaee367
 -- run/kotlin/android --
 pass sha256:a360a74258f8a1864105f0ba433cf28c
 -- run/none/html --

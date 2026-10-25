@@ -994,20 +994,20 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				if m.status__inst0 == "active" {
-					__n4 := gtk4rt.LabelNew("")
+					__n4 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n4, "on")
 					gtk4rt.LabelSetXAlign(__n4, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
 					m.__slot0 = append(m.__slot0, __n4)
 				} else {
 					if m.status__inst0 == "inactive" {
-						__n5 := gtk4rt.LabelNew("")
+						__n5 := gtk4rt.New("GtkLabel")
 						gtk4rt.LabelSetLabel(__n5, "off")
 						gtk4rt.LabelSetXAlign(__n5, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n5)
 						m.__slot0 = append(m.__slot0, __n5)
 					} else {
-						__n6 := gtk4rt.LabelNew("")
+						__n6 := gtk4rt.New("GtkLabel")
 						gtk4rt.LabelSetLabel(__n6, "waiting")
 						gtk4rt.LabelSetXAlign(__n6, 0.0)
 						gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
@@ -1127,7 +1127,7 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt17 = "not on"
 	}
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, __lt17)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
@@ -1143,15 +1143,15 @@ func (m *Model) buildWidgetTree() {
 		}
 		__lt19 = __lt18
 	}
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, __lt19)
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	m.__n7 = gtk4rt.ButtonNew()
+	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "Roll")
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n7)
-	m.__n3 = gtk4rt.LabelNew("")
+	m.__n3 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
@@ -1473,7 +1473,7 @@ pass sha256:065233e73222f0510e6faf5eb81133f2
 -- run/go/fyne --
 pass sha256:6ba9f96d62dc48338314f1a2940a03ca
 -- run/go/gtk4 --
-pass sha256:9f032fdef9686b748fe06d9567571eed
+pass sha256:bbacf932b060d280473a1f6c0d138b91
 -- run/kotlin/android --
 pass sha256:c3653b5a9d3e229d63aff68c3f8dd268
 -- run/none/html --
