@@ -318,6 +318,11 @@ the first user.
 Do each fixture first, and confirm it fails with the change reverted. One
 branch with one commit series per step, then re-record the runs that change.
 
+Each step is its own session, on this branch and MR !279. A session ends by
+marking its step done here and in the MR's checklist, recording what it found
+under the step, and handing over the prompt that starts the next step's
+session.
+
 1. **Horizontal scroll.** Write `testdata/scroll_direction*.txtar` for each
    target, plus an android recorded run. Then wrap the Sprites, Evolution
    and Moves panels in `ui.scroll(direction="horizontal")`.
