@@ -233,12 +233,9 @@ the first user.
   (ISSUES.md 5).
 - **Tabs do not swipe.** android's `ui.tabs` is a TabRow over the selected
   panel, with no pager.
-- **No target scrolls sideways.** `ui.scroll`'s `direction` and the `scroll`
-  prop on `ui.hbox`/`ui.vbox` are declared in `lib/ui/layout.sngl`, but no
-  override reads them. `SnglScroll` is `verticalScroll` only, and html's is
-  `overflow=auto` in both directions by accident. The panels that overflow a
-  360dp screen are the Sprites rows (4 × 112px plus gaps), the Evolution
-  rows (a branching chain like Eevee's), and the Moves table.
+- ~~**No target scrolls sideways.**~~ Done in step 1: every target scrolls
+  along `ui.scroll`'s `direction`, and the Sprites, Evolution and Moves
+  panels scroll sideways.
 
 ### The design
 
@@ -323,9 +320,29 @@ marking its step done here and in the MR's checklist, recording what it found
 under the step, and handing over the prompt that starts the next step's
 session.
 
-1. **Horizontal scroll.** Write `testdata/scroll_direction*.txtar` for each
-   target, plus an android recorded run. Then wrap the Sprites, Evolution
-   and Moves panels in `ui.scroll(direction="horizontal")`.
+1. **Horizontal scroll.** Done. `direction` is a `ui.ScrollDirection`
+   (`vertical`, the default, `horizontal`, `both`); the boxes' `scroll`
+   props and `ui.Style.overflow` are gone, a clip being each platform's own
+   (html's image frame by `.sngl-image`). Pinned by
+   `testdata/scroll_direction*.txtar` (android's run scrolls sideways),
+   `testdata/gtk4_scroll_direction.txtar`,
+   `cmd/sngl/testdata/scroll_reach_end_sideways_runs.txt` (Chromium) and
+   fynelayout's and gtk4rt's sideways tests. gtk4's came through
+   `gtk4-declared-protocol`, which merged main and was merged here. Found:
+   - A node's `#id` shadows a bare enum variant or a const of the same name
+     in its own arguments: `ui.scroll #both(direction=both)` is "cannot use
+     scroll as ScrollDirection", which names neither.
+   - `ui.scroll`'s `scrollX`, `scrollY` and `showScrollbar` are read by no
+     override, as the boxes' `scroll` was.
+   - Compose gives a node carrying two scroll modifiers the outer one's
+     `ScrollBy`, so `SnglScroll` puts the vertical one outside: scrolling
+     either way, the end it reports is the bottom.
+   - A vertical scroll is as wide as its content's minimum on fyne and gtk4,
+     where html and android cut the content off at the scroll's edge.
+   - html writes `class=` twice on some image frames, and `.sngl-image`'s
+     clip is a rule the page writes only beside a source, so a frame
+     showing only its placeholder is not clipped.
+   - `iter[int]` has no `map`.
 2. **Settings.** Write the spec section and `design/` note first. Then
    `lib/settings`, the interpreter, and the targets in the order above, with
    a `sngl test` that seeds a setting and reads it back across a remount,
