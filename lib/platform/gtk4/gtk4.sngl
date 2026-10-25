@@ -17,8 +17,8 @@ import gtk "gir:Gtk-4.0"
 // call can be moved off it and its answer written back.
 #[gen.can(asyncPost, instanceState)]
 // Withholding reactivity is what asks for the explicit `nID.<prop> = <expr>`
-// after every mutation of a tracked var, which this platform translates to
-// `gtk_<widget>_set_<prop>(...)`; withholding declarative flattens the tree
+// after every mutation of a tracked var, which the prop's declared set makes a
+// call (`#[gen.protocol(set)]`); withholding declarative flattens the tree
 // into the calls that build it. The same pair fyne takes, and for the same
 // reason: GTK owns its widgets and diffs nothing.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
@@ -42,6 +42,11 @@ component platform(
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
     const gir           string,
+    // Make, fill and write a GIR class through the C functions GTK names, from
+    // the generated file itself, rather than through pkg/go/gtk4rt. Every
+    // string handed to GTK is then the generated code's own, and the file
+    // builds with cgo whatever it renders.
+    const cgo           bool = false,
     // What its generated code introduces beside a program's names: the packages
     // it imports -- `C` is cgo's, which a Go export of `c` would be -- an
     // instance record's receiver, the Model's own members, and the locals and
@@ -81,6 +86,67 @@ component Toplevel(
     content  ...component ui.node,
 ) root
 
+// A window is gtk4rt's toplevel in either mode: the box its content is
+// appended to, which keeps the title, visibility and handlers until the
+// window is made around it. gtk4rt copies the title into C itself.
+#[go.native(_rtPkg, "gtk4rt.ToplevelNew")]
+func _rtToplevelNew() Toplevel
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelSetTitle")]
+func _rtToplevelSetTitle(w Toplevel, title string)
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelSetVisible")]
+func _rtToplevelSetVisible(w Toplevel, visible bool)
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelOnClosed")]
+func _rtToplevelOnClosed(w Toplevel, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.ToplevelOnVisible")]
+func _rtToplevelOnVisible(w Toplevel, fn func(visible bool))
+
+#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
+func _rtToplevelAppend(box Toplevel, child ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
+func _rtToplevelRemove(box Toplevel, child ui.node)
+
+#[gen.protocol(create)]
+func _create_Toplevel() Toplevel {
+    return _rtToplevelNew()
+}
+
+#[gen.protocol(append)]
+func _append_Toplevel(parent Toplevel, child ui.node) {
+    _rtToplevelAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Toplevel(parent Toplevel, child ui.node) {
+    _rtToplevelRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Toplevel_title(w Toplevel, title string) {
+    _rtToplevelSetTitle(w, title)
+}
+
+#[gen.protocol(set)]
+func _set_Toplevel_visible(w Toplevel, visible bool) {
+    _rtToplevelSetVisible(w, visible)
+}
+
+// The window manager's close and the host's own change of `visible` are
+// gtk4rt's to report: the window raises close-request, which it answers.
+#[gen.protocol(on)]
+func _on_Toplevel_closed(w Toplevel, closed func()) {
+    _rtToplevelOnClosed(w, closed)
+}
+
+#[gen.protocol(on)]
+func _on_Toplevel_visible(w Toplevel, visible func(visible bool)) {
+    _rtToplevelOnVisible(w, visible)
+}
+
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
 const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
@@ -108,8 +174,9 @@ func switchActive(s gtk.GtkSwitch) bool
 func entryText(e gtk.GtkEntry) string
 
 // Writes an entry's text, which an override does itself rather than binding
-// `text`: see ui.input.
-#[marks.intrinsic("gtk4.setEntryText")]
+// `text`: see ui.input. gtk4rt blocks "changed" around the write and copies
+// the text into C itself, so neither mode's generated file calls C for it.
+#[go.native(_rtPkg, "gtk4rt.EditableSetTextQuiet")]
 func setEntryText(e gtk.GtkEntry, text string)
 
 // The day a calendar has selected. A calendar always has one, so this is null
@@ -217,8 +284,8 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
-const component ui.scroll[platform](style, @reachEnd, content) {
-    Scroll(look=lookOf(style), @reachEnd { reachEnd() }) {
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    Scroll(direction=string(direction), look=lookOf(style), @reachEnd { reachEnd() }) {
         content
     }
 }
@@ -249,8 +316,8 @@ const component ui.spinner[platform](label, style) {
 
 // `direction` is not forwarded: orientation is a GtkOrientation, and the
 // only SNGL value that reaches a GTK enum is a string literal naming one of
-// its members (see enumValueArg) — a prop reference has no compile-time
-// member to name. A separator is therefore horizontal, which is what
+// its members, which the prop's set folds to the member's value where it is
+// written — a prop reference has no compile-time member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
 const component ui.divider[platform](style) {
     gtk.GtkSeparator(look=lookOf(style)) {}
@@ -276,10 +343,10 @@ const component ui.toggle[platform](checked, disabled, style, @change) {
 // a `date` offers no way to take those three apart. So the calendar is shown
 // and its selection reported, and the bound value does not reach it, whether
 // or not the `option` holds one.
-// Selects y-m-d on a calendar as a click on the day does: the cgo preamble's
+// Selects y-m-d on a calendar as a click on the day does: gtk4rt's
 // sngl_calendar_select, since the setter GTK 4.20 adds is not in the GTKs
 // before it and the one they have is deprecated in it.
-#[cnative("sngl_calendar_select")]
+#[go.native(_rtPkg, "gtk4rt.CalendarSelectDay")]
 func selectDay(cal gtk.GtkCalendar, y int, m int, d int)
 
 // One calendar, which a bound date selects whenever it changes. With no date
@@ -444,11 +511,10 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
 
 // Offers a drop-down the labels `labels` joins with newlines, and selects
 // `chosen` where one of them is it and nothing where none is. A drop-down
-// takes its choices as a GListModel, which no SNGL expression produces, so the
-// preamble's sngl_drop_down_offer builds one, reached through gtk4rt or cgo as
-// the program is emitted. Neither is a choice anyone made, so the drop-down
-// reports neither.
-#[marks.intrinsic("gtk4.offerChoices")]
+// takes its choices as a GListModel, which no SNGL expression produces, so
+// gtk4rt builds one, copying both strings into C itself in either mode.
+// Neither is a choice anyone made, so the drop-down reports neither.
+#[go.native(_rtPkg, "gtk4rt.DropDownOffer")]
 func offerChoices(d gtk.GtkDropDown, labels string, chosen string)
 
 // The label a drop-down has selected, or "" where it has none.
@@ -582,6 +648,19 @@ const component time.timer[platform](interval, enabled, @tick) {
             },
         )
     }
+}
+
+// How a handler reaches a widget: gtk4rt registers it and connects the signal,
+// copying the name into C itself, so neither mode's generated file calls C to
+// connect one and a wrapped build stays one that cgo does not rebuild. The
+// node is put where its scope holds it, as a Handle (gtk4Translator's
+// OnConnectThrough).
+#[go.native(_rtPkg, "gtk4rt.Connect")]
+func _rtConnect(w ui.node, signal string, handler func())
+
+#[gen.protocol(connect)]
+func _connect(w ui.node, signal string, handler func()) {
+    _rtConnect(w, signal, handler)
 }
 
 // --- Drawing ---
@@ -903,16 +982,110 @@ component Image(
     content ...component option[ui.imageSource],
 ) ui.node
 
-// A scroll is gtk4rt's GtkScrolledWindow, which reports the end of its
-// content coming within half a viewport of showing -- as it arrives, and when
-// the content changes size while it is there. GTK has no signal saying so;
-// the vertical adjustment's changes are what answer it.
+#[go.native(_rtPkg, "gtk4rt.ImageFrameNew")]
+func _rtImageFrameNew() Image
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameSetFit")]
+func _rtImageFrameSetFit(w Image, fit string)
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameOnClick")]
+func _rtImageFrameOnClick(w Image, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameOnLoad")]
+func _rtImageFrameOnLoad(w Image, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.ImageFrameOnError")]
+func _rtImageFrameOnError(w Image, fn func(message string))
+
+#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
+func _rtBoxAppend(box ui.node, child ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
+func _rtBoxRemove(box ui.node, child ui.node)
+
+#[gen.protocol(create)]
+func _create_Image() Image {
+    return _rtImageFrameNew()
+}
+
+#[gen.protocol(append)]
+func _append_Image(parent Image, child ui.node) {
+    _rtBoxAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Image(parent Image, child ui.node) {
+    _rtBoxRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Image_fit(w Image, fit string) {
+    _rtImageFrameSetFit(w, fit)
+}
+
+// An image's events are gtk4rt's: a click on its box, and the source it
+// holds reporting whether its picture arrived.
+#[gen.protocol(on)]
+func _on_Image_click(w Image, click func()) {
+    _rtImageFrameOnClick(w, click)
+}
+
+#[gen.protocol(on)]
+func _on_Image_load(w Image, load func()) {
+    _rtImageFrameOnLoad(w, load)
+}
+
+#[gen.protocol(on)]
+func _on_Image_failed(w Image, failed func(message string)) {
+    _rtImageFrameOnError(w, failed)
+}
+
+// A scroll is gtk4rt's GtkScrolledWindow, which moves along `direction` and
+// reports the end of its content coming within half a viewport of showing --
+// as it arrives, and when the content changes size while it is there. GTK has
+// no signal saying so; the changes of the adjustment along the axis the end
+// is read on are what answer it.
 #[marks.intrinsic("gtk4:Scroll")]
 component Scroll(
-    look    gtk.Look,
+    direction string,
+    look      gtk.Look,
     @reachEnd(),
-    content ...component option[ui.node],
+    content   ...component option[ui.node],
 ) ui.node
+
+#[go.native(_rtPkg, "gtk4rt.ScrollNew")]
+func _rtScrollNew() Scroll
+
+#[go.native(_rtPkg, "gtk4rt.ScrolledWindowSetChild")]
+func _rtScrolledWindowSetChild(sw Scroll, child ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.ScrollOnReachEnd")]
+func _rtScrollOnReachEnd(sw Scroll, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.ScrollSetDirection")]
+func _rtScrollSetDirection(sw Scroll, direction string)
+
+#[gen.protocol(create)]
+func _create_Scroll() Scroll {
+    return _rtScrollNew()
+}
+
+#[gen.protocol(append)]
+func _append_Scroll(parent Scroll, child ui.node) {
+    _rtScrolledWindowSetChild(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_direction(w Scroll, direction string) {
+    _rtScrollSetDirection(w, direction)
+}
+
+// The end arriving is no GTK signal: gtk4rt watches the vertical adjustment
+// and calls the handler itself.
+#[gen.protocol(on)]
+func _on_Scroll(sw Scroll, reachEnd func()) {
+    _rtScrollOnReachEnd(sw, reachEnd)
+}
 
 // The picture a URL names, decoded once: a file the program carries at once,
 // one fetched when it arrives. Owned by the source deriving it, so it is made
@@ -937,6 +1110,33 @@ component ImageUrl(url string, picture Picture) ui.imageSource
 
 #[marks.intrinsic("gtk4:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
+// A source of either kind is a GtkPicture gtk4rt fits to the image holding
+// it. The URL is what a source says it shows, which a test reads; what it
+// shows is the picture, and a drawing's is painted from its shapes.
+#[go.native(_rtPkg, "gtk4rt.ImageSourceNew")]
+func _rtImageSourceNew() ImageUrl
+
+#[go.native(_rtPkg, "gtk4rt.ImageSourceNew")]
+func _rtImageDrawingNew() ImageDrawing
+
+#[go.native(_rtPkg, "gtk4rt.ImageSourceSetPicture")]
+func _rtImageSourceSetPicture(w ImageUrl, picture Picture)
+
+#[gen.protocol(create)]
+func _create_ImageUrl() ImageUrl {
+    return _rtImageSourceNew()
+}
+
+#[gen.protocol(set)]
+func _set_ImageUrl_picture(w ImageUrl, picture Picture) {
+    _rtImageSourceSetPicture(w, picture)
+}
+
+#[gen.protocol(create)]
+func _create_ImageDrawing() ImageDrawing {
+    return _rtImageDrawingNew()
+}
 
 const component ui.file[platform](path) {
     func picture() => loadPicture(path)
@@ -1023,13 +1223,34 @@ const component shapes.canvasImage[platform](x, y, w, h, src) {
 // class. `codegen/platform/gtk4/markup.go` collects the span tree ahead of the
 // walk and writes the markup as a Go string expression, so a run whose words
 // come from state is an ordinary concatenation and the updater that moved that
-// state sets the label again.
+// state sets the label again, through the flow's `markup` set.
 
 #[marks.intrinsic("gtk4:Flow")]
 component Flow(
     look    gtk.Look,
+    // The Pango markup the spans make, which the platform writes wherever
+    // one of them changes; nothing passes it.
+    markup  string = "",
     content ...component markup.span,
 ) ui.node
+
+#[go.native(_rtPkg, "gtk4rt.FlowNew")]
+func _rtFlowNew() Flow
+
+#[go.native(_rtPkg, "gtk4rt.LabelSetMarkup")]
+func _rtFlowSetMarkup(w Flow, markup string)
+
+#[gen.protocol(create)]
+func _create_Flow() Flow {
+    return _rtFlowNew()
+}
+
+// gtk4rt copies the markup into C itself, so the label is set in either mode
+// with no C string in the program.
+#[gen.protocol(set)]
+func _set_Flow_markup(w Flow, markup string) {
+    _rtFlowSetMarkup(w, markup)
+}
 
 // One run of words. `spanStyle` is read off the literal -- which
 // fields a `SpanStyle` set is a question about the literal, as it is on every

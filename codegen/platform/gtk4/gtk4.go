@@ -27,30 +27,6 @@ func pickPrimaryConstructorInfo(info *gir.ClassInfo) gir.ConstructorInfo {
 	return info.Constructors[0]
 }
 
-// girTypeIsNamedNonPrimitive reports whether the GIR raw type name
-// refers to a non-primitive declared type (enum, class, struct) rather
-// than a built-in scalar. Used to map GIR property types like
-// "Orientation" → cgo "GtkOrientation".
-func girTypeIsNamedNonPrimitive(name string) bool {
-	if name == "" {
-		return false
-	}
-	switch name {
-	case "utf8", "filename", "gchararray",
-		"gboolean",
-		"gint", "gint32", "gint64",
-		"guint", "guint32", "guint64", "gsize",
-		"gdouble", "gfloat",
-		"none":
-		return false
-	}
-	// Heuristic: GIR enum/class names within the current namespace are
-	// bare CamelCase identifiers (no namespace dot). Cross-namespace
-	// names contain a "." (e.g. "Gio.File") and need different handling
-	// — return false there so the codegen falls back to defaults.
-	return !strings.Contains(name, ".") && name[0] >= 'A' && name[0] <= 'Z'
-}
-
 // girAutoPaths are the standard locations checked when --opt gir= is not set.
 var girAutoPaths = []string{
 	"/usr/share/gir-1.0/Gtk-4.0.gir",
@@ -80,7 +56,10 @@ type Generator struct {
 	initErr  error // set if autodetect GIR load fails
 	minimal  bool  // registry is the bundled subset, not the host's GIR
 	girOpt   string
-	fsLoaded bool // fsErr answers girOpt
+	// cgoOpt is the "cgo" option: the widget declarations make, fill and
+	// write a GIR class through the C functions GIR names rather than gtk4rt.
+	cgoOpt   bool
+	fsLoaded bool // fsErr answers girOpt and cgoOpt
 	fsErr    error
 	// store is where the registry and the declarations derived from it are
 	// kept between builds. Nil means the process's default store.
@@ -103,6 +82,7 @@ func (g *Generator) Configure(opts map[string]string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.setGIROpt(opts["gir"])
+	g.cgoOpt = opts["cgo"] == "true"
 	return nil
 }
 
@@ -135,11 +115,14 @@ func (g *Generator) Unavailable() error {
 	return g.fsErr
 }
 
-// LibraryState is the GIR setting, which decides the widgets
-// sngl:platform/gtk4 declares.
+// LibraryState is the GIR and cgo settings, which decide the widgets
+// sngl:platform/gtk4 declares and what they call.
 func (g *Generator) LibraryState() string {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.cgoOpt {
+		return g.girOpt + "\x00cgo"
+	}
 	return g.girOpt
 }
 
@@ -256,7 +239,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	// the model's chosen mode (wrapped harnesses call BuildUI over gtk4rt.Handle
 	// and snapshot via gtk4rt). After EmitFromMutation, c.wrapped reflects the
 	// model's actual mode (the emitIR scan sets it), so the harness can match.
-	c.disableWrapped = codegen.OptionBool(req.Options, "gtk4NoWrap")
+	c.disableWrapped = codegen.OptionBool(req.Options, "gtk4NoWrap") || codegen.OptionBool(req.Options, "cgo")
 	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
 	if err != nil {
 		return err

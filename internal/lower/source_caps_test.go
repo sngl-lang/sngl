@@ -1,6 +1,7 @@
 package lower_test
 
 import (
+	"slices"
 	"testing"
 
 	"duckfam.us/sngl/internal/checker"
@@ -17,7 +18,9 @@ import (
 // `Rendered` is the one enum not folded into Features: it describes a
 // primitive rather than a target, so it is read off the declaration by
 // ir.HoldsIdentity and never becomes a field. Its members are held to that
-// instead -- a word here still has to mean something to somebody.
+// instead -- a word here still has to mean something to somebody. `Protocol`
+// is the same: an operation names a function of a primitive's, and is held to
+// the ops ir declares.
 func TestGenVocabularyIsMapped(t *testing.T) {
 	pkg := checker.LibPackage("x/gen")
 	if pkg == nil {
@@ -30,6 +33,12 @@ func TestGenVocabularyIsMapped(t *testing.T) {
 			if ed.Name == "Rendered" {
 				if m.Name != ir.RenderedIdentity && m.Name != ir.RenderedSurface {
 					t.Errorf("sngl:x/gen declares Rendered.%s, which ir reads nowhere", m.Name)
+				}
+				continue
+			}
+			if ed.Name == "Protocol" {
+				if !slices.Contains([]ir.ProtocolOp{ir.ProtocolCreate, ir.ProtocolAppend, ir.ProtocolRemove, ir.ProtocolConnect, ir.ProtocolSet, ir.ProtocolOn}, ir.ProtocolOp(m.Name)) {
+					t.Errorf("sngl:x/gen declares Protocol.%s, which ir declares no op for", m.Name)
 				}
 				continue
 			}

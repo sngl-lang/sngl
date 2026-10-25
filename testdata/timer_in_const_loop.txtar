@@ -1396,11 +1396,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__renderSlot0(m.__n0)
 	m.__renderSlot1(m.__n0)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "hide")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
@@ -1732,6 +1732,6 @@ pass sha256:a4ee5f9068d067733ed5ce93e2569c78
 -- run/go/fyne --
 pass sha256:48ac0b7126ae0dfd41c6970e5ad2609d
 -- run/go/gtk4 --
-pass sha256:98317bb5f7b994b2ba9dd8d3553bb6f1
+pass sha256:bfc983a1a8c5909769db34247221c7a9
 -- run/none/html --
 pass sha256:08cae15ade4e76db18bdb1eb20d04465

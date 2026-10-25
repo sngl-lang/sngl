@@ -559,11 +559,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n2 = gtk4rt.ButtonNew()
+	m.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n2, "Click me")
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.count__inst0))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
@@ -674,7 +674,7 @@ pass sha256:a6c54aa8ea8f4051a05449bb80703e1d
 -- run/go/fyne --
 pass sha256:807482192c44013bcb927e0b5a94bc66
 -- run/go/gtk4 --
-pass sha256:90ffe1c1edae451263cd4bee4329b7f5
+pass sha256:cd6f586c0a0d95f8e568cd5b078e0e64
 -- run/kotlin/android --
 pass sha256:60b68892701e4278e5e7f38d2cff936e
 -- run/none/html --

@@ -631,7 +631,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
 		if __v, __ok := m.counts["a"]; __ok {
 			return __v
@@ -639,10 +639,10 @@ func (m *Model) buildWidgetTree() {
 		return 0
 	}())))
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
-	m.put = gtk4rt.ButtonNew()
+	m.put = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.put, "put")
 	gtk4rt.Connect(m.put, "clicked", m.put_clicked_handler)
-	m.bump = gtk4rt.ButtonNew()
+	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
@@ -829,7 +829,7 @@ pass sha256:6a15d85909029c59a26df5c7e33e9c46
 -- run/go/fyne --
 pass sha256:cf36bd9aa53b32d770ef87feaf4386fc
 -- run/go/gtk4 --
-pass sha256:aab3427874d0e2fd82b71740717f3607
+pass sha256:796aca140e6d95b36a844d7c6dfe84e2
 -- run/kotlin/android --
 pass sha256:d0052a68440023354cafadca8bd44901
 -- run/none/html --

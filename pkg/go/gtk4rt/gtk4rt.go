@@ -1,19 +1,16 @@
 //go:build !js
 
 // Package gtk4rt is the shared GTK4 cgo runtime that SNGL's gtk4 codegen
-// targets. It wraps the bounded set of GTK functions the stdlib widget set
-// uses behind a typed Go API over an opaque cbind.Handle, so generated
-// programs contain no cgo of their own: the GTK bindings compile once, here,
-// and Go's build cache reuses them across every generated build instead of
-// recompiling the gtk.h preamble per program.
+// targets. It wraps GTK behind a Go API over an opaque cbind.Handle -- typed
+// calls for what the stdlib widget set uses, and New, the Set calls and
+// ChildCall for any class by name -- so generated programs contain no cgo of
+// their own: the GTK bindings compile once, here, and Go's build cache reuses
+// them across every generated build instead of recompiling the gtk.h preamble
+// per program.
 //
 // The callback plumbing is delegated to pkg/go/cbind (library-agnostic); the
 // C trampolines below are the only GTK-specific glue, forwarding signal and
 // idle callbacks to cbind.Dispatch by index.
-//
-// Programs that use widgets outside this bounded surface fall back to the
-// legacy inline-cgo codegen path; gtk4rt intentionally covers only the stdlib
-// widget vocabulary.
 package gtk4rt
 
 /*
@@ -499,6 +496,14 @@ func CheckButtonGetActive(button Handle) bool {
 	return C.gtk_check_button_get_active((*C.GtkCheckButton)(p(button))) != 0
 }
 
+func SwitchGetActive(sw Handle) bool {
+	return C.gtk_switch_get_active((*C.GtkSwitch)(p(sw))) != 0
+}
+
+func SwitchSetActive(sw Handle, active bool) {
+	C.gtk_switch_set_active((*C.GtkSwitch)(p(sw)), gbool(active))
+}
+
 // ---- Calendar ----
 
 // CalendarGetDate is the day a GtkCalendar has selected, as the *time.Time an
@@ -518,7 +523,12 @@ func CalendarSelectDate(calendar Handle, t *time.Time) {
 	if t == nil {
 		return
 	}
-	C.sngl_calendar_select((*C.GtkCalendar)(p(calendar)), C.int(t.Year()), C.int(t.Month()), C.int(t.Day()))
+	CalendarSelectDay(calendar, t.Year(), int(t.Month()), t.Day())
+}
+
+// CalendarSelectDay selects y-m-d on a GtkCalendar, as a click on the day does.
+func CalendarSelectDay(calendar Handle, y, m, d int) {
+	C.sngl_calendar_select((*C.GtkCalendar)(p(calendar)), C.int(y), C.int(m), C.int(d))
 }
 
 // ---- DropDown ----
@@ -970,6 +980,16 @@ func Foreground(c snglcolor.Color) string {
 		return ""
 	}
 	return fmt.Sprintf(` foreground="#%02X%02X%02X"`, c.R, c.G, c.B)
+}
+
+// FlowNew is the label a flow of rich text is: wrapped, and starting at the
+// left rather than centred, which is what every other target does with a run
+// of prose.
+func FlowNew() Handle {
+	l := LabelNew("")
+	LabelSetWrap(l, true)
+	LabelSetXAlign(l, 0)
+	return l
 }
 
 // LabelSetMarkup sets a label's text from Pango markup, which is what makes a

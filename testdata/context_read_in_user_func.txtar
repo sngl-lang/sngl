@@ -1577,22 +1577,22 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n2 := gtk4rt.LabelNew("")
+	__n2 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n2, "d9")
 	gtk4rt.LabelSetXAlign(__n2, 0.0)
-	__n3 := gtk4rt.LabelNew("")
+	__n3 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n3, "d5")
 	gtk4rt.LabelSetXAlign(__n3, 0.0)
-	m.tap = gtk4rt.ButtonNew()
+	m.tap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.tap, "tap")
 	gtk4rt.Connect(m.tap, "clicked", m.tap_clicked_handler)
-	m.wrap = gtk4rt.ButtonNew()
+	m.wrap = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.wrap, "wrap")
 	gtk4rt.Connect(m.wrap, "clicked", m.wrap_clicked_handler)
-	__n0 := gtk4rt.LabelNew("")
+	__n0 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n0, ("d" + fmt.Sprint(m.__ctx_depth)))
 	gtk4rt.LabelSetXAlign(__n0, 0.0)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ((m.clicked + " ") + m.provided))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	m.__effects0_settle()
@@ -1994,7 +1994,7 @@ pass sha256:a0ca5f9f61d54888c585cf6f03e1258a
 -- run/go/fyne --
 pass sha256:a0b7c7704ea0dae53f165f5bedb124f3
 -- run/go/gtk4 --
-pass sha256:ac94017e8144d1932857869ca29e4f4a
+pass sha256:f578407d7f56a072885c563412e6dcde
 -- run/go/html --
 pass sha256:c013206a0b6fb57fcd73783c51bdb0c6
 -- run/kotlin/android --

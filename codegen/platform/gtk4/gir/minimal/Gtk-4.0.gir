@@ -314,6 +314,29 @@ relations from @child to @button.</doc>
           </parameter>
         </parameters>
       </method>
+      <method name="remove" c:identifier="gtk_box_remove">
+        <doc xml:space="preserve"
+             filename="gtk/gtkbox.c"
+             line="669">Removes a child widget from the box.</doc>
+        <source-position filename="gtk/gtkbox.h" line="102"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="box" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gtk/gtkbox.c"
+                 line="671">a box</doc>
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="child" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gtk/gtkbox.c"
+                 line="672">the child to remove</doc>
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
     </class>
     <class name="CheckButton" c:type="GtkCheckButton" parent="Widget">
       <constructor name="new" c:identifier="gtk_check_button_new"/>

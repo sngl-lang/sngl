@@ -61,5 +61,5 @@ func lowerInstanceBodies(pkg *ir.Package, caps Features, opts Options) error {
 		}
 		comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
 	}
-	return nil
+	return st.err
 }

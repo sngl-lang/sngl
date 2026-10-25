@@ -611,7 +611,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				for i := range m.shown {
-					__n0 := gtk4rt.LabelNew("")
+					__n0 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n0, ("row " + fmt.Sprint(i)))
 					gtk4rt.LabelSetXAlign(__n0, 0.0)
 					gtk4rt.SetLook(__n0, gtk4rt.Look{Height: 48.0})
@@ -644,10 +644,11 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.list = gtk4rt.ScrollNew()
+	gtk4rt.ScrollSetDirection(m.list, "")
 	gtk4rt.SetLook(m.list, gtk4rt.Look{Grow: 1.0})
 	gtk4rt.ScrollOnReachEnd(m.list, m.list_reachEnd_handler)
-	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	m.__n1 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__renderSlot0(m.__n1)
 	gtk4rt.ScrolledWindowSetChild(m.list, m.__n1)
@@ -1257,7 +1258,7 @@ pass sha256:658dc1a46681fd184a1c7d82441559e1
 -- run/go/fyne --
 pass sha256:c8e32403f28d2065b0ec58aa2b3911e7
 -- run/go/gtk4 --
-pass sha256:0659a56b8fa18606cf6bf8a8094a54ee
+pass sha256:cb54610e206faab14c4b3d82993b8b8a
 -- run/kotlin/android --
 pass sha256:de57300bddbae3766a0eba0a1c777341
 -- run/none/html --

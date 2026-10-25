@@ -714,7 +714,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			for m.__renderAgain0 {
 				m.__renderAgain0 = false
 				for _, __entry := range m.__slot0 {
-					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+					gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
 				}
 				m.__slot0 = nil
 				m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
@@ -726,9 +726,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 						__n1 = m.__inst0_live[__inst0_i]
 						__n1.Set__on0(func() {
 							m.hits += x
-							__ctmp1 := C.CString(("hits " + fmt.Sprint(m.hits)))
-							C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp1)
-							C.free(unsafe.Pointer(__ctmp1))
+							gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n0)), ("hits " + fmt.Sprint(m.hits)))
 						})
 						__n1.Set__p0(x)
 					} else {
@@ -737,9 +735,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 						}
 						__n1__new := new__canvas0Instance(m, x, func() {
 							m.hits += x
-							__ctmp2 := C.CString(("hits " + fmt.Sprint(m.hits)))
-							C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp2)
-							C.free(unsafe.Pointer(__ctmp2))
+							gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n0)), ("hits " + fmt.Sprint(m.hits)))
 						})
 						__n1 = __n1__new
 					}
@@ -771,9 +767,7 @@ func (m *Model) __snglTeardown() {
 
 func (m *Model) board_click_handler() {
 	m.hits += 1
-	__ctmp3 := C.CString(("hits " + fmt.Sprint(m.hits)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp3)
-	C.free(unsafe.Pointer(__ctmp3))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n0)), ("hits " + fmt.Sprint(m.hits)))
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -870,14 +864,12 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(6))
-	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	__ctmp0 := C.CString(("hits " + fmt.Sprint(m.hits)))
-	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), __ctmp0)
-	C.free(unsafe.Pointer(__ctmp0))
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.float(0.0))
+	__n2 := (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(__n2)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(__n2)), 6)
+	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
+	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n0)), ("hits " + fmt.Sprint(m.hits)))
+	gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(m.__n0)), 0.0)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	m.board = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.board, C.int(40))
@@ -1151,6 +1143,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:84964ce959de6b4b0de00a570ca2ddb1
 -- run/go/gtk4 --
-pass sha256:c37126c79214e0c4f7479ed4bb4750f2
+pass sha256:125df63c71d4041f306a7e20bdd28144
 -- run/none/html --
 pass sha256:54d0065e779f1d590befcdb71dfec655

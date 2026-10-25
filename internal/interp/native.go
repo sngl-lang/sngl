@@ -74,6 +74,9 @@ func (env *Env) Paint(v *View) error {
 	if v == nil || env.owned().simulated == "" {
 		return nil
 	}
+	if err := env.hostProtocols(v); err != nil {
+		return err
+	}
 	var walk func([]*Node) error
 	walk = func(nodes []*Node) error {
 		for _, n := range nodes {

@@ -1434,7 +1434,7 @@ func newModifierInstance(__model *Model, __a_label string) *ModifierInstance {
 	c.__prop_label = __a_label
 	c.count = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.count)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.count = (c.count + 1)
@@ -1550,15 +1550,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	m.__n3 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.go__r0 = gtk4rt.ButtonNew()
+	m.go__r0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.go__r0, ((((((((((((((((("go " + fmt.Sprint(m.range__r0)) + " ") + fmt.Sprint(m.chan__r0)) + " ") + fmt.Sprint(m.m__r0)) + " ") + fmt.Sprint(m.cmd)) + " ") + fmt.Sprint(m.object)) + " ") + fmt.Sprint(m.width)) + " ") + m.it.Type) + " ") + fmt.Sprint(m.it.Class)) + " ") + fmt.Sprint(m.mod.N)))
 	gtk4rt.Connect(m.go__r0, "clicked", m.go__r0_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.go__r0)
 	m.__renderSlot0(m.__n3)
-	m.__n4 = gtk4rt.ButtonNew()
+	m.__n4 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n4, "more")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.__n4)
@@ -1862,7 +1862,7 @@ pass sha256:f3eeffd75c7e2261c51b1407abf0a50b
 -- run/go/fyne --
 pass sha256:26865ea3f1d3d0a163f719a18333ecdf
 -- run/go/gtk4 --
-pass sha256:20407f3659c3372ffd0141d1d56c9767
+pass sha256:109cb901e60dc5a22a8e228910f630cc
 -- run/kotlin/android --
 pass sha256:a52feb0e778e5b109a6fc70aa3049491
 -- run/none/html --

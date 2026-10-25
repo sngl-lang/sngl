@@ -787,10 +787,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
+	m.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(m.count) + " ") + fmt.Sprint(m.renders__inst0)))
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.count) + ":") + fmt.Sprint(m.seen)))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	m.__effects0_settle()
@@ -1000,7 +1000,7 @@ pass sha256:86c37bc5961f8a1e1192d82d871f01b8
 -- run/go/fyne --
 pass sha256:0b1907b116a6bf6c796cee459445f1d7
 -- run/go/gtk4 --
-pass sha256:ede298e8382922a81539b9ec6f9c49ff
+pass sha256:71350986bbb58775acf8716a30e815b7
 -- run/kotlin/android --
 pass sha256:c565b32ee58ac19a542de3ef0c2276aa
 -- run/none/html --

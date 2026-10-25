@@ -747,7 +747,7 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 		bindRoot(freshEl, fresh, key),
 		bindRoot(prevEl, cur, nil),
 		op(ir.NodeOpInsertBefore, place, elRef(freshEl), elRef(prevEl)),
-		op(ir.NodeOpRemoveChild, cloneIdent(place), elRef(prevEl)),
+		st.childOp(ir.ProtocolRemove, cloneIdent(place), elRef(prevEl)),
 		op(ir.NodeOpDestroyComponent, varRef(cur)),
 		&ir.Assign{Target: varRef(cur), Op: ast.AssignSet, Value: varRef(fresh)},
 	}

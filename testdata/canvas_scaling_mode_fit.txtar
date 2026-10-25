@@ -499,6 +499,7 @@ func (m *Model) w_closed_handler() {
 
 func (m *Model) w_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.w)), m.visible__inst0)
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -521,7 +522,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.w = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.w = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.w)), m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.w)), m.w_closed_handler)
+	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.w)), m.w_visible_handler)
 	m.__n0 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n0, C.int(200))
 	C.gtk_drawing_area_set_content_height(m.__n0, C.int(100))
@@ -541,6 +545,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
+	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.w)))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -884,7 +889,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:2d438c4d6e4072e1c1be3656e0b2ec13
+pass sha256:577b891b4ba90c751edd115ad7e752f0
 -- run/kotlin/android --
 pass sha256:36e28049e3733ac5845c8e53751c4f78
 -- run/none/html --

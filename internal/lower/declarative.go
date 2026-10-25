@@ -41,7 +41,10 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	// attached to it (ir.AppParent), and what that means is the platform's.
 	st.hosted = nil
 	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, appRef())
-	return nil
+	if st.err != nil {
+		return st.err
+	}
+	return spliceSets(pkg, caps)
 }
 
 type declarativeState struct {
@@ -67,6 +70,11 @@ type declarativeState struct {
 	// returning a widget, and asking that widget for a root reads a field it
 	// has not got.
 	instanceRecords bool
+	// connect is the platform's #[gen.protocol(connect)], nil on a target
+	// declaring none.
+	connect *ir.Func
+	// err is the first protocol function that could not be spliced.
+	err error
 	// nestedInstance, set while a render slot's body is lowered, builds an
 	// instance written under a node of that body: the slot keeps it in a
 	// registry, as it keeps one written at the body's top, so the next render
@@ -75,7 +83,7 @@ type declarativeState struct {
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
-	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}}
+	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: caps.connect}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -275,7 +283,7 @@ func nodeIntProp(n *ir.NodeInst, name string) int {
 //
 //  1. var __nM <component> = lower.createNode("name")
 //  2. #__nM.<key> = <propExpr>            (per prop)
-//  3. lower.attachHandler(#__nM, "<evt>", __nM_<evt>_handler)  (per handler)
+//  3. lower.attachHandler(#__nM, "<evt>", __nM_<evt>_handler[, connect])  (per handler)
 //  4. for each child: emit child's full subtree, then
 //     lower.appendChild(#__nM, #__nC)
 func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func) []ir.Stmt {
@@ -305,17 +313,21 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	// so a widget-emitting platform can still build a raster-backed canvas.
 	// Its shapes are a family of their own and were never flattened; without
 	// the back-pointer the flattening is where the drawing is lost.
+	create := &ir.Call{
+		Type: varType,
+		Func: st.intrinsics["CreateNode"],
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: ir.TypString, Value: n.Name}},
+		},
+	}
+	if made := st.made(n); made != nil {
+		create.Args = append(create.Args, ir.CallArg{Value: made})
+	}
 	lv := &ir.LocalVar{
 		Name:    id,
 		Type:    varType,
 		NodeAST: n.AST,
-		Init: &ir.Call{
-			Type: varType,
-			Func: st.intrinsics["CreateNode"],
-			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Value: n.Name}},
-			},
-		},
+		Init:    create,
 	}
 	if ir.IsShapeContainer(n) {
 		lv.CanvasNode = n
@@ -376,16 +388,16 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			handlerArg = &ir.Ident{Name: handlerName, Type: h.Func.SymType(), Sym: h.Func}
 		}
 
+		args := []ir.CallArg{
+			{Value: ref()},
+			{Value: &ir.Literal{Type: ir.TypString, Value: h.Name}},
+			{Value: handlerArg},
+		}
+		if connect := st.connected(n, h.Name, ref()); connect != nil {
+			args = append(args, ir.CallArg{Value: connect})
+		}
 		stmts = append(stmts, &ir.CallStmt{
-			Call: &ir.Call{
-				Type: ir.TypVoid,
-				Func: st.intrinsics["AttachHandler"],
-				Args: []ir.CallArg{
-					{Value: ref()},
-					{Value: &ir.Literal{Type: ir.TypString, Value: h.Name}},
-					{Value: handlerArg},
-				},
-			},
+			Call: &ir.Call{Type: ir.TypVoid, Func: st.intrinsics["AttachHandler"], Args: args},
 		})
 	}
 
@@ -407,6 +419,143 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	}
 
 	return stmts
+}
+
+// made is what n's #[gen.protocol(create)] function returns, spliced as the
+// createNode op's second operand, or nil for a node whose platform makes it
+// itself.
+func (st *declarativeState) made(n *ir.NodeInst) ir.Expr {
+	if n.Component == nil || n.Component.Protocol == nil || n.Component.Protocol.Create == nil {
+		return nil
+	}
+	made, err := protocolSplice(n.Component.Protocol.Create, nil)
+	if err != nil && st.err == nil {
+		st.err = fmt.Errorf("%s: %w", n.Name, err)
+	}
+	return made
+}
+
+// connected is what the component's #[gen.protocol(on)] for event, or else
+// the platform's #[gen.protocol(connect)], does with event on node, spliced
+// as the attachHandler op's fourth operand, or nil where the node's component
+// declares no protocol and its platform connects it itself. The platform's
+// connect is handed the event under the name its host knows it by.
+func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr) ir.Expr {
+	if n.Component == nil || n.Component.Protocol == nil {
+		return nil
+	}
+	fn, args := n.Component.Protocol.Handler(event), []ir.Expr{node}
+	if fn == nil {
+		if st.connect == nil {
+			return nil
+		}
+		name := event
+		for _, e := range n.Component.Events {
+			if e.Name == event && e.Connects != "" {
+				name = e.Connects
+			}
+		}
+		fn, args = st.connect, append(args, &ir.Literal{Type: ir.TypString, Value: name})
+	}
+	connect, err := protocolSplice(fn, args)
+	if err != nil && st.err == nil {
+		st.err = fmt.Errorf("%s: %w", n.Name, err)
+	}
+	return connect
+}
+
+// protocolSplice is what fn, a #[gen.protocol] function, does with its
+// parameters bound to args: the expression it returns, or the call that is
+// its one statement. Marshaled here: passCMarshal ran before the op it is
+// spliced into existed. A parameter past args is left as it is written: the
+// connect's handler, which the op carries beside the splice, is put in place
+// by the platform, since whether it is a method or a closure is the shape of
+// the code it writes, and a copy here would be a second body every pass
+// after this one rewrites.
+func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
+	body := exprBody(fn)
+	if body == nil && len(fn.Block) == 1 {
+		if cs, ok := fn.Block[0].(*ir.CallStmt); ok {
+			body = cs.Call
+		}
+	}
+	if body == nil {
+		return nil, fmt.Errorf("#[gen.protocol(%s)] %s is spliced where its op is made, so its body is one return or one call", fn.Protocol, fn.Name)
+	}
+	bound := map[ir.Symbol]ir.Expr{}
+	for i, arg := range args {
+		bound[fn.Params[i]] = arg
+	}
+	spliced := ir.CloneExprSharingDecls(body)
+	// The optimizer folds a program's `null` and never saw this body: a
+	// library function nothing calls is not one of the program's.
+	_ = ir.Rewrite(spliced, func(n ir.Node) (ir.Node, error) {
+		if id, ok := n.(*ir.Ident); ok {
+			if arg, ok := bound[id.Sym]; ok {
+				return ir.CloneExprSharingDecls(arg), nil
+			}
+			if v, ok := id.Sym.(*ir.Var); ok && v.Builtin == ir.BuiltinNull {
+				return &ir.Literal{Type: ir.TypNull}, nil
+			}
+		}
+		return n, nil
+	})
+	if err := marshalSpliced(spliced); err != nil {
+		return nil, err
+	}
+	return spliced, nil
+}
+
+// childOp is the node op intrinsic (AppendChild, RemoveChild) of child under
+// parent. Where the parent's component declares its protocol, what its
+// #[gen.protocol(op)] function does with the two rides along as the last
+// operand; a component made through a create and declaring no append takes
+// no child.
+func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.CallStmt, error) {
+	call := &ir.Call{
+		Type: ir.TypVoid,
+		Func: intrinsic,
+		Args: []ir.CallArg{{Value: parent}, {Value: child}},
+	}
+	stmt := &ir.CallStmt{Call: call}
+	t := parent.ExprType()
+	if t == nil {
+		return stmt, nil
+	}
+	comp, _ := t.Decl.(*ir.Component)
+	if comp == nil || comp.Protocol == nil {
+		return stmt, nil
+	}
+	if isNoWidget(child) {
+		return stmt, nil
+	}
+	fn := comp.Protocol.Op(op)
+	if fn == nil {
+		if op == ir.ProtocolAppend {
+			return stmt, fmt.Errorf("%s takes no child: its package declares how it is made, and no #[gen.protocol(append)] to put one into it", comp.Name)
+		}
+		return stmt, nil
+	}
+	spliced, err := protocolSplice(fn, []ir.Expr{parent, child})
+	if err != nil {
+		return stmt, fmt.Errorf("%s: %w", comp.Name, err)
+	}
+	call.Args = append(call.Args, ir.CallArg{Value: spliced})
+	return stmt, nil
+}
+
+// isNoWidget reports whether child is a node of an #[intrinsic] component
+// whose package declares no protocol for it, under a parent whose package
+// does: a node the platform reads off the tree rather than builds, such as
+// gtk4's span, a piece of its flow's markup. Nothing is put into the parent
+// for it.
+func isNoWidget(child ir.Expr) bool {
+	t := child.ExprType()
+	if t == nil {
+		return false
+	}
+	comp, _ := t.Decl.(*ir.Component)
+	return comp != nil && comp.Intrinsic != "" && comp.Protocol == nil
 }
 
 // hasRealComponentBody reports whether comp carries SNGL-defined behavior
@@ -470,14 +619,11 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 // appendChildStmt attaches a node to a parent expression: what the tree
 // attaches for it (attachRef).
 func (st *declarativeState) appendChildStmt(parent ir.Expr, child *ir.NodeInst) ir.Stmt {
-	return &ir.CallStmt{Call: &ir.Call{
-		Type: ir.TypVoid,
-		Func: st.intrinsics[ir.NodeOpAppendChild],
-		Args: []ir.CallArg{
-			{Value: parent},
-			{Value: st.attachRef(child)},
-		},
-	}}
+	stmt, err := childOp(st.intrinsics[ir.NodeOpAppendChild], ir.ProtocolAppend, parent, st.attachRef(child))
+	if err != nil && st.err == nil {
+		st.err = err
+	}
+	return stmt
 }
 
 // attachRef is a reference to what the tree attaches for n (attachName),
@@ -563,8 +709,8 @@ func newDeclarativeStateForSlot(pkg *ir.Package, caps Features) *declarativeStat
 	// Only the capabilities that decide shape travel: the slot path always
 	// keeps handlers as closures -- which is Lambda held, not withheld --
 	// and whether an instance is a record is the target's answer rather than
-	// the slot's.
-	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative})
+	// the slot's. The connect is the platform's wherever a node is built.
+	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative, connect: caps.connect})
 	st.inlineHandlers = true
 	// Seed the counter past every __nN already allocated package-wide
 	// — including those inside sibling slot Funcs created by earlier

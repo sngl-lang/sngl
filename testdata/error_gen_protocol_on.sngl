@@ -1,0 +1,30 @@
+// #[gen.protocol(on)] says how a platform connects one event of the widget an
+// #[intrinsic] component stands for, where the host raises it through no call
+// the platform's connect makes: a function of the widget, typed as that
+// component, and the handler, named as the event it connects. A program
+// declares no intrinsic, so an on it writes is refused whatever its widget
+// is; the rules about the component and the event are the library's, and
+// TestGenProtocolPlacement holds them.
+
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+component box(label string = "", @tap()) ui.node {
+    ui.text(value=label)
+}
+
+#[gen.protocol(on)] // ERROR(check) "#[gen.protocol(on)] takes the widget and the handler, named as the event it connects"
+func takesOne(w box) {}
+
+#[gen.protocol(on)] // ERROR(check) "#[gen.protocol(on)] declares the #[intrinsic] component it connects to as its first parameter"
+func ofNumber(w int, tap func()) {}
+
+#[gen.protocol(on)] // ERROR(check) "#[gen.protocol(on)] is handed the handler, a function, as its second parameter"
+func ofString(w box, tap string) {}
+
+#[gen.protocol(on)] // ERROR(check) "#[gen.protocol(on)] declares the #[intrinsic] component it connects to, and box is not one"
+func ofBox(w box, tap func()) {}
+
+ui.window {
+    box()
+}

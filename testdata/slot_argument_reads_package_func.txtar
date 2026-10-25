@@ -821,10 +821,10 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	c.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
+	c.__n5 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n5, 1)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
@@ -949,10 +949,10 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst1_live = []*Frame__slot2Instance{}
 	c.__rendering1 = false
 	c.__renderAgain1 = false
-	c.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n7, gtk4rt.OrientationVertical)
+	c.__n7 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n7, 1)
 	gtk4rt.BoxSetSpacing(c.__n7, 6)
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(c.__n7, c.__n1)
@@ -1074,8 +1074,8 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
-	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
+	m.__n8 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n8, 1)
 	gtk4rt.BoxSetSpacing(m.__n8, 6)
 	m.__n3 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n3__el = m.__n3.Root
@@ -1415,7 +1415,7 @@ pass sha256:b7d782e5b3fda415af7b7bbb4c824a98
 -- run/go/fyne --
 pass sha256:35f386c4a440a13fdb91afdc0d8dfafe
 -- run/go/gtk4 --
-pass sha256:291ac5b939d017d3b49fe7090ee7a6be
+pass sha256:1136afe3969cdb0e37ec2a421d37c382
 -- run/kotlin/android --
 pass sha256:c364f7c8bbd237f4b5bdf9faa88152b3
 -- run/none/html --

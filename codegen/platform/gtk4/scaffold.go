@@ -42,9 +42,6 @@ type scaffoldData struct {
 	FunctionCode   string
 	Imports        []string // model.go's; repeats are fine, the FileEmitter dedupes
 	NeedsBoolToInt bool     // emit boolToInt helper only when boolToGoInt was used
-	// CStrings are the literals the inline-cgo code hands to C, each a
-	// package-level var holding its C copy for the application's lifetime.
-	CStrings []cStringDecl
 	// NeedsGObjectSet emits the g_object_set_property helpers, for the GTK
 	// properties that have no C setter of their own.
 	NeedsGObjectSet bool
@@ -52,12 +49,8 @@ type scaffoldData struct {
 	// NeedsCalendarDate emits snglCalendarDate, which a datepicker's change
 	// handler reads its payload through.
 	NeedsCalendarDate bool
-	// NeedsDropDown emits snglDropDownOffer, which a select's override offers
-	// its choices through (offerChoices), for a program that renders a
-	// GtkDropDown; the C under it is gtk4rt's.
-	NeedsDropDown bool
-	HasCanvas     bool // emit the cairo draw-func trampoline glue in callbacks.go
-	Wrapped       bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
+	HasCanvas         bool // emit the cairo draw-func trampoline glue in callbacks.go
+	Wrapped           bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
 	// CLinks is the #cgo flags and #include lines of the c.link directives
 	// the program reaches, for the `#[cnative]` functions it calls. Its
 	// calls are cgo, so a program carrying one is built in inline mode.

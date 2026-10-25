@@ -1,0 +1,29 @@
+// #[gen.protocol(append)] says how a platform puts a child into the widget an
+// #[intrinsic] component stands for, and #[gen.protocol(remove)] how it takes
+// one out: a function of the parent and the child, the parent typed as that
+// component and declared beside it. A program declares no intrinsic, so an
+// append it writes is refused whatever its parent is; the rules about the
+// component are the library's, and TestGenProtocolPlacement holds them.
+
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+component box() ui.node {
+    ui.text(value="box")
+}
+
+#[gen.protocol(append)] // ERROR(check) "#[gen.protocol(append)] takes the parent and the child"
+func takesOne(parent box) {}
+
+#[gen.protocol(remove)] // ERROR(check) "#[gen.protocol(remove)] takes the parent and the child"
+func takesThree(parent box, child ui.node, at int) {}
+
+#[gen.protocol(append)] // ERROR(check) "#[gen.protocol(append)] declares the #[intrinsic] component it adds to as its first parameter"
+func intoNumber(parent int, child ui.node) {}
+
+#[gen.protocol(append)] // ERROR(check) "#[gen.protocol(append)] declares the #[intrinsic] component it adds to, and box is not one"
+func intoBox(parent box, child ui.node) {}
+
+ui.window {
+    box()
+}

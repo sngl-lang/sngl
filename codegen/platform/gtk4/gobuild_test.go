@@ -13,6 +13,34 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
+// genOptions is the options the generate helpers hand Generate, which
+// withCgo sets.
+var genOptions map[string]any
+
+// withCgo builds what the rest of t generates under the cgo option: the
+// registered platform the check reads the widget declarations from, and the
+// generator. A program needs it to take the cgo path when it renders nothing
+// that puts it there of its own accord, a canvas or a #[cnative] it calls.
+// The GIR a test selected before it stays selected.
+func withCgo(t *testing.T) {
+	t.Helper()
+	reg := codegen.LookupPlatform(platformName).(*Generator)
+	if err := reg.Configure(map[string]string{"gir": reg.girOption(), "cgo": "true"}); err != nil {
+		t.Fatalf("configure registered gtk4: %v", err)
+	}
+	t.Cleanup(func() { _ = reg.Configure(map[string]string{}) })
+	genOptions = map[string]any{"cgo": true}
+	t.Cleanup(func() { genOptions = nil })
+}
+
+func genRequest(pkg *ir.Package, lang codegen.LangTranslator) *codegen.Request {
+	req := &codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}
+	if genOptions != nil {
+		req.Options = codegen.OptionsFromMap(genOptions)
+	}
+	return req
+}
+
 // generateGTK4ModelBuilt is the pipeline internal/build runs, which is what
 // `sngl generate` is: optimize, lower, and optimize AGAIN. Without the
 // optimizer an emission carries `null` where no Go declares one, and names
@@ -51,7 +79,7 @@ func generateGTK4ModelBuilt(t *testing.T, src string) string {
 		t.Fatalf("optimize2: %v", err)
 	}
 	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
+	if err := g.Generate(genRequest(pkg, lang), mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	modelSrc, ok := mem.Files()["model.go"]
@@ -98,7 +126,7 @@ func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
 		t.Fatalf("optimize2: %v", err)
 	}
 	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
+	if err := g.Generate(genRequest(pkg, lang), mem); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	out := map[string]string{}

@@ -1091,14 +1091,14 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__prop___p0 = __a___p0
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationVertical)
+	__n6 := gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(__n6, 1)
 	gtk4rt.BoxSetSpacing(__n6, 6)
-	__n7 := gtk4rt.LabelNew("")
+	__n7 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n7, "static")
 	gtk4rt.LabelSetXAlign(__n7, 0.0)
 	gtk4rt.BoxAppend(__n6, __n7)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ("up " + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(__n6, c.__n0)
@@ -1146,7 +1146,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__prop___p1 = __a___p1
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	c.Root = c.__n1
@@ -1218,14 +1218,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
-	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationVertical)
+	m.__n5 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n5, 1)
 	gtk4rt.BoxSetSpacing(m.__n5, 6)
-	m.tick = gtk4rt.ButtonNew()
+	m.tick = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.tick, "tick")
 	gtk4rt.Connect(m.tick, "clicked", m.tick_clicked_handler)
 	gtk4rt.BoxAppend(m.__n5, m.tick)
-	m.flip = gtk4rt.ButtonNew()
+	m.flip = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
 	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
 	gtk4rt.BoxAppend(m.__n5, m.flip)
@@ -1581,7 +1581,7 @@ pass sha256:3f8ac21f0b5c1aa33190ba8cfafb6457
 -- run/go/fyne --
 pass sha256:68ae74cfe3602369d972b5490bf4f0e6
 -- run/go/gtk4 --
-pass sha256:3e11ebc696644166f1796437f7f403e9
+pass sha256:630c32f913a655dc7d931e1ca31050a7
 -- run/kotlin/android --
 pass sha256:f4c6ce22ded9b9b8a60c109172ebfa3c
 -- run/none/html --

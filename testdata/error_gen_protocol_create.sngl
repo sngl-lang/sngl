@@ -1,0 +1,29 @@
+// #[gen.protocol(create)] says how a platform makes the widget an
+// #[intrinsic] component stands for: a function of no parameters returning
+// that component, declared beside it. A program declares no intrinsic, so a
+// create it writes is refused whatever it returns; the rules about the
+// component returned are the library's, and TestGenProtocolPlacement
+// holds them.
+
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+#[gen.protocol(create)] // ERROR(check) "#[gen.protocol(create)] takes no parameters"
+func takesOne(n int) => n
+
+#[gen.protocol(create)] // ERROR(check) "#[gen.protocol(create)] declares the #[intrinsic] component it returns"
+func makesNumber() => 0
+
+#[gen.protocol(create)] // ERROR(check) "#[gen.protocol(create)] declares the #[intrinsic] component it returns"
+func makesInt() int {
+    return 0
+}
+
+#[gen.protocol(create)] // ERROR(check) "#[gen.protocol] cannot mark a struct"
+struct point {
+    x int
+}
+
+ui.window {
+    ui.text(value="{takesOne(1) + makesNumber() + makesInt()}")
+}

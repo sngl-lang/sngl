@@ -480,13 +480,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__slot0 = nil
 				m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 				if m.__failed0 {
-					__n1 := gtk4rt.LabelNew("")
+					__n1 := gtk4rt.New("GtkLabel")
 					gtk4rt.LabelSetLabel(__n1, "sorry it broke")
 					gtk4rt.LabelSetXAlign(__n1, 0.0)
 					gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 					m.__slot0 = append(m.__slot0, __n1)
 				} else {
-					__n2 := gtk4rt.ButtonNew()
+					__n2 := gtk4rt.New("GtkButton")
 					gtk4rt.ButtonSetLabel(__n2, "boom")
 					gtk4rt.Connect(__n2, "clicked", func() {
 						func() {
@@ -539,11 +539,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	m.__n3 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	for _, x := range []string{"a", "b"} {
-		m.__n4 = gtk4rt.LabelNew("")
+		m.__n4 = gtk4rt.New("GtkLabel")
 		gtk4rt.LabelSetLabel(m.__n4, x)
 		gtk4rt.LabelSetXAlign(m.__n4, 0.0)
 		gtk4rt.BoxAppend(m.__n3, m.__n4)
@@ -663,6 +663,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:21726da4e36d3af10c13883c3b901a9e
 -- run/go/gtk4 --
-pass sha256:854cf11b02b37f43a3a897f4724f2aed
+pass sha256:9ac6f8c899004e4d68bc9ab8e23b77d7
 -- run/none/html --
 pass sha256:acc91ef1047a11ffc9ea506a1cf7ba04

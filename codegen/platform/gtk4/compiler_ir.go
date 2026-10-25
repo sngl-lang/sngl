@@ -298,7 +298,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), scrolls: collectScrolls(c.ctx.Pkg), toplevelIcons: map[string]string{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)
@@ -431,12 +431,11 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	// The inline-cgo scaffold has no runtime to attach a window to, so it puts
 	// the first one's box in the window BuildUI makes, as it did the one
 	// window it could build before a window was a node.
-	var cgoTitle ir.Expr
-	cgoIcon := ""
+	cgoWindow, cgoIcon := "", ""
 	if appRoot && !c.wrapped {
 		topLevelRefs = append(slices.Clip(topLevelRefs), appChildren...)
 		if len(appChildren) > 0 {
-			cgoTitle = c.shared.toplevelTitles[appChildren[0]]
+			cgoWindow = appChildren[0]
 			cgoIcon = c.shared.toplevelIcons[appChildren[0]]
 		}
 	}
@@ -471,7 +470,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 		}
 		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
 	} else {
-		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, c.shared, cgoTitle, cgoIcon, widgetFieldNames(widgetFields))
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoWindow, cgoIcon, widgetFieldNames(widgetFields))
 	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
@@ -482,7 +481,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers, c.wrapped)
 	for _, inv := range vc.eventInvokers {
 		// A calendar's invoker selects the day through model.go's helper.
-		if inv.WidgetType == "GtkCalendar" {
+		if inv.WidgetType == "GtkCalendar" && !c.wrapped {
 			c.shared.calendarDate = true
 		}
 	}
@@ -546,11 +545,9 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 		Main:              c.cfg.Main,
 		FunctionCode:      functionCode,
 		NeedsBoolToInt:    c.shared.boolToInt,
-		CStrings:          c.shared.cStrings,
 		NeedsGObjectSet:   c.shared.gObjectSet,
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,
-		NeedsDropDown:     c.shared.dropDown,
 		Wrapped:           c.wrapped,
 		CLinks:            golang.CPreambleLines(ir.ReachedCLinks(c.ctx.Pkg)),
 	}
@@ -712,19 +709,12 @@ var widgetReads = map[string]string{
 	"gtk4.dropDownLabel": "GtkDropDown",
 }
 
-// widgetWrites are the setters gtk4.sngl declares for an override to write
-// what a control holds when it decides to, by intrinsic id, and the widget
-// each writes.
-var widgetWrites = map[string]string{
-	"gtk4.setEntryText": "GtkEntry",
-}
-
-// widgetAccess spells widgetReads and widgetWrites calls for one scope.
+// widgetAccess spells widgetReads calls, and the widgets a gtk4rt native is
+// handed, for one scope.
 type widgetAccess struct {
-	read  func(cType string, ref ir.Expr) ir.Expr
-	write func(cType string, ref, value ir.Expr) ir.Expr
-	// shared releases the C strings a write makes (ownCStrings).
-	shared *emitShared
+	read func(cType string, ref ir.Expr) ir.Expr
+	// handle is the widget as the Handle a gtk4rt native takes.
+	handle func(cType string, ref ir.Expr) ir.Expr
 }
 
 // selfIsNode is a signal handler's body with its parameters read as the node
@@ -750,14 +740,14 @@ func selfIsNode(stmts []ir.Stmt, params []*ir.Param, node ir.Expr) []ir.Stmt {
 	return stmts
 }
 
-// readWidgets rewrites each widgetReads and widgetWrites call in stmts to the
-// getter or setter access answers for the widget it is handed. The statements
-// are copied first: a body is the lowered IR's, shared with every other reader
-// of it.
+// readWidgets rewrites each widgetReads call in stmts to the getter access
+// answers for the widget it is handed, and hands each gtk4rt native the
+// widgets it takes as Handles. The statements are copied first: a body is the
+// lowered IR's, shared with every other reader of it.
 func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 	found := false
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && (widgetReads[c.Func.Intrinsic] != "" || widgetWrites[c.Func.Intrinsic] != "") {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && (widgetReads[c.Func.Intrinsic] != "" || takesWidget(c.Func)) {
 			found = true
 			return ir.SkipAll
 		}
@@ -772,7 +762,7 @@ func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 	// read here, the parameter would be taken for a widget handed in as a value.
 	attached := map[*ir.Param]struct{}{}
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) == 3 {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) >= 3 {
 			if lam, ok := c.Args[2].Value.(*ir.Lambda); ok && lam.Func != nil {
 				for _, p := range lam.Func.Params {
 					attached[p] = struct{}{}
@@ -793,11 +783,15 @@ func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 				}
 			}
 		}
-		if cType := widgetWrites[c.Func.Intrinsic]; cType != "" && len(c.Args) == 2 {
-			if w := access.write(cType, c.Args[0].Value, c.Args[1].Value); w != nil {
-				return w, ir.SkipDir
+		if takesWidget(c.Func) {
+			cp := *c
+			cp.Args = slices.Clone(c.Args)
+			for i, p := range c.Func.Params {
+				if cType := widgetCType(paramComponent(p)); cType != "" && i < len(cp.Args) {
+					cp.Args[i].Value = access.handle(cType, cp.Args[i].Value)
+				}
 			}
-			return e, nil
+			return &cp, nil
 		}
 		cType := widgetReads[c.Func.Intrinsic]
 		if cType == "" || len(c.Args) != 1 {
@@ -808,7 +802,24 @@ func readWidgets(stmts []ir.Stmt, access widgetAccess) []ir.Stmt {
 		}
 		return e, nil
 	})
-	return access.shared.ownCStrings(stmts)
+	return stmts
+}
+
+// takesWidget reports whether fn is a gtk4rt native taking a widget, which it
+// takes as a Handle whichever mode the file is emitted in.
+func takesWidget(fn *ir.Func) bool {
+	if fn.Foreign.Path != gtk4rtPkg {
+		return false
+	}
+	return slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return widgetCType(paramComponent(p)) != "" })
+}
+
+func paramComponent(p *ir.Param) *ir.Component {
+	if p == nil || p.Type == nil {
+		return nil
+	}
+	c, _ := p.Type.Decl.(*ir.Component)
+	return c
 }
 
 // widgetReader is readWidgets' read for one scope, which qualify spells a
@@ -823,6 +834,9 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 	// the Model's field.
 	spell := func(cType string, ref ir.Expr) ir.Expr {
 		if id, ok := ref.(*ir.Ident); ok {
+			if isSlotParent(id) {
+				return id
+			}
 			if isNodeRef(id) {
 				return qualify(strings.TrimPrefix(id.Name, "m."))
 			}
@@ -830,7 +844,7 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 		}
 		return ref
 	}
-	return widgetAccess{shared: shared, read: func(cType string, ref ir.Expr) ir.Expr {
+	return widgetAccess{read: func(cType string, ref ir.Expr) ir.Expr {
 		w := spell(cType, ref)
 		if wrapped {
 			if g := rtEventGetterExpr(cType, w); g != nil {
@@ -838,23 +852,25 @@ func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir
 			}
 		}
 		return shared.cgoEventGetter(cType, w)
-	}, write: func(cType string, ref, value ir.Expr) ir.Expr {
+	}, handle: func(cType string, ref ir.Expr) ir.Expr {
 		w := spell(cType, ref)
-		if wrapped {
-			return rtEventSetterExpr(cType, w, value)
+		if wrapped || isHandle(w) {
+			return w
 		}
-		return cgoEventSetterExpr(cType, w, value)
+		return &ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", w)}
 	}}
 }
 
-// cgoEventSetterExpr is the inline-cgo write of widgetWrites, the twin of
-// cgoEventGetterExpr.
-func cgoEventSetterExpr(cType string, widgetRef, value ir.Expr) ir.Expr {
-	switch cType {
-	case "GtkEntry":
-		return nativeCall("sngl_set_entry_text_quiet", ir.TypVoid, cgoCast("GtkEditable", widgetRef), cString(value))
+// isHandle reports whether n is already a node as gtk4rt takes it, which a
+// declared protocol's call puts its node in before a render slot's body is
+// read again.
+func isHandle(n ir.Node) bool {
+	conv, ok := n.(*ir.Conversion)
+	if !ok || conv.Type == nil {
+		return false
 	}
-	return nil
+	ref, ok := conv.Type.Meta.(ir.NativeTypeRef)
+	return ok && ref.Name == gtk4rtHandleType
 }
 
 // isNodeRef reports whether id names a node: one a lowering synthesized, or a
@@ -867,12 +883,10 @@ func isNodeRef(id *ir.Ident) bool {
 	return ok && v.NodeHandle
 }
 
-// modelNode spells a node of the Model, in the mode the file is emitted in.
-func modelNode(wrapped bool) func(name string) ir.Expr {
+// modelNode spells a node for the translator to put where its scope holds it:
+// a Model field, or a local of a render slot that keeps it.
+func modelNode(bool) func(name string) ir.Expr {
 	return func(name string) ir.Expr {
-		if wrapped {
-			return codegen.ModelFieldRef(name, gtk4rtHandleIRType())
-		}
 		return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
 	}
 }
@@ -1272,7 +1286,7 @@ func isWindowClass(cType string) bool {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, shared *emitShared, title ir.Expr, icon string, fields map[string]bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, window, icon string, fields map[string]bool) {
 	if wrapped {
 		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, "", fields)
 		return
@@ -1344,14 +1358,14 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setSizeCall}) {
 		fmt.Fprintf(b, "\t%s\n", line)
 	}
-	// Not through gtk4rt: the cgo scaffold does not require that module, so
-	// importing it does not build.
-	if title != nil {
-		setTitle := &ir.CallStmt{Call: nativeCall("gtk_window_set_title", ir.TypVoid, cgoCast("GtkWindow", winRef), cString(title))}
-		for _, st := range shared.ownCStrings([]ir.Stmt{setTitle}) {
-			for _, line := range gc.EvalStmt(st) {
-				fmt.Fprintf(b, "\t%s\n", line)
-			}
+	// The title the window's declared set handed gtk4rt, which copies it into
+	// C itself.
+	if window != "" {
+		setTitle := rtCall("ToplevelTitleWindow", ir.TypVoid,
+			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", winRef)},
+			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", buildRef(window, fields))})
+		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setTitle}) {
+			fmt.Fprintf(b, "\t%s\n", line)
 		}
 	}
 	setChildCall := &ir.Call{
@@ -1578,6 +1592,8 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 		fmt.Fprintf(b, "\tgtk4rt.%s(gtk4rt.Handle(unsafe.Pointer(%s)))\n", inv.RtFire, w)
 	case inv.GTKSignal == "pressed":
 		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
+	case notify && wrapped:
+		fmt.Fprintf(b, "\tgtk4rt.Notify(%s, %q)\n", w, prop)
 	case notify:
 		// g_signal_emit_by_name cannot be handed the GParamSpec a
 		// notification carries; g_object_notify builds it.
@@ -1602,7 +1618,7 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wrapped bool) {
 	setter := invokerStateSetter(inv.WidgetType, wrapped)
 	if wrapped {
-		fmt.Fprintf(b, "\tif gtk4rt.CheckButtonGetActive(%s) != v {\n", w)
+		fmt.Fprintf(b, "\tif %s(%s) != v {\n", strings.Replace(setter, "Set", "Get", 1), w)
 		fmt.Fprintf(b, "\t\t%s(%s, v)\n\t\treturn\n\t}\n", setter, w)
 		return
 	}

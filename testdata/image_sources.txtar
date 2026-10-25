@@ -1361,14 +1361,6 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-var (
-	__cstr0 = C.CString("see [logo]")
-	__cstr1 = C.CString("grow")
-	__cstr2 = C.CString("clicked")
-	__cstr3 = C.CString("JD")
-	__cstr4 = C.CString("Images")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1635,16 +1627,16 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 			for m.__renderAgain1 {
 				m.__renderAgain1 = false
 				for _, __entry := range m.__slot1 {
-					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+					gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
 				}
 				m.__slot1 = nil
 				m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
 				__inst1_next := []*__child0Instance{}
 				var __inst1_i int = 0
 				if m.failed__inst0 || !m.hasPhoto__inst0 {
-					__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr3)
-					C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n6)), C.float(0.0))
+					__n6 := (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
+					gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(__n6)), "JD")
+					gtk4rt.LabelSetXAlign(gtk4rt.Handle(unsafe.Pointer(__n6)), 0.0)
 					gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n6)), gtk4rt.Look{Css: "background: #cccccc; border-radius: 20px; ", Width: 40.0, Height: 40.0, Cross: 2, TextAlign: 1})
 					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot1_at)), gtk4rt.Handle(unsafe.Pointer(__n6)))
 					m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n6)))
@@ -1691,6 +1683,7 @@ func (m *Model) __n1_closed_handler() {
 
 func (m *Model) __n1_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
 }
 
 func (m *Model) __n9_click_handler() {
@@ -1970,7 +1963,7 @@ func (c *__child0Instance) __renderSlot0(parent *C.GtkBox) {
 			for c.__renderAgain0 {
 				c.__renderAgain0 = false
 				for _, __entry := range c.__slot0 {
-					C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+					gtk4rt.BoxRemove(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(__entry)))
 				}
 				c.__slot0 = nil
 				c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
@@ -2097,10 +2090,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n8 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n8)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n8)), C.int(6))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
+	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n1)), "Images")
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_closed_handler)
+	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.__n1_visible_handler)
+	m.__n8 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n8)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n8)), 6)
 	m.__n9 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n9)), "cover")
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_click_handler)
@@ -2140,15 +2137,12 @@ func (m *Model) buildWidgetTree() {
 	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n13), C.int((len(snglDrawFuncs) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n13)))
-	m.__n14 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_wrap((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.gboolean(1))
-	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(m.__n14)), C.float(0.0))
-	C.gtk_label_set_markup((*C.GtkLabel)(unsafe.Pointer(m.__n14)), __cstr0)
+	m.__n14 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.FlowNew()))
+	gtk4rt.LabelSetMarkup(gtk4rt.Handle(unsafe.Pointer(m.__n14)), "see [logo]")
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n14)))
-	m.__n17 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n17)), __cstr1)
-	snglCallbacks = append(snglCallbacks, m.__n17_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n17), __cstr2, C.int((len(snglCallbacks) - 1)))
+	m.__n17 = (*C.GtkButton)(unsafe.Pointer(gtk4rt.New("GtkButton")))
+	gtk4rt.ButtonSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "grow")
+	gtk4rt.Connect(gtk4rt.Handle(unsafe.Pointer(m.__n17)), "clicked", m.__n17_clicked_handler)
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n8)), gtk4rt.Handle(unsafe.Pointer(m.__n17)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n1)), gtk4rt.Handle(unsafe.Pointer(m.__n8)))
 	m.__n18 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
@@ -2165,7 +2159,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr4)
+	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	gtk4rt.WindowSetIcon(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n18)))
 	return win
@@ -3056,7 +3050,7 @@ pass sha256:f2281b980ccbbadff3723bb1b0d47f8c
 -- run/go/fyne --
 pass sha256:6a3780d357b9106625b5ef2e2bbd36ed
 -- run/go/gtk4 --
-pass sha256:bc794e16d5f3a745e38c6fe2408dcc60
+pass sha256:727a00364224c278eca31f793128c89a
 -- run/kotlin/android --
 pass sha256:aeefe898052217434123f9468ae1949a
 -- run/none/html --

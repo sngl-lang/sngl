@@ -53,20 +53,20 @@ window {
 	}
 	out := string(modelSrc)
 
-	// This program uses only the bounded stdlib widget surface (button/text/if),
-	// so gtk4 codegen emits it in wrapped mode: pkg/go/gtk4rt calls over
+	// This program draws nothing and calls no #[cnative], so gtk4 codegen
+	// emits it in wrapped mode: pkg/go/gtk4rt calls over
 	// gtk4rt.Handle, with no inline cgo. The reactive-if still lowers to a
 	// __renderSlot0 with teardown-and-rebuild; only the target API changes.
 	for _, snippet := range []string{
 		"func (m *Model) __renderSlot0(parent gtk4rt.Handle)",
 		"gtk4rt.BoxRemove(parent,",
 		"m.__slot0 = nil",
-		"gtk4rt.LabelNew(",
+		`gtk4rt.New("GtkLabel")`,
 		// The slot-local label does not escape __renderSlot0 (it is created,
 		// appended, and tracked in m.__slot0 all within this scope), so the
 		// node-escape lower pass emits it as a function-local `__n1 := ...`
 		// rather than a shared Model field. The slot slice keeps it alive.
-		"__n1 := gtk4rt.LabelNew(",
+		`__n1 := gtk4rt.New("GtkLabel")`,
 		"gtk4rt.LabelSetLabel(",
 		"gtk4rt.BoxAppend(",
 		"m.__slot0 = append(m.__slot0",
@@ -89,10 +89,9 @@ window {
 }
 
 // TestIntegration_StdlibComponentsWrapWithoutCgo asserts the coverage goal: a
-// program built only from stdlib components (which lower to the bounded native
-// widget surface) generates in wrapped mode with zero inline cgo, so it imports
-// pkg/go/gtk4rt and never `import "C"`. Users only pay the cgo compile cost
-// when they reach outside the stdlib (raw gtk4.* widgets).
+// program built only from stdlib components generates in wrapped mode with
+// zero inline cgo, so it imports pkg/go/gtk4rt and never `import "C"`. A
+// program pays the cgo compile cost only for a canvas or a #[cnative] it calls.
 func TestIntegration_StdlibComponentsWrapWithoutCgo(t *testing.T) {
 	src := `
 import . "sngl:ui"

@@ -961,7 +961,7 @@ func newCardInstance(__model *Model, __a_label string, __a_pick func(int, string
 	c.__prop_pick = __a_pick
 	c.clicks = 0
 	c.__slot0 = nil
-	c.__n0 = gtk4rt.ButtonNew()
+	c.__n0 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_label)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.clicks += 1
@@ -1033,7 +1033,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__renderSlot0(m.__n1)
-	m.__n2 = gtk4rt.LabelNew("")
+	m.__n2 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
@@ -1205,6 +1205,6 @@ pass sha256:6115e9ded2d2a13ef0b00390ce39dc70
 -- run/go/fyne --
 pass sha256:6a33394bd44d05815d1a2b95d62a3b6b
 -- run/go/gtk4 --
-pass sha256:7f9f2e6998737539245a6c198af7c083
+pass sha256:52661593914f2afb53842bcdbeb9a4dc
 -- run/none/html --
 pass sha256:ece199ae46ec94988362e5d7c5e1c2bb

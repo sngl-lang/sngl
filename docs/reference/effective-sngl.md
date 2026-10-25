@@ -1504,7 +1504,7 @@ Every `#[cnative]` and `#[go.native]` call is stubbed: an owned result is a fres
     leak: the Buf allocated at app.sngl:25:19 was never released, 2 times
 ```
 
-Run it without a C toolchain; nothing is compiled. What the simulation cannot see is a call a code generator writes after lowering, which releases its own strings.
+Run it without a C toolchain; nothing is compiled. A widget is made, written and connected through the same calls its target declares, so a string handed to one is tracked like any other.
 
 ## Style
 

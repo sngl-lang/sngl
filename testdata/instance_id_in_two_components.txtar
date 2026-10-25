@@ -1364,7 +1364,7 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.hit = gtk4rt.ButtonNew()
+	c.hit = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.hit, (c.__prop_label + fmt.Sprint(c.hits)))
 	gtk4rt.Connect(c.hit, "clicked", func() {
 		c.hits = (c.hits + 1)
@@ -1426,10 +1426,10 @@ func newPanelInstance(__model *Model) *PanelInstance {
 	c.__renderAgain0 = false
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n0, gtk4rt.OrientationVertical)
+	c.__n0 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(c.__n0, 1)
 	gtk4rt.BoxSetSpacing(c.__n0, 6)
-	c.flip = gtk4rt.ButtonNew()
+	c.flip = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.flip, "f")
 	gtk4rt.Connect(c.flip, "clicked", func() {
 		c.on = !c.on
@@ -1538,14 +1538,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	m.__n2 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n2, 1)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	m.ts = gtk4rt.ButtonNew()
+	m.ts = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.ts, "s")
 	gtk4rt.Connect(m.ts, "clicked", m.ts_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.ts)
-	m.to = gtk4rt.ButtonNew()
+	m.to = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.to, "o")
 	gtk4rt.Connect(m.to, "clicked", m.to_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.to)
@@ -2078,7 +2078,7 @@ pass sha256:6f42cb71640f4cd00f4abed4fe6f0a7e
 -- run/go/fyne --
 pass sha256:ce883e62743f57f27cd42e4ad857235e
 -- run/go/gtk4 --
-pass sha256:86b5d51a454ccc9e50a0886bb9ddbcf1
+pass sha256:a39ba3d5318217f18887d32f8a0e1b44
 -- run/kotlin/android --
 pass sha256:a404854251a63a6390c24adf2680c152
 -- run/none/html --

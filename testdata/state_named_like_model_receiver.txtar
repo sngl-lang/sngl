@@ -1039,14 +1039,14 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c.m__r2 = c.__prop_start
 	c.c__r1 = 0
 	c.__slot0 = nil
-	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationHorizontal)
+	__n4 := gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(__n4, 0)
 	gtk4rt.BoxSetSpacing(__n4, 6)
-	c.__n0 = gtk4rt.LabelNew("")
+	c.__n0 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n0, ((("m " + fmt.Sprint(c.m__r2)) + " c ") + fmt.Sprint(c.c__r1)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	gtk4rt.BoxAppend(__n4, c.__n0)
-	c.inc = gtk4rt.ButtonNew()
+	c.inc = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(c.inc, "inc")
 	gtk4rt.Connect(c.inc, "clicked", func() {
 		c.m__r2 += 1
@@ -1096,14 +1096,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationVertical)
+	__n3 := gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(__n3, 1)
 	gtk4rt.BoxSetSpacing(__n3, 6)
-	m.__n1 = gtk4rt.LabelNew("")
+	m.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n1, ("page " + fmt.Sprint(m.m__r3)))
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
 	gtk4rt.BoxAppend(__n3, m.__n1)
-	m.bump = gtk4rt.ButtonNew()
+	m.bump = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(__n3, m.bump)
@@ -1134,4 +1134,4 @@ pass sha256:28d6a950eaa2793ba72b05b7f70fc94d
 -- run/go/fyne --
 pass sha256:8c546caf280cc3a8982209900d1735b9
 -- run/go/gtk4 --
-pass sha256:6d47a33259894547ffbc8aaec0dfac7e
+pass sha256:f34b2a71e44076c55891b7c607ea9290

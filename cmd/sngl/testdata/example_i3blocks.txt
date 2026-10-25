@@ -48,5 +48,5 @@ stdout '"name":"load"'
 sha256:5e6b1d33e6a405854856c00a311201a5
 {}
 -- testrun/build/gtk4/go/i3blocks/bar.sngl/1 --
-sha256:c77c690a159c42deccf84cefdda49621
+sha256:2fce94359542ed4fca9531e92f4ab4b2
 {}

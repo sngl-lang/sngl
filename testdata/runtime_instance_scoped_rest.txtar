@@ -1055,14 +1055,14 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effects0_torn = false
 	c.__effects0_steps = 0
 	c.__slot0 = nil
-	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
+	__n4 := gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(__n4, 1)
 	gtk4rt.BoxSetSpacing(__n4, 6)
-	__n0 := gtk4rt.LabelNew("")
+	__n0 := gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(__n0, ("card " + fmt.Sprint(c.k)))
 	gtk4rt.LabelSetXAlign(__n0, 0.0)
 	gtk4rt.BoxAppend(__n4, __n0)
-	c.__n1 = gtk4rt.LabelNew("")
+	c.__n1 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(c.__n1, ((("scoped " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
 	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
 	gtk4rt.BoxAppend(__n4, c.__n1)
@@ -1164,10 +1164,10 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	m.__n3 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.add = gtk4rt.ButtonNew()
+	m.add = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.add, "add")
 	gtk4rt.Connect(m.add, "clicked", m.add_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.add)
@@ -1530,7 +1530,7 @@ pass sha256:e6166430f896c65dfc97151df38f0a7b
 -- run/go/fyne --
 pass sha256:f413381d3fc642327667a8c633afe032
 -- run/go/gtk4 --
-pass sha256:5c2ce2af5cb247c9b7d7970a451e6676
+pass sha256:1b8b5ba46a107deadd7d54c3d3d93ec4
 -- run/kotlin/android --
 pass sha256:3593b5de2916f0cc1b58ec499efc08f4
 -- run/none/html --

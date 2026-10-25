@@ -117,44 +117,49 @@ window {
 	if model == "" {
 		t.Fatal("model.go not emitted")
 	}
+	// Every one is made, written and filled through gtk4rt, so the stdlib's
+	// widget set builds with no cgo of its own.
+	if strings.Contains(model, `import "C"`) {
+		t.Errorf("the stdlib's widgets put model.go on the cgo path:\n%s", model)
+	}
 	for _, want := range []string{
 		// progress
-		"C.gtk_progress_bar_new()",
-		"C.gtk_progress_bar_set_fraction(",
-		"C.gtk_progress_bar_set_show_text(",
+		`gtk4rt.New("GtkProgressBar")`,
+		`"fraction", `,
+		`"show-text", `,
 		// spinner
-		"C.gtk_spinner_set_spinning(",
+		`"spinning", `,
 		// divider
-		"C.gtk_separator_new(",
+		`gtk4rt.New("GtkSeparator")`,
 		// link
-		"C.gtk_link_button_set_uri(",
+		`"uri", `,
 		// label is GtkButton's, two links up the chain from GtkLinkButton,
-		// and its setter takes the GtkButton the cast names.
-		"C.gtk_button_set_label((*C.GtkButton)",
+		// whose setter gtk4rt wraps.
+		"gtk4rt.ButtonSetLabel(",
 		// toggle
-		"C.gtk_switch_set_active(",
+		`gtk4rt.SetBool(m.__n`,
 		// datepicker: the calendar, and its one connectable signal
-		"C.gtk_calendar_new()",
-		`C.CString("day-selected")`,
+		`gtk4rt.New("GtkCalendar")`,
+		`"day-selected", `,
 		// spacer, and tooltip -- both GtkWidget properties, so both are
 		// reachable only because the parent chain merged.
-		"C.gtk_widget_set_hexpand(",
-		"C.gtk_widget_set_tooltip_text(",
+		`"hexpand", `,
+		`"tooltip-text", `,
 		// card, stack and popover each host a slot in a container whose
 		// child API is not gtk_box_append.
-		"C.gtk_frame_set_child(",
-		"C.gtk_stack_add_child(",
-		"C.gtk_popover_set_child(",
-		"C.gtk_popover_set_autohide(",
+		"gtk4rt.FrameSetChild(",
+		`gtk4rt.ChildCall("gtk_stack_add_child", `,
+		`gtk4rt.ChildCall("gtk_popover_set_child", `,
+		`"autohide", `,
 		// table and splitview: rows and panes in homogeneous boxes, cells
-		// left-aligned
-		"C.gtk_box_set_homogeneous(",
-		"C.gtk_label_set_xalign(",
+		// left-aligned through the setter gtk4rt wraps
+		`"homogeneous", `,
+		"gtk4rt.LabelSetXAlign(",
 		// table, tree, radio and select mark a selection with a check button
-		"C.gtk_check_button_set_active(",
-		`C.CString("toggled")`,
+		"gtk4rt.CheckButtonSetActive(",
+		`"toggled", func() {`,
 		// drawer, menu and modal show while open
-		"C.gtk_widget_set_visible(",
+		`"visible", `,
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("the emitted model.go does not call %s", want)

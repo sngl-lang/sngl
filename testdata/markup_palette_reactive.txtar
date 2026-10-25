@@ -771,16 +771,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
-	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	m.__n1 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n1, 1)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
-	m.__n2 = gtk4rt.ButtonNew()
+	m.__n2 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n2, "theme")
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
-	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n3, true)
-	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
+	m.__n3 = gtk4rt.FlowNew()
 	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}, "keyword"))) + ">")) + "func</span></tt>"))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	gtk4rt.BoxAppend(m.home, m.__n1)
@@ -1045,7 +1043,7 @@ pass sha256:5e333f40629a023a5d1c523cfabca63f
 -- run/go/fyne --
 pass sha256:d0f51dfb50da5bf0936e52154accdbf8
 -- run/go/gtk4 --
-pass sha256:5ac2a16c5ab08d829c9ea73ffb5b51ad
+pass sha256:be728bdc04c0ec22f35ddfa869a16232
 -- run/kotlin/android --
 pass sha256:396b4900205792c91eecc8f15c47e59a
 -- run/none/html --

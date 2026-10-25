@@ -125,6 +125,18 @@ func (m *cMarshal) walk(root any) error {
 	})
 }
 
+// marshalSpliced converts the C calls of an expression a pass splices after
+// passCMarshal ran.
+func marshalSpliced(e ir.Expr) error {
+	m := &cMarshal{done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
+	return ir.Walk(e, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && c.Func != nil {
+			return m.call(c)
+		}
+		return nil
+	})
+}
+
 // call converts each argument of c, when c calls a C function other than a
 // conversion. Aligned from the end: a native in the receiver-first shape is
 // called with the receiver as argument zero, which no parameter declares.
@@ -141,6 +153,15 @@ func (m *cMarshal) call(c *ir.Call) error {
 	for i, p := range fn.Params {
 		kind := marshalKind(p.Type)
 		if kind == ir.BuiltinNone {
+			s, err := optionString(fn, p.Type, c.Args[off+i].Value)
+			if err != nil {
+				return err
+			}
+			if s != nil {
+				kind, c.Args[off+i].Value = ir.BuiltinCString, s
+			}
+		}
+		if kind == ir.BuiltinNone {
 			continue
 		}
 		m.index(fn.Pkg)
@@ -149,6 +170,11 @@ func (m *cMarshal) call(c *ir.Call) error {
 			return fmt.Errorf("C function %q takes a %s, and no package it or the program imports declares #[builtin(%q)], which sngl:x/c does", fn.Foreign.Name, p.Type, string(kind))
 		}
 		arg := &c.Args[off+i]
+		// Converted already: a body CMarshal rewrote in place and a pass then
+		// spliced is walked again with the splice.
+		if t := arg.Value.ExprType(); t != nil && marshalKind(t) != kind {
+			continue
+		}
 		arg.Value = convertArg(conv, arg.Value)
 	}
 	return nil
@@ -169,6 +195,43 @@ func marshalKind(t *ir.Type) ir.BuiltinKind {
 		return ir.BuiltinCBool
 	}
 	return ir.BuiltinNone
+}
+
+// optionString is the string an argument for an `option[string]` parameter
+// is, which crosses as a C string, or nil for a `null`, which is the NULL it
+// already is. A value that may be either has no conversion a call can be
+// written with.
+func optionString(fn *ir.Func, param *ir.Type, arg ir.Expr) (ir.Expr, error) {
+	if param == nil || param.Kind != ir.TypeOption || len(param.Elems) != 1 || param.Elems[0].Kind != ir.TypeString {
+		return nil, nil
+	}
+	if conv, ok := arg.(*ir.Conversion); ok && ir.IsOptionWrap(conv) {
+		arg = conv.Operand
+	}
+	switch t := arg.ExprType(); {
+	case t != nil && t.Kind == ir.TypeString:
+		return arg, nil
+	case t != nil && t.Kind == ir.TypeOption && !isNull(arg):
+		return nil, fmt.Errorf("C function %q takes an option[string], which crosses as a C string or NULL, and is handed a value that may be either", fn.Foreign.Name)
+	}
+	return nil, nil
+}
+
+// isNull reports whether e is `null`: the literal the optimizer folds it to,
+// or the predeclared name in a body it never saw, either converted to the
+// option it stands for.
+func isNull(e ir.Expr) bool {
+	if conv, ok := e.(*ir.Conversion); ok {
+		e = conv.Operand
+	}
+	switch x := e.(type) {
+	case *ir.Literal:
+		return x.Type != nil && x.Type.Kind == ir.TypeNull
+	case *ir.Ident:
+		v, ok := x.Sym.(*ir.Var)
+		return ok && v.Builtin == ir.BuiltinNull
+	}
+	return false
 }
 
 // convertArg is arg made through conv: a call of a native conversion, or a

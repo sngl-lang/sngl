@@ -18,3 +18,14 @@
 // answer that leaves a program correct rather than one that claims a host can
 // emit something it cannot. It is also what a plugin answering nothing at all
 // gets, which is the case the whole tier exists for.
+//
+// **A platform builds its widgets in SNGL.** Beside each `#[intrinsic]`
+// component it declares, a platform writes the functions that make the
+// widget, put a child in and take one out, write a prop and connect an event
+// the host raises on its own, each marked `#[gen.protocol(op)]` and calling
+// the host through a `#[cnative]` or `#[go.native]` declaration; once, beside
+// its build-target node, it writes the `connect` every other handler goes
+// through. The build splices each where the program makes the operation, so
+// a string handed to C is converted and released by the lowering passes, and
+// the interpreter's `--simulate` runs the same calls. What is left to the
+// platform's generator is where each widget lives in the code it writes.

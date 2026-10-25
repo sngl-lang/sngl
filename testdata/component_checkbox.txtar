@@ -517,7 +517,7 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.CheckButtonNew()
+	m.__n0 = gtk4rt.New("GtkCheckButton")
 	gtk4rt.CheckButtonSetLabel(m.__n0, "Enable")
 	gtk4rt.CheckButtonSetActive(m.__n0, m.on)
 	gtk4rt.Connect(m.__n0, "toggled", m.__n0_toggled_handler)
@@ -670,7 +670,7 @@ pass sha256:362d6d361af123d95c06488159fdd8c6
 -- run/go/fyne --
 pass sha256:950e5072df6b199d99e1c43db61ebaa4
 -- run/go/gtk4 --
-pass sha256:02fe8b3d1870c6ee5a68279c498d1679
+pass sha256:faff946a45559fc439c31de1a4e139de
 -- run/kotlin/android --
 pass sha256:b4a2edfd47001933c845a49ce0e16650
 -- run/none/html --

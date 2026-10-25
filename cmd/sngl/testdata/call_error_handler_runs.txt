@@ -198,7 +198,7 @@ sha256:6383e958ff5dd4bd632063155873acc6
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:cf87e688634e32d434314aaede4655a9
+sha256:12711f413b64f1a13539484106ac0d8e
 {
   "results": [
     {
@@ -208,7 +208,7 @@ sha256:cf87e688634e32d434314aaede4655a9
   ]
 }
 -- testrun/gtk4/go/boundary.sngl/main/1 --
-sha256:fa8efdffb1b7e2e325490a6b16efaba0
+sha256:807eaa818f657aac9d3a44562185a92d
 {
   "results": [
     {

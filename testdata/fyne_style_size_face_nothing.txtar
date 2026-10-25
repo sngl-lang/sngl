@@ -693,11 +693,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	m.__n3 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n3, 1)
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationHorizontal)
+	m.__n4 = gtk4rt.New("GtkBox")
+	gtk4rt.OrientableSetOrientation(m.__n4, 0)
 	gtk4rt.BoxSetSpacing(m.__n4, 6)
 	m.__n5 = gtk4rt.ImageFrameNew()
 	gtk4rt.ImageFrameSetFit(m.__n5, "contain")
@@ -709,14 +709,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageSourceSetPicture(m.__n1, m.picture__inst0__inst0)
 	gtk4rt.BoxAppend(m.__n5, m.__n1)
 	gtk4rt.BoxAppend(m.__n4, m.__n5)
-	m.__n6 = gtk4rt.LabelNew("")
+	m.__n6 = gtk4rt.New("GtkLabel")
 	gtk4rt.LabelSetLabel(m.__n6, "Heading")
 	gtk4rt.LabelSetXAlign(m.__n6, 0.0)
 	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Css: "font-weight: bold; ", Width: 120.0})
 	gtk4rt.BoxAppend(m.__n4, m.__n6)
 	gtk4rt.BoxAppend(m.__n3, m.__n4)
 	m.__renderSlot0(m.__n3)
-	m.__n7 = gtk4rt.ButtonNew()
+	m.__n7 = gtk4rt.New("GtkButton")
 	gtk4rt.ButtonSetLabel(m.__n7, "More")
 	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
 	gtk4rt.BoxAppend(m.__n3, m.__n7)
@@ -734,4 +734,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:de0e23a28b96437f24df38d91646dbea
 -- run/go/gtk4 --
-pass sha256:715d939780fb565b5b4e30a278122650
+pass sha256:f97080fb86f4d3c6650e64c09d5df261

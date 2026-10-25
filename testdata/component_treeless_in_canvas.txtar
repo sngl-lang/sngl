@@ -1124,10 +1124,6 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-var (
-	__cstr0 = C.CString("drawing")
-)
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1333,6 +1329,7 @@ func (m *Model) __n0_closed_handler() {
 
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -1372,10 +1369,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ToplevelNew()))
+	gtk4rt.ToplevelSetTitle(gtk4rt.Handle(unsafe.Pointer(m.__n0)), "drawing")
+	gtk4rt.ToplevelSetVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(gtk4rt.Handle(unsafe.Pointer(m.__n0)), m.__n0_visible_handler)
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.New("GtkBox")))
+	gtk4rt.OrientableSetOrientation(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 1)
+	gtk4rt.BoxSetSpacing(gtk4rt.Handle(unsafe.Pointer(m.__n1)), 6)
 	m.__n2 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n2, C.int(40))
 	C.gtk_drawing_area_set_content_height(m.__n2, C.int(40))
@@ -1395,7 +1396,7 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	win := C.gtk_application_window_new(app)
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), __cstr0)
+	gtk4rt.ToplevelTitleWindow(gtk4rt.Handle(unsafe.Pointer(win)), gtk4rt.Handle(unsafe.Pointer(m.__n0)))
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
@@ -1866,7 +1867,7 @@ pass sha256:86bc6525310aeb62276634b9451d660e
 -- run/go/fyne --
 pass sha256:c64dd224a399bd836030533de0ba032f
 -- run/go/gtk4 --
-pass sha256:e77855fbdf2833e55d2b71280a866901
+pass sha256:e4471a3c0758770732547a1fcc8798c8
 -- run/kotlin/android --
 pass sha256:5459bef561305365aa6beaa55b16ba81
 -- run/none/html --

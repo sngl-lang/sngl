@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	"duckfam.us/sngl/codegen"
 )
 
 // unixPrintClasses are declared from Gtk-4.0.gir but live in
@@ -91,28 +89,17 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 	}
 }
 
-// buildEmittedGo builds the generated files as a module of their own and
-// reports the compiler's output. The emitted package is `main` but carries no
-// entry point unless the main option is set, so one is supplied.
+// buildEmittedGo builds the generated files in a directory of this module,
+// which resolves the gtk4rt a set or a connect calls, and reports the
+// compiler's output. The emitted package is `main` but carries no entry point
+// unless the main option is set, so one is supplied.
 func buildEmittedGo(t *testing.T, files map[string][]byte) (string, bool) {
 	t.Helper()
 	build := map[string]string{"entry.go": "package main\n\nfunc main() {}\n"}
 	for name, data := range files {
-		build[name] = string(data)
+		if name != "go.mod" {
+			build[name] = string(data)
+		}
 	}
-	goVersion, extra := codegen.DetectHostGoMod()
-	if goVersion == "" {
-		goVersion = "1.23"
-	}
-	mod := "module tmp\n\ngo " + goVersion + "\n"
-	if extra != "" {
-		mod += "\n" + extra + "\n"
-	}
-	// A cgo program still calls gtk4rt where the C is the runtime's alone --
-	// a drop-down's -- which the checkout's replace answers.
-	if strings.Contains(extra, "duckfam.us/sngl =>") {
-		mod += "\nrequire duckfam.us/sngl v0.0.0-00010101000000-000000000000\n"
-	}
-	build["go.mod"] = mod
 	return runGo(t, "gtk4-emitted-", build, false, "build", "./...")
 }

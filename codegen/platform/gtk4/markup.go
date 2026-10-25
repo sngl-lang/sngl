@@ -32,6 +32,8 @@ import (
 const (
 	flowTag = "Flow"
 	spanTag = "Span"
+	// flowMarkupProp is the Flow prop whose declared set writes the label.
+	flowMarkupProp = "markup"
 )
 
 // markupTrees is this scope's view of the package's flows and spans. Empty
@@ -67,6 +69,9 @@ type markupTrees struct {
 	// ownerOf is the flow a span belongs to, however deep. It is what lets a
 	// prop assignment in a handler reach the label it has to rewrite.
 	ownerOf map[string]string
+	// setMarkup is each flow's declared set of its markup, which every scope
+	// writing the label calls.
+	setMarkup map[string]*ir.Func
 }
 
 func newMarkupTrees() *markupTrees {
@@ -76,6 +81,7 @@ func newMarkupTrees() *markupTrees {
 		flowGuards: map[string]int{},
 		flowLoops:  map[string]int{},
 		ownerOf:    map[string]string{},
+		setMarkup:  map[string]*ir.Func{},
 	}
 }
 
@@ -107,6 +113,11 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 					if tag == flowTag {
 						mt.flowGuards[n.Name] = len(guards)
 						mt.flowLoops[n.Name] = loops
+						if n.Type != nil {
+							if comp, ok := n.Type.Decl.(*ir.Component); ok {
+								mt.setMarkup[n.Name] = comp.Protocol.Setter(flowMarkupProp)
+							}
+						}
 					} else {
 						mt.spans[n.Name] = &markupSpan{props: harvestNodeProps(n.Name, stmts[i+1:]), guards: slices.Clone(guards), loops: loops}
 					}
@@ -229,47 +240,58 @@ func appendEdge(cs *ir.CallStmt) (parent, child string, ok bool) {
 
 // --- Emission ---
 
-// emitFlowCreate builds the GtkLabel one flow is, and sets it up as a
-// paragraph: wrapped, and starting at the left rather than centered, which is
-// what every other target does with a run of prose.
-func (t *gtk4Translator) emitFlowCreate(id string) []ir.Stmt {
-	var ctor ir.Expr = nativeCall("gtk_label_new", ir.NativePointerOf("GtkWidget"), &ir.Literal{Type: ir.TypNull})
-	if t.wrapped {
-		if rt, ok := rtCtorForCType("GtkLabel"); ok {
-			ctor = rt
-		}
+// emitFlowCreate builds the GtkLabel one flow is through the create
+// gtk4.sngl declares, and writes its markup.
+func (t *gtk4Translator) emitFlowCreate(id string, made ir.Expr) []ir.Stmt {
+	if made == nil {
+		panic("gtk4: a Flow reached the translator without the create gtk4.sngl declares")
 	}
-	out := t.emitConstructorAssign(id, "GtkLabel", ctor)
-	ref := t.qualifyNodeExpr(&ir.Ident{Name: id, IsElementRef: true})
-	if t.wrapped {
-		out = append(out,
-			&ir.CallStmt{Call: rtCall("LabelSetWrap", ir.TypVoid, ref, &ir.Literal{Type: ir.TypBool, Value: "true"})},
-			&ir.CallStmt{Call: rtCall("LabelSetXAlign", ir.TypVoid, ref, &ir.Literal{Type: ir.TypFloat, Value: "0"})},
-		)
-	} else {
-		label := cgoCast("GtkLabel", ref)
-		out = append(out,
-			&ir.CallStmt{Call: nativeCall("gtk_label_set_wrap", ir.TypVoid, label, cScalar("gboolean", intLit("1")))},
-			&ir.CallStmt{Call: nativeCall("gtk_label_set_xalign", ir.TypVoid, cgoCast("GtkLabel", ref), cScalar("float", &ir.Literal{Type: ir.TypFloat, Value: "0"}))},
-		)
-	}
-	return append(out, t.emitFlowMarkup(id)...)
+	return append(t.emitConstructorAssign(id, "GtkLabel", made), t.emitFlowMarkup(id)...)
 }
 
-// emitFlowMarkup sets a flow's label from the whole of its span tree.
+// emitFlowMarkup sets a flow's label from the whole of its span tree, through
+// the set gtk4.sngl declares for its markup.
 //
 // Emitted where the label is built and again wherever a span's prop is
 // assigned, which is the whole of this target's reactivity: the expression is
 // the same one either way, so re-evaluating it is re-reading whatever state
 // the runs were written against.
 func (t *gtk4Translator) emitFlowMarkup(flow string) []ir.Stmt {
-	expr := t.markupExpr(flow)
-	ref := t.qualifyNodeExpr(&ir.Ident{Name: flow, IsElementRef: true})
-	if t.wrapped {
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("LabelSetMarkup", ir.TypVoid, ref, expr)}}
+	set := t.markupTrees().setMarkup[flow]
+	if set == nil {
+		panic(fmt.Sprintf("gtk4: flow %s has no #[gen.protocol(set)] for its markup", flow))
 	}
-	return t.shared.ownCStrings([]ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_label_set_markup", ir.TypVoid,
-		cgoCast("GtkLabel", ref), cString(expr))}})
+	node := &ir.Ident{Name: flow, IsElementRef: true}
+	return t.callStmt(boundCall(set, node, t.markupExpr(flow)))
+}
+
+// boundCall is the one call fn, a #[gen.protocol] function, makes, with its
+// parameters bound to args. Only a call gtk4rt answers is bound here, since
+// no pass marshals what it hands the host.
+func boundCall(fn *ir.Func, args ...ir.Expr) *ir.Call {
+	var body *ir.Call
+	if len(fn.Block) == 1 {
+		if cs, ok := fn.Block[0].(*ir.CallStmt); ok {
+			body = cs.Call
+		}
+	}
+	if body == nil || body.Func == nil || body.Func.Foreign.Path != gtk4rtPkg {
+		panic(fmt.Sprintf("gtk4: %s is bound by the translator, so its body is one call of a gtk4rt native", fn.Name))
+	}
+	bound := map[ir.Symbol]ir.Expr{}
+	for i, a := range args {
+		bound[fn.Params[i]] = a
+	}
+	call := ir.CloneExprSharingDecls(body).(*ir.Call)
+	_ = ir.Rewrite(call, func(n ir.Node) (ir.Node, error) {
+		if id, ok := n.(*ir.Ident); ok {
+			if a, ok := bound[id.Sym]; ok {
+				return a, ir.SkipDir
+			}
+		}
+		return n, nil
+	})
+	return call
 }
 
 // markupExpr is the Pango markup one flow renders, as a Go string expression.
