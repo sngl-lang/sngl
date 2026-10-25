@@ -306,11 +306,16 @@ const component ui.spacer[platform](style) {
 // wrapping an element that a wildcard cannot do for itself. `@reachEnd` has no
 // DOM event at all: `sngl-reach-end` is an element the page defines
 // (codegen/platform/html/reachend.go), written after the content, that
-// dispatches `reachEnd` as it comes within half the box's height of showing
-// and as the content resizes while it is there. The box scrolls by its
-// class, whose rule the page writes beside the element's definition.
-const component ui.scroll[platform](style, @scroll, @scrollEnd, @reachEnd, content) {
-    html.div(class="sngl-scroll", style={...style}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
+// dispatches `reachEnd` as it comes within half the box of showing and as the
+// content resizes while it is there. The box scrolls along its direction by
+// its class, whose rules the page writes beside the element's definition.
+const component ui.scroll[platform](style, direction, @scroll, @scrollEnd, @reachEnd, content) {
+    html.div(
+        class = "sngl-scroll sngl-scroll-" + string(direction),
+        style = {...style},
+        @scroll { scroll() },
+        @scrollend { scrollEnd() },
+    ) {
         content
         html.element(tag="sngl-reach-end", @reachEnd { reachEnd() }) {}
     }

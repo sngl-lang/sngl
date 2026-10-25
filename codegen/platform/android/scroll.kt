@@ -1,5 +1,6 @@
 package PACKAGE
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.rememberScrollState
@@ -15,24 +16,35 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 
-// SnglScroll is sngl:ui's scroll: a column scrolled vertically, which calls
+// SnglScroll is sngl:ui's scroll: a column scrolled along `direction` --
+// "horizontal", "both", or vertically for anything else -- which calls
 // onReachEnd when the end of its content comes within half a viewport of
 // being shown -- once as it arrives, and again whenever the content changes
 // size while it is there, so a handler that adds a page is asked for another
-// while the end still shows. The content's height is measured past the
-// scroll, where it is the whole of it rather than the viewport.
+// while the end still shows. The end is the right edge of a horizontal
+// scroll and the bottom of any other. The content's extent is measured past
+// the scroll, where it is the whole of it rather than the viewport.
 @Composable
 fun SnglScroll(
     modifier: Modifier,
+    direction: String = "vertical",
     onReachEnd: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val state = rememberScrollState()
-    var height by remember { mutableIntStateOf(0) }
+    val across = rememberScrollState()
+    val down = rememberScrollState()
+    val sideways = direction == "horizontal"
+    val state = if (sideways) across else down
+    var extent by remember { mutableIntStateOf(0) }
     val reach by rememberUpdatedState(onReachEnd)
     LaunchedEffect(state) {
-        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to height }
+        snapshotFlow { (state.maxValue - state.value <= state.viewportSize / 2) to extent }
             .collect { (atEnd, _) -> if (atEnd) reach() }
     }
-    Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
+    // The outer scroll's ScrollBy is the node's, which a test's trigger runs:
+    // scrolling either way, that is the vertical one, whose end is reported.
+    var scrolled = modifier
+    if (!sideways) scrolled = scrolled.verticalScroll(down)
+    if (sideways || direction == "both") scrolled = scrolled.horizontalScroll(across)
+    Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }, content = content)
 }

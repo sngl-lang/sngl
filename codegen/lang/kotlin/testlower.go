@@ -342,9 +342,10 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 	case "reachEnd":
 		// A scroll's end is reached by scrolling to it, which SnglScroll's
 		// effect reports as it would a finger's: the scroll's own semantics
-		// action, as far as it goes. Content too short to scroll reported its
-		// end as it arrived.
-		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, Float.MAX_VALUE) }"
+		// action, as far as it goes along either axis, since the trigger
+		// does not know which one the scroll has. Content too short to
+		// scroll reported its end as it arrived.
+		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(Float.MAX_VALUE, Float.MAX_VALUE) }"
 	}
 	return ""
 }

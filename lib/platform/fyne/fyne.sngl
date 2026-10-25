@@ -491,18 +491,26 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
     }
 }
 
-// A vertical scroll reporting the end of its content coming within half a
-// viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports a scroll
-// and nothing about the content growing, which is what a handler adding a page
-// does, so the scroll watches its content itself and posts what it sees.
-const component ReachScroll(style ui.Style = ui.Style{}, @reachEnd(), content ...component option[ui.node]) ui.node {
+// A scroll along `direction` reporting the end of its content coming within
+// half a viewport of showing (pkg/go/fynelayout's ReachScroll): Fyne reports
+// a scroll and nothing about the content growing, which is what a handler
+// adding a page does, so the scroll watches its content itself and posts what
+// it sees.
+const component ReachScroll(
+    style     ui.Style = ui.Style{},
+    direction ui.ScrollDirection = ui.ScrollDirection.vertical,
+    @reachEnd(),
+    content   ...component option[ui.node],
+) ui.node {
     Wrapper(
         spec = Spec{
             new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewReachScroll"},
             goType = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="*ReachScroll"},
             content = "Content",
+            setters = [Setter{prop="text", call="SetDirection"}],
             handlers = [Handler{on="reachEnd", field="OnReachEnd", signature="func()"}],
         },
+        text = string(direction),
         look = lookOf(style),
         @reachEnd { reachEnd() },
     ) {
@@ -533,8 +541,8 @@ const component ui.stack[platform](style, layers) {
     }
 }
 
-const component ui.scroll[platform](style, @reachEnd, content) {
-    ReachScroll(style=style, @reachEnd { reachEnd() }) {
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    ReachScroll(style=style, direction=direction, @reachEnd { reachEnd() }) {
         content
     }
 }

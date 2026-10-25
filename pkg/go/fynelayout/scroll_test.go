@@ -134,3 +134,49 @@ func TestReachEndNotAskedWhileTheEndIsHidden(t *testing.T) {
 		t.Errorf("a scroll whose end is far out of sight asked %d times", calls)
 	}
 }
+
+func column() fyne.CanvasObject {
+	r := canvas.NewRectangle(nil)
+	r.SetMinSize(fyne.NewSize(100, 50))
+	return r
+}
+
+// A horizontal scroll's end is its right edge: a first page narrower than the
+// scroll asks for the next, the content growing wider while its edge shows
+// asks again, though no taller, and an edge out of sight asks for nothing.
+func TestReachEndSidewaysMeasuresWidth(t *testing.T) {
+	fynetest.NewTempApp(t)
+	p := catchPosts(t)
+	list := container.NewHBox(column())
+	calls := 0
+	s := NewReachScroll()
+	s.SetDirection("horizontal")
+	s.Content = list
+	s.OnReachEnd = func() { calls++ }
+	w := fynetest.NewWindow(s)
+	defer w.Close()
+	w.Resize(fyne.NewSize(400, 200))
+	p.run()
+	if calls != 1 {
+		t.Fatalf("a first page narrower than the scroll asked %d times, want 1", calls)
+	}
+
+	list.Add(column())
+	frame(s)
+	p.run()
+	if calls != 2 {
+		t.Fatalf("the content grew wider with its edge showing and the scroll asked %d times, want 2", calls)
+	}
+
+	for range 20 {
+		list.Add(column())
+	}
+	frame(s)
+	p.run()
+	if calls != 2 {
+		t.Errorf("a scroll whose right edge is far out of sight asked %d more times", calls-2)
+	}
+	if s.scroll.Direction != container.ScrollHorizontalOnly {
+		t.Errorf("the scroll moves along %v, want horizontally only", s.scroll.Direction)
+	}
+}

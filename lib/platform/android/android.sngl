@@ -615,16 +615,18 @@ component SnglDateField(
     onValueChange func(value option[time.date]),
 ) ui.node
 
-// SnglScroll is a scroll: a column scrolled vertically, reporting its end
-// coming into view. Kotlin the platform ships with the app
-// (codegen/platform/android/scroll.kt), since how far it has scrolled and how
-// tall its content is are state its effect reads. `onReachEnd` is called as
+// SnglScroll is a scroll: a column scrolled along `direction`, a
+// ui.ScrollDirection's name, reporting its end coming into view. Kotlin the
+// platform ships with the app (codegen/platform/android/scroll.kt), since how
+// far it has scrolled and how long its content is are state its effect
+// reads. `onReachEnd` is called as
 // the end of the content comes within half a viewport of showing, and again
 // when the content changes size while it is there.
 #[gen.renders(identity)]
 #[intrinsic("android:SnglScroll")]
 component SnglScroll(
     modifier   Modifier,
+    direction  string,
     onReachEnd func(),
     children   ...component,
 ) ui.node

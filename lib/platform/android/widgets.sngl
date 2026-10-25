@@ -62,8 +62,8 @@ const component ui.spacer[platform](style) {
     Spacer(modifier=modifierOf(style, flexShare)) {}
 }
 
-const component ui.scroll[platform](style, @reachEnd, content) {
-    SnglScroll(modifier=modifierOf(style, flexShare), onReachEnd=func() { reachEnd() }) {
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    SnglScroll(modifier=modifierOf(style, flexShare), direction=string(direction), onReachEnd=func() { reachEnd() }) {
         flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
             content
         }

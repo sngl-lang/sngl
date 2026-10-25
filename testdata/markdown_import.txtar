@@ -84,7 +84,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div class="sngl-scroll">
+<div class="sngl-scroll sngl-scroll-vertical">
   <div style="display:flex;flex-direction:column;gap:12px">
     <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
@@ -144,7 +144,10 @@ body { font-family: system-ui, sans-serif; }
 .sngl-image-fill img { object-fit: fill; }
 .sngl-image-none img { object-fit: none; }
 .sngl-image-scaleDown img { object-fit: scale-down; }
-.sngl-scroll { overflow: auto; }
+.sngl-scroll-vertical { overflow-x: hidden; overflow-y: auto; }
+.sngl-scroll-horizontal { overflow-x: auto; overflow-y: hidden; display: flex; align-items: flex-start; }
+.sngl-scroll-horizontal > *, .sngl-scroll-horizontal > [data-sngl-slot] > *, .sngl-scroll-horizontal > [data-sngl-inst] > * { flex: none; }
+.sngl-scroll-both { overflow: auto; }
 </style>
 
 <script>
@@ -156,15 +159,20 @@ body { font-family: system-ui, sans-serif; }
       const box = this.parentElement;
       if (!box) return;
       this.style.display = "block";
+      const across = box.classList.contains("sngl-scroll-horizontal");
       const fire = () => this.dispatchEvent(new Event("reachEnd"));
-      const near = () => this.getBoundingClientRect().top - box.getBoundingClientRect().bottom <= box.clientHeight / 2;
+      const near = () => {
+        const at = this.getBoundingClientRect(), view = box.getBoundingClientRect();
+        return across ? at.left - view.right <= box.clientWidth / 2 : at.top - view.bottom <= box.clientHeight / 2;
+      };
       this._io = new IntersectionObserver((es) => {
         if (es[es.length - 1].isIntersecting) fire();
-      }, { root: box, rootMargin: "0px 0px 50% 0px" });
+      }, { root: box, rootMargin: across ? "0px 50% 0px 0px" : "0px 0px 50% 0px" });
       this._io.observe(this);
-      let last = this.offsetTop, asked = false;
+      const where = () => across ? this.offsetLeft : this.offsetTop;
+      let last = where(), asked = false;
       const grew = () => {
-        const h = this.offsetTop;
+        const h = where();
         if (h !== last && !asked) {
           asked = true;
           requestAnimationFrame(() => {
@@ -195,4 +203,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c35ade8cbb0137b017ded5d9a0b6d0d4
+pass sha256:4f392a776e55dfeb4805327ea25f372a
