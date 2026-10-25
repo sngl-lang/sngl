@@ -15,10 +15,11 @@ static void sngl_scroll_adj(GtkAdjustment *a, gpointer data) {
 }
 // The probe is the scroll's child, and holds the content: a box laying its
 // one child out over the whole of it, which measures the content's natural
-// height each time it is allocated and reports it changing. The adjustment
-// alone cannot say so, since its upper is never less than the page: content
-// shorter than the viewport grew and nothing heard of it, so a short first
-// page asked for one more and no further.
+// length along the axis the end is read on -- its height, or its width in a
+// scroll moving sideways -- each time it is allocated and reports it
+// changing. The adjustment alone cannot say so, since its upper is never less
+// than the page: content shorter than the viewport grew and nothing heard of
+// it, so a short first page asked for one more and no further.
 static void sngl_probe_measure(GtkWidget *w, GtkOrientation o, int for_size,
         int *min, int *nat, int *min_base, int *nat_base) {
     (void)min_base; (void)nat_base;
@@ -31,7 +32,11 @@ static void sngl_probe_allocate(GtkWidget *w, int width, int height, int baselin
     if (c == NULL || !gtk_widget_should_layout(c)) return;
     gtk_widget_allocate(c, width, height, baseline, NULL);
     int nat = 0;
-    gtk_widget_measure(c, GTK_ORIENTATION_VERTICAL, width, NULL, &nat, NULL, NULL);
+    if (g_object_get_data(G_OBJECT(w), "sngl-across") != NULL) {
+        gtk_widget_measure(c, GTK_ORIENTATION_HORIZONTAL, height, NULL, &nat, NULL, NULL);
+    } else {
+        gtk_widget_measure(c, GTK_ORIENTATION_VERTICAL, width, NULL, &nat, NULL, NULL);
+    }
     if (nat != GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "sngl-content"))) {
         g_object_set_data(G_OBJECT(w), "sngl-content", GINT_TO_POINTER(nat));
         snglRtDispatch(GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "sngl-changed")));
@@ -49,12 +54,29 @@ static int sngl_probe_content(GtkWidget *sw) {
     GtkWidget *probe = g_object_get_data(G_OBJECT(sw), "sngl-probe");
     return probe != NULL ? GPOINTER_TO_INT(g_object_get_data(G_OBJECT(probe), "sngl-content")) : -1;
 }
-// The content is laid out at its natural height, as a scroll's is in CSS.
-// GTK's default is its minimum, and a picture's minimum is nothing: content
-// taller than the viewport squeezed every picture in it to no height at all.
-// Its width stays the viewport's, which is CSS's too. The viewport the
-// scrolled window wraps its child in is the scrollable whose policy says so,
-// and it is made as the child is set.
+// The axis a scroll moves along is "sngl-axis" on it: 0 vertical, 1
+// horizontal, 2 both. Along an axis it moves, the content is laid out at its
+// natural length, as a scroll's is in CSS. GTK's default is its minimum, and
+// a picture's minimum is nothing: content taller than the viewport squeezed
+// every picture in it to no height at all. Along one it does not, the content
+// is the viewport's size and no bar is shown. The viewport the scrolled
+// window wraps its child in is the scrollable whose policy says so, and it is
+// made as the child is set, so the policies are applied there as well as when
+// the axis is.
+static int sngl_scroll_axis(GtkWidget *sw) {
+    return GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sw), "sngl-axis"));
+}
+static void sngl_scroll_policies(GtkScrolledWindow *sw) {
+    int axis = sngl_scroll_axis(GTK_WIDGET(sw));
+    gtk_scrolled_window_set_policy(sw, axis == 0 ? GTK_POLICY_NEVER : GTK_POLICY_AUTOMATIC,
+        axis == 1 ? GTK_POLICY_NEVER : GTK_POLICY_AUTOMATIC);
+    GtkWidget *c = gtk_scrolled_window_get_child(sw);
+    if (c != NULL && !GTK_IS_SCROLLABLE(c)) c = gtk_widget_get_parent(c);
+    if (c != NULL && GTK_IS_SCROLLABLE(c)) {
+        gtk_scrollable_set_vscroll_policy(GTK_SCROLLABLE(c), axis != 1 ? GTK_SCROLL_NATURAL : GTK_SCROLL_MINIMUM);
+        gtk_scrollable_set_hscroll_policy(GTK_SCROLLABLE(c), axis != 0 ? GTK_SCROLL_NATURAL : GTK_SCROLL_MINIMUM);
+    }
+}
 //
 // A child set that is not the probe is the content, and goes in the probe,
 // which becomes the child: generated code sets a scroll's child through GTK's
@@ -63,11 +85,7 @@ static void sngl_scroll_child(GObject *o, GParamSpec *ps, gpointer data) {
     (void)ps; (void)data;
     GtkScrolledWindow *sw = GTK_SCROLLED_WINDOW(o);
     GtkWidget *probe = g_object_get_data(o, "sngl-probe");
-    GtkWidget *c = gtk_scrolled_window_get_child(sw);
-    if (c != NULL && !GTK_IS_SCROLLABLE(c)) c = gtk_widget_get_parent(c);
-    if (c != NULL && GTK_IS_SCROLLABLE(c)) {
-        gtk_scrollable_set_vscroll_policy(GTK_SCROLLABLE(c), GTK_SCROLL_NATURAL);
-    }
+    sngl_scroll_policies(sw);
     GtkWidget *content = gtk_scrolled_window_get_child(sw);
     if (probe == NULL || content == NULL || content == probe) return;
     if (GTK_IS_VIEWPORT(content)) {
@@ -87,8 +105,8 @@ static void sngl_scroll_child(GObject *o, GParamSpec *ps, gpointer data) {
 }
 // "changed" is the viewport changing size, "value-changed" a scroll, and the
 // probe reports the content changing size. The scrolled window keeps its
-// vertical adjustment when it wraps its child in a viewport, so connecting to
-// it once is enough.
+// adjustments when it wraps its child in a viewport, so connecting to each
+// once is enough; both are, since the axis may change after.
 static GtkWidget *sngl_scroll_new(int idx) {
     GtkWidget *sw = gtk_scrolled_window_new();
     GtkWidget *probe = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -98,16 +116,35 @@ static GtkWidget *sngl_scroll_new(int idx) {
     g_object_set_data(G_OBJECT(probe), "sngl-content", GINT_TO_POINTER(-1));
     g_object_set_data_full(G_OBJECT(sw), "sngl-probe", g_object_ref_sink(probe), g_object_unref);
     g_signal_connect(sw, "notify::child", G_CALLBACK(sngl_scroll_child), NULL);
-    GtkAdjustment *a = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(sw));
-    g_signal_connect(a, "changed", G_CALLBACK(sngl_scroll_adj), GINT_TO_POINTER(idx));
-    g_signal_connect(a, "value-changed", G_CALLBACK(sngl_scroll_adj), GINT_TO_POINTER(idx));
+    GtkAdjustment *adj[2] = {
+        gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(sw)),
+        gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(sw)),
+    };
+    for (int i = 0; i < 2; i++) {
+        g_signal_connect(adj[i], "changed", G_CALLBACK(sngl_scroll_adj), GINT_TO_POINTER(idx));
+        g_signal_connect(adj[i], "value-changed", G_CALLBACK(sngl_scroll_adj), GINT_TO_POINTER(idx));
+    }
+    sngl_scroll_policies(GTK_SCROLLED_WINDOW(sw));
     return sw;
 }
 static void sngl_scroll_watch(GObject *o, int idx) {
     g_object_weak_ref(o, snglToplevelGone, GINT_TO_POINTER(idx));
 }
+// The end is read along x in a scroll moving sideways alone, and along y in
+// one moving both ways, as a list grows down.
+static void sngl_scroll_set_axis(GtkWidget *sw, int axis) {
+    g_object_set_data(G_OBJECT(sw), "sngl-axis", GINT_TO_POINTER(axis));
+    sngl_scroll_policies(GTK_SCROLLED_WINDOW(sw));
+    GtkWidget *probe = g_object_get_data(G_OBJECT(sw), "sngl-probe");
+    if (probe == NULL) return;
+    g_object_set_data(G_OBJECT(probe), "sngl-across", axis == 1 ? GINT_TO_POINTER(1) : NULL);
+    g_object_set_data(G_OBJECT(probe), "sngl-content", GINT_TO_POINTER(-1));
+    gtk_widget_queue_allocate(probe);
+}
 static void sngl_scroll_measure(GtkWidget *sw, double *upper, double *value, double *page) {
-    GtkAdjustment *a = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(sw));
+    GtkAdjustment *a = sngl_scroll_axis(sw) == 1
+        ? gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(sw))
+        : gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(sw));
     *upper = gtk_adjustment_get_upper(a);
     *value = gtk_adjustment_get_value(a);
     *page = gtk_adjustment_get_page_size(a);
@@ -127,8 +164,9 @@ import (
 type scroll struct {
 	onReachEnd func()
 	near       bool
-	// content is the content's natural height when last measured, which the
-	// probe reports: -1 before it has been.
+	// content is the content's natural length along the axis the end is
+	// read on when last measured, which the probe reports: -1 before it has
+	// been.
 	content int
 	// asked says a report is posted and has not run: the adjustment changes
 	// several times in one allocation, and one report answers them all.
@@ -157,6 +195,23 @@ func scrollHolds(sw, child Handle) bool {
 	return C.sngl_scroll_holds(widget(sw), widget(child)) != 0
 }
 
+// ScrollSetDirection is the axis a `ui.scroll` moves along, as
+// `ui.ScrollDirection` spells it: "horizontal", "both", and anything else
+// vertical, which is also a scroll's before it is set.
+func ScrollSetDirection(h Handle, dir string) {
+	axis := 0
+	switch dir {
+	case "horizontal":
+		axis = 1
+	case "both":
+		axis = 2
+	}
+	C.sngl_scroll_set_axis(widget(h), C.int(axis))
+	if s := scrolls[h]; s != nil {
+		s.near, s.content = false, -1
+	}
+}
+
 // ScrollOnReachEnd is the handler a `@reachEnd` attaches.
 func ScrollOnReachEnd(h Handle, fn func()) {
 	if s := scrolls[h]; s != nil {
@@ -171,17 +226,24 @@ func ScrollReachEnd(h Handle) {
 	}
 }
 
+// scrollMeasure is the adjustment of the axis h's end is read on: how far its
+// content reaches, how far it has scrolled, and how much it shows.
+func scrollMeasure(h Handle) (upper, value, page float64) {
+	var u, v, pg C.double
+	C.sngl_scroll_measure(widget(h), &u, &v, &pg)
+	return float64(u), float64(v), float64(pg)
+}
+
 // changed asks again after the adjustment moved. The handler runs on the next
 // idle tick rather than here: the adjustment changes while GTK allocates, and
 // a handler adding rows then would change the tree mid-allocation.
 func (s *scroll) changed(h Handle) {
-	var upper, value, page C.double
-	C.sngl_scroll_measure(widget(h), &upper, &value, &page)
+	upper, value, page := scrollMeasure(h)
 	if page <= 0 {
 		// Not allocated yet: nothing is shown, so no end is.
 		return
 	}
-	near := float64(upper)-float64(value+page) <= float64(page)/2
+	near := upper-(value+page) <= page/2
 	content := int(C.sngl_probe_content(widget(h)))
 	grew := content > s.content
 	fire := near && (!s.near || grew)

@@ -284,8 +284,8 @@ const component ui.hbox[platform](style, children) {
     }
 }
 
-const component ui.scroll[platform](style, @reachEnd, content) {
-    Scroll(look=lookOf(style), @reachEnd { reachEnd() }) {
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    Scroll(direction=direction, look=lookOf(style), @reachEnd { reachEnd() }) {
         content
     }
 }
@@ -1040,15 +1040,17 @@ func _on_Image_failed(w Image, failed func(message string)) {
     _rtImageFrameOnError(w, failed)
 }
 
-// A scroll is gtk4rt's GtkScrolledWindow, which reports the end of its
-// content coming within half a viewport of showing -- as it arrives, and when
-// the content changes size while it is there. GTK has no signal saying so;
-// the vertical adjustment's changes are what answer it.
+// A scroll is gtk4rt's GtkScrolledWindow, which moves along `direction` and
+// reports the end of its content coming within half a viewport of showing --
+// as it arrives, and when the content changes size while it is there. GTK has
+// no signal saying so; the changes of the adjustment along the axis the end
+// is read on are what answer it.
 #[marks.intrinsic("gtk4:Scroll")]
 component Scroll(
-    look    gtk.Look,
+    direction string,
+    look      gtk.Look,
     @reachEnd(),
-    content ...component option[ui.node],
+    content   ...component option[ui.node],
 ) ui.node
 
 #[go.native(_rtPkg, "gtk4rt.ScrollNew")]
@@ -1060,6 +1062,9 @@ func _rtScrolledWindowSetChild(sw Scroll, child ui.node)
 #[go.native(_rtPkg, "gtk4rt.ScrollOnReachEnd")]
 func _rtScrollOnReachEnd(sw Scroll, fn func())
 
+#[go.native(_rtPkg, "gtk4rt.ScrollSetDirection")]
+func _rtScrollSetDirection(sw Scroll, direction string)
+
 #[gen.protocol(create)]
 func _create_Scroll() Scroll {
     return _rtScrollNew()
@@ -1068,6 +1073,11 @@ func _create_Scroll() Scroll {
 #[gen.protocol(append)]
 func _append_Scroll(parent Scroll, child ui.node) {
     _rtScrolledWindowSetChild(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_direction(w Scroll, direction string) {
+    _rtScrollSetDirection(w, direction)
 }
 
 // The end arriving is no GTK signal: gtk4rt watches the vertical adjustment
