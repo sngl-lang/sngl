@@ -197,26 +197,30 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                 for var slug = chainSlugs(`trigger`) {
                                     poke.evolutionTriggerRetrieve(id=slug, @load(got) { names["trigger/{got.name}"] = triggerNamed(got.names) })
                                 }
-                                for var row = chainRows() {
-                                    ui.hbox(style={gap=8px, alignItems=center}) {
-                                        for var stage = row {
-                                            ui.vbox(style={gap=8px}) {
-                                                ui.hbox(style={gap=8px, alignItems=center}) {
-                                                    if stage.trigger != "" {
-                                                        ui.vbox(style={alignItems=center, width=96px}) {
-                                                            ui.text(value="→")
-                                                            ui.text #trigger(value=stage.trigger)
+                                ui.scroll(direction=horizontal) {
+                                    ui.vbox(style={gap=12px}) {
+                                        for var row = chainRows() {
+                                            ui.hbox(style={gap=8px, alignItems=center}) {
+                                                for var stage = row {
+                                                    ui.vbox(style={gap=8px}) {
+                                                        ui.hbox(style={gap=8px, alignItems=center}) {
+                                                            if stage.trigger != "" {
+                                                                ui.vbox(style={alignItems=center, width=96px}) {
+                                                                    ui.text(value="→")
+                                                                    ui.text #trigger(value=stage.trigger)
+                                                                }
+                                                            }
+                                                            stageCard #step(stage=stage, @open { open(stage.name, "") })
                                                         }
-                                                    }
-                                                    stageCard #step(stage=stage, @open { open(stage.name, "") })
-                                                }
-                                                for var f = stage.forms {
-                                                    ui.hbox(style={gap=8px, alignItems=center}) {
-                                                        ui.vbox(style={alignItems=center, width=96px}) {
-                                                            ui.text(value="→")
-                                                            ui.text #formTrigger(value=f.trigger)
+                                                        for var f = stage.forms {
+                                                            ui.hbox(style={gap=8px, alignItems=center}) {
+                                                                ui.vbox(style={alignItems=center, width=96px}) {
+                                                                    ui.text(value="→")
+                                                                    ui.text #formTrigger(value=f.trigger)
+                                                                }
+                                                                formCard #formStep(form=f.form, @open(p) { open(stage.name, p) })
+                                                            }
                                                         }
-                                                        formCard #formStep(form=f.form, @open(p) { open(stage.name, p) })
                                                     }
                                                 }
                                             }
@@ -227,23 +231,29 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                         }
                         ui.tab(label=$"Sprites") {
                             ui.vbox(style={gap=8px, padding=8px}) {
-                                for var row = rows(pictures(), 4) {
-                                    ui.hbox(style={gap=8px}) {
-                                        for var p = row {
-                                            ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
-                                                ui.image(alt=p.label, style={width=96px, height=96px}) {
-                                                    ui.remote(url=p.url)
+                                ui.scroll(direction=horizontal) {
+                                    ui.vbox(style={gap=8px}) {
+                                        for var row = rows(pictures(), 4) {
+                                            ui.hbox(style={gap=8px}) {
+                                                for var p = row {
+                                                    ui.vbox(style={gap=4px, alignItems=center, width=112px}) {
+                                                        ui.image(alt=p.label, style={width=96px, height=96px}) {
+                                                            ui.remote(url=p.url)
+                                                        }
+                                                        ui.text #spriteLabel(value=p.label)
+                                                    }
                                                 }
-                                                ui.text #spriteLabel(value=p.label)
                                             }
                                         }
                                     }
                                 }
                                 if forms().length() > 0 {
                                     ui.text(value=$"Forms", style={fontWeight=bold})
-                                    ui.hbox(style={gap=8px}) {
-                                        for var v = forms() {
-                                            formCard #variety(form=v, @open(p) { open(name, formOf(p)) })
+                                    ui.scroll(direction=horizontal) {
+                                        ui.hbox(style={gap=8px}) {
+                                            for var v = forms() {
+                                                formCard #variety(form=v, @open(p) { open(name, formOf(p)) })
+                                            }
                                         }
                                     }
                                 }
@@ -269,15 +279,17 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                                         ui.choice(label=m.label)
                                     }
                                 }
-                                ui.vbox #moveTable(style={gap=4px}) {
-                                    moveLine(level=$"Level", name=$"Move", power=$"Power", accuracy=$"Accuracy", style={fontWeight=bold}) {
-                                        ui.text(value=$"Type", style={fontWeight=bold})
-                                    }
-                                    ui.divider()
-                                    for var r = moveRows() {
-                                        moveLine(level=r.level, name=r.name, power=r.power, accuracy=r.accuracy) {
-                                            if r.kind != "" {
-                                                typeBadge(kind=r.kindSlug, value=r.kind)
+                                ui.scroll(direction=horizontal) {
+                                    ui.vbox #moveTable(style={gap=4px}) {
+                                        moveLine(level=$"Level", name=$"Move", power=$"Power", accuracy=$"Accuracy", style={fontWeight=bold}) {
+                                            ui.text(value=$"Type", style={fontWeight=bold})
+                                        }
+                                        ui.divider()
+                                        for var r = moveRows() {
+                                            moveLine(level=r.level, name=r.name, power=r.power, accuracy=r.accuracy) {
+                                                if r.kind != "" {
+                                                    typeBadge(kind=r.kindSlug, value=r.kind)
+                                                }
                                             }
                                         }
                                     }
