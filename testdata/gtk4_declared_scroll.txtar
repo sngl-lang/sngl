@@ -384,6 +384,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 				m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
 				if m.shown {
 					__n1 := (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
+					gtk4rt.ScrollSetDirection(gtk4rt.Handle(unsafe.Pointer(__n1)), "")
 					gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(__n1)), func() {
 					})
 					__n2 := (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
@@ -466,6 +467,7 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n3), C.int((len(snglDrawFuncs) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n0)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.list = (*C.GtkScrolledWindow)(unsafe.Pointer(gtk4rt.ScrollNew()))
+	gtk4rt.ScrollSetDirection(gtk4rt.Handle(unsafe.Pointer(m.list)), "")
 	gtk4rt.ScrollOnReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)), m.list_reachEnd_handler)
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(gtk4rt.New("GtkLabel")))
 	gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n4)), "rows")
@@ -491,4 +493,4 @@ func (m *Model) listReachEnd() {
 	gtk4rt.ScrollReachEnd(gtk4rt.Handle(unsafe.Pointer(m.list)))
 }
 -- run/go/gtk4 --
-pass sha256:913012887bea789894ebd3fb483183e1
+pass sha256:540d9e13050f4426da9c5e7637523ce3

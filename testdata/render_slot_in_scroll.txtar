@@ -291,6 +291,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(__n2, 1)
 	gtk4rt.BoxSetSpacing(__n2, 6)
 	m.__n1 = gtk4rt.ScrollNew()
+	gtk4rt.ScrollSetDirection(m.__n1, "")
 	gtk4rt.ScrollOnReachEnd(m.__n1, m.__n1_reachEnd_handler)
 	m.__n1_box = gtk4rt.SlotBox(m.__n1_box)
 	if gtk4rt.ParentOf(m.__n1_box) != m.__n1 {
@@ -321,4 +322,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:d8c2ddcaf4aef8b7ec4d1a0a5a5daf42
 -- run/go/gtk4 --
-pass sha256:2bdf2a864f5d20798420edec0b136625
+pass sha256:edfd325798865bf1b68540ed88aff659
