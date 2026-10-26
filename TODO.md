@@ -233,6 +233,10 @@ the first user.
 - ~~**No target scrolls sideways.**~~ Done in step 1: every target scrolls
   along `ui.scroll`'s `direction`, and the Sprites, Evolution and Moves
   panels scroll sideways.
+- **Tabs look like buttons on three targets.** gtk4, fyne and bubbletea draw
+  sngl:ui's own `ui.tabs` body: a row of `ui.button`s, the selected one's
+  label bold. On fyne the selected one cannot be told apart in a snapshot.
+  android's TabRow and html's tablist look like tabs.
 
 ### The design
 
@@ -305,6 +309,20 @@ the first user.
    - The `scroll` props of `ui.hbox` and `ui.vbox` are deleted. A
      scrolling box is a `ui.scroll` around it. vbox's `refreshing` and
      `@refresh` stay.
+5. **Tabs drawn as each platform draws them.** Each target overrides
+   `ui.tabs` with its own widget, the panels kept as step 3 keeps them.
+   - gtk4: a `GtkStack` under a `GtkStackSwitcher`. A stack holds every page
+     it is given, which is the keeping-loaded step 3 asks for.
+   - fyne: `container.AppTabs`. Its items are `[]*container.TabItem`, which
+     no `Arg` builds out of a SNGL prop -- why fyne draws sngl:ui's body
+     today -- so a `fynelayout` helper takes the labels, the selected index
+     and the panels and builds them.
+   - bubbletea: a tab bar lipgloss draws, each tab boxed and the selected
+     one open into the panel under it; bubbles has no tabs.
+   - `variant` and `disabled` mean what they do on android and html, and a
+     test still chooses a tab by pressing it (`c.strip.change(k)`), so each
+     override keeps a node per tab the press rule finds, or the rule learns
+     the widget.
 
 ### Order
 
@@ -449,7 +467,11 @@ session.
    page title that can be computed from its params. The six
    `#languagePick`/`#dexPick`/`#backButton` uses in `pokedex_test.sngl`
    move with them.
-5. Re-record the Pokédex's android, html, gtk4 and fyne runs and its
+5. **Tabs that look like tabs.** gtk4, fyne and bubbletea override
+   `ui.tabs` with their own widgets, a fixture holding each one's look --
+   gtk4's and fyne's from a snapshot -- and `tabs_runs.txt` and
+   `tabs_panels_stay_loaded_runs.txt` passing unchanged.
+6. Re-record the Pokédex's android, html, gtk4 and fyne runs and its
    screenshots, and update `examples/pokedex/README.md`.
 
 ## Window and nav, later
