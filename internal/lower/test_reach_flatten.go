@@ -384,10 +384,21 @@ func wholeLoopedRef(e ir.Expr, params map[*ir.Param]bool) *ir.Select {
 		return nil
 	}
 	sel, _ := unnarrowedRef(e).(*ir.Select)
-	if sel == nil || len(idxs) >= len(sel.Ref) || sel.Ref[len(idxs)] != ir.RefList {
+	if sel == nil {
 		return nil
 	}
-	return sel
+	// Each index spends a list; an option is narrowed, not indexed.
+	left := len(idxs)
+	for i := 0; i < len(sel.Ref)-1; i++ {
+		if sel.Ref[i] != ir.RefList {
+			continue
+		}
+		if left == 0 {
+			return sel
+		}
+		left--
+	}
+	return nil
 }
 
 // inlineRecursiveFires writes each event a test fires on a program
