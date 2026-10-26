@@ -3,6 +3,8 @@
 // JSON form is refused there (error_json.sngl). The interpreter reads the
 // binding off the call, through a generic calling another.
 
+// SKIP(codegen) "a platform harness compiles these components with nothing instantiating them, which a build never does; every target's code is json_generic.txtar"
+
 import json "sngl:json"
 import . "sngl:test"
 import . "sngl:ui"
