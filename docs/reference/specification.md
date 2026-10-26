@@ -1301,7 +1301,9 @@ single-base unit, or two strings, which compare character by character by
 their codes: `"apple" < "fig"`, and `"pear" < "pears"`.
 
 The ternary operator `c ? a : b` evaluates `a` when `c` is true and `b`
-otherwise; `c` must be `bool`. The unary operators are `!` (logical negation,
+otherwise; `c` must be `bool`. Where one arm is an `option[T]` and the other a
+`T`, the ternary is the `option[T]`: `o == null ? 1.0 : o` handed to an
+`option[float]` parameter is that option. The unary operators are `!` (logical negation,
 on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 (dereference), and `const` (constant assertion).
 

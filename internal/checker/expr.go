@@ -1041,6 +1041,13 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	elseExpr := c.checkExprExpecting(x.Else, c.expected)
 	elseRegion = elseExpr
 	restoreElse()
+	// Checked expecting an option, an arm reading a narrowed option is that
+	// option, while a bare arm beside it is its element: `f(o == null ? 1.0
+	// : o)` for an option[float] parameter. The ternary is the option, the
+	// bare arm promoted into it; typed as the bare arm, it held an option a
+	// target spelled where a float was declared (`var __lt float64 =
+	// snglSome(2.0)`).
+	thenExpr, elseExpr = c.optionArms(thenExpr, elseExpr, x.Pos)
 	typ := exprType(thenExpr)
 	// Both ternary arms must share a numeric type. An untyped literal arm
 	// adapts to the other arm's concrete type; two concrete-but-different
@@ -1054,6 +1061,40 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 		}
 	}
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
+}
+
+// optionArms promotes the bare arm of a ternary whose other arm is an option
+// of its type into that option, an untyped number adapting to the option's
+// number first, and leaves any other pair as it is.
+func (c *checker) optionArms(then, els ir.Expr, pos ast.Pos) (ir.Expr, ir.Expr) {
+	if opt := c.optionFor(then, els, pos); opt != nil {
+		return opt, els
+	}
+	if opt := c.optionFor(els, then, pos); opt != nil {
+		return then, opt
+	}
+	return then, els
+}
+
+// optionFor is bare promoted into the option other is, or nil where bare is
+// no value of its element.
+func (c *checker) optionFor(bare, other ir.Expr, pos ast.Pos) ir.Expr {
+	bt, ot := exprType(bare), exprType(other)
+	if bt == nil || ot == nil || ot.Kind != ir.TypeOption || len(ot.Elems) != 1 || ot.Elems[0] == nil {
+		return nil
+	}
+	switch bt.Kind {
+	case ir.TypeOption, ir.TypeNull, ir.TypeInvalid:
+		return nil
+	}
+	el := ot.Elems[0]
+	if !el.Equal(bt) {
+		if !el.IsNumeric() || !bt.IsNumeric() || !isUntypedNumericConst(bare) {
+			return nil
+		}
+		bare = c.adaptNumericOperand(bare, el, pos)
+	}
+	return wrapOptionIfNeeded(bare, ot)
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
