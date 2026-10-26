@@ -1,0 +1,38 @@
+// A ternary is an `if`'s whole condition, and a `for`'s.
+//
+// The grammar takes one there (CondExpr), and the parser built only the
+// operand before the `?`, dropping the rest without a word: `if a != null ?
+// a > 0 : b` was `if a != null`, and the formatter wrote it back that way.
+//
+// The operand after the `:` is parenthesized because the grammar reads it as
+// an Expr, where `b {` begins a struct literal.
+
+import test "sngl:test"
+
+func picked(a option[int], b bool) int {
+    var n = 0
+    if a != null ? a > 0 : (b) {
+        n = 1
+    }
+    return n
+}
+
+func counted(a option[int]) int {
+    var n = 0
+    for a == null ? n < 3 : (n < a) {
+        n += 1
+    }
+    return n
+}
+
+func testTernaryCondition(t test.Test) {
+    t.assert(picked(0, true) == 0)
+    t.assert(picked(2, false) == 1)
+    t.assert(picked(null, true) == 1)
+    t.assert(picked(null, false) == 0)
+}
+
+func testTernaryLoopCondition(t test.Test) {
+    t.assert(counted(null) == 3)
+    t.assert(counted(1) == 1)
+}

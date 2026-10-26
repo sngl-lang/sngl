@@ -1895,7 +1895,7 @@ func (b *builder) buildIfNode(it nodeIter) *ast.IfStmt {
 	pos := b.posFromToken(it.shift()) // kw_if
 	stmt := &ast.IfStmt{Pos: pos}
 	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
-		stmt.Cond = b.buildExpr(it.enter())
+		stmt.Cond = b.buildCondExpr(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
 		stmt.Body = b.buildStmtBlock(it.enter())
@@ -1949,7 +1949,7 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
-		stmt.Iter = b.buildExpr(it.enter())
+		stmt.Iter = b.buildCondExpr(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
 		stmt.Body = b.buildStmtBlock(it.enter())
@@ -1978,7 +1978,7 @@ func (b *builder) buildMatch(it nodeIter) ast.Match {
 		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
-		m.Subject = b.buildExpr(it.enter())
+		m.Subject = b.buildCondExpr(it.enter())
 	}
 	prev := m.Pos.Line
 	var arm *ast.MatchArm
@@ -2036,7 +2036,7 @@ func (b *builder) buildMatchArm(it nodeIter) *ast.MatchArm {
 		}
 		switch it.symbol() {
 		case CondExpr:
-			p := b.buildExpr(it.enter())
+			p := b.buildCondExpr(it.enter())
 			if p == nil {
 				continue
 			}
@@ -2066,6 +2066,13 @@ func (b *builder) buildExpr(it nodeIter) ast.Expr {
 	return b.buildAnyExpr(&it)
 }
 
+// buildCondExpr builds an `if`'s, a `for`'s or a `match`'s head. CondExpr is
+// TernaryExpr's shape rather than Expr's: built as an Expr, its first operand
+// was the whole head and a `? … : …` after it was dropped.
+func (b *builder) buildCondExpr(it nodeIter) ast.Expr {
+	return b.buildTernaryExpr(it)
+}
+
 // buildExprNonTerminal builds an expression from the current non-terminal.
 func (b *builder) buildExprNonTerminal(it *nodeIter) ast.Expr {
 	if it.done() || !it.isNonTerminal() {
@@ -2078,8 +2085,10 @@ func (b *builder) buildExprNonTerminal(it *nodeIter) ast.Expr {
 
 func (b *builder) buildExprBySymbol(sym Symbol, it nodeIter) ast.Expr {
 	switch sym {
-	case Expr, CondExpr:
+	case Expr:
 		return b.buildExpr(it)
+	case CondExpr:
+		return b.buildCondExpr(it)
 	case TernaryExpr:
 		return b.buildTernaryExpr(it)
 	case OrExpr, CondOrExpr:
