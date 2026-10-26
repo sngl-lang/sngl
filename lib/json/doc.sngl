@@ -31,5 +31,6 @@
 // member, and no mark means the SNGL name. The field keeps its own name
 // everywhere else, on every host.
 //
-// The type must be known where `decode` or `encode` is called: a call inside
-// a generic function whose type parameter is the type is refused.
+// A generic function or component may read or write its own type parameter:
+// the type is the one each call binds, and a call binding a type with no JSON
+// form is refused there, naming what it bound.

@@ -231,13 +231,24 @@ func codecUnwrap(t *Type) *Type {
 // CodecProblem says why a value of t has no form in format, naming the part
 // of t that has none, or returns "" where it has one.
 func CodecProblem(t *Type, format CodecFormat) string {
-	if format == CodecQuery {
-		return queryProblem(t)
-	}
-	return jsonProblem(t, map[string]bool{})
+	return codecProblem(t, format, false)
 }
 
-func jsonProblem(t *Type, seen map[string]bool) string {
+// CodecProblemOpen is CodecProblem with each type parameter taken to have a
+// form: what a generic body's call is held to, its parameters being checked
+// at each call that binds them (GenericCodecs).
+func CodecProblemOpen(t *Type, format CodecFormat) string {
+	return codecProblem(t, format, true)
+}
+
+func codecProblem(t *Type, format CodecFormat, open bool) string {
+	if format == CodecQuery {
+		return queryProblem(t, open)
+	}
+	return jsonProblem(t, map[string]bool{}, open)
+}
+
+func jsonProblem(t *Type, seen map[string]bool, open bool) string {
 	t = codecUnwrap(t)
 	if t == nil {
 		return "a value of no known type"
@@ -246,12 +257,12 @@ func jsonProblem(t *Type, seen map[string]bool) string {
 	case TypeBool, TypeInt, TypeFloat, TypeString:
 		return ""
 	case TypeOption, TypeList:
-		return jsonProblem(t.Elems[0], seen)
+		return jsonProblem(t.Elems[0], seen, open)
 	case TypeMap:
 		if k := codecUnwrap(t.Elems[0]); k == nil || k.Kind != TypeString {
 			return fmt.Sprintf("%s, whose keys are not strings", t)
 		}
-		return jsonProblem(t.Elems[1], seen)
+		return jsonProblem(t.Elems[1], seen, open)
 	case TypeEnum:
 		return enumProblem(t)
 	case TypeStruct:
@@ -278,12 +289,15 @@ func jsonProblem(t *Type, seen map[string]bool) string {
 				return fmt.Sprintf("%s, whose fields %s and %s are both written %q", t, prev, f.Name, w)
 			}
 			wires[w] = f.Name
-			if p := jsonProblem(f.Type, seen); p != "" {
+			if p := jsonProblem(f.Type, seen, open); p != "" {
 				return p
 			}
 		}
 		return ""
 	case TypeTypeParam:
+		if open {
+			return ""
+		}
 		return fmt.Sprintf("%s, a type parameter: the type has to be known where the call is", t)
 	}
 	return fmt.Sprintf("%s, which has no JSON form", t)
@@ -313,9 +327,9 @@ func enumProblem(t *Type) string {
 
 // queryProblem: a query is a struct whose fields each have a string form, or
 // are an option of one, or a list of one.
-func queryProblem(t *Type) string {
+func queryProblem(t *Type, open bool) string {
 	t = codecUnwrap(t)
-	if t == nil {
+	if t == nil || open && t.Kind == TypeTypeParam {
 		return ""
 	}
 	if t.Kind == TypeTypeParam {

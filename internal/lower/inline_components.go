@@ -369,6 +369,7 @@ type inlineCompState struct {
 	// not, compInsts is each generic component's copies (instantiateRuntime),
 	// and taken the names a copy may not take.
 	genericComponents bool
+	codecs            ir.CodecReach
 	compInsts         map[*ir.Component][]componentInstance
 	taken             map[string]bool
 	// names is passInlinePure's as well; see Options.names.

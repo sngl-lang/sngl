@@ -111,6 +111,9 @@ var alwaysOn = []string{
 	// which matches those are is what Matches and ViewMatches decide.
 	"Match",
 	"MatchLate",
+	// Every language's codec reads the type at the call, which a generic
+	// emitted once does not know.
+	"MonomorphizeCodecs",
 	// Which bindings are written is a fact about the finished bodies, and
 	// every target has a backend that may care -- Kotlin copies on binding
 	// unless this says the binding is never written.

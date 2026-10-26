@@ -34,9 +34,12 @@ type componentInstance struct {
 // time, at its component's copy for the types it binds, making the copy the
 // first time it is asked for. A component whose call site leaves a type
 // parameter unbound -- a node in a body still generic -- keeps the original.
+//
+// A target emitting one generic component copies one all the same where a
+// codec call reaches a type parameter, since the codec reads the type.
 func (st *inlineCompState) instantiateRuntime(n *ir.NodeInst) error {
 	c := n.Component
-	if st.genericComponents || c == nil || len(c.TypeParams) == 0 {
+	if c == nil || len(c.TypeParams) == 0 || st.genericComponents && len(st.codecs.GenericCodecs(c)) == 0 {
 		return nil
 	}
 	inst, err := st.componentInstance(n)

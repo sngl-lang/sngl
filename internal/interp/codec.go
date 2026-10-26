@@ -58,6 +58,7 @@ func (env *Env) evalCodecCall(call *ir.Call) (any, bool, error) {
 		return nil
 	}
 	t, format, _ := ir.CodecCall(call)
+	t = env.boundType(t)
 	switch call.Func.Intrinsic {
 	case ir.JSONDecodeIntrinsic:
 		text, _ := arg("text").(string)
@@ -66,10 +67,10 @@ func (env *Env) evalCodecCall(call *ir.Call) (any, bool, error) {
 		if msg == "" {
 			var v any
 			if v, msg = decodeValue(tree, plan.Root, "$"); msg == "" {
-				return EnumValue{Type: call.Type, Member: "ok", Payload: v}, true, nil
+				return EnumValue{Type: env.boundType(call.Type), Member: "ok", Payload: v}, true, nil
 			}
 		}
-		return resultFailed(call.Type, "decode", msg, ""), true, nil
+		return resultFailed(env.boundType(call.Type), "decode", msg, ""), true, nil
 	case ir.JSONEncodeIntrinsic:
 		var b bytes.Buffer
 		encodeValue(&b, arg("value"), ir.PlanCodec(t, format).Root)

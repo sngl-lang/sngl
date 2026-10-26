@@ -1198,6 +1198,8 @@ func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
 	child.Comp = env.Comp
 	child.parent = env
 	child.inst = env.inst
+	child.types = env.types
+	child.typeCalls = env.typeCalls
 	child.entries = env.entries
 	child.ContextVals = capturedContext(env)
 	child.RenderDepth = env.RenderDepth

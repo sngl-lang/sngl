@@ -42,9 +42,33 @@ type monomorph struct {
 	pending   []*ir.Func
 }
 
-func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
-	if pkg == nil {
+// passMonomorphizeCodecs copies, on every target, each generic function a
+// codec call reaches at one of its type parameters (ir.GenericCodecs): every
+// language's codec reads the type at the call, which a body emitted once
+// does not know. After the splice, since a generic component's body is
+// spliced at its bound types only then, and the calls it makes are bound
+// only from then.
+var passMonomorphizeCodecs = pass{
+	name:    "MonomorphizeCodecs",
+	enabled: func(Features) bool { return true },
+	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+		var reach ir.CodecReach
+		monomorphizeFuncs(pkg, func(fn *ir.Func) bool { return len(reach.GenericCodecs(fn)) > 0 }, false)
 		return nil
+	},
+}
+
+func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
+	monomorphizeFuncs(pkg, func(*ir.Func) bool { return true }, true)
+	return nil
+}
+
+// monomorphizeFuncs copies each generic function copy says to per
+// instantiation, and with types the struct and enum instantiations the
+// copies name.
+func monomorphizeFuncs(pkg *ir.Package, copy func(*ir.Func) bool, types bool) {
+	if pkg == nil {
+		return
 	}
 	m := &monomorph{
 		slot:      map[*ir.Func]*[]*ir.Func{},
@@ -56,7 +80,7 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 	note := func(funcs *[]*ir.Func) {
 		for _, fn := range *funcs {
 			m.names[fn.Name] = true
-			if isGenericBody(fn) {
+			if isGenericBody(fn) && copy(fn) {
 				m.slot[fn] = funcs
 				_ = ir.Walk(fn, func(n ir.Node) error {
 					inside[n] = true
@@ -74,11 +98,13 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	// The structs after the functions: a function's copy names the struct
 	// instantiations its bindings make, which the struct pass then finds.
-	defer monomorphizeEnums(pkg, m.names)
-	defer monomorphizeStructs(pkg, m.names)
-	defer monomorphizeEnums(pkg, m.names)
+	if types {
+		defer monomorphizeEnums(pkg, m.names)
+		defer monomorphizeStructs(pkg, m.names)
+		defer monomorphizeEnums(pkg, m.names)
+	}
 	if len(m.slot) == 0 {
-		return nil
+		return
 	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		if !inside[n] {
@@ -100,7 +126,6 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 			*funcs = slices.DeleteFunc(slices.Clone(*funcs), func(f *ir.Func) bool { return f == fn })
 		}
 	}
-	return nil
 }
 
 // keepCallees keeps every generic a kept original reaches: its body is

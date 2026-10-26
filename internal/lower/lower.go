@@ -89,6 +89,7 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	passMonomorphizeCodecs,
 	// Once the inliners have settled every node's ID, before anything copies one.
 	passReservedNodeIDs,
 	passErrorScope,

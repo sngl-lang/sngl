@@ -3876,6 +3876,7 @@ func (c *checker) pass2() {
 	c.checkGenSchemes()
 	c.checkCLinks()
 	c.reportUnlinkedCNativeCalls()
+	c.checkGenericCodecs()
 	c.checkOwnedReleases()
 
 	// Every body has now been read, which is what a family read off one waits

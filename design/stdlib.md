@@ -479,8 +479,22 @@ needs the struct.
 **What has no wire form is refused at the call** (`checkCodecCall`,
 `ir.CodecProblem`): a function, a unit, a payload enum (not yet), a map keyed
 by anything but a string, two fields written under one name, a query field
-holding a struct -- and a type parameter, since the type has to be known where
-the call is (`testdata/error_json.sngl`).
+holding a struct (`testdata/error_json.sngl`).
+
+**A generic body may encode its own type parameter**, which `sngl:settings`
+needs: `kept[T]` writes its `T`. The body is checked with the parameter open
+(`ir.CodecProblemOpen`), and each call or node binding it is checked at the
+type it binds, through the generics between (`ir.GenericCodecs`,
+`checkGenericCodecs`). Every codec reads the type at the call, so no target
+emits such a body once: `passMonomorphizeCodecs` copies a function per
+binding on every target, JavaScript included, after the splice that binds
+a generic component's calls, and `instantiateRuntime` copies a component built
+at run time where a codec reaches its parameter. The interpreter has no
+copies, so a frame holds its bindings (`Env.types`): a call reads them under
+the caller's before its arguments run, and the callee's frame takes them,
+since a function with no result runs in its caller's scope, where two
+generics may each name a T (`testdata/json_generic.sngl`,
+`testdata/json_generic.txtar`).
 
 **Every language renders one plan** (`ir.PlanCodec`): the type's shape and
 each field's and member's wire name, every struct and enum once so a type
