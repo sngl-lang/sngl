@@ -95,7 +95,13 @@ Each is a commit series on the branch; one MR, so CI runs once.
    element writes `style=html.css({…})`. The fold reduces each declaration
    the build can read to text in the markup; one only the page knows is a
    setProperty, and a list held whole goes through `_snglCSSText`.
-6. The coverage test across all six, and CLAUDE.md's platform sections.
+6. The coverage test, and the platform notes. Done:
+   `lib/style_coverage_test.go`'s `TestEveryPlatformAnswersEveryStyleField`
+   holds the ui.Style fields each platform's package reads, with its
+   `unstyled` list (html's empty), to every field, and refuses a listed field
+   the platform reads. `none` draws nothing and is not held to it (Jonathan's
+   call). The notes are design/architecture.md's *Platform Details*, with a
+   rule in CLAUDE.md.
 7. **A Style that can say "unset".** Committed on `style-unset`
    (`da4a62b84`, `8232b1be9`), with two things since decided against: see
    *Next session*. `ui.Style`'s lengths, colors and `flex`, `opacity`,
@@ -141,15 +147,15 @@ grouped by `styleGroup`, `_snglSetStyles`); the tour's raw elements wanted
 `html.css`; `int.parse` of constants now folds (`generate_int_parse.txt`
 reads state); a dumped `PageParams{}` holds no `id`.
 
-**Left:** rerun `go tool verify -update` with
-`ANDROID_HOME=/home/claude/Android/Sdk`, its exit status and FAIL rows, the
-commits, then step 6.
+The rerun passed (`verify exit=0`, no FAIL rows); committed as `cee313d64`
+and `b7a3aea85`, pushed as !280. Step 6 since, and a `{…}` handed to a list
+(a raw element's `style`) is reported as the slot's mismatch with the
+function of the list's package that makes one (`html.css`,
+`testdata/error_raw_element_style_literal.sngl`). **Left:** nothing of the
+order; what follows was found on the way.
 
 ### Found on the way, not yet fixed
 
-- A Style literal written where a raw html element's `style` wants
-  `list[Declaration]` is refused as "6px needs a unit type here", which
-  names neither the prop nor `html.css`.
 - A literal Style's Modifier is built at run time on android,
   `styleModifier(Style(…))`: the optimizer splices single-expression
   functions only, and the Modifier builder is a block.
