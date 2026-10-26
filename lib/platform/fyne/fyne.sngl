@@ -203,6 +203,7 @@ struct Look {
     monospace     bool
     textAlign     int
     wrap          int
+    cursor        int
     hidden        bool
 }
 

@@ -168,7 +168,9 @@ platform's `unstyled` list in the same commit.
    (`cmd/sngl/testdata/style_bubbletea_fit_runs.txt`). Not `nowrap` as
    lipgloss's Inline, which also drops the box's padding, border and margin.
 3. gtk4: `justifyContent` and `flex` weights, a layout of gtk4rt's own.
-4. fyne: `cursor`, through a desktop.Cursorable box.
+4. fyne: `cursor`, through a desktop.Cursorable box. Done: a pointer area in
+   the Box, over the widget and under a container's children
+   (`pkg/go/fynelayout/cursor_test.go`).
 
 ### Found on the way, not yet fixed
 

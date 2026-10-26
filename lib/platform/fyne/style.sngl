@@ -15,8 +15,6 @@ import ui "sngl:ui"
 //     table borders.
 //   - borderStyle: a canvas.Rectangle strokes a solid line only.
 //   - opacity: Fyne fades no widget it draws.
-//   - cursor: not answered yet; a desktop.Cursorable box would have to sit
-//     above the widget a pointer reaches.
 //   - overflow: Fyne clips only a scroll's content, which is ui.scroll's.
 //   - listStyleType: no widget here draws a list marker.
 const unstyled list[string] = [
@@ -34,7 +32,6 @@ const unstyled list[string] = [
     "borderCollapse",
     "borderStyle",
     "opacity",
-    "cursor",
     "overflow",
     "listStyleType",
 ]
@@ -94,6 +91,22 @@ const func wrapOf(w ui.WhiteSpace) int {
     }
 }
 
+// The pointer a box shows, as fynelayout's Cursor: Fyne has seven, and a
+// CSS name it has none for is the default arrow. `auto` and an unset one
+// leave the cursor of the box around it, as CSS's inherits.
+const func cursorOf(name string) int {
+    return match name {
+        "", "auto" => 0
+        "text", "vertical-text" => 2
+        "crosshair", "cell" => 3
+        "pointer" => 4
+        "ew-resize", "col-resize", "e-resize", "w-resize" => 5
+        "ns-resize", "row-resize", "n-resize", "s-resize" => 6
+        "none" => 7
+        else => 1
+    }
+}
+
 // A block rather than an expression, so the optimizer calls it instead of
 // splicing a computed Style into each of the fields that read it.
 const func lookOf(s ui.Style) Look {
@@ -126,6 +139,7 @@ const func lookOf(s ui.Style) Look {
         monospace = s.fontFamily == "monospace",
         textAlign = textAlignOf(s.textAlign),
         wrap = wrapOf(s.whiteSpace),
+        cursor = cursorOf(s.cursor),
         hidden = s.display == ui.Display.none,
     }
     return look

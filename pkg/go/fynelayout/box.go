@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -41,6 +42,9 @@ type Look struct {
 	TextSize                float32
 	Bold, Italic, Monospace bool
 	TextAlign, Wrap         int
+
+	// Cursor is the pointer shown over the box; zero leaves the one around it.
+	Cursor int
 
 	Hidden bool
 }
@@ -78,6 +82,18 @@ const (
 	WrapWord
 )
 
+// Cursor is the pointer a Look asks for over its box.
+const (
+	CursorInherit = iota
+	CursorDefault
+	CursorText
+	CursorCrosshair
+	CursorPointer
+	CursorHResize
+	CursorVResize
+	CursorHidden
+)
+
 // Box shows one widget inside the margin, border, fill and padding its Look
 // asks for, under a theme carrying the Look's text and paint, as CSS's
 // border-box lays a node out.
@@ -86,6 +102,9 @@ type Box struct {
 	Content fyne.CanvasObject
 	look    Look
 	fill    *canvas.Rectangle
+	// pointer says the Look's cursor over the box, hidden where it asks for
+	// none.
+	pointer *pointerArea
 	// themed is made the first time the Look asks for a theme: an override
 	// re-measures its whole subtree on every refresh.
 	themed *container.ThemeOverride
@@ -108,6 +127,7 @@ func NewBox(content fyne.CanvasObject) *Box {
 	b := &Box{
 		Content: content,
 		fill:    canvas.NewRectangle(color.Transparent),
+		pointer: newPointerArea(),
 	}
 	switch w := content.(type) {
 	case *widget.Label:
@@ -133,6 +153,7 @@ func (b *Box) SetLook(l Look) {
 	b.fill.StrokeWidth = l.StrokeWidth
 	b.fill.CornerRadius = l.Radius
 	b.setText(l)
+	b.pointer.setCursor(l.Cursor)
 	if w, ok := layoutOf(b.Content); ok {
 		w.Gap, w.Cross, w.Justify = l.Gap, l.Cross, l.Justify
 	}
@@ -265,8 +286,26 @@ func (b *Box) CreateRenderer() fyne.WidgetRenderer {
 
 type boxRenderer struct{ b *Box }
 
+// Objects puts the box's pointer area where a desktop driver, which takes
+// the last cursor it meets walking down the tree under the pointer, lets it
+// say what CSS's cursor would: over a widget's own, so an entry shows the
+// pointer its Style asks for and not its text cursor, and under a box's
+// children, so one of them asking for its own cursor says over this one. A
+// widget a container holds keeps its own cursor over the container's.
 func (r *boxRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.b.fill, r.b.inner()}
+	if holds(r.b.Content) {
+		return []fyne.CanvasObject{r.b.fill, r.b.pointer, r.b.inner()}
+	}
+	return []fyne.CanvasObject{r.b.fill, r.b.inner(), r.b.pointer}
+}
+
+// holds reports whether o lays out children of its own, which may be boxes.
+func holds(o fyne.CanvasObject) bool {
+	switch o.(type) {
+	case *fyne.Container, *container.Scroll:
+		return true
+	}
+	return false
 }
 
 func (r *boxRenderer) Destroy() {}
@@ -330,7 +369,48 @@ func (r *boxRenderer) Layout(size fyne.Size) {
 	w, h = max(w, 0), max(h, 0)
 	r.b.fill.Move(fyne.NewPos(l.MarginLeft, l.MarginTop))
 	r.b.fill.Resize(fyne.NewSize(w, h))
+	r.b.pointer.Move(r.b.fill.Position())
+	r.b.pointer.Resize(r.b.fill.Size())
 	iw, ih := l.insets()
 	r.b.inner().Move(fyne.NewPos(l.MarginLeft+l.PaddingLeft+l.StrokeWidth, l.MarginTop+l.PaddingTop+l.StrokeWidth))
 	r.b.inner().Resize(fyne.NewSize(max(w-iw, 0), max(h-ih, 0)))
+}
+
+// pointerArea is a box's extent, drawing nothing, that a desktop driver asks
+// which cursor to show over it.
+type pointerArea struct {
+	widget.BaseWidget
+	cursor desktop.Cursor
+}
+
+func newPointerArea() *pointerArea {
+	a := &pointerArea{}
+	a.ExtendBaseWidget(a)
+	a.Hide()
+	return a
+}
+
+func (a *pointerArea) setCursor(c int) {
+	cursors := map[int]desktop.Cursor{
+		CursorDefault:   desktop.DefaultCursor,
+		CursorText:      desktop.TextCursor,
+		CursorCrosshair: desktop.CrosshairCursor,
+		CursorPointer:   desktop.PointerCursor,
+		CursorHResize:   desktop.HResizeCursor,
+		CursorVResize:   desktop.VResizeCursor,
+		CursorHidden:    desktop.HiddenCursor,
+	}
+	cursor, ok := cursors[c]
+	if !ok {
+		a.Hide()
+		return
+	}
+	a.cursor = cursor
+	a.Show()
+}
+
+func (a *pointerArea) Cursor() desktop.Cursor { return a.cursor }
+
+func (a *pointerArea) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(canvas.NewRectangle(color.Transparent))
 }
