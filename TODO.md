@@ -222,9 +222,19 @@ platform's `unstyled` list in the same commit.
 - A zero `borderWidth` drew a border on bubbletea, and
   `TestReactiveStyleRunsInTheEmittedProgram` said so on the branch; fixed,
   but how verify passed over it is not known.
-- On clean main, `ui.select` does not compile on bubbletea under a `for`
+- On clean main, `ui.select` did not compile on bubbletea under a `for`
   (`too many arguments in call to m.widget0Copy`), nor on fyne or gtk4 under
-  a reactive `if` (`undefined: o`; a missing `c.__n1`).
+  a reactive `if` (`undefined: o`; a missing `c.__n1`). The select shapes
+  build and run on the branch; the bubbletea error was a `ui.table` under a
+  `for` (#263), fixed (`table_under_for_runs.txt`). On the way: a window's
+  handler writing page state a looped instance reads named the instance's
+  nodes as the Model's on fyne and gtk4, fixed by giving it no update of them
+  (`page_write_kept_instance.txtar`) -- so the instance shows what it read
+  when it was built, design/instances.md's missing direction, which the
+  interpreter does not share.
+- A test reading a looped `#id` whole, `c.title.length()`, does not build on
+  any compiled target (`c.title undefined` on Go, `undefined.length` on
+  html); `c.title[1]` does.
 - passImplicitState refuses a call site that binds one two-way prop and
   leaves another unbound.
 - android's select honors none of `disabled`, `multiple`, `@focus`,

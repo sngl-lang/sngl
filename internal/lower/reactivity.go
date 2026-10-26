@@ -1319,16 +1319,22 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 }
 
 // reachable is what a write to v updates from the body being walked: every
-// node, slot and instance reading v but, from a component's body, those
-// another component's body writes. A component the build keeps -- one built at run time, a recursion
-// -- holds its nodes itself, so a write elsewhere has no way to them: one
-// instance writing page state another reads named the other's nodes and
-// panel instances from its own record, which has none. Such a reader shows
-// what it read when it was built (design/instances.md).
+// node, slot and instance reading v but, from a component's body or the
+// package's, those a component's body writes. A component the build keeps --
+// one built at run time, a recursion -- holds its nodes itself, so a write
+// elsewhere has no way to them: one instance writing page state another reads
+// named the other's nodes and panel instances from its own record, which has
+// none, and a window's handler named them from the Model
+// (`testdata/page_write_kept_instance.txtar`). Such a reader shows what it
+// read when it was built (design/instances.md).
 func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot, []liveProp) {
 	// A package func may be any body's code -- a lambda lifted out of one --
-	// so only a component's own body is held to its own.
+	// so only a component's own body, and the package body, which is walked
+	// with the application as its root, are held to their own.
 	_, inComp := st.owner.(compOwner)
+	if o, ok := st.owner.(pkgOwner); ok && o.root == ir.AppParent {
+		inComp = true
+	}
 	foreign := func(o reactivityOwner) bool {
 		_, other := o.(compOwner)
 		return inComp && other && st.owner != o

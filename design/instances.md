@@ -569,7 +569,11 @@ write-back, `@input` and `@change` there with the loop's variables bound; the
 focus sync focuses that copy and blurs the rest. It used to be one model field
 for every copy: each row showed and edited one text, the write-back wrote
 whichever var the first handler assigned, and a handler reading the loop
-variable did not compile (`bubbletea/loop_widget_run_test.go`).
+variable did not compile (`bubbletea/loop_widget_run_test.go`). Only a model
+whose value bubbletea sets is set from its cell (`copyTakesValue`): a table's
+`selected` cell, which passImplicitState gives it, is no value a `tui.Table`
+takes, and handing it to the accessor anyway did not compile
+(`cmd/sngl/testdata/table_under_for_runs.txt`).
 
 **A loop's focus stops are the focusable nodes it renders**, not its
 iterations. bubbletea's `passFocusOrder` makes the outermost `for` holding one
@@ -652,7 +656,9 @@ those of *other* live instances reading it, so their views go stale until they
 are rebuilt. A write in a component's body is given no update of another
 component's nodes at all (`reachable` in passReactivity): it named them, and
 the other's panel instances, through its own record, and fyne and gtk4 did not
-build (`cmd/sngl/testdata/page_state_other_instance_runs.txt`).
+build (`cmd/sngl/testdata/page_state_other_instance_runs.txt`). Nor is a write
+in the package body, a window's handler, which named a looped row's nodes and
+render slot as the Model's (`testdata/page_write_kept_instance.txtar`).
 
 **An html instance is a closure, and its body is laid out the way the page's
 markup is.** Its component's own `func`s are closures beside its vars, called
