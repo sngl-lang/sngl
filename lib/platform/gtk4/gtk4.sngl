@@ -206,13 +206,13 @@ const component ui.textarea[platform](value, style, @input, @change) {
 // --- Container widgets ---
 
 const component ui.vbox[platform](style, children) {
-    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 6), look=lookOf(style)) {
+    gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 6)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 6), look=lookOf(style)) {
+    gtk.GtkBox(orientation="horizontal", look=boxLookOf(style, 6)) {
         children
     }
 }
@@ -353,7 +353,7 @@ const component ui.popover[platform](style, open, @close, content) {
 // leads each row with a check button that selects it; a sortable header's
 // cells are buttons reporting the column.
 const component ui.table[platform](style, columns, selectable, selected, sortable, @select, @sort, rows) {
-    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 0), look=lookOf(style)) {
+    gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
         gtk.GtkBox(orientation="horizontal", homogeneous=true) {
             if selectable {
                 gtk.GtkLabel(label="") {}
@@ -404,7 +404,7 @@ const func _treeRows(items list[ui.treeItem], indent string) list[_TreeRow] {
 // Every node is shown, expanded or not: a row cannot be hidden and shown by
 // its parent's state without a var, which a const component has none of.
 const component ui.tree[platform](style, selected, @select, items) {
-    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 0), look=lookOf(style)) {
+    gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
         for var row = _treeRows(items, "") {
             gtk.GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
                 if checkActive(b) && selected != row.label {
@@ -418,7 +418,7 @@ const component ui.tree[platform](style, selected, @select, items) {
 
 const component ui.radio[platform](value, disabled, direction, style, @change, options) {
     if direction == ui.Orientation.horizontal {
-        gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 6), sensitive=(disabled == false), look=lookOf(style)) {
+        gtk.GtkBox(orientation="horizontal", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
                 gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
                     if checkActive(b) && value != opt.label {
@@ -429,7 +429,7 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
             }
         }
     } else {
-        gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 6), sensitive=(disabled == false), look=lookOf(style)) {
+        gtk.GtkBox(orientation="vertical", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
                 gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
                     if checkActive(b) && value != opt.label {
@@ -480,7 +480,7 @@ const component ui.select[platform](value, disabled, style, @change, options) {
 // A menu's top-level entries, as html shows them; a submenu has nowhere to
 // open without a var.
 const component ui.menubar[platform](style, items) {
-    gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 4), look=lookOf(style)) {
+    gtk.GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
         for var it = items {
             gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
         }
@@ -489,7 +489,7 @@ const component ui.menubar[platform](style, items) {
 
 const component ui.menu[platform](style, open, items) {
     if open {
-        gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 0), look=lookOf(style)) {
+        gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
             for var it = items {
                 gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
             }
@@ -498,7 +498,7 @@ const component ui.menu[platform](style, open, items) {
 }
 
 const component ui.toolbar[platform](style, controls) {
-    gtk.GtkBox(orientation="horizontal", spacing=spacingOf(style, 4), look=lookOf(style)) {
+    gtk.GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
         controls
     }
 }
@@ -518,7 +518,7 @@ const component ui.splitview[platform](style, direction, panes) {
 }
 
 const component ui.drawer[platform](style, open, content) {
-    gtk.GtkBox(orientation="vertical", spacing=spacingOf(style, 6), visible=open && shown(style), look=lookBesideVisible(style)) {
+    gtk.GtkBox(orientation="vertical", visible=open && shown(style), look=boxLookBesideVisible(style, 6)) {
         content
     }
 }

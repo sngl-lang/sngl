@@ -168,6 +168,8 @@ platform's `unstyled` list in the same commit.
    (`cmd/sngl/testdata/style_bubbletea_fit_runs.txt`). Not `nowrap` as
    lipgloss's Inline, which also drops the box's padding, border and margin.
 3. gtk4: `justifyContent` and `flex` weights, a layout of gtk4rt's own.
+   Done: a custom layout manager on a box that asks for either, and a box's
+   spacing moved into its look (`pkg/go/gtk4rt/flex_test.go`).
 4. fyne: `cursor`, through a desktop.Cursorable box. Done: a pointer area in
    the Box, over the widget and under a container's children
    (`pkg/go/fynelayout/cursor_test.go`).
@@ -207,8 +209,9 @@ platform's `unstyled` list in the same commit.
 - On fyne a widget added to a container already under a Box's theme keeps
   the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
   render slot appending into a styled vbox meets it.
-- On gtk4 `flex` shares the free space evenly whatever the weights, and
-  `justifyContent` is listed as not answered yet. A `fontSize` is written in
+- On gtk4 a child that expands with no look of its own (a scroll's) takes
+  one share beside a styled flex, and a box gtk4rt lays out measures height
+  for width only. A `fontSize` is written in
   points, as Pango reads a span's, so 1em is GTK's default text, while every
   other length is pixels. A Look's CSS is at application priority on the
   widget's own node, so a button given a `background` loses the theme's hover

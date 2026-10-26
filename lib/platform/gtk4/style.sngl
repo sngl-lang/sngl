@@ -6,8 +6,6 @@ import gtk "gir:Gtk-4.0"
 //   - maxWidth, maxHeight: GTK gives a widget at least its minimum and as much
 //     as its parent allocates, and nothing caps it.
 //   - flexDirection: vbox and hbox are the axis.
-//   - justifyContent: not answered yet; a GtkBox packs its children from the
-//     start, and spreading the free space needs a layout of gtk4rt's own.
 //   - position, top, bottom, left, right, zIndex: a GtkBox lays its children
 //     out itself, with no flow to take one out of and no offsets.
 //   - borderCollapse: table borders.
@@ -16,7 +14,6 @@ const unstyled list[string] = [
     "maxWidth",
     "maxHeight",
     "flexDirection",
-    "justifyContent",
     "position",
     "top",
     "bottom",
@@ -130,23 +127,50 @@ const func clipOf(o ui.Overflow) bool {
 // expression, so the optimizer calls it instead of splicing a computed Style
 // into each of the fields that read it.
 //
-// `flex` is a share of nothing: a child that has one expands along its box's
-// axis, and GTK splits the free space evenly between the children that do.
+// `flex` is a child's share of its box's spare room, and `justifyContent`
+// where a box puts what its children leave of it: a GtkBox splits the room
+// evenly and packs from the start, so gtk4rt lays out a box that asks for
+// either otherwise.
 const func lookOf(s ui.Style) gtk.Look {
-    var look = lookHidden(s, s.display == ui.Display.none)
+    var look = lookHidden(s, s.display == ui.Display.none, false, 0)
+    return look
+}
+
+// The look of a GtkBox, which holds its spacing: its gap, or what the
+// override spaces its children by. gtk4rt sets it, since a box it lays out
+// is one GtkBox's own setter cannot reach.
+const func boxLookOf(s ui.Style, otherwise int) gtk.Look {
+    var look = lookHidden(s, s.display == ui.Display.none, true, spacingOf(s, otherwise))
     return look
 }
 
 // The look of a widget whose visibility a prop drives, which answers
 // `display` itself through shown.
 const func lookBesideVisible(s ui.Style) gtk.Look {
-    var look = lookHidden(s, false)
+    var look = lookHidden(s, false, false, 0)
+    return look
+}
+
+// lookBesideVisible for a GtkBox.
+const func boxLookBesideVisible(s ui.Style, otherwise int) gtk.Look {
+    var look = lookHidden(s, false, true, spacingOf(s, otherwise))
     return look
 }
 
 const func shown(s ui.Style) => s.display != ui.Display.none
 
-const func lookHidden(s ui.Style, hidden bool) gtk.Look {
+const func justifyOf(j ui.Justification) int {
+    return match j {
+        center => 1
+        end => 2
+        spaceBetween => 3
+        spaceAround => 4
+        spaceEvenly => 5
+        unset, start => 0
+    }
+}
+
+const func lookHidden(s ui.Style, hidden bool, spaced bool, spacing int) gtk.Look {
     var look gtk.Look = {
         css = cssOf(s),
         width = inset(s.width),
@@ -159,6 +183,9 @@ const func lookHidden(s ui.Style, hidden bool) gtk.Look {
         clip = clipOf(s.overflow),
         hidden = hidden,
         cursor = s.cursor,
+        justify = justifyOf(s.justifyContent),
+        spaced = spaced,
+        spacing = spacing,
     }
     return look
 }
