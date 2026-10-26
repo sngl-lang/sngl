@@ -379,8 +379,8 @@ session.
      instance. The Pokédex binds `dexName` in `homePage`, beside the query
      keyed on it, for this reason; `t.setContext(settings.store, …)` in a test
      gets there too, by making the component reading the context an instance,
-     and `settings_kept.txtar` leaves that test out. Not fixed: it wants each
-     instance reachable from the writer.
+     and `settings_kept.txtar` leaves that test out. Fixed before step 4 (see
+     there).
    - An effect in a component copied per row of a const loop cannot read a
      prop bound to the loop variable ("an effect's @mount reads the loop
      variable"), so `settings.kept(name=row.id, …)` under a `for` is
@@ -459,7 +459,24 @@ session.
      the first time its tab is shown and keeps what it got (`movesShown`):
      the page opens without those 18 requests, and settles in 0.8s on the
      interpreter. A row-visibility event is the follow-up.
-4. **The app bar.** Write the `ui.window` prop and slot in the spec, then
+4. **The app bar.** Before it, done: a write from outside a component built
+   at run time reaches the effects keyed on it, the bug step 2 found, since
+   the menu moves who writes `language` and `dexName`. Each package var an
+   effect's key reads becomes a prop of the instance (`passEffectOutsideKeys`),
+   so the site's setter reaches every live copy; an instance in a test build
+   rooted at a component reaches that component's flags through the Model.
+   design/instances.md says how. Pinned by
+   `testdata/effect_keyed_on_package_var_runtime_instance.txtar`,
+   `cmd/sngl/testdata/effect_keyed_on_package_var_runs.txt` (all six, a query
+   included) and `settings_kept.txtar`, which has its left-out test back. It
+   was wider than step 2 saw: html built and silently ran no `@update`,
+   remount or query, and android did not build either. Not fixed: a key that
+   reads the var through a call (`effect(on=current())`) is still marked by
+   bare name. The golden harness's fyne test file has no `t.wait` (it lacks
+   the post queue `sngl test` declares, `undefined: __snglRunPosts`), so the
+   query case is a script.
+
+   Write the `ui.window` prop and slot in the spec, then
    implement android, gtk4, html, fyne and bubbletea, and the up arrow. In
    the Pokédex, move the language and the dex choice into the window's `menu`, delete
    `#backButton`, and set the title to `pages.current.title`; detail's

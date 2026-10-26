@@ -83,6 +83,9 @@ var alwaysOn = []string{
 	// An effect's reports are lowered on every target; one that brackets a
 	// lifetime itself keeps the node with its @mount and @unmount.
 	"Effect",
+	// A write outside an instance built at run time reaches its keyed effects
+	// on every target that builds one.
+	"EffectOutsideKeys",
 	// A payload enum's selector read is the member test or the payload on
 	// every target.
 	"EnumReads",

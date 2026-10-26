@@ -52,6 +52,7 @@ func emitComponentInstance(
 	igc := gc.ForComponent(comp)
 	igc.Ctx.StateReceiver = instanceReceiver
 	igc.Ctx.OuterReceiver = instanceReceiver + "." + golang.InstanceModelField
+	igc.Ctx.ModelComponent = gc.Ctx.Component
 	igc.Ctx.OuterNodes = golang.PageNodes(gc.Ctx.Pkg, comp)
 	igc.MethodRecvType = typeName
 	cgc := igc

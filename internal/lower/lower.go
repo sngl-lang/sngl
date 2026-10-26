@@ -115,6 +115,7 @@ var passes = []pass{
 	passCMarshal,
 	passDirectCalls,
 	passAsyncProps,
+	passEffectOutsideKeys,
 	passEffect,
 	passSlotChildInstances,
 	passInstanceEvents,

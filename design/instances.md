@@ -371,6 +371,28 @@ never ran there either, and an owned derived value kept the first value it
 made (`testdata/owned_derived_built_once_on_entry.txtar`'s
 `testRebuiltOnAWriteWhileShown`).
 
+**A package var an effect is keyed on is a prop of an instance built at run
+time** (`passEffectOutsideKeys`, just before passEffect). The effect lowering
+marks a key's `@update` and settles its scope after each write to what the
+key reads, and a write outside the instance -- the page's, another
+component's handler, a `settings.kept` load in the page -- named the
+instance's flag and settle bare, which the writer does not have and which
+stand for however many instances are live. fyne, gtk4 and android did not
+build, and html built and ran none of it: no `@update`, no remount, no query
+asking again. So each package var a key reads by name becomes a prop,
+`__on_<var>`, bound to the var at every site, and the key reads the prop; the
+site's `liveUpdaters` and the setter above reach every live copy, and
+android's `emitPropReports`. A key reading the var through a call still reads
+it there. A test's root is left alone, having no site
+(`testdata/effect_keyed_on_package_var_runtime_instance.txtar`,
+`cmd/sngl/testdata/effect_keyed_on_package_var_runs.txt`, which adds a query).
+The other direction, a write *inside* an instance marking an effect of the
+Model, was spelled bare too in a test build rooted at a component, whose vars
+and funcs are the Model's: an instance resolves a name against that component
+after its own (`ExprCtx.ModelComponent`) and reaches it through `__model`
+(`testdata/settings_kept.txtar`'s `testAScopeKeepsItsOwn`, which `t.setContext`
+makes an instance).
+
 **An `@update` is owed only the writes made while its bracket ran**, as the
 interpreter has it: a bracket mounted after a write starts reading the log
 past it. A target's dirty flag outlived the position, so a write while an
