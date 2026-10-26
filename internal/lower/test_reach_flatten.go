@@ -47,6 +47,7 @@ var passTestReach = pass{
 				return err
 			}
 			answerInstancePresence(fn, params)
+			noteRecordPicks(pkg, fn)
 			if err := answerTestPropReads(fn, params); err != nil {
 				return err
 			}
@@ -350,6 +351,37 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 		return nil
 	})
 	return bad
+}
+
+// noteRecordPicks notes the path of each record fn fires an event on through
+// a node -- `c.main.menu[1].children[2].select()` -- before the read of the
+// slot is answered with the records the call site wrote, which is what runs
+// on a target that draws nothing for them. The inliner presses what a target
+// does draw (NameRecordPresses).
+func noteRecordPicks(pkg *ir.Package, fn *ir.Func) {
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Event != "" {
+			return nil
+		}
+		field, ok := c.Callee.(*ir.Select)
+		if !ok {
+			return nil
+		}
+		root, slots, idx := recordPath(field.Operand)
+		if root == nil {
+			return nil
+		}
+		if pkg.RecordPicks == nil {
+			pkg.RecordPicks = map[*ir.Call]*ir.RecordPick{}
+		}
+		pick := &ir.RecordPick{Root: root, Slots: slots, Event: field.Field}
+		for _, ix := range idx {
+			pick.Idx = append(pick.Idx, ir.CloneExprSharingDecls(ix))
+		}
+		pkg.RecordPicks[c] = pick
+		return nil
+	})
 }
 
 // inlineRecursiveFires writes each event a test fires on a program

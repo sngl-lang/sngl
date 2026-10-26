@@ -40,6 +40,11 @@ func compileSrc(t *testing.T, src string, testMode bool) string {
 	gen := &Generator{}
 	kotlinLang := codegen.LookupLang("kotlin")
 	pkg = ir.ClonePackage(pkg)
+	// A data slot is the records its population renders, as a build reads it
+	// ahead of the lowering; left as the empty default, a radio walked nothing.
+	if err := lower.DataFamilies(pkg, nil, nil); err != nil {
+		t.Fatalf("data families: %v", err)
+	}
 	if err := lower.Lower(pkg, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

@@ -27,6 +27,19 @@ var mipmapSizes = []struct {
 	{"xxxhdpi", 192},
 }
 
+// launcherIcon is the resource an app bar draws the output's icon from: the
+// vector an SVG becomes, or the launcher's own picture. An adaptive icon's
+// XML is no picture painterResource draws, so the foreground stands for it.
+func launcherIcon(cfg Config) string {
+	switch {
+	case cfg.Icon == "":
+		return ""
+	case strings.HasSuffix(strings.ToLower(cfg.Icon), ".svg"):
+		return "R.drawable.ic_launcher_foreground"
+	}
+	return "R.mipmap.ic_launcher"
+}
+
 // iconFiles generates dynamic icon resource files (VectorDrawable conversion,
 // PNG resizing). Static resources like colors.xml and adaptive icon XMLs are
 // written by scaffoldSources.

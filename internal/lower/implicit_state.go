@@ -294,6 +294,14 @@ func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component, inLoop, inBr
 			inner.Props = append(inner.Props, a)
 			continue
 		}
+		// An empty list -- a data slot the call site left unpopulated, a
+		// window's menu -- goes straight to the node, so a body walking it
+		// folds as it does spliced. As the wrapper's prop it was a list the
+		// instance is built with, whose type every target then declared.
+		if l, ok := a.Value.(*ir.ListLit); ok && len(l.Elems) == 0 {
+			inner.Props = append(inner.Props, a)
+			continue
+		}
 		p := &ir.Prop{Name: a.Name, Type: decl.Type.Substitute(bound), Construct: decl.Construct}
 		p.Sym = &ir.Param{Name: p.Name, Type: p.Type}
 		w.Props = append(w.Props, p)

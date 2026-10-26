@@ -590,6 +590,33 @@ trigger runs its call site's handler) and `ui.tabs` met both;
 `modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
 runs it on all six, through an instance as well.
 
+**A menu entry is picked by pressing what the window drew for it.** A
+test reaches an entry as a record through the window's data slot,
+`c.main.menu[1].children[2].select()`, and the interpreter runs the record's
+`@select`. A compiled target's record is the call site's list re-evaluated
+in the test, whose handler writes the state and runs none of the updates the
+window's own drawing carries, so passTestReach notes each pick's path
+(`ir.Package.RecordPicks`) as it answers the slot with that list, and the
+inliner that splices the window turns the pick into a press
+(`lower.NameRecordPresses`, beside NamePresses): the node the body draws
+under an indexed loop over the slot, and one over each record's slot below,
+whose handler or callback fires the record's event is named
+`<id>__<slot>[__<slot>]` -- `main__menu__children` -- and the pick becomes a
+press of its copy at the record's indexes, from the test's own instance as
+passTestReach flattens every other ref. Where the body hands the slot on --
+html's window writes `ui.menubar(items=menu)` -- the pick follows it to that
+node (`forwardPick`). A target that draws nothing for the records, bubbletea's
+window, leaves the noted list standing, and the record's handler runs. A test
+opens a submenu before picking from it, `c.main.menu[1].select()` first, as a
+person does: android draws an entry only while its DropdownMenu is open. A
+test reading `checked` reads the call site's list as well, which on a program
+whose handlers write what an instance built at run time reads drags those
+instances' updates into the test (`UpdateComponent`, which no test emitter
+has); the Pokédex checks the state an entry writes instead. A window's own
+event that takes nothing, `c.main.back()`, is a press of the node its body
+draws that emits it (`windowPresses`): fyne's and gtk4's `Back`, which is
+there only while the window can go back. testdata/window_menu.txtar.
+
 **Every tab's panel is mounted with the tabs, and selecting one shows it.**
 `ui.tabs`' body puts each panel, in its record's iteration, in a `vbox`
 whose `display` is `none` unless its tab is selected. It rendered the selected

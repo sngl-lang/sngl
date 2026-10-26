@@ -1,0 +1,51 @@
+// A window's menu is its `menu` slot: top-level entries, each a `menuItem`
+// whose children are its submenu. An entry runs its `@select` when picked,
+// shows `checked` with a check, and a disabled one cannot be picked. A test
+// picks an entry through the window's `#id`, opening the submenu that holds it
+// first, as a person does: on android that is a click on the action, which
+// opens its DropdownMenu.
+
+import ui "sngl:ui"
+import "sngl:test"
+
+const sizes = ["Small", "Medium", "Large"]
+
+component app root {
+    var size = "Medium"
+    var saved = 0
+
+    ui.window #main(title="Sizes") {
+        component menu {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Save", @select { saved += 1 })
+                ui.menuItem(label="Close", disabled=true)
+            }
+            ui.menuItem(label="Size") {
+                for var s = sizes {
+                    ui.menuItem(label=s, checked=s == size, @select { size = s })
+                }
+            }
+        }
+        ui.text #shown(value=size)
+    }
+}
+
+app()
+
+func testPickingAnEntryChecksIt(t test.Test, c app) {
+    t.assert(c.main.menu[1].children[1].checked)
+    c.main.menu[1].select()
+    c.main.menu[1].children[2].select()
+    t.assert(c.shown.value == "Large")
+    t.assert(c.main.menu[1].children[2].checked && !c.main.menu[1].children[1].checked)
+}
+
+func testAnEntryRunsItsHandler(t test.Test, c app) {
+    c.main.menu[0].select()
+    c.main.menu[0].children[0].select()
+    t.assert(c.saved == 1)
+}
+
+func testADisabledEntryIsShownAndNotPicked(t test.Test, c app) {
+    t.assert(c.main.menu[0].children[1].label == "Close" && c.main.menu[0].children[1].disabled)
+}

@@ -539,7 +539,19 @@ func TriggerArgs(pkg *ir.Package) map[string][]*ir.Type {
 	for _, fn := range fns {
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			c, ok := n.(*ir.Call)
-			if !ok || len(c.Args) == 0 {
+			if !ok {
+				return nil
+			}
+			// A record a test picks on a target that draws nothing for it --
+			// a window's menu on bubbletea -- is one the test builds.
+			if field, ok := c.Callee.(*ir.Select); ok {
+				if t := field.Operand.ExprType(); t != nil {
+					if sd, ok := t.Decl.(*ir.StructDef); ok && sd.RecordOf != nil {
+						out["record."+sd.Name] = []*ir.Type{t}
+					}
+				}
+			}
+			if len(c.Args) == 0 {
 				return nil
 			}
 			tt, ok := EventTriggerTarget(c)

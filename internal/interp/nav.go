@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"maps"
 
 	"duckfam.us/sngl/ir"
 )
@@ -202,6 +203,38 @@ func navGo(stack *Env, to any, params any) error {
 	return nil
 }
 
+// titled is the current page as `current` reads it: with the title its
+// `titleOf` gives the params it is showing, where it gives one. A copy, so the
+// page's own `title` stays what its call site wrote.
+func titled(current any) (any, error) {
+	m, ok := current.(map[string]any)
+	page := instanceEnv(current)
+	if !ok || page == nil {
+		return current, nil
+	}
+	sym := propSym(page.Comp, ir.NavPageTitleOf)
+	if sym == nil {
+		return current, nil
+	}
+	fn, _ := page.vals[sym].(*LambdaValue)
+	if fn == nil {
+		return current, nil
+	}
+	var params any
+	if page.navParams != nil {
+		params = page.navParams.v
+	} else if p := propSym(page.Comp, ir.NavPageParams); p != nil {
+		params = page.vals[p]
+	}
+	title, err := fn.Call([]any{params})
+	if err != nil {
+		return nil, err
+	}
+	out := maps.Clone(m)
+	out["title"] = title
+	return out, nil
+}
+
 // navBack returns stack to the entry `go` last pushed, params and all.
 func navBack(stack *Env) error {
 	if stack == nil || stack.nav == nil || len(stack.nav.history) == 0 {
@@ -235,13 +268,20 @@ func init() {
 		if stack == nil || stack.nav == nil {
 			return nil, nil
 		}
-		return stack.nav.current, nil
+		return titled(stack.nav.current)
 	}
 	intrinsics[ir.NavBackID] = func(args []any) (any, error) {
 		if len(args) < 1 {
 			return nil, fmt.Errorf("back: want the stack")
 		}
 		return nil, navBack(instanceEnv(args[0]))
+	}
+	intrinsics[ir.NavCanGoBackID] = func(args []any) (any, error) {
+		if len(args) < 1 {
+			return nil, fmt.Errorf("canGoBack: want the stack")
+		}
+		stack := instanceEnv(args[0])
+		return stack != nil && stack.nav != nil && len(stack.nav.history) > 0, nil
 	}
 	// A link names a page and not its stack, so it goes through the stack the
 	// page registered with.

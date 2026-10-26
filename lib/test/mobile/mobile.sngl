@@ -8,3 +8,8 @@ enum Toward { left, right }
 // what follows, as a page turns: across a `ui.tabs`, the next tab's panel.
 #[marks.intrinsic("mobile.swipe")]
 func swipe(node ui.node, toward Toward)
+
+// Presses the system's back: android's back, and the browser's on html, which
+// goes back an entry in the history.
+#[marks.intrinsic("mobile.back")]
+func back()

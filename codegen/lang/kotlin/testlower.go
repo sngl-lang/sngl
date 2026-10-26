@@ -296,6 +296,11 @@ func lowerEventTrigger(call *ir.CallStmt, surf TestSurface, compRecvs map[string
 		return "", false
 	}
 	id, event := tt.ID, c.Event
+	// A window's back is its app bar's up arrow, which android's SnglAppBar
+	// tags with the window's id.
+	if event == "back" && tt.Key() == nil && len(c.Args) == 0 {
+		return fmt.Sprintf("composeTestRule.onNodeWithTag(%q)%s; composeTestRule.waitForIdle()", id+"__back", clickAction), true
+	}
 	tag := copyMatcher(id, tt.Key())
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
@@ -358,6 +363,12 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 // scrolls itself -- since the tag sits on the override's root, around the
 // strip as well.
 func lowerMobileCall(c *ir.Call) (string, bool) {
+	// The system back is the activity's: its dispatcher asks the handlers a
+	// composition registered, the last added first, as the back key does. The
+	// rule a test is handed as a ComposeContentTestRule is the activity's.
+	if c != nil && c.Func != nil && c.Func.Intrinsic == "mobile.back" {
+		return "(composeTestRule as androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, *>).let { __rule -> __rule.runOnUiThread { __rule.activity.onBackPressedDispatcher.onBackPressed() } }; composeTestRule.waitForIdle()", true
+	}
 	if c == nil || c.Func == nil || c.Func.Intrinsic != "mobile.swipe" || len(c.Args) != 2 {
 		return "", false
 	}

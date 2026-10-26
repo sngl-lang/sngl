@@ -435,12 +435,48 @@ const alignJustify TextAlign
 // close, the counterpart of a window manager's: `onBack` runs -- the override
 // reports `visible = false` before the window's own `@closed` -- and the
 // activity finishes when no screen is drawn after it.
+//
+// A screen given a way back or a menu draws its app bar over the content
+// (appbar.kt's SnglAppBar): `title`, the `icon` -- the output's own where it
+// is given none -- an up arrow running `onUp` while `canGoBack` holds, and
+// `actions`. The system back runs `onUp` too while `canGoBack` holds, ahead
+// of a NavHost's own pop and of the close. A screen given neither -- its
+// `canGoBack` the literal `false`, its actions empty -- draws no bar.
 #[intrinsic("android:Screen")]
 component Screen(
-    visible  bool = true,
-    onBack   func(),
-    children ...component ui.node,
+    visible   bool = true,
+    title     string = "",
+    canGoBack bool = false,
+    onBack    func(),
+    onUp      func(),
+    children  ...component ui.node,
+    icon      option[component ui.node],
+    actions   component ui.node,
 ) root
+
+// One top-level entry of a window's menu, among its app bar's actions: a text
+// button that runs `onClick` and opens a DropdownMenu of its `entries`, where
+// it has any. appbar.kt is its Kotlin.
+#[intrinsic("android:SnglMenuAction")]
+component SnglMenuAction(
+    label      string,
+    enabled    bool,
+    hasEntries bool,
+    modifier   Modifier,
+    onClick    func(),
+    entries    ...component ui.node,
+) ui.node
+
+// One entry of a menu action's DropdownMenu, checked with a check before it,
+// which closes the menu as it runs `onClick`.
+#[intrinsic("android:SnglMenuEntry")]
+component SnglMenuEntry(
+    label    string,
+    enabled  bool,
+    checked  bool,
+    modifier Modifier,
+    onClick  func(),
+) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("Column", "androidx.compose.foundation.layout.Column")]

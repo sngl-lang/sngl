@@ -22,6 +22,7 @@ import (
 //
 //	pages.go(pkg, Pkg{name=x})  →  location.assign("/p/" + encodeURIComponent(String(x)))
 //	pages.back()                →  history.back()
+//	pages.canGoBack()           →  whether the browser has an entry before this one
 //
 // `back` is the browser's history, so at its bottom it leaves the site rather
 // than doing nothing, which is what a browser's own back does. `pages.current`
@@ -31,6 +32,7 @@ import (
 func init() {
 	codegen.RegisterPlatformIntrinsic("html", "nav.go", emitNavGo)
 	codegen.RegisterPlatformIntrinsic("html", "nav.back", emitNavBack)
+	codegen.RegisterPlatformIntrinsic("html", "nav.canGoBack", emitNavCanGoBack)
 	codegen.RegisterPlatformIntrinsic("html", "nav.href", emitNavHref)
 	codegen.RegisterPlatformIntrinsic("html", "nav.current", emitNavCurrent)
 }
@@ -67,6 +69,18 @@ func emitNavGo(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 func emitNavBack(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 	return "history.back()", nil
 }
+
+// emitNavCanGoBack is `pages.canGoBack()`: whether the browser holds an entry
+// before this document's, which the Navigation API says and history's length
+// stands in for where it is missing. It is read once, as the document loads,
+// and kept: the entry a window pushes for its own `@back` would answer for it
+// after.
+func emitNavCanGoBack(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+	return "(globalThis." + navCanGoBackGlobal + " ??= (globalThis.navigation ? navigation.canGoBack : history.length > 1))", nil
+}
+
+// navCanGoBackGlobal keeps the answer emitNavCanGoBack read first.
+const navCanGoBackGlobal = "__sngl_canGoBack"
 
 // emitNavHref is `nav.href(to, params)`, the address a link whose params are not
 // known until it is shown follows.

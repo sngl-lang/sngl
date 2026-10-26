@@ -53,6 +53,9 @@ type emitShared struct {
 	images map[string]string
 	// scrolls are every Scroll primitive id the file creates.
 	scrolls map[string]bool
+	// menuEntries and backs are every MenuEntry and Back primitive id the
+	// file creates.
+	menuEntries, backs map[string]bool
 	// toplevelIcons is each window's icon source in an inline-cgo build, by
 	// the window's id.
 	toplevelIcons map[string]string
@@ -604,6 +607,8 @@ func (t *gtk4Translator) createNode(id, tag string, made ir.Expr) []ir.Stmt {
 		return t.emitImageCreate(id, tag, made)
 	case scrollTag:
 		return t.emitScrollCreate(id, made)
+	case menuEntryTag, backTag:
+		return t.emitConstructorAssign(id, primitiveCType(tag), made)
 	case flowTag:
 		return t.emitFlowCreate(id, made)
 	case spanTag:
@@ -1384,6 +1389,14 @@ func (t *gtk4Translator) attachHandler(node ir.Expr, event string, handler, call
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		t.refuseCgoClosed(event, handler)
+		return t.connectThrough(bare, event, handler, call)
+	}
+	if t.shared != nil && t.shared.menuEntries[bare] {
+		t.recordRtInvoker(node, event, handler, "GtkBox", "MenuEntrySelect")
+		return t.connectThrough(bare, event, handler, call)
+	}
+	if t.shared != nil && t.shared.backs[bare] {
+		t.recordRtInvoker(node, event, handler, "GtkLabel", "BackPress")
 		return t.connectThrough(bare, event, handler, call)
 	}
 	if t.imageTagOf(bare) != "" {

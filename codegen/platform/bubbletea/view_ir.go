@@ -309,6 +309,40 @@ func draws(s ir.Stmt) bool {
 	return rendersPart(s)
 }
 
+// renderScreen draws a window's content, under its title line where it was
+// given a way back (screenGoesBack): the title in bold, `‹` before it while
+// the window can go back.
+func (vc *irViewContext) renderScreen(s *ir.NodeInst, resultVar string) {
+	can := screenGoesBack(s)
+	if can == nil {
+		vc.renderBranch(s.Children, resultVar)
+		return
+	}
+	content := resultVar + "Content"
+	vc.line("var %s string", content)
+	vc.renderBranch(s.Children, content)
+	title := `""`
+	if t := codegen.NodeProp(s, "title"); t != nil {
+		title = vc.gc.EvalExpr(t)
+	}
+	vc.line(`%sBack := "  "`, resultVar)
+	vc.line("if %s {", vc.gc.EvalExpr(can))
+	vc.line(`	%sBack = "‹ "`, resultVar)
+	vc.line("}")
+	vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, lipgloss.NewStyle().Bold(true).Render(%sBack+%s), %s)`, resultVar, resultVar, title, content)
+}
+
+// screenGoesBack is a Screen's `canGoBack`, or nil for one that never goes
+// back: given none, or the literal `false`, so a window that says nothing of
+// going back draws as it did.
+func screenGoesBack(s *ir.NodeInst) ir.Expr {
+	can := codegen.NodeProp(s, "canGoBack")
+	if lit, ok := can.(*ir.Literal); can == nil || ok && lit.Value == "false" {
+		return nil
+	}
+	return can
+}
+
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
@@ -321,12 +355,12 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 			if v := codegen.NodeProp(s, "visible"); v != nil {
 				vc.line("if %s {", vc.gc.EvalExpr(v))
 				vc.indent++
-				vc.renderBranch(s.Children, resultVar)
+				vc.renderScreen(s, resultVar)
 				vc.indent--
 				vc.line("}")
 				return
 			}
-			vc.renderBranch(s.Children, resultVar)
+			vc.renderScreen(s, resultVar)
 			return
 		}
 		vc.renderNode(s, resultVar)

@@ -8,11 +8,16 @@ import (
 )
 
 // sngl:test/mobile does to the page what a finger does to a phone's browser.
+// The system back is the browser's: the history goes back an entry, and the
+// test goes on once the page has heard it.
 // A swipe is a touch's pointer events across the node, dispatched on what in
 // it hears a swipe -- the `sngl-swipe` a tabs' panels are in -- or on the
 // element itself, from four fifths of its width to a fifth, at half its
 // height.
 func init() {
+	codegen.RegisterIntrinsic(langJS, "mobile.back", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return `await new Promise((done) => { addEventListener("popstate", () => setTimeout(done), { once: true }); history.back(); })`, nil
+	})
 	codegen.RegisterIntrinsic(langJS, "mobile.swipe", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		left := fmt.Sprintf(`String(%s) === "left"`, tr(args[1]))
 		if member, ok := codegen.EnumMemberName(args[1]); ok {

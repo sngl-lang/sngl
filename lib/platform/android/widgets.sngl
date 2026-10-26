@@ -12,14 +12,31 @@ import . "sngl:internal/marks"
 // --- The window ---
 
 // The window's `@error` is the outermost boundary of what it renders, and
-// catches whether or not the call site handles one.
-const component ui.window[platform](visible, @error, @closed, content) {
-    Screen(visible=visible, onBack=func() {
+// catches whether or not the call site handles one. Its menu's entries are
+// drawn two deep: an action and its DropdownMenu.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
+    Screen(visible=visible, title=title, canGoBack=canGoBack, onUp=func() { back() }, onBack=func() {
         visible = false
         closed()
     }) {
         boundary(@error(e) { error(e) }) {
             content
+        }
+        component icon {
+            if !favicon.empty {
+                SnglImage(modifier=modifier.width(dpOf(24.0)).height(dpOf(24.0))) {
+                    favicon
+                }
+            }
+        }
+        component actions {
+            for var i, it = menu {
+                SnglMenuAction(label=it.label, enabled=!it.disabled, hasEntries=it.children.length() > 0, modifier=modifier, onClick=func() { it.select() }) {
+                    for var j, sub = it.children {
+                        SnglMenuEntry(label=sub.label, enabled=!sub.disabled, checked=sub.checked, modifier=modifier, onClick=func() { sub.select() })
+                    }
+                }
+            }
         }
     }
 }

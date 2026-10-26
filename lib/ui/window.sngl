@@ -32,13 +32,30 @@
 // writes `details = false` is destroyed, widgets and effects with it, and
 // hiding one without destroying it is `visible`. A close that leaves no window
 // on screen ends the program, unless it started with none.
+//
+// `menu` is the window's menu: its top-level entries, each a `menuItem` whose
+// children are its submenu. Each target puts it where its windows keep one --
+// actions in android's app bar, each opening its submenu, a menu behind gtk4's
+// header bar, fyne's main menu, a bar in html's header -- and a target with no
+// such place draws none. It is written as a population of the slot,
+// `component menu { menuItem(…) }`, inside the window's block.
+//
+// The window draws an up arrow while `canGoBack` holds, and pressing it runs
+// `@back`. The system's own back does too: android's back, and the browser's on
+// html, run `@back` while `canGoBack` holds -- and close the window otherwise,
+// on android, as they did. A window shows a stack of pages with
+// `canGoBack=pages.canGoBack(), @back { pages.back() }`; what going back means
+// is the program's, so `@back` may do more than a pop, or something else.
 component window(
-    title    string = "",
-    :visible bool = true,
+    title     string = "",
+    :visible  bool = true,
+    canGoBack bool = false,
     @error(e error),
     @closed(),
-    content  ...component node,
-    favicon  option[component imageSource],
+    @back(),
+    content   ...component node,
+    favicon   option[component option[imageSource]],
+    menu      component menuItem,
 ) root
 
 // Puts the window on screen: `visible = true`, which is no change to a window

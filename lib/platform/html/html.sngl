@@ -262,6 +262,10 @@ component element(
     // Dispatched by `sngl-swipe`, an element the page defines
     // (codegen/platform/html/swipe.go), as a finger or a pen swipes across it.
     @swipe(e SwipeEvent),
+    // Dispatched by `sngl-back`, an element the page defines
+    // (codegen/platform/html/back.go), as the browser goes back through the
+    // history entry it keeps.
+    @back(),
     // Dispatched by `sngl-reach-end`, an element the page defines rather than
     // the DOM (codegen/platform/html/reachend.go). Declared because it is
     // camelCase, which the wildcard below refuses, and it is camelCase so a
@@ -605,6 +609,11 @@ const component ui.divider[platform](style) {
 
 // --- Tier 3: Overlays & Layout ---
 
+// Goes back an entry in the browser's history, which is what the browser's own
+// back does.
+#[js.native("history.back")]
+func _historyBack()
+
 // A window is a surface: html writes its document from the first that no `if`
 // over state and no `for` can take away, which is the page, and shows every
 // other as a `<dialog>` in it, without a backdrop as a desktop window is.
@@ -626,8 +635,35 @@ component Window(
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
+//
+// A window given a way back or a menu draws a header over its content: an up
+// arrow while it can go back, its title, and its menu as a bar. The arrow is
+// in a `sngl-back`, an element the page defines (codegen/platform/html/
+// back.go), which keeps a history entry of its own while it is there: the
+// browser's back pops it and the element dispatches `back`, and the arrow goes
+// back through the history too, so neither runs `@back` twice. A window given
+// neither -- its `canGoBack` the literal `false`, its menu empty -- draws no
+// header, the `if` folding away.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
     Window(title=title, :visible=visible, @closed { closed() }) {
+        if canGoBack || menu.length() > 0 {
+            html.header(class="sngl-bar", style={display=flex, alignItems=center, gap=8px, paddingY=8px, paddingX=12px, borderBottom="1px solid #ddd"}) {
+                if canGoBack {
+                    html.element(tag="sngl-back", @back { back() }) {
+                        html.button(
+                            attrs = {"aria-label"="Back"},
+                            textContent = "←",
+                            style = {border="none", background=#00000000, fontSize=20px, cursor="pointer"},
+                            @click {
+                                _historyBack()
+                            },
+                        )
+                    }
+                }
+                html.span(textContent=title, style={fontWeight=bold, flex=1})
+                ui.menubar(items=menu)
+            }
+        }
         boundary(@error(e) { error(e) }) {
             content
         }
@@ -730,13 +766,37 @@ const component ui.menu[platform](style, open, items) {
     }
 }
 
-// The top-level entries; a submenu is not drawn yet.
+// The top-level entries, each a `<details>` whose summary picks it and opens
+// its submenu, where it holds one. An entry `checked` is marked with a check
+// and `aria-checked`.
 const component ui.menubar[platform](style, items) {
     html.nav(role="menubar", style={...style, display=flex, gap=4px}) {
-        for var it = items {
-            html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
-                it.select()
-            })
+        for var i, it = items {
+            html.details(style={position=relative}) {
+                html.summary(
+                    role = "menuitem",
+                    textContent = it.label,
+                    style = {cursor="pointer", listStyleType=none, paddingY=4px, paddingX=8px},
+                    @click {
+                        it.select()
+                    },
+                )
+                if it.children.length() > 0 {
+                    html.div(role="menu", style={position=absolute, right=0, display=flex, flexDirection=column, background=#fff, border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
+                        for var j, sub = it.children {
+                            html.button(
+                                attrs = {"role"="menuitemcheckbox", "aria-checked"=sub.checked ? "true" : "false"},
+                                disabled = sub.disabled,
+                                textContent = sub.checked ? "✓ {sub.label}" : sub.label,
+                                style = {textAlign=left, whiteSpace=nowrap, border="none", background=#00000000, paddingY=4px, paddingX=8px, cursor="pointer"},
+                                @click {
+                                    sub.select()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

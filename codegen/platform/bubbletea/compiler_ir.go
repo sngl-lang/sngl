@@ -1016,6 +1016,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\t\tswitch {\n")
 	b.WriteString("\t\tcase msg.Code == 'c' && msg.Mod == tea.ModCtrl:\n")
 	emitScreenClose(b, info, gc)
+	emitScreenBack(b, info, gc, hasOverlays)
 
 	// Escape closes the topmost open overlay. Overlays are listed in source
 	// order; the last-declared open one is closed first (a simple modal-over-
@@ -1378,9 +1379,21 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 		if _, ok := s.(*ir.For); ok {
 			return false
 		}
+		n, ok := s.(*ir.NodeInst)
+		// A window's back is esc, while it can go back.
+		if ok && programID(n) && btIntrinsic(n) == "Screen" && screenGoesBack(n) != nil && triggered[n.ID+".back"] && !done[n.ID+".back"] {
+			done[n.ID+".back"] = true
+			name := n.ID + "Back"
+			fmt.Fprintf(b, "// %s presses esc, the #%s window's way back; for tests.\n", name, n.ID)
+			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+			b.WriteString("\tnm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})\n")
+			b.WriteString("\t*m = nm.(Model)\n")
+			drawAfterUpdate(b)
+			b.WriteString("}\n\n")
+			return true
+		}
 		// A layout takes no input, so nothing else answers its events; a
 		// control's are its keys' and its widget's.
-		n, ok := s.(*ir.NodeInst)
 		if !ok || !programID(n) || extractBlueprint(n).Kind != bpLayout {
 			return true
 		}
@@ -1771,6 +1784,30 @@ func emitScreenClose(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContex
 	b.WriteString("\t\t\t\treturn m, tea.Quit\n")
 	b.WriteString("\t\t\t}\n")
 	b.WriteString("\t\t\treturn m, nil\n")
+}
+
+// emitScreenBack is esc while the window can go back: its `@back`, where it
+// was given a way back (screenGoesBack). An open overlay takes esc first.
+func emitScreenBack(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext, hasOverlays bool) {
+	if info.screen == nil {
+		return
+	}
+	can := screenGoesBack(info.screen.Node)
+	h := codegen.NodeHandler(info.screen.Node, "back")
+	if can == nil || h == nil || h.Func == nil {
+		return
+	}
+	guard := ""
+	if hasOverlays {
+		guard = " && !overlayOpen"
+	}
+	fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEsc && (%s)%s:\n", gc.EvalExpr(can), guard)
+	for _, stmt := range h.Func.Block {
+		for _, line := range gc.EvalStmt(stmt) {
+			fmt.Fprintf(b, "\t\t\t%s\n", line)
+		}
+	}
+	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 }
 
 func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysis, gc *golang.GoIRContext, indent string) {

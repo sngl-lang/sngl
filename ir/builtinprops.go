@@ -20,6 +20,7 @@ import (
 const (
 	NavPageHref    = "href"
 	NavPageParams  = "params"
+	NavPageTitleOf = "titleOf"
 	NavLinkTo      = "to"
 	NavLinkText    = "text"
 	NavLinkStyle   = "style"
@@ -28,6 +29,7 @@ const (
 	NavCurrentID   = "nav.current"
 	NavGoID        = "nav.go"
 	NavBackID      = "nav.back"
+	NavCanGoBackID = "nav.canGoBack"
 	NavFollowID    = "nav.follow"
 	NavHrefID      = "nav.href"
 	NavGoParamsArg = "params"
@@ -78,9 +80,9 @@ type Vocabulary struct {
 
 // BuiltinVocabulary is each kind's Vocabulary.
 var BuiltinVocabulary = map[BuiltinKind]Vocabulary{
-	BuiltinNavPage:  {Props: []string{NavPageHref, NavPageParams}},
+	BuiltinNavPage:  {Props: []string{NavPageHref, NavPageParams, NavPageTitleOf}},
 	BuiltinNavLink:  {Props: []string{NavLinkTo, NavLinkText, NavLinkStyle, NavLinkParams}, Events: []string{NavLinkClick}},
-	BuiltinNavStack: {Methods: []string{NavCurrentID, NavGoID, NavBackID}},
+	BuiltinNavStack: {Methods: []string{NavCurrentID, NavGoID, NavBackID, NavCanGoBackID}},
 	BuiltinGenEmit:  {Props: []string{GenEmitFile, GenEmitOpen, GenEmitClose, GenEmitRender, GenEmitMembers}, Events: []string{GenEmitGenerate}},
 	BuiltinGenNode:  {Props: []string{GenNodeOpen, GenNodeClose, GenNodeValue}},
 	BuiltinEffect: {Props: []string{EffectOn}, Events: []string{

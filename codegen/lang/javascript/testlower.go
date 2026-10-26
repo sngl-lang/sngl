@@ -179,7 +179,14 @@ func lowerTestStmt(s ir.Stmt, jc *JsIRContext) []string {
 		}
 		return append(out, "}")
 	}
-	return jc.EvalStmt(s)
+	lines := jc.EvalStmt(s)
+	// A test's lines carry no semicolons, so one opening with a bracket would
+	// continue the line before it: a record a test picks off the list its
+	// call site wrote, `[{…}][1].select()`.
+	if len(lines) > 0 && (strings.HasPrefix(lines[0], "[") || strings.HasPrefix(lines[0], "(")) {
+		lines[0] = ";" + lines[0]
+	}
+	return lines
 }
 
 func testSetContext(s ir.Stmt) (string, bool) {

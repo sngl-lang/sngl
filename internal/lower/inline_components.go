@@ -1388,7 +1388,10 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			bindings[p.Name] = val
 		}
 	}
-	body = substituteParams(body, bindings)
+	// Before the props, as passInlinePure names them: a loop over a data slot
+	// is still a loop over the slot's prop here.
+	pressRecords := NameRecordPresses(st.pkg, body, n)
+	body = dropEmptyLoops(substituteParams(body, bindings))
 
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
@@ -1408,6 +1411,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// The caller's handlers land inside the body's own, so a parameter of the
 	// body's sharing a name they read is renamed first (freshenShadowingParams).
 	body = freshenShadowingParams(body, callsiteNames(n), st.names)
+	pressRecords()
 	// Events before slots: an emit in spliced slot content names the caller's
 	// event, and would otherwise be matched against the callee's handlers.
 	body = substituteEvents(body, n.Handlers)

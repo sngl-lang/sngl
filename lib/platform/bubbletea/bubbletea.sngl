@@ -189,17 +189,25 @@ component Overlay(
 // manager's: it fires `@closed`, which the override reports as
 // `visible = false` before the window's own handler runs, and the program
 // ends when no screen is drawn after it.
+//
+// A screen given a `canGoBack` draws its title on a line over the content,
+// `‹` before it while it can go back, and esc runs `@back` then. One given
+// none -- the literal `false` a window's default is -- draws no line. A
+// terminal has no place for a window's menu, so a screen draws none.
 #[intrinsic("bubbletea:Screen")]
 component Screen(
-    visible bool = true,
+    visible   bool = true,
+    title     string = "",
+    canGoBack bool = false,
     @closed(),
-    content ...component ui.node,
+    @back(),
+    content   ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform](visible, @error, @closed, content) {
-    Screen(visible=visible, @closed {
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content) {
+    Screen(visible=visible, title=title, canGoBack=canGoBack, @back { back() }, @closed {
         visible = false
         closed()
     }) {

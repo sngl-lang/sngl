@@ -787,6 +787,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 				return nil, err
 			}
 			node.Children = kids
+			latePropsOf(env, inst, node)
 			return []*Node{node}, nil
 		}
 		m.push(slotFrame{callsite: inst, env: env, owner: m.owner, callee: child, iters: m.iters, supplied: m.supplied, base: m.base})
@@ -796,6 +797,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		if err != nil {
 			return nil, err
 		}
+		latePropsOf(env, inst, node)
 		// A component whose whole expansion was schedules draws nothing, so it
 		// leaves the tree the way its schedules did. `timer` is that: its
 		// override places one primitive and no widget, and a host handed the
@@ -1139,6 +1141,25 @@ func handlersOf(inst *ir.NodeInst) []Handler {
 // written in. A prop whose expression fails to evaluate is dropped, which is
 // what the walks being replaced did: a render must not fail because one
 // attribute could not be computed.
+// latePropsOf evaluates the props of node that did not evaluate as it was
+// mounted, now that what it renders is: a window's props read the handles its
+// body declares, `title=pages.current.title`, which are bound only once the
+// body is mounted.
+func latePropsOf(env *Env, inst *ir.NodeInst, node *Node) {
+	for _, p := range inst.Props {
+		if p.Name == "" {
+			continue
+		}
+		if _, ok := node.Props[p.Name]; ok {
+			continue
+		}
+		if v, err := env.Eval(p.Value); err == nil {
+			node.Props[p.Name] = v
+			node.PropOrder = append(node.PropOrder, p.Name)
+		}
+	}
+}
+
 func evalProps(env *Env, props []ir.Arg) (map[string]any, []string) {
 	out := make(map[string]any, len(props))
 	var order []string

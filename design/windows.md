@@ -461,6 +461,46 @@ refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a fixture tells a window
 reached the screen (`testdata/window_open_runs.txtar`,
 `window_several_runs.txtar`, `window_visible_runs.txtar`).
 
+**A window draws a bar where it has a way back or a menu, and only then.**
+`ui.window`'s `canGoBack` and `@back` are an up arrow and the system's back,
+and its `menu` slot is the window's menu, each top-level entry holding its
+submenu. A window whose call site binds no `canGoBack` -- the literal
+`false`, its default -- and populates no menu draws as it did, so no program
+written before moved (Jonathan's call): an empty slot is the empty list,
+whose loop the inliners drop and whose length they read as its count
+(`dropEmptyLoops`), settling an `if` its literals decide; and
+passImplicitState hands an empty list straight to the window rather than
+making it its wrapper's prop. Each target:
+
+- android's Screen wraps the content in appbar.kt's `SnglAppBar`, a Material3
+  Scaffold whose TopAppBar holds the favicon or the launcher icon, the title,
+  the up arrow and one `SnglMenuAction` per top-level entry, opening a
+  DropdownMenu of `SnglMenuEntry`s; a second BackHandler, added after the
+  content and so asked first, runs `@back` while `canGoBack` holds, ahead of a
+  NavHost's pop and of the close. Decided in the Screen's codegen, which sees
+  the literal, as a node's `if` around the content could not: content is
+  inserted once.
+- gtk4 and fyne keep the entries as hidden nodes among the window's content
+  (gtk4rt's and fynelayout's `MenuEntry`), which a render slot inserts and
+  removes like any node; `BoxAppend`, `InsertBefore` and `Remove` tell the
+  window, which builds a GMenu behind a header bar's menu button, or fyne's
+  main menu. A `Back` node under `if canGoBack` is the way back: gtk4 puts its
+  button in the header bar where the window has one -- made as the window is,
+  since GTK warns setting a title bar on a realized window -- and over the
+  content where it has none, as fyne does.
+- html draws a `<header>` with the title, the menu as `ui.menubar` (a
+  `<details>` per top-level entry) and an up arrow in a `sngl-back`, which
+  keeps a history entry while it is there: the browser's back pops it and the
+  element dispatches `back`; the arrow goes back through the history too.
+- bubbletea draws a bold title line, `‹` before it while it can go back, and
+  esc runs `@back`; a terminal has no place for a menu, so it draws none.
+
+The menu is drawn as nodes and never handed a primitive as a list of
+records: a prop holding a record whose handler writes what the prop reads
+put the updater inside the handler it updated, and the lowering looped
+(`MatchLate` overflowed). testdata/window_menu.txtar,
+testdata/nav_can_go_back.txtar, cmd/sngl/testdata/window_app_bar_runs.txt.
+
 **A selected platform that cannot be used here is refused before the check**
 (`internal/build.Check`), by the platform's own `Unavailable()` -- gtk4 with
 no introspection data serves no package, so every component it would

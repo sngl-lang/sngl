@@ -930,6 +930,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// This one renders the window's own content. A sub-component's
 		// composable never does, so the cutout padding belongs here alone.
 		atRoot: true,
+		icon:   launcherIcon(cfg),
 	}
 
 	screen, err := codegen.SoleScreen(view, intrinsicNS+"Screen", "android", screenPos)

@@ -63,6 +63,10 @@ type toplevel struct {
 	gone      int
 	// icon is the image source a `ui.window`'s favicon is.
 	icon *source
+	// bar is the header bar holding the back button and the menu button,
+	// made as the window is where it has either to show (applyBar).
+	bar, backButton, menuButton *C.GtkWidget
+	barDecided                  bool
 }
 
 // App is the parent a node at the root of the package body is attached to.
@@ -214,6 +218,7 @@ func ToplevelWindow(app, h Handle) Handle {
 	}
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), widget(t.box))
 	t.win = (*C.GtkWindow)(unsafe.Pointer(win))
+	t.applyMenu()
 	return Handle(unsafe.Pointer(win))
 }
 
@@ -255,6 +260,7 @@ func (t *toplevel) create() {
 	idx := cbind.Register(t.closeRequested)
 	C.sngl_top_connect_close(t.win, C.int(idx))
 	t.applyIcon()
+	t.applyMenu()
 }
 
 // report is the host changing `visible` itself.

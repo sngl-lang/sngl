@@ -78,6 +78,9 @@ component platform(
 // removing one, as an `if` turning false does, destroys it and everything in
 // it. `visible` shows and hides it without destroying it, and the window
 // manager's close is reported as `visible = false` followed by `@closed`.
+//
+// The menu entries and the way back among its content are the menu behind
+// its header bar's menu button and its back button.
 #[marks.intrinsic("gtk4:Toplevel")]
 component Toplevel(
     title    string,
@@ -147,15 +150,120 @@ func _on_Toplevel_visible(w Toplevel, visible func(visible bool)) {
     _rtToplevelOnVisible(w, visible)
 }
 
+// A window's way back, while it can go back: a widget gtk4rt keeps hidden
+// among the window's content, which has the window show a back button that
+// presses it.
+#[marks.intrinsic("gtk4:Back")]
+component Back(@press()) ui.node
+
+#[go.native(_rtPkg, "gtk4rt.BackNew")]
+func _rtBackNew() Back
+
+#[go.native(_rtPkg, "gtk4rt.BackOnPress")]
+func _rtBackOnPress(b Back, fn func())
+
+#[gen.protocol(create)]
+func _create_Back() Back {
+    return _rtBackNew()
+}
+
+#[gen.protocol(on)]
+func _on_Back(b Back, press func()) {
+    _rtBackOnPress(b, press)
+}
+
+// One entry of a window's menu, and its submenu's entries: a box gtk4rt keeps
+// hidden among the window's content, from which the window builds the GMenu
+// behind its header bar's menu button. Picking one is no GTK signal on it but
+// the action gtk4rt makes for it.
+#[marks.intrinsic("gtk4:MenuEntry")]
+component MenuEntry(
+    label    string,
+    disabled bool = false,
+    checked  bool = false,
+    @select(),
+    entries  ...component ui.node,
+) ui.node
+
+#[go.native(_rtPkg, "gtk4rt.MenuEntryNew")]
+func _rtMenuEntryNew() MenuEntry
+
+#[go.native(_rtPkg, "gtk4rt.MenuEntrySetLabel")]
+func _rtMenuEntrySetLabel(e MenuEntry, label string)
+
+#[go.native(_rtPkg, "gtk4rt.MenuEntrySetDisabled")]
+func _rtMenuEntrySetDisabled(e MenuEntry, v bool)
+
+#[go.native(_rtPkg, "gtk4rt.MenuEntrySetChecked")]
+func _rtMenuEntrySetChecked(e MenuEntry, v bool)
+
+#[go.native(_rtPkg, "gtk4rt.MenuEntryOnSelect")]
+func _rtMenuEntryOnSelect(e MenuEntry, fn func())
+
+#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
+func _rtMenuEntryAppend(e MenuEntry, child ui.node)
+
+#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
+func _rtMenuEntryRemove(e MenuEntry, child ui.node)
+
+#[gen.protocol(create)]
+func _create_MenuEntry() MenuEntry {
+    return _rtMenuEntryNew()
+}
+
+#[gen.protocol(append)]
+func _append_MenuEntry(parent MenuEntry, child ui.node) {
+    _rtMenuEntryAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_MenuEntry(parent MenuEntry, child ui.node) {
+    _rtMenuEntryRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_label(e MenuEntry, label string) {
+    _rtMenuEntrySetLabel(e, label)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_disabled(e MenuEntry, disabled bool) {
+    _rtMenuEntrySetDisabled(e, disabled)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_checked(e MenuEntry, checked bool) {
+    _rtMenuEntrySetChecked(e, checked)
+}
+
+#[gen.protocol(on)]
+func _on_MenuEntry(e MenuEntry, select func()) {
+    _rtMenuEntryOnSelect(e, select)
+}
+
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
+//
+// Its menu's entries are drawn two deep: a top-level entry and its submenu. A
+// window whose call site gives it no `canGoBack` writes no Back, the `if`
+// folding away, and nor does one with no menu write an entry.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
         }
         #[family.crosses]
         favicon
+        if canGoBack {
+            Back(@press { back() })
+        }
+        for var i, it = menu {
+            MenuEntry(label=it.label, disabled=it.disabled, checked=it.checked, @select { it.select() }) {
+                for var j, sub = it.children {
+                    MenuEntry(label=sub.label, disabled=sub.disabled, checked=sub.checked, @select { sub.select() })
+                }
+            }
+        }
     }
 }
 

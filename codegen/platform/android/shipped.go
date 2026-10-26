@@ -10,7 +10,8 @@ import (
 )
 
 // dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
-// SnglPager's and choosesKt snglChooses's.
+// SnglPager's, choosesKt snglChooses's and appbarKt SnglAppBar's with the
+// menu's composables.
 //
 //go:embed datefield.kt
 var dateFieldKt string
@@ -23,6 +24,9 @@ var pagerKt string
 
 //go:embed chooses.kt
 var choosesKt string
+
+//go:embed appbar.kt
+var appbarKt string
 
 // shippedComposables are the Kotlin the platform writes beside MainScreen.kt
 // for a program that uses it: a composable by the intrinsic id
@@ -37,6 +41,7 @@ var shippedComposables = []struct {
 	{intrinsic: intrinsicNS + "SnglScroll", name: "SnglScroll", src: scrollKt},
 	{intrinsic: intrinsicNS + "SnglPager", name: "SnglPager", src: pagerKt},
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
+	{intrinsic: intrinsicNS + "Screen", name: "SnglAppBar", src: appbarKt},
 }
 
 // emitShippedComposables writes each shipped composable the program renders
@@ -46,7 +51,9 @@ func emitShippedComposables(req *codegen.Request, sink codegen.Sink, mainScreen,
 	_ = ir.Walk(req.Pkg, func(n ir.Node) error {
 		switch n := n.(type) {
 		case *ir.NodeInst:
-			if n.Component != nil && n.Component.Intrinsic != "" {
+			// A Screen is every program's window; only one drawing its app
+			// bar needs SnglAppBar.
+			if n.Component != nil && n.Component.Intrinsic != "" && (n.Component.Intrinsic != intrinsicNS+"Screen" || screenDrawsBar(n)) {
 				rendered[n.Component.Intrinsic] = true
 			}
 		case *ir.Call:

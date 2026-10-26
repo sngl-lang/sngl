@@ -367,6 +367,7 @@ func BoxAppend(box, child Handle) {
 		return
 	}
 	C.gtk_box_append((*C.GtkBox)(p(box)), widget(child))
+	menuMoved(box, child)
 }
 
 func BoxRemove(box, child Handle) {
@@ -379,6 +380,7 @@ func BoxRemove(box, child Handle) {
 		return
 	}
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
+	menuMoved(box, child)
 }
 
 // SlotAnchor returns the anchor a render slot inserts its entries before: a,
@@ -427,6 +429,7 @@ func InsertBefore(box, anchor, child Handle) {
 	}
 	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
 	C.gtk_box_insert_child_after((*C.GtkBox)(p(box)), widget(child), prev)
+	menuMoved(box, child)
 }
 
 func children(parent Handle) []Handle {

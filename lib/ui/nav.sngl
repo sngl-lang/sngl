@@ -99,10 +99,13 @@ component _example_tabs node {
 // One entry of a menu or a menu bar: data, since it names itself as its
 // family, so the menu reads its entries as a list rather than rendering them.
 // `@select` fires when the user picks it; the entries under it are its
-// submenu.
+// submenu. `checked` marks it chosen, with a check beside its label: the one
+// of a submenu's entries that is the setting, or an entry that toggles one.
+// Picking an entry does not check it; `@select` writes what `checked` reads.
 component menuItem(
     label    string,       // what the entry shows
     disabled bool = false, // shown, but cannot be picked
+    checked  bool = false, // shown chosen
     @select(),             // the user picked this entry
     // The entries of this one's submenu, in order.
     children ...component menuItem,

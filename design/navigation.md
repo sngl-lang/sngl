@@ -215,6 +215,23 @@ run it on the interpreter, which needed nothing new -- each copy is an
 instance of its own -- and the two `.txtar`s are the code on html, gtk4, fyne,
 bubbletea and android.
 
+**`canGoBack` and `titleOf` are what a window's bar reads.**
+`pages.canGoBack()` (`nav.canGoBack`) is whether `back` has a page to return
+to: the history's length on the interpreter and the lowered targets, the
+controller's previous entry on android, read under the entry state so it
+recomposes, and the browser's own on html, `navigation.canGoBack` read once
+as the document loads, since the entry a window's `sngl-back` pushes answers
+for it after. A page whose name depends on what it shows gives `titleOf`, a
+function of its params, and `pages.current.title` is what it returns: the
+interpreter's `current` copies the page with its title computed, the lowered
+targets' `go` and start write the record that way (`titledRecord`), android's
+`<Record>Of` reads the route's params, and html answers each read by
+`current.id` with the page's params cell, which a static document folds and
+route mode binds from the request; a title that does not fold is set as the
+document's script starts. The page itself, `item.title`, is its record as
+declared. testdata/nav_can_go_back.txtar,
+nav_page_title_from_params{,_html}.txtar.
+
 **A window lost `href` and `params`, and `output(entry=…)` went**: a destination is a page, and a stack starts at the page at "/", or
 its first. Every program that was a window per page is a window holding a
 stack of pages, the window's title the page's (`title=pages.current.title`),

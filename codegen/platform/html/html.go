@@ -2290,6 +2290,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	b.WriteString("\n")
 
+	// A title that does not fold to the document's own -- one a page's
+	// `titleOf` gives the params a route binds -- is the document's as the
+	// script starts. A document shows one page with one set of params, a
+	// `go` being another document, so it is set once.
+	if t := g.documentTitle(); t != nil {
+		fmt.Fprintf(b, "document.title = %s;\n\n", g.exprToJS(t))
+	}
+
 	structs := g.pkgStructs()
 	for _, sd := range structs {
 		var params []string
@@ -2446,6 +2454,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if g.pkg != nil && rendersSwipe(g.pkg) {
 		b.WriteString(swipeHelper + "\n")
+	}
+	if g.pkg != nil && rendersBack(g.pkg) {
+		b.WriteString(backHelper + "\n")
 	}
 	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
 		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
@@ -3541,6 +3552,22 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		}
 	}
 	b.WriteString("}\n")
+}
+
+// documentTitle is the window's title where it does not fold to a literal
+// the document's <title> holds, or nil.
+func (g *htmlGen) documentTitle() ir.Expr {
+	if g.title != "" || g.irWindow == nil {
+		return nil
+	}
+	t := g.irWindow.Prop(windowTitle)
+	if t == nil {
+		return nil
+	}
+	if _, ok := codegen.IRLiteralString(t); ok {
+		return nil
+	}
+	return t
 }
 
 func (g *htmlGen) exprToJS(expr ir.Expr) string {

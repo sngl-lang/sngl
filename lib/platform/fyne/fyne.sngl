@@ -83,15 +83,46 @@ component Toplevel(
     content  ...component ui.node,
 ) root
 
+// A window's way back, while it can go back: drawn nowhere where it is
+// written, among the window's content, it has the window show a back button
+// over the content, which presses it.
+#[intrinsic("fyne:Back")]
+component Back(@press()) ui.node
+
+// One entry of a window's main menu, and its submenu's entries: drawn
+// nowhere where it is written, among the window's content, and built into the
+// window's menu by the Toplevel holding it.
+#[intrinsic("fyne:MenuEntry")]
+component MenuEntry(
+    label    string,
+    disabled bool = false,
+    checked  bool = false,
+    @select(),
+    entries  ...component ui.node,
+) ui.node
+
 // The window's `@error` is the outermost boundary of what it renders, and
-// catches whether or not the call site handles one.
-const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
+// catches whether or not the call site handles one. Its menu's entries are
+// drawn two deep: a top-level entry and its submenu. A window whose call site
+// gives it no `canGoBack` writes no Back, the `if` folding away, and nor does
+// one with no menu write an entry.
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, content, favicon, menu) {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
         }
         #[family.crosses]
         favicon
+        if canGoBack {
+            Back(@press { back() })
+        }
+        for var i, it = menu {
+            MenuEntry(label=it.label, disabled=it.disabled, checked=it.checked, @select { it.select() }) {
+                for var j, sub = it.children {
+                    MenuEntry(label=sub.label, disabled=sub.disabled, checked=sub.checked, @select { sub.select() })
+                }
+            }
+        }
     }
 }
 

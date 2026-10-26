@@ -26,6 +26,14 @@ const (
 // carry.
 const scrollTag = "Scroll"
 
+// menuEntryTag and backTag are gtk4.sngl's `MenuEntry` and `Back`, an entry
+// of a window's menu and its way back, which gtk4rt keeps hidden among the
+// window's content.
+const (
+	menuEntryTag = "MenuEntry"
+	backTag      = "Back"
+)
+
 // imagePictureProp is `ImageUrl`'s picture, the owned value its source derives
 // from the URL (gtk4.sngl's `Picture`).
 const imagePictureProp = "picture"
@@ -38,12 +46,14 @@ func imagePrimitive(tag string) bool {
 // says how a child is appended to it.
 func primitiveCType(tag string) string {
 	switch tag {
-	case toplevelTag, imageTag:
+	case toplevelTag, imageTag, menuEntryTag:
 		return "GtkBox"
 	case imageURLTag, imageDrawingTag:
 		return "GtkPicture"
 	case scrollTag:
 		return "GtkScrolledWindow"
+	case backTag:
+		return "GtkLabel"
 	}
 	return ""
 }
@@ -140,6 +150,16 @@ func (t *gtk4Translator) emitScrollCreate(id string, made ir.Expr) []ir.Stmt {
 func (t *gtk4Translator) recordScrollInvoker(node ir.Expr, event string, handler ir.Expr) {
 	if id := codegen.IdentBareName(node); t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
 		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: "GtkScrolledWindow", RtFire: "ScrollReachEnd"})
+	}
+}
+
+// recordRtInvoker records the test invoker that fires a handler of one of
+// gtk4rt's own primitives through the gtk4rt function firing it, for an event
+// no GTK signal carries: a window's back, a menu entry's pick. A copy a loop
+// makes is fired by its key.
+func (t *gtk4Translator) recordRtInvoker(node ir.Expr, event string, handler ir.Expr, cType, fire string) {
+	if id := codegen.IdentBareName(node); t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
+		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: id, WidgetType: cType, RtFire: fire, List: t.indexed[id]})
 	}
 }
 
