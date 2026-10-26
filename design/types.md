@@ -147,6 +147,15 @@ payload enum and a list, since `===` is an object's identity. Kotlin's `==`
 is a data class's and a list's `equals`, which already is. A map compares as
 the host's.
 
+**A color's string is its `hex()`** (Jonathan's call): the interpreter's
+`Struct.String` answers it for a color, so the fold does too, and each
+language's `string(c)` calls its own `color.hex` emitter
+(`codegen.ColorStringConversion`). It was the struct's own form in the
+interpreter, `String` of the record on html (`[object Object]`), and
+snglcolor's CSS `String` on Go, `rgba(…)` where translucent; that `String`
+stays what a platform writes into CSS
+(`cmd/sngl/testdata/color_string_runs.txt`).
+
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a
 value carries three numbers and every backend emits it as a record of them.

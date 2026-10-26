@@ -294,6 +294,10 @@ short forms expand CSS-style by doubling each digit — `#fff` is `#ffffff` and
 `#f00a` is `#ff0000aa`. Alpha defaults to fully opaque when omitted (the three-
 and six-digit forms).
 
+A color's string -- `string(c)`, and `c` interpolated -- is its `hex()`: the
+long form of the literal that writes it, `#rrggbb`, or `#rrggbbaa` where it is
+not opaque. `"{#fff}"` is `"#ffffff"`.
+
 The lexer does **not** distinguish a color from an
 [element reference](#element-references); both are the single `#`-token (the
 text after `#`, which may begin with a digit). Position alone decides: a

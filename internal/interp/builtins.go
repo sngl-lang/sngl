@@ -202,15 +202,7 @@ var intrinsics = map[string]nativeFunc{
 	// --- color ---
 	"color.hex": func(args []any) (any, error) {
 		if m, ok := args[0].(*Struct); ok {
-			field := func(name string) any { v, _ := m.Get(name); return v }
-			r := clampByte(ToInt(field("r")))
-			g := clampByte(ToInt(field("g")))
-			b := clampByte(ToInt(field("b")))
-			a := ToInt(field("a"))
-			if a == 255 {
-				return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
-			}
-			return fmt.Sprintf("#%02x%02x%02x%02x", r, g, b, clampByte(a)), nil
+			return colorHex(m), nil
 		}
 		return "#000000", nil
 	},
@@ -367,4 +359,18 @@ func init() {
 		}
 		return out, nil
 	}
+}
+
+// colorHex is a color's `#rrggbb`, or `#rrggbbaa` when it is not opaque: what
+// `color.hex` answers, and what a color's string is.
+func colorHex(m *Struct) string {
+	field := func(name string) any { v, _ := m.Get(name); return v }
+	r := clampByte(ToInt(field("r")))
+	g := clampByte(ToInt(field("g")))
+	b := clampByte(ToInt(field("b")))
+	a := ToInt(field("a"))
+	if a == 255 {
+		return fmt.Sprintf("#%02x%02x%02x", r, g, b)
+	}
+	return fmt.Sprintf("#%02x%02x%02x%02x", r, g, b, clampByte(a))
 }

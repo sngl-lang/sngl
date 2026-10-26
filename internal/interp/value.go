@@ -198,10 +198,13 @@ func (s *Struct) Set(name string, v any) {
 // String renders the value the way a struct literal is written. A value gets
 // stringified by interpolation and by the equality test, so the form has to be
 // deterministic; the field order is the checker's, which is the order every
-// backend emits.
+// backend emits. A color is its hex(), as on every target.
 func (s *Struct) String() string {
 	if s == nil {
 		return "null"
+	}
+	if s.Def != nil && s.Def.Builtin == ir.BuiltinColor {
+		return colorHex(s)
 	}
 	var b strings.Builder
 	b.WriteString("{")

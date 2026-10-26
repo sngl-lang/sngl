@@ -2805,7 +2805,7 @@ func (c *checker) inferInterpolation(x *ast.InterpolationExpr) ir.Expr {
 	var chain ir.Expr
 	for _, part := range x.Parts {
 		var partExpr ir.Expr
-		if lit, ok := part.(*ast.LiteralExpr); ok {
+		if lit, ok := x.Text(part); ok {
 			v, _ := lit.StringValue()
 			partExpr = &ir.Literal{AST: lit, Type: TypString, Value: v}
 		} else {

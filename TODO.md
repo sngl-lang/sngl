@@ -209,7 +209,14 @@ platform's `unstyled` list in the same commit.
   content arriving through a slot, a nav page of several nodes -- provides no
   `flexShare`, so a `flex` child there fills the screen; a page under an hbox
   inherits the Row's closure. Both took a Column weight before.
-- The interpreter, and the fold, print a color as `{r = 51, g = 102, b = 153, a = 255}`; every compiled target prints `#336699`.
+- The interpreter, and the fold, printed a color as
+  `{r = 51, g = 102, b = 153, a = 255}`, html as `[object Object]`, and Go as
+  `rgba(…)` where translucent. A color's string is its `hex()` everywhere now
+  (Jonathan's call, `color_string_runs.txt`). On the way: an interpolated
+  literal, `"{1}"` or `"{#fff}"`, checked to "" and `sngl fmt` wrote it back as
+  text (`testdata/interpolate_literal.sngl`); android declared no `Color` for
+  a component's color state; and a Go test file calling `.Hex()` imported
+  snglcolor unused.
 - A struct spread in a library function was not lowered on a target
   withholding `structSpread`: LibFuncs brought the function into the package
   after NoStructSpread had run. Fixed by running NoStructSpread after it

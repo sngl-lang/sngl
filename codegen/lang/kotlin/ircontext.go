@@ -1459,6 +1459,9 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 			if s, ok := UnitToStringKt(n, operand); ok {
 				return s
 			}
+			if s, _, ok := codegen.ColorStringConversion(langKt, n, kc.EvalExpr); ok {
+				return s
+			}
 			if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeFloat {
 				return FloatStringFn + "(" + operand + ")"
 			}

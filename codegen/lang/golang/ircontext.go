@@ -1721,6 +1721,12 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		if ud := UnitStringConversion(n); ud != nil {
 			return UnitStringFn(ud) + "(" + operand + ")"
 		}
+		if code, imports, ok := codegen.ColorStringConversion(langGo, n, gc.EvalExpr); ok {
+			for _, imp := range imports {
+				gc.RequireImport(imp)
+			}
+			return code
+		}
 		// An enum value is the string of its member's name already.
 		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeEnum {
 			return operand
