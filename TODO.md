@@ -121,38 +121,44 @@ Each is a commit series on the branch; one MR, so CI runs once.
 
 ### Next part
 
-`style-unset` is MR !280, pushed through `04b35ae5f` with `go tool verify`
+`style-unset` is MR !280, pushed through `2b290f749` with `go tool verify`
 passing: the order above, the fields below, bubbletea's `display=none`,
-gtk4's flex weights and column axis, a head's ternary, and `ui.spacer` as
-`flex: 1`. The literal Style fold was decided against (below). The prompt
-for the next part:
+gtk4's flex weights and column axis, a head's ternary, `ui.spacer` as
+`flex: 1`, and the part where generated code did not compile or disagreed
+with the interpreter -- a table under a `for` on bubbletea, `==` over lists
+and options, a library helper's spread, and a color's string. The literal
+Style fold was decided against (below). The prompt for the next part:
 
 ```text
 Continue on branch style-unset in the primary checkout (no worktree), MR !280,
-pushed through 04b35ae5f with verify passing. If !280 has merged, branch
-generated-code-compiles from a fresh origin/main instead (merge, never
+pushed through 2b290f749 with verify passing. If !280 has merged, branch
+running-programs-agree from a fresh origin/main instead (merge, never
 rebase). Look at `git status` and `git log --oneline -8` first.
 
 Read TODO.md's "Found on the way, not yet fixed" under "Style fields,
-translated in SNGL". This part is the items where a target's generated code
-does not compile or disagrees with the interpreter:
+translated in SNGL". This part is the items where a program that builds runs
+differently from the interpreter, or a test cannot say what it means:
 
-1. ui.select under a `for` on bubbletea (`too many arguments in call to
-   m.widget0Copy`), and under a reactive `if` on fyne and gtk4 (`undefined:
-   o`; a missing `c.__n1`). TODO found these on clean main; reproduce each on
-   the branch first. Read design/instances.md and design/slots.md.
-2. On Go, `==` between two structs holding a list does not compile (`struct
-   containing []string cannot be compared`), where the interpreter compares
-   field by field. Read design/types.md, and how html answers the same in
-   design/architecture.md (jsEqualExpr).
-3. A struct spread in a library function is not lowered on a target
-   withholding structSpread: LibFuncs brings the function in after
-   NoStructSpread has run. Read design/types.md on spreads and
-   design/architecture.md on the always-on passes.
-4. The interpreter and the fold print a color as `{r = 51, g = 102, b = 153,
-   a = 255}` where every compiled target prints `#336699`. This is what a
-   color's string is: say which you would make it and ask before changing
-   the language's side.
+1. A write to page state does not reach another live instance reading it on
+   fyne, gtk4 and html: a window's handler, or one component's body, leaves a
+   looped row's text and its `if` as they were built
+   (testdata/page_write_kept_instance.txtar pins only that it builds; the
+   interpreter re-renders them). Read design/instances.md's "An instance
+   reaches the page through what holds it" and `reachable` in
+   internal/lower/reactivity.go. Say how you would reach the live instances
+   -- a registry per component on the Model, or something better -- and ask
+   before building it.
+2. A test reading a looped `#id` whole, `c.title.length()`, does not build on
+   any compiled target (`c.title undefined` on Go, `undefined.length` on
+   html), where `c.title[1]` does. Read design/testing.md on test reach.
+3. html writes a Style field the build cannot fold with `setProperty` after
+   the static attribute, in the literal's field order: `{padding=p,
+   paddingTop=4px}` with `p` state resets the side on every write, where the
+   other targets keep it at 4px (cmd/sngl/testdata/style_side_zero_runs.txt
+   is the shape). Read design/architecture.md's html notes.
+4. passImplicitState refuses a call site that binds one two-way prop and
+   leaves another unbound. Read design/instances.md on unbound two-way
+   props.
 
 For each, write the fixture first -- a testdata/*.sngl, a golden, or a
 cmd/sngl/testdata/*_runs.txt that runs it on every target it concerns -- and
