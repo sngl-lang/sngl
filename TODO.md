@@ -226,11 +226,8 @@ the first user.
   and `output(icon=…)` goes only to the launcher. There is no Scaffold and
   no TopAppBar. `detailPage` draws its own `#backButton`, though the system
   back already pops the NavHost.
-- **No setting outlives the process.** `language` starts at
-  `i18n.defaultLocale()` and `dexName` at `"national"` on every launch.
-  Nothing in `lib/` persists a value. The persistence example in
-  getting-started uses a `go:` import, which android miscompiles
-  (ISSUES.md 5).
+- ~~**No setting outlives the process.**~~ Done in step 2: `sngl:settings`
+  keeps `language` and `dexName` from one run to the next.
 - **Tabs do not swipe.** android's `ui.tabs` is a TabRow over the selected
   panel, with no pager.
 - ~~**No target scrolls sideways.**~~ Done in step 1: every target scrolls
@@ -265,7 +262,7 @@ the first user.
      later*.
 2. **Settings as state: `sngl:settings`.** A component that binds a var,
    following the pattern `poke.pokemonRetrieve(:value=…)` already uses:
-   `settings.kept(key="language", :value=language)`. On mount it loads the
+   `settings.kept(name="language", :value=language)`. On mount it loads the
    stored value into the var if one exists, and it writes the var back on
    every change. The var keeps its own initializer as the default, so
    `var x = expr` still means what it means. `T` is anything `sngl:json`
@@ -343,11 +340,55 @@ session.
      clip is a rule the page writes only beside a source, so a frame
      showing only its placeholder is not clipped.
    - `iter[int]` has no `map`.
-2. **Settings.** Write the spec section and `design/` note first. Then
-   `lib/settings`, the interpreter, and the targets in the order above, with
-   a `sngl test` that seeds a setting and reads it back across a remount,
-   plus a CLI script test that runs a generated program twice. Then
-   `language` and `dexName` in the Pokédex become kept settings.
+2. **Settings.** Done. `sngl:settings` has `kept(name=, :value=)`, `load`,
+   `save` and a `store` context (`scope`, and a `Place`: `platform` or
+   `memory`); `design/stdlib.md`'s *Settings* says how each target keeps a
+   value. Only the program's own entry point opens the platform's place, so
+   every test, on every target and in the interpreter, keeps values in memory
+   and starts with none. The Pokédex keeps `language` and `dexName`. Pinned by
+   `testdata/settings_kept.{sngl,txtar}`,
+   `cmd/sngl/testdata/settings_kept_runs.txt` (gtk4 and fyne run twice),
+   `TestSettings_AKeptValueOutlivesAReload` (Chromium) and
+   `pkg/go/snglsettings`' tests. It needed a generic body to encode its own
+   T (`testdata/json_generic.*`, `error_json.sngl`). Found:
+   - `key=` is a node's identity in a loop, so the prop is `name`, which is
+     what the design above now says.
+   - A generic component's two-way prop, bound where the component is built
+     at run time, wrote back through a `func(any)` on fyne and gtk4, which
+     did not build. Fixed here (`generic_component_runtime_instance.txtar`).
+   - A package var written from outside a component built at run time marks
+     that component's effect by a bare name the writer does not have, so Go
+     does not build. Neither a mount in the Model nor a test reaches the
+     instance. The Pokédex binds `dexName` in `homePage`, beside the query
+     keyed on it, for this reason; `t.setContext(settings.store, …)` in a test
+     gets there too, by making the component reading the context an instance,
+     and `settings_kept.txtar` leaves that test out. Not fixed: it wants each
+     instance reachable from the writer.
+   - An effect in a component copied per row of a const loop cannot read a
+     prop bound to the loop variable ("an effect's @mount reads the loop
+     variable"), so `settings.kept(name=row.id, …)` under a `for` is
+     refused.
+   - The interpreter read another package's var from its initializer on
+     every access, so a library's state never changed under `sngl test`.
+     Fixed here (`importedVarOwner`).
+   - A Go test cannot compare two lists with `==`: `[]int` is not
+     comparable.
+   - On bubbletea, `languagePick.change(…)` in a test moved `language` but
+     never ran the `@update` keyed on it, while a handler's write (`dexPick`)
+     and a test's direct write did. Not traced: the test invoker is written by
+     the harness at launch. On html, a test writing `c.app.language` through a
+     nested instance needs an `UpdateComponent` intrinsic JavaScript lacks.
+     So the Pokédex's tests check the kept dex, not the kept language.
+   - The per-platform fixture harnesses compile every component as an entry
+     with nothing instantiating it, so a fixture whose components bind a
+     two-way prop needs `SKIP(codegen)`.
+   - The value loads in a mount effect, so a kept setting shows its
+     initializer for the first frame on every target.
+   - Nothing relaunches an android activity, so SharedPreferences is pinned
+     by the golden's code, not by a run.
+   - html on `--lang go` keeps settings in localStorage too; a cookie, so
+     the server renders the chosen language on the first paint, is left for
+     later.
 3. **Tabs.** The `ui.tabs` doc and body first, with a fixture that holds a
    panel's state across a switch away and back. Then android's pager, html,
    and a recorded android run that swipes.
