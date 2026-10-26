@@ -745,6 +745,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 
 	if cfg.Main {
 		b.WriteString("func main() {\n")
+		if open := golang.OpenSettings(ctx.Pkg, golang.SettingsFile(cfg.Name)); open != "" {
+			gc.RequireImport(golang.SettingsImportPath)
+			b.WriteString(open)
+		}
 		b.WriteString("\tp := tea.NewProgram(New())\n")
 		if usesPictures(ctx.Pkg) {
 			// Any message draws the view again, which is all a picture that has

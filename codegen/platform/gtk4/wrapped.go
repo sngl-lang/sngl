@@ -312,8 +312,9 @@ func init() {
 // handler makes is an ordinary update of widgets that exist; `run` then
 // presents the window and runs the loop, and a handler that never calls it
 // gets the loop with the window hidden.
-func emitGTK4RunMainWrapped(b *strings.Builder, pkg *ir.Package) {
+func emitGTK4RunMainWrapped(b *strings.Builder, pkg *ir.Package, open string) {
 	b.WriteString("\nfunc main() {\n")
+	b.WriteString(open)
 	b.WriteString("\tgtk4rt.Init()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.buildWidgetTree()\n")
@@ -330,8 +331,9 @@ func emitGTK4RunMainWrapped(b *strings.Builder, pkg *ir.Package) {
 // bootstrapping lives in gtk4rt.Run, so the generated main is cgo-free. The
 // Model is made on activate, after GTK is up, so the teardown asks whether
 // one was.
-func emitGTK4MainWrapped(b *strings.Builder, teardown *ir.Func) {
+func emitGTK4MainWrapped(b *strings.Builder, teardown *ir.Func, open string) {
 	b.WriteString("\nfunc main() {\n")
+	b.WriteString(open)
 	if teardown == nil {
 		b.WriteString("\tgtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {\n")
 		b.WriteString("\t\treturn New().BuildUI(app)\n")

@@ -1390,6 +1390,11 @@ func (g *htmlGen) generate() (string, error) {
 		b.WriteString(sharedTags)
 		b.WriteString("<script>\n")
 		if g.testMode {
+			// A test page keeps sngl:settings in memory, as a test on every
+			// target does, so no test reads what another left in localStorage.
+			if codegen.UsesSettings(g.pkg) {
+				b.WriteString("window.__snglSettingsInMemory = true;\n")
+			}
 			b.WriteString(testBootOpen)
 			b.WriteString(script)
 			b.WriteString(testBootClose)

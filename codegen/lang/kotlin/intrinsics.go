@@ -40,6 +40,10 @@ func init() {
 
 	// --- string ---
 	// toIntOrNull keeps a bad string from throwing; int.parse has no error result.
+	// sngl:settings, over SnglSettings beside the screen (android).
+	reg("settings._persistent", func(a []string) string { return "SnglSettings.persistent()" })
+	reg("settings._read", func(a []string) string { return "SnglSettings.read(" + a[0] + ", " + a[1] + ")" })
+	reg("settings._write", func(a []string) string { return "SnglSettings.write(" + a[0] + ", " + a[1] + ", " + a[2] + ")" })
 	reg("int.parse", func(a []string) string { return "(" + a[0] + ".toIntOrNull(" + a[1] + ") ?: 0)" })
 
 	reg("string.length", func(a []string) string { return a[0] + ".length" })

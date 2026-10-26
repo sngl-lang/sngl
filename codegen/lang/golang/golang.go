@@ -144,6 +144,13 @@ func i18nPluralKeyGoName(snglName string) string {
 // which each i18n spelling registers where it is emitted.
 const SnglI18nImportPath = "duckfam.us/sngl/pkg/go/i18n"
 
+// SettingsImportPath is the runtime sngl:settings is kept through, and
+// FyneSettingsImportPath fyne's place in it.
+const (
+	SettingsImportPath     = "duckfam.us/sngl/pkg/go/snglsettings"
+	FyneSettingsImportPath = "duckfam.us/sngl/pkg/go/fyneprefs"
+)
+
 // PackageUsesI18n reports whether any function or component in pkg
 // contains an i18n stdlib call. Platform generators use this to decide
 // whether to embed the program's translation manifest. The answer is stamped onto

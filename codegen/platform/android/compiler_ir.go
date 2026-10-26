@@ -52,7 +52,10 @@ type Config struct {
 	// accent is Color as the program wrote it, before withDefaults fills in
 	// the launcher's default: the theme's primary where it is set, and the
 	// device's own colors where it is not.
-	accent    string
+	accent string
+	// settings is whether the program keeps settings, which MainActivity
+	// then opens.
+	settings  bool
 	defaulted bool
 }
 

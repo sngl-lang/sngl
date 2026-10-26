@@ -1,0 +1,81 @@
+import json "sngl:json"
+import marks "sngl:internal/marks"
+
+// Where a store keeps its values.
+//
+//   - `platform` -- the platform's own place, kept from one run to the next
+//   - `memory` -- this run's memory, gone when it ends
+enum Place { platform, memory }
+
+// Which values a setting reaches, and where they are kept.
+struct Store {
+    // A set of values kept apart from the app's own; null is the app's.
+    scope option[string] = null
+    place Place = platform
+}
+
+// The store a setting is loaded from and saved to.
+context #store(Store{})
+
+// The value stored under `name`, or null where none is, or where the one
+// stored does not read as a T.
+func load[T any](name string) option[T] {
+    var text = store.place == Place.memory || !_persistent() ? memory.get(_slot(store, name), "") : _read(_scope(store), name)
+    if text == "" {
+        return null
+    }
+    match var got = json.decode[T](text) {
+        ok { return got }
+        failed { return null }
+    }
+}
+
+// Stores `value` under `name`.
+func save[T any](name string, value T) {
+    var text = json.encode(value)
+    if store.place == Place.memory || !_persistent() {
+        memory[_slot(store, name)] = text
+    } else {
+        _write(_scope(store), name, text)
+    }
+}
+
+// Keeps `value` under `name`: loaded into it on mount where one is stored,
+// and written back on every change after.
+//
+// It renders nothing, so it goes in any tree.
+component kept[T any, F any](
+    // The name the value is kept under.
+    name   string,
+    // The setting. Its initializer is the value until one is stored.
+    :value T,
+) F {
+    effect(@mount {
+        var got = load[T](name)
+        if got != null {
+            value = got
+        }
+    })
+    effect(on=value, @update(v) { save(name, v) })
+}
+
+// The values a memory store holds, by scope and name. Program state, so each
+// run and each test starts with none.
+var memory map[string, string] = {}
+
+func _scope(s Store) => s.scope != null ? s.scope : ""
+
+func _slot(s Store, name string) => "{_scope(s)}/{name}"
+
+// Whether the platform's place is open: the program's own entry point opens
+// it, which a test and the interpreter never run.
+#[marks.intrinsic("settings._persistent", readonly)]
+func _persistent() bool
+
+// The text stored under `name` in `scope`, "" for the app's own, or "" where
+// none is: JSON text is never empty.
+#[marks.intrinsic("settings._read", readonly)]
+func _read(scope string, name string) string
+
+#[marks.intrinsic("settings._write")]
+func _write(scope string, name string, text string)

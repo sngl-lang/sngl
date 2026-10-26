@@ -1,0 +1,81 @@
+# A kept setting outlives the process. Each run prints the count it mounted
+# with and keeps one more, so the second run reads what the first kept: gtk4
+# in settings.json under $XDG_CONFIG_HOME/Kept, fyne in the Preferences of the
+# app whose ID is "Kept". A run only keeps its values because its own main
+# opened the place; a test never does (testdata/settings_kept.txtar).
+#
+# bubbletea keeps them in the same file as gtk4 (pkg/go/snglsettings' tests)
+# and needs a terminal to run.
+
+[toolchain] [!headless] skip 'running it needs the headless compositor go tool verify provides'
+
+env XDG_CONFIG_HOME=$WORK/config
+
+sngl run --lang go --platform gtk4 app.sngl
+stdout '^count 0$'
+sngl run --lang go --platform gtk4 app.sngl
+stdout '^count 1$'
+
+sngl run --lang go --platform fyne app.sngl
+stdout '^count 0$'
+sngl run --lang go --platform fyne app.sngl
+stdout '^count 1$'
+
+-- app.sngl --
+import go "sngl:language/go"
+import settings "sngl:settings"
+import time "sngl:time"
+import ui "sngl:ui"
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+output(name="Kept") {
+    go {
+        gtk4
+        fyne
+    }
+}
+
+var count = 0
+var ticks = 0
+
+// The first tick reports the count the window mounted with and keeps one
+// more; the second, after that write was kept, ends the run.
+time.timer(interval=200ms, @tick {
+    ticks += 1
+    if ticks == 1 {
+        print("count {count}\n")
+        count += 1
+    } else {
+        exit(0)
+    }
+})
+
+ui.window {
+    settings.kept(name="count", :value=count)
+    ui.text(value="{count}")
+}
+-- testrun/run/fyne/go/app.sngl/1 --
+sha256:c2721744b6dd19f27fd8630b0fbfc396
+{
+  "stdout": "count 0\n"
+}
+-- testrun/run/fyne/go/app.sngl/2 --
+sha256:c2721744b6dd19f27fd8630b0fbfc396
+{
+  "stdout": "count 1\n"
+}
+-- testrun/run/gtk4/go/app.sngl/1 --
+sha256:79616c6573fd5900fdfa167460bbb0ae
+{
+  "stdout": "count 0\n"
+}
+-- testrun/run/gtk4/go/app.sngl/2 --
+sha256:79616c6573fd5900fdfa167460bbb0ae
+{
+  "stdout": "count 1\n"
+}

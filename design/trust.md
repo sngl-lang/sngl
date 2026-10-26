@@ -65,3 +65,10 @@ scheme reads the project through the FS it is handed -- `md:`, `js:`'s
 node_modules -- and `file:` resolves and reads its assets through one. A
 directory import is the exception, read as `../x` is, since only what code
 *reads* is held to the root.
+
+**A program's settings are the program's**, not the repository's reach: a
+compiled program writing `sngl:settings` to its own place runs because the
+user ran it, as everything else it does. The interpreter runs a program on
+the repository's say-so, so its `settings._read`, `_write` and `_persistent`
+open nothing, and `sngl run` and `sngl test` keep every value in memory
+(`internal/interp/settings.go`); no grant is asked for.

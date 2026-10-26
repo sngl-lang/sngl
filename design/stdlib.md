@@ -83,6 +83,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/http/` → `sngl:http`** and **`lib/json/` → `sngl:json`** — a
   request while the program runs, and a declared type read from and written
   as JSON. Neither knows the other; see **HTTP and JSON** below.
+- **`lib/settings/` → `sngl:settings`** — values an app keeps from one run to the next: `kept`, which binds a var to a stored value, `load` and `save`, and the `store` context saying where. See **Settings** below.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/test/browser/` → `sngl:test/browser`** — what a page shows, read in the browser a test runs in: an element's text, attribute, markup and computed style, how many elements a node renders, and a pixel it paints. Each takes the node a test reaches by its `#id` and is answered by html's JavaScript alone, so a fixture importing it builds for html only -- `sngl:test` stays portable, and a question about the document is asked where only a document answers it.
@@ -539,3 +540,38 @@ first run made through `EnumDef.InstanceOf`. And a generic call's arguments
 are inferred from what they state rather than under the call's own expected
 type, an argument whose parameter names no type parameter binding nothing
 (`testdata/generic_call_argument_unexpected.sngl`).
+
+## Settings
+
+**A setting is a var a component binds** (`lib/settings/settings.sngl`):
+`settings.kept(name="language", :value=language)` loads the stored value
+into the var on mount and saves it from `@update`, so the var's initializer
+stays the default and only a change is ever written. `kept`, `load` and
+`save` are SNGL over `sngl:json`, which needed a generic body to encode its
+own T (*HTTP and JSON*). The prop is `name` because `key=` is a node's
+identity in a loop.
+
+**Where a value lives is three intrinsics and a var.** `_read`, `_write` and
+`_persistent` are answered per language: Go by `pkg/go/snglsettings`, Kotlin
+by `SnglSettings.kt` beside the screen, JavaScript by `localStorage` under
+`sngl.settings/<scope>/<name>`. The memory store is `memory`, a package var
+of `lib/settings`, which every target holds as the program's own state
+(`lower.promoteVars`), and the interpreter at the program's root
+(`importedVarOwner`): it read another package's var from its initializer on
+every access, so a write went nowhere a later read looked.
+
+**Only the program's own entry point opens the platform's place**, so a
+test never touches the reader's settings and each test starts with none,
+without a flag saying it is one: a Go `main` calls `snglsettings.Open`
+(gtk4 and bubbletea a JSON file in `os.UserConfigDir()/<output name>`, fyne
+its Preferences, made with `app.NewWithID(<output name>)`), android's
+MainActivity calls `SnglSettings.init`, and a Go test, the test agent's
+`main` and a Robolectric test on a plain `ComponentActivity` run none of
+them. html has no entry point of its own, so a test page says
+`__snglSettingsInMemory`. The interpreter opens nothing (see `design/trust.md`).
+`codegen.UsesSettings` gates each of these, so a program keeping no settings
+emits what it did. `settings_kept.sngl` and `settings_kept.txtar` are the
+memory side, `cmd/sngl/testdata/settings_kept_runs.txt` runs gtk4 and fyne
+twice, `TestSettings_AKeptValueOutlivesAReload` reloads a page in Chromium,
+and `pkg/go/snglsettings`' tests hold the file. Nothing yet relaunches an
+android activity.

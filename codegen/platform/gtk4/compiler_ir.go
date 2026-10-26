@@ -520,6 +520,7 @@ func (c *compilation) emitIRMode(wrapped bool) (model, callbacks goFile, err err
 
 	var modelBuf, callbacksBuf strings.Builder
 	writeModelHead(&modelBuf, td)
+	td.Settings = c.cfg.Main && codegen.UsesSettings(c.ctx.Pkg)
 	writeCallbacksHead(&callbacksBuf, td)
 	modelBuf.WriteString(buildUIBuf.String())
 	modelBuf.WriteString(eventInvokersBuf.String())
@@ -1632,19 +1633,20 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wr
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
 func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, app bool) error {
+	open := golang.OpenSettings(pkg, golang.SettingsFile(cfg.Name))
 	if app {
-		emitGTK4AppMain(b, pkg)
+		emitGTK4AppMain(b, pkg, open)
 		return nil
 	}
 	if pkg != nil && pkg.Run != nil {
 		if !wrapped {
 			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
 		}
-		emitGTK4RunMainWrapped(b, pkg)
+		emitGTK4RunMainWrapped(b, pkg, open)
 		return nil
 	}
 	if wrapped {
-		emitGTK4MainWrapped(b, pkg.Teardown)
+		emitGTK4MainWrapped(b, pkg.Teardown, open)
 		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil
@@ -1667,6 +1669,7 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package,
 	b.WriteString("}\n\n")
 	b.WriteString("var snglActivateSignal = C.CString(\"activate\")\n\n")
 	b.WriteString("func main() {\n")
+	b.WriteString(open)
 	b.WriteString("\truntime.LockOSThread()\n")
 	// G_APPLICATION_NON_UNIQUE avoids needing an app-id, which
 	// gtk_application_new otherwise requires to be reverse-DNS-valid.

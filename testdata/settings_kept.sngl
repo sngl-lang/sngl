@@ -1,0 +1,67 @@
+// settings.kept binds a var to a stored value: loaded when it mounts, where
+// one is stored, and written on every change after, so a remount reads back
+// what was chosen before it. A test keeps its values in memory and starts
+// with none.
+
+// SKIP(codegen) "a platform harness compiles these components with nothing instantiating them, which a build never does; every target's code is settings_kept.txtar"
+
+import settings "sngl:settings"
+import . "sngl:test"
+import ui "sngl:ui"
+
+var language = "English"
+var count = 1
+
+component prefs ui.node {
+    settings.kept(name="language", :value=language)
+    settings.kept(name="count", :value=count)
+}
+
+component app ui.node {
+    var shown = true
+    if shown {
+        prefs
+    }
+}
+
+func testStartsAtTheInitializer(t Test, c app) {
+    t.assert(language == "English")
+    t.assert(settings.load[string]("language") == null)
+}
+
+func testAChangeOutlivesARemount(t Test, c app) {
+    language = "Deutsch"
+    t.assert(settings.load[string]("language") == "Deutsch")
+    c.shown = false
+    language = "English"
+    c.shown = true
+    t.assert(language == "Deutsch")
+}
+
+func testEachTestStartsWithNone(t Test, c app) {
+    t.assert(settings.load[string]("language") == null)
+    t.assert(language == "English")
+}
+
+func testASeededValueIsLoaded(t Test, c app) {
+    c.shown = false
+    settings.save("count", 7)
+    c.shown = true
+    t.assert(count == 7)
+}
+
+func testAValueThatNoLongerReadsIsPassedOver(t Test, c app) {
+    c.shown = false
+    settings.save("count", "seven")
+    count = 2
+    c.shown = true
+    t.assert(count == 2)
+}
+
+func testAScopeKeepsItsOwn(t Test, c app) {
+    settings.save("language", "Español")
+    t.setContext(settings.store, settings.Store{scope="other"})
+    t.assert(settings.load[string]("language") == null)
+    settings.save("language", "Français")
+    t.assert(settings.load[string]("language") == "Français")
+}

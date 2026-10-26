@@ -107,9 +107,9 @@ func emitIRBuildUIApp(b *strings.Builder, info *irAnalysis, buildBuf *strings.Bu
 // fynelayout.RunWindows then creates the windows attached to it. `run` is what
 // puts them on screen: a program that wrote `@run` and never called it runs
 // the loop with none shown.
-func emitIRAppMain(b *strings.Builder, pkg *ir.Package) {
+func emitIRAppMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
 	b.WriteString("func main() {\n")
-	b.WriteString("\ta := app.New()\n")
+	b.WriteString(fyneApp(cfg, pkg))
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.BuildUI()\n")
 	golang.EmitAppStart(b, pkg, "os.Args[1:]", func(show bool) string {

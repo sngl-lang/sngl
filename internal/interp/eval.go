@@ -514,6 +514,9 @@ type Env struct {
 	wlog *writeLog
 	// handles is the program's owned values, shared the same way (owned()).
 	handles *handles
+	// imported is the vars the packages this program imports declare, which
+	// the program's root holds once one is reached (importedVarOwner).
+	imported map[*ir.Var]bool
 	// types is what the type parameters of the declaration running in this
 	// scope are bound to, and typeCalls the bindings calls have made that no
 	// frame has taken yet, shared like handling (typeargs.go).
@@ -1366,7 +1369,7 @@ func (env *Env) findVarOwner(sym ir.Symbol) *Env {
 			return e
 		}
 	}
-	return nil
+	return env.importedVarOwner(sym)
 }
 
 // registerBoundary notes that a boundary with a fallback renders in this

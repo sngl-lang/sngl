@@ -908,6 +908,7 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:math`         | `pi`, `tau`                                                                                        |
 | `sngl:async`        | `start`, `do`                                                                                      |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
+| `sngl:settings`     | `kept`, `load`, `save` and the `store` context: values an app keeps from one run to the next       |
 | `sngl:test`         | `Test`                                                                                             |
 | `sngl:i18n`         | the translation surface `$"…"` lowers to                                                           |
 | `sngl:macro`        | the marks a package writes to describe its own declarations (`foreign`, …)                         |
