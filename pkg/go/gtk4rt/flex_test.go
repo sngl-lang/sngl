@@ -71,3 +71,59 @@ func TestLookSharesByWeight(t *testing.T) {
 		t.Error("even weights: the box kept gtk4rt's layout, where GTK's splits them the same")
 	}
 }
+
+// Beside weighted children, one with no look of its own takes a share where
+// it expands itself, as `ui.spacer` does and as html's `flex: 1` spacer
+// does, and none where GTK carries the expand up from something it holds: a
+// CSS flex item grows by its own flex, never by what is inside it, so a
+// scroll holding a spacer is its content's size, as it is on html.
+func TestLookSharesNoneForAnExpandItHolds(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("gtk4 needs an X11/Wayland display")
+	}
+	Init()
+	row := BoxNew(OrientationHorizontal, 0)
+	Retain(row)
+	SetLook(row, Look{Spaced: true, Spacing: 10})
+	a, b := BoxNew(OrientationHorizontal, 0), BoxNew(OrientationHorizontal, 0)
+	SetLook(a, Look{Grow: 1})
+	SetLook(b, Look{Grow: 3})
+	spacer := BoxNew(OrientationHorizontal, 0)
+	setHExpand(spacer, true)
+	holder, inner := BoxNew(OrientationHorizontal, 0), BoxNew(OrientationHorizontal, 0)
+	setHExpand(inner, true)
+	BoxAppend(holder, inner)
+	for _, c := range []Handle{a, b, spacer, holder} {
+		BoxAppend(row, c)
+	}
+	allocate(row, 530, 10)
+	got := [4]int{allocatedWidth(a), allocatedWidth(b), allocatedWidth(spacer), allocatedWidth(holder)}
+	if want := [4]int{100, 300, 100, 0}; got != want {
+		t.Errorf("weights 1, 3, a spacer and a box holding one, of 500: widths %v, want %v", got, want)
+	}
+}
+
+// A column gtk4rt lays out shares its height. GtkBox keeps its orientation in
+// its layout manager, so once gtk4rt's replaced GTK's, asking the box answered
+// a row (and GTK said so on stderr), and a column's weights split its width.
+func TestLookSharesAColumnsHeight(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("gtk4 needs an X11/Wayland display")
+	}
+	Init()
+	col := BoxNew(OrientationVertical, 0)
+	Retain(col)
+	SetLook(col, Look{Spaced: true, Spacing: 10})
+	a, b := BoxNew(OrientationHorizontal, 0), BoxNew(OrientationHorizontal, 0)
+	SetLook(a, Look{Grow: 1})
+	SetLook(b, Look{Grow: 3})
+	BoxAppend(col, a)
+	BoxAppend(col, b)
+	allocate(col, 50, 410)
+	if ha, hb := allocatedHeight(a), allocatedHeight(b); ha != 100 || hb != 300 {
+		t.Errorf("weights 1 and 3 of 400 down a column: heights %d and %d, want 100 and 300", ha, hb)
+	}
+	if wa := allocatedWidth(a); wa != 50 {
+		t.Errorf("a column's child is %d wide, want the column's 50", wa)
+	}
+}

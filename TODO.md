@@ -218,9 +218,16 @@ platform's `unstyled` list in the same commit.
 - On fyne a widget added to a container already under a Box's theme keeps
   the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
   render slot appending into a styled vbox meets it.
-- On gtk4 a child that expands with no look of its own (a scroll's) takes
-  one share beside a styled flex, and a box gtk4rt lays out measures height
-  for width only. A `fontSize` is written in
+- On gtk4 a box gtk4rt lays out measures height for width only, and
+  `orientation` set on one after gtk4rt has taken it over reaches the layout
+  GtkBox no longer has. A box with no weighted child is GTK's, so a child that
+  grows only for what it holds -- an hbox holding a `ui.spacer`, whose GtkBox
+  expands both ways -- still takes room down its column that CSS gives it
+  none of.
+- `ui.spacer` grows unasked on html (`flex: 1`, written after the spread, so
+  its own `flex` is ignored), gtk4 and fyne, and only with a `flex` on android
+  and bubbletea; its doc says `style.flex=1` makes it expand while its example
+  right-aligns with a bare `spacer`. Which one it means is the language's. A `fontSize` is written in
   points, as Pango reads a span's, so 1em is GTK's default text, while every
   other length is pixels. A Look's CSS is at application priority on the
   widget's own node, so a button given a `background` loses the theme's hover

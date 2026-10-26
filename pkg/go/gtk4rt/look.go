@@ -62,6 +62,16 @@ static SnglLook *sngl_look_of(GtkWidget *w) {
     return g_object_get_data(G_OBJECT(w), "sngl-look");
 }
 
+// The axis of a box. GtkBox keeps its orientation in its layout manager, so
+// once gtk4rt has given a box a layout of its own, the box answers through
+// one that is not a GtkBoxLayout -- horizontal, with a critical on stderr --
+// and its own, kept aside, is what knows. flex.go asks too.
+GtkOrientation sngl_box_axis(GtkWidget *box) {
+    SnglLook *l = sngl_look_of(box);
+    if (l && l->box_layout) return gtk_orientable_get_orientation(GTK_ORIENTABLE(l->box_layout));
+    return gtk_orientable_get_orientation(GTK_ORIENTABLE(box));
+}
+
 static SnglLook *sngl_look_ensure(GtkWidget *w) {
     SnglLook *l = sngl_look_of(w);
     if (!l) {
@@ -136,11 +146,15 @@ static int sngl_box_spacing(GtkWidget *box) {
 }
 
 // The share of the spare room a child takes: its look's flex, or one share
-// where it expands by any other means, as GTK's box gives it.
+// where it expands itself, as a spacer does and as html's is `flex: 1`. An
+// expand GTK carries up from something the child holds is no share: a CSS
+// flex item grows by its own flex, never by what is inside it, so a scroll
+// holding a spacer is its content's size.
 static double sngl_weight(GtkWidget *c, GtkOrientation o) {
     SnglLook *cl = sngl_look_of(c);
     if (cl && cl->grow > 0) return cl->grow;
-    return gtk_widget_compute_expand(c, o) ? 1 : 0;
+    gboolean own = o == GTK_ORIENTATION_HORIZONTAL ? gtk_widget_get_hexpand(c) : gtk_widget_get_vexpand(c);
+    return own ? 1 : 0;
 }
 
 static GPtrArray *sngl_flex_kids(GtkWidget *box) {
@@ -150,17 +164,25 @@ static GPtrArray *sngl_flex_kids(GtkWidget *box) {
     return kids;
 }
 
+// Whether the children's shares are not what GTK's box would give them: two
+// weights that differ, or a weight beside a child GTK would grow for what it
+// holds. A box with no weight at all is left to GTK's, carried expands and
+// all.
 static gboolean sngl_weights_uneven(GtkWidget *box) {
-    GtkOrientation o = gtk_orientable_get_orientation(GTK_ORIENTABLE(box));
+    GtkOrientation o = sngl_box_axis(box);
     double first = 0;
+    gboolean carried = FALSE;
     for (GtkWidget *c = gtk_widget_get_first_child(box); c; c = gtk_widget_get_next_sibling(c)) {
         if (!gtk_widget_should_layout(c)) continue;
         double w = sngl_weight(c, o);
-        if (w <= 0) continue;
+        if (w <= 0) {
+            carried = carried || gtk_widget_compute_expand(c, o);
+            continue;
+        }
         if (first == 0) first = w;
         else if (w != first) return TRUE;
     }
-    return FALSE;
+    return carried && first > 0;
 }
 
 // Each child's extent along the box, of along in all, at across: its
@@ -201,7 +223,7 @@ static GtkSizeRequestMode sngl_flex_mode(GtkWidget *box) {
 
 static void sngl_flex_measure(GtkWidget *box, GtkOrientation o, int for_size,
         int *min, int *nat, int *min_base, int *nat_base) {
-    GtkOrientation axis = gtk_orientable_get_orientation(GTK_ORIENTABLE(box));
+    GtkOrientation axis = sngl_box_axis(box);
     GPtrArray *kids = sngl_flex_kids(box);
     int n = kids->len;
     *min = *nat = 0;
@@ -238,7 +260,7 @@ static void sngl_flex_measure(GtkWidget *box, GtkOrientation o, int for_size,
 // what it is allocated, as its halign and valign say.
 static void sngl_flex_allocate(GtkWidget *box, int width, int height, int baseline) {
     (void)baseline;
-    GtkOrientation axis = gtk_orientable_get_orientation(GTK_ORIENTABLE(box));
+    GtkOrientation axis = sngl_box_axis(box);
     gboolean row = axis == GTK_ORIENTATION_HORIZONTAL;
     int along = row ? width : height;
     GPtrArray *kids = sngl_flex_kids(box);
@@ -339,7 +361,7 @@ static void sngl_look_place(GtkWidget *w) {
     GtkWidget *parent = gtk_widget_get_parent(w);
     int main_axis = -1;
     if (parent && GTK_IS_ORIENTABLE(parent))
-        main_axis = gtk_orientable_get_orientation(GTK_ORIENTABLE(parent)) == GTK_ORIENTATION_HORIZONTAL ? 0 : 1;
+        main_axis = sngl_box_axis(parent) == GTK_ORIENTATION_HORIZONTAL ? 0 : 1;
     if (l) {
         if (l->grow_axis >= 0 && (l->grow <= 0 || l->grow_axis != main_axis))
             sngl_restore_expand(w, l);
@@ -660,6 +682,8 @@ func firstChild(w Handle) Handle {
 
 func setVExpand(w Handle, v bool) { C.gtk_widget_set_vexpand(widget(w), gbool(v)) }
 
+func setHExpand(w Handle, v bool) { C.gtk_widget_set_hexpand(widget(w), gbool(v)) }
+
 func allocate(w Handle, width, height int) {
 	var min, nat C.int
 	C.gtk_widget_measure(widget(w), C.GTK_ORIENTATION_HORIZONTAL, -1, &min, &nat, nil, nil)
@@ -675,6 +699,8 @@ func allocation(w Handle) C.GtkAllocation {
 func allocatedX(w Handle) int { return int(allocation(w).x) }
 
 func allocatedWidth(w Handle) int { return int(allocation(w).width) }
+
+func allocatedHeight(w Handle) int { return int(allocation(w).height) }
 
 func boxLaidOutByGTK(w Handle) bool {
 	return C.sngl_is_box_layout(widget(w)) != 0
