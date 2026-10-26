@@ -228,8 +228,8 @@ the first user.
   back already pops the NavHost.
 - ~~**No setting outlives the process.**~~ Done in step 2: `sngl:settings`
   keeps `language` and `dexName` from one run to the next.
-- **Tabs do not swipe.** android's `ui.tabs` is a TabRow over the selected
-  panel, with no pager.
+- ~~**Tabs do not swipe.**~~ Done in step 3: every panel stays mounted, and
+  android and html swipe between them.
 - ~~**No target scrolls sideways.**~~ Done in step 1: every target scrolls
   along `ui.scroll`'s `direction`, and the Sprites, Evolution and Moves
   panels scroll sideways.
@@ -291,8 +291,7 @@ the first user.
      `selected` under the same TabRow, with `beyondViewportPageCount` set to
      every page so none is disposed.
    - html keeps hidden panels in the DOM and swipes with pointer events.
-     The desktop targets keep their notebooks' pages, which they already
-     hold.
+     The desktop targets hide the panels not shown.
    - In the Pokédex, every tab's requests then go out when a detail page
      opens. Moves is the costly one: a `moveRetrieve` per move, plus their
      types. Measure that against the recorded runs, and decide whether the
@@ -389,9 +388,59 @@ session.
    - html on `--lang go` keeps settings in localStorage too; a cookie, so
      the server renders the chosen language on the first paint, is left for
      later.
-3. **Tabs.** The `ui.tabs` doc and body first, with a fixture that holds a
-   panel's state across a switch away and back. Then android's pager, html,
-   and a recorded android run that swipes.
+3. **Tabs.** Done. Every panel of a `ui.tabs` is mounted with the tabs and
+   stays mounted; the doc allows a platform that cannot keep one loaded to
+   mount it on selection, and none needs to. android pages through them in
+   `SnglPager`, a HorizontalPager under the TabRow keeping every page
+   composed; html keeps every tabpanel with all but one `hidden` and swipes
+   through `sngl-swipe`; fyne, gtk4 and bubbletea hide the box sngl:ui's body
+   puts each panel in. A test swipes with `sngl:test/mobile`'s `swipe`, on
+   android and html. design/nodes.md's *Every tab's panel is mounted* says
+   how. Pinned by `testdata/tabs_panels_stay_loaded.{sngl,txtar}` and
+   `cmd/sngl/testdata/tabs_panels_stay_loaded_runs.txt` (all six; android
+   and html swipe). Found:
+   - No desktop target had a notebook: fyne, gtk4 and bubbletea rendered
+     sngl:ui's own body (fyne's AppTabs takes typed items no `Arg` builds),
+     so the body is what changed for them.
+   - A null test asks whether a node is mounted, so a node of a panel not
+     shown is present. Nine tests said otherwise: `tabs_runs`,
+     `tabs_panel_presence_runs`, `table_rows_runs`,
+     `slot_nested_instance_runs` (which now drops a tab, since a switch drops
+     no panel) and four of the Pokédex's.
+   - fyne and gtk4 lift each panel's box into an instance, and two gaps came
+     with it, both fixed: each instance's render cleared the Model's presence
+     field of an instance only another builds, and a widget a record's slot
+     builds -- a button written straight in a panel -- had no test invoker.
+   - An emit under a context provider in an override's body was never
+     answered: android's pager handler sits under `flexShare`, and its
+     `change(k)` came out as an `onChange` nothing declared. Fixed in
+     `substituteEvents`.
+   - android's intrinsics took no slot with parameters; `SnglPager`'s
+     `page component(index int)` is the first.
+   - bubbletea answered no `display`; a Layout's `hidden` is `none` now. Its
+     Tab still stops on a hidden panel's controls, as on a branch not taken:
+     static focus stops are gathered ungated (`walkForSlots`).
+   - On bubbletea, a `ui.tab` under an `if` beside a panel with a focus stop
+     does not build: the focus functions read the list of tabs the view
+     hoisted into a local of its own (`undefined: __lt11`), with the old body
+     too. `slot_nested_instance_runs.txt` leaves bubbletea out for it. Not
+     fixed.
+   - A test reading a prop whose value reads a `var` a panel's block declares
+     (`c.tap.text` over `"{taps}"`) emits the var bare on the Go targets,
+     `undefined: taps`, with the old body too. Not fixed.
+   - A swipe on android turns one page, so one settling on a disabled tab
+     goes on to the next that is not, which is what html's chooses.
+   - Opening Bulbasaur's page against the recorded answers asked 11 requests
+     on html and asked 45 once every panel loaded: 15 moves and 3 of their
+     types, 6 stats, 8 sprite pictures. On the interpreter it settled in 2.4s
+     where About alone took 0.1s. The recorded answers are trimmed, 3.8 KB a
+     move, where PokéAPI's carry every flavor text and `learned_by_pokemon`,
+     and a Pokémon's machine moves run to dozens. Loading a row's facts as it
+     comes into view needs a visibility event no target has -- the nearest is
+     a scroll's `@reachEnd`, and the table scrolls sideways -- so Moves asks
+     the first time its tab is shown and keeps what it got (`movesShown`):
+     the page opens without those 18 requests, and settles in 0.8s on the
+     interpreter. A row-visibility event is the follow-up.
 4. **The app bar.** Write the `ui.window` prop and slot in the spec, then
    implement android, gtk4, html, fyne and bubbletea, and the up arrow. In
    the Pokédex, move the language and the dex choice into the window's `menu`, delete
