@@ -65,7 +65,7 @@ sha256:3190198df19500ee98bf913449d63d74
   ]
 }
 -- testrun/bubbletea/go/app.sngl/compass/1 --
-sha256:4da30891c4c4dfc421c046c2e4912443
+sha256:546194ac6a5ff3a71fd90c6e7edde5dd
 {
   "results": [
     {
