@@ -116,7 +116,13 @@ target with no way to say a field is meant for one.
   box to draw it on, where lipgloss's own Inline would also have dropped the
   box's padding, border and margin; an overflow that is not visible cuts what
   is taller than the box inside its frame, where lipgloss grows the box past
-  its height; and `display=none` draws nothing and takes no line. A literal
+  its height; and `display=none` draws nothing and takes no line, nor a focus
+  stop: each override's `Focus` record is enabled where its Style does not
+  display it none, as CSS focuses no element displayed none. A component
+  rendered by a method of its own may draw nothing as a node may, so its part
+  is left out of its parent's where it is empty (`appendPart`): joined, the
+  empty string was a blank line
+  (`cmd/sngl/testdata/style_bubbletea_display_none_runs.txt`). A literal
   Style's Fit folds to `tui.Fit{}` and the primitive renders as it did. A
   Layout's `justifyContent` places its parts in what they leave of its extent
   (`tui.Join`), which it learns as it does for a growing child, and where a

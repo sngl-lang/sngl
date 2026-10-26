@@ -198,8 +198,9 @@ platform's `unstyled` list in the same commit.
 - On bubbletea a `flex` child is joined at its own size under an `if` or a
   `for`, being part of what that statement renders, and where it holds a
   loop's focus stop or canvas, whose count would come after its later
-  siblings'. A focusable node displayed none is still a focus stop, and a
-  component whose root is displayed none still takes a line in its parent.
+  siblings'.A focusable node displayed none in a loop slot is still
+  counted as a stop (Tab passes over a static one), and so is one inside a
+  container displayed none, whose own `focus` record says nothing of it.
 - An `if`'s or a `for`'s head ending in a ternary reads the operand after the
   `:` as an Expr, so `if c ? x : b {` takes `b {` for a struct literal and
   fails to parse; `(b)` parses. The grammar's CondExpr could take a CondExpr

@@ -226,24 +226,34 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
-	n, isNode := child.(*ir.NodeInst)
-	switch child.(type) {
-	case *ir.If, *ir.Match, *ir.For:
-		// A branch not taken or a loop over nothing renders nothing, and
-		// joining its empty string would put a blank line in the box. So
-		// does a node its Style displays none.
-		vc.line("if %s != \"\" {", childVar)
-		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	vc.appendPart(child, childVar, childrenVar)
+}
+
+// appendPart appends part, which child rendered, to list, leaving it out where
+// it is empty and child may draw nothing: joining an empty string puts a blank
+// line in the box.
+func (vc *irViewContext) appendPart(child ir.Stmt, part, list string) {
+	if vc.mayDrawNothing(child) {
+		vc.line("if %s != \"\" {", part)
+		vc.line("\t%s = append(%s, %s)", list, list, part)
 		vc.line("}")
-	default:
-		if isNode && hides(n) {
-			vc.line("if %s != \"\" {", childVar)
-			vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
-			vc.line("}")
-			return
-		}
-		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		return
 	}
+	vc.line("%s = append(%s, %s)", list, list, part)
+}
+
+// mayDrawNothing reports whether child may render an empty string: a branch
+// not taken, a loop over nothing, a node its Style may display none, or a
+// component rendered by a method of its own, whose root may be any of those.
+// A body rendering no part at all, nil here, draws nothing.
+func (vc *irViewContext) mayDrawNothing(child ir.Stmt) bool {
+	switch n := child.(type) {
+	case nil, *ir.If, *ir.Match, *ir.For:
+		return true
+	case *ir.NodeInst:
+		return hides(n) || n.Component != nil && vc.isUserComponent(n.Component)
+	}
+	return false
 }
 
 // hides reports whether n's fit may hide it: a literal setting `hidden`, or
@@ -534,10 +544,14 @@ func countParts(stmts []ir.Stmt) int {
 func (vc *irViewContext) renderSiblings(stmts []ir.Stmt, partVar, list string) {
 	if countParts(stmts) <= 1 {
 		vc.line("var %s string", partVar)
+		var drawn ir.Stmt
 		for _, child := range stmts {
 			vc.renderStmt(child, partVar)
+			if rendersPart(child) {
+				drawn = child
+			}
 		}
-		vc.line("%s = append(%s, %s)", list, list, partVar)
+		vc.appendPart(drawn, partVar, list)
 		return
 	}
 	for i, child := range codegen.WithoutSchedules(stmts) {

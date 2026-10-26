@@ -590,7 +590,20 @@ marked together and Enter runs the handler as written. That handler runs where
 no slot argument is bound, so a focusable node there whose handler, or a
 branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
 `bubbletea/focus_recursion_run_test.go`,
-`cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). A canvas under a loop is the same shape: its
+`cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). **A stop
+that draws nothing is passed over.** passFocusOrder asks of each stop what
+says it is drawn -- the branches around it and its `Focus` record's `enabled`
+(`style.display != none` in every bubbletea override), and of a loop slot
+that its loop renders a stop -- and where any stop may not be, builds
+`__focusShown`: Tab steps again while the stop reached is not shown, at most
+once per other stop, and New and every Update end by settling focus off a stop
+that stopped being shown, telling the widgets only when it moved, since a
+textinput's Focus restarts its blink. A stop under a branch not taken was a
+stop with nothing drawn, and Enter there ran a hidden button's handler. The
+pass runs before NoTernary, so a condition is still an expression over state
+rather than a temp the view declared; one naming a loop's variable or a local
+is left out (`bubbletea/focus_run_test.go`'s
+`TestFocusPassesOverStopsNotDrawn`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
 rasterizer View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy

@@ -87,6 +87,9 @@ struct Model {
     resize string
 }
 
+// Whether a primitive is a focus stop: one its Style displays none is not, as
+// CSS focuses no element displayed none. An override writes the condition
+// here rather than `true`, and Tab passes over the stop while it holds.
 struct Focus {
     enabled bool
 }
@@ -250,7 +253,7 @@ const component ui.text[platform](value, style) {
 const component ui.button[platform](text, style) {
     Styled(
         content = text,
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         events = [Event{on="click", key="enter"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.overflow, style.display),
@@ -300,7 +303,7 @@ const component ui.input[platform](placeholder, style) {
             pkg = "charm.land/bubbles/v2/textinput",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         placeholder = placeholder,
         look = lookOf(style),
@@ -312,7 +315,7 @@ const component ui.input[platform](placeholder, style) {
 const component ui.checkbox[platform](label, checked, style, @change) {
     Styled(
         content = label,
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         events = [Event{on="change", key="space"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.overflow, style.display),
@@ -334,7 +337,7 @@ const component ui.radio[platform](style) {
 const component ui.toggle[platform](label, checked, style, @change) {
     Styled(
         content = label,
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         events = [Event{on="change", key="space"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.overflow, style.display),
@@ -359,7 +362,7 @@ const component ui.select[platform](style, options) {
             update = ".Update(msg, $\{options\})",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         options = options.map(func(o) => o.label),
         look = lookOf(style),
@@ -378,7 +381,7 @@ const component ui.textarea[platform](style) {
             pkg = "charm.land/bubbles/v2/textarea",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         binds = [Bind{prop="value", get=".Value()", set=".SetValue"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.overflow, style.display),
@@ -399,7 +402,7 @@ const component ui.datepicker[platform](placeholder, style) {
             pkg = "charm.land/bubbles/v2/textinput",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         binds = [Bind{prop="value", get=".Date()", set=".SetDate"}],
         placeholder = placeholder,
         look = lookOf(style),
@@ -478,7 +481,7 @@ const component ui.card[platform](style, clickable, @click, content) {
         if clickable {
             Styled(
                 content = "› ",
-                focus = Focus{enabled=true},
+                focus = Focus{enabled=style.display != ui.Display.none},
                 events = [Event{on="click", key="enter"}],
                 @click { click() },
             ) {}
@@ -492,7 +495,7 @@ const component ui.card[platform](style, clickable, @click, content) {
 const component ui.chip[platform](label, style) {
     Styled(
         content = label,
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         events = [Event{on="click", key="enter"}],
         look = lookOf(style),
         fit = fitOf(style.whiteSpace, style.overflow, style.display),
@@ -553,7 +556,7 @@ const component ui.table[platform](style, columns, rows) {
             update = ".Update(msg, $\{columns\}, $\{rows\})",
             resize = ".SetWidth($\{w\})",
         },
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         binds = [Bind{prop="selected", get=".Cursor()"}],
         columns = columns,
         rows = rows.map(func(r) => r.cells),
@@ -584,7 +587,7 @@ const component ui.tree[platform](style, items) {
             pkg = "charm.land/bubbles/v2/list",
             resize = ".SetSize($\{w\}, $\{h\})",
         },
-        focus = Focus{enabled=true},
+        focus = Focus{enabled=style.display != ui.Display.none},
         binds = [Bind{prop="selected", get="tui.SelectedString"}],
         items = _treeLabels(items),
         look = lookOf(style),
@@ -607,7 +610,7 @@ const component ui.menu[platform](style, open, items) {
                 pkg = "charm.land/bubbles/v2/list",
                 resize = ".SetSize($\{w\}, $\{h\})",
             },
-            focus = Focus{enabled=true},
+            focus = Focus{enabled=style.display != ui.Display.none},
             items = items.map(func(it) => it.label),
             look = lookOf(style),
             fit = fitOf(style.whiteSpace, style.overflow, style.display),

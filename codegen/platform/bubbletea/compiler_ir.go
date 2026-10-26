@@ -214,7 +214,10 @@ type irAnalysis struct {
 	widgets   []widgetInfo
 	overlays  []overlayInfo
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
-	gc        *golang.GoIRContext
+	// settles is true where passFocusOrder declared __focusSettle: some stop
+	// may draw nothing, and focus is moved off one once Update has run.
+	settles bool
+	gc      *golang.GoIRContext
 	// loopTimers are the schedules written under a loop (loop_timers.go).
 	timers []codegen.LoopTimer
 	// owners is triggerOwners' answer for the view, in a test build.
@@ -419,6 +422,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			break
 		}
 	}
+	info.settles = info.hasFocus && slices.ContainsFunc(ctx.AllFuncs(), func(f *ir.Func) bool { return f.Name == "__focusSettle" })
 
 	if info.NeedsToast {
 		gc.RequireImport("time")
@@ -543,7 +547,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 				fmt.Fprintf(&b, "\tm.%s%s(m.%s)\n", w.fieldName, bd.set, bd.target)
 			}
 		}
-		if firstFocusable && w.focusExpr != "" {
+		if firstFocusable && w.focusExpr != "" && !info.settles {
 			// This widget holds the first focusable slot, where __focusID
 			// starts. Mark the slot consumed even without a .Focus() method,
 			// or a later widget that has one is wrongly focused.
@@ -557,6 +561,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// defaults; emitting it primes any widget whose default size is 0.
 	if widgetsHaveResize(info.widgets) {
 		b.WriteString("\tm.resizeWidgets()\n")
+	}
+	// Focus starts on the first stop drawn, which the state just set says.
+	if info.settles {
+		b.WriteString("\tm.__focusSettle()\n")
+		emitIRFocusSync(&b, info.widgets)
 	}
 	// Last, so every cell an `on` expression or a mount handler touches already
 	// holds its initial value. Init() cannot do this -- it takes the model by
@@ -1136,6 +1145,20 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		fmt.Fprintf(b, "\tcmds = append(cmds, m.%s())\n", canvasTransmitMethodName)
 	}
 	emitTimerSyncCalls(b, info.timers, "\t")
+	// What the message changed may have hidden the stop focus is on. The
+	// widgets are told only when focus moved: a textinput's Focus restarts
+	// its cursor's blink, which is itself a message.
+	if info.settles {
+		var sync strings.Builder
+		emitIRFocusSync(&sync, info.widgets)
+		if sync.Len() == 0 {
+			b.WriteString("\tm.__focusSettle()\n")
+		} else {
+			b.WriteString("\tif m.__focusSettle() {\n")
+			b.WriteString(sync.String())
+			b.WriteString("\t}\n")
+		}
+	}
 	b.WriteString("\treturn m, tea.Batch(cmds...)\n")
 	b.WriteString("}\n\n")
 }
