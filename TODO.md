@@ -121,44 +121,42 @@ Each is a commit series on the branch; one MR, so CI runs once.
 
 ### Next part
 
-`style-unset` is MR !280, pushed through `2b290f749` with `go tool verify`
-passing: the order above, the fields below, bubbletea's `display=none`,
-gtk4's flex weights and column axis, a head's ternary, `ui.spacer` as
-`flex: 1`, and the part where generated code did not compile or disagreed
-with the interpreter -- a table under a `for` on bubbletea, `==` over lists
-and options, a library helper's spread, and a color's string. The literal
-Style fold was decided against (below). The prompt for the next part:
+`style-unset` is MR !280, pushed through `c086f85f6` with `go tool verify`
+passing. The part before this one made running programs agree with the
+interpreter: a write to page state reaches every live instance reading it
+(a refresh each carries, `__refreshPage_<v>`), a test counts a looped `#id`
+read whole, html keeps a side the build wrote and updates a named node once,
+and a test reads a bound two-way prop through the instance. The prompt for
+the next part:
 
 ```text
 Continue on branch style-unset in the primary checkout (no worktree), MR !280,
-pushed through 2b290f749 with verify passing. If !280 has merged, branch
-running-programs-agree from a fresh origin/main instead (merge, never
-rebase). Look at `git status` and `git log --oneline -8` first.
+pushed through c086f85f6 with verify passing. If !280 has merged, branch
+target-agreement from a fresh origin/main instead (merge, never rebase). Look
+at `git status` and `git log --oneline -8` first.
 
 Read TODO.md's "Found on the way, not yet fixed" under "Style fields,
-translated in SNGL". This part is the items where a program that builds runs
-differently from the interpreter, or a test cannot say what it means:
+translated in SNGL". This part is where a target still shows something other
+than the interpreter:
 
-1. A write to page state does not reach another live instance reading it on
-   fyne, gtk4 and html: a window's handler, or one component's body, leaves a
-   looped row's text and its `if` as they were built
-   (testdata/page_write_kept_instance.txtar pins only that it builds; the
-   interpreter re-renders them). Read design/instances.md's "An instance
-   reaches the page through what holds it" and `reachable` in
-   internal/lower/reactivity.go. Say how you would reach the live instances
-   -- a registry per component on the Model, or something better -- and ask
-   before building it.
-2. A test reading a looped `#id` whole, `c.title.length()`, does not build on
-   any compiled target (`c.title undefined` on Go, `undefined.length` on
-   html), where `c.title[1]` does. Read design/testing.md on test reach.
-3. html writes a Style field the build cannot fold with `setProperty` after
-   the static attribute, in the literal's field order: `{padding=p,
-   paddingTop=4px}` with `p` state resets the side on every write, where the
-   other targets keep it at 4px (cmd/sngl/testdata/style_side_zero_runs.txt
-   is the shape). Read design/architecture.md's html notes.
-4. passImplicitState refuses a call site that binds one two-way prop and
-   leaves another unbound. Read design/instances.md on unbound two-way
-   props.
+1. A test's own write of its instance's state, `c.p = 8px`, redraws nothing
+   on fyne, gtk4 or html: a field write on the Model or the page's `state`,
+   where a handler's write is followed by its readers' updates and the
+   page's refresh (internal/lower/page_refresh.go). Read design/testing.md
+   and design/instances.md, and say how a test's write should reach the
+   readers -- the updates passReactivity gives a handler's write, the Model's
+   setter, or something better -- and ask before building it.
+2. A writer that is itself a component built at run time updates its own
+   readers twice: once by its write's own updates and once through the
+   page's refresh. Drop one where the other covers it.
+3. On android a Column the Go writes rather than an override -- a window's
+   content arriving through a slot, a nav page of several nodes -- provides
+   no `flexShare`, so a `flex` child there fills the screen.
+4. On bubbletea a `flex` child under an `if` or a `for` is joined at its own
+   size, and a focusable node displayed none in a loop slot, or inside a
+   container displayed none, is still counted as a focus stop.
+5. android's select honors none of `disabled`, `multiple`, `@focus`,
+   `@blur`.
 
 For each, write the fixture first -- a testdata/*.sngl, a golden, or a
 cmd/sngl/testdata/*_runs.txt that runs it on every target it concerns -- and
