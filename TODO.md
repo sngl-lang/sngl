@@ -176,9 +176,17 @@ platform's `unstyled` list in the same commit.
 
 ### Found on the way, not yet fixed
 
-- A literal Style's Modifier is built at run time on android,
-  `styleModifier(Style(…))`: the optimizer splices single-expression
-  functions only, and the Modifier builder is a block.
+- A literal Style is translated at run time on bubbletea and android, and
+  stays so (Jonathan's call): `BoxLook(Style{…}, true)`,
+  `styleModifier(Style(…), true)`. fyne's and gtk4's `lookOf` build a host
+  record or a CSS string in plain SNGL, which the optimizer interprets and
+  spells back as a literal; bubbletea's and android's builders call
+  `#[go.native]` and `#[kt.native]` const funcs, and `interpretFunc` refuses
+  a body that reaches a native, while the inliner splices a single `return`
+  only and never copies a native call read twice (`cheapToCopy`) -- which
+  also leaves android's `flexed(m, null, …)` and `columnSpacing(UNSET, Dp(8f))` as calls. Folding them would take a value standing for a host
+  call in the const interpreter, or an inliner that folds a block body to
+  one expression.
 - On android a Column the Go writes rather than an override -- a window's
   content arriving through a slot, a nav page of several nodes -- provides no
   `flexShare`, so a `flex` child there fills the screen; a page under an hbox
