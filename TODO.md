@@ -210,9 +210,11 @@ platform's `unstyled` list in the same commit.
   `flexShare`, so a `flex` child there fills the screen; a page under an hbox
   inherits the Row's closure. Both took a Column weight before.
 - The interpreter, and the fold, print a color as `{r = 51, g = 102, b = 153, a = 255}`; every compiled target prints `#336699`.
-- A struct spread in a library function is not lowered on a target withholding
-  `structSpread`: LibFuncs brings the function into the package after
-  NoStructSpread has run.
+- A struct spread in a library function was not lowered on a target
+  withholding `structSpread`: LibFuncs brought the function into the package
+  after NoStructSpread had run. Fixed by running NoStructSpread after it
+  (`internal/lower/lib_funcs_test.go`). Every other pass before LibFuncs still
+  never sees a library helper's body; nothing in `lib/` needs one of them yet.
 - On bubbletea a `flex` child is joined at its own size under an `if` or a
   `for`, being part of what that statement renders, and where it holds a
   loop's focus stop or canvas, whose count would come after its later

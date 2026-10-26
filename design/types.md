@@ -64,7 +64,10 @@ ask the value. A field written after a spread the build cannot read goes
 through a `__set_<Struct>_<field>` rather than the merge, which would skip
 it at zero (`cmd/sngl/testdata/struct_spread_zero_runs.txt`). html withholds
 `structSpread` under any language, since JavaScript's own `{...s}` writes a
-null over what came before it.
+null over what came before it. NoStructSpread runs after `LibFuncs`, so a
+library helper's spread is lowered with the program's: before, the helper
+joined the package after the spreads were lowered and kept its `{...c, a=1}`
+(`internal/lower/lib_funcs_test.go`).
 
 **A type is walked by `ir.Type.Any` and rebuilt by `ir.Type.MapChildren`**
 (`ir/typewalk.go`), and nothing else restates which types are inside one:
