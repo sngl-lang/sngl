@@ -133,7 +133,16 @@ struct field by field by name, a list element by element, a number by value.
 It says where it cannot answer (a map, two scalars of different kinds), which
 the fold leaves to run and the interpreter compares by rendered form as it
 always did. Two copies had drifted: the fold compared a struct's pointer and
-panicked on a list.
+panicked on a list. A compiled target writes the same comparison out from the
+operands' type wherever its own `==` would not be it
+(`cmd/sngl/testdata/struct_list_equality_runs.txt`): Go's goEqualer
+(`codegen/lang/golang/equal.go`) for a list, an option and a struct holding
+either -- a slice does not compile under `==`, and an option is a pointer, so
+two options holding 1 were unequal -- through `snglListEqual`,
+`snglOptEqual` and their `By` forms; JavaScript's `jsEqual` for a struct, a
+payload enum and a list, since `===` is an object's identity. Kotlin's `==`
+is a data class's and a list's `equals`, which already is. A map compares as
+the host's.
 
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a

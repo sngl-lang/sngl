@@ -61,6 +61,9 @@ func mergeWrites(t *ir.Type, v string) string {
 	}
 	if zero := ir.ZeroExpr(t); zero != nil {
 		if z := IRLiteralToGo(zero); z != "" {
+			if !goComparesNatively(t) {
+				return "!" + (&goEqualer{}).equal(t, v, "("+z+")")
+			}
 			return v + " != (" + z + ")"
 		}
 	}

@@ -244,6 +244,11 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := goScalarUnitScale(n, left, right); ok {
 		return out
 	}
+	// A list, an option or a struct holding one, written out from its type
+	// (equal.go).
+	if out, ok := goEqualBinary(n, left, right); ok {
+		return out
+	}
 	// option[T] against a T: Go's option is *T, and comparing the pointer
 	// with a value does not compile. Each operand is evaluated once.
 	if optLeft, _, ok := OptionCompare(n); ok {

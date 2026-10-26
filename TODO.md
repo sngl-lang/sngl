@@ -259,9 +259,12 @@ platform's `unstyled` list in the same commit.
 - html writes a Style field the build cannot fold with `setProperty` after the
   static attribute, in the literal's field order: `{padding=p, paddingTop=4px}`
   with `p` state resets the side on every write.
-- On Go, `==` between two structs holding a list does not compile
+- On Go, `==` between two structs holding a list did not compile
   (`struct containing []string cannot be compared`), where the interpreter
-  compares them field by field.
+  compares them field by field. Fixed, with two lists, and two options --
+  pointers on Go, so two holding 1 were unequal -- and lists on html, where
+  `===` was the array's identity (`struct_list_equality_runs.txt`). A map's
+  `==` is still the host's: the interpreter does not answer it either.
 - The optimizer interprets a const function per call, and a lambda call
   snapshots the environment: a `.filter(func…)` in a function folded per node
   was most of a 7 GB increase on the docs site.
