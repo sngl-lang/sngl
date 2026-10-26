@@ -1758,11 +1758,9 @@ window.__sngl_boot = () => {
     state.value__inst0 = e.currentTarget.value;
     $1.value = state.value__inst0;
     state.v = state.v + "!";
-    $1.value = state.value__inst0;
   });
   $1.addEventListener("change", function(e) {
     state.value__inst0 = e.currentTarget.value;
-    $1.value = state.value__inst0;
     $1.value = state.value__inst0;
   });
   __n1.addEventListener("change", function(e) {
@@ -1790,4 +1788,4 @@ pass sha256:31cddbd4948f1c71ec65df67b64d5ae4
 -- run/kotlin/android --
 pass sha256:8f42eeb8b7d173367d719e87d53699f9
 -- run/none/html --
-pass sha256:fb6a057a23aa33aa50843702d35f9e4b
+pass sha256:733545b405a727421dd1eee492220a1a

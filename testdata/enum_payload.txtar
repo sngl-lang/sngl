@@ -1693,14 +1693,9 @@ body { font-family: system-ui, sans-serif; }
     $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
     $3.textContent = state.shape__inst0.tag === "circle" ? String(state.shape__inst0.value) : "none";
     __renderSlot0(__slotAnchor_0);
-    $0.textContent = String(area(state.shape__inst0));
-    $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
-    $3.textContent = state.shape__inst0.tag === "circle" ? String(state.shape__inst0.value) : "none";
   });
   $5.addEventListener("click", function() {
     state.result__inst0 = half(3);
-    $1.textContent = state.result__inst0.tag === "ok" ? "ok " + String(state.result__inst0.value) : "failed: " + state.result__inst0.value.message;
-    $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
     $1.textContent = state.result__inst0.tag === "ok" ? "ok " + String(state.result__inst0.value) : "failed: " + state.result__inst0.value.message;
     $2.textContent = String(area(state.held)) + " " + String(orZero(state.result__inst0)) + " " + (state.shape__inst0.tag === "circle" ? "round" : "not round") + " " + String(((a, b) => a == null || b == null ? a === b : a.tag === b.tag && (a.tag === "ok" ? a.value === b.value : a.tag === "failed" ? a.value.message === b.value.message && a.value.code === b.value.code : true))(state.result__inst0, { tag: "ok", value: 2 }));
   });
@@ -1724,4 +1719,4 @@ pass sha256:161b3c74ad57f15d21766d5b55e8eb98
 -- run/kotlin/android --
 pass sha256:5faa3d6b53c5f7838a062aeaa21ea061
 -- run/none/html --
-pass sha256:f4205853389b8cbf99791add57ee00d4
+pass sha256:cc52f69bb6850ddc76176d786042d5eb

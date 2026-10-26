@@ -2397,11 +2397,9 @@ window.__sngl_boot = () => {
     $2.value = state.name;
     state.seen = "input " + state.name + " " + state.name;
     __n2.textContent = state.seen;
-    $2.value = state.name;
   });
   $2.addEventListener("change", function(e) {
     state.name = e.currentTarget.value;
-    $2.value = state.name;
     $2.value = state.name;
   });
   $3.addEventListener("change", function(e) {
@@ -2409,7 +2407,6 @@ window.__sngl_boot = () => {
     $3.value = state.picked !== null ? String(state.picked) : "";
     state.seen = state.picked === null ? "no day" : "day";
     __n2.textContent = state.seen;
-    $3.value = state.picked !== null ? String(state.picked) : "";
   });
   $4.addEventListener("click", function() {
     state.clicks += 1;
@@ -2436,4 +2433,4 @@ pass sha256:fa0ad367032411e805d5b48cd95dd782
 -- run/kotlin/android --
 pass sha256:eea2867c631aab5358a99548274d3950
 -- run/none/html --
-pass sha256:217da20fc6140dbf04683fc1e5695a69
+pass sha256:5f6ef86c218c77269eb73fcd1b3f80e2

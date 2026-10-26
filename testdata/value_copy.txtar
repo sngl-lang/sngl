@@ -1316,35 +1316,27 @@ body { font-family: system-ui, sans-serif; }
   var $8 = document.getElementById("$8");
   $1.addEventListener("click", function() {
     pushed__inst0();
-    $0.textContent = state.out__inst0;
   });
   $2.addEventListener("click", function() {
     assigned__inst0();
-    $0.textContent = state.out__inst0;
   });
   $3.addEventListener("click", function() {
     local__inst0();
-    $0.textContent = state.out__inst0;
   });
   $4.addEventListener("click", function() {
     literal__inst0();
-    $0.textContent = state.out__inst0;
   });
   $5.addEventListener("click", function() {
     referenced__inst0();
-    $0.textContent = state.out__inst0;
   });
   $6.addEventListener("click", function() {
     tree__inst0();
-    $0.textContent = state.out__inst0;
   });
   $7.addEventListener("click", function() {
     maps__inst0();
-    $0.textContent = state.out__inst0;
   });
   $8.addEventListener("click", function() {
     params__inst0();
-    $0.textContent = state.out__inst0;
   });
   function __sngl_init() {
     $0.textContent = state.out__inst0;
@@ -1358,4 +1350,4 @@ pass sha256:d5384a0720f661470f5555f99676d387
 -- run/kotlin/android --
 pass sha256:c30d42256659395cb84391141a604dcb
 -- run/none/html --
-pass sha256:73de198f7ca2b6785969bb52967a94a4
+pass sha256:df8593510c89f171ce19989d5887393b

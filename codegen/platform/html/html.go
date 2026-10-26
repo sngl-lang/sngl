@@ -824,6 +824,9 @@ type htmlGen struct {
 	// one top-level `const __nN = document.querySelector(...)` in emitScript,
 	// so handlers emit a bare identifier rather than a querySelector per write.
 	loweredRefs map[string]bool
+	// writtenNodes are the elements a lowered write names anywhere in the
+	// package, by id (inlineUpdated).
+	writtenNodes map[string]bool
 	// loweredLocals are the names a lowered statement *declares* on its way
 	// past -- a `let __n1__re0__el = __n1__re0.__root` a rebuild binds, say.
 	// They look exactly like a page ref where they are used, so without this
@@ -2114,10 +2117,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		return
 	}
 
-	// For a NoReactivity-assigned __nN id, lowering already injected the
-	// per-mutation Assign into the handler bodies, so the updater is initOnly
-	// and findAffectedUpdaters skips it rather than double-firing.
-	lowered := loweredID(id)
+	// Where lowering already injected the per-mutation Assign into the
+	// handler bodies, the updater is initOnly and findAffectedUpdaters skips
+	// it rather than double-firing.
+	lowered := g.inlineUpdated(id)
 	for _, name := range slices.Sorted(maps.Keys(props)) {
 		expr := props[name]
 		if name == classStyleProp || name == classStyleDarkProp {
@@ -2999,6 +3002,38 @@ func (g *htmlGen) optimizeIR() {
 // loweredID reports whether id was assigned by NoReactivity lowering, which
 // already injected the inline mutation updates, so its updaters are init-only.
 func loweredID(id string) bool { return strings.HasPrefix(id, "__n") }
+
+// inlineUpdated reports whether lowering writes the element id names where
+// what it reads changes: one NoReactivity named, or one carrying the
+// program's own `#id` that a lowered write names. Asked by the `__n` prefix
+// alone, such a node's updaters ran again after every handler's inline
+// writes.
+func (g *htmlGen) inlineUpdated(id string) bool {
+	if loweredID(id) {
+		return true
+	}
+	if g.writtenNodes == nil {
+		g.writtenNodes = map[string]bool{}
+		visit := func(n ir.Node) error {
+			if a, ok := n.(*ir.Assign); ok {
+				if sel, ok := a.Target.(*ir.Select); ok {
+					if x, ok := sel.Operand.(*ir.Ident); ok && x.IsElementRef {
+						g.writtenNodes[x.Name] = true
+					}
+				}
+			}
+			return nil
+		}
+		// The page's document too, which is cloned from its Window.
+		_ = walkThroughCatch(g.pkg, visit)
+		_ = walkThroughCatch(g.irBodyStmts, visit)
+	}
+	// By the program's id, which the writes name, on the element that id
+	// resolves to: a copy of an unrolled loop's node under the same id is
+	// another element, which no inline write reaches.
+	n := g.idToNode[id]
+	return n != nil && g.writtenNodes[n.ID] && g.refToVar[n.ID] == id
+}
 
 // exprUsesI18n keeps an init-time text updater that has no state-var deps but
 // still depends on the active locale.

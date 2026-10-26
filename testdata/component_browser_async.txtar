@@ -129,11 +129,9 @@ window.__sngl_boot = () => {
   $1.addEventListener("click", async function() {
     state.greeting__inst0 = await fetchHello();
     $0.textContent = state.greeting__inst0;
-    $0.textContent = state.greeting__inst0;
   });
   $3.addEventListener("click", async function() {
     state.greeting__inst1 = await state.handler__inst0();
-    $2.textContent = state.greeting__inst1;
     $2.textContent = state.greeting__inst1;
   });
   function __sngl_init() {
@@ -147,9 +145,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bd36d7ea8c944b67c04fc5ec8337c3e6
+pass sha256:f57853486225d1d88b2d0f7e11296a1f
 -- testrun/html/none/component_browser_async.sngl/direct/1 --
-sha256:17c76137ef786ebfbee081987107d97d
+sha256:3ede18fae0772cc4ffaedcfca029b4b4
 {
   "results": [
     {
@@ -159,7 +157,7 @@ sha256:17c76137ef786ebfbee081987107d97d
   ]
 }
 -- testrun/html/none/component_browser_async.sngl/stored/1 --
-sha256:4fdfd01a31d0233960f8671709b54750
+sha256:4a82e3349998f61221efd3679d8bd2c9
 {
   "results": [
     {

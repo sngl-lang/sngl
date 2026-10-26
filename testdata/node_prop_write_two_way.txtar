@@ -992,14 +992,12 @@ body { font-family: system-ui, sans-serif; }
     state.checked__inst0 = e.currentTarget.checked;
     __n2.checked = state.checked__inst0;
     $2.textContent = state.checked__inst0 ? "on" : "off";
-    $2.textContent = state.checked__inst0 ? "on" : "off";
   });
   $3.addEventListener("click", function() {
     state.shown__inst0 = false;
     __n1.checked = state.shown__inst0;
     state.checked__inst0 = !state.checked__inst0;
     __n2.checked = state.checked__inst0;
-    $2.textContent = state.checked__inst0 ? "on" : "off";
     $2.textContent = state.checked__inst0 ? "on" : "off";
   });
   function __sngl_init() {
@@ -1020,4 +1018,4 @@ pass sha256:eae8a177a3cc45206bac35cf59d5c303
 -- run/kotlin/android --
 pass sha256:0b297a5c5df8cd0eeabf5c0da9eef3e1
 -- run/none/html --
-pass sha256:bb95617d8346e474e849db4fa6f17556
+pass sha256:75e81e0dc184e70652c729c092f05706

@@ -738,11 +738,9 @@ window.__sngl_boot = () => {
   $6.addEventListener("input", function(e) {
     state.name = e.currentTarget.value;
     $6.value = state.name;
-    $6.value = state.name;
   });
   $6.addEventListener("change", function(e) {
     state.name = e.currentTarget.value;
-    $6.value = state.name;
     $6.value = state.name;
   });
   __n0.addEventListener("change", function(e) {
@@ -782,9 +780,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:da380f5cab8edf69b02355fb6b6c9c62
+pass sha256:c01150fc2bdc6beda8ca9052817d57ff
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:9fb84292b0eeb98fb4a38ca587b7d5a2
+sha256:2a2181c48329cf41216d18ca014f4942
 {
   "results": [
     {

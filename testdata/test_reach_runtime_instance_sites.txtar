@@ -3996,7 +3996,6 @@ window.__sngl_boot = () => {
     state.hits__inst0 = state.hits__inst0 + 1;
     $0.textContent = "[fixed:" + String(state.hits__inst0) + "]";
     __renderSlot3(__slotAnchor_3);
-    $0.textContent = "[fixed:" + String(state.hits__inst0) + "]";
   });
   function __sngl_init() {
     $0.textContent = "[fixed:" + String(state.hits__inst0) + "]";
@@ -4017,4 +4016,4 @@ pass sha256:d27d763882ebc58eeb9d181677cc85c5
 -- run/kotlin/android --
 pass sha256:60f63acafb2d8a4ae23587a392ad32af
 -- run/none/html --
-pass sha256:a8874a79e97b55a20fd36636b1e577c8
+pass sha256:20f3f6e032a875883b0e0eda58333b6c

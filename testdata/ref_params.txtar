@@ -948,15 +948,12 @@ body { font-family: system-ui, sans-serif; }
   var $3 = document.getElementById("$3");
   $1.addEventListener("click", function() {
     methods__inst0();
-    $0.textContent = state.out__inst0;
   });
   $2.addEventListener("click", function() {
     refs__inst0();
-    $0.textContent = state.out__inst0;
   });
   $3.addEventListener("click", function() {
     values__inst0();
-    $0.textContent = state.out__inst0;
   });
   function __sngl_init() {
     $0.textContent = state.out__inst0;
@@ -970,4 +967,4 @@ pass sha256:d16d97464764204f6126497602b87d85
 -- run/kotlin/android --
 pass sha256:126c224b27f1d67a469c10efce7204e8
 -- run/none/html --
-pass sha256:78a585ff4638d1fae42cf2aadca67366
+pass sha256:53d4af66e329afa15f0191774bdb4bc4

@@ -275,9 +275,19 @@ platform's `unstyled` list in the same commit.
 - The shake keeps a library body reachable through a node handle's component
   type, so a program holding `#d` on a datepicker keeps `LookOf` and its
   helpers on gtk4 though nothing calls them.
-- html writes a Style field the build cannot fold with `setProperty` after the
+- html wrote a Style field the build cannot fold with `setProperty` after the
   static attribute, in the literal's field order: `{padding=p, paddingTop=4px}`
-  with `p` state resets the side on every write.
+  with `p` state reset the side on every write. Each side is a longhand of its
+  own since the side translation, which already fixed it; `style_side_zero_runs.txt`
+  pins it now (it fails on main). On the way: a node carrying the program's own
+  `#id` was updated twice per handler write on html
+  (`html_handler_updates_named_node_once.txtar`).
+- A test's own write of its instance's state, `c.p = 8px`, redraws nothing on
+  fyne, gtk4 or html: it is a field write on the Model or the page's `state`,
+  where a handler's is followed by its readers' updates (fyne's Model has a
+  `SetP` the test does not call). A write reaching a spliced instance's
+  `for` re-renders it, and reads through the instance are answered from state,
+  so only what a test snapshots or asks the browser shows it.
 - On Go, `==` between two structs holding a list did not compile
   (`struct containing []string cannot be compared`), where the interpreter
   compares them field by field. Fixed, with two lists, and two options --
