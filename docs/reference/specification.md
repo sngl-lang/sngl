@@ -1478,12 +1478,17 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 
 ### Condition expressions
 
-In the condition of an `if` and the iterator of a `for`, a `{` begins the
-statement block that follows, so the expression grammar in these positions
-(`CondExpr`) excludes the bare-identifier struct literal, a leading
-anonymous-struct or map literal, and the trailing statement block. A head
-expression therefore never begins with `{`. Parenthesize a struct or map
-literal if one is genuinely needed in a condition.
+In the condition of an `if`, the iterator of a `for` and the subject of a
+`match`, a `{` begins the statement block that follows, so the expression
+grammar in these positions (`CondExpr`) excludes the bare-identifier struct
+literal, a leading anonymous-struct or map literal, and the trailing statement
+block. A head expression therefore never begins with `{`. Parenthesize a
+struct or map literal if one is genuinely needed in a condition.
+
+A conditional expression in a head keeps the rule for the operand after its
+`:`, which is a `CondExpr` too, so `if ready ? count > 0 : done {` reads `done`
+as the operand and `{` as the block. The operand between `?` and `:` is any
+expression, since the `:` ends it.
 
 ## Statements
 

@@ -1,17 +1,18 @@
-// A ternary is an `if`'s whole condition, and a `for`'s.
+// A ternary is an `if`'s whole condition, a `for`'s, and a `match`'s subject.
 //
 // The grammar takes one there (CondExpr), and the parser built only the
 // operand before the `?`, dropping the rest without a word: `if a != null ?
 // a > 0 : b` was `if a != null`, and the formatter wrote it back that way.
 //
-// The operand after the `:` is parenthesized because the grammar reads it as
-// an Expr, where `b {` begins a struct literal.
+// The operand after the `:` is itself a head, so `b {` is the operand and the
+// block rather than a struct literal: read as an Expr, it took the brace and
+// the head failed to parse unless the operand was parenthesized.
 
 import test "sngl:test"
 
 func picked(a option[int], b bool) int {
     var n = 0
-    if a != null ? a > 0 : (b) {
+    if a != null ? a > 0 : b {
         n = 1
     }
     return n
@@ -19,10 +20,32 @@ func picked(a option[int], b bool) int {
 
 func counted(a option[int]) int {
     var n = 0
-    for a == null ? n < 3 : (n < a) {
+    for a == null ? n < 3 : n < a {
         n += 1
     }
     return n
+}
+
+func summed(short bool) int {
+    var n = 0
+    for var x = short ? [1, 2] : [1, 2, 3] {
+        n += x
+    }
+    return n
+}
+
+func named(a int, b bool) string {
+    match a > 0 ? a : b ? 2 : 3 {
+        1 {
+            return "one"
+        }
+        2 {
+            return "two"
+        }
+        else {
+            return "other"
+        }
+    }
 }
 
 func testTernaryCondition(t test.Test) {
@@ -35,4 +58,15 @@ func testTernaryCondition(t test.Test) {
 func testTernaryLoopCondition(t test.Test) {
     t.assert(counted(null) == 3)
     t.assert(counted(1) == 1)
+}
+
+func testTernaryLoopIterable(t test.Test) {
+    t.assert(summed(true) == 3)
+    t.assert(summed(false) == 6)
+}
+
+func testTernaryMatchSubject(t test.Test) {
+    t.assert(named(1, false) == "one")
+    t.assert(named(0, true) == "two")
+    t.assert(named(0, false) == "other")
 }

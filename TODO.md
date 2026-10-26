@@ -201,10 +201,6 @@ platform's `unstyled` list in the same commit.
   siblings'.A focusable node displayed none in a loop slot is still
   counted as a stop (Tab passes over a static one), and so is one inside a
   container displayed none, whose own `focus` record says nothing of it.
-- An `if`'s or a `for`'s head ending in a ternary reads the operand after the
-  `:` as an Expr, so `if c ? x : b {` takes `b {` for a struct literal and
-  fails to parse; `(b)` parses. The grammar's CondExpr could take a CondExpr
-  there.
 - A zero `borderWidth` drew a border on bubbletea, and
   `TestReactiveStyleRunsInTheEmittedProgram` said so on the branch; fixed,
   but how verify passed over it is not known.

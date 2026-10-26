@@ -2255,7 +2255,7 @@ state1:
 //	# lits, no leading brace literal) and CondPostfixOp (no StructLitBody, no
 //	# StmtBlock) to avoid lbrace ambiguity with the following StmtBlock.
 //
-//	CondExpr        = CondOrExpr [ question Expr colon Expr ] .
+//	CondExpr        = CondOrExpr [ question Expr colon CondExpr ] .
 //
 //	State 0
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
@@ -2271,8 +2271,8 @@ state1:
 //		on  colon
 //			shift and goto state 4
 //	State 4
-//		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_match, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 5
+//		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//			call CondExpr and goto state 5
 //	State 5
 //		Accept
 //
@@ -2313,10 +2313,10 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 17
+	accept, errorSet = false, 28
 	switch Symbol(p.tok.Ch) {
-	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_match, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
-		p.Expr()
+	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+		p.CondExpr()
 		goto state5
 	}
 	return p.stop(start, accept, errorSet)

@@ -2185,6 +2185,7 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 
 func (b *builder) buildTernaryExpr(it nodeIter) ast.Expr {
 	// TernaryExpr = OrExpr [ question Expr colon Expr ] .
+	// CondExpr    = CondOrExpr [ question Expr colon CondExpr ] .
 	if it.done() {
 		return nil
 	}
@@ -2203,8 +2204,10 @@ func (b *builder) buildTernaryExpr(it nodeIter) ast.Expr {
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == COLON {
 			it.skip() // colon
 		}
+		// By its symbol: a head's is a CondExpr, which may be a ternary of
+		// its own, and built as an Expr kept only the operand before its `?`.
 		if !it.done() && it.isNonTerminal() {
-			els = b.buildExpr(it.enter())
+			els = b.buildExprNonTerminal(&it)
 		}
 		return &ast.TernaryExpr{
 			Pos:  ast.Pos(*base.ExprPos()),
