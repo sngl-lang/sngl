@@ -12,7 +12,8 @@
 // answer while it does, and drops one that arrives after the page is gone.
 //
 //	app.sngl            the window: a choice of language over a nav.stack of
-//	                    home, a page per Pokémon and a page per form of one
+//	                    home, a page per Pokémon and a page per form of one;
+//	                    the language and the dex are kept between runs
 //	home.sngl           a select of Pokédex and a grid of its Pokémon, a page
 //	                    more as its end comes into view
 //	detail.sngl         a species' page: its header over About, Stats,

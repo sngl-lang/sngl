@@ -1,4 +1,5 @@
 import i18n "sngl:i18n"
+import settings "sngl:settings"
 import nav "sngl:ui/nav"
 import ui "sngl:ui"
 
@@ -66,7 +67,8 @@ func localeLabeled(label string) string {
 }
 
 // The list and a page per Pokémon, and a page per form of one, under a
-// choice of language that starts at the process's. A page is named below
+// choice of language that starts at the process's and is kept from one run to
+// the next. A page is named below
 // where it is written, so the detail page is written after the form's page,
 // which its handler names, and before the list, whose handler names it; the
 // stack starts at "/" wherever that is.
@@ -84,6 +86,7 @@ component Pokedex ui.node {
     }
 
     ui.vbox(style={gap=4px, flex=1}) {
+        settings.kept(name="language", :value=language)
         ui.hbox(style={padding=8px}) {
             ui.select #languagePick(:value=language) {
                 for var l = languages {

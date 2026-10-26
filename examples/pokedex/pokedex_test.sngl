@@ -1,5 +1,6 @@
 import i18n "sngl:i18n"
 import poke "openapi:./pokeapi.yml"
+import settings "sngl:settings"
 import test "sngl:test"
 import ui "sngl:ui"
 
@@ -299,6 +300,7 @@ func testTheSelectSwitchesTheDex(t test.Test, c home) {
     t.assert(c.page.visible().length() == 30)
     t.wait(func() => chosenDex != null && chosenDex.name == "kanto", 5000)
     t.assert(dexName == "kanto")
+    t.assert(settings.load[string]("dexName") == "kanto")
     t.assert(c.page.about != null && c.page.about.value == "Kanto · Kanto · 40 Pokémon")
 }
 

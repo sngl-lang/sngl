@@ -1,5 +1,6 @@
 import async "sngl:async"
 import poke "openapi:./pokeapi.yml"
+import settings "sngl:settings"
 import ui "sngl:ui"
 
 // The Pokédexes to choose from: every one PokéAPI has fits in one page of
@@ -11,7 +12,8 @@ const columns = 3
 
 // The Pokédex chosen on home, by name and as PokéAPI answers it. Both outlive
 // the page: home starts at the dex chosen when it is shown again, and a
-// Pokémon's page lists the moves of the latest game the dex covers.
+// Pokémon's page lists the moves of the latest game the dex covers. The name
+// is kept from one run to the next, by home, which reads and writes it.
 var dexName = "national"
 
 var chosenDex option[poke.PokedexDetail] = null
@@ -64,6 +66,12 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
             shown += pageSize
         }
     }
+
+    // Bound here rather than in Pokedex, beside the query keyed on it: a
+    // write from the Model does not reach an effect in a page built at run
+    // time on the Go targets.
+    settings.kept(name="dexName", :value=dexName)
+    effect(on=dexName, @update(n) { chosen = display(n) })
 
     poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
     poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
