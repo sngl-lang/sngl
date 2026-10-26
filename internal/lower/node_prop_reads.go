@@ -360,12 +360,25 @@ func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) (ir.Expr, bool
 	if node == nil || node.Component == nil || len(loops) != len(idxs) {
 		return nil, false
 	}
+	var v ir.Expr
 	for _, p := range node.Component.Props {
-		if p.Name == sel.Field && p.Bidirectional {
+		if p.Name != sel.Field || !p.Bidirectional {
+			continue
+		}
+		// A two-way prop holds what the call site bound it to; one left
+		// unbound is the instance's cell, which passImplicitState answers.
+		for _, b := range node.Bindings {
+			if b.PropName == p.Name {
+				v = b.Target
+			}
+		}
+		if v == nil {
 			return nil, false
 		}
 	}
-	v := nodePropExpr(node, sel.Field)
+	if v == nil {
+		v = nodePropExpr(node, sel.Field)
+	}
 	if v == nil {
 		return nil, false
 	}

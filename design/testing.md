@@ -254,7 +254,10 @@ members by name, so the lowering says the rest in those terms, first in
 `passTestReach` (`internal/lower/test_reach_flatten.go`), before anything
 moves a node out of the body that wrote it:
 
-- **A one-way prop is the expression its call site gave**, read through the
+- **A one-way prop is the expression its call site gave**, and a two-way prop
+  the call site bound what it bound (`c.p.a` is `c.x` after `pair #p(:a=x)`;
+  one left unbound is the instance's cell, answered by passImplicitState;
+  `cmd/sngl/testdata/two_way_one_bound_runs.txt`), read through the
   instance (`rewriteTestPropRead`), under the providers around the node on the
   way from the test's instance, each value read through the instance it is
   written in (`underProviders`): a test is a root, so it read a page's words in

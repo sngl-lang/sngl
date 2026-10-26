@@ -254,8 +254,13 @@ platform's `unstyled` list in the same commit.
   of a loop under an `if` is refused too, where it could be the condition's.
   On the way: a test's write to a spliced instance's state re-rendered a page
   slot html had not published the anchor of (`__slotAnchor_2 is not defined`).
-- passImplicitState refuses a call site that binds one two-way prop and
-  leaves another unbound.
+- passImplicitState was noted refusing a call site that binds one two-way prop
+  and leaves another unbound. It does not, on any target
+  (`two_way_one_bound_runs.txt`, a program component's `:a=x` beside an
+  unbound `b`); no `sngl:ui` component has two, and `async.query(:value=v)`
+  was answered already. What failed was a test reading the bound one through
+  the instance, `c.p.a`, which no compiled target named; it reads what the call
+  site bound now.
 - android's select honors none of `disabled`, `multiple`, `@focus`,
   `@blur`.
 - On fyne a widget added to a container already under a Box's theme keeps
