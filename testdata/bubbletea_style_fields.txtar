@@ -151,8 +151,8 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.opaque = Style{Opacity: snglSome(1.0), Padding: snglSome(Measurement{Em: 1}), PaddingX: snglSome(Measurement{Px: 16}), FontWeight: "bolder", FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
-	m.faint = Style{Opacity: snglSome(0.5), MarginY: snglSome(Measurement{Rem: 1}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+	m.opaque = Style{Padding: snglSome(Measurement{Em: 1}), PaddingX: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bolder", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Opacity: snglSome(1.0), Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+	m.faint = Style{MarginY: snglSome(Measurement{Rem: 1}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Opacity: snglSome(0.5), Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	m.value__inst0 = ""
 	m.visible__inst0 = true
 	m.__focusID = 0
@@ -505,7 +505,7 @@ func (m Model) View() tea.View {
 		contentW, contentH := tui.Inner(contentLook, tui.Avail(m.width), m.height)
 		var contentChildren []tui.Part
 		var content_0 string
-		content_0 = BoxLook(Style{Opacity: snglSome(1.0), Padding: snglSome(Measurement{Em: 1}), PaddingX: snglSome(Measurement{Px: 16}), FontWeight: "bolder", FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("literal"))
+		content_0 = BoxLook(Style{Padding: snglSome(Measurement{Em: 1}), PaddingX: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "bolder", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Opacity: snglSome(1.0), Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("literal"))
 		contentChildren = append(contentChildren, tui.Fixed(content_0))
 		contentChildren = append(contentChildren, tui.Grow(GrowOf(m.opaque.Flex), func(content_1Cells int) string {
 			var content_1 string
@@ -518,7 +518,7 @@ func (m Model) View() tea.View {
 			return content_2
 		}))
 		var content_3 string
-		content_3 = BoxLook(Style{Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), Width: snglSome(Measurement{Px: 320}), BorderWidth: snglSome(Measurement{Px: 1}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View())
+		content_3 = BoxLook(Style{Width: snglSome(Measurement{Px: 320}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderWidth: snglSome(Measurement{Px: 1}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(m.widget0.View())
 		contentChildren = append(contentChildren, tui.Fixed(content_3))
 		var content_4 string
 		content_4Look := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
@@ -585,7 +585,7 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, tui.Fixed(content_6))
 		}
 		var content_7 string
-		content_7 = BoxLook(Style{MaxLines: snglSome(2), BorderWidth: snglSome(Measurement{Px: 1}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("capped"))
+		content_7 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", MaxLines: snglSome(2), WhiteSpace: "unset", BorderWidth: snglSome(Measurement{Px: 1}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("capped"))
 		contentChildren = append(contentChildren, tui.Fixed(content_7))
 		content = tui.Join(false, lipgloss.Left, 0, contentH, contentChildren)
 		content = contentLook.Render(content)
@@ -604,4 +604,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:8f5354438df9a21c215f13b607c65445
+pass sha256:e8b095793d9d0d66eec21d8204f29134

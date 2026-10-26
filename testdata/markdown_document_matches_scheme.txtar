@@ -79,17 +79,17 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div class="via-scheme">
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="gap:12px;display:flex;flex-direction:column">
       <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
       <p style="margin:0px;white-space:pre-wrap"><span>Some </span><em><span>emphasis</span></em><span>, </span><strong><span>strong</span></strong><span> and </span><code><span>code</span></code><span>, with a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
       <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists"><span>Lists</span></h2>
-      <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+      <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
         <li>
           <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
-          <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+          <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
             <li>
               <p style="margin:0px;white-space:pre-wrap"><span>two</span></p>
-              <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+              <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
                 <li>
                   <p style="margin:0px;white-space:pre-wrap"><span>three</span></p>
                 </li>
@@ -97,20 +97,20 @@ body { font-family: system-ui, sans-serif; }
             </li>
           </ul>
         </li>
-        <li style="align-items:baseline;display:flex;flex-direction:row;gap:8px">
+        <li style="gap:8px;display:flex;flex-direction:row;align-items:baseline">
           <input checked disabled type="checkbox"/>
           <div style="display:flex;flex-direction:column">
             <p style="margin:0px;white-space:pre-wrap"><span>done</span></p>
           </div>
         </li>
-        <li style="align-items:baseline;display:flex;flex-direction:row;gap:8px">
+        <li style="gap:8px;display:flex;flex-direction:row;align-items:baseline">
           <input disabled type="checkbox"/>
           <div style="display:flex;flex-direction:column">
             <p style="margin:0px;white-space:pre-wrap"><span>todo</span></p>
           </div>
         </li>
       </ul>
-      <ol style="display:flex;flex-direction:column;gap:4px;padding-left:2em" start="1">
+      <ol style="padding-left:2em;gap:4px;display:flex;flex-direction:column" start="1">
         <li>
           <p style="margin:0px;white-space:pre-wrap"><span>first</span></p>
         </li>
@@ -118,7 +118,7 @@ body { font-family: system-ui, sans-serif; }
           <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
         </li>
       </ol>
-      <blockquote style="margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
+      <blockquote style="margin:0px;padding-left:12px;font-style:italic;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
       <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-function"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
       <hr/>
       <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
@@ -126,17 +126,17 @@ body { font-family: system-ui, sans-serif; }
     </div>
   </div>
   <div class="via-document">
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="gap:12px;display:flex;flex-direction:column">
       <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
       <p style="margin:0px;white-space:pre-wrap"><span>Some </span><em><span>emphasis</span></em><span>, </span><strong><span>strong</span></strong><span> and </span><code><span>code</span></code><span>, with a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
       <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists"><span>Lists</span></h2>
-      <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+      <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
         <li>
           <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
-          <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+          <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
             <li>
               <p style="margin:0px;white-space:pre-wrap"><span>two</span></p>
-              <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+              <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
                 <li>
                   <p style="margin:0px;white-space:pre-wrap"><span>three</span></p>
                 </li>
@@ -144,20 +144,20 @@ body { font-family: system-ui, sans-serif; }
             </li>
           </ul>
         </li>
-        <li style="align-items:baseline;display:flex;flex-direction:row;gap:8px">
+        <li style="gap:8px;display:flex;flex-direction:row;align-items:baseline">
           <input checked disabled type="checkbox"/>
           <div style="display:flex;flex-direction:column">
             <p style="margin:0px;white-space:pre-wrap"><span>done</span></p>
           </div>
         </li>
-        <li style="align-items:baseline;display:flex;flex-direction:row;gap:8px">
+        <li style="gap:8px;display:flex;flex-direction:row;align-items:baseline">
           <input disabled type="checkbox"/>
           <div style="display:flex;flex-direction:column">
             <p style="margin:0px;white-space:pre-wrap"><span>todo</span></p>
           </div>
         </li>
       </ul>
-      <ol style="display:flex;flex-direction:column;gap:4px;padding-left:2em" start="1">
+      <ol style="padding-left:2em;gap:4px;display:flex;flex-direction:column" start="1">
         <li>
           <p style="margin:0px;white-space:pre-wrap"><span>first</span></p>
         </li>
@@ -165,7 +165,7 @@ body { font-family: system-ui, sans-serif; }
           <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
         </li>
       </ol>
-      <blockquote style="margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
+      <blockquote style="margin:0px;padding-left:12px;font-style:italic;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
       <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-function"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
       <hr/>
       <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
@@ -174,8 +174,8 @@ body { font-family: system-ui, sans-serif; }
   </div>
 </div>
 <style>
-:where(.sngl-code) { padding:12px;background-color:#f5f5f5;color:#1f2328;border-radius:4px }
-@media (prefers-color-scheme: dark) { :where(.sngl-code) { background-color:#161b22;color:#e6edf3 } }
+:where(.sngl-code) { padding:12px;color:#1f2328;background-color:#f5f5f5;border-radius:4px }
+@media (prefers-color-scheme: dark) { :where(.sngl-code) { color:#e6edf3;background-color:#161b22 } }
 :where(.sngl-tok-keyword) { color:#cf222e }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }
 :where(.sngl-tok-function) { color:#8250df }
@@ -190,4 +190,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a228d32a0184015c57f49a353dbe489d
+pass sha256:928262be23d86b23d4e660858ad5592e

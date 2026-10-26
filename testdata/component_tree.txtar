@@ -566,7 +566,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<ul id="$0" style="list-style-type:none;padding-left:16px">
+<ul id="$0" style="padding-left:16px;list-style-type:none">
   <li style="padding-left:0px">Documents</li>
   <li style="padding-left:16px">Taxes</li>
   <li style="padding-left:0px">Photos</li>
@@ -594,6 +594,12 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
+  function plus(a, b) {
+    return a === "" ? b : b === "" ? a : a + " + " + b;
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { plus });
+  }
   var $0 = document.getElementById("$0");
   $0.addEventListener("selected", function(e) {
     state.sel = e;
@@ -610,9 +616,9 @@ pass sha256:706fcc7d53411b65da80d08d16ae48dd
 -- run/kotlin/android --
 pass sha256:80323767e4805abf587060839dacb924
 -- run/none/html --
-pass sha256:2ec7df8ababc1182bb9914dec323cc9b
+pass sha256:42e4b7eb0a68c15eb15834110e855ced
 -- testrun/html/none/component_tree.sngl/main/1 --
-sha256:48f661f6e0564cec5e5f99f6a4aad069
+sha256:2e5c18a9884ad5469c0005b6da152d54
 {
   "results": [
     {

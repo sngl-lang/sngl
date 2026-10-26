@@ -705,7 +705,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span style="align-items:center;display:inline-flex;gap:8px">
+<span style="gap:8px;display:inline-flex;align-items:center">
   <span class="sngl-spinner">
   </span>
   <span>Loading...</span>
@@ -727,4 +727,4 @@ pass sha256:42608606b8eff1725e13ca262e3d78b3
 -- run/kotlin/android --
 pass sha256:a59c086bb4b6633fd55bf4a10a82bd87
 -- run/none/html --
-pass sha256:beb6047effa629bd064338dc06fb96af
+pass sha256:312f9278dae90db9e2dd038e01193249

@@ -1288,13 +1288,13 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div id="__n7" data-sngl-id="__n7" style="display:flex;flex-direction:column">
-  <label style="align-items:center;display:inline-flex;gap:4px">
+  <label style="gap:4px;display:inline-flex;align-items:center">
     <input id="__n3" data-sngl-id="__n3" type="checkbox"/>
     <span>alone</span>
   </label>
   <span id="__n4" data-sngl-id="__n4">
   </span>
-  <label style="align-items:center;display:inline-flex;gap:4px">
+  <label style="gap:4px;display:inline-flex;align-items:center">
     <input id="__n5" data-sngl-id="__n5" type="checkbox"/>
     <span>starts on</span>
   </label>
@@ -1331,7 +1331,7 @@ body { font-family: system-ui, sans-serif; }
       __n1.textContent = __prop_label;
     }
     let __n8 = document.createElement("label");
-    __n8.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    __n8.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n0 = document.createElement("input");
     __n0.checked = checked;
     __n0.disabled = false;
@@ -1448,4 +1448,4 @@ pass sha256:fd514c955cdf1692354cba7fde64d833
 -- run/kotlin/android --
 pass sha256:d6cc0dbd6c42e4c50ccc886e0b37db77
 -- run/none/html --
-pass sha256:8241508a9ac3261a4be55444887c310c
+pass sha256:37eab322b22e4bb16c90aedd62f933ed

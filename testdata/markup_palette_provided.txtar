@@ -387,12 +387,6 @@ import (
 	"os"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -460,7 +454,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.OnVisible = m.home_visible_handler
 	m.__n0 = fynetext.NewFlow()
 	m.__n1 = fynetext.NewSpan(fynetext.Style().WithMono())
-	m.__n2 = fynetext.NewSpan(fynetext.Style().WithToken("keyword").WithRGBA(255, 123, 114, 255))
+	m.__n2 = fynetext.NewSpan(fynetext.Style().WithToken("keyword").WithRGBA(255, 123, 114, 0))
 	m.__n3 = fynetext.NewSpan(fynetext.Style())
 	m.__n3.SetText("func")
 	m.__n2.Add(m.__n3)
@@ -468,7 +462,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n4 = fynetext.NewSpan(fynetext.Style())
 	m.__n4.SetText(" ")
 	m.__n1.Add(m.__n4)
-	m.__n5 = fynetext.NewSpan(fynetext.Style().WithToken("function").WithRGBA(210, 168, 255, 255))
+	m.__n5 = fynetext.NewSpan(fynetext.Style().WithToken("function").WithRGBA(210, 168, 255, 0))
 	m.__n6 = fynetext.NewSpan(fynetext.Style())
 	m.__n6.SetText("main")
 	m.__n5.Add(m.__n6)
@@ -505,12 +499,6 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -594,12 +582,6 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Text
 
-data class Measurement(
-    val px: Double = 0.0,
-    val em: Double = 0.0,
-    val rem: Double = 0.0
-)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -664,10 +646,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:b1dc4b451c82cda36eb2d09f58f8c9bf
 -- run/go/fyne --
-pass sha256:a79d939b64ce247762514a9270744153
+pass sha256:4cb40b2485d7b46ef74a968719b557cc
 -- run/go/gtk4 --
-pass sha256:562c846cfa78f8a1c5dcc2f216f68607
+pass sha256:e53682da7ca05a5cf5c50ee314cb6611
 -- run/kotlin/android --
-pass sha256:cf4ba4901ee382960ba4cedff72c44c2
+pass sha256:0219b5b804fb12b2f5a52d9c29102881
 -- run/none/html --
 pass sha256:c1eb89b2beb06ae7bd1a87647a2ffd85

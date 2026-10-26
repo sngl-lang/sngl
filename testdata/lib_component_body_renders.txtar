@@ -373,7 +373,7 @@ func (m Model) View() tea.View {
 		content_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0_1)
 		content_0Children = append(content_0Children, content_0_1)
 		content_0 = tui.Spaced(true, lipgloss.Top, 1, content_0Children...)
-		content_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), AlignItems: "start", FlexDirection: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0)
+		content_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
@@ -398,19 +398,19 @@ func (m Model) View() tea.View {
 		content_1_1_0_0_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1_1_0_0_1)
 		content_1_1_0_0Children = append(content_1_1_0_0Children, content_1_1_0_0_1)
 		content_1_1_0_0 = tui.Spaced(true, lipgloss.Top, 1, content_1_1_0_0Children...)
-		content_1_1_0_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), AlignItems: "start", FlexDirection: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1_1_0_0)
+		content_1_1_0_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1_1_0_0)
 		content_1_1_0Children = append(content_1_1_0Children, content_1_1_0_0)
 		content_1_1_0 = tui.Spaced(false, lipgloss.Left, 1, content_1_1_0Children...)
-		content_1_1_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), PaddingLeft: snglSome(Measurement{Px: 20}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1_1_0)
+		content_1_1_0 = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1_1_0)
 		content_1_1Children = append(content_1_1Children, content_1_1_0)
 		content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
 		content_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1_1)
 		content_1Children = append(content_1Children, content_1_1)
 		content_1 = tui.Spaced(true, lipgloss.Top, 1, content_1Children...)
-		content_1 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), AlignItems: "start", FlexDirection: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1)
+		content_1 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "start", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_1)
 		contentChildren = append(contentChildren, content_1)
 		content = tui.Spaced(false, lipgloss.Left, 1, contentChildren...)
-		content = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), PaddingLeft: snglSome(Measurement{Px: 20}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
+		content = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 20}), Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -439,12 +439,12 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+<ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
   <li>
     <span>one</span>
   </li>
   <li>
-    <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+    <ul style="padding-left:2em;gap:4px;display:flex;flex-direction:column">
       <li>
         <span>nested</span>
       </li>
@@ -460,6 +460,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5675746d68da1b301111674f6643094f
+pass sha256:d4e6da83c18d1db4f66a717327df02f3
 -- run/none/html --
-pass sha256:0e204e01575972fb090432d9a78435cb
+pass sha256:576bebd9b3ef5a0cc13219bde55e2809

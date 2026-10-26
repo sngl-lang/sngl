@@ -75,12 +75,6 @@ import (
 	"os"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	loud           bool
@@ -234,12 +228,6 @@ func main() {
 package main
 
 import "duckfam.us/sngl/pkg/go/gtk4rt"
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -452,8 +440,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:415abf8a6410a69818bd4c252651cfd5
+pass sha256:4c1f832abba6abdc5382f93882ed5e59
 -- run/go/gtk4 --
-pass sha256:4b73b9fc006902bea3e772bcb1121507
+pass sha256:b709a9f69bdb0291b9c233f8e0be18e3
 -- run/none/html --
 pass sha256:ba52abe04e3f9225e47b3ba4f48b5f1f

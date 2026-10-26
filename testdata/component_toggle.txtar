@@ -794,7 +794,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<label style="align-items:center;display:inline-flex;gap:8px">
+<label style="gap:8px;display:inline-flex;align-items:center">
   <input id="__n0" data-sngl-id="__n0" role="switch" type="checkbox"/>
   <span>Notifications</span>
 </label>
@@ -843,9 +843,9 @@ pass sha256:1d4714389bc1a1ed9866cd564d80f187
 -- run/kotlin/android --
 pass sha256:d6a03f79a8a86bcad9a9fa758d094ec9
 -- run/none/html --
-pass sha256:791200c7e9aefda403d64d2d74cb56a0
+pass sha256:bb8d29117dcd10a5903b2c3eba1d5bd6
 -- testrun/html/none/component_toggle.sngl/main/1 --
-sha256:2ddf8f203993eb07b1a0e76950e2b5b7
+sha256:062a09af29f910baa057a86e22a4b51b
 {
   "results": [
     {

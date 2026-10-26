@@ -814,7 +814,7 @@ data class File(
 
 data class Entry(
     var name: String = "",
-    var f: File = File(fd = 0)
+    var f: File = File()
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -1154,6 +1154,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fba5f01f39b91f193b757bf7d59242b9
 -- run/kotlin/android --
-pass sha256:45d406218f7d46df26741f012c8cedc8
+pass sha256:e75934dc7512d490769125380611b14b
 -- run/none/html --
 pass sha256:a5688afa8b9534b4a5b7544eac98af10

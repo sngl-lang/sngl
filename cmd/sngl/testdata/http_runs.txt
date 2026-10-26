@@ -257,7 +257,7 @@ window {
     adapter
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:af026b8f077112ec249026b16dd744e4
+sha256:87e07852b3877ce85bfb8da2e190747f
 {
   "results": [
     {

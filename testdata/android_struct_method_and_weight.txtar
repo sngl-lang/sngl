@@ -71,12 +71,6 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
@@ -321,7 +315,7 @@ fun MainScreen() {
         }
         Column {
             Row(modifier = Modifier.safeDrawingPadding()) {
-                Text(text = it.label(), modifier = (if (((Style(flex = it.span).flex == null) || (Style(flex = it.span).flex!! <= 0.0))) (if ((Style(flex = it.span) == Style())) Modifier else styleModifier(Style(flex = it.span), true)) else (if ((Style(flex = it.span) == Style())) Modifier else styleModifier(Style(flex = it.span), true)).then({ w: Float -> Modifier.weight(w).fillMaxHeight() }(Style(flex = it.span).flex!!.toFloat()))), style = LocalTextStyle.current.merge((if (!((((((Style(flex = it.span).color != null) || (Style(flex = it.span).fontSize != null)) || (Style(flex = it.span).fontWeight != SnglFontWeight.UNSET)) || (Style(flex = it.span).fontStyle != SnglFontStyle.UNSET)) || (Style(flex = it.span).fontFamily != "")) || (Style(flex = it.span).textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((Style(flex = it.span).color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = Style(flex = it.span).color!!.r.toInt(), green = Style(flex = it.span).color!!.g.toInt(), blue = Style(flex = it.span).color!!.b.toInt(), alpha = Style(flex = it.span).color!!.a.toInt())), fontSize = (if ((Style(flex = it.span).fontSize == null)) TextUnit.Unspecified else TextUnit((Style(flex = it.span).fontSize!!.px + (16.0 * (Style(flex = it.span).fontSize!!.em + Style(flex = it.span).fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (Style(flex = it.span).fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (Style(flex = it.span).fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (Style(flex = it.span).fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (Style(flex = it.span).textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+                Text(text = it.label(), modifier = flexed((if ((Style(flex = it.span) == Style())) Modifier else styleModifier(Style(flex = it.span), true)), it.span, { w: Float -> Modifier.weight(w).fillMaxHeight() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             Button(onClick = {
                 it = Item(n = (it.n + 1))
@@ -339,6 +333,8 @@ fun Item.label(): String {
     return ("n=" + this.n.toString())
 }
 
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
+
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
     var top = (if ((s.marginTop != null)) s.marginTop else (if ((s.marginY != null)) s.marginY else s.margin))
@@ -346,7 +342,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
     var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
     if ((s.zIndex != null)) {
     	m = m.zIndex(s.zIndex!!.toFloat())
@@ -373,7 +369,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var edge = 0.0
     if ((s.borderWidth != null)) {
     	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
-    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).r.toInt(), green = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).g.toInt(), blue = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).b.toInt(), alpha = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).a.toInt()), shape)
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
     if ((paints && (s.background != null))) {
     	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
@@ -383,9 +379,13 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
     left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
     if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- run/kotlin/android --
-pass sha256:f8ba819802e2083dcc1657dfd09d6242
+pass sha256:72db9e27c7974de5cd29ce520188574a

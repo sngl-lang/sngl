@@ -108,7 +108,7 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __n0.removeAttribute("start");
     }
-    __n0.setAttribute("style", "display:flex;flex-direction:column;gap:4px;padding-left:2em");
+    __n0.setAttribute("style", "padding-left:2em;gap:4px;display:flex;flex-direction:column");
     let __n5 = document.createElement("li");
     let __n6 = document.createElement("p");
     __n6.setAttribute("style", "margin:0px;white-space:pre-wrap");
@@ -148,7 +148,7 @@ body { font-family: system-ui, sans-serif; }
     } else {
       __n1.removeAttribute("start");
     }
-    __n1.setAttribute("style", "display:flex;flex-direction:column;gap:4px;padding-left:2em");
+    __n1.setAttribute("style", "padding-left:2em;gap:4px;display:flex;flex-direction:column");
     let __n8 = document.createElement("li");
     let __n9 = document.createElement("p");
     __n9.setAttribute("style", "margin:0px;white-space:pre-wrap");
@@ -316,4 +316,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:12151f8fe0f0364a82684935fc08cb11
+pass sha256:7351c8e979dfddaf7d9f5746186fe74a

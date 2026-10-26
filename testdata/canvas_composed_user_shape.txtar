@@ -226,7 +226,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:20px;width:40px" height="20" width="40">
+<canvas id="$0" height="20" width="40">
 </canvas>
 
 <script>
@@ -293,4 +293,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9a30f92ed03fb74a21db2d7f06a82df9
 -- run/none/html --
-pass sha256:c21aa94d300d397f6313a95a3037a99d
+pass sha256:841f921e270c5088708ee0c0f8c0e115

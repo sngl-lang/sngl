@@ -1511,7 +1511,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:40px;width:200px" height="40" width="200">
+<canvas id="$0" height="40" width="200">
 </canvas>
 
 <script>
@@ -1742,4 +1742,4 @@ pass sha256:4242af24920a942658db14900b74a6c9
 -- run/go/gtk4 --
 pass sha256:f4dd12e04d18a416b58db9f0c17ecd87
 -- run/none/html --
-pass sha256:136f5ab66dd7aeb3cd90dc76442846fd
+pass sha256:d9f2384ca00003e94540ac1f57f83ff6

@@ -684,7 +684,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.got = __anon_v_853006{V: m.held__inst0.V}.V
+			m.got = m.held__inst0.V
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.box = Box__int{Inner: __merge___anon_v_853006(__anon_v_853006{}, m.wrap__int(m.n)), All: []__anon_v_853006{}}
 			m.outer = m.plain
@@ -768,7 +768,7 @@ data class __anon_v_10e6ee(
 )
 
 data class __anon_o_0931c3(
-    var o: __anon_v_853006 = __anon_v_853006(v = 0)
+    var o: __anon_v_853006 = __anon_v_853006()
 )
 
 data class __anon_v_853006(
@@ -859,7 +859,7 @@ fun MainScreen() {
         Column {
             Text(text = (((((((((((((((unwrap__int(__anon_v_853006(v = 1)) + 1).toString() + " ") + unwrap__string(wrap__string("w"))) + " ") + Box__int_get__int(box).toString()) + " ") + box.all[0].v.toString()) + " ") + outer.o.v.toString()) + " ") + (opt.v == 3).toString()) + " ") + (absent.v == null).toString()) + " ") + nums.v.size.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
-                got = __anon_v_853006(v = held__inst0.v).v
+                got = held__inst0.v
             }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "pick", modifier = Modifier)
             }
@@ -911,7 +911,7 @@ body { font-family: system-ui, sans-serif; }
   state.held__inst0 = { v: 1 };
   function __merge___anon_v_853006(base, ov) {
     const r = { ...base };
-    if (ov.v != null) r.v = ov.v;
+    if (ov.v != null && !(ov.v === 0)) r.v = ov.v;
     return r;
   }
   function unwrap(w) {
@@ -948,10 +948,10 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
-    state.got = { v: state.held__inst0.v }.v;
+    state.got = state.held__inst0.v;
   });
   $1.addEventListener("click", function() {
-    state.box = { inner: __merge___anon_v_853006({}, { ...wrap(state.n) }), all: [] };
+    state.box = { inner: __merge___anon_v_853006({ v: 0 }, { ...wrap(state.n) }), all: [] };
     __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
     state.outer = ((_s1) => ({ ..._s1, o: { ..._s1.o } }))(state.plain);
     __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
@@ -970,8 +970,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f5a8607157e3649d7a4a98f8452a2cec
+pass sha256:9f563b69dbe8001d046228eb8d83f55a
 -- run/kotlin/android --
-pass sha256:fcc9ee5c163d880d54f16e6e17bf7212
+pass sha256:87b5e3d4ee6e7b211f915563554bfe8f
 -- run/none/html --
-pass sha256:a12fb5b902e6fd9e85b7e02051196e52
+pass sha256:85b78c647fab79c2dd9ea5f35ed97112

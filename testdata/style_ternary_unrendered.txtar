@@ -241,7 +241,7 @@ func (m *Model) __n1_click_handler() {
 	} else {
 		__lt10 = "normal"
 	}
-	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt10, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) On() bool {
@@ -279,7 +279,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = widget.NewButton("", nil)
 	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("x")
-	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt9, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt9, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	m.__n1.OnTapped = m.__n1_click_handler
 	m.__n0.Add(m.__n1__box)
 	fynelayout.AppAttach(m.__n0)
@@ -626,7 +626,7 @@ func (m *Model) __n1_clicked_handler() {
 	} else {
 		__lt19 = "normal"
 	}
-	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt19, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) On() bool {
@@ -662,7 +662,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n1, "x")
-	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt18, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt18, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -675,6 +675,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:726fd57ff689ff32a8e3c5e72d795cc3
+pass sha256:61d4e30df105083217c1f0da2281329a
 -- run/go/gtk4 --
-pass sha256:b31ddce2dfdcccaad908e973524df2cb
+pass sha256:711d1d4f86c02f22d3977ba53a57cfb9

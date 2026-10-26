@@ -127,7 +127,7 @@ sha256:ce4451d0a8051698172805e9e7f804f0
   ]
 }
 -- testrun/fyne/go/para.sngl/main/1 --
-sha256:73c9a0b4a6438db5d14986d5285be0e2
+sha256:41de56447306476005740fb666f1abfa
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:2599578cffb91f581be75cb627f13639
   ]
 }
 -- testrun/gtk4/go/para.sngl/main/1 --
-sha256:0afb3a9c6d233aad5589b2f8d904e08a
+sha256:0bb50d9d333f1f89c7a4714ee6aaae98
 {
   "results": [
     {

@@ -168,16 +168,6 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func GrowOf(flex *float64) float64 {
-	var __lt0 float64
-	if flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
-	}
-	return __lt0
-}
-
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
 	var __lt2 int
@@ -431,13 +421,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						__lt13 = "normal"
 					}
-					var __lt14 string
-					_ = __lt14
-					if k == m.idx {
-						__lt14 = "bold"
-					} else {
-						__lt14 = "normal"
-					}
 					if m.__focusLoop0_cursor == __focusPos0 {
 						m.idx = k
 						m.changed = k
@@ -453,10 +436,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	contentLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
 	var contentChildren []string
 	var content_0 string
-	content_0Look := BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
 	var content_0Children []string
 	var content_0_0 string
 	__focusPos0 := 0
@@ -472,19 +453,12 @@ func (m Model) View() tea.View {
 		} else {
 			__lt13 = "normal"
 		}
-		var __lt14 string
-		if k == m.idx {
-			__lt14 = "bold"
-		} else {
-			__lt14 = "normal"
-		}
-		_ = __lt14
 		content_0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
 		content_0_0ItemPrefix := " "
 		if content_0_0ItemFocused {
 			content_0_0ItemPrefix = ">"
 		}
-		content_0_0Item = BoxLook(Style{FontWeight: __lt13, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		content_0_0Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt13, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
 		__focusPos0++
 		content_0_0Items = append(content_0_0Items, content_0_0Item)
 	}
@@ -493,7 +467,7 @@ func (m Model) View() tea.View {
 		content_0Children = append(content_0Children, content_0_0)
 	}
 	content_0 = tui.Spaced(true, lipgloss.Top, 1, content_0Children...)
-	content_0 = content_0Look.Render(content_0)
+	content_0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Items []string
@@ -521,7 +495,7 @@ func (m Model) View() tea.View {
 		contentChildren = append(contentChildren, content_1)
 	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = contentLook.Render(content)
+	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -966,7 +940,7 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop___p0.Label)
-	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt11, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt11, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	c.__n0.OnTapped = func() {
 		c.__prop___on0()
 	}
@@ -987,7 +961,7 @@ func (c *__child0Instance) Set__p1(__v int) {
 	} else {
 		__lt9 = "normal"
 	}
-	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt9, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt9, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
@@ -998,7 +972,7 @@ func (c *__child0Instance) Set__p2(__v int) {
 	} else {
 		__lt10 = "normal"
 	}
-	c.__n0__box.SetLook(LookOf(Style{FontWeight: __lt10, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -1544,7 +1518,7 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 	}
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt21, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt21, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -1566,7 +1540,7 @@ func (c *__child0Instance) Set__p1(__v int) {
 	} else {
 		__lt19 = "normal"
 	}
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt19, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
@@ -1577,7 +1551,7 @@ func (c *__child0Instance) Set__p2(__v int) {
 	} else {
 		__lt20 = "normal"
 	}
-	gtk4rt.SetLook(c.__n0, LookOf(Style{FontWeight: __lt20, FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(c.__n0, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt20, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -1760,7 +1734,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <div id="__n5" data-sngl-id="__n5" style="display:flex;gap:4px;border-bottom:1px solid #ccc" role="tablist">
+  <div id="__n5" data-sngl-id="__n5" style="gap:4px;display:flex;border-bottom:1px solid #ccc" role="tablist">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
   <div id="__n6" data-sngl-id="__n6" role="tabpanel">
@@ -1822,15 +1796,15 @@ window.__sngl_boot = () => {
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
-      __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+      __n0.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
+      _snglSetStyles(__n0.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
+      __n0.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     }
     function __set___p2(__v) {
       __prop___p2 = __v;
-      __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
-      __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+      __n0.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
+      _snglSetStyles(__n0.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
+      __n0.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -1838,9 +1812,9 @@ window.__sngl_boot = () => {
     let __n0 = document.createElement("button");
     __n0.textContent = __prop___p0.label;
     __n0.disabled = __prop___p0.disabled;
-    __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
-    __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-    __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+    __n0.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
+    _snglSetStyles(__n0.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
+    __n0.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     __n0.setAttribute("role", "tab");
     __n0.addEventListener("click", () => {
       __prop___on0();
@@ -2013,9 +1987,9 @@ window.__sngl_boot = () => {
       }
     }
   }
-  function _snglStyleKeyword(m) {
-    if (m == null || m === "unset") return "";
-    return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+  function _snglSetStyles(st, ds) {
+    for (const d of ds) st.removeProperty(d.property);
+    for (const d of ds) if (d.value !== "") st.setProperty(d.property, d.value);
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
@@ -2028,17 +2002,17 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8e4f78fb41fd210faebbb3c77b9418ea
+pass sha256:cb54341e79c7458643f8cb4f08e74854
 -- run/go/fyne --
-pass sha256:44a7896e533287e50fc9f76463220cdd
+pass sha256:5e86c34331fc898b2f4319088c78b79f
 -- run/go/gtk4 --
-pass sha256:dba65c79c28ac6ca6d450ce50530c9a9
+pass sha256:59cbea5d3df52af9db11740e2b1cf895
 -- run/kotlin/android --
 pass sha256:b9d69ad23ca243b5b51d257bd68e5f20
 -- run/none/html --
-pass sha256:a88079fa02c8ab39b912cd01195840d4
+pass sha256:9e6c3a931fe84a7bbb5a5021ed0df819
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:c7371e0af5fa2a24b0e0ad28be2aa820
+sha256:eb06f1c0b226390b7e83190d61dfb84e
 {
   "results": [
     {

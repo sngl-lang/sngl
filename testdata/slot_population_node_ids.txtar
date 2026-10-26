@@ -1223,7 +1223,7 @@ body { font-family: system-ui, sans-serif; }
   <div style="display:flex;flex-direction:column">
     <span>inside</span>
   </div>
-  <canvas id="$3" style="height:10px;width:10px" height="10" width="10">
+  <canvas id="$3" height="10" width="10">
   </canvas>
   <span>radius 5</span>
 </div>
@@ -1239,7 +1239,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(5, 5, 5, 0, 6.283185307179586);
     ctx.restore();
@@ -1299,4 +1299,4 @@ pass sha256:3de84d37642a86728e5030a8ba9ee9ff
 -- run/kotlin/android --
 pass sha256:71178f2534083b0b5e102879a5f5e92a
 -- run/none/html --
-pass sha256:8fe9908cb020dd422679a3e1b1ac0bc8
+pass sha256:c6f134c1e0ffc09c4a133536800792fa

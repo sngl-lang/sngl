@@ -1843,7 +1843,7 @@ window.__sngl_boot = () => {
     }
     let tick = document.createElement("label");
     tick.setAttribute("data-sngl-id", "tick");
-    tick.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    tick.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     tick.setAttribute("data-sngl-copy", __prop___copy);
     let __n1 = document.createElement("input");
     __n1.checked = checked;
@@ -1994,4 +1994,4 @@ pass sha256:5702c819435ff9efc285f4bd4d098313
 -- run/kotlin/android --
 pass sha256:d84f9819f1ee7e4299ca554add7e04d6
 -- run/none/html --
-pass sha256:16b3fbf0d4555331d756d78da91dee99
+pass sha256:533a637e104002239fcb582664d1d474

@@ -279,29 +279,6 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func GrowOf(flex *float64) float64 {
-	var __lt0 float64
-	if flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
-	}
-	return __lt0
-}
-
-func CrossOf(a string) float64 {
-	var __lt1 float64
-	switch a {
-	case "center":
-		__lt1 = 0.5
-	case "end":
-		__lt1 = 1.0
-	default:
-		__lt1 = 0.0
-	}
-	return __lt1
-}
-
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
 	var __lt2 int
@@ -599,7 +576,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		contentLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
 		var contentChildren []string
 		var content_0 string
 		content_0Look := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
@@ -635,424 +611,8 @@ func (m Model) View() tea.View {
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
 		if m.failed__inst0 || !m.hasPhoto__inst0 {
-			var __lt16 *Measurement
-			var __lt17 *Measurement
-			var __lt18 *Measurement
-			var __lt19 *Measurement
-			var __lt20 *Measurement
-			var __lt21 *Measurement
-			var __lt22 *Measurement
-			var __lt23 *Measurement
-			var __lt24 *Measurement
-			var __lt25 *Measurement
-			var __lt26 *Measurement
-			var __lt27 *Measurement
-			var __lt28 *Measurement
-			var __lt29 *Measurement
-			var __lt30 *Measurement
-			__lt31 := snglSome(Measurement{Px: 40})
-			var __lt32 *Measurement
-			__lt33 := snglSome(Measurement{Px: 40})
-			var __lt34 *Measurement
-			var __lt35 *Measurement
-			var __lt36 *float64
-			__lt37 := "unset"
-			__lt38 := "center"
-			__lt39 := "center"
-			__lt40 := "unset"
-			var __lt41 *Measurement
-			var __lt42 *Measurement
-			var __lt43 *Measurement
-			var __lt44 *Measurement
-			var __lt45 *int
-			var __lt46 *snglcolor.Color
-			var __lt47 *Measurement
-			__lt48 := ""
-			__lt49 := "unset"
-			__lt50 := "unset"
-			__lt51 := "center"
-			var __lt52 *int
-			__lt53 := "unset"
-			__lt54 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-			__lt55 := snglSome(Measurement{Px: 20})
-			var __lt56 *snglcolor.Color
-			var __lt57 *Measurement
-			__lt58 := ""
-			__lt59 := ""
-			__lt60 := ""
-			__lt61 := ""
-			__lt62 := "unset"
-			var __lt63 *float64
-			__lt64 := ""
-			__lt65 := "inlineFlex"
-			__lt66 := "unset"
-			__lt67 := "unset"
-			var __lt68 *Measurement
-			var __lt69 *Measurement
-			var __lt70 *Measurement
-			var __lt71 *Measurement
-			var __lt72 *Measurement
-			var __lt73 *Measurement
-			var __lt74 *Measurement
-			var __lt75 *Measurement
-			var __lt76 *Measurement
-			var __lt77 *Measurement
-			var __lt78 *Measurement
-			var __lt79 *Measurement
-			var __lt80 *Measurement
-			var __lt81 *Measurement
-			var __lt82 *Measurement
-			__lt83 := snglSome(Measurement{Px: 40})
-			var __lt84 *Measurement
-			__lt85 := snglSome(Measurement{Px: 40})
-			var __lt86 *Measurement
-			var __lt87 *Measurement
-			var __lt88 *float64
-			__lt89 := "unset"
-			__lt90 := "center"
-			__lt91 := "center"
-			__lt92 := "unset"
-			var __lt93 *Measurement
-			var __lt94 *Measurement
-			var __lt95 *Measurement
-			var __lt96 *Measurement
-			var __lt97 *int
-			var __lt98 *snglcolor.Color
-			var __lt99 *Measurement
-			__lt100 := ""
-			__lt101 := "unset"
-			__lt102 := "unset"
-			__lt103 := "center"
-			var __lt104 *int
-			__lt105 := "unset"
-			__lt106 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-			__lt107 := snglSome(Measurement{Px: 20})
-			var __lt108 *snglcolor.Color
-			var __lt109 *Measurement
-			__lt110 := ""
-			__lt111 := ""
-			__lt112 := ""
-			__lt113 := ""
-			__lt114 := "unset"
-			var __lt115 *float64
-			__lt116 := ""
-			__lt117 := "inlineFlex"
-			__lt118 := "unset"
-			__lt119 := "unset"
-			_ = __lt68
-			_ = __lt69
-			_ = __lt70
-			_ = __lt71
-			_ = __lt72
-			_ = __lt73
-			_ = __lt74
-			_ = __lt75
-			_ = __lt76
-			_ = __lt77
-			_ = __lt78
-			_ = __lt79
-			_ = __lt80
-			_ = __lt81
-			_ = __lt82
-			_ = __lt83
-			_ = __lt84
-			_ = __lt85
-			_ = __lt86
-			_ = __lt87
-			_ = __lt88
-			_ = __lt89
-			_ = __lt90
-			_ = __lt91
-			_ = __lt92
-			_ = __lt93
-			_ = __lt94
-			_ = __lt95
-			_ = __lt96
-			_ = __lt97
-			_ = __lt98
-			_ = __lt99
-			_ = __lt100
-			_ = __lt101
-			_ = __lt102
-			_ = __lt103
-			_ = __lt104
-			_ = __lt105
-			_ = __lt106
-			_ = __lt107
-			_ = __lt108
-			_ = __lt109
-			_ = __lt110
-			_ = __lt111
-			_ = __lt112
-			_ = __lt113
-			_ = __lt114
-			_ = __lt115
-			_ = __lt116
-			_ = __lt117
-			_ = __lt118
-			_ = __lt119
-			content_3 = BoxLook(Style{Padding: __lt16, PaddingTop: __lt17, PaddingRight: __lt18, PaddingBottom: __lt19, PaddingLeft: __lt20, PaddingX: __lt21, PaddingY: __lt22, Margin: __lt23, MarginTop: __lt24, MarginRight: __lt25, MarginBottom: __lt26, MarginLeft: __lt27, MarginX: __lt28, MarginY: __lt29, Gap: __lt30, Width: __lt31, MinWidth: __lt32, Height: __lt33, MaxWidth: __lt34, MaxHeight: __lt35, Flex: __lt36, FlexDirection: __lt37, AlignItems: __lt38, JustifyContent: __lt39, Position: __lt40, Top: __lt41, Bottom: __lt42, Left: __lt43, Right: __lt44, ZIndex: __lt45, Color: __lt46, FontSize: __lt47, FontFamily: __lt48, FontWeight: __lt49, FontStyle: __lt50, TextAlign: __lt51, MaxLines: __lt52, WhiteSpace: __lt53, Background: __lt54, BorderRadius: __lt55, BorderColor: __lt56, BorderWidth: __lt57, Border: __lt58, BorderBottom: __lt59, BorderLeft: __lt60, BorderCollapse: __lt61, BorderStyle: __lt62, Opacity: __lt63, Cursor: __lt64, Display: __lt65, Overflow: __lt66, ListStyleType: __lt67}, true).Render(fmt.Sprint("JD"))
+			content_3 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("JD"))
 		} else {
-			var __lt120 *Measurement
-			var __lt121 *Measurement
-			var __lt122 *Measurement
-			var __lt123 *Measurement
-			var __lt124 *Measurement
-			var __lt125 *Measurement
-			var __lt126 *Measurement
-			var __lt127 *Measurement
-			var __lt128 *Measurement
-			var __lt129 *Measurement
-			var __lt130 *Measurement
-			var __lt131 *Measurement
-			var __lt132 *Measurement
-			var __lt133 *Measurement
-			var __lt134 *Measurement
-			__lt135 := snglSome(Measurement{Px: 40})
-			var __lt136 *Measurement
-			__lt137 := snglSome(Measurement{Px: 40})
-			var __lt138 *Measurement
-			var __lt139 *Measurement
-			var __lt140 *float64
-			__lt141 := "unset"
-			__lt142 := "unset"
-			__lt143 := "unset"
-			__lt144 := "unset"
-			var __lt145 *Measurement
-			var __lt146 *Measurement
-			var __lt147 *Measurement
-			var __lt148 *Measurement
-			var __lt149 *int
-			var __lt150 *snglcolor.Color
-			var __lt151 *Measurement
-			__lt152 := ""
-			__lt153 := "unset"
-			__lt154 := "unset"
-			__lt155 := "unset"
-			var __lt156 *int
-			__lt157 := "unset"
-			var __lt158 *snglcolor.Color
-			__lt159 := snglSome(Measurement{Px: 20})
-			var __lt160 *snglcolor.Color
-			var __lt161 *Measurement
-			__lt162 := ""
-			__lt163 := ""
-			__lt164 := ""
-			__lt165 := ""
-			__lt166 := "unset"
-			var __lt167 *float64
-			__lt168 := ""
-			__lt169 := "unset"
-			__lt170 := "unset"
-			__lt171 := "unset"
-			var __lt172 *Measurement
-			var __lt173 *Measurement
-			var __lt174 *Measurement
-			var __lt175 *Measurement
-			var __lt176 *Measurement
-			var __lt177 *Measurement
-			var __lt178 *Measurement
-			var __lt179 *Measurement
-			var __lt180 *Measurement
-			var __lt181 *Measurement
-			var __lt182 *Measurement
-			var __lt183 *Measurement
-			var __lt184 *Measurement
-			var __lt185 *Measurement
-			var __lt186 *Measurement
-			__lt187 := snglSome(Measurement{Px: 40})
-			var __lt188 *Measurement
-			__lt189 := snglSome(Measurement{Px: 40})
-			var __lt190 *Measurement
-			var __lt191 *Measurement
-			var __lt192 *float64
-			__lt193 := "unset"
-			__lt194 := "unset"
-			__lt195 := "unset"
-			__lt196 := "unset"
-			var __lt197 *Measurement
-			var __lt198 *Measurement
-			var __lt199 *Measurement
-			var __lt200 *Measurement
-			var __lt201 *int
-			var __lt202 *snglcolor.Color
-			var __lt203 *Measurement
-			__lt204 := ""
-			__lt205 := "unset"
-			__lt206 := "unset"
-			__lt207 := "unset"
-			var __lt208 *int
-			__lt209 := "unset"
-			var __lt210 *snglcolor.Color
-			__lt211 := snglSome(Measurement{Px: 20})
-			var __lt212 *snglcolor.Color
-			var __lt213 *Measurement
-			__lt214 := ""
-			__lt215 := ""
-			__lt216 := ""
-			__lt217 := ""
-			__lt218 := "unset"
-			var __lt219 *float64
-			__lt220 := ""
-			__lt221 := "unset"
-			__lt222 := "unset"
-			__lt223 := "unset"
-			var __lt224 *Measurement
-			var __lt225 *Measurement
-			var __lt226 *Measurement
-			var __lt227 *Measurement
-			var __lt228 *Measurement
-			var __lt229 *Measurement
-			var __lt230 *Measurement
-			var __lt231 *Measurement
-			var __lt232 *Measurement
-			var __lt233 *Measurement
-			var __lt234 *Measurement
-			var __lt235 *Measurement
-			var __lt236 *Measurement
-			var __lt237 *Measurement
-			var __lt238 *Measurement
-			__lt239 := snglSome(Measurement{Px: 40})
-			var __lt240 *Measurement
-			__lt241 := snglSome(Measurement{Px: 40})
-			var __lt242 *Measurement
-			var __lt243 *Measurement
-			var __lt244 *float64
-			__lt245 := "unset"
-			__lt246 := "unset"
-			__lt247 := "unset"
-			__lt248 := "unset"
-			var __lt249 *Measurement
-			var __lt250 *Measurement
-			var __lt251 *Measurement
-			var __lt252 *Measurement
-			var __lt253 *int
-			var __lt254 *snglcolor.Color
-			var __lt255 *Measurement
-			__lt256 := ""
-			__lt257 := "unset"
-			__lt258 := "unset"
-			__lt259 := "unset"
-			var __lt260 *int
-			__lt261 := "unset"
-			var __lt262 *snglcolor.Color
-			__lt263 := snglSome(Measurement{Px: 20})
-			var __lt264 *snglcolor.Color
-			var __lt265 *Measurement
-			__lt266 := ""
-			__lt267 := ""
-			__lt268 := ""
-			__lt269 := ""
-			__lt270 := "unset"
-			var __lt271 *float64
-			__lt272 := ""
-			__lt273 := "unset"
-			__lt274 := "unset"
-			__lt275 := "unset"
-			var __lt276 *Measurement
-			var __lt277 *Measurement
-			var __lt278 *Measurement
-			var __lt279 *Measurement
-			var __lt280 *Measurement
-			var __lt281 *Measurement
-			var __lt282 *Measurement
-			var __lt283 *Measurement
-			var __lt284 *Measurement
-			var __lt285 *Measurement
-			var __lt286 *Measurement
-			var __lt287 *Measurement
-			var __lt288 *Measurement
-			var __lt289 *Measurement
-			var __lt290 *Measurement
-			__lt291 := snglSome(Measurement{Px: 40})
-			var __lt292 *Measurement
-			__lt293 := snglSome(Measurement{Px: 40})
-			var __lt294 *Measurement
-			var __lt295 *Measurement
-			var __lt296 *float64
-			__lt297 := "unset"
-			__lt298 := "unset"
-			__lt299 := "unset"
-			__lt300 := "unset"
-			var __lt301 *Measurement
-			var __lt302 *Measurement
-			var __lt303 *Measurement
-			var __lt304 *Measurement
-			var __lt305 *int
-			var __lt306 *snglcolor.Color
-			var __lt307 *Measurement
-			__lt308 := ""
-			__lt309 := "unset"
-			__lt310 := "unset"
-			__lt311 := "unset"
-			var __lt312 *int
-			__lt313 := "unset"
-			var __lt314 *snglcolor.Color
-			__lt315 := snglSome(Measurement{Px: 20})
-			var __lt316 *snglcolor.Color
-			var __lt317 *Measurement
-			__lt318 := ""
-			__lt319 := ""
-			__lt320 := ""
-			__lt321 := ""
-			__lt322 := "unset"
-			var __lt323 *float64
-			__lt324 := ""
-			__lt325 := "unset"
-			__lt326 := "unset"
-			__lt327 := "unset"
-			_ = __lt172
-			_ = __lt173
-			_ = __lt174
-			_ = __lt175
-			_ = __lt176
-			_ = __lt177
-			_ = __lt178
-			_ = __lt179
-			_ = __lt180
-			_ = __lt181
-			_ = __lt182
-			_ = __lt183
-			_ = __lt184
-			_ = __lt185
-			_ = __lt186
-			_ = __lt187
-			_ = __lt188
-			_ = __lt189
-			_ = __lt190
-			_ = __lt191
-			_ = __lt192
-			_ = __lt193
-			_ = __lt194
-			_ = __lt195
-			_ = __lt196
-			_ = __lt197
-			_ = __lt198
-			_ = __lt199
-			_ = __lt200
-			_ = __lt201
-			_ = __lt202
-			_ = __lt203
-			_ = __lt204
-			_ = __lt205
-			_ = __lt206
-			_ = __lt207
-			_ = __lt208
-			_ = __lt209
-			_ = __lt210
-			_ = __lt211
-			_ = __lt212
-			_ = __lt213
-			_ = __lt214
-			_ = __lt215
-			_ = __lt216
-			_ = __lt217
-			_ = __lt218
-			_ = __lt219
-			_ = __lt220
-			_ = __lt221
-			_ = __lt222
-			_ = __lt223
 			var content_3Children []string
 			var content_3_0 string
 			if m.hasPhoto__inst0 {
@@ -1061,8 +621,8 @@ func (m Model) View() tea.View {
 			if content_3_0 != "" {
 				content_3Children = append(content_3Children, content_3_0)
 			}
-			content_3 = tui.Spaced(false, lipgloss.Position(CrossOf(Style{Padding: __lt224, PaddingTop: __lt225, PaddingRight: __lt226, PaddingBottom: __lt227, PaddingLeft: __lt228, PaddingX: __lt229, PaddingY: __lt230, Margin: __lt231, MarginTop: __lt232, MarginRight: __lt233, MarginBottom: __lt234, MarginLeft: __lt235, MarginX: __lt236, MarginY: __lt237, Gap: __lt238, Width: __lt239, MinWidth: __lt240, Height: __lt241, MaxWidth: __lt242, MaxHeight: __lt243, Flex: __lt244, FlexDirection: __lt245, AlignItems: __lt246, JustifyContent: __lt247, Position: __lt248, Top: __lt249, Bottom: __lt250, Left: __lt251, Right: __lt252, ZIndex: __lt253, Color: __lt254, FontSize: __lt255, FontFamily: __lt256, FontWeight: __lt257, FontStyle: __lt258, TextAlign: __lt259, MaxLines: __lt260, WhiteSpace: __lt261, Background: __lt262, BorderRadius: __lt263, BorderColor: __lt264, BorderWidth: __lt265, Border: __lt266, BorderBottom: __lt267, BorderLeft: __lt268, BorderCollapse: __lt269, BorderStyle: __lt270, Opacity: __lt271, Cursor: __lt272, Display: __lt273, Overflow: __lt274, ListStyleType: __lt275}.AlignItems)), RowsOf(Style{Padding: __lt276, PaddingTop: __lt277, PaddingRight: __lt278, PaddingBottom: __lt279, PaddingLeft: __lt280, PaddingX: __lt281, PaddingY: __lt282, Margin: __lt283, MarginTop: __lt284, MarginRight: __lt285, MarginBottom: __lt286, MarginLeft: __lt287, MarginX: __lt288, MarginY: __lt289, Gap: __lt290, Width: __lt291, MinWidth: __lt292, Height: __lt293, MaxWidth: __lt294, MaxHeight: __lt295, Flex: __lt296, FlexDirection: __lt297, AlignItems: __lt298, JustifyContent: __lt299, Position: __lt300, Top: __lt301, Bottom: __lt302, Left: __lt303, Right: __lt304, ZIndex: __lt305, Color: __lt306, FontSize: __lt307, FontFamily: __lt308, FontWeight: __lt309, FontStyle: __lt310, TextAlign: __lt311, MaxLines: __lt312, WhiteSpace: __lt313, Background: __lt314, BorderRadius: __lt315, BorderColor: __lt316, BorderWidth: __lt317, Border: __lt318, BorderBottom: __lt319, BorderLeft: __lt320, BorderCollapse: __lt321, BorderStyle: __lt322, Opacity: __lt323, Cursor: __lt324, Display: __lt325, Overflow: __lt326, ListStyleType: __lt327}.Gap), content_3Children...)
-			content_3 = BoxLook(Style{Padding: __lt120, PaddingTop: __lt121, PaddingRight: __lt122, PaddingBottom: __lt123, PaddingLeft: __lt124, PaddingX: __lt125, PaddingY: __lt126, Margin: __lt127, MarginTop: __lt128, MarginRight: __lt129, MarginBottom: __lt130, MarginLeft: __lt131, MarginX: __lt132, MarginY: __lt133, Gap: __lt134, Width: __lt135, MinWidth: __lt136, Height: __lt137, MaxWidth: __lt138, MaxHeight: __lt139, Flex: __lt140, FlexDirection: __lt141, AlignItems: __lt142, JustifyContent: __lt143, Position: __lt144, Top: __lt145, Bottom: __lt146, Left: __lt147, Right: __lt148, ZIndex: __lt149, Color: __lt150, FontSize: __lt151, FontFamily: __lt152, FontWeight: __lt153, FontStyle: __lt154, TextAlign: __lt155, MaxLines: __lt156, WhiteSpace: __lt157, Background: __lt158, BorderRadius: __lt159, BorderColor: __lt160, BorderWidth: __lt161, Border: __lt162, BorderBottom: __lt163, BorderLeft: __lt164, BorderCollapse: __lt165, BorderStyle: __lt166, Opacity: __lt167, Cursor: __lt168, Display: __lt169, Overflow: __lt170, ListStyleType: __lt171}, true).AlignHorizontal(lipgloss.Position(CrossOf(Style{Padding: __lt224, PaddingTop: __lt225, PaddingRight: __lt226, PaddingBottom: __lt227, PaddingLeft: __lt228, PaddingX: __lt229, PaddingY: __lt230, Margin: __lt231, MarginTop: __lt232, MarginRight: __lt233, MarginBottom: __lt234, MarginLeft: __lt235, MarginX: __lt236, MarginY: __lt237, Gap: __lt238, Width: __lt239, MinWidth: __lt240, Height: __lt241, MaxWidth: __lt242, MaxHeight: __lt243, Flex: __lt244, FlexDirection: __lt245, AlignItems: __lt246, JustifyContent: __lt247, Position: __lt248, Top: __lt249, Bottom: __lt250, Left: __lt251, Right: __lt252, ZIndex: __lt253, Color: __lt254, FontSize: __lt255, FontFamily: __lt256, FontWeight: __lt257, FontStyle: __lt258, TextAlign: __lt259, MaxLines: __lt260, WhiteSpace: __lt261, Background: __lt262, BorderRadius: __lt263, BorderColor: __lt264, BorderWidth: __lt265, Border: __lt266, BorderBottom: __lt267, BorderLeft: __lt268, BorderCollapse: __lt269, BorderStyle: __lt270, Opacity: __lt271, Cursor: __lt272, Display: __lt273, Overflow: __lt274, ListStyleType: __lt275}.AlignItems))).Render(content_3)
+			content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+			content_3 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_3)
 		}
 		if content_3 != "" {
 			contentChildren = append(contentChildren, content_3)
@@ -1089,7 +649,7 @@ func (m Model) View() tea.View {
 		content_6 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_6Prefix + " " + fmt.Sprint("grow"))
 		contentChildren = append(contentChildren, content_6)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-		content = contentLook.Render(content)
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1123,10 +683,6 @@ import (
 	"os"
 )
 
-func snglSome[T any](v T) *T {
-	return &v
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -1134,61 +690,6 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        *Measurement
-	PaddingTop     *Measurement
-	PaddingRight   *Measurement
-	PaddingBottom  *Measurement
-	PaddingLeft    *Measurement
-	PaddingX       *Measurement
-	PaddingY       *Measurement
-	Margin         *Measurement
-	MarginTop      *Measurement
-	MarginRight    *Measurement
-	MarginBottom   *Measurement
-	MarginLeft     *Measurement
-	MarginX        *Measurement
-	MarginY        *Measurement
-	Gap            *Measurement
-	Width          *Measurement
-	MinWidth       *Measurement
-	Height         *Measurement
-	MaxWidth       *Measurement
-	MaxHeight      *Measurement
-	Flex           *float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            *Measurement
-	Bottom         *Measurement
-	Left           *Measurement
-	Right          *Measurement
-	ZIndex         *int
-	Color          *snglcolor.Color
-	FontSize       *Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       *int
-	WhiteSpace     string
-	Background     *snglcolor.Color
-	BorderRadius   *Measurement
-	BorderColor    *snglcolor.Color
-	BorderWidth    *Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        *float64
-	Cursor         string
-	Display        string
-	Overflow       string
-	ListStyleType  string
-}
-
-type Style__draw struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -1247,121 +748,12 @@ func New() *Model {
 	return m
 }
 
-func LookOf(s Style) fynelayout.Look {
-	var __lt0 float32
-	if s.Flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = float32((*(s.Flex)))
-	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
-	return look
-}
-
-func ApplyStyle(ctx *snglcanvas.Context, style Style__draw) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
 	ctx.SetFont(style.FontSize, style.FontFamily)
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
-}
-
-func Side(all *Measurement, axis *Measurement, own *Measurement) float32 {
-	var __lt2 *Measurement
-	if own != nil {
-		__lt2 = own
-	} else {
-		var __lt1 *Measurement
-		if axis != nil {
-			__lt1 = axis
-		} else {
-			__lt1 = all
-		}
-		__lt2 = __lt1
-	}
-	return Inset(__lt2)
-}
-
-func Inset(m__r0 *Measurement) float32 {
-	var __lt3 float32
-	if m__r0 == nil {
-		__lt3 = 0.0
-	} else {
-		__lt3 = float32(max(((*(m__r0)).Px + (14.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0))
-	}
-	return __lt3
-}
-
-func CrossOf(a string) int {
-	var __lt4 int
-	switch a {
-	case "start":
-		__lt4 = 1
-	case "center":
-		__lt4 = 2
-	case "end":
-		__lt4 = 3
-	default:
-		__lt4 = 0
-	}
-	return __lt4
-}
-
-func JustifyOf(j string) int {
-	var __lt5 int
-	switch j {
-	case "center":
-		__lt5 = 1
-	case "end":
-		__lt5 = 2
-	case "spaceBetween":
-		__lt5 = 3
-	case "spaceAround":
-		__lt5 = 4
-	case "spaceEvenly":
-		__lt5 = 5
-	default:
-		__lt5 = 0
-	}
-	return __lt5
-}
-
-func Paint(c__r0 *snglcolor.Color) snglcolor.Color {
-	var __lt6 snglcolor.Color
-	if c__r0 == nil {
-		__lt6 = snglcolor.Color{}
-	} else {
-		__lt6 = (*(c__r0))
-	}
-	return __lt6
-}
-
-func TextAlignOf(a string) int {
-	var __lt7 int
-	switch a {
-	case "left", "justify":
-		__lt7 = 1
-	case "center":
-		__lt7 = 2
-	case "right":
-		__lt7 = 3
-	default:
-		__lt7 = 0
-	}
-	return __lt7
-}
-
-func WrapOf(w string) int {
-	var __lt8 int
-	switch w {
-	case "pre", "nowrap":
-		__lt8 = 1
-	case "preWrap", "preLine":
-		__lt8 = 2
-	default:
-		__lt8 = 0
-	}
-	return __lt8
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
@@ -1385,113 +777,11 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				var __inst0_i int = 0
 				if m.failed__inst0 || !m.hasPhoto__inst0 {
 					__n4 := widget.NewLabel("")
+					__n4__box := fynelayout.NewBox(__n4)
 					__n4.SetText("JD")
-					var __lt9 *Measurement
-					var __lt10 *Measurement
-					var __lt11 *Measurement
-					var __lt12 *Measurement
-					var __lt13 *Measurement
-					var __lt14 *Measurement
-					var __lt15 *Measurement
-					var __lt16 *Measurement
-					var __lt17 *Measurement
-					var __lt18 *Measurement
-					var __lt19 *Measurement
-					var __lt20 *Measurement
-					var __lt21 *Measurement
-					var __lt22 *Measurement
-					var __lt23 *Measurement
-					__lt24 := snglSome(Measurement{Px: 40})
-					var __lt25 *Measurement
-					__lt26 := snglSome(Measurement{Px: 40})
-					var __lt27 *Measurement
-					var __lt28 *Measurement
-					var __lt29 *float64
-					__lt30 := "unset"
-					__lt31 := "center"
-					__lt32 := "center"
-					__lt33 := "unset"
-					var __lt34 *Measurement
-					var __lt35 *Measurement
-					var __lt36 *Measurement
-					var __lt37 *Measurement
-					var __lt38 *int
-					var __lt39 *snglcolor.Color
-					var __lt40 *Measurement
-					__lt41 := ""
-					__lt42 := "unset"
-					__lt43 := "unset"
-					__lt44 := "center"
-					var __lt45 *int
-					__lt46 := "unset"
-					__lt47 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-					__lt48 := snglSome(Measurement{Px: 20})
-					var __lt49 *snglcolor.Color
-					var __lt50 *Measurement
-					__lt51 := ""
-					__lt52 := ""
-					__lt53 := ""
-					__lt54 := ""
-					__lt55 := "unset"
-					var __lt56 *float64
-					__lt57 := ""
-					__lt58 := "inlineFlex"
-					__lt59 := "unset"
-					__lt60 := "unset"
-					_ = __lt9
-					_ = __lt10
-					_ = __lt11
-					_ = __lt12
-					_ = __lt13
-					_ = __lt14
-					_ = __lt15
-					_ = __lt16
-					_ = __lt17
-					_ = __lt18
-					_ = __lt19
-					_ = __lt20
-					_ = __lt21
-					_ = __lt22
-					_ = __lt23
-					_ = __lt24
-					_ = __lt25
-					_ = __lt26
-					_ = __lt27
-					_ = __lt28
-					_ = __lt29
-					_ = __lt30
-					_ = __lt31
-					_ = __lt32
-					_ = __lt33
-					_ = __lt34
-					_ = __lt35
-					_ = __lt36
-					_ = __lt37
-					_ = __lt38
-					_ = __lt39
-					_ = __lt40
-					_ = __lt41
-					_ = __lt42
-					_ = __lt43
-					_ = __lt44
-					_ = __lt45
-					_ = __lt46
-					_ = __lt47
-					_ = __lt48
-					_ = __lt49
-					_ = __lt50
-					_ = __lt51
-					_ = __lt52
-					_ = __lt53
-					_ = __lt54
-					_ = __lt55
-					_ = __lt56
-					_ = __lt57
-					_ = __lt58
-					_ = __lt59
-					_ = __lt60
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
-					m.__slot1 = append(m.__slot1, __n4)
+					__n4__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Stroke: snglcolor.Color{}, Radius: 20.0, TextColor: snglcolor.Color{}, TextAlign: 2})
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__box)
+					m.__slot1 = append(m.__slot1, __n4__box)
 				} else {
 					var __n5 *__child0Instance
 					if len(m.__inst0_live) > __inst0_i {
@@ -1584,7 +874,7 @@ func (m *Model) __n16_click_handler() {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(8.0, 8.0, m.radius__inst0)
 	ctx.Restore()
 }
@@ -1598,7 +888,7 @@ func (m *Model) _canvasDraw1(ctx *snglcanvas.Context) {
 	ctx.Scale(2.0, 2.0)
 	ctx.ClipRect(0.0, 0.0, 8.0, 8.0)
 	ctx.Save()
-	ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 0.0, 8.0, 8.0)
 	ctx.Restore()
 	ctx.Restore()
@@ -1606,7 +896,7 @@ func (m *Model) _canvasDraw1(ctx *snglcanvas.Context) {
 
 func (m *Model) _canvasDraw2(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, Style__draw{Fill: snglcolor.Color{G: 170, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{G: 170, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(8.0, 8.0, 6.0)
 	ctx.Restore()
 }
@@ -1750,62 +1040,10 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	var __lt61 *Measurement
-	var __lt62 *Measurement
-	var __lt63 *Measurement
-	var __lt64 *Measurement
-	var __lt65 *Measurement
-	var __lt66 *Measurement
-	var __lt67 *Measurement
-	var __lt68 *Measurement
-	var __lt69 *Measurement
-	var __lt70 *Measurement
-	var __lt71 *Measurement
-	var __lt72 *Measurement
-	var __lt73 *Measurement
-	var __lt74 *Measurement
-	var __lt75 *Measurement
-	__lt76 := snglSome(Measurement{Px: 40})
-	var __lt77 *Measurement
-	__lt78 := snglSome(Measurement{Px: 40})
-	var __lt79 *Measurement
-	var __lt80 *Measurement
-	var __lt81 *float64
-	__lt82 := "unset"
-	__lt83 := "unset"
-	__lt84 := "unset"
-	__lt85 := "unset"
-	var __lt86 *Measurement
-	var __lt87 *Measurement
-	var __lt88 *Measurement
-	var __lt89 *Measurement
-	var __lt90 *int
-	var __lt91 *snglcolor.Color
-	var __lt92 *Measurement
-	__lt93 := ""
-	__lt94 := "unset"
-	__lt95 := "unset"
-	__lt96 := "unset"
-	var __lt97 *int
-	__lt98 := "unset"
-	var __lt99 *snglcolor.Color
-	__lt100 := snglSome(Measurement{Px: 20})
-	var __lt101 *snglcolor.Color
-	var __lt102 *Measurement
-	__lt103 := ""
-	__lt104 := ""
-	__lt105 := ""
-	__lt106 := ""
-	__lt107 := "unset"
-	var __lt108 *float64
-	__lt109 := ""
-	__lt110 := "unset"
-	__lt111 := "unset"
-	__lt112 := "unset"
 	c.__n3 = fynelayout.NewImage()
 	c.__n3__box = fynelayout.NewBox(c.__n3)
 	c.__n3.SetFit("cover")
-	c.__n3__box.SetLook(LookOf(Style{Padding: __lt61, PaddingTop: __lt62, PaddingRight: __lt63, PaddingBottom: __lt64, PaddingLeft: __lt65, PaddingX: __lt66, PaddingY: __lt67, Margin: __lt68, MarginTop: __lt69, MarginRight: __lt70, MarginBottom: __lt71, MarginLeft: __lt72, MarginX: __lt73, MarginY: __lt74, Gap: __lt75, Width: __lt76, MinWidth: __lt77, Height: __lt78, MaxWidth: __lt79, MaxHeight: __lt80, Flex: __lt81, FlexDirection: __lt82, AlignItems: __lt83, JustifyContent: __lt84, Position: __lt85, Top: __lt86, Bottom: __lt87, Left: __lt88, Right: __lt89, ZIndex: __lt90, Color: __lt91, FontSize: __lt92, FontFamily: __lt93, FontWeight: __lt94, FontStyle: __lt95, TextAlign: __lt96, MaxLines: __lt97, WhiteSpace: __lt98, Background: __lt99, BorderRadius: __lt100, BorderColor: __lt101, BorderWidth: __lt102, Border: __lt103, BorderBottom: __lt104, BorderLeft: __lt105, BorderCollapse: __lt106, BorderStyle: __lt107, Opacity: __lt108, Cursor: __lt109, Display: __lt110, Overflow: __lt111, ListStyleType: __lt112}))
+	c.__n3__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, Radius: 20.0, TextColor: snglcolor.Color{}})
 	c.__n3.OnTapped = func() {
 	}
 	c.__n3.OnLoad = func() {
@@ -2106,13 +1344,8 @@ import "C"
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
-	"fmt"
 	"unsafe"
 )
-
-func snglSome[T any](v T) *T {
-	return &v
-}
 
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
@@ -2158,61 +1391,6 @@ type Measurement struct {
 }
 
 type Style struct {
-	Padding        *Measurement
-	PaddingTop     *Measurement
-	PaddingRight   *Measurement
-	PaddingBottom  *Measurement
-	PaddingLeft    *Measurement
-	PaddingX       *Measurement
-	PaddingY       *Measurement
-	Margin         *Measurement
-	MarginTop      *Measurement
-	MarginRight    *Measurement
-	MarginBottom   *Measurement
-	MarginLeft     *Measurement
-	MarginX        *Measurement
-	MarginY        *Measurement
-	Gap            *Measurement
-	Width          *Measurement
-	MinWidth       *Measurement
-	Height         *Measurement
-	MaxWidth       *Measurement
-	MaxHeight      *Measurement
-	Flex           *float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            *Measurement
-	Bottom         *Measurement
-	Left           *Measurement
-	Right          *Measurement
-	ZIndex         *int
-	Color          *snglcolor.Color
-	FontSize       *Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       *int
-	WhiteSpace     string
-	Background     *snglcolor.Color
-	BorderRadius   *Measurement
-	BorderColor    *snglcolor.Color
-	BorderWidth    *Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        *float64
-	Cursor         string
-	Display        string
-	Overflow       string
-	ListStyleType  string
-}
-
-type Style__draw struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -2296,12 +1474,7 @@ func New() *Model {
 	return m
 }
 
-func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
-	return look
-}
-
-func Paint(ctx *C.cairo_t, style Style__draw) {
+func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -2317,33 +1490,6 @@ func Paint(ctx *C.cairo_t, style Style__draw) {
 		Source(ctx, style.Stroke)
 		C.cairo_stroke(ctx)
 	}
-}
-
-func Inset(m__r0 *Measurement) float64 {
-	var __lt1 float64
-	if m__r0 == nil {
-		__lt1 = 0.0
-	} else {
-		__lt1 = max(((*(m__r0)).Px + (11.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
-	}
-	return __lt1
-}
-
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	var __lt2 float64
-	if s.Flex == nil {
-		__lt2 = 0.0
-	} else {
-		__lt2 = (*(s.Flex))
-	}
-	var __lt3 int
-	if s.MaxLines == nil {
-		__lt3 = 0
-	} else {
-		__lt3 = (*(s.MaxLines))
-	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt2, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt3, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
-	return look
 }
 
 func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
@@ -2368,188 +1514,6 @@ func LineJoinFunc(join string) C.cairo_line_join_t {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
-}
-
-func CssOf(s Style) string {
-	var __lt4 string
-	if s.Opacity == nil {
-		__lt4 = ""
-	} else {
-		__lt4 = fmt.Sprint((*(s.Opacity)))
-	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt4))
-	return css
-}
-
-func CrossOf(a string) int {
-	var __lt5 int
-	switch a {
-	case "start":
-		__lt5 = 1
-	case "center":
-		__lt5 = 2
-	case "end":
-		__lt5 = 3
-	case "baseline":
-		__lt5 = 4
-	default:
-		__lt5 = 0
-	}
-	return __lt5
-}
-
-func TextAlignOf(a string) int {
-	var __lt6 int
-	switch a {
-	case "center":
-		__lt6 = 1
-	case "right":
-		__lt6 = 2
-	case "justify":
-		__lt6 = 3
-	case "left":
-		__lt6 = 4
-	default:
-		__lt6 = 0
-	}
-	return __lt6
-}
-
-func WrapOf(w string) int {
-	var __lt7 int
-	switch w {
-	case "pre", "nowrap":
-		__lt7 = 1
-	case "preWrap", "preLine":
-		__lt7 = 2
-	default:
-		__lt7 = 0
-	}
-	return __lt7
-}
-
-func ClipOf(o string) bool {
-	var __lt8 bool
-	switch o {
-	case "hidden", "scroll", "auto":
-		__lt8 = true
-	default:
-		__lt8 = false
-	}
-	return __lt8
-}
-
-func Decl(name string, value string) string {
-	var __lt9 string
-	if value == "" {
-		__lt9 = ""
-	} else {
-		__lt9 = (((name + ": ") + value) + "; ")
-	}
-	return __lt9
-}
-
-func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt11 *Measurement
-	if own != nil {
-		__lt11 = own
-	} else {
-		var __lt10 *Measurement
-		if axis != nil {
-			__lt10 = axis
-		} else {
-			__lt10 = all
-		}
-		__lt11 = __lt10
-	}
-	return Length(__lt11)
-}
-
-func Length(m__r2 *Measurement) string {
-	var __lt12 string
-	if m__r2 == nil {
-		__lt12 = ""
-	} else {
-		__lt12 = (fmt.Sprint(Inset(m__r2)) + "px")
-	}
-	return __lt12
-}
-
-func CssColor(c__r1 *snglcolor.Color) string {
-	var __lt13 string
-	if c__r1 == nil {
-		__lt13 = ""
-	} else {
-		__lt13 = (*(c__r1)).Hex()
-	}
-	return __lt13
-}
-
-func Points(m__r3 *Measurement) string {
-	var __lt14 string
-	if m__r3 == nil {
-		__lt14 = ""
-	} else {
-		__lt14 = (fmt.Sprint(Inset(m__r3)) + "pt")
-	}
-	return __lt14
-}
-
-func WeightOf(w string) string {
-	var __lt15 string
-	switch w {
-	case "normal":
-		__lt15 = "normal"
-	case "bold":
-		__lt15 = "bold"
-	case "bolder":
-		__lt15 = "bolder"
-	case "lighter":
-		__lt15 = "lighter"
-	default:
-		__lt15 = ""
-	}
-	return __lt15
-}
-
-func SlantOf(s string) string {
-	var __lt16 string
-	switch s {
-	case "normal":
-		__lt16 = "normal"
-	case "italic":
-		__lt16 = "italic"
-	case "oblique":
-		__lt16 = "oblique"
-	default:
-		__lt16 = ""
-	}
-	return __lt16
-}
-
-func LineOf(s Style) string {
-	var __lt17 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt17 = "solid"
-	case "dashed":
-		__lt17 = "dashed"
-	case "dotted":
-		__lt17 = "dotted"
-	case "double":
-		__lt17 = "double"
-	case "none":
-		__lt17 = "none"
-	default:
-		var __lt18 string
-		if s.BorderWidth != nil {
-			__lt18 = "solid"
-		} else {
-			__lt18 = ""
-		}
-		__lt17 = __lt18
-	}
-	return __lt17
 }
 
 func (m *Model) __effect0_unmount() {
@@ -2696,59 +1660,7 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 					__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 					C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), __cstr3)
 					C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n6)), C.float(0.0))
-					var __lt19 *Measurement
-					var __lt20 *Measurement
-					var __lt21 *Measurement
-					var __lt22 *Measurement
-					var __lt23 *Measurement
-					var __lt24 *Measurement
-					var __lt25 *Measurement
-					var __lt26 *Measurement
-					var __lt27 *Measurement
-					var __lt28 *Measurement
-					var __lt29 *Measurement
-					var __lt30 *Measurement
-					var __lt31 *Measurement
-					var __lt32 *Measurement
-					var __lt33 *Measurement
-					__lt34 := snglSome(Measurement{Px: 40})
-					var __lt35 *Measurement
-					__lt36 := snglSome(Measurement{Px: 40})
-					var __lt37 *Measurement
-					var __lt38 *Measurement
-					var __lt39 *float64
-					__lt40 := "unset"
-					__lt41 := "center"
-					__lt42 := "center"
-					__lt43 := "unset"
-					var __lt44 *Measurement
-					var __lt45 *Measurement
-					var __lt46 *Measurement
-					var __lt47 *Measurement
-					var __lt48 *int
-					var __lt49 *snglcolor.Color
-					var __lt50 *Measurement
-					__lt51 := ""
-					__lt52 := "unset"
-					__lt53 := "unset"
-					__lt54 := "center"
-					var __lt55 *int
-					__lt56 := "unset"
-					__lt57 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-					__lt58 := snglSome(Measurement{Px: 20})
-					var __lt59 *snglcolor.Color
-					var __lt60 *Measurement
-					__lt61 := ""
-					__lt62 := ""
-					__lt63 := ""
-					__lt64 := ""
-					__lt65 := "unset"
-					var __lt66 *float64
-					__lt67 := ""
-					__lt68 := "inlineFlex"
-					__lt69 := "unset"
-					__lt70 := "unset"
-					gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n6)), LookOf(Style{Padding: __lt19, PaddingTop: __lt20, PaddingRight: __lt21, PaddingBottom: __lt22, PaddingLeft: __lt23, PaddingX: __lt24, PaddingY: __lt25, Margin: __lt26, MarginTop: __lt27, MarginRight: __lt28, MarginBottom: __lt29, MarginLeft: __lt30, MarginX: __lt31, MarginY: __lt32, Gap: __lt33, Width: __lt34, MinWidth: __lt35, Height: __lt36, MaxWidth: __lt37, MaxHeight: __lt38, Flex: __lt39, FlexDirection: __lt40, AlignItems: __lt41, JustifyContent: __lt42, Position: __lt43, Top: __lt44, Bottom: __lt45, Left: __lt46, Right: __lt47, ZIndex: __lt48, Color: __lt49, FontSize: __lt50, FontFamily: __lt51, FontWeight: __lt52, FontStyle: __lt53, TextAlign: __lt54, MaxLines: __lt55, WhiteSpace: __lt56, Background: __lt57, BorderRadius: __lt58, BorderColor: __lt59, BorderWidth: __lt60, Border: __lt61, BorderBottom: __lt62, BorderLeft: __lt63, BorderCollapse: __lt64, BorderStyle: __lt65, Opacity: __lt66, Cursor: __lt67, Display: __lt68, Overflow: __lt69, ListStyleType: __lt70}))
+					gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n6)), gtk4rt.Look{Css: "background: #cccccc; border-radius: 20px; ", Width: 40.0, Height: 40.0, Cross: 2, TextAlign: 1})
 					gtk4rt.InsertBefore(gtk4rt.Handle(unsafe.Pointer(parent)), gtk4rt.Handle(unsafe.Pointer(m.__slot1_at)), gtk4rt.Handle(unsafe.Pointer(__n6)))
 					m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n6)))
 				} else {
@@ -2836,7 +1748,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(8.0), C.double(8.0), C.double(m.radius__inst0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, Style__draw{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -2849,7 +1761,7 @@ func (m *Model) _canvasDraw1(ctx *C.cairo_t) {
 	C.cairo_clip(ctx)
 	C.cairo_save(ctx)
 	C.cairo_rectangle(ctx, C.double(0.0), C.double(0.0), C.double(8.0), C.double(8.0))
-	Paint(ctx, Style__draw{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 	C.cairo_restore(ctx)
 }
@@ -2858,7 +1770,7 @@ func (m *Model) _canvasDraw2(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(8.0), C.double(8.0), C.double(6.0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, Style__draw{Fill: snglcolor.Color{G: 170, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{G: 170, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -3028,61 +1940,9 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__rendering0 = false
 	c.__renderAgain0 = false
 	c.__slot1 = nil
-	var __lt71 *Measurement
-	var __lt72 *Measurement
-	var __lt73 *Measurement
-	var __lt74 *Measurement
-	var __lt75 *Measurement
-	var __lt76 *Measurement
-	var __lt77 *Measurement
-	var __lt78 *Measurement
-	var __lt79 *Measurement
-	var __lt80 *Measurement
-	var __lt81 *Measurement
-	var __lt82 *Measurement
-	var __lt83 *Measurement
-	var __lt84 *Measurement
-	var __lt85 *Measurement
-	__lt86 := snglSome(Measurement{Px: 40})
-	var __lt87 *Measurement
-	__lt88 := snglSome(Measurement{Px: 40})
-	var __lt89 *Measurement
-	var __lt90 *Measurement
-	var __lt91 *float64
-	__lt92 := "unset"
-	__lt93 := "unset"
-	__lt94 := "unset"
-	__lt95 := "unset"
-	var __lt96 *Measurement
-	var __lt97 *Measurement
-	var __lt98 *Measurement
-	var __lt99 *Measurement
-	var __lt100 *int
-	var __lt101 *snglcolor.Color
-	var __lt102 *Measurement
-	__lt103 := ""
-	__lt104 := "unset"
-	__lt105 := "unset"
-	__lt106 := "unset"
-	var __lt107 *int
-	__lt108 := "unset"
-	var __lt109 *snglcolor.Color
-	__lt110 := snglSome(Measurement{Px: 20})
-	var __lt111 *snglcolor.Color
-	var __lt112 *Measurement
-	__lt113 := ""
-	__lt114 := ""
-	__lt115 := ""
-	__lt116 := ""
-	__lt117 := "unset"
-	var __lt118 *float64
-	__lt119 := ""
-	__lt120 := "unset"
-	__lt121 := "unset"
-	__lt122 := "unset"
 	c.__n5 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(c.__n5)), "cover")
-	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(c.__n5)), LookOf(Style{Padding: __lt71, PaddingTop: __lt72, PaddingRight: __lt73, PaddingBottom: __lt74, PaddingLeft: __lt75, PaddingX: __lt76, PaddingY: __lt77, Margin: __lt78, MarginTop: __lt79, MarginRight: __lt80, MarginBottom: __lt81, MarginLeft: __lt82, MarginX: __lt83, MarginY: __lt84, Gap: __lt85, Width: __lt86, MinWidth: __lt87, Height: __lt88, MaxWidth: __lt89, MaxHeight: __lt90, Flex: __lt91, FlexDirection: __lt92, AlignItems: __lt93, JustifyContent: __lt94, Position: __lt95, Top: __lt96, Bottom: __lt97, Left: __lt98, Right: __lt99, ZIndex: __lt100, Color: __lt101, FontSize: __lt102, FontFamily: __lt103, FontWeight: __lt104, FontStyle: __lt105, TextAlign: __lt106, MaxLines: __lt107, WhiteSpace: __lt108, Background: __lt109, BorderRadius: __lt110, BorderColor: __lt111, BorderWidth: __lt112, Border: __lt113, BorderBottom: __lt114, BorderLeft: __lt115, BorderCollapse: __lt116, BorderStyle: __lt117, Opacity: __lt118, Cursor: __lt119, Display: __lt120, Overflow: __lt121, ListStyleType: __lt122}))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(c.__n5)), gtk4rt.Look{Css: "border-radius: 20px; ", Width: 40.0, Height: 40.0})
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(c.__n5)), func() {
 	})
 	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(c.__n5)), func() {
@@ -3353,6 +2213,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
@@ -3648,9 +2509,9 @@ fun MainScreen() {
                 }
             }
             if ((failed__inst0 || !hasPhoto__inst0)) {
-                Text(text = "JD", modifier = styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+                Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
             } else {
-                SnglImage(modifier = styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), borderRadius = Measurement(px = 20.0)), true), onLoad = {}, onError = { _ ->
+                SnglImage(modifier = flexed(styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), borderRadius = Measurement(px = 20.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), onLoad = {}, onError = { _ ->
                     failed__inst0 = true
                 }) {
                     if (hasPhoto__inst0) {
@@ -3678,6 +2539,12 @@ fun MainScreen() {
     }
 }
 
+fun modifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, share)
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
+
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
     var top = (if ((s.marginTop != null)) s.marginTop else (if ((s.marginY != null)) s.marginY else s.margin))
@@ -3685,7 +2552,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
     var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
     if ((s.zIndex != null)) {
     	m = m.zIndex(s.zIndex!!.toFloat())
@@ -3712,7 +2579,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var edge = 0.0
     if ((s.borderWidth != null)) {
     	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
-    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).r.toInt(), green = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).g.toInt(), blue = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).b.toInt(), alpha = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).a.toInt()), shape)
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
     if ((paints && (s.background != null))) {
     	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
@@ -3722,10 +2589,12 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
     left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
     if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
 package test.sngl.app
 
@@ -3901,7 +2770,7 @@ body { font-family: system-ui, sans-serif; }
     <img id="$4" alt=""/>
   </span>
   <span data-sngl-slot="1" style="display:contents"></span>
-  <canvas id="$5" style="height:32px;width:32px" height="32" width="32">
+  <canvas id="$5" height="32" width="32">
   </canvas>
   <p style="margin:0px;white-space:pre-wrap"><span>see </span><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="logo" role="img"><img alt="" src="logo.svg"/></span></p>
   <button id="$8">
@@ -4001,7 +2870,7 @@ body { font-family: system-ui, sans-serif; }
     __n3.setAttribute("class", "sngl-image sngl-image-cover");
     __n3.setAttribute("role", "img");
     __n3.setAttribute("aria-label", "");
-    __n3.setAttribute("style", "border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px");
+    __n3.setAttribute("style", "display:inline-block;width:40px;height:40px;border-radius:20px;overflow:hidden");
     __n3.addEventListener("click", () => {
     });
     __n3.addEventListener("error", (__on0_0) => {
@@ -4027,7 +2896,7 @@ body { font-family: system-ui, sans-serif; }
   var __renderAgain1 = false;
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(8, 8, state.radius__inst0, 0, 6.283185307179586);
     ctx.fill();
@@ -4049,7 +2918,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function _canvasDraw2(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { r: 0, g: 170, b: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 170, b: 0, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(8, 8, 6, 0, 6.283185307179586);
     ctx.fill();
@@ -4072,7 +2941,7 @@ body { font-family: system-ui, sans-serif; }
           if (state.failed__inst0 || !state.hasPhoto__inst0) {
             let __n4 = document.createElement("span");
             __n4.textContent = "JD";
-            __n4.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+            __n4.setAttribute("style", "display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;text-align:center;background-color:#cccccc;border-radius:20px");
             __n4.addEventListener("click", () => {
             });
             let __place1_i_ref0 = null;
@@ -4228,12 +3097,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b2d3af31a592a10e5ec0690b1da9d6c1
+pass sha256:e994b993d48fc8292d1dc13102051e8b
 -- run/go/fyne --
-pass sha256:33ecafd655abe58f8dfe8befd0c9d456
+pass sha256:2563620906e743238de6a9528035fb45
 -- run/go/gtk4 --
-pass sha256:ecb65079be19dc17c2e5d0411032de93
+pass sha256:e0e9cec02a8487701e618d9906ba54c9
 -- run/kotlin/android --
-pass sha256:bfd46f40b41af47c0b3648e5eee3b9f7
+pass sha256:761379fe1b51ae99e3c14726abf07952
 -- run/none/html --
-pass sha256:5c1024e805106749a8a5c2ba9a06d0fe
+pass sha256:97f1959499cef0fb2e73b09e6158806f

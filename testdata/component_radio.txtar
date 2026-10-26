@@ -549,7 +549,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<fieldset id="__n3" data-sngl-id="__n3" style="border:none;padding:0px;display:flex;flex-direction:row;gap:8px">
+<fieldset id="__n3" data-sngl-id="__n3" style="border:none;padding:0px;gap:8px;display:flex;flex-direction:row">
   <span data-sngl-slot="0" style="display:contents"></span>
 </fieldset>
 
@@ -611,7 +611,7 @@ window.__sngl_boot = () => {
       __prop___on0 = __v;
     }
     let __n4 = document.createElement("label");
-    __n4.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    __n4.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n0 = document.createElement("input");
     __n0.value = __prop___p0.label;
     __n0.checked = __prop___p0.label === __prop___p1;
@@ -727,9 +727,9 @@ pass sha256:c8ba70cad659e21eb7c1e2a3b8dfdb34
 -- run/kotlin/android --
 pass sha256:036c42aa24b8f3f7cfd2beaa7b48864e
 -- run/none/html --
-pass sha256:009472cf3c04b6560fc230208fd37545
+pass sha256:6574ab461cfe021b8b6272aa9e3064b9
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:932ceb08d93bab242448f10db3a927a0
+sha256:867073adb9107f972d3ff649e667743b
 {
   "results": [
     {

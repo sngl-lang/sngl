@@ -635,7 +635,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:50px;width:50px" height="50" width="50">
+<canvas id="$0" height="50" width="50">
 </canvas>
 <button id="$1">
   <span>grow</span>
@@ -655,7 +655,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(25, 25, state.r, 0, 6.283185307179586);
     ctx.restore();
@@ -732,4 +732,4 @@ pass sha256:c37dd03c41899453fa65c8e44db568f1
 -- run/go/gtk4 --
 pass sha256:ec134875c114389ef8aeb62abebd9ca9
 -- run/none/html --
-pass sha256:523fc3baf813fbbb32f7b4dee3954419
+pass sha256:d8153d2510526fe79a9754b1d26539d5

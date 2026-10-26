@@ -777,7 +777,7 @@ body { font-family: system-ui, sans-serif; }
   <span data-sngl-slot="0" style="display:contents"></span>
   <span>g</span>
   <span>three</span>
-  <canvas id="$4" style="height:10px;width:10px" height="10" width="10">
+  <canvas id="$4" height="10" width="10">
   </canvas>
 </div>
 
@@ -795,7 +795,7 @@ body { font-family: system-ui, sans-serif; }
   var __renderAgain0 = false;
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { r: 255, g: 0, b: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 255, g: 0, b: 0, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(5, 5, 2, 0, 6.283185307179586);
     ctx.fill();
@@ -891,4 +891,4 @@ pass sha256:6f333576195f635b5a09979d30e39a7f
 -- run/kotlin/android --
 pass sha256:8c2fe7311098ab8451e3af4fa1039b34
 -- run/none/html --
-pass sha256:d14c4377d0d751c168cf6178f57c8658
+pass sha256:a6273786f4f14469ef75ec2f9a438a88

@@ -2269,11 +2269,11 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <label style="align-items:center;display:inline-flex;gap:4px" data-sngl-id="box">
+  <label style="gap:4px;display:inline-flex;align-items:center" data-sngl-id="box">
     <input id="__n0" data-sngl-id="__n0" type="checkbox"/>
     <span>a</span>
   </label>
-  <label style="align-items:center;display:inline-flex;gap:8px" data-sngl-id="sw">
+  <label style="gap:8px;display:inline-flex;align-items:center" data-sngl-id="sw">
     <input id="__n1" data-sngl-id="__n1" role="switch" type="checkbox"/>
     <span>b</span>
   </label>
@@ -2395,4 +2395,4 @@ pass sha256:2044893fc0a3548a0f2e4406195fbbd2
 -- run/kotlin/android --
 pass sha256:eea2867c631aab5358a99548274d3950
 -- run/none/html --
-pass sha256:39a7ec5df31369c005bacf45496efdcf
+pass sha256:217da20fc6140dbf04683fc1e5695a69

@@ -137,7 +137,7 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.here__inst0 = Point{Y: 1, X: 7, Tag: "none"}
+	m.here__inst0 = Point{X: 7, Y: 1, Tag: "none"}
 	m.visible__inst0 = true
 	return m
 }
@@ -382,4 +382,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:e998b68adf429292ecb1daf6d1c58c4f
+pass sha256:f2ec232df8dc898b635556cc47d9faac

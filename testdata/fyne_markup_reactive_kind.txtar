@@ -108,7 +108,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.kind = "keyword"
-	m.look = SpanStyle{FontWeight: "bold", Color: snglcolor.Color{}, FontSize: Measurement{Px: 0}, FontStyle: "inherit"}
+	m.look = SpanStyle{Color: snglcolor.Color{}, FontSize: Measurement{Px: 0}, FontWeight: "bold", FontStyle: "inherit"}
 	m.visible__inst0 = true
 	return m
 }
@@ -159,7 +159,7 @@ func (m *Model) __n3_click_handler() {
 	m.kind = "function"
 	m.__n0.SetToken(m.kind)
 	m.__n0.SetColor(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, m.kind))
-	m.look = SpanStyle{FontStyle: "italic", Color: snglcolor.Color{}, FontSize: Measurement{Px: 0}, FontWeight: "inherit"}
+	m.look = SpanStyle{Color: snglcolor.Color{}, FontSize: Measurement{Px: 0}, FontWeight: "inherit", FontStyle: "italic"}
 	m.__n1.SetSpanStyle(m.look.FontWeight, m.look.FontStyle, m.look.FontFamily, m.look.Underline, m.look.Strike, (m.look.FontSize.Px + (14.0 * (m.look.FontSize.Em + m.look.FontSize.Rem))), m.look.Color)
 }
 
@@ -252,4 +252,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:78d5797ac8920a644d03a196b5ba93f7
+pass sha256:6b175c6416cfc806c6ac74f6095cf571

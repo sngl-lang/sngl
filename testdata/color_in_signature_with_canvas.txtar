@@ -160,7 +160,7 @@ fun MainScreen() {
         Column {
             Canvas(modifier = Modifier.size(100.dp, 100.dp)) {
                 if ((bgOf(lit).a > 0)) {
-                    drawRect(color = androidx.compose.ui.graphics.Color(red = bgOf(lit).r.toInt(), green = bgOf(lit).g.toInt(), blue = bgOf(lit).b.toInt(), alpha = bgOf(lit).a.toInt()), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(50.0.toFloat(), 50.0.toFloat()))
+                    drawRect(color = composeOf(bgOf(lit)), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(50.0.toFloat(), 50.0.toFloat()))
                 }
             }
             Button(onClick = {
@@ -178,6 +178,8 @@ fun bgOf(on: Boolean): Color {
     }
     return Color(r = 24, g = 60, b = 52)
 }
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
 package test.sngl.app
 
@@ -328,4 +330,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:26d10339683e9197cf815161c40fac3d
+pass sha256:9930830d7b8e5ddf55e62eeeaa40a34d

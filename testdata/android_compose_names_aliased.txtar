@@ -412,7 +412,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
     var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
     if ((s.zIndex != null)) {
     	m = m.zIndex(s.zIndex!!.toFloat())
@@ -439,7 +439,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var edge = 0.0
     if ((s.borderWidth != null)) {
     	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
-    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).r.toInt(), green = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).g.toInt(), blue = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).b.toInt(), alpha = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).a.toInt()), shape)
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
     if ((paints && (s.background != null))) {
     	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
@@ -449,10 +449,14 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
     left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
     if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglScroll.kt --
 package test.sngl.app
 
@@ -493,4 +497,4 @@ fun SnglScroll(
     Column(modifier.verticalScroll(state).onSizeChanged { height = it.height }, content = content)
 }
 -- run/kotlin/android --
-pass sha256:897d9117fe05395d8a93eb2baba5660e
+pass sha256:68e5c3f958b99416b7519509a75c03e0

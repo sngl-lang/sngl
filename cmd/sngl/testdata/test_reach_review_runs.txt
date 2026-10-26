@@ -1081,7 +1081,7 @@ sha256:d04b573e5c82c360f0b536c7c9cf62d4
   ]
 }
 -- testrun/android/kotlin/deepfire.sngl/main/1 --
-sha256:7a334044c201b7eb30eaaeae11aa5366
+sha256:9d54a00d8d643f9c79eed68d11d7e5bb
 {
   "results": [
     {
@@ -1219,7 +1219,7 @@ sha256:e1f479ac9f6cde9945e9500bc9bde8d0
   ]
 }
 -- testrun/android/kotlin/sitecall.sngl/main/1 --
-sha256:8562a7b8255e2b8ed23be588ab14369c
+sha256:1d3874296313fe0d5ef398d7f9a84e00
 {
   "results": [
     {
@@ -1809,7 +1809,7 @@ sha256:0575f9ad20c10df500c4cfd36e7fe00f
   ]
 }
 -- testrun/html/none/deepfire.sngl/main/1 --
-sha256:2a62dfe14d1ef305c341b0ce22d01e7b
+sha256:534b78981852d2f38167c020c8eb2fed
 {
   "results": [
     {
@@ -1937,7 +1937,7 @@ sha256:b2198fe9e72c59ae1a60c6562bdb8be4
   ]
 }
 -- testrun/html/none/sitecall.sngl/main/1 --
-sha256:8b95f78a4c461f85e4596b0cd437b7b4
+sha256:104f5a016c234c39e210ea0aa38a8c27
 {
   "results": [
     {

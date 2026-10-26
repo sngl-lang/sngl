@@ -1005,11 +1005,11 @@ fun MainScreen() {
     val a__inst0 = remember { mutableStateListOf(1, 2) }
     val b__inst0 = remember { mutableStateListOf<Int>() }
     var p__inst0 by remember { mutableStateOf(Row(n = 1, items = listOf(1))) }
-    var q__inst0 by remember { mutableStateOf(Row(items = listOf<Int>())) }
-    var t__inst0 by remember { mutableStateOf(Tree(label = "a", kids = listOf(Tree(label = "b", kids = listOf<Tree>())))) }
-    var u__inst0 by remember { mutableStateOf(Tree(label = "x", kids = listOf<Tree>())) }
-    var m__inst0 by remember { mutableStateOf(mapOf("a" to Row(n = 1, items = listOf<Int>()))) }
-    var mm__inst0 by remember { mutableStateOf(mapOf("b" to Row(items = listOf<Int>()))) }
+    var q__inst0 by remember { mutableStateOf(Row()) }
+    var t__inst0 by remember { mutableStateOf(Tree(label = "a", kids = listOf(Tree(label = "b")))) }
+    var u__inst0 by remember { mutableStateOf(Tree(label = "x")) }
+    var m__inst0 by remember { mutableStateOf(mapOf("a" to Row(n = 1))) }
+    var mm__inst0 by remember { mutableStateOf(mapOf("b" to Row())) }
     var out__inst0 by remember { mutableStateOf("") }
     var visible__inst0 by remember { mutableStateOf(true) }
 
@@ -1057,15 +1057,15 @@ fun MainScreen() {
 
     fun tree__inst0() {
         u__inst0 = run { fun _copy1(_s2: Tree): Tree { return _s2.copy(kids = _s2.kids.map { _e3 -> _copy1(_e3) }.toMutableList()) }; _copy1(t__inst0) }
-        t__inst0 = t__inst0.copy(kids = t__inst0.kids.toMutableList().also { it.add(Tree(label = "c", kids = listOf<Tree>())) })
+        t__inst0 = t__inst0.copy(kids = t__inst0.kids.toMutableList().also { it.add(Tree(label = "c")) })
         out__inst0 = ((u__inst0.kids.size.toString() + " ") + t__inst0.kids.size.toString())
     }
 
 
     fun maps__inst0() {
         mm__inst0 = m__inst0.mapValues { _e1 -> _e1.value.let { _s2 -> _s2.copy(items = _s2.items.toMutableList()) } }.toMutableMap()
-        m__inst0 = m__inst0 + ("a" to Row(n = 7, items = listOf<Int>()))
-        out__inst0 = mm__inst0.getOrDefault("a", Row(items = listOf<Int>())).n.toString()
+        m__inst0 = m__inst0 + ("a" to Row(n = 7))
+        out__inst0 = mm__inst0.getOrDefault("a", Row()).n.toString()
     }
 
 
@@ -1146,7 +1146,7 @@ fun Row.grow() {
 
 fun replaced(r: Row): Int {
     var r__own = r
-    r__own = Row(n = 9, items = listOf<Int>())
+    r__own = Row(n = 9)
     return r__own.n
 }
 
@@ -1341,6 +1341,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4f7bcfd11f923de02d5fec1ced6c3a2a
 -- run/kotlin/android --
-pass sha256:3394fa04c31b37f21b3186794ff5d3a8
+pass sha256:c30d42256659395cb84391141a604dcb
 -- run/none/html --
 pass sha256:73de198f7ca2b6785969bb52967a94a4

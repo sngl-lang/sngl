@@ -2628,8 +2628,8 @@ data class PetDetail(
     var adoptionFee: Int? = null,
     var age: Int? = null,
     var isAvailable: Boolean? = null,
-    var breed: PetBreedSummary = PetBreedSummary(name = "", url = ""),
-    var photos: PetPhotos = PetPhotos(thumbnailUrl = null),
+    var breed: PetBreedSummary = PetBreedSummary(),
+    var photos: PetPhotos = PetPhotos(),
     var measurements: List<PetMeasurement> = listOf(),
     var tags: List<PetTag> = listOf()
 )
@@ -2641,7 +2641,7 @@ data class PetPhotos(
 data class PetMeasurement(
     var baseValue: Int = 0,
     var margin: Int = 0,
-    var measure: MeasureSummary = MeasureSummary(name = "", url = "")
+    var measure: MeasureSummary = MeasureSummary()
 )
 
 data class MeasureSummary(
@@ -2651,7 +2651,7 @@ data class MeasureSummary(
 
 data class PetTag(
     var slot: Int = 0,
-    var type: TagSummary = TagSummary(name = "", url = "")
+    var type: TagSummary = TagSummary()
 )
 
 data class TagSummary(
@@ -2901,7 +2901,7 @@ suspend fun petListCall(limit: Int?, offset: Int?, __ctx_server: String): SnglRe
     		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("count", SnglCodec.of(SnglCodec.INT)), SnglCodecField("next", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("previous", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING))), SnglCodecField("results", SnglCodec.of(SnglCodec.LIST, c1))); c0.make = { a -> PaginatedPetSummaryList(count = a[0] as Int, next = a[1] as String?, previous = a[2] as String?, results = a[3] as List<PetSummary>) }; c0.read = { v -> (v as PaginatedPetSummaryList).let { listOf<Any?>(it.count, it.next, it.previous, it.results) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PaginatedPetSummaryList.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PaginatedPetSummaryList.Ok((__r.value as PaginatedPetSummaryList)) }
     	}
     }
-    return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList(results = listOf<PetSummary>()))
+    return SnglResult__PaginatedPetSummaryList.Ok(PaginatedPetSummaryList())
 }
 
 suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDetail {
@@ -2916,7 +2916,7 @@ suspend fun petRetrieveCall(id: String, __ctx_server: String): SnglResult__PetDe
     		return run { val __r = SnglCodec.decode(r.body, run { val c0 = SnglCodec(SnglCodec.STRUCT); val c1 = SnglCodec(SnglCodec.STRUCT); val c2 = SnglCodec(SnglCodec.STRUCT); val c3 = SnglCodec(SnglCodec.STRUCT); val c4 = SnglCodec(SnglCodec.STRUCT); val c5 = SnglCodec(SnglCodec.STRUCT); val c6 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("id", SnglCodec.of(SnglCodec.INT)), SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("adoption_fee", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("age", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("is_available", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.BOOL))), SnglCodecField("breed", c1), SnglCodecField("photos", c2), SnglCodecField("measurements", SnglCodec.of(SnglCodec.LIST, c3)), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, c5))); c0.make = { a -> PetDetail(id = a[0] as Int, name = a[1] as String, adoptionFee = a[2] as Int?, age = a[3] as Int?, isAvailable = a[4] as Boolean?, breed = a[5] as PetBreedSummary, photos = a[6] as PetPhotos, measurements = a[7] as List<PetMeasurement>, tags = a[8] as List<PetTag>) }; c0.read = { v -> (v as PetDetail).let { listOf<Any?>(it.id, it.name, it.adoptionFee, it.age, it.isAvailable, it.breed, it.photos, it.measurements, it.tags) } }; c1.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c1.make = { a -> PetBreedSummary(name = a[0] as String, url = a[1] as String) }; c1.read = { v -> (v as PetBreedSummary).let { listOf<Any?>(it.name, it.url) } }; c2.fields = listOf(SnglCodecField("thumbnail_url", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.STRING)))); c2.make = { a -> PetPhotos(thumbnailUrl = a[0] as String?) }; c2.read = { v -> (v as PetPhotos).let { listOf<Any?>(it.thumbnailUrl) } }; c3.fields = listOf(SnglCodecField("base_value", SnglCodec.of(SnglCodec.INT)), SnglCodecField("margin", SnglCodec.of(SnglCodec.INT)), SnglCodecField("measure", c4)); c3.make = { a -> PetMeasurement(baseValue = a[0] as Int, margin = a[1] as Int, measure = a[2] as MeasureSummary) }; c3.read = { v -> (v as PetMeasurement).let { listOf<Any?>(it.baseValue, it.margin, it.measure) } }; c4.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c4.make = { a -> MeasureSummary(name = a[0] as String, url = a[1] as String) }; c4.read = { v -> (v as MeasureSummary).let { listOf<Any?>(it.name, it.url) } }; c5.fields = listOf(SnglCodecField("slot", SnglCodec.of(SnglCodec.INT)), SnglCodecField("type", c6)); c5.make = { a -> PetTag(slot = a[0] as Int, type = a[1] as TagSummary) }; c5.read = { v -> (v as PetTag).let { listOf<Any?>(it.slot, it.type) } }; c6.fields = listOf(SnglCodecField("name", SnglCodec.of(SnglCodec.STRING)), SnglCodecField("url", SnglCodec.of(SnglCodec.STRING))); c6.make = { a -> TagSummary(name = a[0] as String, url = a[1] as String) }; c6.read = { v -> (v as TagSummary).let { listOf<Any?>(it.name, it.url) } }; c0 }); if (__r.error != null) SnglResult__PetDetail.Failed(Failure(kind = SnglFailureKind.DECODE, message = __r.error!!)) else SnglResult__PetDetail.Ok((__r.value as PetDetail)) }
     	}
     }
-    return SnglResult__PetDetail.Ok(PetDetail(measurements = listOf<PetMeasurement>(), tags = listOf<PetTag>()))
+    return SnglResult__PetDetail.Ok(PetDetail())
 }
 
 fun Response.checked(): SnglResult__Response {
@@ -3587,7 +3587,7 @@ body { font-family: system-ui, sans-serif; }
     let __n3 = document.createElement("span");
     __n3.setAttribute("class", "sngl-badge");
     __n3.textContent = __prop___p0.type.name;
-    __n3.setAttribute("style", "padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px;border-radius:12px;display:inline-block");
+    __n3.setAttribute("style", "padding-top:2px;padding-right:8px;padding-bottom:2px;padding-left:8px;display:inline-block;border-radius:12px");
     __root.appendChild(__n3);
     return {
       __root,
@@ -3793,7 +3793,7 @@ body { font-family: system-ui, sans-serif; }
           __slot1 = [];
           if (state.loading__inst0) {
             let __n7 = document.createElement("span");
-            __n7.setAttribute("style", "align-items:center;display:inline-flex;gap:8px");
+            __n7.setAttribute("style", "gap:8px;display:inline-flex;align-items:center");
             let __n8 = document.createElement("span");
             __n8.setAttribute("class", "sngl-spinner");
             __n7.appendChild(__n8);
@@ -4391,6 +4391,6 @@ pass sha256:c246345c1e75e6ffd82b3d0d843078d2
 -- run/go/gtk4 --
 pass sha256:ac4c7e3f6341afa3b108fab7930bc6c8
 -- run/kotlin/android --
-pass sha256:cbeef96b21ba5e702ffcb70d7da9abfd
+pass sha256:722da441572e44be3df5fc00f30b9460
 -- run/none/html --
-pass sha256:b9d04dc160c3e7cfe7db1965c226b677
+pass sha256:c6da311f018f1d8306dc1ca7f526b4aa

@@ -544,7 +544,7 @@ func (m Model) View() tea.View {
 		var content_0 string
 		content_0 = ""
 		content_0 += lipgloss.NewStyle().Bold(true).Render(fmt.Sprint("Title"))
-		content_0 = BoxLook(Style{FontSize: snglSome(Measurement{Px: 32}), FontWeight: "bold", FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_0)
+		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: 32}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_0)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = ""
@@ -562,7 +562,7 @@ func (m Model) View() tea.View {
 		content_3 += lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Render(fmt.Sprint("func"))
 		content_3 += fmt.Sprint(" ")
 		content_3 += lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Render(fmt.Sprint("main"))
-		content_3 = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_3)
+		content_3 = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_3)
 		contentChildren = append(contentChildren, content_3)
 		var content_4 string
 		content_4 = ""
@@ -584,12 +584,12 @@ func (m Model) View() tea.View {
 		var content_7 string
 		content_7 = ""
 		content_7 += lipgloss.NewStyle().Italic(true).Render(fmt.Sprint("quoted"))
-		content_7 = BoxLook(Style{FontStyle: "italic", PaddingLeft: snglSome(Measurement{Px: 12}), BorderLeft: "3px solid #CCCCCC", FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_7)
+		content_7 = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderLeft: "3px solid #CCCCCC", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_7)
 		contentChildren = append(contentChildren, content_7)
 		var content_8 string
 		content_8 = ""
 		content_8 += lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Render(fmt.Sprint("a caption"))
-		content_8 = BoxLook(Style{FontSize: snglSome(Measurement{Px: 13}), Color: snglSome(snglcolor.Color{R: 102, G: 102, B: 102, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_8)
+		content_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 102, G: 102, B: 102, A: 255}), FontSize: snglSome(Measurement{Px: 13}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_8)
 		contentChildren = append(contentChildren, content_8)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
@@ -797,7 +797,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n24.Add(m.__n27)
 	m.__n0.Add(m.__n24)
 	m.__n28 = fynetext.NewFlow()
-	m.__n29 = fynetext.NewSpan(fynetext.Style().WithRGBA(51, 102, 153, 255).WithSize(20).WithBold())
+	m.__n29 = fynetext.NewSpan(fynetext.Style().WithRGBA(51, 102, 153, 0).WithSize(20).WithBold())
 	m.__n30 = fynetext.NewSpan(fynetext.Style())
 	m.__n30.SetText("a styled run")
 	m.__n29.Add(m.__n30)
@@ -987,7 +987,7 @@ func Handler() http.Handler {
 
 func handleHome(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from doc.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>doc</title>\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <h1 style=\"margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap\"><span>Title</span></h1>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>a &lt; b &amp; &#34;c&#34;  two spaces\nand a newline</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><code><a href=\"https://example.com/?a=1&amp;b=2\"><span>mono link</span></a></code><a href=\"https://example.com/\"><code><span>link mono</span></code></a></p>\n  <pre class=\"sngl-code\" style=\"margin:0px;white-space:pre-wrap\"><code><span class=\"sngl-tok-keyword\"><span>func</span></span><span> </span><span class=\"sngl-tok-function\"><span>main</span></span></code></pre>\n  <p style=\"margin:0px;white-space:pre-wrap\"><u><s><em><span>all three</span></em></s></u></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>before </span><span class=\"sngl-image sngl-image-contain\" style=\"display:inline-block;overflow:hidden\" aria-label=\"an &#34;icon&#34; &amp; more\" role=\"img\"><img alt=\"\" src=\"/icon.png\"/></span><span> after</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span style=\"color:#336699;font-size:20px;font-weight:bold\"><span>a styled run</span></span></p>\n  <blockquote style=\"margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC\"><span>quoted</span></blockquote>\n  <figcaption style=\"margin:0px;color:#666666;font-size:13px;white-space:pre-wrap\"><span>a caption</span></figcaption>\n</div>\n<style>\n:where(.sngl-code) { padding:12px;background-color:#f5f5f5;color:#1f2328;border-radius:4px }\n@media (prefers-color-scheme: dark) { :where(.sngl-code) { background-color:#161b22;color:#e6edf3 } }\n:where(.sngl-tok-keyword) { color:#cf222e }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }\n:where(.sngl-tok-function) { color:#8250df }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-function) { color:#d2a8ff } }\n.sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }\n.sngl-image-cover img { object-fit: cover; }\n.sngl-image-fill img { object-fit: fill; }\n.sngl-image-none img { object-fit: none; }\n.sngl-image-scaleDown img { object-fit: scale-down; }\n</style>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { visible__inst0: true };\n})();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from doc.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>doc</title>\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <h1 style=\"margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap\"><span>Title</span></h1>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>a &lt; b &amp; &#34;c&#34;  two spaces\nand a newline</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><code><a href=\"https://example.com/?a=1&amp;b=2\"><span>mono link</span></a></code><a href=\"https://example.com/\"><code><span>link mono</span></code></a></p>\n  <pre class=\"sngl-code\" style=\"margin:0px;white-space:pre-wrap\"><code><span class=\"sngl-tok-keyword\"><span>func</span></span><span> </span><span class=\"sngl-tok-function\"><span>main</span></span></code></pre>\n  <p style=\"margin:0px;white-space:pre-wrap\"><u><s><em><span>all three</span></em></s></u></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>before </span><span class=\"sngl-image sngl-image-contain\" style=\"display:inline-block;overflow:hidden\" aria-label=\"an &#34;icon&#34; &amp; more\" role=\"img\"><img alt=\"\" src=\"/icon.png\"/></span><span> after</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span style=\"color:#336699;font-size:20px;font-weight:bold\"><span>a styled run</span></span></p>\n  <blockquote style=\"margin:0px;padding-left:12px;font-style:italic;white-space:pre-wrap;border-left:3px solid #CCCCCC\"><span>quoted</span></blockquote>\n  <figcaption style=\"margin:0px;color:#666666;font-size:13px;white-space:pre-wrap\"><span>a caption</span></figcaption>\n</div>\n<style>\n:where(.sngl-code) { padding:12px;color:#1f2328;background-color:#f5f5f5;border-radius:4px }\n@media (prefers-color-scheme: dark) { :where(.sngl-code) { color:#e6edf3;background-color:#161b22 } }\n:where(.sngl-tok-keyword) { color:#cf222e }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }\n:where(.sngl-tok-function) { color:#8250df }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-function) { color:#d2a8ff } }\n.sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }\n.sngl-image-cover img { object-fit: cover; }\n.sngl-image-fill img { object-fit: fill; }\n.sngl-image-none img { object-fit: none; }\n.sngl-image-scaleDown img { object-fit: scale-down; }\n</style>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { visible__inst0: true };\n})();\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -1020,6 +1020,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
@@ -1273,7 +1274,7 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Text(text = buildAnnotatedString {
                 append("Title")
-            }, modifier = styleModifier(Style(fontSize = Measurement(px = 32.0), fontWeight = SnglFontWeight.BOLD), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit(32.0f, TextUnitType.Sp), fontWeight = FontWeight.Bold, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            }, modifier = flexed(styleModifier(Style(fontSize = Measurement(px = 32.0), fontWeight = SnglFontWeight.BOLD), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit(32.0f, TextUnitType.Sp), fontWeight = FontWeight.Bold, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
             Text(text = buildAnnotatedString {
                 append("a < b & \"c\"  two spaces\nand a newline")
             }, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -1303,7 +1304,7 @@ fun MainScreen() {
                         append("main")
                     }
                 }
-            }, modifier = styleModifier(Style(padding = Measurement(px = 12.0), background = Color(r = 245, g = 245, b = 245), borderRadius = Measurement(px = 4.0)), true), style = LocalTextStyle.current.merge(TextStyle.Default))
+            }, modifier = modifierOf(Style(padding = Measurement(px = 12.0), background = Color(r = 245, g = 245, b = 245), borderRadius = Measurement(px = 4.0)), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             Text(text = buildAnnotatedString {
                 withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
                     withStyle(SpanStyle(textDecoration = TextDecoration.combine(listOf(TextDecoration.Underline, TextDecoration.LineThrough)))) {
@@ -1325,13 +1326,17 @@ fun MainScreen() {
             }, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Text(text = buildAnnotatedString {
                 append("quoted")
-            }, modifier = styleModifier(Style(fontStyle = SnglFontStyle.ITALIC, paddingLeft = Measurement(px = 12.0), borderLeft = "3px solid #CCCCCC"), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = FontStyle.Italic, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            }, modifier = flexed(styleModifier(Style(paddingLeft = Measurement(px = 12.0), fontStyle = SnglFontStyle.ITALIC, borderLeft = "3px solid #CCCCCC"), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = FontStyle.Italic, fontFamily = null, textAlign = TextAlign.Unspecified)))
             Text(text = buildAnnotatedString {
                 append("a caption")
-            }, modifier = styleModifier(Style(fontSize = Measurement(px = 13.0), color = Color(r = 102, g = 102, b = 102)), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color(red = 102, green = 102, blue = 102, alpha = 255), fontSize = TextUnit(13.0f, TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            }, modifier = modifierOf(Style(color = Color(r = 102, g = 102, b = 102), fontSize = Measurement(px = 13.0)), { w: Float -> Modifier.weight(w).fillMaxWidth() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color(red = 102, green = 102, blue = 102, alpha = 255), fontSize = TextUnit(13.0f, TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
         }
     }
 }
+
+fun modifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, share)
+
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
@@ -1340,7 +1345,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
     var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
     if ((s.zIndex != null)) {
     	m = m.zIndex(s.zIndex!!.toFloat())
@@ -1367,7 +1372,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var edge = 0.0
     if ((s.borderWidth != null)) {
     	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
-    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).r.toInt(), green = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).g.toInt(), blue = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).b.toInt(), alpha = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).a.toInt()), shape)
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
     if ((paints && (s.background != null))) {
     	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
@@ -1377,10 +1382,14 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
     left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
     if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from doc.sngl; DO NOT EDIT. -->
 
@@ -1404,12 +1413,12 @@ and a newline</span></p>
   <p style="margin:0px;white-space:pre-wrap"><u><s><em><span>all three</span></em></s></u></p>
   <p style="margin:0px;white-space:pre-wrap"><span>before </span><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="an &#34;icon&#34; &amp; more" role="img"><img alt="" src="/icon.png"/></span><span> after</span></p>
   <p style="margin:0px;white-space:pre-wrap"><span style="color:#336699;font-size:20px;font-weight:bold"><span>a styled run</span></span></p>
-  <blockquote style="margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>quoted</span></blockquote>
+  <blockquote style="margin:0px;padding-left:12px;font-style:italic;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>quoted</span></blockquote>
   <figcaption style="margin:0px;color:#666666;font-size:13px;white-space:pre-wrap"><span>a caption</span></figcaption>
 </div>
 <style>
-:where(.sngl-code) { padding:12px;background-color:#f5f5f5;color:#1f2328;border-radius:4px }
-@media (prefers-color-scheme: dark) { :where(.sngl-code) { background-color:#161b22;color:#e6edf3 } }
+:where(.sngl-code) { padding:12px;color:#1f2328;background-color:#f5f5f5;border-radius:4px }
+@media (prefers-color-scheme: dark) { :where(.sngl-code) { color:#e6edf3;background-color:#161b22 } }
 :where(.sngl-tok-keyword) { color:#cf222e }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }
 :where(.sngl-tok-function) { color:#8250df }
@@ -1429,14 +1438,14 @@ and a newline</span></p>
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:910ab73056f5f731e1c36a46da3d2bf9
+pass sha256:2be836d14ab1dacaa84ee4e267f9b9ed
 -- run/go/fyne --
-pass sha256:42906746574b07a1b44467137fbaf413
+pass sha256:df897aaadae788893c50d9ac94ca8e8a
 -- run/go/gtk4 --
 pass sha256:52536ea0d73496d2c2e746de60b37ef2
 -- run/go/html --
-pass sha256:1b2d88cb8a71a29e3371b26b4a86590d
+pass sha256:328880014bc8c516d6a37bd4a84e3643
 -- run/kotlin/android --
-pass sha256:fa8b10088e6274fe4494da29b05806a9
+pass sha256:1800b5985ed326f776e3a7891cdb6748
 -- run/none/html --
-pass sha256:48d99edc4bcfead426981cc87c74876b
+pass sha256:18ef5d5bae918458a24816ee8d1339fd

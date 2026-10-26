@@ -483,7 +483,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<nav style="display:flex;gap:4px" role="menubar">
+<nav style="gap:4px;display:flex" role="menubar">
   <button id="$1" role="menuitem">File</button>
   <button id="$2" role="menuitem">Edit</button>
   <button id="$3" role="menuitem">View</button>
@@ -525,4 +525,4 @@ pass sha256:90891e6eb1c4a22a5f4f758933065f0e
 -- run/kotlin/android --
 pass sha256:88e470a365b056c5f1ff6ced0c8aef59
 -- run/none/html --
-pass sha256:cbd191691bd5be366d001da4788660f5
+pass sha256:f0091a483d4218b0fd7218e4a372fe2d

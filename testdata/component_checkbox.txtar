@@ -636,7 +636,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<label style="align-items:center;display:inline-flex;gap:4px">
+<label style="gap:4px;display:inline-flex;align-items:center">
   <input id="__n0" data-sngl-id="__n0" type="checkbox"/>
   <span>Enable</span>
 </label>
@@ -685,9 +685,9 @@ pass sha256:02fe8b3d1870c6ee5a68279c498d1679
 -- run/kotlin/android --
 pass sha256:b4a2edfd47001933c845a49ce0e16650
 -- run/none/html --
-pass sha256:27c9e2fe7bbadf5619a97dcc833aac6c
+pass sha256:52f40c07d37d92437d79b92b61e94b15
 -- testrun/html/none/component_checkbox.sngl/main/1 --
-sha256:98cbeb4bc2c89f658ec22bc6fa24d161
+sha256:b4df760ca5ed8597f12e51b00459cfe5
 {
   "results": [
     {

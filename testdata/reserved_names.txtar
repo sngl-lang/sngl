@@ -459,56 +459,48 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt27 int
-		if RowsOf(s.MaxHeight) == 0 {
-			var __lt23 int
-			if s.MaxLines == nil {
-				__lt23 = 0
-			} else {
-				__lt23 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
-			}
-			__lt27 = __lt23
+		var __lt23 int
+		if s.MaxLines == nil {
+			__lt23 = 0
 		} else {
-			var __lt24 int
-			if s.MaxLines == nil {
-				__lt24 = 0
-			} else {
-				__lt24 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
-			}
-			var __lt26 int
-			if __lt24 == 0 {
-				__lt26 = RowsOf(s.MaxHeight)
-			} else {
-				var __lt25 int
-				if s.MaxLines == nil {
-					__lt25 = 0
-				} else {
-					__lt25 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
-				}
-				__lt26 = min(RowsOf(s.MaxHeight), __lt25)
-			}
-			__lt27 = __lt26
+			__lt23 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(__lt27)
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt23))
 	}
 	return l
 }
 
 func CellsOf(m__r3 *Measurement) int {
-	var __lt28 float64
+	var __lt24 float64
 	if m__r3 == nil {
-		__lt28 = 0.0
+		__lt24 = 0.0
 	} else {
-		__lt28 = ((*(m__r3)).Px + (16.0 * ((*(m__r3)).Em + (*(m__r3)).Rem)))
+		__lt24 = ((*(m__r3)).Px + (16.0 * ((*(m__r3)).Em + (*(m__r3)).Rem)))
 	}
-	var px float64 = __lt28
-	var __lt29 int
+	var px float64 = __lt24
+	var __lt25 int
 	if px <= 0.0 {
-		__lt29 = 0
+		__lt25 = 0
 	} else {
-		__lt29 = max(1, (int(px) / 8))
+		__lt25 = max(1, (int(px) / 8))
 	}
-	return __lt29
+	return __lt25
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt27 int
+	if height__r0 == 0 {
+		__lt27 = lines
+	} else {
+		var __lt26 int
+		if lines == 0 {
+			__lt26 = height__r0
+		} else {
+			__lt26 = min(height__r0, lines)
+		}
+		__lt27 = __lt26
+	}
+	return __lt27
 }
 
 func (m *Model) __effect0_enter() {
@@ -1871,7 +1863,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:329e709e729bcd638ae8c82e6f7a3752
+pass sha256:7f695a460db330ea2f69cdc964e21e2c
 -- run/go/fyne --
 pass sha256:26865ea3f1d3d0a163f719a18333ecdf
 -- run/go/gtk4 --

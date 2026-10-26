@@ -45,8 +45,8 @@ stdout '"name":"load"'
 exec sh -c '(echo "["; echo "{\"name\":\"load\",\"instance\":\"4\",\"button\":1,\"relative_x\":1,\"relative_y\":1}"; sleep 1) | ./fyne/bar'
 stdout '"name":"load"'
 -- testrun/build/fyne/go/i3blocks/bar.sngl/1 --
-sha256:1cf31bea04c584f02e5957db1a0d6b81
+sha256:81ddd53fdcf32933f4f6fed17016af81
 {}
 -- testrun/build/gtk4/go/i3blocks/bar.sngl/1 --
-sha256:c9e5433ebf24d62f67e2b71b8ea197a5
+sha256:e3fcd991308eef6eb000ef6967b79465
 {}

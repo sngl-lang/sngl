@@ -1703,7 +1703,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <canvas id="$1" style="height:40px;width:40px" height="40" width="40">
+  <canvas id="$1" height="40" width="40">
   </canvas>
 </div>
 
@@ -1742,7 +1742,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { r: 51, g: 102, b: 255, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 51, g: 102, b: 255, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(20, 20, parseFloat(state.frame), 0, 6.283185307179586);
     ctx.fill();
@@ -1881,4 +1881,4 @@ pass sha256:f6cb420ff4a926a9aaf732cb11622e1d
 -- run/kotlin/android --
 pass sha256:5459bef561305365aa6beaa55b16ba81
 -- run/none/html --
-pass sha256:c0734e24e4c62eb54ec0d72b6bc15710
+pass sha256:79e8ecd80000ed2b457f6767df8775b3

@@ -208,7 +208,7 @@ func (m *Model) __n4_click_handler() {
 func (m *Model) __n4_load_handler() {
 }
 
-func (m *Model) __n4_failed_handler(m__r0 string) {
+func (m *Model) __n4_failed_handler(m__r1 string) {
 }
 
 func (m *Model) __n5_click_handler() {
@@ -217,7 +217,7 @@ func (m *Model) __n5_click_handler() {
 func (m *Model) __n5_load_handler() {
 }
 
-func (m *Model) __n5_failed_handler(m__r0 string) {
+func (m *Model) __n5_failed_handler(m__r1 string) {
 }
 
 func (m *Model) __n6_clicked_handler() {
@@ -303,4 +303,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:52187455e4d7c8374e7561bea72fb8bc
+pass sha256:98e7f2f93f92c6dac0684c2def1b6798

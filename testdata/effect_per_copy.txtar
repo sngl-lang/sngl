@@ -1317,7 +1317,7 @@ fun MainScreen() {
                 Text(text = "same", modifier = Modifier)
             }
             Button(onClick = {
-                xs__inst0.add(Row(items = listOf<Int>()))
+                xs__inst0.add(Row())
                 __effects0_settle()
             }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "push", modifier = Modifier)
@@ -1495,6 +1495,6 @@ pass sha256:3ece6e39cda20d99385c8d7044a513e3
 -- run/go/gtk4 --
 pass sha256:e9ca5713d47d58bd13c3edfb5f09648a
 -- run/kotlin/android --
-pass sha256:0172305e66ebae4fe33e2d8514d1d4a6
+pass sha256:cb8d1011914cec90115882ec84040b60
 -- run/none/html --
 pass sha256:98f4b29ea97008e012cbe3593bcc86b0

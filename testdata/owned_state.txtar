@@ -446,7 +446,7 @@ func (m *Model) __effects0_settle() {
 					if m.__effect2_dirty {
 						m.__effect2_dirty = false
 						if !m.__effect2_absent {
-							m.__effect2_key = __anon_extra_n_d477fc{N: m.n, Extra: m.extra__inst0}
+							m.__effect2_key = __anon_extra_n_d477fc{Extra: m.extra__inst0, N: m.n}
 							m.__effect2_update()
 						}
 					}
@@ -983,7 +983,7 @@ func (c *HolderInstance) __effects0_settle() {
 				c.__effects0_steps = (c.__effects0_steps + 1)
 				if c.__effect1_dirty {
 					c.__effect1_dirty = false
-					c.__effect1_key = __anon_extra_n_d477fc{N: c.__prop_n, Extra: c.extra}
+					c.__effect1_key = __anon_extra_n_d477fc{Extra: c.extra, N: c.__prop_n}
 					c.__effect1_update()
 				}
 				c.__effect0_down()
@@ -1275,7 +1275,7 @@ func (c *HolderInstance) __effects0_settle() {
 				c.__effects0_steps = (c.__effects0_steps + 1)
 				if c.__effect1_dirty {
 					c.__effect1_dirty = false
-					c.__effect1_key = __anon_extra_n_d477fc{N: c.__prop_n, Extra: c.extra}
+					c.__effect1_key = __anon_extra_n_d477fc{Extra: c.extra, N: c.__prop_n}
 					c.__effect1_update()
 				}
 				c.__effect0_down()
@@ -1475,7 +1475,7 @@ fun Holder(n: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier)
         			__effects0_steps = (__effects0_steps + 1)
         			if (__effect1_dirty) {
         				__effect1_dirty = false
-        				__effect1_key = __anon_extra_n_d477fc(n = n, extra = extra)
+        				__effect1_key = __anon_extra_n_d477fc(extra = extra, n = n)
         				__effect1_update()
         			}
         		}
@@ -1620,7 +1620,7 @@ body { font-family: system-ui, sans-serif; }
             __effects0_steps = __effects0_steps + 1;
             if (__effect1_dirty) {
               __effect1_dirty = false;
-              __effect1_key = { n: __prop_n, extra };
+              __effect1_key = { extra, n: __prop_n };
               __effect1_update();
             }
             __effect0_down();
@@ -1759,12 +1759,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3ab9f157b7c7ec14da77021acce0279f
+pass sha256:3fef33ccee8ec851ba186b7a3ac5eda4
 -- run/go/fyne --
-pass sha256:1162e61f1b85633b4ebe759cffd949d0
+pass sha256:962b7a5583c1b178c45b67b75c9d7fc2
 -- run/go/gtk4 --
-pass sha256:fde2cd98437a82ba450bc88587a7cd88
+pass sha256:c2f6a609940effe5da7e5b8cb5169fbf
 -- run/kotlin/android --
-pass sha256:91c1b3cafa976f1262e6d6efe39dd334
+pass sha256:d2fa761a83a5394a856f24a27590c70c
 -- run/none/html --
-pass sha256:60dcc673f4e9608d371f45ee7da24f82
+pass sha256:10774ee2deafa334138b16d2816d7d64

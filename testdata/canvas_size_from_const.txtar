@@ -34,7 +34,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:60px;width:400px" height="60" width="400">
+<canvas id="$0" height="60" width="400">
 </canvas>
 
 <script>
@@ -91,4 +91,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a04541d66989edc1e13d0ce465007c44
+pass sha256:43a0614787a86b2a321480f06e3df8bf

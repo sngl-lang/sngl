@@ -470,7 +470,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			__rel2 := File{Fd: m.fd__inst0}
+			__rel0 := File{Fd: m.fd__inst0}
 			func() {
 				defer func() {
 					__r := recover()
@@ -482,13 +482,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						panic(__r)
 					}
 					_ = e
-					__rel1 := File{Fd: (m.n__inst0 + 1)}
-					m.caught__inst0 = (__rel1.Fd * 10)
-					Close__r0(__rel1)
+					m.caught__inst0 = ((m.n__inst0 + 1) * 10)
 				}()
-				Check(__rel2)
+				Check(__rel0)
 			}()
-			Close__r0(__rel2)
+			Close__r0(__rel0)
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
 				defer func() {
@@ -501,11 +499,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						panic(__r)
 					}
 					_ = e
-					__rel0 := File{Fd: m.n__inst0}
-					m.problem__inst0 = (__rel0.Fd * 10)
-					Close__r0(__rel0)
+					m.problem__inst0 = (m.n__inst0 * 10)
 				}()
-				__rel3 := File{Fd: m.fd__inst0}
+				__rel1 := File{Fd: m.fd__inst0}
 				func() {
 					defer func() {
 						__r := recover()
@@ -517,12 +513,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							panic(__r)
 						}
 						_ = __relErr
-						Close__r0(__rel3)
+						Close__r0(__rel1)
 						panic(ErrorEvent{Message: __relErr.Message, Kind: __relErr.Kind})
 					}()
-					Check(__rel3)
+					Check(__rel1)
 				}()
-				Close__r0(__rel3)
+				Close__r0(__rel1)
 			}()
 		}
 	}
@@ -568,4 +564,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:5931265b130daaca46c2621eb0185c4c
+pass sha256:6cfbcd464a165c07cb616cd44607092d

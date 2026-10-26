@@ -711,7 +711,7 @@ body { font-family: system-ui, sans-serif; }
     }
     function _canvasDraw0(ctx) {
       ctx.save();
-      paintStyle(ctx, { fill: { r: 255, a: 255, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+      paintStyle(ctx, { fill: { r: 255, g: 0, b: 0, a: 255 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
       ctx.beginPath();
       ctx.arc(8, 8, big ? __prop_r * 2 : __prop_r, 0, 6.283185307179586);
       ctx.fill();
@@ -853,4 +853,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:8232bb241bf54a9559032155295dfa9e
 -- run/none/html --
-pass sha256:09aed8a4bbaab700a6aee78f4a177cde
+pass sha256:afde9768c28358bbc2db5d06bacbbc00

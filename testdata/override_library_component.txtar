@@ -142,16 +142,6 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func GrowOf(flex *float64) float64 {
-	var __lt0 float64
-	if flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
-	}
-	return __lt0
-}
-
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
 	var __lt2 int
@@ -388,131 +378,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		contentLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
-		_, contentH := tui.Inner(contentLook, tui.Avail(m.width), m.height)
-		var contentChildren []tui.Part
-		var __lt13 *Measurement
-		var __lt14 *Measurement
-		var __lt15 *Measurement
-		var __lt16 *Measurement
-		var __lt17 *Measurement
-		var __lt18 *Measurement
-		var __lt19 *Measurement
-		var __lt20 *Measurement
-		var __lt21 *Measurement
-		var __lt22 *Measurement
-		var __lt23 *Measurement
-		var __lt24 *Measurement
-		var __lt25 *Measurement
-		var __lt26 *Measurement
-		var __lt27 *Measurement
-		__lt28 := snglSome(Measurement{Px: 40})
-		var __lt29 *Measurement
-		__lt30 := snglSome(Measurement{Px: 40})
-		var __lt31 *Measurement
-		var __lt32 *Measurement
-		var __lt33 *float64
-		__lt34 := "unset"
-		__lt35 := "center"
-		__lt36 := "center"
-		__lt37 := "unset"
-		var __lt38 *Measurement
-		var __lt39 *Measurement
-		var __lt40 *Measurement
-		var __lt41 *Measurement
-		var __lt42 *int
-		var __lt43 *snglcolor.Color
-		var __lt44 *Measurement
-		__lt45 := ""
-		__lt46 := "unset"
-		__lt47 := "unset"
-		__lt48 := "center"
-		var __lt49 *int
-		__lt50 := "unset"
-		__lt51 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-		__lt52 := snglSome(Measurement{Px: 20})
-		var __lt53 *snglcolor.Color
-		var __lt54 *Measurement
-		__lt55 := ""
-		__lt56 := ""
-		__lt57 := ""
-		__lt58 := ""
-		__lt59 := "unset"
-		var __lt60 *float64
-		__lt61 := ""
-		__lt62 := "inlineFlex"
-		__lt63 := "unset"
-		__lt64 := "unset"
-		var __lt65 *Measurement
-		var __lt66 *Measurement
-		var __lt67 *Measurement
-		var __lt68 *Measurement
-		var __lt69 *Measurement
-		var __lt70 *Measurement
-		var __lt71 *Measurement
-		var __lt72 *Measurement
-		var __lt73 *Measurement
-		var __lt74 *Measurement
-		var __lt75 *Measurement
-		var __lt76 *Measurement
-		var __lt77 *Measurement
-		var __lt78 *Measurement
-		var __lt79 *Measurement
-		__lt80 := snglSome(Measurement{Px: 40})
-		var __lt81 *Measurement
-		__lt82 := snglSome(Measurement{Px: 40})
-		var __lt83 *Measurement
-		var __lt84 *Measurement
-		var __lt85 *float64
-		__lt86 := "unset"
-		__lt87 := "center"
-		__lt88 := "center"
-		__lt89 := "unset"
-		var __lt90 *Measurement
-		var __lt91 *Measurement
-		var __lt92 *Measurement
-		var __lt93 *Measurement
-		var __lt94 *int
-		var __lt95 *snglcolor.Color
-		var __lt96 *Measurement
-		__lt97 := ""
-		__lt98 := "unset"
-		__lt99 := "unset"
-		__lt100 := "center"
-		var __lt101 *int
-		__lt102 := "unset"
-		__lt103 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-		__lt104 := snglSome(Measurement{Px: 20})
-		var __lt105 *snglcolor.Color
-		var __lt106 *Measurement
-		__lt107 := ""
-		__lt108 := ""
-		__lt109 := ""
-		__lt110 := ""
-		__lt111 := "unset"
-		var __lt112 *float64
-		__lt113 := ""
-		__lt114 := "inlineFlex"
-		__lt115 := "unset"
-		__lt116 := "unset"
-		contentChildren = append(contentChildren, tui.Grow(GrowOf(Style{Padding: __lt65, PaddingTop: __lt66, PaddingRight: __lt67, PaddingBottom: __lt68, PaddingLeft: __lt69, PaddingX: __lt70, PaddingY: __lt71, Margin: __lt72, MarginTop: __lt73, MarginRight: __lt74, MarginBottom: __lt75, MarginLeft: __lt76, MarginX: __lt77, MarginY: __lt78, Gap: __lt79, Width: __lt80, MinWidth: __lt81, Height: __lt82, MaxWidth: __lt83, MaxHeight: __lt84, Flex: __lt85, FlexDirection: __lt86, AlignItems: __lt87, JustifyContent: __lt88, Position: __lt89, Top: __lt90, Bottom: __lt91, Left: __lt92, Right: __lt93, ZIndex: __lt94, Color: __lt95, FontSize: __lt96, FontFamily: __lt97, FontWeight: __lt98, FontStyle: __lt99, TextAlign: __lt100, MaxLines: __lt101, WhiteSpace: __lt102, Background: __lt103, BorderRadius: __lt104, BorderColor: __lt105, BorderWidth: __lt106, Border: __lt107, BorderBottom: __lt108, BorderLeft: __lt109, BorderCollapse: __lt110, BorderStyle: __lt111, Opacity: __lt112, Cursor: __lt113, Display: __lt114, Overflow: __lt115, ListStyleType: __lt116}.Flex), func(content_104Cells int) string {
-			var content_104 string
-			content_104 = tui.Sized(BoxLook(Style{Padding: __lt13, PaddingTop: __lt14, PaddingRight: __lt15, PaddingBottom: __lt16, PaddingLeft: __lt17, PaddingX: __lt18, PaddingY: __lt19, Margin: __lt20, MarginTop: __lt21, MarginRight: __lt22, MarginBottom: __lt23, MarginLeft: __lt24, MarginX: __lt25, MarginY: __lt26, Gap: __lt27, Width: __lt28, MinWidth: __lt29, Height: __lt30, MaxWidth: __lt31, MaxHeight: __lt32, Flex: __lt33, FlexDirection: __lt34, AlignItems: __lt35, JustifyContent: __lt36, Position: __lt37, Top: __lt38, Bottom: __lt39, Left: __lt40, Right: __lt41, ZIndex: __lt42, Color: __lt43, FontSize: __lt44, FontFamily: __lt45, FontWeight: __lt46, FontStyle: __lt47, TextAlign: __lt48, MaxLines: __lt49, WhiteSpace: __lt50, Background: __lt51, BorderRadius: __lt52, BorderColor: __lt53, BorderWidth: __lt54, Border: __lt55, BorderBottom: __lt56, BorderLeft: __lt57, BorderCollapse: __lt58, BorderStyle: __lt59, Opacity: __lt60, Cursor: __lt61, Display: __lt62, Overflow: __lt63, ListStyleType: __lt64}, true), false, content_104Cells).Render(fmt.Sprint("AB"))
-			return content_104
-		}))
-		var content_105 string
-		content_105 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint((m.n * 2))))
-		contentChildren = append(contentChildren, tui.Fixed(content_105))
-		var content_106 string
-		content_106Focused := (m.__focusID == 0)
-		content_106Prefix := " "
-		if content_106Focused {
-			content_106Prefix = ">"
+		var contentChildren []string
+		var content_0 string
+		content_0 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("AB"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(fmt.Sprint((m.n * 2))))
+		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		content_2Focused := (m.__focusID == 0)
+		content_2Prefix := " "
+		if content_2Focused {
+			content_2Prefix = ">"
 		}
-		content_106 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_106Prefix + " " + fmt.Sprint("more"))
-		contentChildren = append(contentChildren, tui.Fixed(content_106))
-		content = tui.Join(false, lipgloss.Left, 0, contentH, contentChildren)
-		content = contentLook.Render(content)
+		content_2 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_2Prefix + " " + fmt.Sprint("more"))
+		contentChildren = append(contentChildren, content_2)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -571,6 +453,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:23530140578b3a9638243fd524aeaab2
+pass sha256:c1b54a436938788a61bd96ee37104aec
 -- run/none/html --
 pass sha256:f1b5c5a7ec8d255c255d52528799a866

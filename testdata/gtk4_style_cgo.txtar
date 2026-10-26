@@ -632,7 +632,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.tone = snglcolor.Color{R: 153, G: 51, B: 102, A: 255}
-	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Color: snglSome(m.tone), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -676,7 +676,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n3)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), __cstr1)
-	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Color: snglSome(m.tone), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n1), __cstr2, C.int((len(snglCallbacks) - 1)))
 	gtk4rt.BoxAppend(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Handle(unsafe.Pointer(m.__n1)))
@@ -703,4 +703,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:07c478ec56f73b73a48faf9fe4a43b6e
+pass sha256:4a2712f099bb5ec2f4929a7c658c1815

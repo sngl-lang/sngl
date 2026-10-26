@@ -1229,7 +1229,7 @@ window.__sngl_boot = () => {
     }
     function _canvasDraw0(ctx) {
       ctx.save();
-      paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+      paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
       ctx.beginPath();
       ctx.arc(20, 20, __prop___p0 + __prop___p1, 0, 6.283185307179586);
       ctx.restore();
@@ -1264,7 +1264,7 @@ window.__sngl_boot = () => {
     }
     function _canvasDraw1(ctx) {
       ctx.save();
-      paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+      paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
       ctx.beginPath();
       ctx.arc(20, 20, __prop___p0, 0, 6.283185307179586);
       ctx.restore();
@@ -1485,4 +1485,4 @@ pass sha256:b1e6d2666c25cafe94a06303ddaa4515
 -- run/go/gtk4 --
 pass sha256:06d2b7f5256a4463d16c5421de8c1dd4
 -- run/none/html --
-pass sha256:deae481f007d2c7d920023c53afe9d4b
+pass sha256:fd78b10547c6da64a5fde910316361f8

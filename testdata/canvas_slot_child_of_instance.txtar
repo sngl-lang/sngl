@@ -911,7 +911,7 @@ window.__sngl_boot = () => {
     }
     function _canvasDraw0(ctx) {
       ctx.save();
-      paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+      paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
       ctx.beginPath();
       ctx.arc(20, 20, __prop___p0, 0, 6.283185307179586);
       ctx.restore();
@@ -1064,4 +1064,4 @@ pass sha256:b8c89789109d7c29b3d5b0f4ec0fe43c
 -- run/go/gtk4 --
 pass sha256:9fb95b7efef2af6e4ac0c4d5b0dbf326
 -- run/none/html --
-pass sha256:4c7b7575af06afb11fcf9896f3612b7d
+pass sha256:0379f8e991f94369ba67c108245c5e40

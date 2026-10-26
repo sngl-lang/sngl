@@ -322,73 +322,65 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt24 int
-		if RowsOf(s.MaxHeight) == 0 {
-			var __lt20 int
-			if s.MaxLines == nil {
-				__lt20 = 0
-			} else {
-				__lt20 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
-			}
-			__lt24 = __lt20
+		var __lt20 int
+		if s.MaxLines == nil {
+			__lt20 = 0
 		} else {
-			var __lt21 int
-			if s.MaxLines == nil {
-				__lt21 = 0
-			} else {
-				__lt21 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
-			}
-			var __lt23 int
-			if __lt21 == 0 {
-				__lt23 = RowsOf(s.MaxHeight)
-			} else {
-				var __lt22 int
-				if s.MaxLines == nil {
-					__lt22 = 0
-				} else {
-					__lt22 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
-				}
-				__lt23 = min(RowsOf(s.MaxHeight), __lt22)
-			}
-			__lt24 = __lt23
+			__lt20 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(__lt24)
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt20))
 	}
 	return l
 }
 
 func CellsOf(m__r0 *Measurement) int {
-	var __lt25 float64
+	var __lt21 float64
 	if m__r0 == nil {
-		__lt25 = 0.0
+		__lt21 = 0.0
 	} else {
-		__lt25 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+		__lt21 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
 	}
-	var px float64 = __lt25
-	var __lt26 int
+	var px float64 = __lt21
+	var __lt22 int
 	if px <= 0.0 {
-		__lt26 = 0
+		__lt22 = 0
 	} else {
-		__lt26 = max(1, (int(px) / 8))
+		__lt22 = max(1, (int(px) / 8))
 	}
-	return __lt26
+	return __lt22
 }
 
 func RowsOf(m__r1 *Measurement) int {
-	var __lt27 float64
+	var __lt23 float64
 	if m__r1 == nil {
-		__lt27 = 0.0
+		__lt23 = 0.0
 	} else {
-		__lt27 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt23 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	var px float64 = __lt27
-	var __lt28 int
+	var px float64 = __lt23
+	var __lt24 int
 	if px <= 0.0 {
-		__lt28 = 0
+		__lt24 = 0
 	} else {
-		__lt28 = max(1, (int(px) / 16))
+		__lt24 = max(1, (int(px) / 16))
 	}
-	return __lt28
+	return __lt24
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt26 int
+	if height__r0 == 0 {
+		__lt26 = lines
+	} else {
+		var __lt25 int
+		if lines == 0 {
+			__lt25 = height__r0
+		} else {
+			__lt25 = min(height__r0, lines)
+		}
+		__lt26 = __lt25
+	}
+	return __lt26
 }
 
 func (m *Model) __focusNext() {
@@ -531,6 +523,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9fb2ae3ae80b43f330dfffbcc91cecbd
+pass sha256:b694ed5486b59667cc128ad61540d99e
 -- run/none/html --
 pass sha256:a9aa352b4c660b34ab8290f194b46544

@@ -539,7 +539,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Text
@@ -560,6 +559,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 
 data class Measurement(
     val px: Double = 0.0,
@@ -781,21 +781,25 @@ fun MainScreen() {
             }
         }
         Row(modifier = Modifier.safeDrawingPadding()) {
-            Row(modifier = styleModifier(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), true), horizontalArrangement = Arrangement.spacedBy(Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w) }), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Tag", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Row(modifier = styleModifier(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), true), horizontalArrangement = Arrangement.spacedBy(Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w) }), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Removable", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 Button(onClick = {}, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "×", modifier = Modifier)
                 }
             }
-            Row(modifier = styleModifier(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), true), horizontalArrangement = Arrangement.spacedBy(Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w) }), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Success", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
 }
+
+fun modifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, share)
+
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
@@ -804,7 +808,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
     var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
     if ((s.zIndex != null)) {
     	m = m.zIndex(s.zIndex!!.toFloat())
@@ -831,7 +835,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var edge = 0.0
     if ((s.borderWidth != null)) {
     	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
-    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).r.toInt(), green = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).g.toInt(), blue = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).b.toInt(), alpha = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).a.toInt()), shape)
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
     if ((paints && (s.background != null))) {
     	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
@@ -841,10 +845,16 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
     left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
     if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
+
+fun rowSpacing(j: SnglJustification, gap: androidx.compose.ui.unit.Dp): androidx.compose.foundation.layout.Arrangement.Horizontal = (when (j) { SnglJustification.SPACEBETWEEN -> Arrangement.SpaceBetween; SnglJustification.SPACEAROUND -> Arrangement.SpaceAround; SnglJustification.SPACEEVENLY -> Arrangement.SpaceEvenly; SnglJustification.CENTER -> Arrangement.spacedBy(gap, Alignment.CenterHorizontally); SnglJustification.END -> Arrangement.spacedBy(gap, Alignment.End); SnglJustification.UNSET, SnglJustification.START -> Arrangement.spacedBy(gap) })
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from component_chip.sngl; DO NOT EDIT. -->
 
@@ -859,14 +869,14 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:row">
-  <span class="sngl-chip" style="padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px;align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1">
+  <span class="sngl-chip" style="padding-top:4px;padding-right:12px;padding-bottom:4px;padding-left:12px;gap:4px;display:inline-flex;align-items:center;border-radius:16px;border-width:1px;border-style:solid;border-color:#cccccc;opacity:1">
     <span>Tag</span>
   </span>
-  <span class="sngl-chip" style="padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px;align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1">
+  <span class="sngl-chip" style="padding-top:4px;padding-right:12px;padding-bottom:4px;padding-left:12px;gap:4px;display:inline-flex;align-items:center;border-radius:16px;border-width:1px;border-style:solid;border-color:#cccccc;opacity:1">
     <span>Removable</span>
     <button class="sngl-chip-remove">×</button>
   </span>
-  <span class="sngl-chip sngl-chip-success" style="padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px;align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1">
+  <span class="sngl-chip sngl-chip-success" style="padding-top:4px;padding-right:12px;padding-bottom:4px;padding-left:12px;gap:4px;display:inline-flex;align-items:center;border-radius:16px;border-width:1px;border-style:solid;border-color:#cccccc;opacity:1">
     <span>Success</span>
   </span>
 </div>
@@ -883,6 +893,6 @@ pass sha256:554a4596699e21c5204a550b5a8fbd6d
 -- run/go/fyne --
 pass sha256:8c66cb99b0896d3fcc710437ae1e239e
 -- run/kotlin/android --
-pass sha256:ed050f74e5a28fca9a33f458311e69de
+pass sha256:31a6e42bc63e213921b8f283d94590da
 -- run/none/html --
-pass sha256:d9f9c23faa1596a97ee3e8e770046892
+pass sha256:38bc2bfbddb530dca4834e5a10b1b126

@@ -151,7 +151,7 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
-	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
+	m.pal = Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
@@ -424,7 +424,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
+			m.pal = Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -478,12 +478,6 @@ import (
 	"os"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 type Palette struct {
 	Plain       snglcolor.Color
 	Keyword     snglcolor.Color
@@ -516,7 +510,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
+	m.pal = Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.visible__inst0 = true
 	return m
 }
@@ -564,7 +558,7 @@ func (m *Model) home_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n2_click_handler() {
-	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
+	m.pal = Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.__n0.SetColor(TokenColor(m.pal, "keyword"))
 }
 
@@ -661,12 +655,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 type Palette struct {
 	Plain       snglcolor.Color
 	Keyword     snglcolor.Color
@@ -696,7 +684,7 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
+	m.pal = Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.visible__inst0 = true
 	return m
 }
@@ -752,8 +740,8 @@ func (m *Model) home_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n2_clicked_handler() {
-	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
-	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, "keyword"))) + ">")) + "func</span></tt>"))
+	m.pal = Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
+	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, "keyword"))) + ">")) + "func</span></tt>"))
 }
 
 func (m *Model) Pal() Palette {
@@ -792,7 +780,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n3, true)
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{}, Variable: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, "keyword"))) + ">")) + "func</span></tt>"))
+	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, "keyword"))) + ">")) + "func</span></tt>"))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	gtk4rt.BoxAppend(m.home, m.__n1)
 	gtk4rt.AppAttach(m.home)
@@ -834,24 +822,18 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
-data class Measurement(
-    val px: Double = 0.0,
-    val em: Double = 0.0,
-    val rem: Double = 0.0
-)
-
 data class Palette(
-    var plain: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var keyword: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var type: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var function: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var variable: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var constant: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var string: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var number: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var comment: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var operator: Color = Color(a = 0, r = 0, g = 0, b = 0),
-    var punctuation: Color = Color(a = 0, r = 0, g = 0, b = 0)
+    var plain: Color = Color(a = 0),
+    var keyword: Color = Color(a = 0),
+    var type: Color = Color(a = 0),
+    var function: Color = Color(a = 0),
+    var variable: Color = Color(a = 0),
+    var constant: Color = Color(a = 0),
+    var string: Color = Color(a = 0),
+    var number: Color = Color(a = 0),
+    var comment: Color = Color(a = 0),
+    var operator: Color = Color(a = 0),
+    var punctuation: Color = Color(a = 0)
 )
 
 data class Color(
@@ -979,7 +961,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { pal: null, visible__inst0: true };
-  state.pal = { keyword: { r: 207, g: 34, b: 46, a: 255 }, type: { r: 149, g: 56, b: 0, a: 255 }, function: { r: 130, g: 80, b: 223, a: 255 }, constant: { r: 5, g: 80, b: 174, a: 255 }, string: { r: 10, g: 48, b: 105, a: 255 }, number: { r: 5, g: 80, b: 174, a: 255 }, comment: { r: 110, g: 119, b: 129, a: 255 }, plain: { a: 0, r: 0, g: 0, b: 0 }, variable: { a: 0, r: 0, g: 0, b: 0 }, operator: { a: 0, r: 0, g: 0, b: 0 }, punctuation: { a: 0, r: 0, g: 0, b: 0 } };
+  state.pal = { plain: { r: 0, g: 0, b: 0, a: 0 }, keyword: { r: 207, g: 34, b: 46, a: 255 }, type: { r: 149, g: 56, b: 0, a: 255 }, function: { r: 130, g: 80, b: 223, a: 255 }, variable: { r: 0, g: 0, b: 0, a: 0 }, constant: { r: 5, g: 80, b: 174, a: 255 }, string: { r: 10, g: 48, b: 105, a: 255 }, number: { r: 5, g: 80, b: 174, a: 255 }, comment: { r: 110, g: 119, b: 129, a: 255 }, operator: { r: 0, g: 0, b: 0, a: 0 }, punctuation: { r: 0, g: 0, b: 0, a: 0 } };
   function tokenColor(p, kind) {
     if (kind === "keyword") {
       ;
@@ -1041,7 +1023,7 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
-    state.pal = { keyword: { r: 255, g: 123, b: 114, a: 255 }, type: { r: 255, g: 166, b: 87, a: 255 }, function: { r: 210, g: 168, b: 255, a: 255 }, constant: { r: 121, g: 192, b: 255, a: 255 }, string: { r: 165, g: 214, b: 255, a: 255 }, number: { r: 121, g: 192, b: 255, a: 255 }, comment: { r: 139, g: 148, b: 158, a: 255 }, plain: { a: 0, r: 0, g: 0, b: 0 }, variable: { a: 0, r: 0, g: 0, b: 0 }, operator: { a: 0, r: 0, g: 0, b: 0 }, punctuation: { a: 0, r: 0, g: 0, b: 0 } };
+    state.pal = { plain: { r: 0, g: 0, b: 0, a: 0 }, keyword: { r: 255, g: 123, b: 114, a: 255 }, type: { r: 255, g: 166, b: 87, a: 255 }, function: { r: 210, g: 168, b: 255, a: 255 }, variable: { r: 0, g: 0, b: 0, a: 0 }, constant: { r: 121, g: 192, b: 255, a: 255 }, string: { r: 165, g: 214, b: 255, a: 255 }, number: { r: 121, g: 192, b: 255, a: 255 }, comment: { r: 139, g: 148, b: 158, a: 255 }, operator: { r: 0, g: 0, b: 0, a: 0 }, punctuation: { r: 0, g: 0, b: 0, a: 0 } };
     __n0.style.color = _snglSpanColor(tokenColor(state.pal, "keyword"));
   });
   function __sngl_init() {
@@ -1052,12 +1034,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:52da5b09d82e0795f2685ca9e6a1b1d1
+pass sha256:91adbde48149f4226cb48bf10c9f41cc
 -- run/go/fyne --
-pass sha256:247bc1b13a4508fa7756ad1a090edde4
+pass sha256:5295a861a2741769110ab2307d3316c8
 -- run/go/gtk4 --
-pass sha256:97c65300fa5c943be000806e497fdfbb
+pass sha256:d341fc0957f51096917f4c4bea87d998
 -- run/kotlin/android --
-pass sha256:ff767d85bd8f3bcf6569aeeb42dcda8e
+pass sha256:e0ef81aa4bffbd0dc055aa015ed7eab0
 -- run/none/html --
-pass sha256:d226a21ec189c973db38fbe636e5ad6e
+pass sha256:a34cc8f717e060caff845fac1690b3ea

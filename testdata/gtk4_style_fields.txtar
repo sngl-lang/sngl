@@ -152,7 +152,7 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.held = Style{Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontSize: snglSome(Measurement{Em: 1}), PaddingX: snglSome(Measurement{Px: 8}), Background: snglSome(snglcolor.Color{R: 238, G: 238, B: 238, A: 255}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+	m.held = Style{PaddingX: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontSize: snglSome(Measurement{Em: 1}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 238, G: 238, B: 238, A: 255}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	m.tone = snglcolor.Color{R: 51, G: 102, B: 153, A: 255}
 	m.visible__inst0 = true
 	return m
@@ -382,7 +382,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n6_clicked_handler() {
 	m.tone = snglcolor.Color{R: 153, G: 51, B: 102, A: 255}
-	gtk4rt.SetLook(m.__n3, LookOf(Style{Color: snglSome(m.tone), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(m.__n3, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (m *Model) __n9_clicked_handler() {
@@ -447,7 +447,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "reactive")
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.SetLook(m.__n3, LookOf(Style{Color: snglSome(m.tone), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	gtk4rt.SetLook(m.__n3, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	gtk4rt.BoxAppend(m.__n4, m.__n3)
 	m.__n6 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n6, "recolor")
@@ -498,4 +498,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:66a3546e36bb6c5b7ec6ec8a7164f55d
+pass sha256:0d6b60a81667467d7d8376361eda2d45

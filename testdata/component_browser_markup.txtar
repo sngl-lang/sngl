@@ -125,7 +125,7 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column" data-sngl-id="col">
   <span data-sngl-id="text">HELLO</span>
 </div>
-<div style="background-color:#ff0000;display:flex;flex-direction:column;gap:8px" data-sngl-id="styled">
+<div style="gap:8px;display:flex;flex-direction:column;background-color:#ff0000" data-sngl-id="styled">
   <span>A</span>
 </div>
 <span style="color:#112233" data-sngl-id="colored">A</span>
@@ -136,7 +136,7 @@ body { font-family: system-ui, sans-serif; }
   <span>CLICK</span>
 </button>
 <input id="$6" placeholder="" type="text" data-sngl-id="input"/>
-<label style="align-items:center;display:inline-flex;gap:4px" data-sngl-id="check">
+<label style="gap:4px;display:inline-flex;align-items:center" data-sngl-id="check">
   <input id="__n0" data-sngl-id="__n0" type="checkbox"/>
   <span>ok</span>
 </label>
@@ -150,19 +150,19 @@ body { font-family: system-ui, sans-serif; }
   <option disabled selected value="">pick</option>
   <span data-sngl-slot="0" style="display:contents"></span>
 </select>
-<fieldset style="border:none;padding:0px;display:flex;flex-direction:column;gap:8px" data-sngl-id="radio">
+<fieldset style="border:none;padding:0px;gap:8px;display:flex;flex-direction:column" data-sngl-id="radio">
   <span data-sngl-slot="1" style="display:contents"></span>
 </fieldset>
 <textarea id="$12" placeholder="" rows="3" data-sngl-id="area"></textarea>
 <div style="display:flex;flex-direction:column" data-sngl-id="tabs">
-  <div id="__n10" data-sngl-id="__n10" style="display:flex;gap:4px;border-bottom:1px solid #ccc" role="tablist">
+  <div id="__n10" data-sngl-id="__n10" style="gap:4px;display:flex;border-bottom:1px solid #ccc" role="tablist">
     <span data-sngl-slot="2" style="display:contents"></span>
   </div>
   <div id="__n11" data-sngl-id="__n11" role="tabpanel">
     <span data-sngl-slot="3" style="display:contents"></span>
   </div>
 </div>
-<table id="$14" style="border-collapse:collapse;width:100%" width="100%" data-sngl-id="table">
+<table id="$14" style="border-collapse:collapse" width="100%" data-sngl-id="table">
   <thead>
     <tr>
       <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">A</th>
@@ -180,18 +180,18 @@ body { font-family: system-ui, sans-serif; }
     </tr>
   </tbody>
 </table>
-<ul id="$15" style="list-style-type:none;padding-left:16px" data-sngl-id="tree">
+<ul id="$15" style="padding-left:16px;list-style-type:none" data-sngl-id="tree">
   <li style="padding-left:0px">root</li>
   <li style="padding-left:16px">child</li>
 </ul>
-<div id="$16" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);bottom:0px;display:flex;justify-content:center;left:0px;position:fixed;right:0px;top:0px;z-index:1000" class="modal-overlay" data-sngl-id="modal">
+<div id="$16" class="modal-overlay" style="display:flex;align-items:center;justify-content:center;position:fixed;top:0px;bottom:0px;left:0px;right:0px;z-index:1000;background-color:#00000080" class="modal-overlay" data-sngl-id="modal">
   <div class="modal-content" style="padding:24px;background-color:#ffffff;border-radius:8px" class="modal-content">
-    <h3 style="margin-left:0px;margin-right:0px;margin-bottom:16px;margin-top:0px">Dialog</h3>
+    <h3 style="margin-top:0px;margin-right:0px;margin-bottom:16px;margin-left:0px">Dialog</h3>
     <span>body</span>
   </div>
 </div>
 <hr data-sngl-id="divider"/>
-<span class="sngl-badge" style="padding-left:8px;padding-right:8px;padding-top:2px;padding-bottom:2px;border-radius:12px;display:inline-block" class="sngl-badge" data-sngl-id="badge">3</span>
+<span class="sngl-badge" style="padding-top:2px;padding-right:8px;padding-bottom:2px;padding-left:8px;display:inline-block;border-radius:12px" class="sngl-badge" data-sngl-id="badge">3</span>
 <style>
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sngl-image-cover img { object-fit: cover; }
@@ -264,6 +264,9 @@ window.__sngl_boot = () => {
     }
     ;
   }
+  function plus(a, b) {
+    return a === "" ? b : b === "" ? a : a + " + " + b;
+  }
   function __snglTeardown() {
     for (const [__inst5_live_di, _] of __inst5_live.entries()) {
       ;
@@ -288,7 +291,7 @@ window.__sngl_boot = () => {
     __inst1_live = [];
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { has, __snglTeardown });
+    Object.assign(window, { has, plus, __snglTeardown });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -352,7 +355,7 @@ window.__sngl_boot = () => {
       __prop___on0 = __v;
     }
     let __n12 = document.createElement("label");
-    __n12.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    __n12.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     let __n2 = document.createElement("input");
     __n2.value = __prop___p0.label;
     __n2.checked = __prop___p0.label === __prop___p1;
@@ -398,15 +401,15 @@ window.__sngl_boot = () => {
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n4.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
-      __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+      __n4.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
+      _snglSetStyles(__n4.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
+      __n4.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     }
     function __set___p2(__v) {
       __prop___p2 = __v;
-      __n4.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
-      __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+      __n4.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
+      _snglSetStyles(__n4.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
+      __n4.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -414,9 +417,9 @@ window.__sngl_boot = () => {
     let __n4 = document.createElement("button");
     __n4.textContent = __prop___p0.label;
     __n4.disabled = __prop___p0.disabled;
-    __n4.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
-    __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-    __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+    __n4.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
+    _snglSetStyles(__n4.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
+    __n4.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     __n4.setAttribute("role", "tab");
     __n4.addEventListener("click", () => {
       __prop___on0();
@@ -713,9 +716,9 @@ window.__sngl_boot = () => {
       }
     }
   }
-  function _snglStyleKeyword(m) {
-    if (m == null || m === "unset") return "";
-    return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+  function _snglSetStyles(st, ds) {
+    for (const d of ds) st.removeProperty(d.property);
+    for (const d of ds) if (d.value !== "") st.setProperty(d.property, d.value);
   }
   var $10 = document.getElementById("$10");
   var $12 = document.getElementById("$12");
@@ -779,9 +782,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:0a6a5521d7a9e0e0564fc1fffeeadfcc
+pass sha256:da380f5cab8edf69b02355fb6b6c9c62
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:c49f2a798325b9797019d3203cd2258b
+sha256:9fb84292b0eeb98fb4a38ca587b7d5a2
 {
   "results": [
     {

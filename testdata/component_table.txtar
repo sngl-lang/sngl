@@ -1089,7 +1089,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<table id="$0" style="border-collapse:collapse;width:100%" width="100%">
+<table id="$0" style="border-collapse:collapse" width="100%">
   <thead>
     <tr>
       <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">Name</th>
@@ -1147,9 +1147,9 @@ pass sha256:252e9c534702c35e1bdd2cd25d875055
 -- run/kotlin/android --
 pass sha256:f62528a1eab512530f0054b19ed1c4f2
 -- run/none/html --
-pass sha256:75cd3f2fc1c0ec8ca17e4543b8ed49f0
+pass sha256:83472eaabd995e251cbba81be42b886c
 -- testrun/html/none/component_table.sngl/main/1 --
-sha256:ecd52285544a7669547c10a5e07095e4
+sha256:841c6618402818d42a0e2851fd49e786
 {
   "results": [
     {

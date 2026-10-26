@@ -925,7 +925,7 @@ body { font-family: system-ui, sans-serif; }
 <div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
   <span id="__n0" data-sngl-id="__n0">
   </span>
-  <canvas id="$0" style="height:40px;width:40px" height="40" width="40" data-sngl-id="board">
+  <canvas id="$0" height="40" width="40" data-sngl-id="board">
   </canvas>
   <span data-sngl-slot="0" style="display:contents"></span>
 </div>
@@ -987,7 +987,7 @@ window.__sngl_boot = () => {
     }
     function _canvasDraw1(ctx) {
       ctx.save();
-      paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+      paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
       ctx.beginPath();
       ctx.arc(20, 20, parseFloat(__prop___p0) * 5, 0, 6.283185307179586);
       ctx.restore();
@@ -1014,14 +1014,14 @@ window.__sngl_boot = () => {
   var __renderAgain0 = false;
   function _canvasDraw0(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(20, 20, 10, 0, 6.283185307179586);
     ctx.restore();
   }
   function _canvasDraw2(ctx) {
     ctx.save();
-    paintStyle(ctx, { fill: { a: 0, r: 0, g: 0, b: 0 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
+    paintStyle(ctx, { fill: { r: 0, g: 0, b: 0, a: 0 }, stroke: { r: 0, g: 0, b: 0, a: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
     ctx.beginPath();
     ctx.arc(20, 20, 10, 0, 6.283185307179586);
     ctx.restore();
@@ -1153,4 +1153,4 @@ pass sha256:940ad7df32e9be46ac61c59704f38aae
 -- run/go/gtk4 --
 pass sha256:4e1ac47bb8ba5be2e3e6abe3fb05e5ae
 -- run/none/html --
-pass sha256:54d0065e779f1d590befcdb71dfec655
+pass sha256:d3ee188a17347f83f5a8e6c0b67d6fe3

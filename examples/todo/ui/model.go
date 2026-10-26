@@ -562,7 +562,7 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var part0Children []string
 		var part0_0 string
-		part0_0 = BoxLook(Style{FontWeight: "bold", FontSize: snglSome(Measurement{Px: 24}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.status()))
+		part0_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: 24}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(m.status()))
 		part0Children = append(part0Children, part0_0)
 		var part0_1 string
 		var part0_1Children []string
@@ -578,7 +578,7 @@ func (m Model) View() tea.View {
 		part0_1_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_1_1Prefix + " " + fmt.Sprint("Add"))
 		part0_1Children = append(part0_1Children, part0_1_1)
 		part0_1 = tui.Spaced(true, lipgloss.Center, 1, part0_1Children...)
-		part0_1 = BoxLook(Style{AlignItems: "center", Gap: snglSome(Measurement{Px: 8}), TextAlign: "center", FlexDirection: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).AlignVertical(lipgloss.Center).Render(part0_1)
+		part0_1 = BoxLook(Style{Gap: snglSome(Measurement{Px: 8}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).AlignVertical(lipgloss.Center).Render(part0_1)
 		part0Children = append(part0Children, part0_1)
 		var part0_2 string
 		var part0_2Children []string
@@ -612,10 +612,10 @@ func (m Model) View() tea.View {
 		if part0_3Focused {
 			part0_3Prefix = ">"
 		}
-		part0_3 = BoxLook(Style{AlignItems: "center", FlexDirection: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_3Prefix + " " + fmt.Sprint("Remove"))
+		part0_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "center", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_3Prefix + " " + fmt.Sprint("Remove"))
 		part0Children = append(part0Children, part0_3)
 		part0 = tui.Spaced(false, lipgloss.Left, 1, part0Children...)
-		part0 = BoxLook(Style{Gap: snglSome(Measurement{Px: 12}), Padding: snglSome(Measurement{Px: 16}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0)
+		part0 = BoxLook(Style{Padding: snglSome(Measurement{Px: 16}), Gap: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0)
 	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)

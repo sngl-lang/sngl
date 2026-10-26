@@ -3200,7 +3200,7 @@ window.__sngl_boot = () => {
     }
     let mark = document.createElement("label");
     mark.setAttribute("data-sngl-id", "mark");
-    mark.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    mark.setAttribute("style", "gap:4px;display:inline-flex;align-items:center");
     mark.setAttribute("data-sngl-copy", __prop___copy);
     let __n1 = document.createElement("input");
     __n1.checked = checked;
@@ -3610,4 +3610,4 @@ pass sha256:a178771ae5b6023bc004ed2d9c4067e3
 -- run/kotlin/android --
 pass sha256:31bfc3c5fd228b5cd808be2c49a0575a
 -- run/none/html --
-pass sha256:418c93e9232cdd96df9c5cd9da24d722
+pass sha256:a0fa500d2d3c02092e949557e0b18135

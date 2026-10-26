@@ -822,7 +822,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:100px;width:200px;width:100%;height:auto;aspect-ratio:200/100" height="100" width="200">
+<canvas id="$0" style="width:100%;height:auto;aspect-ratio:200/100" height="100" width="200">
 </canvas>
 
 <script>
@@ -888,4 +888,4 @@ pass sha256:79c67bae2a4d2574f6fd63b979b2f675
 -- run/kotlin/android --
 pass sha256:36e28049e3733ac5845c8e53751c4f78
 -- run/none/html --
-pass sha256:774b31d51405558e8a0332ed7aee6ec7
+pass sha256:1601fc51450b1792904af56ede50ba7e

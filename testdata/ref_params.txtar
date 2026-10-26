@@ -715,8 +715,8 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var st__inst0 by remember { mutableStateOf(Stack(items = listOf<Int>())) }
-    val all__inst0 = remember { mutableStateListOf(Stack(items = listOf<Int>()), Stack(items = listOf<Int>())) }
+    var st__inst0 by remember { mutableStateOf(Stack()) }
+    val all__inst0 = remember { mutableStateListOf(Stack(), Stack()) }
     var k__inst0 by remember { mutableStateOf(0) }
     var out__inst0 by remember { mutableStateOf("") }
     var visible__inst0 by remember { mutableStateOf(true) }
@@ -809,7 +809,7 @@ fun fill(s: Stack): Stack {
 
 fun reset(s: Stack): Stack {
     var s__own = s
-    s__own = Stack(items = listOf<Int>())
+    s__own = Stack()
     return s__own
 }
 
@@ -953,6 +953,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fd8109299ec2d3277db11b3384f9124a
 -- run/kotlin/android --
-pass sha256:4bd502e0bf28fd2558d40b93656ac65a
+pass sha256:126c224b27f1d67a469c10efce7204e8
 -- run/none/html --
 pass sha256:78a585ff4638d1fae42cf2aadca67366

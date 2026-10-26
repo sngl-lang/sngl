@@ -141,29 +141,6 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func GrowOf(flex *float64) float64 {
-	var __lt0 float64
-	if flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
-	}
-	return __lt0
-}
-
-func CrossOf(a string) float64 {
-	var __lt1 float64
-	switch a {
-	case "center":
-		__lt1 = 0.5
-	case "end":
-		__lt1 = 1.0
-	default:
-		__lt1 = 0.0
-	}
-	return __lt1
-}
-
 func CellsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
 	var __lt2 int
@@ -382,661 +359,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		contentLook := BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
-		contentW, _ := tui.Inner(contentLook, tui.Avail(m.width), m.height)
-		var contentChildren []tui.Part
-		var __lt13 *Measurement
-		var __lt14 *Measurement
-		var __lt15 *Measurement
-		var __lt16 *Measurement
-		var __lt17 *Measurement
-		var __lt18 *Measurement
-		var __lt19 *Measurement
-		var __lt20 *Measurement
-		var __lt21 *Measurement
-		var __lt22 *Measurement
-		var __lt23 *Measurement
-		var __lt24 *Measurement
-		var __lt25 *Measurement
-		var __lt26 *Measurement
-		var __lt27 *Measurement
-		__lt28 := snglSome(Measurement{Px: 40})
-		var __lt29 *Measurement
-		__lt30 := snglSome(Measurement{Px: 40})
-		var __lt31 *Measurement
-		var __lt32 *Measurement
-		var __lt33 *float64
-		__lt34 := "unset"
-		__lt35 := "center"
-		__lt36 := "center"
-		__lt37 := "unset"
-		var __lt38 *Measurement
-		var __lt39 *Measurement
-		var __lt40 *Measurement
-		var __lt41 *Measurement
-		var __lt42 *int
-		var __lt43 *snglcolor.Color
-		var __lt44 *Measurement
-		__lt45 := ""
-		__lt46 := "unset"
-		__lt47 := "unset"
-		__lt48 := "center"
-		var __lt49 *int
-		__lt50 := "unset"
-		__lt51 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-		__lt52 := snglSome(Measurement{Px: 20})
-		var __lt53 *snglcolor.Color
-		var __lt54 *Measurement
-		__lt55 := ""
-		__lt56 := ""
-		__lt57 := ""
-		__lt58 := ""
-		__lt59 := "unset"
-		var __lt60 *float64
-		__lt61 := ""
-		__lt62 := "inlineFlex"
-		__lt63 := "unset"
-		__lt64 := "unset"
-		var __lt65 *Measurement
-		var __lt66 *Measurement
-		var __lt67 *Measurement
-		var __lt68 *Measurement
-		var __lt69 *Measurement
-		var __lt70 *Measurement
-		var __lt71 *Measurement
-		var __lt72 *Measurement
-		var __lt73 *Measurement
-		var __lt74 *Measurement
-		var __lt75 *Measurement
-		var __lt76 *Measurement
-		var __lt77 *Measurement
-		var __lt78 *Measurement
-		var __lt79 *Measurement
-		__lt80 := snglSome(Measurement{Px: 40})
-		var __lt81 *Measurement
-		__lt82 := snglSome(Measurement{Px: 40})
-		var __lt83 *Measurement
-		var __lt84 *Measurement
-		var __lt85 *float64
-		__lt86 := "unset"
-		__lt87 := "center"
-		__lt88 := "center"
-		__lt89 := "unset"
-		var __lt90 *Measurement
-		var __lt91 *Measurement
-		var __lt92 *Measurement
-		var __lt93 *Measurement
-		var __lt94 *int
-		var __lt95 *snglcolor.Color
-		var __lt96 *Measurement
-		__lt97 := ""
-		__lt98 := "unset"
-		__lt99 := "unset"
-		__lt100 := "center"
-		var __lt101 *int
-		__lt102 := "unset"
-		__lt103 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-		__lt104 := snglSome(Measurement{Px: 20})
-		var __lt105 *snglcolor.Color
-		var __lt106 *Measurement
-		__lt107 := ""
-		__lt108 := ""
-		__lt109 := ""
-		__lt110 := ""
-		__lt111 := "unset"
-		var __lt112 *float64
-		__lt113 := ""
-		__lt114 := "inlineFlex"
-		__lt115 := "unset"
-		__lt116 := "unset"
-		contentChildren = append(contentChildren, tui.Grow(GrowOf(Style{Padding: __lt65, PaddingTop: __lt66, PaddingRight: __lt67, PaddingBottom: __lt68, PaddingLeft: __lt69, PaddingX: __lt70, PaddingY: __lt71, Margin: __lt72, MarginTop: __lt73, MarginRight: __lt74, MarginBottom: __lt75, MarginLeft: __lt76, MarginX: __lt77, MarginY: __lt78, Gap: __lt79, Width: __lt80, MinWidth: __lt81, Height: __lt82, MaxWidth: __lt83, MaxHeight: __lt84, Flex: __lt85, FlexDirection: __lt86, AlignItems: __lt87, JustifyContent: __lt88, Position: __lt89, Top: __lt90, Bottom: __lt91, Left: __lt92, Right: __lt93, ZIndex: __lt94, Color: __lt95, FontSize: __lt96, FontFamily: __lt97, FontWeight: __lt98, FontStyle: __lt99, TextAlign: __lt100, MaxLines: __lt101, WhiteSpace: __lt102, Background: __lt103, BorderRadius: __lt104, BorderColor: __lt105, BorderWidth: __lt106, Border: __lt107, BorderBottom: __lt108, BorderLeft: __lt109, BorderCollapse: __lt110, BorderStyle: __lt111, Opacity: __lt112, Cursor: __lt113, Display: __lt114, Overflow: __lt115, ListStyleType: __lt116}.Flex), func(content_104Cells int) string {
-			var content_104 string
-			content_104 = tui.Sized(BoxLook(Style{Padding: __lt13, PaddingTop: __lt14, PaddingRight: __lt15, PaddingBottom: __lt16, PaddingLeft: __lt17, PaddingX: __lt18, PaddingY: __lt19, Margin: __lt20, MarginTop: __lt21, MarginRight: __lt22, MarginBottom: __lt23, MarginLeft: __lt24, MarginX: __lt25, MarginY: __lt26, Gap: __lt27, Width: __lt28, MinWidth: __lt29, Height: __lt30, MaxWidth: __lt31, MaxHeight: __lt32, Flex: __lt33, FlexDirection: __lt34, AlignItems: __lt35, JustifyContent: __lt36, Position: __lt37, Top: __lt38, Bottom: __lt39, Left: __lt40, Right: __lt41, ZIndex: __lt42, Color: __lt43, FontSize: __lt44, FontFamily: __lt45, FontWeight: __lt46, FontStyle: __lt47, TextAlign: __lt48, MaxLines: __lt49, WhiteSpace: __lt50, Background: __lt51, BorderRadius: __lt52, BorderColor: __lt53, BorderWidth: __lt54, Border: __lt55, BorderBottom: __lt56, BorderLeft: __lt57, BorderCollapse: __lt58, BorderStyle: __lt59, Opacity: __lt60, Cursor: __lt61, Display: __lt62, Overflow: __lt63, ListStyleType: __lt64}, true), true, content_104Cells).Render(fmt.Sprint("JD"))
-			return content_104
-		}))
-		var content_105 string
+		var contentChildren []string
+		var content_0 string
+		content_0 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 20}), BorderStyle: "unset", Display: "inlineFlex", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("JD"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
 		if m.failed__inst1 {
-			var __lt325 *Measurement
-			var __lt326 *Measurement
-			var __lt327 *Measurement
-			var __lt328 *Measurement
-			var __lt329 *Measurement
-			var __lt330 *Measurement
-			var __lt331 *Measurement
-			var __lt332 *Measurement
-			var __lt333 *Measurement
-			var __lt334 *Measurement
-			var __lt335 *Measurement
-			var __lt336 *Measurement
-			var __lt337 *Measurement
-			var __lt338 *Measurement
-			var __lt339 *Measurement
-			__lt340 := snglSome(Measurement{Px: 40})
-			var __lt341 *Measurement
-			__lt342 := snglSome(Measurement{Px: 40})
-			var __lt343 *Measurement
-			var __lt344 *Measurement
-			var __lt345 *float64
-			__lt346 := "unset"
-			__lt347 := "center"
-			__lt348 := "center"
-			__lt349 := "unset"
-			var __lt350 *Measurement
-			var __lt351 *Measurement
-			var __lt352 *Measurement
-			var __lt353 *Measurement
-			var __lt354 *int
-			var __lt355 *snglcolor.Color
-			var __lt356 *Measurement
-			__lt357 := ""
-			__lt358 := "unset"
-			__lt359 := "unset"
-			__lt360 := "center"
-			var __lt361 *int
-			__lt362 := "unset"
-			__lt363 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-			__lt364 := snglSome(Measurement{Px: 4})
-			var __lt365 *snglcolor.Color
-			var __lt366 *Measurement
-			__lt367 := ""
-			__lt368 := ""
-			__lt369 := ""
-			__lt370 := ""
-			__lt371 := "unset"
-			var __lt372 *float64
-			__lt373 := ""
-			__lt374 := "inlineFlex"
-			__lt375 := "unset"
-			__lt376 := "unset"
-			var __lt377 *Measurement
-			var __lt378 *Measurement
-			var __lt379 *Measurement
-			var __lt380 *Measurement
-			var __lt381 *Measurement
-			var __lt382 *Measurement
-			var __lt383 *Measurement
-			var __lt384 *Measurement
-			var __lt385 *Measurement
-			var __lt386 *Measurement
-			var __lt387 *Measurement
-			var __lt388 *Measurement
-			var __lt389 *Measurement
-			var __lt390 *Measurement
-			var __lt391 *Measurement
-			__lt392 := snglSome(Measurement{Px: 40})
-			var __lt393 *Measurement
-			__lt394 := snglSome(Measurement{Px: 40})
-			var __lt395 *Measurement
-			var __lt396 *Measurement
-			var __lt397 *float64
-			__lt398 := "unset"
-			__lt399 := "center"
-			__lt400 := "center"
-			__lt401 := "unset"
-			var __lt402 *Measurement
-			var __lt403 *Measurement
-			var __lt404 *Measurement
-			var __lt405 *Measurement
-			var __lt406 *int
-			var __lt407 *snglcolor.Color
-			var __lt408 *Measurement
-			__lt409 := ""
-			__lt410 := "unset"
-			__lt411 := "unset"
-			__lt412 := "center"
-			var __lt413 *int
-			__lt414 := "unset"
-			__lt415 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-			__lt416 := snglSome(Measurement{Px: 4})
-			var __lt417 *snglcolor.Color
-			var __lt418 *Measurement
-			__lt419 := ""
-			__lt420 := ""
-			__lt421 := ""
-			__lt422 := ""
-			__lt423 := "unset"
-			var __lt424 *float64
-			__lt425 := ""
-			__lt426 := "inlineFlex"
-			__lt427 := "unset"
-			__lt428 := "unset"
-			_ = __lt377
-			_ = __lt378
-			_ = __lt379
-			_ = __lt380
-			_ = __lt381
-			_ = __lt382
-			_ = __lt383
-			_ = __lt384
-			_ = __lt385
-			_ = __lt386
-			_ = __lt387
-			_ = __lt388
-			_ = __lt389
-			_ = __lt390
-			_ = __lt391
-			_ = __lt392
-			_ = __lt393
-			_ = __lt394
-			_ = __lt395
-			_ = __lt396
-			_ = __lt397
-			_ = __lt398
-			_ = __lt399
-			_ = __lt400
-			_ = __lt401
-			_ = __lt402
-			_ = __lt403
-			_ = __lt404
-			_ = __lt405
-			_ = __lt406
-			_ = __lt407
-			_ = __lt408
-			_ = __lt409
-			_ = __lt410
-			_ = __lt411
-			_ = __lt412
-			_ = __lt413
-			_ = __lt414
-			_ = __lt415
-			_ = __lt416
-			_ = __lt417
-			_ = __lt418
-			_ = __lt419
-			_ = __lt420
-			_ = __lt421
-			_ = __lt422
-			_ = __lt423
-			_ = __lt424
-			_ = __lt425
-			_ = __lt426
-			_ = __lt427
-			_ = __lt428
-			content_105 = BoxLook(Style{Padding: __lt325, PaddingTop: __lt326, PaddingRight: __lt327, PaddingBottom: __lt328, PaddingLeft: __lt329, PaddingX: __lt330, PaddingY: __lt331, Margin: __lt332, MarginTop: __lt333, MarginRight: __lt334, MarginBottom: __lt335, MarginLeft: __lt336, MarginX: __lt337, MarginY: __lt338, Gap: __lt339, Width: __lt340, MinWidth: __lt341, Height: __lt342, MaxWidth: __lt343, MaxHeight: __lt344, Flex: __lt345, FlexDirection: __lt346, AlignItems: __lt347, JustifyContent: __lt348, Position: __lt349, Top: __lt350, Bottom: __lt351, Left: __lt352, Right: __lt353, ZIndex: __lt354, Color: __lt355, FontSize: __lt356, FontFamily: __lt357, FontWeight: __lt358, FontStyle: __lt359, TextAlign: __lt360, MaxLines: __lt361, WhiteSpace: __lt362, Background: __lt363, BorderRadius: __lt364, BorderColor: __lt365, BorderWidth: __lt366, Border: __lt367, BorderBottom: __lt368, BorderLeft: __lt369, BorderCollapse: __lt370, BorderStyle: __lt371, Opacity: __lt372, Cursor: __lt373, Display: __lt374, Overflow: __lt375, ListStyleType: __lt376}, true).Render(fmt.Sprint("AB"))
+			content_1 = BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "inlineFlex", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("AB"))
 		} else {
-			var __lt429 *Measurement
-			var __lt430 *Measurement
-			var __lt431 *Measurement
-			var __lt432 *Measurement
-			var __lt433 *Measurement
-			var __lt434 *Measurement
-			var __lt435 *Measurement
-			var __lt436 *Measurement
-			var __lt437 *Measurement
-			var __lt438 *Measurement
-			var __lt439 *Measurement
-			var __lt440 *Measurement
-			var __lt441 *Measurement
-			var __lt442 *Measurement
-			var __lt443 *Measurement
-			__lt444 := snglSome(Measurement{Px: 40})
-			var __lt445 *Measurement
-			__lt446 := snglSome(Measurement{Px: 40})
-			var __lt447 *Measurement
-			var __lt448 *Measurement
-			var __lt449 *float64
-			__lt450 := "unset"
-			__lt451 := "unset"
-			__lt452 := "unset"
-			__lt453 := "unset"
-			var __lt454 *Measurement
-			var __lt455 *Measurement
-			var __lt456 *Measurement
-			var __lt457 *Measurement
-			var __lt458 *int
-			var __lt459 *snglcolor.Color
-			var __lt460 *Measurement
-			__lt461 := ""
-			__lt462 := "unset"
-			__lt463 := "unset"
-			__lt464 := "unset"
-			var __lt465 *int
-			__lt466 := "unset"
-			var __lt467 *snglcolor.Color
-			__lt468 := snglSome(Measurement{Px: 4})
-			var __lt469 *snglcolor.Color
-			var __lt470 *Measurement
-			__lt471 := ""
-			__lt472 := ""
-			__lt473 := ""
-			__lt474 := ""
-			__lt475 := "unset"
-			var __lt476 *float64
-			__lt477 := ""
-			__lt478 := "unset"
-			__lt479 := "unset"
-			__lt480 := "unset"
-			var __lt481 *Measurement
-			var __lt482 *Measurement
-			var __lt483 *Measurement
-			var __lt484 *Measurement
-			var __lt485 *Measurement
-			var __lt486 *Measurement
-			var __lt487 *Measurement
-			var __lt488 *Measurement
-			var __lt489 *Measurement
-			var __lt490 *Measurement
-			var __lt491 *Measurement
-			var __lt492 *Measurement
-			var __lt493 *Measurement
-			var __lt494 *Measurement
-			var __lt495 *Measurement
-			__lt496 := snglSome(Measurement{Px: 40})
-			var __lt497 *Measurement
-			__lt498 := snglSome(Measurement{Px: 40})
-			var __lt499 *Measurement
-			var __lt500 *Measurement
-			var __lt501 *float64
-			__lt502 := "unset"
-			__lt503 := "unset"
-			__lt504 := "unset"
-			__lt505 := "unset"
-			var __lt506 *Measurement
-			var __lt507 *Measurement
-			var __lt508 *Measurement
-			var __lt509 *Measurement
-			var __lt510 *int
-			var __lt511 *snglcolor.Color
-			var __lt512 *Measurement
-			__lt513 := ""
-			__lt514 := "unset"
-			__lt515 := "unset"
-			__lt516 := "unset"
-			var __lt517 *int
-			__lt518 := "unset"
-			var __lt519 *snglcolor.Color
-			__lt520 := snglSome(Measurement{Px: 4})
-			var __lt521 *snglcolor.Color
-			var __lt522 *Measurement
-			__lt523 := ""
-			__lt524 := ""
-			__lt525 := ""
-			__lt526 := ""
-			__lt527 := "unset"
-			var __lt528 *float64
-			__lt529 := ""
-			__lt530 := "unset"
-			__lt531 := "unset"
-			__lt532 := "unset"
-			var __lt533 *Measurement
-			var __lt534 *Measurement
-			var __lt535 *Measurement
-			var __lt536 *Measurement
-			var __lt537 *Measurement
-			var __lt538 *Measurement
-			var __lt539 *Measurement
-			var __lt540 *Measurement
-			var __lt541 *Measurement
-			var __lt542 *Measurement
-			var __lt543 *Measurement
-			var __lt544 *Measurement
-			var __lt545 *Measurement
-			var __lt546 *Measurement
-			var __lt547 *Measurement
-			__lt548 := snglSome(Measurement{Px: 40})
-			var __lt549 *Measurement
-			__lt550 := snglSome(Measurement{Px: 40})
-			var __lt551 *Measurement
-			var __lt552 *Measurement
-			var __lt553 *float64
-			__lt554 := "unset"
-			__lt555 := "unset"
-			__lt556 := "unset"
-			__lt557 := "unset"
-			var __lt558 *Measurement
-			var __lt559 *Measurement
-			var __lt560 *Measurement
-			var __lt561 *Measurement
-			var __lt562 *int
-			var __lt563 *snglcolor.Color
-			var __lt564 *Measurement
-			__lt565 := ""
-			__lt566 := "unset"
-			__lt567 := "unset"
-			__lt568 := "unset"
-			var __lt569 *int
-			__lt570 := "unset"
-			var __lt571 *snglcolor.Color
-			__lt572 := snglSome(Measurement{Px: 4})
-			var __lt573 *snglcolor.Color
-			var __lt574 *Measurement
-			__lt575 := ""
-			__lt576 := ""
-			__lt577 := ""
-			__lt578 := ""
-			__lt579 := "unset"
-			var __lt580 *float64
-			__lt581 := ""
-			__lt582 := "unset"
-			__lt583 := "unset"
-			__lt584 := "unset"
-			var __lt585 *Measurement
-			var __lt586 *Measurement
-			var __lt587 *Measurement
-			var __lt588 *Measurement
-			var __lt589 *Measurement
-			var __lt590 *Measurement
-			var __lt591 *Measurement
-			var __lt592 *Measurement
-			var __lt593 *Measurement
-			var __lt594 *Measurement
-			var __lt595 *Measurement
-			var __lt596 *Measurement
-			var __lt597 *Measurement
-			var __lt598 *Measurement
-			var __lt599 *Measurement
-			__lt600 := snglSome(Measurement{Px: 40})
-			var __lt601 *Measurement
-			__lt602 := snglSome(Measurement{Px: 40})
-			var __lt603 *Measurement
-			var __lt604 *Measurement
-			var __lt605 *float64
-			__lt606 := "unset"
-			__lt607 := "unset"
-			__lt608 := "unset"
-			__lt609 := "unset"
-			var __lt610 *Measurement
-			var __lt611 *Measurement
-			var __lt612 *Measurement
-			var __lt613 *Measurement
-			var __lt614 *int
-			var __lt615 *snglcolor.Color
-			var __lt616 *Measurement
-			__lt617 := ""
-			__lt618 := "unset"
-			__lt619 := "unset"
-			__lt620 := "unset"
-			var __lt621 *int
-			__lt622 := "unset"
-			var __lt623 *snglcolor.Color
-			__lt624 := snglSome(Measurement{Px: 4})
-			var __lt625 *snglcolor.Color
-			var __lt626 *Measurement
-			__lt627 := ""
-			__lt628 := ""
-			__lt629 := ""
-			__lt630 := ""
-			__lt631 := "unset"
-			var __lt632 *float64
-			__lt633 := ""
-			__lt634 := "unset"
-			__lt635 := "unset"
-			__lt636 := "unset"
-			_ = __lt481
-			_ = __lt482
-			_ = __lt483
-			_ = __lt484
-			_ = __lt485
-			_ = __lt486
-			_ = __lt487
-			_ = __lt488
-			_ = __lt489
-			_ = __lt490
-			_ = __lt491
-			_ = __lt492
-			_ = __lt493
-			_ = __lt494
-			_ = __lt495
-			_ = __lt496
-			_ = __lt497
-			_ = __lt498
-			_ = __lt499
-			_ = __lt500
-			_ = __lt501
-			_ = __lt502
-			_ = __lt503
-			_ = __lt504
-			_ = __lt505
-			_ = __lt506
-			_ = __lt507
-			_ = __lt508
-			_ = __lt509
-			_ = __lt510
-			_ = __lt511
-			_ = __lt512
-			_ = __lt513
-			_ = __lt514
-			_ = __lt515
-			_ = __lt516
-			_ = __lt517
-			_ = __lt518
-			_ = __lt519
-			_ = __lt520
-			_ = __lt521
-			_ = __lt522
-			_ = __lt523
-			_ = __lt524
-			_ = __lt525
-			_ = __lt526
-			_ = __lt527
-			_ = __lt528
-			_ = __lt529
-			_ = __lt530
-			_ = __lt531
-			_ = __lt532
-			content_105Look := BoxLook(Style{Padding: __lt429, PaddingTop: __lt430, PaddingRight: __lt431, PaddingBottom: __lt432, PaddingLeft: __lt433, PaddingX: __lt434, PaddingY: __lt435, Margin: __lt436, MarginTop: __lt437, MarginRight: __lt438, MarginBottom: __lt439, MarginLeft: __lt440, MarginX: __lt441, MarginY: __lt442, Gap: __lt443, Width: __lt444, MinWidth: __lt445, Height: __lt446, MaxWidth: __lt447, MaxHeight: __lt448, Flex: __lt449, FlexDirection: __lt450, AlignItems: __lt451, JustifyContent: __lt452, Position: __lt453, Top: __lt454, Bottom: __lt455, Left: __lt456, Right: __lt457, ZIndex: __lt458, Color: __lt459, FontSize: __lt460, FontFamily: __lt461, FontWeight: __lt462, FontStyle: __lt463, TextAlign: __lt464, MaxLines: __lt465, WhiteSpace: __lt466, Background: __lt467, BorderRadius: __lt468, BorderColor: __lt469, BorderWidth: __lt470, Border: __lt471, BorderBottom: __lt472, BorderLeft: __lt473, BorderCollapse: __lt474, BorderStyle: __lt475, Opacity: __lt476, Cursor: __lt477, Display: __lt478, Overflow: __lt479, ListStyleType: __lt480}, true)
-			var content_105Children []string
-			var content_105_0 string
-			content_105_0Cols, content_105_0Rows := tui.PictureBox(content_105Look, 24, 12)
-			content_105_0 = tui.Picture("https://example.com/a.png", content_105_0Cols, content_105_0Rows)
-			content_105Children = append(content_105Children, content_105_0)
-			content_105 = tui.Spaced(false, lipgloss.Position(CrossOf(Style{Padding: __lt533, PaddingTop: __lt534, PaddingRight: __lt535, PaddingBottom: __lt536, PaddingLeft: __lt537, PaddingX: __lt538, PaddingY: __lt539, Margin: __lt540, MarginTop: __lt541, MarginRight: __lt542, MarginBottom: __lt543, MarginLeft: __lt544, MarginX: __lt545, MarginY: __lt546, Gap: __lt547, Width: __lt548, MinWidth: __lt549, Height: __lt550, MaxWidth: __lt551, MaxHeight: __lt552, Flex: __lt553, FlexDirection: __lt554, AlignItems: __lt555, JustifyContent: __lt556, Position: __lt557, Top: __lt558, Bottom: __lt559, Left: __lt560, Right: __lt561, ZIndex: __lt562, Color: __lt563, FontSize: __lt564, FontFamily: __lt565, FontWeight: __lt566, FontStyle: __lt567, TextAlign: __lt568, MaxLines: __lt569, WhiteSpace: __lt570, Background: __lt571, BorderRadius: __lt572, BorderColor: __lt573, BorderWidth: __lt574, Border: __lt575, BorderBottom: __lt576, BorderLeft: __lt577, BorderCollapse: __lt578, BorderStyle: __lt579, Opacity: __lt580, Cursor: __lt581, Display: __lt582, Overflow: __lt583, ListStyleType: __lt584}.AlignItems)), RowsOf(Style{Padding: __lt585, PaddingTop: __lt586, PaddingRight: __lt587, PaddingBottom: __lt588, PaddingLeft: __lt589, PaddingX: __lt590, PaddingY: __lt591, Margin: __lt592, MarginTop: __lt593, MarginRight: __lt594, MarginBottom: __lt595, MarginLeft: __lt596, MarginX: __lt597, MarginY: __lt598, Gap: __lt599, Width: __lt600, MinWidth: __lt601, Height: __lt602, MaxWidth: __lt603, MaxHeight: __lt604, Flex: __lt605, FlexDirection: __lt606, AlignItems: __lt607, JustifyContent: __lt608, Position: __lt609, Top: __lt610, Bottom: __lt611, Left: __lt612, Right: __lt613, ZIndex: __lt614, Color: __lt615, FontSize: __lt616, FontFamily: __lt617, FontWeight: __lt618, FontStyle: __lt619, TextAlign: __lt620, MaxLines: __lt621, WhiteSpace: __lt622, Background: __lt623, BorderRadius: __lt624, BorderColor: __lt625, BorderWidth: __lt626, Border: __lt627, BorderBottom: __lt628, BorderLeft: __lt629, BorderCollapse: __lt630, BorderStyle: __lt631, Opacity: __lt632, Cursor: __lt633, Display: __lt634, Overflow: __lt635, ListStyleType: __lt636}.Gap), content_105Children...)
-			content_105 = content_105Look.AlignHorizontal(lipgloss.Position(CrossOf(Style{Padding: __lt533, PaddingTop: __lt534, PaddingRight: __lt535, PaddingBottom: __lt536, PaddingLeft: __lt537, PaddingX: __lt538, PaddingY: __lt539, Margin: __lt540, MarginTop: __lt541, MarginRight: __lt542, MarginBottom: __lt543, MarginLeft: __lt544, MarginX: __lt545, MarginY: __lt546, Gap: __lt547, Width: __lt548, MinWidth: __lt549, Height: __lt550, MaxWidth: __lt551, MaxHeight: __lt552, Flex: __lt553, FlexDirection: __lt554, AlignItems: __lt555, JustifyContent: __lt556, Position: __lt557, Top: __lt558, Bottom: __lt559, Left: __lt560, Right: __lt561, ZIndex: __lt562, Color: __lt563, FontSize: __lt564, FontFamily: __lt565, FontWeight: __lt566, FontStyle: __lt567, TextAlign: __lt568, MaxLines: __lt569, WhiteSpace: __lt570, Background: __lt571, BorderRadius: __lt572, BorderColor: __lt573, BorderWidth: __lt574, Border: __lt575, BorderBottom: __lt576, BorderLeft: __lt577, BorderCollapse: __lt578, BorderStyle: __lt579, Opacity: __lt580, Cursor: __lt581, Display: __lt582, Overflow: __lt583, ListStyleType: __lt584}.AlignItems))).Render(content_105)
+			content_1Look := BoxLook(Style{Width: snglSome(Measurement{Px: 40}), Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true)
+			var content_1Children []string
+			var content_1_0 string
+			content_1_0Cols, content_1_0Rows := tui.PictureBox(content_1Look, 24, 12)
+			content_1_0 = tui.Picture("https://example.com/a.png", content_1_0Cols, content_1_0Rows)
+			content_1Children = append(content_1Children, content_1_0)
+			content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+			content_1 = content_1Look.Render(content_1)
 		}
-		if content_105 != "" {
-			contentChildren = append(contentChildren, tui.Fixed(content_105))
+		if content_1 != "" {
+			contentChildren = append(contentChildren, content_1)
 		}
-		var __lt637 *Measurement
-		var __lt638 *Measurement
-		var __lt639 *Measurement
-		var __lt640 *Measurement
-		var __lt641 *Measurement
-		var __lt642 *Measurement
-		var __lt643 *Measurement
-		var __lt644 *Measurement
-		var __lt645 *Measurement
-		var __lt646 *Measurement
-		var __lt647 *Measurement
-		var __lt648 *Measurement
-		var __lt649 *Measurement
-		var __lt650 *Measurement
-		var __lt651 *Measurement
-		__lt652 := snglSome(Measurement{Px: 64})
-		var __lt653 *Measurement
-		__lt654 := snglSome(Measurement{Px: 64})
-		var __lt655 *Measurement
-		var __lt656 *Measurement
-		var __lt657 *float64
-		__lt658 := "unset"
-		__lt659 := "center"
-		__lt660 := "center"
-		__lt661 := "unset"
-		var __lt662 *Measurement
-		var __lt663 *Measurement
-		var __lt664 *Measurement
-		var __lt665 *Measurement
-		var __lt666 *int
-		var __lt667 *snglcolor.Color
-		var __lt668 *Measurement
-		__lt669 := ""
-		__lt670 := "unset"
-		__lt671 := "unset"
-		__lt672 := "center"
-		var __lt673 *int
-		__lt674 := "unset"
-		__lt675 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-		__lt676 := snglSome(Measurement{Px: 32})
-		var __lt677 *snglcolor.Color
-		var __lt678 *Measurement
-		__lt679 := ""
-		__lt680 := ""
-		__lt681 := ""
-		__lt682 := ""
-		__lt683 := "unset"
-		var __lt684 *float64
-		__lt685 := ""
-		__lt686 := "inlineFlex"
-		__lt687 := "unset"
-		__lt688 := "unset"
-		var __lt689 *Measurement
-		var __lt690 *Measurement
-		var __lt691 *Measurement
-		var __lt692 *Measurement
-		var __lt693 *Measurement
-		var __lt694 *Measurement
-		var __lt695 *Measurement
-		var __lt696 *Measurement
-		var __lt697 *Measurement
-		var __lt698 *Measurement
-		var __lt699 *Measurement
-		var __lt700 *Measurement
-		var __lt701 *Measurement
-		var __lt702 *Measurement
-		var __lt703 *Measurement
-		__lt704 := snglSome(Measurement{Px: 64})
-		var __lt705 *Measurement
-		__lt706 := snglSome(Measurement{Px: 64})
-		var __lt707 *Measurement
-		var __lt708 *Measurement
-		var __lt709 *float64
-		__lt710 := "unset"
-		__lt711 := "center"
-		__lt712 := "center"
-		__lt713 := "unset"
-		var __lt714 *Measurement
-		var __lt715 *Measurement
-		var __lt716 *Measurement
-		var __lt717 *Measurement
-		var __lt718 *int
-		var __lt719 *snglcolor.Color
-		var __lt720 *Measurement
-		__lt721 := ""
-		__lt722 := "unset"
-		__lt723 := "unset"
-		__lt724 := "center"
-		var __lt725 *int
-		__lt726 := "unset"
-		__lt727 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-		__lt728 := snglSome(Measurement{Px: 32})
-		var __lt729 *snglcolor.Color
-		var __lt730 *Measurement
-		__lt731 := ""
-		__lt732 := ""
-		__lt733 := ""
-		__lt734 := ""
-		__lt735 := "unset"
-		var __lt736 *float64
-		__lt737 := ""
-		__lt738 := "inlineFlex"
-		__lt739 := "unset"
-		__lt740 := "unset"
-		contentChildren = append(contentChildren, tui.Grow(GrowOf(Style{Padding: __lt689, PaddingTop: __lt690, PaddingRight: __lt691, PaddingBottom: __lt692, PaddingLeft: __lt693, PaddingX: __lt694, PaddingY: __lt695, Margin: __lt696, MarginTop: __lt697, MarginRight: __lt698, MarginBottom: __lt699, MarginLeft: __lt700, MarginX: __lt701, MarginY: __lt702, Gap: __lt703, Width: __lt704, MinWidth: __lt705, Height: __lt706, MaxWidth: __lt707, MaxHeight: __lt708, Flex: __lt709, FlexDirection: __lt710, AlignItems: __lt711, JustifyContent: __lt712, Position: __lt713, Top: __lt714, Bottom: __lt715, Left: __lt716, Right: __lt717, ZIndex: __lt718, Color: __lt719, FontSize: __lt720, FontFamily: __lt721, FontWeight: __lt722, FontStyle: __lt723, TextAlign: __lt724, MaxLines: __lt725, WhiteSpace: __lt726, Background: __lt727, BorderRadius: __lt728, BorderColor: __lt729, BorderWidth: __lt730, Border: __lt731, BorderBottom: __lt732, BorderLeft: __lt733, BorderCollapse: __lt734, BorderStyle: __lt735, Opacity: __lt736, Cursor: __lt737, Display: __lt738, Overflow: __lt739, ListStyleType: __lt740}.Flex), func(content_210Cells int) string {
-			var content_210 string
-			content_210 = tui.Sized(BoxLook(Style{Padding: __lt637, PaddingTop: __lt638, PaddingRight: __lt639, PaddingBottom: __lt640, PaddingLeft: __lt641, PaddingX: __lt642, PaddingY: __lt643, Margin: __lt644, MarginTop: __lt645, MarginRight: __lt646, MarginBottom: __lt647, MarginLeft: __lt648, MarginX: __lt649, MarginY: __lt650, Gap: __lt651, Width: __lt652, MinWidth: __lt653, Height: __lt654, MaxWidth: __lt655, MaxHeight: __lt656, Flex: __lt657, FlexDirection: __lt658, AlignItems: __lt659, JustifyContent: __lt660, Position: __lt661, Top: __lt662, Bottom: __lt663, Left: __lt664, Right: __lt665, ZIndex: __lt666, Color: __lt667, FontSize: __lt668, FontFamily: __lt669, FontWeight: __lt670, FontStyle: __lt671, TextAlign: __lt672, MaxLines: __lt673, WhiteSpace: __lt674, Background: __lt675, BorderRadius: __lt676, BorderColor: __lt677, BorderWidth: __lt678, Border: __lt679, BorderBottom: __lt680, BorderLeft: __lt681, BorderCollapse: __lt682, BorderStyle: __lt683, Opacity: __lt684, Cursor: __lt685, Display: __lt686, Overflow: __lt687, ListStyleType: __lt688}, true), true, content_210Cells).Render(fmt.Sprint("XY"))
-			return content_210
-		}))
-		content = tui.Join(true, lipgloss.Top, 0, contentW, contentChildren)
-		content = contentLook.Render(content)
+		var content_2 string
+		content_2 = BoxLook(Style{Width: snglSome(Measurement{Px: 64}), Height: snglSome(Measurement{Px: 64}), FlexDirection: "unset", AlignItems: "center", JustifyContent: "center", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255}), BorderRadius: snglSome(Measurement{Px: 32}), BorderStyle: "unset", Display: "inlineFlex", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("XY"))
+		contentChildren = append(contentChildren, content_2)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -1065,71 +412,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
-
-func snglSome[T any](v T) *T {
-	return &v
-}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
-type Style struct {
-	Padding        *Measurement
-	PaddingTop     *Measurement
-	PaddingRight   *Measurement
-	PaddingBottom  *Measurement
-	PaddingLeft    *Measurement
-	PaddingX       *Measurement
-	PaddingY       *Measurement
-	Margin         *Measurement
-	MarginTop      *Measurement
-	MarginRight    *Measurement
-	MarginBottom   *Measurement
-	MarginLeft     *Measurement
-	MarginX        *Measurement
-	MarginY        *Measurement
-	Gap            *Measurement
-	Width          *Measurement
-	MinWidth       *Measurement
-	Height         *Measurement
-	MaxWidth       *Measurement
-	MaxHeight      *Measurement
-	Flex           *float64
-	FlexDirection  string
-	AlignItems     string
-	JustifyContent string
-	Position       string
-	Top            *Measurement
-	Bottom         *Measurement
-	Left           *Measurement
-	Right          *Measurement
-	ZIndex         *int
-	Color          *snglcolor.Color
-	FontSize       *Measurement
-	FontFamily     string
-	FontWeight     string
-	FontStyle      string
-	TextAlign      string
-	MaxLines       *int
-	WhiteSpace     string
-	Background     *snglcolor.Color
-	BorderRadius   *Measurement
-	BorderColor    *snglcolor.Color
-	BorderWidth    *Measurement
-	Border         string
-	BorderBottom   string
-	BorderLeft     string
-	BorderCollapse string
-	BorderStyle    string
-	Opacity        *float64
-	Cursor         string
-	Display        string
-	Overflow       string
-	ListStyleType  string
-}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -1173,115 +455,6 @@ func New() *Model {
 	return m
 }
 
-func LookOf(s Style) fynelayout.Look {
-	var __lt0 float32
-	if s.Flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = float32((*(s.Flex)))
-	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
-	return look
-}
-
-func Side(all *Measurement, axis *Measurement, own *Measurement) float32 {
-	var __lt2 *Measurement
-	if own != nil {
-		__lt2 = own
-	} else {
-		var __lt1 *Measurement
-		if axis != nil {
-			__lt1 = axis
-		} else {
-			__lt1 = all
-		}
-		__lt2 = __lt1
-	}
-	return Inset(__lt2)
-}
-
-func Inset(m__r0 *Measurement) float32 {
-	var __lt3 float32
-	if m__r0 == nil {
-		__lt3 = 0.0
-	} else {
-		__lt3 = float32(max(((*(m__r0)).Px + (14.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0))
-	}
-	return __lt3
-}
-
-func CrossOf(a string) int {
-	var __lt4 int
-	switch a {
-	case "start":
-		__lt4 = 1
-	case "center":
-		__lt4 = 2
-	case "end":
-		__lt4 = 3
-	default:
-		__lt4 = 0
-	}
-	return __lt4
-}
-
-func JustifyOf(j string) int {
-	var __lt5 int
-	switch j {
-	case "center":
-		__lt5 = 1
-	case "end":
-		__lt5 = 2
-	case "spaceBetween":
-		__lt5 = 3
-	case "spaceAround":
-		__lt5 = 4
-	case "spaceEvenly":
-		__lt5 = 5
-	default:
-		__lt5 = 0
-	}
-	return __lt5
-}
-
-func Paint(c__r0 *snglcolor.Color) snglcolor.Color {
-	var __lt6 snglcolor.Color
-	if c__r0 == nil {
-		__lt6 = snglcolor.Color{}
-	} else {
-		__lt6 = (*(c__r0))
-	}
-	return __lt6
-}
-
-func TextAlignOf(a string) int {
-	var __lt7 int
-	switch a {
-	case "left", "justify":
-		__lt7 = 1
-	case "center":
-		__lt7 = 2
-	case "right":
-		__lt7 = 3
-	default:
-		__lt7 = 0
-	}
-	return __lt7
-}
-
-func WrapOf(w string) int {
-	var __lt8 int
-	switch w {
-	case "pre", "nowrap":
-		__lt8 = 1
-	case "preWrap", "preLine":
-		__lt8 = 2
-	default:
-		__lt8 = 0
-	}
-	return __lt8
-}
-
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1300,113 +473,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 				m.__slot0 = nil
 				m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 				__n1 := widget.NewLabel("")
+				__n1__box := fynelayout.NewBox(__n1)
 				__n1.SetText("JD")
-				var __lt9 *Measurement
-				var __lt10 *Measurement
-				var __lt11 *Measurement
-				var __lt12 *Measurement
-				var __lt13 *Measurement
-				var __lt14 *Measurement
-				var __lt15 *Measurement
-				var __lt16 *Measurement
-				var __lt17 *Measurement
-				var __lt18 *Measurement
-				var __lt19 *Measurement
-				var __lt20 *Measurement
-				var __lt21 *Measurement
-				var __lt22 *Measurement
-				var __lt23 *Measurement
-				__lt24 := snglSome(Measurement{Px: 40})
-				var __lt25 *Measurement
-				__lt26 := snglSome(Measurement{Px: 40})
-				var __lt27 *Measurement
-				var __lt28 *Measurement
-				var __lt29 *float64
-				__lt30 := "unset"
-				__lt31 := "center"
-				__lt32 := "center"
-				__lt33 := "unset"
-				var __lt34 *Measurement
-				var __lt35 *Measurement
-				var __lt36 *Measurement
-				var __lt37 *Measurement
-				var __lt38 *int
-				var __lt39 *snglcolor.Color
-				var __lt40 *Measurement
-				__lt41 := ""
-				__lt42 := "unset"
-				__lt43 := "unset"
-				__lt44 := "center"
-				var __lt45 *int
-				__lt46 := "unset"
-				__lt47 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-				__lt48 := snglSome(Measurement{Px: 20})
-				var __lt49 *snglcolor.Color
-				var __lt50 *Measurement
-				__lt51 := ""
-				__lt52 := ""
-				__lt53 := ""
-				__lt54 := ""
-				__lt55 := "unset"
-				var __lt56 *float64
-				__lt57 := ""
-				__lt58 := "inlineFlex"
-				__lt59 := "unset"
-				__lt60 := "unset"
-				_ = __lt9
-				_ = __lt10
-				_ = __lt11
-				_ = __lt12
-				_ = __lt13
-				_ = __lt14
-				_ = __lt15
-				_ = __lt16
-				_ = __lt17
-				_ = __lt18
-				_ = __lt19
-				_ = __lt20
-				_ = __lt21
-				_ = __lt22
-				_ = __lt23
-				_ = __lt24
-				_ = __lt25
-				_ = __lt26
-				_ = __lt27
-				_ = __lt28
-				_ = __lt29
-				_ = __lt30
-				_ = __lt31
-				_ = __lt32
-				_ = __lt33
-				_ = __lt34
-				_ = __lt35
-				_ = __lt36
-				_ = __lt37
-				_ = __lt38
-				_ = __lt39
-				_ = __lt40
-				_ = __lt41
-				_ = __lt42
-				_ = __lt43
-				_ = __lt44
-				_ = __lt45
-				_ = __lt46
-				_ = __lt47
-				_ = __lt48
-				_ = __lt49
-				_ = __lt50
-				_ = __lt51
-				_ = __lt52
-				_ = __lt53
-				_ = __lt54
-				_ = __lt55
-				_ = __lt56
-				_ = __lt57
-				_ = __lt58
-				_ = __lt59
-				_ = __lt60
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
-				m.__slot0 = append(m.__slot0, __n1)
+				__n1__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Stroke: snglcolor.Color{}, Radius: 20.0, TextColor: snglcolor.Color{}, TextAlign: 2})
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__box)
+				m.__slot0 = append(m.__slot0, __n1__box)
 			}
 		}()
 	}
@@ -1431,220 +502,16 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 				if m.failed__inst1 {
 					__n3 := widget.NewLabel("")
+					__n3__box := fynelayout.NewBox(__n3)
 					__n3.SetText("AB")
-					var __lt113 *Measurement
-					var __lt114 *Measurement
-					var __lt115 *Measurement
-					var __lt116 *Measurement
-					var __lt117 *Measurement
-					var __lt118 *Measurement
-					var __lt119 *Measurement
-					var __lt120 *Measurement
-					var __lt121 *Measurement
-					var __lt122 *Measurement
-					var __lt123 *Measurement
-					var __lt124 *Measurement
-					var __lt125 *Measurement
-					var __lt126 *Measurement
-					var __lt127 *Measurement
-					__lt128 := snglSome(Measurement{Px: 40})
-					var __lt129 *Measurement
-					__lt130 := snglSome(Measurement{Px: 40})
-					var __lt131 *Measurement
-					var __lt132 *Measurement
-					var __lt133 *float64
-					__lt134 := "unset"
-					__lt135 := "center"
-					__lt136 := "center"
-					__lt137 := "unset"
-					var __lt138 *Measurement
-					var __lt139 *Measurement
-					var __lt140 *Measurement
-					var __lt141 *Measurement
-					var __lt142 *int
-					var __lt143 *snglcolor.Color
-					var __lt144 *Measurement
-					__lt145 := ""
-					__lt146 := "unset"
-					__lt147 := "unset"
-					__lt148 := "center"
-					var __lt149 *int
-					__lt150 := "unset"
-					__lt151 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-					__lt152 := snglSome(Measurement{Px: 4})
-					var __lt153 *snglcolor.Color
-					var __lt154 *Measurement
-					__lt155 := ""
-					__lt156 := ""
-					__lt157 := ""
-					__lt158 := ""
-					__lt159 := "unset"
-					var __lt160 *float64
-					__lt161 := ""
-					__lt162 := "inlineFlex"
-					__lt163 := "unset"
-					__lt164 := "unset"
-					_ = __lt113
-					_ = __lt114
-					_ = __lt115
-					_ = __lt116
-					_ = __lt117
-					_ = __lt118
-					_ = __lt119
-					_ = __lt120
-					_ = __lt121
-					_ = __lt122
-					_ = __lt123
-					_ = __lt124
-					_ = __lt125
-					_ = __lt126
-					_ = __lt127
-					_ = __lt128
-					_ = __lt129
-					_ = __lt130
-					_ = __lt131
-					_ = __lt132
-					_ = __lt133
-					_ = __lt134
-					_ = __lt135
-					_ = __lt136
-					_ = __lt137
-					_ = __lt138
-					_ = __lt139
-					_ = __lt140
-					_ = __lt141
-					_ = __lt142
-					_ = __lt143
-					_ = __lt144
-					_ = __lt145
-					_ = __lt146
-					_ = __lt147
-					_ = __lt148
-					_ = __lt149
-					_ = __lt150
-					_ = __lt151
-					_ = __lt152
-					_ = __lt153
-					_ = __lt154
-					_ = __lt155
-					_ = __lt156
-					_ = __lt157
-					_ = __lt158
-					_ = __lt159
-					_ = __lt160
-					_ = __lt161
-					_ = __lt162
-					_ = __lt163
-					_ = __lt164
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
-					m.__slot1 = append(m.__slot1, __n3)
+					__n3__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Stroke: snglcolor.Color{}, Radius: 4.0, TextColor: snglcolor.Color{}, TextAlign: 2})
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
+					m.__slot1 = append(m.__slot1, __n3__box)
 				} else {
 					__n4 := fynelayout.NewImage()
+					__n4__box := fynelayout.NewBox(__n4)
 					__n4.SetFit("cover")
-					var __lt165 *Measurement
-					var __lt166 *Measurement
-					var __lt167 *Measurement
-					var __lt168 *Measurement
-					var __lt169 *Measurement
-					var __lt170 *Measurement
-					var __lt171 *Measurement
-					var __lt172 *Measurement
-					var __lt173 *Measurement
-					var __lt174 *Measurement
-					var __lt175 *Measurement
-					var __lt176 *Measurement
-					var __lt177 *Measurement
-					var __lt178 *Measurement
-					var __lt179 *Measurement
-					__lt180 := snglSome(Measurement{Px: 40})
-					var __lt181 *Measurement
-					__lt182 := snglSome(Measurement{Px: 40})
-					var __lt183 *Measurement
-					var __lt184 *Measurement
-					var __lt185 *float64
-					__lt186 := "unset"
-					__lt187 := "unset"
-					__lt188 := "unset"
-					__lt189 := "unset"
-					var __lt190 *Measurement
-					var __lt191 *Measurement
-					var __lt192 *Measurement
-					var __lt193 *Measurement
-					var __lt194 *int
-					var __lt195 *snglcolor.Color
-					var __lt196 *Measurement
-					__lt197 := ""
-					__lt198 := "unset"
-					__lt199 := "unset"
-					__lt200 := "unset"
-					var __lt201 *int
-					__lt202 := "unset"
-					var __lt203 *snglcolor.Color
-					__lt204 := snglSome(Measurement{Px: 4})
-					var __lt205 *snglcolor.Color
-					var __lt206 *Measurement
-					__lt207 := ""
-					__lt208 := ""
-					__lt209 := ""
-					__lt210 := ""
-					__lt211 := "unset"
-					var __lt212 *float64
-					__lt213 := ""
-					__lt214 := "unset"
-					__lt215 := "unset"
-					__lt216 := "unset"
-					_ = __lt165
-					_ = __lt166
-					_ = __lt167
-					_ = __lt168
-					_ = __lt169
-					_ = __lt170
-					_ = __lt171
-					_ = __lt172
-					_ = __lt173
-					_ = __lt174
-					_ = __lt175
-					_ = __lt176
-					_ = __lt177
-					_ = __lt178
-					_ = __lt179
-					_ = __lt180
-					_ = __lt181
-					_ = __lt182
-					_ = __lt183
-					_ = __lt184
-					_ = __lt185
-					_ = __lt186
-					_ = __lt187
-					_ = __lt188
-					_ = __lt189
-					_ = __lt190
-					_ = __lt191
-					_ = __lt192
-					_ = __lt193
-					_ = __lt194
-					_ = __lt195
-					_ = __lt196
-					_ = __lt197
-					_ = __lt198
-					_ = __lt199
-					_ = __lt200
-					_ = __lt201
-					_ = __lt202
-					_ = __lt203
-					_ = __lt204
-					_ = __lt205
-					_ = __lt206
-					_ = __lt207
-					_ = __lt208
-					_ = __lt209
-					_ = __lt210
-					_ = __lt211
-					_ = __lt212
-					_ = __lt213
-					_ = __lt214
-					_ = __lt215
-					_ = __lt216
+					__n4__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, Radius: 4.0, TextColor: snglcolor.Color{}})
 					__n4.OnTapped = func() {
 					}
 					__n4.OnLoad = func() {
@@ -1656,8 +523,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 					__n5 := fynelayout.NewImageSource()
 					__n5.SetURL("https://example.com/a.png")
 					__n4.Add(__n5)
-					fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
-					m.__slot1 = append(m.__slot1, __n4)
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__box)
+					m.__slot1 = append(m.__slot1, __n4__box)
 				}
 			}
 		}()
@@ -1682,113 +549,11 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 				m.__slot2 = nil
 				m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
 				__n6 := widget.NewLabel("")
+				__n6__box := fynelayout.NewBox(__n6)
 				__n6.SetText("XY")
-				var __lt217 *Measurement
-				var __lt218 *Measurement
-				var __lt219 *Measurement
-				var __lt220 *Measurement
-				var __lt221 *Measurement
-				var __lt222 *Measurement
-				var __lt223 *Measurement
-				var __lt224 *Measurement
-				var __lt225 *Measurement
-				var __lt226 *Measurement
-				var __lt227 *Measurement
-				var __lt228 *Measurement
-				var __lt229 *Measurement
-				var __lt230 *Measurement
-				var __lt231 *Measurement
-				__lt232 := snglSome(Measurement{Px: 64})
-				var __lt233 *Measurement
-				__lt234 := snglSome(Measurement{Px: 64})
-				var __lt235 *Measurement
-				var __lt236 *Measurement
-				var __lt237 *float64
-				__lt238 := "unset"
-				__lt239 := "center"
-				__lt240 := "center"
-				__lt241 := "unset"
-				var __lt242 *Measurement
-				var __lt243 *Measurement
-				var __lt244 *Measurement
-				var __lt245 *Measurement
-				var __lt246 *int
-				var __lt247 *snglcolor.Color
-				var __lt248 *Measurement
-				__lt249 := ""
-				__lt250 := "unset"
-				__lt251 := "unset"
-				__lt252 := "center"
-				var __lt253 *int
-				__lt254 := "unset"
-				__lt255 := snglSome(snglcolor.Color{R: 204, G: 204, B: 204, A: 255})
-				__lt256 := snglSome(Measurement{Px: 32})
-				var __lt257 *snglcolor.Color
-				var __lt258 *Measurement
-				__lt259 := ""
-				__lt260 := ""
-				__lt261 := ""
-				__lt262 := ""
-				__lt263 := "unset"
-				var __lt264 *float64
-				__lt265 := ""
-				__lt266 := "inlineFlex"
-				__lt267 := "unset"
-				__lt268 := "unset"
-				_ = __lt217
-				_ = __lt218
-				_ = __lt219
-				_ = __lt220
-				_ = __lt221
-				_ = __lt222
-				_ = __lt223
-				_ = __lt224
-				_ = __lt225
-				_ = __lt226
-				_ = __lt227
-				_ = __lt228
-				_ = __lt229
-				_ = __lt230
-				_ = __lt231
-				_ = __lt232
-				_ = __lt233
-				_ = __lt234
-				_ = __lt235
-				_ = __lt236
-				_ = __lt237
-				_ = __lt238
-				_ = __lt239
-				_ = __lt240
-				_ = __lt241
-				_ = __lt242
-				_ = __lt243
-				_ = __lt244
-				_ = __lt245
-				_ = __lt246
-				_ = __lt247
-				_ = __lt248
-				_ = __lt249
-				_ = __lt250
-				_ = __lt251
-				_ = __lt252
-				_ = __lt253
-				_ = __lt254
-				_ = __lt255
-				_ = __lt256
-				_ = __lt257
-				_ = __lt258
-				_ = __lt259
-				_ = __lt260
-				_ = __lt261
-				_ = __lt262
-				_ = __lt263
-				_ = __lt264
-				_ = __lt265
-				_ = __lt266
-				_ = __lt267
-				_ = __lt268
-				fynelayout.InsertBefore(__parent, m.__slot2_at, __n6)
-				m.__slot2 = append(m.__slot2, __n6)
+				__n6__box.SetLook(fynelayout.Look{Width: 64.0, Height: 64.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Stroke: snglcolor.Color{}, Radius: 32.0, TextColor: snglcolor.Color{}, TextAlign: 2})
+				fynelayout.InsertBefore(__parent, m.__slot2_at, __n6__box)
+				m.__slot2 = append(m.__slot2, __n6__box)
 			}
 		}()
 	}
@@ -1862,6 +627,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
@@ -2101,20 +867,24 @@ fun MainScreen() {
             }
         }
         Row(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "JD", modifier = styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+            Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxHeight() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
             if (failed__inst1) {
-                Text(text = "AB", modifier = styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 4.0), display = SnglDisplay.INLINEFLEX), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+                Text(text = "AB", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 4.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxHeight() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
             } else {
-                SnglImage(modifier = styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), borderRadius = Measurement(px = 4.0)), true), onLoad = {}, onError = { _ ->
+                SnglImage(modifier = flexed(styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), borderRadius = Measurement(px = 4.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxHeight() }), onLoad = {}, onError = { _ ->
                     failed__inst1 = true
                 }) {
                     SnglRemoteImage(url = "https://example.com/a.png")
                 }
             }
-            Text(text = "XY", modifier = styleModifier(Style(width = Measurement(px = 64.0), height = Measurement(px = 64.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 32.0), display = SnglDisplay.INLINEFLEX), true), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+            Text(text = "XY", modifier = modifierOf(Style(width = Measurement(px = 64.0), height = Measurement(px = 64.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 32.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxHeight() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
         }
     }
 }
+
+fun modifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, share)
+
+fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m: androidx.compose.ui.Modifier = Modifier
@@ -2123,7 +893,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var bottom = (if ((s.marginBottom != null)) s.marginBottom else (if ((s.marginY != null)) s.marginY else s.margin))
     var left = (if ((s.marginLeft != null)) s.marginLeft else (if ((s.marginX != null)) s.marginX else s.margin))
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + 0.0).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + 0.0).toFloat()))
     }
     if ((s.zIndex != null)) {
     	m = m.zIndex(s.zIndex!!.toFloat())
@@ -2150,7 +920,7 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var edge = 0.0
     if ((s.borderWidth != null)) {
     	edge = (s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem)))
-    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).r.toInt(), green = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).g.toInt(), blue = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).b.toInt(), alpha = (if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color())).a.toInt()), shape)
+    	m = m.border(Dp((s.borderWidth!!.px + (16.0 * (s.borderWidth!!.em + s.borderWidth!!.rem))).toFloat()), composeOf((if ((s.borderColor != null)) s.borderColor!! else (if ((s.color != null)) s.color!! else Color()))), shape)
     }
     if ((paints && (s.background != null))) {
     	m = m.background(androidx.compose.ui.graphics.Color(red = s.background!!.r.toInt(), green = s.background!!.g.toInt(), blue = s.background!!.b.toInt(), alpha = s.background!!.a.toInt()), shape)
@@ -2160,10 +930,14 @@ fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     bottom = (if ((s.paddingBottom != null)) s.paddingBottom else (if ((s.paddingY != null)) s.paddingY else s.padding))
     left = (if ((s.paddingLeft != null)) s.paddingLeft else (if ((s.paddingX != null)) s.paddingX else s.padding))
     if ((((((edge != 0.0) || (top != null)) || (right != null)) || (bottom != null)) || (left != null))) {
-    	m = m.padding(Dp(((if (((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem)))) < 0.0)) 0.0 else (if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp(((if (((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem)))) < 0.0)) 0.0 else (if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp(((if (((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem)))) < 0.0)) 0.0 else (if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp(((if (((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem)))) < 0.0)) 0.0 else (if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
+    	m = m.padding(Dp((nonNegative((if ((left == null)) 0.0 else (left!!.px + (16.0 * (left!!.em + left!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((top == null)) 0.0 else (top!!.px + (16.0 * (top!!.em + top!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((right == null)) 0.0 else (right!!.px + (16.0 * (right!!.em + right!!.rem))))) + edge).toFloat()), Dp((nonNegative((if ((bottom == null)) 0.0 else (bottom!!.px + (16.0 * (bottom!!.em + bottom!!.rem))))) + edge).toFloat()))
     }
     return m
 }
+
+fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
+
+fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
 package test.sngl.app
 
@@ -2366,7 +1140,7 @@ body { font-family: system-ui, sans-serif; }
           __slot0 = [];
           let __n1 = document.createElement("span");
           __n1.textContent = "JD";
-          __n1.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+          __n1.setAttribute("style", "display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;text-align:center;background-color:#cccccc;border-radius:20px");
           __n1.addEventListener("click", () => {
           });
           let __place0_i_ref0 = null;
@@ -2405,7 +1179,7 @@ body { font-family: system-ui, sans-serif; }
           if (state.failed__inst1) {
             let __n3 = document.createElement("span");
             __n3.textContent = "AB";
-            __n3.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:4px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+            __n3.setAttribute("style", "display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;text-align:center;background-color:#cccccc;border-radius:4px");
             __n3.addEventListener("click", () => {
             });
             let __place1_i_ref0 = null;
@@ -2423,7 +1197,7 @@ body { font-family: system-ui, sans-serif; }
             __n4.setAttribute("class", "sngl-image sngl-image-cover");
             __n4.setAttribute("role", "img");
             __n4.setAttribute("aria-label", "");
-            __n4.setAttribute("style", "border-radius:4px;display:inline-block;height:40px;overflow:hidden;width:40px");
+            __n4.setAttribute("style", "display:inline-block;width:40px;height:40px;border-radius:4px;overflow:hidden");
             __n4.addEventListener("click", () => {
             });
             __n4.addEventListener("error", (e) => {
@@ -2470,7 +1244,7 @@ body { font-family: system-ui, sans-serif; }
           __slot2 = [];
           let __n6 = document.createElement("span");
           __n6.textContent = "XY";
-          __n6.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px");
+          __n6.setAttribute("style", "display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;text-align:center;background-color:#cccccc;border-radius:32px");
           __n6.addEventListener("click", () => {
           });
           let __place2_i_ref0 = null;
@@ -2504,10 +1278,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:92002d68ed48886797a6f2a72bb9ed96
+pass sha256:31f5addb125e749409e92efc0b534978
 -- run/go/fyne --
-pass sha256:783915aab893c6dc3160b43adef0e955
+pass sha256:8f1fadb6118b5dddfe43288cb0f3b310
 -- run/kotlin/android --
-pass sha256:1c0083edca9766ef4e248e977f728f02
+pass sha256:f166ae3f2e968024805e8e9c053b7ed5
 -- run/none/html --
-pass sha256:13ffb6fb13864dadd0507e431be8b221
+pass sha256:231e7150cbfe701c1e235ef587bf4d60
