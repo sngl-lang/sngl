@@ -197,6 +197,8 @@ func emitComponentInstance(
 	// injected widget updates a handler's does, so it goes through a
 	// translator too.
 	var methods strings.Builder
+	triggered := ir.TriggeredIDs(gc.Ctx.Pkg)
+	var slotInvokers []gtkEventInvoker
 	for _, fn := range comp.Funcs {
 		if fn == nil || len(fn.Block) == 0 {
 			continue
@@ -207,7 +209,8 @@ func emitComponentInstance(
 			params = params[1:]
 		}
 		if fn.Lowered.SlotRender {
-			mtr.withRecordPresent(presentIDs, fn.Block)
+			mtr.withRecordPresent(presentIDs, triggered, fn.Block).
+				withInvokerSink(func(inv gtkEventInvoker) { slotInvokers = append(slotInvokers, inv) })
 			// A reactive slot's render func, whose body was written against
 			// the reactivity pass's `parent` name and is typed the way the
 			// Model's own slot funcs type it (see emitIRSlotFunc).
@@ -237,6 +240,17 @@ func emitComponentInstance(
 			methods.WriteByte('\n')
 		}
 		methods.WriteByte('\n')
+	}
+
+	// A widget a slot of the record builds is handed over by that render, so
+	// its invoker fires the Model's field; one a test indexes is reached by
+	// key, which nothing here keeps.
+	for _, inv := range slotInvokers {
+		if inv.List || inv.FieldName != inv.IDLabel || !triggered[inv.IDLabel] || invokerSink == nil {
+			continue
+		}
+		inv.FieldName = namedWidgetField(inv.IDLabel)
+		invokerSink(inv)
 	}
 
 	// A drawing written in this component's body paints into fields of this

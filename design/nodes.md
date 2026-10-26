@@ -590,6 +590,51 @@ trigger runs its call site's handler) and `ui.tabs` met both;
 `modifier` so the copy carries its testTag. `cmd/sngl/testdata/tabs_runs.txt`
 runs it on all six, through an instance as well.
 
+**Every tab's panel is mounted with the tabs, and selecting one shows it.**
+`ui.tabs`' body puts each panel, in its record's iteration, in a `vbox`
+whose `display` is `none` unless its tab is selected. It rendered the selected
+one alone under `if k == selected`, so leaving a tab dropped its panel and
+coming back started it again: a counter at zero, a query asked again. A null
+test asks whether a node is mounted, so a node of a panel not shown is
+present (`tabs_runs.txt`, `tabs_panel_presence_runs.txt`). Each target hides
+the box its own way: fyne and gtk4 by `hidden`; html keeps a `role=tabpanel`
+per tab with all but one `hidden`; bubbletea gives a Layout `hidden`, which
+draws nothing while its children still render, and a growing one takes none
+of the free space -- `display` was one of what its styles left unanswered.
+bubbletea's Tab still stops on a hidden panel's controls, as it does on a
+branch not taken: `walkForSlots` gathers static stops ungated.
+
+On fyne and gtk4 each panel's box is lifted into an instance of its own
+(`liftSlotBodies`), one per tab, which put two gaps in reach. Each one's
+render cleared the Model's `__present_<id>` for an instance only another
+builds, so after a switch the counter in the first panel read as gone; a
+record now takes the field back only where a render removes the root it holds
+(`releaseRemovedInstances`). And a widget a test fires that the record's slot
+builds, a button written straight in a panel, had no invoker, since a
+record's invokers were gathered from its body alone: its slot now hands the
+widget to the Model as `__named_<id>` and its invoker goes through that
+(`ir.TriggeredIDs`).
+
+android pages through the panels: `SnglPager` (`codegen/platform/android/ pager.kt`) is a HorizontalPager under the TabRow, `beyondViewportPageCount`
+one less than the count so no page is disposed, its page a slot taking the
+index -- the first intrinsic slot with parameters, which `slotArgs` now
+binds. `selected` moves it, and a swipe settling on another page hands it to
+`onSelect`; one settling on a disabled page goes on to the next that is not,
+or back. The override's `change(k)` there sits under `flexShare`, and an emit
+under a context provider was never answered, coming out as an `onChange`
+nothing declared (`substituteEvents`). html's panels are in `sngl-swipe`
+(`codegen/platform/html/swipe.go`), an element the page defines that hears a
+touch or a pen move sideways and dispatches `swipe`, `detail` 1 toward what
+follows; one starting in a sideways scroll is the scroll's, and a mouse
+selects text. Its handler chooses the nearest tab that way not disabled.
+
+A test swipes with `sngl:test/mobile`'s `swipe(node, toward)`: android's
+Compose test injects the finger into what scrolls in the node
+(`performTouchInput`), html dispatches a touch's pointer events on its
+`sngl-swipe`. `testdata/tabs_panels_stay_loaded.{sngl,txtar}` and
+`cmd/sngl/testdata/tabs_panels_stay_loaded_runs.txt` pin all of it, the
+swipe on android and html.
+
 **A record's content is counted by where it was written.** A data family's
 content becomes a population of its container's hidden content slot,
 branching on the record's number (`ir.RecordID`), and once the container is

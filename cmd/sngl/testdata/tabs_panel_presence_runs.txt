@@ -2,7 +2,8 @@
 # record of the strip's loop over its tabs, so `#mark[2]` is the panel's own
 # loop's third copy, as every target but bubbletea keyed it: bubbletea's
 # presence check put the tab's index in front of the copy's ("1/2"), and
-# answered no copy present.
+# answered no copy present. A panel not selected is mounted all the same, so
+# its copies are present before the switch to it.
 
 sngl test --platform=none app.sngl
 stdout '^ok +1 tests, 0 failures$'
@@ -47,14 +48,14 @@ component panes ui.node {
 }
 
 func testPresentInAPanel(t test.Test, c panes) {
-    t.assert(c.mark[0] == null)
+    t.assert(c.mark[0] != null)
     c.strip.change(1)
     t.assert(c.mark[0] != null)
     t.assert(c.mark[1] == null)
     t.assert(c.mark[2] != null && c.mark[2].value == "c")
 }
 -- testrun/android/kotlin/app.sngl/panes/1 --
-sha256:9189f86ccd147ad1ff556a68af4ab2ad
+sha256:ecf8f1db9c8e2e7f90fd2a9028c01227
 {
   "results": [
     {
@@ -64,7 +65,7 @@ sha256:9189f86ccd147ad1ff556a68af4ab2ad
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panes/1 --
-sha256:5c5347a2ba0e379677822e53f30a3ff5
+sha256:3d8f7e2d3233295dfa8f5ca5a8897c5c
 {
   "results": [
     {
@@ -74,7 +75,7 @@ sha256:5c5347a2ba0e379677822e53f30a3ff5
   ]
 }
 -- testrun/fyne/go/app.sngl/panes/1 --
-sha256:e39da7d9e89f8b77bf668d22717f825a
+sha256:4c9a83e175217b00dae24dafad5b18d2
 {
   "results": [
     {
@@ -84,7 +85,7 @@ sha256:e39da7d9e89f8b77bf668d22717f825a
   ]
 }
 -- testrun/gtk4/go/app.sngl/panes/1 --
-sha256:bc202f08f25ecdbd388cc6ea6672afe6
+sha256:fa410e5c83a8cfc8fbaaa77d072c837f
 {
   "results": [
     {
@@ -94,7 +95,7 @@ sha256:bc202f08f25ecdbd388cc6ea6672afe6
   ]
 }
 -- testrun/html/none/app.sngl/panes/1 --
-sha256:a0bddb694cfe0cf795b800d00928023a
+sha256:7b67842996a349e3ffbc026306711660
 {
   "results": [
     {

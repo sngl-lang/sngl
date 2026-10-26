@@ -1083,7 +1083,9 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			if h := n.Handler; h != nil && h.Func != nil {
 				h.Func.Block = substituteEventsUnder(h.Func.Block, handlers, h.Func, under)
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
+		case *ir.ContextProvider:
+			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle,
 			*ir.Break, *ir.Continue:
 			// No child statement list of their own; the lambda walk below is
 			// what reaches an emit written inside one of their expressions.

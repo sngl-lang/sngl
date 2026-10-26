@@ -147,6 +147,14 @@ struct ClickEvent {
     currentTarget Element
 }
 
+// A swipe as `sngl-swipe` dispatches it: `detail` is 1 where the finger moved
+// toward the start of the line, which brings in what follows, and -1 the other
+// way.
+#[js.native("CustomEvent")]
+struct SwipeEvent {
+    detail int
+}
+
 // An element a click went through, as far as a card asks of it.
 #[js.native("Element")]
 struct Element {}
@@ -251,6 +259,9 @@ component element(
     @close(),
     @select(),
     @keydown(e KeyEvent),
+    // Dispatched by `sngl-swipe`, an element the page defines
+    // (codegen/platform/html/swipe.go), as a finger or a pen swipes across it.
+    @swipe(e SwipeEvent),
     // Dispatched by `sngl-reach-end`, an element the page defines rather than
     // the DOM (codegen/platform/html/reachend.go). Declared because it is
     // camelCase, which the wildcard below refuses, and it is camelCase so a
@@ -526,8 +537,10 @@ const component ui.spinner[platform](label, style) {
     }
 }
 
-// A tablist of the tabs' labels and a tabpanel showing the selected one's
-// content. `underline` marks the selected tab with a rule under it, `pills`
+// A tablist of the tabs' labels and a tabpanel per tab, every one in the
+// document and all but the selected one hidden. The panels are in a
+// `sngl-swipe`, an element the page defines (codegen/platform/html/swipe.go),
+// whose swipe chooses the next tab that way that is not disabled. `underline` marks the selected tab with a rule under it, `pills`
 // with a filled background.
 const component ui.tabs[platform](selected, variant, style, @change, items) {
     html.div(style={...style, display=flex, flexDirection=column}) {
@@ -554,14 +567,30 @@ const component ui.tabs[platform](selected, variant, style, @change, items) {
                 )
             }
         }
-        html.div(role="tabpanel") {
+        html.element(tag="sngl-swipe", @swipe(e) {
+            var k = swipedTo(items.map(func(t ui.tab) => t.disabled), selected, e.detail)
+            if k != selected {
+                selected = k
+                change(k)
+            }
+        }) {
             for var k, t = items {
-                if k == selected {
+                html.div(role="tabpanel", hidden=k != selected) {
                     t.content
                 }
             }
         }
     }
+}
+
+// The tab a swipe by `by` from `from` chooses: the nearest that way that is
+// not disabled, or `from` where there is none.
+const func swipedTo(disabled list[bool], from int, by int) int {
+    var k = from + by
+    for k >= 0 && k < disabled.length() && disabled[k] {
+        k += by
+    }
+    return k >= 0 && k < disabled.length() ? k : from
 }
 
 const component ui.link[platform](text, href, style, @click) {

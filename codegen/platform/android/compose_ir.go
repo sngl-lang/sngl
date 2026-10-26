@@ -629,6 +629,10 @@ func (cc *irComposeContext) slotArgs(n *ir.NodeInst, comp *ir.Component) []strin
 		if sc == nil {
 			continue
 		}
+		if len(slot.Params) > 0 {
+			args = append(args, slot.Name+" = "+cc.slotLambda(slot, sc, sc.Body))
+			continue
+		}
 		body := cc.renderNested(sc.Body)
 		if body == "" {
 			continue

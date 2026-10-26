@@ -1,0 +1,82 @@
+// A tab's panel is mounted with the tabs and stays mounted while another is
+// selected: what it holds survives a switch away and back, and a panel never
+// selected has already mounted.
+import ui "sngl:ui"
+import "sngl:test"
+
+var mounts = 0
+
+component counter ui.node {
+    var hits = 0
+
+    ui.button #press(text="{hits}", @click {
+        hits += 1
+    })
+}
+
+component later ui.node {
+    effect(@mount {
+        mounts += 1
+    })
+    ui.text(value="later")
+}
+
+component panels ui.node {
+    var idx = 0
+    var seen = 0
+
+    ui.tabs #strip(:selected=idx) {
+        ui.tab(label="One") {
+            counter #c
+        }
+        ui.tab(label="Two") {
+            var taps = 0
+            ui.button #tap(text="{taps}", @click {
+                taps += 1
+                seen = taps
+            })
+        }
+        ui.tab(label="Three") {
+            later
+        }
+    }
+}
+
+func testAPanelKeepsItsStateAcrossASwitch(t test.Test, c panels) {
+    if c.c != null {
+        c.c.press.click()
+        c.c.press.click()
+    }
+    c.strip.change(1)
+    c.strip.change(0)
+    t.assert(c.c != null)
+    if c.c != null {
+        t.assert(c.c.hits == 2)
+    }
+}
+
+func testABlockKeepsItsStateAcrossASwitch(t test.Test, c panels) {
+    c.strip.change(1)
+    if c.tap != null {
+        c.tap.click()
+    }
+    c.strip.change(0)
+    c.strip.change(1)
+    t.assert(c.tap != null)
+    if c.tap != null {
+        c.tap.click()
+    }
+    t.assert(c.seen == 2)
+}
+
+func testEveryPanelMountsWithTheTabs(t test.Test, c panels) {
+    t.assert(mounts == 1)
+    c.strip.change(2)
+    c.strip.change(0)
+    c.strip.change(2)
+    t.assert(mounts == 1)
+}
+
+ui.window(title="t") {
+    panels
+}

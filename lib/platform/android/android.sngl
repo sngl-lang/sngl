@@ -631,6 +631,22 @@ component SnglScroll(
     children   ...component,
 ) ui.node
 
+// SnglPager is a tabs' panels: a page per tab, swiped between, every one kept
+// composed. Kotlin the platform ships with the app (codegen/platform/android/
+// pager.kt), since which page shows and how far a swipe has gone are state its
+// effects read. `disabled` says, per page, whether its tab is disabled, and
+// how many pages there are; `selected` moves it, and `onSelect` is handed the
+// page a swipe settled on.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglPager")]
+component SnglPager(
+    modifier Modifier,
+    selected int,
+    disabled list[bool],
+    onSelect func(int),
+    page     component(index int) ui.node,
+) ui.node
+
 // Makes a select's box a dropdown list that setting the text of chooses by:
 // `onText` is handed the text set, by a test or an accessibility service.
 // Kotlin the platform ships (codegen/platform/android/chooses.kt), since

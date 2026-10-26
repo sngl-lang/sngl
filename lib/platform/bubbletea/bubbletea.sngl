@@ -123,6 +123,9 @@ component Layout(
     spacing    int,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip    string,
+    // Draws nothing, where its children are still rendered: what they hold
+    // and the lifetimes they bracket outlive its being hidden.
+    hidden     bool,
     children   ...component,
 ) ui.node
 
@@ -209,13 +212,13 @@ const component ui.window[platform](visible, @error, @closed, content) {
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap)) {
+    Layout(join=JoinDir.vertical, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=rowsOf(style.gap), hidden=style.display == ui.Display.none) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap)) {
+    Layout(join=JoinDir.horizontal, look=lookOf(style), grow=style.flex, align=crossOf(style.alignItems), spacing=cellsOf(style.gap), hidden=style.display == ui.Display.none) {
         children
     }
 }

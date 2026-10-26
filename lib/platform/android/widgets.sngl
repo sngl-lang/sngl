@@ -379,7 +379,8 @@ const component ui.link[platform](text, style) {
     ) {}
 }
 
-// Material's TabRow of a Tab per tab, and the selected one's content under it.
+// Material's TabRow of a Tab per tab over a pager of their panels, which a
+// swipe moves between as a press of a tab does.
 const component ui.tabs[platform](selected, style, @change, items) {
     Column(
         modifier = modifierOf(style, flexShare),
@@ -398,10 +399,24 @@ const component ui.tabs[platform](selected, style, @change, items) {
                 }
             }
         }
-        for var k, t = items {
-            if k == selected {
-                flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
-                    t.content
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            SnglPager(
+                modifier = modifierOf({flex=1}, flexShare),
+                selected = selected,
+                disabled = items.map(func(t ui.tab) => t.disabled),
+                onSelect = func(chosen int) {
+                    selected = chosen
+                    change(chosen)
+                },
+            ) {
+                component page(p) {
+                    Column(modifier=modifier.fillMaxWidth()) {
+                        for var k, t = items {
+                            if k == p {
+                                t.content
+                            }
+                        }
+                    }
                 }
             }
         }

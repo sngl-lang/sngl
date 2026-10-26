@@ -226,14 +226,14 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
-	switch child.(type) {
-	case *ir.If, *ir.Match, *ir.For:
-		// A branch not taken or a loop over nothing renders nothing, and
-		// joining its empty string would put a blank line in the box.
+	if joinsWhenDrawn(child) {
+		// A branch not taken, a loop over nothing or a hidden box renders
+		// nothing, and joining its empty string would put a blank line in the
+		// box.
 		vc.line("if %s != \"\" {", childVar)
 		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 		vc.line("}")
-	default:
+	} else {
 		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 	}
 }
@@ -926,6 +926,33 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	if style != plainLook {
 		vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
 	}
+	if hidden := codegen.NodeProp(n, "hidden"); mayHide(n) {
+		vc.line(`if %s {`, vc.gc.EvalExpr(hidden))
+		vc.line(`	%s = ""`, resultVar)
+		vc.line(`}`)
+	}
+}
+
+// mayHide reports whether n is a Layout whose `hidden` is not false.
+func mayHide(n *ir.NodeInst) bool {
+	v := codegen.NodeProp(n, "hidden")
+	if v == nil {
+		return false
+	}
+	lit, ok := v.(*ir.Literal)
+	return !ok || lit.Value != "false"
+}
+
+// joinsWhenDrawn reports whether s may render nothing, which its parent
+// leaves out of the join rather than joining a blank line for.
+func joinsWhenDrawn(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.If, *ir.Match, *ir.For:
+		return true
+	case *ir.NodeInst:
+		return mayHide(n)
+	}
+	return false
 }
 
 // isPicture reports whether s is a picture a URL names.
@@ -990,18 +1017,22 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 		}
 		vc.line("var %s string", childVar)
 		vc.renderStmt(child, childVar)
-		switch child.(type) {
-		case *ir.If, *ir.For:
+		if joinsWhenDrawn(child) {
 			vc.line("if %s != \"\" {", childVar)
 			vc.line("\t%s = append(%s, tui.Fixed(%s))", partsVar, partsVar, childVar)
 			vc.line("}")
-		default:
+		} else {
 			vc.line("%s = append(%s, tui.Fixed(%s))", partsVar, partsVar, childVar)
 		}
 		return
 	}
 	n := child.(*ir.NodeInst)
 	cells := childVar + "Cells"
+	// A hidden box takes none of the free space it would grow into.
+	if mayHide(n) {
+		vc.line("if !(%s) {", vc.gc.EvalExpr(codegen.NodeProp(n, "hidden")))
+		defer vc.line("}")
+	}
 	vc.line("%s = append(%s, tui.Grow(%s, func(%s int) string {", partsVar, partsVar, vc.gc.EvalExpr(codegen.NodeProp(n, "grow")), cells)
 	vc.indent++
 	savedW, savedH := vc.availW, vc.availH

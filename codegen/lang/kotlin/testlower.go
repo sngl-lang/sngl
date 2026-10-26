@@ -86,6 +86,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerEventTrigger(n, surf, compRecvs); ok {
 			return []string{line}
 		}
+		if line, ok := lowerMobileCall(n.Call); ok {
+			return []string{line}
+		}
 		if line, ok := lowerInstanceRead(n.Call, surf, compRecvs); ok {
 			return []string{"composeTestRule.runOnUiThread {", "    " + line, "}", testIdleLine}
 		}
@@ -349,6 +352,41 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 	}
 	return ""
 }
+
+// lowerMobileCall answers sngl:test/mobile. A swipe is a finger's, injected
+// into what scrolls in the node -- a tabs' pager, or the node where it
+// scrolls itself -- since the tag sits on the override's root, around the
+// strip as well.
+func lowerMobileCall(c *ir.Call) (string, bool) {
+	if c == nil || c.Func == nil || c.Func.Intrinsic != "mobile.swipe" || len(c.Args) != 2 {
+		return "", false
+	}
+	node := c.Args[0].Value
+	for cv, ok := node.(*ir.Conversion); ok; cv, ok = node.(*ir.Conversion) {
+		node = cv.Operand
+	}
+	var path []ir.Expr
+	for ix, ok := node.(*ir.Index); ok; ix, ok = node.(*ir.Index) {
+		path = append([]ir.Expr{ix.Idx}, path...)
+		node = ix.Operand
+	}
+	sel, ok := node.(*ir.Select)
+	if !ok {
+		return "", false
+	}
+	gesture := "swipeRight()"
+	if member, ok := codegen.EnumMemberName(c.Args[1].Value); ok && member == "left" {
+		gesture = "swipeLeft()"
+	}
+	tag := copyMatcher(sel.Field, ir.CopyKey(path))
+	return fmt.Sprintf("composeTestRule.onAllNodes(androidx.compose.ui.test.hasScrollAction() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).onFirst().performTouchInput { %s }; composeTestRule.waitForIdle()", tag, tag, gesture), true
+}
+
+// swipeImports are what lowerMobileCall's swipe names: extension functions.
+const swipeImports = "import androidx.compose.ui.test.onFirst\n" +
+	"import androidx.compose.ui.test.performTouchInput\n" +
+	"import androidx.compose.ui.test.swipeLeft\n" +
+	"import androidx.compose.ui.test.swipeRight\n"
 
 // carriesState reports whether a trigger hands a control its on/off state --
 // a checkbox's or a toggle's `@change(checked bool)`.
@@ -676,6 +714,9 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	}
 	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") {
 		imports += composeActionImports
+	}
+	if strings.Contains(src, ".performTouchInput {") {
+		imports += swipeImports
 	}
 	for _, path := range slices.Compact(slices.Sorted(slices.Values(required))) {
 		imports += "import " + path + "\n"

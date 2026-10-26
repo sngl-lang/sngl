@@ -9,14 +9,17 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's and choosesKt
-// snglChooses's.
+// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
+// SnglPager's and choosesKt snglChooses's.
 //
 //go:embed datefield.kt
 var dateFieldKt string
 
 //go:embed scroll.kt
 var scrollKt string
+
+//go:embed pager.kt
+var pagerKt string
 
 //go:embed chooses.kt
 var choosesKt string
@@ -32,6 +35,7 @@ var shippedComposables = []struct {
 }{
 	{intrinsic: intrinsicNS + "SnglDateField", name: "SnglDateField", src: dateFieldKt},
 	{intrinsic: intrinsicNS + "SnglScroll", name: "SnglScroll", src: scrollKt},
+	{intrinsic: intrinsicNS + "SnglPager", name: "SnglPager", src: pagerKt},
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
 }
 

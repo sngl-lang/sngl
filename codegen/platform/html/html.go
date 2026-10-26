@@ -2444,6 +2444,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			g.AddStyle(r)
 		}
 	}
+	if g.pkg != nil && rendersSwipe(g.pkg) {
+		b.WriteString(swipeHelper + "\n")
+	}
 	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
 		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
 	}

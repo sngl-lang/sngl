@@ -29,20 +29,26 @@ enum TabsVariant { underline, pills }
 
 // One tab of a `tabs`: data, since it names itself as its family, so the tabs
 // read their tabs as a list rather than rendering them. What it is written
-// with is its panel, shown while it is the selected tab.
+// with is its panel, mounted with the tabs and shown while it is the selected
+// tab.
 component tab(
     label    string,       // what the tab shows in the strip
     disabled bool = false, // whether it can be chosen
-    // The panel: shown while this tab is selected.
+    // The panel: mounted with the tabs, shown while this tab is selected.
     content  ...component node,
 ) tab
 
 // Tabbed navigation. Each tab is a `tab` written as a child -- under an `if`
 // or a `for` where the list depends on something -- and the panel shown is
-// what the selected one was written with. `selected` is the 0-based index of
-// the selected tab and is two-way bound; `@change` fires with the index the
-// user chose. `variant` styles the tab strip, where a target draws one of its
-// own.
+// what the selected one was written with. Every panel is mounted with the
+// tabs and stays mounted while another is selected, so what a panel holds --
+// its state, its requests, a scroll's position -- outlives a switch away and
+// back, and selecting a tab only shows its panel. A platform that cannot keep
+// a panel loaded mounts it when its tab is selected; keeping it loaded is
+// preferred. `selected` is the 0-based index of the selected tab and is
+// two-way bound; `@change` fires with the index the user chose, by pressing a
+// tab or, where the platform swipes between panels, by swiping. `variant`
+// styles the tab strip, where a target draws one of its own.
 component tabs(
     :selected int,
     variant   TabsVariant = TabsVariant.underline,
@@ -66,7 +72,7 @@ component tabs(
             }
         }
         for var k, t = items {
-            if k == selected {
+            vbox(style={display=k == selected ? Display.flex : Display.none}) {
                 t.content
             }
         }

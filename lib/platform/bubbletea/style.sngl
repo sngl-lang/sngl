@@ -23,8 +23,8 @@ const unset ui.Style = {}
 //   - border, borderBottom, borderLeft, borderCollapse: CSS shorthand text and
 //     table borders.
 //   - cursor: a terminal shows no pointer.
-//   - display: not answered yet; `none` is a node rendering nothing, which a
-//     look cannot say.
+//   - display: a vbox or hbox is a Layout whatever it says, and `none` is its
+//     `hidden`.
 //   - listStyleType: no widget here draws a list marker.
 const unstyled list[string] = [
     "minWidth",

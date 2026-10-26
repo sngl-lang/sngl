@@ -474,32 +474,42 @@ func (m Model) View() tea.View {
 		content_2 = tui.Join(true, lipgloss.Bottom, 0, content_2W, content_2Children)
 		content_2 = content_2Look.AlignVertical(lipgloss.Bottom).Render(content_2)
 		contentChildren = append(contentChildren, tui.Fixed(content_2))
-		contentChildren = append(contentChildren, tui.Grow(Style{AlignItems: m.at}.Flex, func(content_3Cells int) string {
-			var content_3 string
-			var content_3Children []string
-			var content_3_0 string
-			content_3_0 = BoxLook(Style{}, true).Render(fmt.Sprint("read"))
-			content_3Children = append(content_3Children, content_3_0)
-			var content_3_1 string
-			content_3_1 = BoxLook(Style{}, true).Render(fmt.Sprint("at run time"))
-			content_3Children = append(content_3Children, content_3_1)
-			content_3 = tui.Spaced(false, lipgloss.Position(CrossOf(Style{AlignItems: m.at}.AlignItems)), RowsOf(Style{AlignItems: m.at}.Gap), content_3Children...)
-			content_3 = tui.Sized(BoxLook(Style{AlignItems: m.at}, true), false, content_3Cells).AlignHorizontal(lipgloss.Position(CrossOf(Style{AlignItems: m.at}.AlignItems))).Render(content_3)
-			return content_3
-		}))
-		contentChildren = append(contentChildren, tui.Grow(m.held.Flex, func(content_4Cells int) string {
-			var content_4 string
-			var content_4Children []string
-			var content_4_0 string
-			content_4_0 = BoxLook(Style{}, true).Render(fmt.Sprint("held"))
-			content_4Children = append(content_4Children, content_4_0)
-			var content_4_1 string
-			content_4_1 = BoxLook(Style{}, true).Render(fmt.Sprint("as a value"))
-			content_4Children = append(content_4Children, content_4_1)
-			content_4 = tui.Spaced(false, lipgloss.Position(CrossOf(m.held.AlignItems)), RowsOf(m.held.Gap), content_4Children...)
-			content_4 = tui.Sized(BoxLook(m.held, true), false, content_4Cells).AlignHorizontal(lipgloss.Position(CrossOf(m.held.AlignItems))).Render(content_4)
-			return content_4
-		}))
+		if !(Style{AlignItems: m.at}.Display == "none") {
+			contentChildren = append(contentChildren, tui.Grow(Style{AlignItems: m.at}.Flex, func(content_3Cells int) string {
+				var content_3 string
+				var content_3Children []string
+				var content_3_0 string
+				content_3_0 = BoxLook(Style{}, true).Render(fmt.Sprint("read"))
+				content_3Children = append(content_3Children, content_3_0)
+				var content_3_1 string
+				content_3_1 = BoxLook(Style{}, true).Render(fmt.Sprint("at run time"))
+				content_3Children = append(content_3Children, content_3_1)
+				content_3 = tui.Spaced(false, lipgloss.Position(CrossOf(Style{AlignItems: m.at}.AlignItems)), RowsOf(Style{AlignItems: m.at}.Gap), content_3Children...)
+				content_3 = tui.Sized(BoxLook(Style{AlignItems: m.at}, true), false, content_3Cells).AlignHorizontal(lipgloss.Position(CrossOf(Style{AlignItems: m.at}.AlignItems))).Render(content_3)
+				if (Style{AlignItems: m.at}.Display == "none") {
+					content_3 = ""
+				}
+				return content_3
+			}))
+		}
+		if !(m.held.Display == "none") {
+			contentChildren = append(contentChildren, tui.Grow(m.held.Flex, func(content_4Cells int) string {
+				var content_4 string
+				var content_4Children []string
+				var content_4_0 string
+				content_4_0 = BoxLook(Style{}, true).Render(fmt.Sprint("held"))
+				content_4Children = append(content_4Children, content_4_0)
+				var content_4_1 string
+				content_4_1 = BoxLook(Style{}, true).Render(fmt.Sprint("as a value"))
+				content_4Children = append(content_4Children, content_4_1)
+				content_4 = tui.Spaced(false, lipgloss.Position(CrossOf(m.held.AlignItems)), RowsOf(m.held.Gap), content_4Children...)
+				content_4 = tui.Sized(BoxLook(m.held, true), false, content_4Cells).AlignHorizontal(lipgloss.Position(CrossOf(m.held.AlignItems))).Render(content_4)
+				if m.held.Display == "none" {
+					content_4 = ""
+				}
+				return content_4
+			}))
+		}
 		var content_5 string
 		var content_5Children []string
 		var content_5_0 string
@@ -533,4 +543,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:5d17c91867eca412f00a4cc5bd09087c
+pass sha256:bdbb01d6a87c5f2ea5304e7c542cc218
