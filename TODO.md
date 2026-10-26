@@ -1,5 +1,10 @@
 # TODO
 
+**When a task here is completed**, the session rewrites the *Next part* of its
+section with the prompt for the part after it -- the branch, what to read
+first, the items, the fixture each wants, the verify and push steps, and this
+same instruction -- and ends by giving that prompt to Jonathan.
+
 ## Style fields, translated in SNGL
 
 The places to read first: `codegen/iterate.go` (`NodeStyleFieldsOf`, which
@@ -114,45 +119,58 @@ Each is a commit series on the branch; one MR, so CI runs once.
    say. An omitted struct field reads its default on every language
    (`struct_omitted_fields_runs.txt`).
 
-### Next session
+### Next part
 
-Branch `style-unset`, the primary checkout, uncommitted on top of
-`8232b1be9`. Done in the tree:
+`style-unset` is MR !280, pushed through `04b35ae5f` with `go tool verify`
+passing: the order above, the fields below, bubbletea's `display=none`,
+gtk4's flex weights and column axis, a head's ternary, and `ui.spacer` as
+`flex: 1`. The literal Style fold was decided against (below). The prompt
+for the next part:
 
-- **A struct literal holds only the fields written** (`ir.StructLit.Field`,
-  `EachField`, `HoldsOmitted`); the checker fill is gone, each language fills
-  where it spells a literal (`irwalk`), and a folded literal leaves out each
-  field at what it would hold left out.
-- **A spread writes each field of its operand not at its zero**: the
-  interpreter (`Env.mergeSpread`), `NoStructSpread`'s `__merge_*` helpers and
-  its flattening of a literal operand (`ir.ZeroKnown`); a field written after
-  a spread the build cannot read goes through a `__set_<Struct>_<field>`.
-  `ui.Style.over` is gone. `cmd/sngl/testdata/struct_spread_zero_runs.txt`.
-- **html calls `css`** (step 5 above).
-- The inliner copies a computed argument read more than once where it is
-  cheap (`cheapToCopy`: a path, a little arithmetic, a struct literal of a
-  few such fields) and retries a call once its arguments have folded; lower's
-  `substituteParams` reads a struct literal argument's field directly.
+```text
+Continue on branch style-unset in the primary checkout (no worktree), MR !280,
+pushed through 04b35ae5f with verify passing. If !280 has merged, branch
+generated-code-compiles from a fresh origin/main instead (merge, never
+rebase). Look at `git status` and `git log --oneline -8` first.
 
-**Measured** (`SNGL_MEMPROFILE` on the docs site's generate, warm, total
-alloc_space): main 10.17 GB; `8232b1be9` 11.49 GB; now 9.97 GB, after
-`ir.FieldZero` shares one null and one empty string (a library struct is not
-normalized, so every read of a Style field it left out built a fresh zero).
+Read TODO.md's "Found on the way, not yet fixed" under "Style fields,
+translated in SNGL". This part is the items where a target's generated code
+does not compile or disagrees with the interpreter:
 
-The first `go tool verify -update` failed five ways, all fixed: html
-declared `String` for a library function no page called (now a pruned
-declaration); a Style the page computes was written one setProperty per
-declaration, so an empty `border-bottom` took what `border-width` set (now
-grouped by `styleGroup`, `_snglSetStyles`); the tour's raw elements wanted
-`html.css`; `int.parse` of constants now folds (`generate_int_parse.txt`
-reads state); a dumped `PageParams{}` holds no `id`.
+1. ui.select under a `for` on bubbletea (`too many arguments in call to
+   m.widget0Copy`), and under a reactive `if` on fyne and gtk4 (`undefined:
+   o`; a missing `c.__n1`). TODO found these on clean main; reproduce each on
+   the branch first. Read design/instances.md and design/slots.md.
+2. On Go, `==` between two structs holding a list does not compile (`struct
+   containing []string cannot be compared`), where the interpreter compares
+   field by field. Read design/types.md, and how html answers the same in
+   design/architecture.md (jsEqualExpr).
+3. A struct spread in a library function is not lowered on a target
+   withholding structSpread: LibFuncs brings the function in after
+   NoStructSpread has run. Read design/types.md on spreads and
+   design/architecture.md on the always-on passes.
+4. The interpreter and the fold print a color as `{r = 51, g = 102, b = 153,
+   a = 255}` where every compiled target prints `#336699`. This is what a
+   color's string is: say which you would make it and ask before changing
+   the language's side.
 
-The rerun passed (`verify exit=0`, no FAIL rows); committed as `cee313d64`
-and `b7a3aea85`, pushed as !280. Step 6 since, and a `{…}` handed to a list
-(a raw element's `style`) is reported as the slot's mismatch with the
-function of the list's package that makes one (`html.css`,
-`testdata/error_raw_element_style_literal.sngl`). **Left:** nothing of the
-order; what follows was found on the way.
+For each, write the fixture first -- a testdata/*.sngl, a golden, or a
+cmd/sngl/testdata/*_runs.txt that runs it on every target it concerns -- and
+confirm it fails before the fix. Read the design/ file for the area before
+changing it, and update it and TODO.md as each lands. One commit per item
+plus a rerecord commit. Fix bugs you meet on the way where the fix is clear,
+and say so; ask where it touches what the language means.
+
+Then run `go tool verify -update` with ANDROID_HOME=/home/claude/Android/Sdk
+in the background and don't edit files while it runs. If it fails on stale
+generated artifacts (examples/todo, internal/docbrowser), run `go generate`
+on them and run -update again. Finish with a plain `go tool verify`, check its
+own exit line and its FAIL rows, and push to origin on the branch, never to
+main.
+
+When it is done, rewrite TODO.md's "Next part" with the prompt for the part
+after it, and give me that prompt.
+```
 
 ### Fields listed only because they were not done yet
 
@@ -198,7 +216,7 @@ platform's `unstyled` list in the same commit.
 - On bubbletea a `flex` child is joined at its own size under an `if` or a
   `for`, being part of what that statement renders, and where it holds a
   loop's focus stop or canvas, whose count would come after its later
-  siblings'.A focusable node displayed none in a loop slot is still
+  siblings'. A focusable node displayed none in a loop slot is still
   counted as a stop (Tab passes over a static one), and so is one inside a
   container displayed none, whose own `focus` record says nothing of it.
 - A zero `borderWidth` drew a border on bubbletea, and
