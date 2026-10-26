@@ -70,6 +70,7 @@ type Measurement struct {
 type MenuItem__record struct {
 	Label    string
 	Disabled bool
+	Checked  bool
 	Children []MenuItem__record
 	Select   func()
 }
@@ -151,17 +152,17 @@ func New() Model {
 	m.last = ""
 	m.__focusID = 0
 	m.widget0 = tui.NewList(tui.StringItems(func() []string {
-		__out := make([]string, len([]MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+		__out := make([]string, len([]MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
 			m.last = "cut"
-		}}, MenuItem__record{Label: "Copy", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+		}}, MenuItem__record{Label: "Copy", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
 			m.last = "copy"
-		}}, MenuItem__record{Label: "Paste", Disabled: true, Children: []MenuItem__record{}, Select: func() {
+		}}, MenuItem__record{Label: "Paste", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
 		}}}))
-		for __i, __item := range []MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+		for __i, __item := range []MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
 			m.last = "cut"
-		}}, MenuItem__record{Label: "Copy", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+		}}, MenuItem__record{Label: "Copy", Disabled: false, Checked: false, Children: []MenuItem__record{}, Select: func() {
 			m.last = "copy"
-		}}, MenuItem__record{Label: "Paste", Disabled: true, Children: []MenuItem__record{}, Select: func() {
+		}}, MenuItem__record{Label: "Paste", Disabled: true, Checked: false, Children: []MenuItem__record{}, Select: func() {
 		}}} {
 			__out[__i] = func(it MenuItem__record) string { return it.Label }(__item)
 		}
@@ -650,11 +651,11 @@ window.__sngl_boot = () => {
             let __n0 = document.createElement("div");
             __n0.setAttribute("style", "border:1px solid #ddd;padding:4px;background-color:#ffffff;border-radius:4px;display:flex;flex-direction:column;position:absolute;z-index:100");
             __n0.setAttribute("role", "menu");
-            for (const it of [{ label: "Cut", disabled: false, children: [], select: () => {
+            for (const it of [{ label: "Cut", disabled: false, checked: false, children: [], select: () => {
               state.last = "cut";
-            } }, { label: "Copy", disabled: false, children: [], select: () => {
+            } }, { label: "Copy", disabled: false, checked: false, children: [], select: () => {
               state.last = "copy";
-            } }, { label: "Paste", disabled: true, children: [], select: () => {
+            } }, { label: "Paste", disabled: true, checked: false, children: [], select: () => {
             } }]) {
               let __n1 = document.createElement("button");
               __n1.setAttribute("disabled", it.disabled);
@@ -695,15 +696,15 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4c122cc58ed85bbe30a41ab4592ddd7b
+pass sha256:98b26fc118ae16f89f46690b4b449c70
 -- run/go/fyne --
 pass sha256:528678124fa3dca5f88bc002825cca96
 -- run/kotlin/android --
 pass sha256:0dd18422de0b5efd102791f413883139
 -- run/none/html --
-pass sha256:8db5e25aaae3b67a32fa8903d60beee9
+pass sha256:95aedd831b21787bfe187c0f1fd02d78
 -- testrun/html/none/component_menu.sngl/main/1 --
-sha256:057161d2142deb577b5734bd20f1e1d2
+sha256:b29b5b989d9db0041d28bc40b65d32c7
 {
   "results": [
     {

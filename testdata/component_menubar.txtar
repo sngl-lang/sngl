@@ -473,34 +473,51 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <nav style="display:flex;gap:4px" role="menubar">
-  <button id="$1" role="menuitem">File</button>
-  <button id="$2" role="menuitem">Edit</button>
-  <button id="$3" role="menuitem">View</button>
-  <button id="$4" role="menuitem">Help</button>
+  <details style="position:relative">
+    <summary id="$2" style="padding-left:8px;padding-right:8px;padding-top:4px;padding-bottom:4px;cursor:pointer;list-style-type:none" role="menuitem">File</summary>
+    <div style="border:1px solid #ddd;padding:4px;background-color:#ffffff;border-radius:4px;display:flex;flex-direction:column;position:absolute;right:0px;z-index:100" role="menu">
+      <button id="$4" style="border:none;padding-left:8px;padding-right:8px;padding-top:4px;padding-bottom:4px;background-color:rgba(0,0,0,0);cursor:pointer;text-align:left;white-space:nowrap" aria-checked="false" role="menuitemcheckbox">Open</button>
+    </div>
+  </details>
+  <details style="position:relative">
+    <summary id="$6" style="padding-left:8px;padding-right:8px;padding-top:4px;padding-bottom:4px;cursor:pointer;list-style-type:none" role="menuitem">Edit</summary>
+  </details>
+  <details style="position:relative">
+    <summary id="$8" style="padding-left:8px;padding-right:8px;padding-top:4px;padding-bottom:4px;cursor:pointer;list-style-type:none" role="menuitem">View</summary>
+  </details>
+  <details style="position:relative">
+    <summary id="$10" style="padding-left:8px;padding-right:8px;padding-top:4px;padding-bottom:4px;cursor:pointer;list-style-type:none" role="menuitem">Help</summary>
+  </details>
 </nav>
 
 <script>
 (() => {
   // sngl-entry.js
   var state = { last__inst0: "", visible__inst0: true };
-  var $1 = document.getElementById("$1");
+  var $10 = document.getElementById("$10");
   var $2 = document.getElementById("$2");
-  var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
-  $1.addEventListener("click", function() {
-    /* @__PURE__ */ (() => {
-    })();
-  });
+  var $6 = document.getElementById("$6");
+  var $8 = document.getElementById("$8");
   $2.addEventListener("click", function() {
-    (() => {
-      state.last__inst0 = "edit";
-    })();
-  });
-  $3.addEventListener("click", function() {
     /* @__PURE__ */ (() => {
     })();
   });
   $4.addEventListener("click", function() {
+    (() => {
+      state.last__inst0 = "open";
+    })();
+  });
+  $6.addEventListener("click", function() {
+    (() => {
+      state.last__inst0 = "edit";
+    })();
+  });
+  $8.addEventListener("click", function() {
+    /* @__PURE__ */ (() => {
+    })();
+  });
+  $10.addEventListener("click", function() {
     /* @__PURE__ */ (() => {
     })();
   });
@@ -514,4 +531,4 @@ pass sha256:90891e6eb1c4a22a5f4f758933065f0e
 -- run/kotlin/android --
 pass sha256:88e470a365b056c5f1ff6ced0c8aef59
 -- run/none/html --
-pass sha256:cbd191691bd5be366d001da4788660f5
+pass sha256:30ce526b525a27ca39183a09aea4d19e

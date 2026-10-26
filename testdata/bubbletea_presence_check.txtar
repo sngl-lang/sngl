@@ -839,12 +839,6 @@ func (m Model) View() tea.View {
 		var part0_1Part_4 string
 		part0_1Part_4 = BoxLook(Style{}, true).Render(fmt.Sprint(("on " + fmt.Sprint(m.k__inst1))))
 		part0_1Parts = append(part0_1Parts, part0_1Part_4)
-		var part0_1Part_5 string
-		if true {
-		}
-		if part0_1Part_5 != "" {
-			part0_1Parts = append(part0_1Parts, part0_1Part_5)
-		}
 		part0_1 = tui.Spaced(false, lipgloss.Left, 0, part0_1Parts...)
 	}
 	if part0_1 != "" {
@@ -914,4 +908,4 @@ func TestPresence(t *testing.T) {
 
 func newTestComponent() Model { m := New(); _ = m.View(); return m }
 -- run/go/bubbletea --
-pass sha256:142408d6de824c9feb9c0ec234fb9c3f
+pass sha256:50bc99c76770d626c9ce34e211a6f5c6
