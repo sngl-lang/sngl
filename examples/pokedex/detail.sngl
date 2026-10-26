@@ -16,7 +16,7 @@ const maxStat = 255
 // Every name the page shows of a resource of its own -- a type, an ability,
 // a move -- is a request keyed on it, made where the name is shown, and
 // `names` keeps each answer's names in every language.
-component detailPage(name string, form = "", @back(), @open(name string, form string)) ui.node {
+component detailPage(name string, form = "", @open(name string, form string)) ui.node {
     var about option[poke.PokemonSpeciesDetail] = null
     var mon option[poke.PokemonDetail] = null
     var shape option[poke.PokemonFormDetail] = null
@@ -96,9 +96,6 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     }
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
-        ui.hbox {
-            ui.button #backButton(text=$"‹ Back", @click { back() })
-        }
         ui.scroll(style={flex=1}) {
             ui.vbox(style={gap=8px}) {
                 if about == null && loading {

@@ -1,6 +1,5 @@
 import async "sngl:async"
 import poke "openapi:./pokeapi.yml"
-import settings "sngl:settings"
 import ui "sngl:ui"
 
 // The Pokédexes to choose from: every one PokéAPI has fits in one page of
@@ -10,36 +9,28 @@ const dexLimit = 50
 // How many cards a row holds.
 const columns = 3
 
-// The Pokédex chosen on home, by name and as PokéAPI answers it. Both outlive
-// the page: home starts at the dex chosen when it is shown again, and a
-// Pokémon's page lists the moves of the latest game the dex covers. The name
-// is kept from one run to the next, by home, which reads and writes it.
+// The Pokédex chosen, by name and as PokéAPI answers it. The window's menu
+// chooses it and keeps the name from one run to the next; home shows it, and a
+// Pokémon's page lists the moves of the latest game the dex covers.
 var dexName = "national"
 
 var chosenDex option[poke.PokedexDetail] = null
 
-// Home: a choice of Pokédex, what it is, and a grid of its Pokémon,
-// `pageSize` cards at a time, the next page shown as the grid is scrolled to
-// its end. The dex is one request keyed on its name, so choosing another moves
-// the key; every entry arrives with it, so the search covers the whole dex and
-// a page more asks for nothing.
+// Chooses the Pokédex named `name`.
+func chooseDex(name string) {
+    dexName = name
+}
+
+// Home: what the Pokédex chosen is, and a grid of its Pokémon, `pageSize`
+// cards at a time, the next page shown as the grid is scrolled to its end. The
+// dex is one request keyed on its name, so choosing another moves the key and
+// starts the grid again; every entry arrives with it, so the search covers the
+// whole dex and a page more asks for nothing.
 component homePage(pageSize = 30, @open(name string)) ui.node {
-    var dexes list[poke.PokedexSummary] = []
-    var chosen = display(dexName)
     var loading = false
     var failure option[async.Failure] = null
     var shown = pageSize
     var search = ""
-
-    // Shows the dex whose label is `label`, from its first page of cards.
-    func pick(label string) {
-        for var d = dexes {
-            if display(d.name) == label {
-                dexName = d.name
-                shown = pageSize
-            }
-        }
-    }
 
     // The dex's entries the search matches, all of them.
     func matching() list[poke.PokemonDexNumber] {
@@ -67,25 +58,12 @@ component homePage(pageSize = 30, @open(name string)) ui.node {
         }
     }
 
-    // Bound here rather than in Pokedex, beside the query keyed on it: a
-    // write from the Model does not reach an effect in a page built at run
-    // time on the Go targets.
-    settings.kept(name="dexName", :value=dexName)
-    effect(on=dexName, @update(n) { chosen = display(n) })
-
-    poke.pokedexList(limit=dexLimit, offset=0, @load(page) { dexes = page.results })
+    effect(on=dexName, @update { shown = pageSize })
     poke.pokedexRetrieve(id=dexName, :value=chosenDex, :pending=loading, :failure=failure)
 
     ui.vbox(style={gap=8px, padding=8px, flex=1}) {
-        ui.hbox(style={gap=8px, alignItems=center}) {
-            ui.select #dexPick(:value=chosen, @change(v) { pick(v) }) {
-                for var d = dexes {
-                    ui.choice(label=display(d.name))
-                }
-            }
-            if chosenDex != null {
-                ui.text #about(value=dexLine(chosenDex))
-            }
+        if chosenDex != null {
+            ui.text #about(value=dexLine(chosenDex))
         }
         ui.input #searchBox(placeholder=$"Search this Pokédex", :value=search)
         if failure != null {

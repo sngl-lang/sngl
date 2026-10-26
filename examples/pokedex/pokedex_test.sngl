@@ -15,8 +15,6 @@ const dotOf = `http://127.0.0.1:47819/dot.png?id={id}`
 
 var opened = ""
 
-var left = false
-
 component home ui.node {
     poke.server(local) {
         artwork(dot) {
@@ -29,7 +27,7 @@ component home ui.node {
 component seed ui.node {
     poke.server(local) {
         artwork(dotOf) {
-            detailPage #detail(name="bulbasaur", @back { left = true })
+            detailPage #detail(name="bulbasaur")
         }
     }
 }
@@ -155,8 +153,9 @@ component back ui.node {
     }
 }
 
-// The app itself, its language choice around its stack of pages.
-component shell ui.node {
+// The app itself: its window, whose menu chooses the language and the dex, over
+// its stack of pages.
+component shell root {
     poke.server(local) {
         artwork(dot) {
             Pokedex #app
@@ -287,20 +286,19 @@ component named ui.node {
 func testHomeStartsAtTheNationalDex(t test.Test, c home) {
     t.wait(func() => chosenDex != null, 5000)
     t.assert(chosenDex != null && chosenDex.name == "national")
-    t.assert(c.page.chosen == "National")
     t.assert(c.page.about != null && c.page.about.value == "National · every region · 40 Pokémon")
     t.assert(c.page.visible()[0].pokemonSpecies.name == "bulbasaur")
 }
 
-func testTheSelectSwitchesTheDex(t test.Test, c home) {
-    t.wait(func() => chosenDex != null && c.page.dexes.length() == 3, 5000)
-    c.page.dexPick.change("Kanto")
-    // The pick starts the grid again from its first page, whose end is out of
-    // view: the grid has not been scrolled.
+func testChoosingADexStartsTheGridAgain(t test.Test, c home) {
+    t.wait(func() => chosenDex != null, 5000)
+    c.page.cards.reachEnd()
+    t.assert(c.page.visible().length() == 40)
+    chooseDex("kanto")
+    // The grid starts again from its first page, whose end is out of view:
+    // the grid has not been scrolled.
     t.assert(c.page.visible().length() == 30)
     t.wait(func() => chosenDex != null && chosenDex.name == "kanto", 5000)
-    t.assert(dexName == "kanto")
-    t.assert(settings.load[string]("dexName") == "kanto")
     t.assert(c.page.about != null && c.page.about.value == "Kanto · Kanto · 40 Pokémon")
 }
 
@@ -342,12 +340,6 @@ func testTheHeaderNamesTheSpecies(t test.Test, c seed) {
     t.assert(c.detail.picture() == "http://127.0.0.1:47819/dot.png?id=1")
     t.assert(c.detail.types[0].value == "Grass" && c.detail.types[1].value == "Poison")
     t.assert(c.detail.types[2] == null)
-}
-
-func testTheHeaderGoesBack(t test.Test, c seed) {
-    t.wait(func() => c.detail.about != null, 5000)
-    c.detail.backButton.click()
-    t.assert(left)
 }
 
 func testAboutTellsTheLatestDescription(t test.Test, c seed) {
@@ -702,23 +694,22 @@ func testAFormsMovesAreItsOwn(t test.Test, c alolan) {
     t.assert(movesLine(c.detail.moveRows()) == "1 Tail Whip, 1 Powder Snow, 4 Disable, 8 Ice Shard, 12 Spite, 16 Icy Wind, 20 Confuse Ray, 24 Aurora Beam, 28 Extrasensory, 32 Ice Beam, 36 Imprison, 40 Mist, 44 Aurora Veil, 48 Freeze Dry, 52 Blizzard")
 }
 
-func testMovesFollowTheDexChosenAtHome(t test.Test, c trip) {
-    t.wait(func() => chosenDex != null && c.page.dexes.length() == 3 && c.detail.mon != null, 5000)
-    c.page.dexPick.change("Kanto")
+func testMovesFollowTheDexChosen(t test.Test, c trip) {
+    t.wait(func() => chosenDex != null && c.detail.mon != null, 5000)
+    chooseDex("kanto")
     t.wait(func() => chosenDex != null && chosenDex.name == "kanto", 5000)
     t.assert(movesLine(c.detail.moveRows()) == "1 Tackle, 4 Growl, 7 Leech Seed, 10 Vine Whip, 15 Poison Powder, 15 Sleep Powder, 20 Razor Leaf, 25 Sweet Scent, 32 Growth, 39 Synthesis, 46 Solar Beam")
 }
 
 func testHomeStartsAtTheDexChosen(t test.Test, c back) {
-    t.wait(func() => chosenDex != null && c.page != null && c.page.dexes.length() == 3, 5000)
-    if c.page != null {
-        c.page.dexPick.change("Kanto")
-    }
+    t.wait(func() => chosenDex != null && c.page != null, 5000)
+    chooseDex("kanto")
     t.wait(func() => chosenDex != null && chosenDex.name == "kanto", 5000)
     c.leave.click()
     t.assert(c.page == null)
     c.leave.click()
-    t.assert(c.page != null && c.page.chosen == "Kanto")
+    t.wait(func() => c.page != null && c.page.about != null, 5000)
+    t.assert(c.page != null && c.page.about != null && c.page.about.value == "Kanto · Kanto · 40 Pokémon")
     t.wait(func() => c.page != null && c.page.visible().length() > 0, 5000)
     t.assert(c.page != null && c.page.visible()[0].pokemonSpecies.name == "bulbasaur")
 }
@@ -798,8 +789,8 @@ func testATypeAndAnAbilityInFrench(t test.Test, c seed) {
 
 func testTheAppsOwnWordsInGerman(t test.Test, c seed) {
     t.setContext(i18n.locale, "de")
-    t.wait(func() => c.detail.about != null, 5000)
-    t.assert(c.detail.backButton.text == "‹ Zurück")
+    t.wait(func() => c.detail.tabs != null, 5000)
+    t.assert(c.detail.tabs != null && c.detail.tabs.items[0].label == "Info")
 }
 
 func testHowManyMovesIsAPlural(t test.Test, c seed) {
@@ -846,17 +837,35 @@ func testJapaneseFallsBackToKana(t test.Test, c seed) {
     t.assert(c.detail.effort != null && c.detail.effort.value == "1 とくこう")
 }
 
-// The shell's choice of language is the locale of every page under it: home's
-// dex in Spanish, and its own words.
+// The window's choice of language is the locale of every page under it:
+// home's dex in Spanish, and its own words. The test opens the Language
+// submenu before picking from it, as a person does.
 func testTheLanguageChoiceTranslatesThePages(t test.Test, c shell) {
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null, 5000)
     t.assert(c.app.language == "English")
     t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Search this Pokédex")
-    c.app.languagePick.change("Español")
+    c.app.pokedex.menu[0].select()
+    c.app.pokedex.menu[0].children[3].select()
     t.assert(c.app.language == "Español")
     t.wait(func() => c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon", 5000)
     t.assert(c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Nacional · todas las regiones · 40 Pokémon")
     t.assert(c.app.homeList != null && c.app.homeList.searchBox.placeholder == "Buscar en esta Pokédex")
+}
+
+// The window's Pokédex menu lists every dex, and picking one is the dex home
+// shows and the one kept.
+func testTheMenuChoosesTheDex(t test.Test, c shell) {
+    t.wait(func() => c.app.dexes.length() == 3 && c.app.homeList != null && c.app.homeList.about != null, 5000)
+    c.app.pokedex.menu[1].select()
+    c.app.pokedex.menu[1].children[1].select()
+    t.assert(dexName == "kanto")
+    t.assert(settings.load[string]("dexName") == "kanto")
+    t.wait(func() => c.app.homeList != null && c.app.homeList.about != null && c.app.homeList.about.value == "Kanto · Kanto · 40 Pokémon", 5000)
+}
+
+// The window is named for the page it shows.
+func testTheWindowIsTheHomePage(t test.Test, c shell) {
+    t.assert(c.app.pokedex.title == "Pokédex")
 }
 
 // Takes a component as every test here does: on html a group of tests that

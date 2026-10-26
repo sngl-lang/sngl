@@ -1,5 +1,6 @@
-// A Pokédex over PokéAPI, on every target SNGL has: a choice of Pokédex and a
-// grid of its Pokémon, and a page per species, a header over tabs about it.
+// A Pokédex over PokéAPI, on every target SNGL has: a grid of the Pokémon of
+// the Pokédex the window's menu chooses, and a page per species, a header over
+// tabs about it.
 //
 // Nothing here makes a request by hand. `import poke "openapi:./pokeapi.yml"`
 // writes a package from PokéAPI's own OpenAPI document -- a struct per schema,
@@ -11,10 +12,12 @@
 // asks when the page mounts and again whenever `name` changes, keeps the last
 // answer while it does, and drops one that arrives after the page is gone.
 //
-//	app.sngl            the window: a choice of language over a nav.stack of
-//	                    home, a page per Pokémon and a page per form of one;
-//	                    the language and the dex are kept between runs
-//	home.sngl           a select of Pokédex and a grid of its Pokémon, a page
+//	app.sngl            the window over a nav.stack of home, a page per
+//	                    Pokémon and a page per form of one: its bar is the
+//	                    page's title, goes back through the pages, and holds
+//	                    the menu choosing the language and the Pokédex, both
+//	                    kept between runs
+//	home.sngl           the Pokédex chosen and a grid of its Pokémon, a page
 //	                    more as its end comes into view
 //	detail.sngl         a species' page: its header over About, Stats,
 //	                    Evolution, Sprites and Moves

@@ -1,12 +1,4 @@
 {
-  "‹ Back": {
-    "translations": {
-      "fr": "‹ Retour",
-      "de": "‹ Zurück",
-      "es": "‹ Atrás",
-      "ja": "‹ 戻る"
-    }
-  },
   "About": {
     "translations": {
       "fr": "À propos",
@@ -509,6 +501,22 @@
       "de": "{count} {stat}",
       "es": "{count} {stat}",
       "ja": "{count} {stat}"
+    }
+  },
+  "Language": {
+    "translations": {
+      "fr": "Langue",
+      "de": "Sprache",
+      "es": "Idioma",
+      "ja": "言語"
+    }
+  },
+  "Pokédex": {
+    "translations": {
+      "fr": "Pokédex",
+      "de": "Pokédex",
+      "es": "Pokédex",
+      "ja": "ずかん"
     }
   }
 }
