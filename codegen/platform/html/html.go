@@ -778,6 +778,9 @@ type htmlGen struct {
 	// templateSlots are the page's slots whose anchor is a template, written
 	// where the parser would move a span (tableParts).
 	templateSlots map[string]bool
+	// testCalledSlots are the page's slots a test re-renders, whose anchor is
+	// published with the slot's function (exportTestCalled).
+	testCalledSlots map[string]bool
 	// parentTag is the element whose children are being written.
 	parentTag string
 
@@ -2677,9 +2680,13 @@ func (g *htmlGen) exportTestCalled(b *strings.Builder, synth []*ir.Func) {
 		})
 	}
 	var names []string
+	g.testCalledSlots = map[string]bool{}
 	for _, fn := range synth {
 		if called[fn] && !fn.IsMethod() {
 			names = append(names, jsFuncName(fn))
+			if idx := slotIndexFromRenderFunc(fn.Name); idx != "" {
+				g.testCalledSlots[idx] = true
+			}
 		}
 	}
 	if len(names) > 0 {
@@ -2710,6 +2717,11 @@ func (g *htmlGen) emitSlotBoots(b *strings.Builder) {
 			fmt.Fprintf(b, "document.querySelector('template[data-sngl-slot=\"%s\"]').replaceWith(%s);\n", idx, anchor)
 		} else {
 			fmt.Fprintf(b, "var %s = document.querySelector('[data-sngl-slot=\"%s\"]');\n", anchor, idx)
+		}
+		if g.testCalledSlots[idx] {
+			// A test re-renders the slot after its write, as the program's
+			// own writes do, into the anchor rewriteSlotCallsToAnchors names.
+			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n", anchor)
 		}
 		fmt.Fprintf(b, "%s(%s);\n", fn.Name, anchor)
 	}

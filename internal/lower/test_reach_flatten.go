@@ -326,6 +326,10 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 	for {
 		changed := false
 		if err := ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
+			if e := answerTestCopyCount(n, params); e != nil {
+				changed = true
+				return e, ir.SkipDir
+			}
 			sel, ok := n.(*ir.Select)
 			if !ok {
 				return n, nil
@@ -343,13 +347,47 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 		}
 	}
 	var bad error
+	indexed := map[ir.Expr]bool{}
 	_ = ir.Walk(fn.Block, func(n ir.Node) error {
-		if sel, ok := n.(*ir.Select); ok && bad == nil && unnamedTestPropRead(sel, params) {
+		if ix, ok := n.(*ir.Index); ok {
+			indexed[unnarrowed(ix.Operand)] = true
+		}
+		return nil
+	})
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if bad != nil {
+			return nil
+		}
+		if sel, ok := n.(*ir.Select); ok && unnamedTestPropRead(sel, params) {
 			bad = fmt.Errorf("%s: `%s` is what its call site wrote, which reads something a test cannot name -- a slot's parameter, a local -- so a test cannot read it through the instance; assert on the state it is written from", exprPos(sel), sel.Field)
+		}
+		if e, ok := n.(ir.Expr); ok && !indexed[e] {
+			if sel := wholeLoopedRef(e, params); sel != nil {
+				bad = fmt.Errorf("%s: `%s` names a copy per iteration, which a test reads one at a time, `%s[i]`, or counts with `.length()` where the loop renders its copies wherever the component renders it", exprPos(sel), sel.Field, sel.Field)
+			}
 		}
 		return nil
 	})
 	return bad
+}
+
+// wholeLoopedRef is the select of e, a test's ref to a looped `#id`
+// indexed by fewer loops than render it, or nil for anything else.
+func wholeLoopedRef(e ir.Expr, params map[*ir.Param]bool) *ir.Select {
+	switch e.(type) {
+	case *ir.Select, *ir.Index:
+	default:
+		return nil
+	}
+	_, _, idxs, ok := testNodeRef(e, params)
+	if !ok {
+		return nil
+	}
+	sel, _ := unnarrowedRef(e).(*ir.Select)
+	if sel == nil || len(idxs) >= len(sel.Ref) || sel.Ref[len(idxs)] != ir.RefList {
+		return nil
+	}
+	return sel
 }
 
 // inlineRecursiveFires writes each event a test fires on a program

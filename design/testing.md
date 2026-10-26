@@ -372,6 +372,21 @@ moves a node out of the body that wrote it:
   condition asked again, and a function literal that moves anything has moved
   it from where it is written, since it may be called anywhere after. One
   read before anything moves is allowed.
+- **A looped `#id` read whole is counted, not held**: no target keeps the
+  copies as a list, so `c.title.length()`, and an inner loop's
+  `c.cells[1].length()`, is the loop's own count -- its list's length or what
+  a sngl:seq sequence counts -- read through the instance with the outer
+  loops' bindings in (`answerTestCopyCount`, `ir.CopyCount`;
+  `cmd/sngl/testdata/test_reach_looped_id_whole_runs.txt`). Only where
+  nothing but loops, a node's always-rendered children, a provider or a
+  fallback-less boundary stands between them (`countedLoops`): an `if`
+  around the loop would want its condition in the count. Any other whole
+  read, a guarded count or a `for` over the copies, is refused at the read
+  (`wholeLoopedRef`, `test_reach_looped_id_whole_refused.txt`), where it
+  stopped in the target's compiler before. A test's write re-rendering a
+  page slot calls it with the slot's anchor, which html publishes beside the
+  slot's function for a test that calls it (`exportTestCalled`); the
+  function alone was `__slotAnchor_2 is not defined`.
 - **A trigger is an event of the receiver's type**, so the checker tags one
   through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled

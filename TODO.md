@@ -247,9 +247,13 @@ platform's `unstyled` list in the same commit.
   (`page_write_kept_instance.txtar`) -- so the instance shows what it read
   when it was built, design/instances.md's missing direction, which the
   interpreter does not share.
-- A test reading a looped `#id` whole, `c.title.length()`, does not build on
+- A test reading a looped `#id` whole, `c.title.length()`, did not build on
   any compiled target (`c.title undefined` on Go, `undefined.length` on
-  html); `c.title[1]` does.
+  html); `c.title[1]` did. A count is the loop's own now, and any other whole
+  read is refused at the read (`test_reach_looped_id_whole_runs.txt`); a count
+  of a loop under an `if` is refused too, where it could be the condition's.
+  On the way: a test's write to a spliced instance's state re-rendered a page
+  slot html had not published the anchor of (`__slotAnchor_2 is not defined`).
 - passImplicitState refuses a call site that binds one two-way prop and
   leaves another unbound.
 - android's select honors none of `disabled`, `multiple`, `@focus`,
