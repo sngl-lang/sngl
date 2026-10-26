@@ -395,7 +395,9 @@ func (m Model) View() tea.View {
 			return result
 		}
 		content_0 = m.renderFrame(m.depth, 0, content_0_label)
-		contentChildren = append(contentChildren, content_0)
+		if content_0 != "" {
+			contentChildren = append(contentChildren, content_0)
+		}
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	}
@@ -1428,7 +1430,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:01c345933a49ea256cdb18ddcf42682b
+pass sha256:93b6b43392b92d8bcbf9c4f0b4d94ccb
 -- run/go/fyne --
 pass sha256:35f386c4a440a13fdb91afdc0d8dfafe
 -- run/go/gtk4 --

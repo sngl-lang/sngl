@@ -160,8 +160,13 @@ func New() Model {
 	m.widget0 = textinput.New()
 	m.widget0.Placeholder = "name"
 	m.widget0.SetValue(m.value__inst0)
-	m.widget0.Focus()
 	m.resizeWidgets()
+	m.__focusSettle()
+	if m.__focusID == 0 {
+		m.widget0.Focus()
+	} else {
+		m.widget0.Blur()
+	}
 	return m
 }
 
@@ -370,7 +375,14 @@ func (m *Model) __focusLoop1_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 1 {
+		return (m.__focusLoop1_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 		m.__focusLoop1_cursor = 0
@@ -386,7 +398,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop1_len()
 		m.__focusID = 1
@@ -400,6 +412,28 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Opaque() Style {
@@ -515,6 +549,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		m.value__inst0 = m.widget0.Value()
 	}
+	if m.__focusSettle() {
+		if m.__focusID == 0 {
+			m.widget0.Focus()
+		} else {
+			m.widget0.Blur()
+		}
+	}
 	return m, tea.Batch(cmds...)
 }
 
@@ -624,4 +665,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:f5338d40beb45323c74b2d824291ee91
+pass sha256:c64131cf48b23ed41ff38f3512b8a15c

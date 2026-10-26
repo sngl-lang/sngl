@@ -130,6 +130,8 @@ func New() Model {
 	m.__focusLoop0_cursor = 0
 	m.widget0 = map[string]textinput.Model{}
 	m.resizeWidgets()
+	m.__focusSettle()
+	m.widget0FocusSync()
 	return m
 }
 
@@ -316,7 +318,14 @@ func (m *Model) __focusLoop0_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return (m.__focusLoop0_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop0_len()
 		if (m.__focusLoop0_cursor + 1) < __focusLen {
@@ -328,7 +337,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		if m.__focusLoop0_cursor > 0 {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
@@ -338,6 +347,22 @@ func (m *Model) __focusPrev() {
 			m.__focusLoop0_cursor = (__focusLen - 1)
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Text() string {
@@ -430,6 +455,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}()
 	}
+	if m.__focusSettle() {
+		m.widget0FocusSync()
+	}
 	return m, tea.Batch(cmds...)
 }
 
@@ -511,4 +539,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:677057d72aaff5357d8481c3647043b5
+pass sha256:18d89578affac12ca53c0a3c8583bac1

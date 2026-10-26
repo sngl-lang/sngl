@@ -142,6 +142,7 @@ func New() Model {
 	m.caught__inst0 = ""
 	m.visible__inst0 = true
 	m.__focusID = 0
+	m.__focusSettle()
 	return m
 }
 
@@ -311,7 +312,17 @@ func LineCap(height__r0 int, lines int) int {
 	return __lt15
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return m.on__inst0
+	}
+	if m.__focusID == 1 {
+		return m.on__inst0
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -325,7 +336,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 2
 	} else {
@@ -337,6 +348,34 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) On__inst0() bool {
@@ -438,6 +477,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}()
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -549,4 +589,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:217f387029134cd54b3312629c2988d2
+pass sha256:332dd9e4759764c99beb4cbd3794601f

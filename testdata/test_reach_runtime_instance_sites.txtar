@@ -228,6 +228,7 @@ func New() Model {
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -481,7 +482,20 @@ func (m *Model) __focusLoop1_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return m.show
+	}
+	if m.__focusID == 1 {
+		return (m.__focusLoop1_len() > 0)
+	}
+	if m.__focusID == 2 {
+		return m.open__inst0
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 		m.__focusLoop1_cursor = 0
@@ -505,7 +519,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 3
 	} else {
@@ -527,6 +541,40 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Show() bool {
@@ -701,6 +749,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.hits__inst3 = (m.hits__inst3 + 1)
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -3951,7 +4000,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7fcfc736b8096fe4e5e12bef3105040a
+pass sha256:a3e964ad6f3f87b78a1b6e1bee0678ff
 -- run/go/fyne --
 pass sha256:a85171300ef273fb5dcdfbcf2d012812
 -- run/go/gtk4 --

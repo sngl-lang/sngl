@@ -149,6 +149,7 @@ func New() Model {
 	m.visible__inst0 = true
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
+	m.__focusSettle()
 	return m
 }
 
@@ -326,7 +327,14 @@ func (m *Model) __focusLoop0_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return (m.__focusLoop0_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop0_len()
 		if (m.__focusLoop0_cursor + 1) < __focusLen {
@@ -342,7 +350,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		if m.__focusLoop0_cursor > 0 {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
@@ -356,6 +364,28 @@ func (m *Model) __focusPrev() {
 			m.__focusLoop0_cursor = (__focusLen - 1)
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Got() int {
@@ -434,6 +464,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.got = 5
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -743,7 +774,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a7331deccda9ce162e751dd87d96dc5d
+pass sha256:aaef82a4fd26c21dde18cc8a91ac7f3a
 -- run/go/fyne --
 pass sha256:c8bee039ecea37fd39f74ff57570a9e1
 -- run/kotlin/android --

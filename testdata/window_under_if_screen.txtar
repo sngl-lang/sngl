@@ -151,6 +151,7 @@ func New() Model {
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -357,16 +358,39 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return m.details
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Details() bool {
@@ -452,6 +476,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.n += 1
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -561,6 +586,6 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
     }
 }
 -- run/go/bubbletea --
-pass sha256:22310938f552743c92919c7ae4975839
+pass sha256:793879e698fe4cdb13c0b2d6f1b5e882
 -- run/kotlin/android --
 pass sha256:affb07268a8170b190d4040d6575a7aa

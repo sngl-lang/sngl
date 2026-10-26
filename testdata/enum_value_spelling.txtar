@@ -219,6 +219,7 @@ func New() Model {
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -448,7 +449,14 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 1 {
+		return m.open
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -458,7 +466,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -466,6 +474,28 @@ func (m *Model) __focusPrev() {
 			m.__focusID = 0
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Mood() string {
@@ -622,6 +652,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.taps__inst0 = (m.taps__inst0 + 1)
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -1001,7 +1032,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:40fd79a7afd5ee1654fb8db8d7646f94
+pass sha256:81c789fe555635c5dab1fbbb3bf0e96f
 -- run/kotlin/android --
 pass sha256:bc242dea6fc159b7dec274ab00c406b8
 -- run/none/html --

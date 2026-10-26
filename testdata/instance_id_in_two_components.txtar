@@ -189,6 +189,7 @@ func New() Model {
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -429,7 +430,20 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 2 {
+		return m.shown
+	}
+	if m.__focusID == 3 {
+		return m.other
+	}
+	if m.__focusID == 4 {
+		return (m.other && m.on__inst0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -451,7 +465,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 4
 	} else {
@@ -471,6 +485,46 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Shown() bool {
@@ -593,6 +647,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.hits__inst1 = (m.hits__inst1 + 1)
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -2091,7 +2146,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:41da3d6c556de0decc9536cab841b132
+pass sha256:54e2aadbd7a8d4afc108a90a7d7c4645
 -- run/go/fyne --
 pass sha256:ce883e62743f57f27cd42e4ad857235e
 -- run/go/gtk4 --

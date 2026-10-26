@@ -530,7 +530,9 @@ func (m Model) View() tea.View {
 				content_0ItemParts = append(content_0ItemParts, content_0ItemPart_3)
 				content_0Item = tui.Spaced(false, lipgloss.Left, 0, content_0ItemParts...)
 			}
-			content_0Items = append(content_0Items, content_0Item)
+			if content_0Item != "" {
+				content_0Items = append(content_0Items, content_0Item)
+			}
 		}
 		content_0 = tui.Spaced(false, lipgloss.Left, 0, content_0Items...)
 		if content_0 != "" {
@@ -1937,7 +1939,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0b058d4c3ee486b77d5147ae72200dd5
+pass sha256:2ddda4d816e3012fddb317534fbecaec
 -- run/go/fyne --
 pass sha256:b816172eac397f51dcb9e122f87723fc
 -- run/go/gtk4 --

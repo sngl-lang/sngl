@@ -271,6 +271,7 @@ func New() Model {
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -536,7 +537,14 @@ func (m *Model) __focusLoop2_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 2 {
+		return (m.__focusLoop2_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -556,7 +564,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop2_len()
 		m.__focusID = 2
@@ -574,6 +582,34 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Depth() int {
@@ -732,6 +768,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}()
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -805,7 +842,9 @@ func (m Model) View() tea.View {
 	part0Children = append(part0Children, part0_3)
 	var part0_4 string
 	part0_4 = m.renderStep(m.depth, 0)
-	part0Children = append(part0Children, part0_4)
+	if part0_4 != "" {
+		part0Children = append(part0Children, part0_4)
+	}
 	var part0_5 string
 	__focusPos2 := 0
 	_ = __focusPos2
@@ -822,7 +861,9 @@ func (m Model) View() tea.View {
 			part0_5Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(part0_5ItemPrefix + " " + fmt.Sprint(n))
 			__focusPos2++
 		}
-		part0_5Items = append(part0_5Items, part0_5Item)
+		if part0_5Item != "" {
+			part0_5Items = append(part0_5Items, part0_5Item)
+		}
 	}
 	part0_5 = tui.Spaced(false, lipgloss.Left, 0, part0_5Items...)
 	if part0_5 != "" {
@@ -838,7 +879,9 @@ func (m Model) View() tea.View {
 		} else {
 			part0_6Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("z"))
 		}
-		part0_6Items = append(part0_6Items, part0_6Item)
+		if part0_6Item != "" {
+			part0_6Items = append(part0_6Items, part0_6Item)
+		}
 	}
 	part0_6 = tui.Spaced(false, lipgloss.Left, 0, part0_6Items...)
 	if part0_6 != "" {
@@ -5081,7 +5124,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7195e4789394730476bd6fd35733663e
+pass sha256:77f98636f486def1c36e468592972e7f
 -- run/go/fyne --
 pass sha256:24dcc4c77fa4d540f750b62b944e5c73
 -- run/go/gtk4 --

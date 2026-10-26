@@ -207,6 +207,7 @@ func New() Model {
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -508,7 +509,14 @@ func (m *Model) __focusLoop0_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return (m.__focusLoop0_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop0_len()
 		if (m.__focusLoop0_cursor + 1) < __focusLen {
@@ -520,7 +528,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		if m.__focusLoop0_cursor > 0 {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
@@ -530,6 +538,22 @@ func (m *Model) __focusPrev() {
 			m.__focusLoop0_cursor = (__focusLen - 1)
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) N__inst0() int {
@@ -765,6 +789,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}()
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -780,10 +805,14 @@ func (m Model) View() tea.View {
 			return result
 		}
 		part0Part_0 = m.renderTree(m.n__inst0, 0, false, part0Part_0_content)
-		part0Parts = append(part0Parts, part0Part_0)
+		if part0Part_0 != "" {
+			part0Parts = append(part0Parts, part0Part_0)
+		}
 		var part0Part_1 string
 		part0Part_1 = m.renderTree(m.n__inst0, 0, true, nil)
-		part0Parts = append(part0Parts, part0Part_1)
+		if part0Part_1 != "" {
+			part0Parts = append(part0Parts, part0Part_1)
+		}
 		var part0Part_2 string
 		__focusPos0 := 0
 		_ = __focusPos0
@@ -3294,7 +3323,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4d0bf92295b76787074b214d40d6887f
+pass sha256:1422a1c2fa3c63dceac69d18f65e990b
 -- run/go/fyne --
 pass sha256:4a068905cc3965587bd6de7c83a2b035
 -- run/kotlin/android --

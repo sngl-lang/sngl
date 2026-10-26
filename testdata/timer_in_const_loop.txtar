@@ -509,7 +509,9 @@ func (m Model) View() tea.View {
 		for _, p := range m.periods {
 			_ = p
 			var contentPart_0Item string
-			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
+			if contentPart_0Item != "" {
+				contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
+			}
 		}
 		contentPart_0 = tui.Spaced(false, lipgloss.Left, 0, contentPart_0Items...)
 		if contentPart_0 != "" {
@@ -522,7 +524,9 @@ func (m Model) View() tea.View {
 			var contentPart_1Item string
 			if m.shown {
 			}
-			contentPart_1Items = append(contentPart_1Items, contentPart_1Item)
+			if contentPart_1Item != "" {
+				contentPart_1Items = append(contentPart_1Items, contentPart_1Item)
+			}
 		}
 		contentPart_1 = tui.Spaced(false, lipgloss.Left, 0, contentPart_1Items...)
 		if contentPart_1 != "" {
@@ -1745,7 +1749,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dcde9cc1b7b5e4fe3f215f3c7f427f60
+pass sha256:8164c8baf26bf3331170ad848124a075
 -- run/go/fyne --
 pass sha256:48ac0b7126ae0dfd41c6970e5ad2609d
 -- run/go/gtk4 --

@@ -175,6 +175,7 @@ func New() Model {
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -462,7 +463,14 @@ func (m *Model) __focusLoop0_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return (m.__focusLoop0_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop0_len()
 		if (m.__focusLoop0_cursor + 1) < __focusLen {
@@ -474,7 +482,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		if m.__focusLoop0_cursor > 0 {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
@@ -484,6 +492,22 @@ func (m *Model) __focusPrev() {
 			m.__focusLoop0_cursor = (__focusLen - 1)
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Sizes() []float64 {
@@ -591,6 +615,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	cmds = append(cmds, m.__canvasTransmit())
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -857,6 +882,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:84ee6e7f28cb259ba922ae92c87d0dd3
+pass sha256:16a4014a89f7b581d6a847e33c5a73b2
 -- run/none/html --
 pass sha256:afde9768c28358bbc2db5d06bacbbc00

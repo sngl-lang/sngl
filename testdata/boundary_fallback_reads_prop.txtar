@@ -137,6 +137,7 @@ func New() Model {
 	m.__failed0 = false
 	m.visible__inst0 = true
 	m.__focusID = 0
+	m.__focusSettle()
 	return m
 }
 
@@ -306,16 +307,39 @@ func LineCap(height__r0 int, lines int) int {
 	return __lt15
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return !m.__failed0
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Visible__inst0() bool {
@@ -378,6 +402,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}()
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -678,7 +703,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ddf3ac22e7d1966a881c25fd6dfe55c3
+pass sha256:db89cf265201e41c1812a99ae1071f84
 -- run/go/gtk4 --
 pass sha256:c71aef0ab480ed2cf3731ecc16182719
 -- run/none/html --

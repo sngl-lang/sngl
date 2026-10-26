@@ -195,6 +195,7 @@ func New() Model {
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	m.rows = []Row{Row{Name: "a", Cols: []string{"1", "2"}}, Row{Name: "b", Cols: []string{"3"}}}
+	m.__focusSettle()
 	return m
 }
 
@@ -376,7 +377,14 @@ func (m *Model) __focusLoop0_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 0 {
+		return (m.__focusLoop0_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop0_len()
 		if (m.__focusLoop0_cursor + 1) < __focusLen {
@@ -396,7 +404,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		if m.__focusLoop0_cursor > 0 {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
@@ -414,6 +422,34 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Cell__params__inst0() Sel {
@@ -557,6 +593,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -675,10 +712,14 @@ func (m Model) View() tea.View {
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_4)
 					contentPart_0ItemItem = tui.Spaced(false, lipgloss.Left, 0, contentPart_0ItemItemParts...)
 				}
-				contentPart_0ItemItems = append(contentPart_0ItemItems, contentPart_0ItemItem)
+				if contentPart_0ItemItem != "" {
+					contentPart_0ItemItems = append(contentPart_0ItemItems, contentPart_0ItemItem)
+				}
 			}
 			contentPart_0Item = tui.Spaced(false, lipgloss.Left, 0, contentPart_0ItemItems...)
-			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
+			if contentPart_0Item != "" {
+				contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
+			}
 		}
 		contentPart_0 = tui.Spaced(false, lipgloss.Left, 0, contentPart_0Items...)
 		if contentPart_0 != "" {
@@ -1860,7 +1901,7 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:0a375d1160c78b245512f86522b7e3c6
+pass sha256:c83b47ca38e90caba12794388602f29e
 -- run/go/fyne --
 pass sha256:51dbefaf8c070c97ed64c68906157d26
 -- run/go/gtk4 --

@@ -201,6 +201,8 @@ func New() Model {
 	m.__focusLoop1_cursor = 0
 	m.widget0 = map[string]textinput.Model{}
 	m.resizeWidgets()
+	m.__focusSettle()
+	m.widget0FocusSync()
 	m.__effects0_settle()
 	return m
 }
@@ -456,7 +458,14 @@ func (m *Model) __focusLoop1_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 1 {
+		return (m.__focusLoop1_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 		m.__focusLoop1_cursor = 0
@@ -472,7 +481,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop1_len()
 		m.__focusID = 1
@@ -486,6 +495,28 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Items() []string {
@@ -676,6 +707,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				__focusPos1++
 			}
 		}()
+	}
+	if m.__focusSettle() {
+		m.widget0FocusSync()
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -3095,7 +3129,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4542c0b7c06c36bb2fe9cf9cba8a8bcc
+pass sha256:8f527759c6ad00d98877b32d7622e3aa
 -- run/go/fyne --
 pass sha256:90cc85fe8d9506b857db91e2ed23d3f6
 -- run/go/gtk4 --

@@ -184,6 +184,7 @@ func New() Model {
 	m.__effects0_steps = 0
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -411,7 +412,14 @@ func (m *Model) __focusLoop2_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 2 {
+		return (m.__focusLoop2_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -431,7 +439,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		var __focusLen int = m.__focusLoop2_len()
 		m.__focusID = 2
@@ -449,6 +457,34 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Names() []string {
@@ -574,6 +610,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}()
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -684,7 +721,9 @@ func (m Model) View() tea.View {
 				}()))))
 				__focusPos2++
 			}
-			part0_2_0Items = append(part0_2_0Items, part0_2_0Item)
+			if part0_2_0Item != "" {
+				part0_2_0Items = append(part0_2_0Items, part0_2_0Item)
+			}
 		}
 		part0_2_0 = tui.Spaced(false, lipgloss.Left, 0, part0_2_0Items...)
 		if part0_2_0 != "" {
@@ -1882,7 +1921,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:87b74835e830dd5d8112ba93bbba00e0
+pass sha256:704ab4eecdaadc0601fe98d6598af56a
 -- run/go/fyne --
 pass sha256:e1191f21b9877abba0014bf6185aa40e
 -- run/go/gtk4 --

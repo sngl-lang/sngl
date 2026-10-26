@@ -411,7 +411,9 @@ func (m Model) View() tea.View {
 		return result
 	}
 	content_0 = m.renderFrame(m.depth, "top", 0, content_0_part)
-	contentChildren = append(contentChildren, content_0)
+	if content_0 != "" {
+		contentChildren = append(contentChildren, content_0)
+	}
 	var content_1 string
 	content_1_part := func(result_ int) string {
 		var result string
@@ -419,7 +421,9 @@ func (m Model) View() tea.View {
 		return result
 	}
 	content_1 = m.renderFrame((m.depth - 1), "second", 0, content_1_part)
-	contentChildren = append(contentChildren, content_1)
+	if content_1 != "" {
+		contentChildren = append(contentChildren, content_1)
+	}
 	var content_2 string
 	content_2_part := func(in int) string {
 		var result string
@@ -427,7 +431,9 @@ func (m Model) View() tea.View {
 		return result
 	}
 	content_2 = m.renderFrame((m.depth - 2), "third", 0, content_2_part)
-	contentChildren = append(contentChildren, content_2)
+	if content_2 != "" {
+		contentChildren = append(contentChildren, content_2)
+	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
 	v := tea.NewView(content)
@@ -3695,7 +3701,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:14700b3c97bc06d4bae35cd647202cde
+pass sha256:7b0b69177604a0d2192398567e398e00
 -- run/go/fyne --
 pass sha256:9f392b64e3834547fab36e573ac33f1c
 -- run/go/gtk4 --

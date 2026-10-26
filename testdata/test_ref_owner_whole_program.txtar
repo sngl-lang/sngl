@@ -202,6 +202,7 @@ func New() Model {
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
 	m.__focusID = 0
+	m.__focusSettle()
 	m.__effects0_settle()
 	return m
 }
@@ -484,7 +485,23 @@ func (m *Model) __effects0_settle() {
 	}
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 1 {
+		return m.shown__inst0
+	}
+	if m.__focusID == 2 {
+		return m.shown__inst0
+	}
+	if m.__focusID == 4 {
+		return m.on__inst0
+	}
+	if m.__focusID == 5 {
+		return m.on__inst0
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -510,7 +527,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 5
 	} else {
@@ -534,6 +551,52 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) Shown__inst0() bool {
@@ -697,6 +760,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ph__inst0 = (m.ph__inst0 + 1)
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -3471,7 +3535,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5d389a5d6ed29b7fb3645a2cb2d452cf
+pass sha256:d23f5f37b308bfed9bffc57f8ba3a0ef
 -- run/go/fyne --
 pass sha256:c804e636f72e1053d2606c7350dd576a
 -- run/go/gtk4 --

@@ -593,7 +593,9 @@ func (m Model) View() tea.View {
 			_ = r
 			var contentPart_17Item string
 			contentPart_17Item = tui.Render(BoxLook(m.s, true), FitOf(m.s.WhiteSpace, m.s.Overflow, m.s.Display), fmt.Sprint(r))
-			contentPart_17Items = append(contentPart_17Items, contentPart_17Item)
+			if contentPart_17Item != "" {
+				contentPart_17Items = append(contentPart_17Items, contentPart_17Item)
+			}
 		}
 		contentPart_17 = tui.Spaced(false, lipgloss.Left, 0, contentPart_17Items...)
 		if contentPart_17 != "" {
@@ -2382,7 +2384,7 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8901adbde5daeb19d510eed4a6cf371b
+pass sha256:1edb1294943bd0c5a5afa1903c2739c1
 -- run/go/fyne --
 pass sha256:896589c56fdba5cbfee8245c389ee245
 -- run/go/gtk4 --

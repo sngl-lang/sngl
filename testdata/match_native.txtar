@@ -353,6 +353,7 @@ func New() Model {
 	m.visible__inst0 = true
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
+	m.__focusSettle()
 	return m
 }
 
@@ -601,7 +602,14 @@ func (m *Model) __focusLoop2_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 2 {
+		return (m.__focusLoop2_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -625,7 +633,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 3
 	} else {
@@ -647,6 +655,40 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) D__inst0() string {
@@ -875,6 +917,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.d__inst1 = __lt19
 		}
 	}
+	m.__focusSettle()
 	return m, tea.Batch(cmds...)
 }
 
@@ -1172,7 +1215,9 @@ func (m Model) View() tea.View {
 			default:
 				contentPart_9Item = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("other"))
 			}
-			contentPart_9Items = append(contentPart_9Items, contentPart_9Item)
+			if contentPart_9Item != "" {
+				contentPart_9Items = append(contentPart_9Items, contentPart_9Item)
+			}
 		}
 		contentPart_9 = tui.Spaced(false, lipgloss.Left, 0, contentPart_9Items...)
 		if contentPart_9 != "" {
@@ -3672,7 +3717,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3f0d06d795fa1825da4c2d928fde3e1d
+pass sha256:9a6cdd95e7aad4cfb7036ca2635dc814
 -- run/go/fyne --
 pass sha256:f4bc8d1e88e5d26028432951708eb803
 -- run/go/gtk4 --

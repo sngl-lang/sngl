@@ -129,8 +129,13 @@ func New() Model {
 	m.widget0 = textinput.New()
 	m.widget0.Placeholder = "Buy eggs"
 	m.widget0.SetValue(m.newTodo)
-	m.widget0.Focus()
 	m.resizeWidgets()
+	m.__focusSettle()
+	if m.__focusID == 0 {
+		m.widget0.Focus()
+	} else {
+		m.widget0.Blur()
+	}
 	m.__effects0_settle()
 	return m
 }
@@ -362,7 +367,14 @@ func (m *Model) __focusLoop2_len() int {
 	return __focusCount
 }
 
-func (m *Model) __focusNext() {
+func (m *Model) __focusShown() bool {
+	if m.__focusID == 2 {
+		return (m.__focusLoop2_len() > 0)
+	}
+	return true
+}
+
+func (m *Model) __focusStepNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -386,7 +398,7 @@ func (m *Model) __focusNext() {
 	}
 }
 
-func (m *Model) __focusPrev() {
+func (m *Model) __focusStepPrev() {
 	if m.__focusID == 0 {
 		m.__focusID = 3
 	} else {
@@ -408,6 +420,40 @@ func (m *Model) __focusPrev() {
 			}
 		}
 	}
+}
+
+func (m *Model) __focusNext() {
+	m.__focusStepNext()
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+	if !m.__focusShown() {
+		m.__focusStepNext()
+	}
+}
+
+func (m *Model) __focusPrev() {
+	m.__focusStepPrev()
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+	if !m.__focusShown() {
+		m.__focusStepPrev()
+	}
+}
+
+func (m *Model) __focusSettle() bool {
+	if !m.__focusShown() {
+		m.__focusNext()
+		return true
+	}
+	return false
 }
 
 func (m Model) NewTodo() string {
@@ -558,6 +604,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
 		m.newTodo = m.widget0.Value()
+	}
+	if m.__focusSettle() {
+		if m.__focusID == 0 {
+			m.widget0.Focus()
+		} else {
+			m.widget0.Blur()
+		}
 	}
 	return m, tea.Batch(cmds...)
 }
