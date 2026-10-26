@@ -189,20 +189,20 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func RowsOf(m__r0 *Measurement) int {
-	var __lt2 float64
+	var __lt4 float64
 	if m__r0 == nil {
-		__lt2 = 0.0
+		__lt4 = 0.0
 	} else {
-		__lt2 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+		__lt4 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
 	}
-	var px float64 = __lt2
-	var __lt3 int
+	var px float64 = __lt4
+	var __lt5 int
 	if px <= 0.0 {
-		__lt3 = 0
+		__lt5 = 0
 	} else {
-		__lt3 = max(1, (int(px) / 16))
+		__lt5 = max(1, (int(px) / 16))
 	}
-	return __lt3
+	return __lt5
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -226,67 +226,53 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Italic(true)
 	}
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
-		var __lt4 lipgloss.Position
+		var __lt6 lipgloss.Position
 		switch s.TextAlign {
 		case "center":
-			__lt4 = lipgloss.Center
+			__lt6 = lipgloss.Center
 		case "right":
-			__lt4 = lipgloss.Right
+			__lt6 = lipgloss.Right
 		default:
-			__lt4 = lipgloss.Left
+			__lt6 = lipgloss.Left
 		}
-		l = l.AlignHorizontal(__lt4)
+		l = l.AlignHorizontal(__lt6)
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
-		var __lt5 lipgloss.Border
+	var __lt8 bool
+	if s.BorderWidth != nil {
+		var __lt7 float64
+		if s.BorderWidth == nil {
+			__lt7 = 0.0
+		} else {
+			__lt7 = ((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem)))
+		}
+		__lt8 = (__lt7 > 0.0)
+	} else {
+		__lt8 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt8 {
+		var __lt9 lipgloss.Border
 		switch s.BorderStyle {
 		case "double":
-			__lt5 = lipgloss.DoubleBorder()
+			__lt9 = lipgloss.DoubleBorder()
 		case "dashed", "dotted":
-			__lt5 = tui.DashedBorder()
+			__lt9 = tui.DashedBorder()
 		default:
-			var __lt6 lipgloss.Border
+			var __lt10 lipgloss.Border
 			if s.BorderRadius != nil {
-				__lt6 = lipgloss.RoundedBorder()
+				__lt10 = lipgloss.RoundedBorder()
 			} else {
-				__lt6 = lipgloss.NormalBorder()
+				__lt10 = lipgloss.NormalBorder()
 			}
-			__lt5 = __lt6
+			__lt9 = __lt10
 		}
-		l = l.Border(__lt5)
+		l = l.Border(__lt9)
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	var __lt8 *Measurement
-	if s.MarginTop != nil {
-		__lt8 = s.MarginTop
-	} else {
-		var __lt7 *Measurement
-		if s.MarginY != nil {
-			__lt7 = s.MarginY
-		} else {
-			__lt7 = s.Margin
-		}
-		__lt8 = __lt7
-	}
-	l = l.MarginTop(CellsOf(__lt8))
-	var __lt10 *Measurement
-	if s.MarginRight != nil {
-		__lt10 = s.MarginRight
-	} else {
-		var __lt9 *Measurement
-		if s.MarginX != nil {
-			__lt9 = s.MarginX
-		} else {
-			__lt9 = s.Margin
-		}
-		__lt10 = __lt9
-	}
-	l = l.MarginRight(CellsOf(__lt10))
 	var __lt12 *Measurement
-	if s.MarginBottom != nil {
-		__lt12 = s.MarginBottom
+	if s.MarginTop != nil {
+		__lt12 = s.MarginTop
 	} else {
 		var __lt11 *Measurement
 		if s.MarginY != nil {
@@ -296,10 +282,10 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt12 = __lt11
 	}
-	l = l.MarginBottom(CellsOf(__lt12))
+	l = l.MarginTop(CellsOf(__lt12))
 	var __lt14 *Measurement
-	if s.MarginLeft != nil {
-		__lt14 = s.MarginLeft
+	if s.MarginRight != nil {
+		__lt14 = s.MarginRight
 	} else {
 		var __lt13 *Measurement
 		if s.MarginX != nil {
@@ -309,36 +295,36 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt14 = __lt13
 	}
-	l = l.MarginLeft(CellsOf(__lt14))
+	l = l.MarginRight(CellsOf(__lt14))
 	var __lt16 *Measurement
-	if s.PaddingTop != nil {
-		__lt16 = s.PaddingTop
+	if s.MarginBottom != nil {
+		__lt16 = s.MarginBottom
 	} else {
 		var __lt15 *Measurement
-		if s.PaddingY != nil {
-			__lt15 = s.PaddingY
+		if s.MarginY != nil {
+			__lt15 = s.MarginY
 		} else {
-			__lt15 = s.Padding
+			__lt15 = s.Margin
 		}
 		__lt16 = __lt15
 	}
-	l = l.PaddingTop(CellsOf(__lt16))
+	l = l.MarginBottom(CellsOf(__lt16))
 	var __lt18 *Measurement
-	if s.PaddingRight != nil {
-		__lt18 = s.PaddingRight
+	if s.MarginLeft != nil {
+		__lt18 = s.MarginLeft
 	} else {
 		var __lt17 *Measurement
-		if s.PaddingX != nil {
-			__lt17 = s.PaddingX
+		if s.MarginX != nil {
+			__lt17 = s.MarginX
 		} else {
-			__lt17 = s.Padding
+			__lt17 = s.Margin
 		}
 		__lt18 = __lt17
 	}
-	l = l.PaddingRight(CellsOf(__lt18))
+	l = l.MarginLeft(CellsOf(__lt18))
 	var __lt20 *Measurement
-	if s.PaddingBottom != nil {
-		__lt20 = s.PaddingBottom
+	if s.PaddingTop != nil {
+		__lt20 = s.PaddingTop
 	} else {
 		var __lt19 *Measurement
 		if s.PaddingY != nil {
@@ -348,10 +334,10 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt20 = __lt19
 	}
-	l = l.PaddingBottom(CellsOf(__lt20))
+	l = l.PaddingTop(CellsOf(__lt20))
 	var __lt22 *Measurement
-	if s.PaddingLeft != nil {
-		__lt22 = s.PaddingLeft
+	if s.PaddingRight != nil {
+		__lt22 = s.PaddingRight
 	} else {
 		var __lt21 *Measurement
 		if s.PaddingX != nil {
@@ -361,7 +347,33 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		}
 		__lt22 = __lt21
 	}
-	l = l.PaddingLeft(CellsOf(__lt22))
+	l = l.PaddingRight(CellsOf(__lt22))
+	var __lt24 *Measurement
+	if s.PaddingBottom != nil {
+		__lt24 = s.PaddingBottom
+	} else {
+		var __lt23 *Measurement
+		if s.PaddingY != nil {
+			__lt23 = s.PaddingY
+		} else {
+			__lt23 = s.Padding
+		}
+		__lt24 = __lt23
+	}
+	l = l.PaddingBottom(CellsOf(__lt24))
+	var __lt26 *Measurement
+	if s.PaddingLeft != nil {
+		__lt26 = s.PaddingLeft
+	} else {
+		var __lt25 *Measurement
+		if s.PaddingX != nil {
+			__lt25 = s.PaddingX
+		} else {
+			__lt25 = s.Padding
+		}
+		__lt26 = __lt25
+	}
+	l = l.PaddingLeft(CellsOf(__lt26))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -372,48 +384,48 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt23 int
+		var __lt27 int
 		if s.MaxLines == nil {
-			__lt23 = 0
+			__lt27 = 0
 		} else {
-			__lt23 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt27 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt23))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt27))
 	}
 	return l
 }
 
 func CellsOf(m__r1 *Measurement) int {
-	var __lt24 float64
+	var __lt28 float64
 	if m__r1 == nil {
-		__lt24 = 0.0
+		__lt28 = 0.0
 	} else {
-		__lt24 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt28 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	var px float64 = __lt24
-	var __lt25 int
+	var px float64 = __lt28
+	var __lt29 int
 	if px <= 0.0 {
-		__lt25 = 0
+		__lt29 = 0
 	} else {
-		__lt25 = max(1, (int(px) / 8))
+		__lt29 = max(1, (int(px) / 8))
 	}
-	return __lt25
+	return __lt29
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt27 int
+	var __lt31 int
 	if height__r0 == 0 {
-		__lt27 = lines
+		__lt31 = lines
 	} else {
-		var __lt26 int
+		var __lt30 int
 		if lines == 0 {
-			__lt26 = height__r0
+			__lt30 = height__r0
 		} else {
-			__lt26 = min(height__r0, lines)
+			__lt30 = min(height__r0, lines)
 		}
-		__lt27 = __lt26
+		__lt31 = __lt30
 	}
-	return __lt27
+	return __lt31
 }
 
 func (m *Model) __focusNext() {
@@ -702,7 +714,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
+	gtk4rt.SetLook(m.__n2, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "base g")
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
@@ -826,11 +838,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8bea322894b2fd8d5a1c3d20372d2215
+pass sha256:de2d66b4ce8eff6d2e40dcbf3aec8633
 -- run/go/fyne --
 pass sha256:06c8f631aa6bb95f8a2c3dca8282d6d9
 -- run/go/gtk4 --
-pass sha256:1c784dc8c50d6aa688ee61194c882027
+pass sha256:9067646556d9ba8d063a4c23766906aa
 -- run/kotlin/android --
 pass sha256:60bf955079fcb5cb5713821e0ddf8c2d
 -- run/none/html --

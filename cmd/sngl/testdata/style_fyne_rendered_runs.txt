@@ -106,7 +106,7 @@ sha256:4aeba836187a700d8a74367d383568b0
   }
 }
 -- testrun/fyne/go/app.sngl/flips/1 --
-sha256:6768d510ce7944c2818f73b81dd8a7be
+sha256:dda9c8047319e20eddef4152407d94a3
 {
   "results": [
     {

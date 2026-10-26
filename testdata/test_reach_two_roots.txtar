@@ -174,14 +174,28 @@ func LookOf(s Style) lipgloss.Style {
 	return BoxLook(s, true)
 }
 
-func GrowOf(flex *float64) float64 {
-	var __lt0 float64
-	if flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
+func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
+	var __lt0 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt0 = 1
+	case "pre":
+		__lt0 = 2
+	default:
+		__lt0 = 0
 	}
-	return __lt0
+	fit := tui.Fit{Wrap: __lt0, Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
+	return fit
+}
+
+func GrowOf(flex *float64, display string) float64 {
+	var __lt1 float64
+	if (flex == nil) || (display == "none") {
+		__lt1 = 0.0
+	} else {
+		__lt1 = (*(flex))
+	}
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -207,7 +221,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt2 bool
+	if s.BorderWidth != nil {
+		__lt2 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt2 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -231,111 +251,111 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt1 int
+		var __lt3 int
 		if s.MaxLines == nil {
-			__lt1 = 0
+			__lt3 = 0
 		} else {
-			__lt1 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt2 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt2 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt2 = lipgloss.Left
+		__lt4 = lipgloss.Left
 	}
-	return __lt2
+	return __lt4
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt5 float64
+	if m__r0 == nil {
+		__lt5 = 0.0
+	} else {
+		__lt5 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt5
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt3 lipgloss.Border
+	var __lt6 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt3 = lipgloss.DoubleBorder()
+		__lt6 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt3 = tui.DashedBorder()
+		__lt6 = tui.DashedBorder()
 	default:
-		var __lt4 lipgloss.Border
+		var __lt7 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt4 = lipgloss.RoundedBorder()
+			__lt7 = lipgloss.RoundedBorder()
 		} else {
-			__lt4 = lipgloss.NormalBorder()
+			__lt7 = lipgloss.NormalBorder()
 		}
-		__lt3 = __lt4
+		__lt6 = __lt7
 	}
-	return __lt3
+	return __lt6
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt6 *Measurement
+	var __lt9 *Measurement
 	if own != nil {
-		__lt6 = own
+		__lt9 = own
 	} else {
-		var __lt5 *Measurement
+		var __lt8 *Measurement
 		if axis != nil {
-			__lt5 = axis
+			__lt8 = axis
 		} else {
-			__lt5 = all
+			__lt8 = all
 		}
-		__lt6 = __lt5
+		__lt9 = __lt8
 	}
-	return CellsOf(__lt6)
+	return CellsOf(__lt9)
 }
 
-func CellsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
-	} else {
-		__lt7 = max(1, (int(px) / 8))
-	}
-	return __lt7
-}
-
-func RowsOf(m__r1 *Measurement) int {
+func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt8 int
-	if px <= 0.0 {
-		__lt8 = 0
-	} else {
-		__lt8 = max(1, (int(px) / 16))
-	}
-	return __lt8
-}
-
-func LineCap(height__r0 int, lines int) int {
 	var __lt10 int
-	if height__r0 == 0 {
-		__lt10 = lines
+	if px <= 0.0 {
+		__lt10 = 0
 	} else {
-		var __lt9 int
-		if lines == 0 {
-			__lt9 = height__r0
-		} else {
-			__lt9 = min(height__r0, lines)
-		}
-		__lt10 = __lt9
+		__lt10 = max(1, (int(px) / 8))
 	}
 	return __lt10
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt11 float64
-	if m__r2 == nil {
-		__lt11 = 0.0
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
 	} else {
-		__lt11 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt11 = max(1, (int(px) / 16))
 	}
 	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -631,7 +651,7 @@ func LookOf(s Style) fynelayout.Look {
 	} else {
 		__lt0 = float32((*(s.Flex)))
 	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Cursor: CursorOf(s.Cursor), Hidden: (s.Display == "none")}
 	return look
 }
 
@@ -731,6 +751,29 @@ func WrapOf(w string) int {
 		__lt8 = 0
 	}
 	return __lt8
+}
+
+func CursorOf(name string) int {
+	var __lt9 int
+	switch name {
+	case "", "auto":
+		__lt9 = 0
+	case "text", "vertical-text":
+		__lt9 = 2
+	case "crosshair", "cell":
+		__lt9 = 3
+	case "pointer":
+		__lt9 = 4
+	case "ew-resize", "col-resize", "e-resize", "w-resize":
+		__lt9 = 5
+	case "ns-resize", "row-resize", "n-resize", "s-resize":
+		__lt9 = 6
+	case "none":
+		__lt9 = 7
+	default:
+		__lt9 = 1
+	}
+	return __lt9
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -959,11 +1002,11 @@ func (m *Model) reset__inst0() {
 }
 
 func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
+	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
 }
 
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
 	var __lt0 float64
 	if s.Flex == nil {
 		__lt0 = 0.0
@@ -976,7 +1019,7 @@ func LookHidden(s Style, hidden bool) gtk4rt.Look {
 	} else {
 		__lt1 = (*(s.MaxLines))
 	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
@@ -1059,117 +1102,136 @@ func ClipOf(o string) bool {
 	return __lt7
 }
 
-func Decl(name string, value string) string {
-	var __lt8 string
-	if value == "" {
-		__lt8 = ""
-	} else {
-		__lt8 = (((name + ": ") + value) + "; ")
+func JustifyOf(j string) int {
+	var __lt8 int
+	switch j {
+	case "center":
+		__lt8 = 1
+	case "end":
+		__lt8 = 2
+	case "spaceBetween":
+		__lt8 = 3
+	case "spaceAround":
+		__lt8 = 4
+	case "spaceEvenly":
+		__lt8 = 5
+	default:
+		__lt8 = 0
 	}
 	return __lt8
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt10 *Measurement
-	if own != nil {
-		__lt10 = own
+func Decl(name string, value string) string {
+	var __lt9 string
+	if value == "" {
+		__lt9 = ""
 	} else {
-		var __lt9 *Measurement
-		if axis != nil {
-			__lt9 = axis
-		} else {
-			__lt9 = all
-		}
-		__lt10 = __lt9
+		__lt9 = (((name + ": ") + value) + "; ")
 	}
-	return Length(__lt10)
+	return __lt9
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt11 *Measurement
+	if own != nil {
+		__lt11 = own
+	} else {
+		var __lt10 *Measurement
+		if axis != nil {
+			__lt10 = axis
+		} else {
+			__lt10 = all
+		}
+		__lt11 = __lt10
+	}
+	return Length(__lt11)
 }
 
 func Length(m__r1 *Measurement) string {
-	var __lt11 string
-	if m__r1 == nil {
-		__lt11 = ""
-	} else {
-		__lt11 = (fmt.Sprint(Inset(m__r1)) + "px")
-	}
-	return __lt11
-}
-
-func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt12 string
-	if c__r0 == nil {
+	if m__r1 == nil {
 		__lt12 = ""
 	} else {
-		__lt12 = (*(c__r0)).Hex()
+		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt12
 }
 
-func Points(m__r2 *Measurement) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt13 string
-	if m__r2 == nil {
+	if c__r0 == nil {
 		__lt13 = ""
 	} else {
-		__lt13 = (fmt.Sprint(Inset(m__r2)) + "pt")
+		__lt13 = (*(c__r0)).Hex()
 	}
 	return __lt13
 }
 
-func WeightOf(w string) string {
+func Points(m__r2 *Measurement) string {
 	var __lt14 string
-	switch w {
-	case "normal":
-		__lt14 = "normal"
-	case "bold":
-		__lt14 = "bold"
-	case "bolder":
-		__lt14 = "bolder"
-	case "lighter":
-		__lt14 = "lighter"
-	default:
+	if m__r2 == nil {
 		__lt14 = ""
+	} else {
+		__lt14 = (fmt.Sprint(Inset(m__r2)) + "pt")
 	}
 	return __lt14
 }
 
-func SlantOf(s string) string {
+func WeightOf(w string) string {
 	var __lt15 string
-	switch s {
+	switch w {
 	case "normal":
 		__lt15 = "normal"
-	case "italic":
-		__lt15 = "italic"
-	case "oblique":
-		__lt15 = "oblique"
+	case "bold":
+		__lt15 = "bold"
+	case "bolder":
+		__lt15 = "bolder"
+	case "lighter":
+		__lt15 = "lighter"
 	default:
 		__lt15 = ""
 	}
 	return __lt15
 }
 
-func LineOf(s Style) string {
+func SlantOf(s string) string {
 	var __lt16 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt16 = "solid"
-	case "dashed":
-		__lt16 = "dashed"
-	case "dotted":
-		__lt16 = "dotted"
-	case "double":
-		__lt16 = "double"
-	case "none":
-		__lt16 = "none"
+	switch s {
+	case "normal":
+		__lt16 = "normal"
+	case "italic":
+		__lt16 = "italic"
+	case "oblique":
+		__lt16 = "oblique"
 	default:
-		var __lt17 string
-		if s.BorderWidth != nil {
-			__lt17 = "solid"
-		} else {
-			__lt17 = ""
-		}
-		__lt16 = __lt17
+		__lt16 = ""
 	}
 	return __lt16
+}
+
+func LineOf(s Style) string {
+	var __lt17 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt17 = "solid"
+	case "dashed":
+		__lt17 = "dashed"
+	case "dotted":
+		__lt17 = "dotted"
+	case "double":
+		__lt17 = "double"
+	case "none":
+		__lt17 = "none"
+	default:
+		var __lt18 string
+		if s.BorderWidth != nil {
+			__lt18 = "solid"
+		} else {
+			__lt18 = ""
+		}
+		__lt17 = __lt18
+	}
+	return __lt17
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -1703,11 +1765,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4f00bb71a3c3b2b1749dbee66374afae
+pass sha256:35c46e51e8534be1f9945af4021f02cd
 -- run/go/fyne --
-pass sha256:46cf02a3bfca5362a675aec7236f51c0
+pass sha256:c2b1664d2117cfe079283e60017148e9
 -- run/go/gtk4 --
-pass sha256:326091b9f829d8149a6b3fea5db9a5a1
+pass sha256:f2177074d74b3096b184c9d3e126b893
 -- run/kotlin/android --
 pass sha256:ae95af9e70684cc7dd141cbc7a343591
 -- run/none/html --

@@ -208,43 +208,43 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt2 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt4
 }
 
 func SeedOf(s Style) SpanStyle {
-	var __lt3 snglcolor.Color
+	var __lt5 snglcolor.Color
 	if s.Color == nil {
-		__lt3 = snglcolor.Color{}
+		__lt5 = snglcolor.Color{}
 	} else {
-		__lt3 = (*(s.Color))
+		__lt5 = (*(s.Color))
 	}
-	var __lt4 string
+	var __lt6 string
 	switch s.FontWeight {
 	case "bold", "bolder":
-		__lt4 = "bold"
+		__lt6 = "bold"
 	case "lighter":
-		__lt4 = "lighter"
+		__lt6 = "lighter"
 	case "normal":
-		__lt4 = "normal"
+		__lt6 = "normal"
 	default:
-		__lt4 = "inherit"
+		__lt6 = "inherit"
 	}
-	var __lt5 string
+	var __lt7 string
 	switch s.FontStyle {
 	case "italic", "oblique":
-		__lt5 = "italic"
+		__lt7 = "italic"
 	case "normal":
-		__lt5 = "normal"
+		__lt7 = "normal"
 	default:
-		__lt5 = "inherit"
+		__lt7 = "inherit"
 	}
-	return SpanStyle{Color: __lt3, FontSize: Measurement{Px: 0}, FontWeight: __lt4, FontStyle: __lt5}
+	return SpanStyle{Color: __lt5, FontSize: Measurement{Px: 0}, FontWeight: __lt6, FontStyle: __lt7}
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -270,7 +270,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt8 bool
+	if s.BorderWidth != nil {
+		__lt8 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt8 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt8 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -294,100 +300,100 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt9 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt9 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt9 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt9))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt7 float64
+	var __lt10 float64
 	if m__r1 == nil {
-		__lt7 = 0.0
+		__lt10 = 0.0
 	} else {
-		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt10 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt7
+	return __lt10
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt8 lipgloss.Position
+	var __lt11 lipgloss.Position
 	switch a {
 	case "center":
-		__lt8 = lipgloss.Center
+		__lt11 = lipgloss.Center
 	case "right":
-		__lt8 = lipgloss.Right
+		__lt11 = lipgloss.Right
 	default:
-		__lt8 = lipgloss.Left
+		__lt11 = lipgloss.Left
 	}
-	return __lt8
+	return __lt11
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt9 lipgloss.Border
+	var __lt12 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt9 = lipgloss.DoubleBorder()
+		__lt12 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt9 = tui.DashedBorder()
+		__lt12 = tui.DashedBorder()
 	default:
-		var __lt10 lipgloss.Border
+		var __lt13 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt10 = lipgloss.RoundedBorder()
+			__lt13 = lipgloss.RoundedBorder()
 		} else {
-			__lt10 = lipgloss.NormalBorder()
+			__lt13 = lipgloss.NormalBorder()
 		}
-		__lt9 = __lt10
+		__lt12 = __lt13
 	}
-	return __lt9
+	return __lt12
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt12 *Measurement
+	var __lt15 *Measurement
 	if own != nil {
-		__lt12 = own
+		__lt15 = own
 	} else {
-		var __lt11 *Measurement
+		var __lt14 *Measurement
 		if axis != nil {
-			__lt11 = axis
+			__lt14 = axis
 		} else {
-			__lt11 = all
+			__lt14 = all
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
-	return CellsOf(__lt12)
+	return CellsOf(__lt15)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt13 int
+	var __lt16 int
 	if px <= 0.0 {
-		__lt13 = 0
+		__lt16 = 0
 	} else {
-		__lt13 = max(1, (int(px) / 8))
+		__lt16 = max(1, (int(px) / 8))
 	}
-	return __lt13
+	return __lt16
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt18 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt18 = lines
 	} else {
-		var __lt14 int
+		var __lt17 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt17 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt17 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt18 = __lt17
 	}
-	return __lt15
+	return __lt18
 }
 
 func (m *Model) __focusNext() {
@@ -499,29 +505,29 @@ func (m Model) View() tea.View {
 		}
 		content_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content_0Prefix + " " + fmt.Sprint("toggle"))
 		contentChildren = append(contentChildren, content_0)
-		var __lt16 string
+		var __lt19 string
 		if m.on {
-			__lt16 = "bold"
+			__lt19 = "bold"
 		} else {
-			__lt16 = "normal"
+			__lt19 = "normal"
 		}
 		var content_3 string
-		content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt16, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("weight"))
+		content_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt19, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("weight"))
 		contentChildren = append(contentChildren, content_3)
-		var __lt17 string
+		var __lt20 string
 		if m.on {
-			__lt17 = "italic"
+			__lt20 = "italic"
 		} else {
-			__lt17 = "normal"
+			__lt20 = "normal"
 		}
-		var __lt18 string
+		var __lt21 string
 		if m.on {
-			__lt18 = "center"
+			__lt21 = "center"
 		} else {
-			__lt18 = "right"
+			__lt21 = "right"
 		}
 		var content_8 string
-		content_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: __lt17, TextAlign: __lt18, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("slant"))
+		content_8 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: __lt20, TextAlign: __lt21, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("slant"))
 		contentChildren = append(contentChildren, content_8)
 		var content_9 string
 		content_9 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("still"))
@@ -532,140 +538,140 @@ func (m Model) View() tea.View {
 		var content_11 string
 		content_11 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "justify", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("justified"))
 		contentChildren = append(contentChildren, content_11)
-		var __lt20 string
+		var __lt23 string
 		if m.on {
-			__lt20 = "center"
+			__lt23 = "center"
 		} else {
-			var __lt19 string
+			var __lt22 string
 			if m.n > 2 {
-				__lt19 = "left"
+				__lt22 = "left"
 			} else {
-				__lt19 = "right"
+				__lt22 = "right"
 			}
-			__lt20 = __lt19
+			__lt23 = __lt22
 		}
 		var content_14 string
-		content_14 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt20, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nested"))
+		content_14 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt23, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("nested"))
 		contentChildren = append(contentChildren, content_14)
-		var __lt21 Measurement
-		if m.on {
-			__lt21 = Measurement{Px: 20}
-		} else {
-			__lt21 = Measurement{Px: 10}
-		}
-		var content_17 string
-		content_17 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: __lt21.Px * 2, Em: __lt21.Em * 2, Rem: __lt21.Rem * 2}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("grown"))
-		contentChildren = append(contentChildren, content_17)
-		var __lt22 Measurement
-		if m.on {
-			__lt22 = Measurement{Px: 16}
-		} else {
-			__lt22 = Measurement{Px: 8}
-		}
-		var __lt23 Measurement
-		if m.on {
-			__lt23 = Measurement{Px: 160}
-		} else {
-			__lt23 = Measurement{Px: 80}
-		}
 		var __lt24 Measurement
 		if m.on {
 			__lt24 = Measurement{Px: 20}
 		} else {
-			__lt24 = Measurement{Px: 12}
+			__lt24 = Measurement{Px: 10}
 		}
-		var __lt25 float64
+		var content_17 string
+		content_17 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Px: __lt24.Px * 2, Em: __lt24.Em * 2, Rem: __lt24.Rem * 2}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("grown"))
+		contentChildren = append(contentChildren, content_17)
+		var __lt25 Measurement
 		if m.on {
-			__lt25 = 0.5
+			__lt25 = Measurement{Px: 16}
 		} else {
-			__lt25 = 1.0
+			__lt25 = Measurement{Px: 8}
 		}
 		var __lt26 Measurement
 		if m.on {
-			__lt26 = Measurement{Px: 1}
+			__lt26 = Measurement{Px: 160}
 		} else {
-			__lt26 = Measurement{Px: 0}
+			__lt26 = Measurement{Px: 80}
 		}
-		var __lt27 snglcolor.Color
+		var __lt27 Measurement
 		if m.on {
-			__lt27 = snglcolor.Color{R: 255, A: 255}
+			__lt27 = Measurement{Px: 20}
 		} else {
-			__lt27 = snglcolor.Color{G: 255, A: 255}
+			__lt27 = Measurement{Px: 12}
+		}
+		var __lt28 float64
+		if m.on {
+			__lt28 = 0.5
+		} else {
+			__lt28 = 1.0
+		}
+		var __lt29 Measurement
+		if m.on {
+			__lt29 = Measurement{Px: 1}
+		} else {
+			__lt29 = Measurement{Px: 0}
+		}
+		var __lt30 snglcolor.Color
+		if m.on {
+			__lt30 = snglcolor.Color{R: 255, A: 255}
+		} else {
+			__lt30 = snglcolor.Color{G: 255, A: 255}
 		}
 		var content_30 string
-		content_30 = BoxLook(Style{Padding: snglSome(__lt22), Width: snglSome(__lt23), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt27), FontSize: snglSome(__lt24), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderWidth: snglSome(__lt26), BorderStyle: "unset", Opacity: snglSome(__lt25), Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("box"))
+		content_30 = BoxLook(Style{Padding: snglSome(__lt25), Width: snglSome(__lt26), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt30), FontSize: snglSome(__lt27), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderWidth: snglSome(__lt29), BorderStyle: "unset", Opacity: snglSome(__lt28), Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("box"))
 		contentChildren = append(contentChildren, content_30)
 		var content_31 string
 		content_31 = BoxLook(Style{PaddingLeft: snglSome(Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint("scaled"))
 		contentChildren = append(contentChildren, content_31)
-		var __lt28 string
+		var __lt31 string
 		if m.on {
-			__lt28 = "bold"
+			__lt31 = "bold"
 		} else {
-			__lt28 = "normal"
+			__lt31 = "normal"
 		}
-		var __lt29 Measurement
+		var __lt32 Measurement
 		if m.on {
-			__lt29 = Measurement{Px: 20}
+			__lt32 = Measurement{Px: 20}
 		} else {
-			__lt29 = Measurement{Px: 12}
+			__lt32 = Measurement{Px: 12}
 		}
-		var __lt30 string
+		var __lt33 string
 		if m.on {
-			__lt30 = "bold"
+			__lt33 = "bold"
 		} else {
-			__lt30 = "normal"
+			__lt33 = "normal"
 		}
-		var __lt31 Measurement
+		var __lt34 Measurement
 		if m.on {
-			__lt31 = Measurement{Px: 20}
+			__lt34 = Measurement{Px: 20}
 		} else {
-			__lt31 = Measurement{Px: 12}
+			__lt34 = Measurement{Px: 12}
 		}
 		var content_40 string
-		content_40Seed := SeedOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt31), FontWeight: __lt30, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
+		content_40Seed := SeedOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt34), FontWeight: __lt33, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"})
 		_ = content_40Seed
 		_ = content_40Seed
 		_ = content_40Seed
 		content_40 = ""
 		content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_40Seed.Color.Or(""))).Bold((content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder")).Italic((content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique")).Underline(content_40Seed.Underline).Strikethrough(content_40Seed.Strike).Faint((content_40Seed.FontWeight == "lighter")).Render(fmt.Sprint("flow "))
-		var __lt32 string
+		var __lt35 string
 		if m.on {
-			__lt32 = "inherit"
+			__lt35 = "inherit"
 		} else {
-			__lt32 = "lighter"
+			__lt35 = "lighter"
 		}
-		var __lt33 string
+		var __lt36 string
 		if m.on {
-			__lt33 = "italic"
+			__lt36 = "italic"
 		} else {
-			__lt33 = "inherit"
+			__lt36 = "inherit"
 		}
-		var __lt34 Measurement
+		var __lt37 Measurement
 		if m.on {
-			__lt34 = Measurement{Px: 18}
+			__lt37 = Measurement{Px: 18}
 		} else {
-			__lt34 = Measurement{Px: 0}
+			__lt37 = Measurement{Px: 0}
 		}
-		_ = __lt34
-		content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_40Seed.Color.Or(""))).Bold((__lt32 == "bold" || __lt32 == "bolder" || __lt32 != "normal" && (content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder"))).Italic((__lt33 == "italic" || __lt33 == "oblique" || __lt33 != "normal" && (content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique"))).Underline((content_40Seed.Underline || m.on)).Strikethrough(content_40Seed.Strike).Faint((__lt32 == "lighter" || __lt32 != "normal" && (content_40Seed.FontWeight == "lighter"))).Render(fmt.Sprint("run"))
+		_ = __lt37
+		content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_40Seed.Color.Or(""))).Bold((__lt35 == "bold" || __lt35 == "bolder" || __lt35 != "normal" && (content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder"))).Italic((__lt36 == "italic" || __lt36 == "oblique" || __lt36 != "normal" && (content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique"))).Underline((content_40Seed.Underline || m.on)).Strikethrough(content_40Seed.Strike).Faint((__lt35 == "lighter" || __lt35 != "normal" && (content_40Seed.FontWeight == "lighter"))).Render(fmt.Sprint("run"))
 		if m.on {
-			var __lt35 string
+			var __lt38 string
 			if m.n > 2 {
-				__lt35 = "italic"
+				__lt38 = "italic"
 			} else {
-				__lt35 = "normal"
+				__lt38 = "normal"
 			}
-			content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_40Seed.Color.Or(""))).Bold((content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder")).Italic((__lt35 == "italic" || __lt35 == "oblique" || __lt35 != "normal" && (content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique"))).Underline(content_40Seed.Underline).Strikethrough(content_40Seed.Strike).Faint((content_40Seed.FontWeight == "lighter")).Render(fmt.Sprint(" gated"))
+			content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(content_40Seed.Color.Or(""))).Bold((content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder")).Italic((__lt38 == "italic" || __lt38 == "oblique" || __lt38 != "normal" && (content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique"))).Underline(content_40Seed.Underline).Strikethrough(content_40Seed.Strike).Faint((content_40Seed.FontWeight == "lighter")).Render(fmt.Sprint(" gated"))
 		}
-		var __lt36 snglcolor.Color
+		var __lt39 snglcolor.Color
 		if m.on {
-			__lt36 = snglcolor.Color{}
+			__lt39 = snglcolor.Color{}
 		} else {
-			__lt36 = snglcolor.Color{R: 255, A: 255}
+			__lt39 = snglcolor.Color{R: 255, A: 255}
 		}
-		content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt36.Or(content_40Seed.Color.Or("")))).Bold((content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder")).Italic((content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique")).Underline(content_40Seed.Underline).Strikethrough(content_40Seed.Strike).Faint((content_40Seed.FontWeight == "lighter")).Render(fmt.Sprint(" tinted"))
-		content_40 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt29), FontWeight: __lt28, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_40)
+		content_40 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt39.Or(content_40Seed.Color.Or("")))).Bold((content_40Seed.FontWeight == "bold" || content_40Seed.FontWeight == "bolder")).Italic((content_40Seed.FontStyle == "italic" || content_40Seed.FontStyle == "oblique")).Underline(content_40Seed.Underline).Strikethrough(content_40Seed.Strike).Faint((content_40Seed.FontWeight == "lighter")).Render(fmt.Sprint(" tinted"))
+		content_40 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(__lt32), FontWeight: __lt31, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, false).Render(content_40)
 		contentChildren = append(contentChildren, content_40)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 		content = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(content)
@@ -1044,6 +1050,6 @@ fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.u
 
 fun nonNegative(v: Double): Double = (if ((v < 0.0)) 0.0 else v)
 -- run/go/bubbletea --
-pass sha256:b33e85b332877fa3eead735dec3c1f3c
+pass sha256:a6f1d82913b89d6ac8dce378e2f83a86
 -- run/kotlin/android --
 pass sha256:75132b5ec05291323762f882d91d2280

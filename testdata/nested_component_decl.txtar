@@ -162,13 +162,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt2 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt4
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -194,7 +194,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt5 bool
+	if s.BorderWidth != nil {
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -218,100 +224,100 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt3 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt3 = 0
+			__lt6 = 0
 		} else {
-			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt4 float64
+	var __lt7 float64
 	if m__r1 == nil {
-		__lt4 = 0.0
+		__lt7 = 0.0
 	} else {
-		__lt4 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt4
+	return __lt7
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
+	var __lt8 lipgloss.Position
 	switch a {
 	case "center":
-		__lt5 = lipgloss.Center
+		__lt8 = lipgloss.Center
 	case "right":
-		__lt5 = lipgloss.Right
+		__lt8 = lipgloss.Right
 	default:
-		__lt5 = lipgloss.Left
+		__lt8 = lipgloss.Left
 	}
-	return __lt5
+	return __lt8
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt6 lipgloss.Border
+	var __lt9 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt6 = lipgloss.DoubleBorder()
+		__lt9 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt6 = tui.DashedBorder()
+		__lt9 = tui.DashedBorder()
 	default:
-		var __lt7 lipgloss.Border
+		var __lt10 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt7 = lipgloss.RoundedBorder()
+			__lt10 = lipgloss.RoundedBorder()
 		} else {
-			__lt7 = lipgloss.NormalBorder()
+			__lt10 = lipgloss.NormalBorder()
 		}
-		__lt6 = __lt7
+		__lt9 = __lt10
 	}
-	return __lt6
+	return __lt9
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt9 *Measurement
+	var __lt12 *Measurement
 	if own != nil {
-		__lt9 = own
+		__lt12 = own
 	} else {
-		var __lt8 *Measurement
+		var __lt11 *Measurement
 		if axis != nil {
-			__lt8 = axis
+			__lt11 = axis
 		} else {
-			__lt8 = all
+			__lt11 = all
 		}
-		__lt9 = __lt8
+		__lt12 = __lt11
 	}
-	return CellsOf(__lt9)
+	return CellsOf(__lt12)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt10 int
+	var __lt13 int
 	if px <= 0.0 {
-		__lt10 = 0
+		__lt13 = 0
 	} else {
-		__lt10 = max(1, (int(px) / 8))
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return __lt10
+	return __lt13
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt15 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt15 = lines
 	} else {
-		var __lt11 int
+		var __lt14 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt14 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt14 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
-	return __lt12
+	return __lt15
 }
 
 func (m Model) Visible__inst0() bool {
@@ -461,7 +467,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:18fca7142dc79861dab48a05a4524399
+pass sha256:dea6e54be4c4bcf38f32ae1215537f91
 -- run/kotlin/android --
 pass sha256:8d1b157a6f0d98f246f653b1536c7a9a
 -- run/none/html --

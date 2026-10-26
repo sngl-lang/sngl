@@ -196,7 +196,7 @@ func LookOf(s Style) fynelayout.Look {
 	} else {
 		__lt0 = float32((*(s.Flex)))
 	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Cursor: CursorOf(s.Cursor), Hidden: (s.Display == "none")}
 	return look
 }
 
@@ -296,6 +296,29 @@ func WrapOf(w string) int {
 		__lt8 = 0
 	}
 	return __lt8
+}
+
+func CursorOf(name string) int {
+	var __lt9 int
+	switch name {
+	case "", "auto":
+		__lt9 = 0
+	case "text", "vertical-text":
+		__lt9 = 2
+	case "crosshair", "cell":
+		__lt9 = 3
+	case "pointer":
+		__lt9 = 4
+	case "ew-resize", "col-resize", "e-resize", "w-resize":
+		__lt9 = 5
+	case "ns-resize", "row-resize", "n-resize", "s-resize":
+		__lt9 = 6
+	case "none":
+		__lt9 = 7
+	default:
+		__lt9 = 1
+	}
+	return __lt9
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -750,11 +773,11 @@ func New() *Model {
 }
 
 func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
+	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
 }
 
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
 	var __lt0 float64
 	if s.Flex == nil {
 		__lt0 = 0.0
@@ -767,7 +790,7 @@ func LookHidden(s Style, hidden bool) gtk4rt.Look {
 	} else {
 		__lt1 = (*(s.MaxLines))
 	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
@@ -850,117 +873,136 @@ func ClipOf(o string) bool {
 	return __lt7
 }
 
-func Decl(name string, value string) string {
-	var __lt8 string
-	if value == "" {
-		__lt8 = ""
-	} else {
-		__lt8 = (((name + ": ") + value) + "; ")
+func JustifyOf(j string) int {
+	var __lt8 int
+	switch j {
+	case "center":
+		__lt8 = 1
+	case "end":
+		__lt8 = 2
+	case "spaceBetween":
+		__lt8 = 3
+	case "spaceAround":
+		__lt8 = 4
+	case "spaceEvenly":
+		__lt8 = 5
+	default:
+		__lt8 = 0
 	}
 	return __lt8
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt10 *Measurement
-	if own != nil {
-		__lt10 = own
+func Decl(name string, value string) string {
+	var __lt9 string
+	if value == "" {
+		__lt9 = ""
 	} else {
-		var __lt9 *Measurement
-		if axis != nil {
-			__lt9 = axis
-		} else {
-			__lt9 = all
-		}
-		__lt10 = __lt9
+		__lt9 = (((name + ": ") + value) + "; ")
 	}
-	return Length(__lt10)
+	return __lt9
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt11 *Measurement
+	if own != nil {
+		__lt11 = own
+	} else {
+		var __lt10 *Measurement
+		if axis != nil {
+			__lt10 = axis
+		} else {
+			__lt10 = all
+		}
+		__lt11 = __lt10
+	}
+	return Length(__lt11)
 }
 
 func Length(m__r1 *Measurement) string {
-	var __lt11 string
-	if m__r1 == nil {
-		__lt11 = ""
-	} else {
-		__lt11 = (fmt.Sprint(Inset(m__r1)) + "px")
-	}
-	return __lt11
-}
-
-func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt12 string
-	if c__r0 == nil {
+	if m__r1 == nil {
 		__lt12 = ""
 	} else {
-		__lt12 = (*(c__r0)).Hex()
+		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt12
 }
 
-func Points(m__r2 *Measurement) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt13 string
-	if m__r2 == nil {
+	if c__r0 == nil {
 		__lt13 = ""
 	} else {
-		__lt13 = (fmt.Sprint(Inset(m__r2)) + "pt")
+		__lt13 = (*(c__r0)).Hex()
 	}
 	return __lt13
 }
 
-func WeightOf(w string) string {
+func Points(m__r2 *Measurement) string {
 	var __lt14 string
-	switch w {
-	case "normal":
-		__lt14 = "normal"
-	case "bold":
-		__lt14 = "bold"
-	case "bolder":
-		__lt14 = "bolder"
-	case "lighter":
-		__lt14 = "lighter"
-	default:
+	if m__r2 == nil {
 		__lt14 = ""
+	} else {
+		__lt14 = (fmt.Sprint(Inset(m__r2)) + "pt")
 	}
 	return __lt14
 }
 
-func SlantOf(s string) string {
+func WeightOf(w string) string {
 	var __lt15 string
-	switch s {
+	switch w {
 	case "normal":
 		__lt15 = "normal"
-	case "italic":
-		__lt15 = "italic"
-	case "oblique":
-		__lt15 = "oblique"
+	case "bold":
+		__lt15 = "bold"
+	case "bolder":
+		__lt15 = "bolder"
+	case "lighter":
+		__lt15 = "lighter"
 	default:
 		__lt15 = ""
 	}
 	return __lt15
 }
 
-func LineOf(s Style) string {
+func SlantOf(s string) string {
 	var __lt16 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt16 = "solid"
-	case "dashed":
-		__lt16 = "dashed"
-	case "dotted":
-		__lt16 = "dotted"
-	case "double":
-		__lt16 = "double"
-	case "none":
-		__lt16 = "none"
+	switch s {
+	case "normal":
+		__lt16 = "normal"
+	case "italic":
+		__lt16 = "italic"
+	case "oblique":
+		__lt16 = "oblique"
 	default:
-		var __lt17 string
-		if s.BorderWidth != nil {
-			__lt17 = "solid"
-		} else {
-			__lt17 = ""
-		}
-		__lt16 = __lt17
+		__lt16 = ""
 	}
 	return __lt16
+}
+
+func LineOf(s Style) string {
+	var __lt17 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt17 = "solid"
+	case "dashed":
+		__lt17 = "dashed"
+	case "dotted":
+		__lt17 = "dotted"
+	case "double":
+		__lt17 = "double"
+	case "none":
+		__lt17 = "none"
+	default:
+		var __lt18 string
+		if s.BorderWidth != nil {
+			__lt18 = "solid"
+		} else {
+			__lt18 = ""
+		}
+		__lt17 = __lt18
+	}
+	return __lt17
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1903,9 +1945,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:8be006ee9ec0b02f4fe2fb0b1cc7ea02
+pass sha256:385c46b6cb425e6299dcffe391627c47
 -- run/go/gtk4 --
-pass sha256:c840962b7c23a8e151c325b6f84ab8e1
+pass sha256:b471a6d2c84993f5690b68d87a3e43b0
 -- run/kotlin/android --
 pass sha256:927ba8058e0b9d6e60769d3372d402c2
 -- run/none/html --

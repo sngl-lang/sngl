@@ -76,7 +76,7 @@ func testChangeFiresOnCommit(t Test, c editor) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/editor/1 --
-sha256:f13ab0ca31b0b3feb1821154367cf9b3
+sha256:d656c5ae984053bc274c9a30e34396ab
 {
   "results": [
     {
@@ -104,7 +104,7 @@ sha256:bd2db0d012946de2e037097b7e5e172e
   ]
 }
 -- testrun/gtk4/go/app.sngl/editor/1 --
-sha256:126e98135b6de63a76c7dc4ba7601a20
+sha256:e3b2d592d93ef1d070bca84b3cc79787
 {
   "results": [
     {

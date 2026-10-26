@@ -514,7 +514,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
+	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot0(m.__n4)
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n2, ("total " + fmt.Sprint(m.total)))
@@ -716,6 +716,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:69172eb5e4762f61eb6fc3ff2018dd6e
 -- run/go/gtk4 --
-pass sha256:3a80e634bebedce26acc5c3718f1b629
+pass sha256:3cee1ac82e58f6b6fbf84641c4e2f21e
 -- run/none/html --
 pass sha256:490b4b5c0cf84d38d229745a0cb4f478

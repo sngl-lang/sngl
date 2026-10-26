@@ -174,13 +174,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt2 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt4
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -206,7 +206,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt5 bool
+	if s.BorderWidth != nil {
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -230,100 +236,100 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt3 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt3 = 0
+			__lt6 = 0
 		} else {
-			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt4 float64
+	var __lt7 float64
 	if m__r1 == nil {
-		__lt4 = 0.0
+		__lt7 = 0.0
 	} else {
-		__lt4 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt4
+	return __lt7
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
+	var __lt8 lipgloss.Position
 	switch a {
 	case "center":
-		__lt5 = lipgloss.Center
+		__lt8 = lipgloss.Center
 	case "right":
-		__lt5 = lipgloss.Right
+		__lt8 = lipgloss.Right
 	default:
-		__lt5 = lipgloss.Left
+		__lt8 = lipgloss.Left
 	}
-	return __lt5
+	return __lt8
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt6 lipgloss.Border
+	var __lt9 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt6 = lipgloss.DoubleBorder()
+		__lt9 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt6 = tui.DashedBorder()
+		__lt9 = tui.DashedBorder()
 	default:
-		var __lt7 lipgloss.Border
+		var __lt10 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt7 = lipgloss.RoundedBorder()
+			__lt10 = lipgloss.RoundedBorder()
 		} else {
-			__lt7 = lipgloss.NormalBorder()
+			__lt10 = lipgloss.NormalBorder()
 		}
-		__lt6 = __lt7
+		__lt9 = __lt10
 	}
-	return __lt6
+	return __lt9
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt9 *Measurement
+	var __lt12 *Measurement
 	if own != nil {
-		__lt9 = own
+		__lt12 = own
 	} else {
-		var __lt8 *Measurement
+		var __lt11 *Measurement
 		if axis != nil {
-			__lt8 = axis
+			__lt11 = axis
 		} else {
-			__lt8 = all
+			__lt11 = all
 		}
-		__lt9 = __lt8
+		__lt12 = __lt11
 	}
-	return CellsOf(__lt9)
+	return CellsOf(__lt12)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt10 int
+	var __lt13 int
 	if px <= 0.0 {
-		__lt10 = 0
+		__lt13 = 0
 	} else {
-		__lt10 = max(1, (int(px) / 8))
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return __lt10
+	return __lt13
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt15 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt15 = lines
 	} else {
-		var __lt11 int
+		var __lt14 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt14 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt14 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
-	return __lt12
+	return __lt15
 }
 
 func (m *Model) __focusNext() {
@@ -417,13 +423,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.pick = ((m.pick + 1) % 2)
-			var __lt13 string
+			var __lt16 string
 			if m.pick == 0 {
-				__lt13 = "home"
+				__lt16 = "home"
 			} else {
-				__lt13 = "about"
+				__lt16 = "about"
 			}
-			m.key = __lt13
+			m.key = __lt16
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -540,13 +546,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 func (m *Model) __n5_click_handler() {
 	m.pick = ((m.pick + 1) % 2)
 	m.__n1.SetText(m.entries[m.pick].Title)
-	var __lt9 string
+	var __lt10 string
 	if m.pick == 0 {
-		__lt9 = "home"
+		__lt10 = "home"
 	} else {
-		__lt9 = "about"
+		__lt10 = "about"
 	}
-	m.key = __lt9
+	m.key = __lt10
 	m.__n2.SetText(func() string {
 		if __v, __ok := m.labels[m.key]; __ok {
 			return __v
@@ -689,13 +695,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 func (m *Model) __n5_clicked_handler() {
 	m.pick = ((m.pick + 1) % 2)
 	gtk4rt.LabelSetLabel(m.__n1, m.entries[m.pick].Title)
-	var __lt19 string
+	var __lt20 string
 	if m.pick == 0 {
-		__lt19 = "home"
+		__lt20 = "home"
 	} else {
-		__lt19 = "about"
+		__lt20 = "about"
 	}
-	m.key = __lt19
+	m.key = __lt20
 	gtk4rt.LabelSetLabel(m.__n2, func() string {
 		if __v, __ok := m.labels[m.key]; __ok {
 			return __v
@@ -739,7 +745,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n3, 6)
+	gtk4rt.SetLook(m.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	for _, e := range m.entries {
 		m.__n4 = gtk4rt.LabelNew("")
 		gtk4rt.LabelSetLabel(m.__n4, e.Title)
@@ -822,10 +828,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9c3c74035e09b6246f37c957e8119d9f
+pass sha256:85303a7657253451be0f99fd7f4e5b5d
 -- run/go/fyne --
-pass sha256:0387a1cbbc63af0ae23ba3c936a039a6
+pass sha256:9a690f4cdde090ee9ccf5e012071596f
 -- run/go/gtk4 --
-pass sha256:dbb8f5410b6232ade6959abebcc41568
+pass sha256:cc903cbfe480ae11960af57105ded103
 -- run/none/html --
 pass sha256:2608b26bd2bc03c32f990746024e9d6e

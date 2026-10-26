@@ -188,14 +188,28 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func GrowOf(flex *float64) float64 {
-	var __lt0 float64
-	if flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
+func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
+	var __lt0 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt0 = 1
+	case "pre":
+		__lt0 = 2
+	default:
+		__lt0 = 0
 	}
-	return __lt0
+	fit := tui.Fit{Wrap: __lt0, Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
+	return fit
+}
+
+func GrowOf(flex *float64, display string) float64 {
+	var __lt1 float64
+	if (flex == nil) || (display == "none") {
+		__lt1 = 0.0
+	} else {
+		__lt1 = (*(flex))
+	}
+	return __lt1
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -221,7 +235,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt2 bool
+	if s.BorderWidth != nil {
+		__lt2 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt2 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -245,111 +265,111 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt1 int
+		var __lt3 int
 		if s.MaxLines == nil {
-			__lt1 = 0
+			__lt3 = 0
 		} else {
-			__lt1 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt2 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt2 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt2 = lipgloss.Left
+		__lt4 = lipgloss.Left
 	}
-	return __lt2
+	return __lt4
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt5 float64
+	if m__r0 == nil {
+		__lt5 = 0.0
+	} else {
+		__lt5 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt5
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt3 lipgloss.Border
+	var __lt6 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt3 = lipgloss.DoubleBorder()
+		__lt6 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt3 = tui.DashedBorder()
+		__lt6 = tui.DashedBorder()
 	default:
-		var __lt4 lipgloss.Border
+		var __lt7 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt4 = lipgloss.RoundedBorder()
+			__lt7 = lipgloss.RoundedBorder()
 		} else {
-			__lt4 = lipgloss.NormalBorder()
+			__lt7 = lipgloss.NormalBorder()
 		}
-		__lt3 = __lt4
+		__lt6 = __lt7
 	}
-	return __lt3
+	return __lt6
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt6 *Measurement
+	var __lt9 *Measurement
 	if own != nil {
-		__lt6 = own
+		__lt9 = own
 	} else {
-		var __lt5 *Measurement
+		var __lt8 *Measurement
 		if axis != nil {
-			__lt5 = axis
+			__lt8 = axis
 		} else {
-			__lt5 = all
+			__lt8 = all
 		}
-		__lt6 = __lt5
+		__lt9 = __lt8
 	}
-	return CellsOf(__lt6)
+	return CellsOf(__lt9)
 }
 
-func CellsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
-	} else {
-		__lt7 = max(1, (int(px) / 8))
-	}
-	return __lt7
-}
-
-func RowsOf(m__r1 *Measurement) int {
+func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt8 int
-	if px <= 0.0 {
-		__lt8 = 0
-	} else {
-		__lt8 = max(1, (int(px) / 16))
-	}
-	return __lt8
-}
-
-func LineCap(height__r0 int, lines int) int {
 	var __lt10 int
-	if height__r0 == 0 {
-		__lt10 = lines
+	if px <= 0.0 {
+		__lt10 = 0
 	} else {
-		var __lt9 int
-		if lines == 0 {
-			__lt9 = height__r0
-		} else {
-			__lt9 = min(height__r0, lines)
-		}
-		__lt10 = __lt9
+		__lt10 = max(1, (int(px) / 8))
 	}
 	return __lt10
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt11 float64
-	if m__r2 == nil {
-		__lt11 = 0.0
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
 	} else {
-		__lt11 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt11 = max(1, (int(px) / 16))
 	}
 	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -515,38 +535,69 @@ func (m Model) View() tea.View {
 		contentPart_1 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = BoxLook(m.s, true).Render(fmt.Sprint("styled"))
-		contentParts = append(contentParts, contentPart_2)
-		var __lt12 Style
-		if m.on {
-			__lt12 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
-		} else {
-			__lt12 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		contentPart_2 = tui.Render(BoxLook(m.s, true), FitOf(m.s.WhiteSpace, m.s.Overflow, m.s.Display), fmt.Sprint("styled"))
+		if contentPart_2 != "" {
+			contentParts = append(contentParts, contentPart_2)
 		}
-		var __lt13 Style
+		var __lt14 Style
 		if m.on {
-			__lt13 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+			__lt14 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 		} else {
-			__lt13 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+			__lt14 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 		}
-		var contentPart_7 string
-		_ = __lt13
-		contentPart_7 = BoxLook(__lt12, true).Render(fmt.Sprint("picked"))
-		contentParts = append(contentParts, contentPart_7)
-		var contentPart_8 string
-		contentPart_8 = BoxLook(m.kept[0], true).Render(fmt.Sprint("kept"))
-		contentParts = append(contentParts, contentPart_8)
-		var contentPart_9 string
-		var contentPart_9Items []string
+		var __lt15 Style
+		if m.on {
+			__lt15 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		} else {
+			__lt15 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		}
+		var __lt16 Style
+		if m.on {
+			__lt16 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		} else {
+			__lt16 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		}
+		var __lt17 Style
+		if m.on {
+			__lt17 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		} else {
+			__lt17 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		}
+		var __lt18 Style
+		if m.on {
+			__lt18 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		} else {
+			__lt18 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		}
+		var __lt19 Style
+		if m.on {
+			__lt19 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		} else {
+			__lt19 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		}
+		var contentPart_15 string
+		_ = __lt18
+		_ = __lt19
+		contentPart_15 = tui.Render(BoxLook(__lt14, true), FitOf(__lt15.WhiteSpace, __lt16.Overflow, __lt17.Display), fmt.Sprint("picked"))
+		if contentPart_15 != "" {
+			contentParts = append(contentParts, contentPart_15)
+		}
+		var contentPart_16 string
+		contentPart_16 = tui.Render(BoxLook(m.kept[0], true), FitOf(m.kept[0].WhiteSpace, m.kept[0].Overflow, m.kept[0].Display), fmt.Sprint("kept"))
+		if contentPart_16 != "" {
+			contentParts = append(contentParts, contentPart_16)
+		}
+		var contentPart_17 string
+		var contentPart_17Items []string
 		for _, r := range m.rows {
 			_ = r
-			var contentPart_9Item string
-			contentPart_9Item = BoxLook(m.s, true).Render(fmt.Sprint(r))
-			contentPart_9Items = append(contentPart_9Items, contentPart_9Item)
+			var contentPart_17Item string
+			contentPart_17Item = tui.Render(BoxLook(m.s, true), FitOf(m.s.WhiteSpace, m.s.Overflow, m.s.Display), fmt.Sprint(r))
+			contentPart_17Items = append(contentPart_17Items, contentPart_17Item)
 		}
-		contentPart_9 = tui.Spaced(false, lipgloss.Left, 0, contentPart_9Items...)
-		if contentPart_9 != "" {
-			contentParts = append(contentParts, contentPart_9)
+		contentPart_17 = tui.Spaced(false, lipgloss.Left, 0, contentPart_17Items...)
+		if contentPart_17 != "" {
+			contentParts = append(contentParts, contentPart_17)
 		}
 		content = tui.Spaced(false, lipgloss.Left, 0, contentParts...)
 	}
@@ -691,7 +742,7 @@ func LookOf(s Style) fynelayout.Look {
 	} else {
 		__lt0 = float32((*(s.Flex)))
 	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Cursor: CursorOf(s.Cursor), Hidden: (s.Display == "none")}
 	return look
 }
 
@@ -793,6 +844,29 @@ func WrapOf(w string) int {
 	return __lt8
 }
 
+func CursorOf(name string) int {
+	var __lt9 int
+	switch name {
+	case "", "auto":
+		__lt9 = 0
+	case "text", "vertical-text":
+		__lt9 = 2
+	case "crosshair", "cell":
+		__lt9 = 3
+	case "pointer":
+		__lt9 = 4
+	case "ew-resize", "col-resize", "e-resize", "w-resize":
+		__lt9 = 5
+	case "ns-resize", "row-resize", "n-resize", "s-resize":
+		__lt9 = 6
+	case "none":
+		__lt9 = 7
+	default:
+		__lt9 = 1
+	}
+	return __lt9
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -866,13 +940,13 @@ func (m *Model) __n6_click_handler() {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
 	m.on = !m.on
-	var __lt9 Style
+	var __lt10 Style
 	if m.on {
-		__lt9 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt10 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt9 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt10 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
-	m.__n3__box.SetLook(LookOf(__lt9))
+	m.__n3__box.SetLook(LookOf(__lt10))
 }
 
 func (m *Model) __n7_click_handler() {
@@ -948,16 +1022,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetText("styled")
 	m.__n2__box.SetLook(LookOf(m.s))
 	m.__n1.Add(m.__n2__box)
-	var __lt10 Style
+	var __lt11 Style
 	if m.on {
-		__lt10 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt11 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt10 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt11 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
 	m.__n3 = widget.NewLabel("")
 	m.__n3__box = fynelayout.NewBox(m.__n3)
 	m.__n3.SetText("picked")
-	m.__n3__box.SetLook(LookOf(__lt10))
+	m.__n3__box.SetLook(LookOf(__lt11))
 	m.__n1.Add(m.__n3__box)
 	m.__n4 = widget.NewLabel("")
 	m.__n4__box = fynelayout.NewBox(m.__n4)
@@ -1146,11 +1220,11 @@ func New() *Model {
 }
 
 func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
+	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
 }
 
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
 	var __lt0 float64
 	if s.Flex == nil {
 		__lt0 = 0.0
@@ -1163,7 +1237,7 @@ func LookHidden(s Style, hidden bool) gtk4rt.Look {
 	} else {
 		__lt1 = (*(s.MaxLines))
 	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
@@ -1246,117 +1320,136 @@ func ClipOf(o string) bool {
 	return __lt7
 }
 
-func Decl(name string, value string) string {
-	var __lt8 string
-	if value == "" {
-		__lt8 = ""
-	} else {
-		__lt8 = (((name + ": ") + value) + "; ")
+func JustifyOf(j string) int {
+	var __lt8 int
+	switch j {
+	case "center":
+		__lt8 = 1
+	case "end":
+		__lt8 = 2
+	case "spaceBetween":
+		__lt8 = 3
+	case "spaceAround":
+		__lt8 = 4
+	case "spaceEvenly":
+		__lt8 = 5
+	default:
+		__lt8 = 0
 	}
 	return __lt8
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt10 *Measurement
-	if own != nil {
-		__lt10 = own
+func Decl(name string, value string) string {
+	var __lt9 string
+	if value == "" {
+		__lt9 = ""
 	} else {
-		var __lt9 *Measurement
-		if axis != nil {
-			__lt9 = axis
-		} else {
-			__lt9 = all
-		}
-		__lt10 = __lt9
+		__lt9 = (((name + ": ") + value) + "; ")
 	}
-	return Length(__lt10)
+	return __lt9
+}
+
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt11 *Measurement
+	if own != nil {
+		__lt11 = own
+	} else {
+		var __lt10 *Measurement
+		if axis != nil {
+			__lt10 = axis
+		} else {
+			__lt10 = all
+		}
+		__lt11 = __lt10
+	}
+	return Length(__lt11)
 }
 
 func Length(m__r1 *Measurement) string {
-	var __lt11 string
-	if m__r1 == nil {
-		__lt11 = ""
-	} else {
-		__lt11 = (fmt.Sprint(Inset(m__r1)) + "px")
-	}
-	return __lt11
-}
-
-func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt12 string
-	if c__r0 == nil {
+	if m__r1 == nil {
 		__lt12 = ""
 	} else {
-		__lt12 = (*(c__r0)).Hex()
+		__lt12 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt12
 }
 
-func Points(m__r2 *Measurement) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt13 string
-	if m__r2 == nil {
+	if c__r0 == nil {
 		__lt13 = ""
 	} else {
-		__lt13 = (fmt.Sprint(Inset(m__r2)) + "pt")
+		__lt13 = (*(c__r0)).Hex()
 	}
 	return __lt13
 }
 
-func WeightOf(w string) string {
+func Points(m__r2 *Measurement) string {
 	var __lt14 string
-	switch w {
-	case "normal":
-		__lt14 = "normal"
-	case "bold":
-		__lt14 = "bold"
-	case "bolder":
-		__lt14 = "bolder"
-	case "lighter":
-		__lt14 = "lighter"
-	default:
+	if m__r2 == nil {
 		__lt14 = ""
+	} else {
+		__lt14 = (fmt.Sprint(Inset(m__r2)) + "pt")
 	}
 	return __lt14
 }
 
-func SlantOf(s string) string {
+func WeightOf(w string) string {
 	var __lt15 string
-	switch s {
+	switch w {
 	case "normal":
 		__lt15 = "normal"
-	case "italic":
-		__lt15 = "italic"
-	case "oblique":
-		__lt15 = "oblique"
+	case "bold":
+		__lt15 = "bold"
+	case "bolder":
+		__lt15 = "bolder"
+	case "lighter":
+		__lt15 = "lighter"
 	default:
 		__lt15 = ""
 	}
 	return __lt15
 }
 
-func LineOf(s Style) string {
+func SlantOf(s string) string {
 	var __lt16 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt16 = "solid"
-	case "dashed":
-		__lt16 = "dashed"
-	case "dotted":
-		__lt16 = "dotted"
-	case "double":
-		__lt16 = "double"
-	case "none":
-		__lt16 = "none"
+	switch s {
+	case "normal":
+		__lt16 = "normal"
+	case "italic":
+		__lt16 = "italic"
+	case "oblique":
+		__lt16 = "oblique"
 	default:
-		var __lt17 string
-		if s.BorderWidth != nil {
-			__lt17 = "solid"
-		} else {
-			__lt17 = ""
-		}
-		__lt16 = __lt17
+		__lt16 = ""
 	}
 	return __lt16
+}
+
+func LineOf(s Style) string {
+	var __lt17 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt17 = "solid"
+	case "dashed":
+		__lt17 = "dashed"
+	case "dotted":
+		__lt17 = "dotted"
+	case "double":
+		__lt17 = "double"
+	case "none":
+		__lt17 = "none"
+	default:
+		var __lt18 string
+		if s.BorderWidth != nil {
+			__lt18 = "solid"
+		} else {
+			__lt18 = ""
+		}
+		__lt17 = __lt18
+	}
+	return __lt17
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1432,13 +1525,13 @@ func (m *Model) __n6_clicked_handler() {
 		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
 	}
 	m.on = !m.on
-	var __lt18 Style
+	var __lt19 Style
 	if m.on {
-		__lt18 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt19 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt18 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt19 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
-	gtk4rt.SetLook(m.__n3, LookOf(__lt18))
+	gtk4rt.SetLook(m.__n3, LookOf(__lt19))
 }
 
 func (m *Model) __n7_clicked_handler() {
@@ -1560,16 +1653,16 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
 	gtk4rt.SetLook(m.__n2, LookOf(m.s))
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
-	var __lt19 Style
+	var __lt20 Style
 	if m.on {
-		__lt19 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt20 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	} else {
-		__lt19 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
+		__lt20 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}
 	}
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "picked")
 	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.SetLook(m.__n3, LookOf(__lt19))
+	gtk4rt.SetLook(m.__n3, LookOf(__lt20))
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n4, "kept")
@@ -1617,6 +1710,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
@@ -1867,11 +1961,11 @@ fun MainScreen() {
             }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "tint", modifier = Modifier)
             }
-            Text(text = "styled", modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "styled", modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((s.maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (s.whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((s.maxLines == null)) Int.MAX_VALUE else s.maxLines!!))
             Text(text = "picked", modifier = modifierOf((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))), { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge(textStyle((if (on) Style(color = Color(r = 255)) else Style(color = Color(b = 255))))))
-            Text(text = "kept", modifier = flexed((if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)), kept[0].flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((kept[0].color != null) || (kept[0].fontSize != null)) || (kept[0].fontWeight != SnglFontWeight.UNSET)) || (kept[0].fontStyle != SnglFontStyle.UNSET)) || (kept[0].fontFamily != "")) || (kept[0].textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((kept[0].color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = kept[0].color!!.r.toInt(), green = kept[0].color!!.g.toInt(), blue = kept[0].color!!.b.toInt(), alpha = kept[0].color!!.a.toInt())), fontSize = (if ((kept[0].fontSize == null)) TextUnit.Unspecified else TextUnit((kept[0].fontSize!!.px + (16.0 * (kept[0].fontSize!!.em + kept[0].fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (kept[0].fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (kept[0].fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (kept[0].fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (kept[0].textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+            Text(text = "kept", modifier = flexed((if ((kept[0] == Style())) Modifier else styleModifier(kept[0], true)), kept[0].flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((kept[0].color != null) || (kept[0].fontSize != null)) || (kept[0].fontWeight != SnglFontWeight.UNSET)) || (kept[0].fontStyle != SnglFontStyle.UNSET)) || (kept[0].fontFamily != "")) || (kept[0].textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((kept[0].color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = kept[0].color!!.r.toInt(), green = kept[0].color!!.g.toInt(), blue = kept[0].color!!.b.toInt(), alpha = kept[0].color!!.a.toInt())), fontSize = (if ((kept[0].fontSize == null)) TextUnit.Unspecified else TextUnit((kept[0].fontSize!!.px + (16.0 * (kept[0].fontSize!!.em + kept[0].fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (kept[0].fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (kept[0].fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (kept[0].fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (kept[0].textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((kept[0].maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (kept[0].whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((kept[0].maxLines == null)) Int.MAX_VALUE else kept[0].maxLines!!))
             for (r in rows) {
-                Text(text = r, modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))))
+                Text(text = r, modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, { w: Float -> Modifier.fillMaxSize() }).safeDrawingPadding(), style = LocalTextStyle.current.merge((if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))), overflow = (if ((s.maxLines == null)) TextOverflow.Clip else TextOverflow.Ellipsis), softWrap = (when (s.whiteSpace) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true }), maxLines = (if ((s.maxLines == null)) Int.MAX_VALUE else s.maxLines!!))
             }
         }
     }
@@ -2288,12 +2382,12 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f38eb99dfd085d9004e63ac9f53f8b7b
+pass sha256:8901adbde5daeb19d510eed4a6cf371b
 -- run/go/fyne --
-pass sha256:c41047e18b9d34745d4c74a926127de5
+pass sha256:896589c56fdba5cbfee8245c389ee245
 -- run/go/gtk4 --
-pass sha256:77f3fe0ef947f14bf22894fb88fe274f
+pass sha256:ee93853504ebfa86d6a6c431b7e4b0a1
 -- run/kotlin/android --
-pass sha256:ee846a523c54c6c63c8fe927fc729c58
+pass sha256:3d42b686f771bc79dfbc192de5c77119
 -- run/none/html --
 pass sha256:9cd5748eb4bf12f6e7e2d614386ff9d2

@@ -467,8 +467,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
-	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Look{Grow: 1.0})
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Look{Grow: 1.0, Spaced: true, Spacing: 6})
 	m.__n3 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), __cstr0)
 	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
@@ -498,4 +497,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 -- run/go/fyne --
 pass sha256:2c483ef9db25ac6882716433997f90a7
 -- run/go/gtk4 --
-pass sha256:b8d460c2486cc4cf344af3b6dd6bc353
+pass sha256:69f4ef816add68aa106ecf417eecbfb8

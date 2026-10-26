@@ -283,18 +283,18 @@ func (m *Model) __effect0_mount() {
 			case (r.tag == 0):
 				got := r.Ok
 				m.answer__inst0 = snglSome(got)
-				var __lt9 string
+				var __lt10 string
 				if m.answer__inst0 != nil {
-					__lt9 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
+					__lt10 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 						c0 := &sngljson.Codec{Kind: sngljson.Struct}
 						c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 						c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 						return c0
 					}())
 				} else {
-					__lt9 = "-"
+					__lt10 = "-"
 				}
-				m.__n1.SetText(__lt9)
+				m.__n1.SetText(__lt10)
 				m.failure__inst0 = nil
 			default:
 				got := r.Failed
@@ -501,19 +501,19 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	var __lt10 string
+	var __lt11 string
 	if m.answer__inst0 != nil {
-		__lt10 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
+		__lt11 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
 			c0 := &sngljson.Codec{Kind: sngljson.Struct}
 			c1 := &sngljson.Codec{Kind: sngljson.Enum, Wires: []string{"hard-cover", "paperback"}, Names: []string{"hardcover", "paperback"}}
 			c0.Fields = []sngljson.Field{{Wire: "method", Codec: &sngljson.Codec{Kind: sngljson.String}}, {Wire: "raw_query", Codec: &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.String}}}, {Wire: "kind", Codec: c1}}
 			return c0
 		}())
 	} else {
-		__lt10 = "-"
+		__lt11 = "-"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt10)
+	m.__n1.SetText(__lt11)
 	m.__n0.Add(m.__n1)
 	m.__n2 = widget.NewButton("", nil)
 	m.__n2.SetText("Send")
@@ -1480,7 +1480,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:3f0d08f754182ec933336cf5ef63717f
+pass sha256:72083c0dadc425324f674e22c676270c
 -- run/kotlin/android --
 pass sha256:2e1ee4780e82c8ae0b8bffa42aa235f1
 -- run/none/html --

@@ -218,13 +218,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt2 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt4
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -250,7 +250,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt5 bool
+	if s.BorderWidth != nil {
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -274,100 +280,100 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt3 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt3 = 0
+			__lt6 = 0
 		} else {
-			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt4 float64
+	var __lt7 float64
 	if m__r1 == nil {
-		__lt4 = 0.0
+		__lt7 = 0.0
 	} else {
-		__lt4 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt4
+	return __lt7
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
+	var __lt8 lipgloss.Position
 	switch a {
 	case "center":
-		__lt5 = lipgloss.Center
+		__lt8 = lipgloss.Center
 	case "right":
-		__lt5 = lipgloss.Right
+		__lt8 = lipgloss.Right
 	default:
-		__lt5 = lipgloss.Left
+		__lt8 = lipgloss.Left
 	}
-	return __lt5
+	return __lt8
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt6 lipgloss.Border
+	var __lt9 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt6 = lipgloss.DoubleBorder()
+		__lt9 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt6 = tui.DashedBorder()
+		__lt9 = tui.DashedBorder()
 	default:
-		var __lt7 lipgloss.Border
+		var __lt10 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt7 = lipgloss.RoundedBorder()
+			__lt10 = lipgloss.RoundedBorder()
 		} else {
-			__lt7 = lipgloss.NormalBorder()
+			__lt10 = lipgloss.NormalBorder()
 		}
-		__lt6 = __lt7
+		__lt9 = __lt10
 	}
-	return __lt6
+	return __lt9
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt9 *Measurement
+	var __lt12 *Measurement
 	if own != nil {
-		__lt9 = own
+		__lt12 = own
 	} else {
-		var __lt8 *Measurement
+		var __lt11 *Measurement
 		if axis != nil {
-			__lt8 = axis
+			__lt11 = axis
 		} else {
-			__lt8 = all
+			__lt11 = all
 		}
-		__lt9 = __lt8
+		__lt12 = __lt11
 	}
-	return CellsOf(__lt9)
+	return CellsOf(__lt12)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt10 int
+	var __lt13 int
 	if px <= 0.0 {
-		__lt10 = 0
+		__lt13 = 0
 	} else {
-		__lt10 = max(1, (int(px) / 8))
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return __lt10
+	return __lt13
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt15 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt15 = lines
 	} else {
-		var __lt11 int
+		var __lt14 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt14 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt14 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
-	return __lt12
+	return __lt15
 }
 
 func (m *Model) __effect0_enter() {
@@ -1503,15 +1509,15 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt11 string
+	var __lt12 string
 	if c.__prop___p1 == "" {
-		__lt11 = fmt.Sprint(c.__prop___p2)
+		__lt12 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt11 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt12 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.cell = widget.NewButton("", nil)
 	c.cell.SetText(c.__prop___p0)
-	c.__model.__list_cell(__lt11, c.cell)
+	c.__model.__list_cell(__lt12, c.cell)
 	c.cell.OnTapped = func() {
 		c.__prop___on0()
 	}
@@ -1527,17 +1533,6 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt9 string
-	if c.__prop___p1 == "" {
-		__lt9 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt9 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_cell(__lt9, c.cell)
-}
-
-func (c *__child0Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
 	var __lt10 string
 	if c.__prop___p1 == "" {
 		__lt10 = fmt.Sprint(c.__prop___p2)
@@ -1545,6 +1540,17 @@ func (c *__child0Instance) Set__p2(__v int) {
 		__lt10 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_cell(__lt10, c.cell)
+}
+
+func (c *__child0Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt11 string
+	if c.__prop___p1 == "" {
+		__lt11 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt11 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_cell(__lt11, c.cell)
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -1592,15 +1598,15 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt14 string
+	var __lt15 string
 	if c.__prop___p1 == "" {
-		__lt14 = fmt.Sprint(c.__prop___p2)
+		__lt15 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt14 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt15 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.mark = widget.NewButton("", nil)
 	c.mark.SetText(c.__prop___p0)
-	c.__model.__list_mark(__lt14, c.mark)
+	c.__model.__list_mark(__lt15, c.mark)
 	c.mark.OnTapped = func() {
 		c.__prop___on0()
 	}
@@ -1616,17 +1622,6 @@ func (c *__child1Instance) Set__p0(__v string) {
 
 func (c *__child1Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt12 string
-	if c.__prop___p1 == "" {
-		__lt12 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt12 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_mark(__lt12, c.mark)
-}
-
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
 	var __lt13 string
 	if c.__prop___p1 == "" {
 		__lt13 = fmt.Sprint(c.__prop___p2)
@@ -1634,6 +1629,17 @@ func (c *__child1Instance) Set__p2(__v int) {
 		__lt13 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_mark(__lt13, c.mark)
+}
+
+func (c *__child1Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt14 string
+	if c.__prop___p1 == "" {
+		__lt14 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt14 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_mark(__lt14, c.mark)
 }
 
 func (c *__child1Instance) Set__on0(__v func()) {
@@ -2033,7 +2039,7 @@ func newCard__slot0Instance(__model *Model, __a___p0 []string, __a___copy string
 	c.__slot2 = nil
 	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(c.__n4, 6)
+	gtk4rt.SetLook(c.__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, ("t " + fmt.Sprint(c.open)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
@@ -2216,15 +2222,15 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt21 string
+	var __lt22 string
 	if c.__prop___p1 == "" {
-		__lt21 = fmt.Sprint(c.__prop___p2)
+		__lt22 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt21 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt22 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.cell = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.cell, c.__prop___p0)
-	c.__model.__list_cell(__lt21, c.cell)
+	c.__model.__list_cell(__lt22, c.cell)
 	gtk4rt.Connect(c.cell, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -2241,17 +2247,6 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt19 string
-	if c.__prop___p1 == "" {
-		__lt19 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt19 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_cell(__lt19, c.cell)
-}
-
-func (c *__child0Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
 	var __lt20 string
 	if c.__prop___p1 == "" {
 		__lt20 = fmt.Sprint(c.__prop___p2)
@@ -2259,6 +2254,17 @@ func (c *__child0Instance) Set__p2(__v int) {
 		__lt20 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_cell(__lt20, c.cell)
+}
+
+func (c *__child0Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt21 string
+	if c.__prop___p1 == "" {
+		__lt21 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt21 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_cell(__lt21, c.cell)
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -2314,15 +2320,15 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	var __lt24 string
+	var __lt25 string
 	if c.__prop___p1 == "" {
-		__lt24 = fmt.Sprint(c.__prop___p2)
+		__lt25 = fmt.Sprint(c.__prop___p2)
 	} else {
-		__lt24 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+		__lt25 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.mark = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.mark, c.__prop___p0)
-	c.__model.__list_mark(__lt24, c.mark)
+	c.__model.__list_mark(__lt25, c.mark)
 	gtk4rt.Connect(c.mark, "clicked", func() {
 		c.__prop___on0()
 	})
@@ -2339,17 +2345,6 @@ func (c *__child1Instance) Set__p0(__v string) {
 
 func (c *__child1Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	var __lt22 string
-	if c.__prop___p1 == "" {
-		__lt22 = fmt.Sprint(c.__prop___p2)
-	} else {
-		__lt22 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
-	}
-	c.__model.__list_mark(__lt22, c.mark)
-}
-
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
 	var __lt23 string
 	if c.__prop___p1 == "" {
 		__lt23 = fmt.Sprint(c.__prop___p2)
@@ -2357,6 +2352,17 @@ func (c *__child1Instance) Set__p2(__v int) {
 		__lt23 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
 	}
 	c.__model.__list_mark(__lt23, c.mark)
+}
+
+func (c *__child1Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt24 string
+	if c.__prop___p1 == "" {
+		__lt24 = fmt.Sprint(c.__prop___p2)
+	} else {
+		__lt24 = ((c.__prop___p1 + "/") + fmt.Sprint(c.__prop___p2))
+	}
+	c.__model.__list_mark(__lt24, c.mark)
 }
 
 func (c *__child1Instance) Set__on0(__v func()) {
@@ -2478,7 +2484,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n7, 6)
+	gtk4rt.SetLook(m.__n7, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.swap = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.swap, "swap")
 	gtk4rt.Connect(m.swap, "clicked", m.swap_clicked_handler)
@@ -3343,11 +3349,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f769682d4be80ff8ac0aacc7466fb986
+pass sha256:9d169c753ad04c4b42e46e7c0e514545
 -- run/go/fyne --
-pass sha256:78e50c7b26c3384453c251f80d4e6041
+pass sha256:220509a7b10ce072eb72e0c394c4c518
 -- run/go/gtk4 --
-pass sha256:840b64a1365b6dc91b6dffc66312271a
+pass sha256:6e081a6d3f64d3b8fcedd5a31a979b54
 -- run/kotlin/android --
 pass sha256:cbb4c4d56ad81f6bc51bcc4cc46d8b4b
 -- run/none/html --

@@ -176,142 +176,154 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.Italic(true)
 	}
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
-		var __lt1 lipgloss.Position
+		var __lt2 lipgloss.Position
 		switch s.TextAlign {
 		case "center":
-			__lt1 = lipgloss.Center
+			__lt2 = lipgloss.Center
 		case "right":
-			__lt1 = lipgloss.Right
+			__lt2 = lipgloss.Right
 		default:
-			__lt1 = lipgloss.Left
+			__lt2 = lipgloss.Left
 		}
-		l = l.AlignHorizontal(__lt1)
+		l = l.AlignHorizontal(__lt2)
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
-		var __lt2 lipgloss.Border
+	var __lt4 bool
+	if s.BorderWidth != nil {
+		var __lt3 float64
+		if s.BorderWidth == nil {
+			__lt3 = 0.0
+		} else {
+			__lt3 = ((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem)))
+		}
+		__lt4 = (__lt3 > 0.0)
+	} else {
+		__lt4 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt4 {
+		var __lt5 lipgloss.Border
 		switch s.BorderStyle {
 		case "double":
-			__lt2 = lipgloss.DoubleBorder()
+			__lt5 = lipgloss.DoubleBorder()
 		case "dashed", "dotted":
-			__lt2 = tui.DashedBorder()
+			__lt5 = tui.DashedBorder()
 		default:
-			var __lt3 lipgloss.Border
+			var __lt6 lipgloss.Border
 			if s.BorderRadius != nil {
-				__lt3 = lipgloss.RoundedBorder()
+				__lt6 = lipgloss.RoundedBorder()
 			} else {
-				__lt3 = lipgloss.NormalBorder()
+				__lt6 = lipgloss.NormalBorder()
 			}
-			__lt2 = __lt3
+			__lt5 = __lt6
 		}
-		l = l.Border(__lt2)
+		l = l.Border(__lt5)
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
 		}
 	}
-	var __lt5 *Measurement
+	var __lt8 *Measurement
 	if s.MarginTop != nil {
-		__lt5 = s.MarginTop
+		__lt8 = s.MarginTop
 	} else {
-		var __lt4 *Measurement
+		var __lt7 *Measurement
 		if s.MarginY != nil {
-			__lt4 = s.MarginY
+			__lt7 = s.MarginY
 		} else {
-			__lt4 = s.Margin
+			__lt7 = s.Margin
 		}
-		__lt5 = __lt4
+		__lt8 = __lt7
 	}
-	l = l.MarginTop(CellsOf(__lt5))
-	var __lt7 *Measurement
+	l = l.MarginTop(CellsOf(__lt8))
+	var __lt10 *Measurement
 	if s.MarginRight != nil {
-		__lt7 = s.MarginRight
+		__lt10 = s.MarginRight
 	} else {
-		var __lt6 *Measurement
+		var __lt9 *Measurement
 		if s.MarginX != nil {
-			__lt6 = s.MarginX
+			__lt9 = s.MarginX
 		} else {
-			__lt6 = s.Margin
+			__lt9 = s.Margin
 		}
-		__lt7 = __lt6
+		__lt10 = __lt9
 	}
-	l = l.MarginRight(CellsOf(__lt7))
-	var __lt9 *Measurement
+	l = l.MarginRight(CellsOf(__lt10))
+	var __lt12 *Measurement
 	if s.MarginBottom != nil {
-		__lt9 = s.MarginBottom
+		__lt12 = s.MarginBottom
 	} else {
-		var __lt8 *Measurement
+		var __lt11 *Measurement
 		if s.MarginY != nil {
-			__lt8 = s.MarginY
+			__lt11 = s.MarginY
 		} else {
-			__lt8 = s.Margin
+			__lt11 = s.Margin
 		}
-		__lt9 = __lt8
+		__lt12 = __lt11
 	}
-	l = l.MarginBottom(CellsOf(__lt9))
-	var __lt11 *Measurement
+	l = l.MarginBottom(CellsOf(__lt12))
+	var __lt14 *Measurement
 	if s.MarginLeft != nil {
-		__lt11 = s.MarginLeft
+		__lt14 = s.MarginLeft
 	} else {
-		var __lt10 *Measurement
+		var __lt13 *Measurement
 		if s.MarginX != nil {
-			__lt10 = s.MarginX
+			__lt13 = s.MarginX
 		} else {
-			__lt10 = s.Margin
+			__lt13 = s.Margin
 		}
-		__lt11 = __lt10
+		__lt14 = __lt13
 	}
-	l = l.MarginLeft(CellsOf(__lt11))
-	var __lt13 *Measurement
+	l = l.MarginLeft(CellsOf(__lt14))
+	var __lt16 *Measurement
 	if s.PaddingTop != nil {
-		__lt13 = s.PaddingTop
+		__lt16 = s.PaddingTop
 	} else {
-		var __lt12 *Measurement
+		var __lt15 *Measurement
 		if s.PaddingY != nil {
-			__lt12 = s.PaddingY
+			__lt15 = s.PaddingY
 		} else {
-			__lt12 = s.Padding
+			__lt15 = s.Padding
 		}
-		__lt13 = __lt12
+		__lt16 = __lt15
 	}
-	l = l.PaddingTop(CellsOf(__lt13))
-	var __lt15 *Measurement
+	l = l.PaddingTop(CellsOf(__lt16))
+	var __lt18 *Measurement
 	if s.PaddingRight != nil {
-		__lt15 = s.PaddingRight
+		__lt18 = s.PaddingRight
 	} else {
-		var __lt14 *Measurement
+		var __lt17 *Measurement
 		if s.PaddingX != nil {
-			__lt14 = s.PaddingX
+			__lt17 = s.PaddingX
 		} else {
-			__lt14 = s.Padding
+			__lt17 = s.Padding
 		}
-		__lt15 = __lt14
+		__lt18 = __lt17
 	}
-	l = l.PaddingRight(CellsOf(__lt15))
-	var __lt17 *Measurement
+	l = l.PaddingRight(CellsOf(__lt18))
+	var __lt20 *Measurement
 	if s.PaddingBottom != nil {
-		__lt17 = s.PaddingBottom
+		__lt20 = s.PaddingBottom
 	} else {
-		var __lt16 *Measurement
+		var __lt19 *Measurement
 		if s.PaddingY != nil {
-			__lt16 = s.PaddingY
+			__lt19 = s.PaddingY
 		} else {
-			__lt16 = s.Padding
+			__lt19 = s.Padding
 		}
-		__lt17 = __lt16
+		__lt20 = __lt19
 	}
-	l = l.PaddingBottom(CellsOf(__lt17))
-	var __lt19 *Measurement
+	l = l.PaddingBottom(CellsOf(__lt20))
+	var __lt22 *Measurement
 	if s.PaddingLeft != nil {
-		__lt19 = s.PaddingLeft
+		__lt22 = s.PaddingLeft
 	} else {
-		var __lt18 *Measurement
+		var __lt21 *Measurement
 		if s.PaddingX != nil {
-			__lt18 = s.PaddingX
+			__lt21 = s.PaddingX
 		} else {
-			__lt18 = s.Padding
+			__lt21 = s.Padding
 		}
-		__lt19 = __lt18
+		__lt22 = __lt21
 	}
-	l = l.PaddingLeft(CellsOf(__lt19))
+	l = l.PaddingLeft(CellsOf(__lt22))
 	if s.Width != nil {
 		l = l.Width(CellsOf(s.Width))
 	}
@@ -322,65 +334,65 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt20 int
+		var __lt23 int
 		if s.MaxLines == nil {
-			__lt20 = 0
+			__lt23 = 0
 		} else {
-			__lt20 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt23 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt20))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt23))
 	}
 	return l
 }
 
 func CellsOf(m__r0 *Measurement) int {
-	var __lt21 float64
+	var __lt24 float64
 	if m__r0 == nil {
-		__lt21 = 0.0
+		__lt24 = 0.0
 	} else {
-		__lt21 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+		__lt24 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
 	}
-	var px float64 = __lt21
-	var __lt22 int
+	var px float64 = __lt24
+	var __lt25 int
 	if px <= 0.0 {
-		__lt22 = 0
+		__lt25 = 0
 	} else {
-		__lt22 = max(1, (int(px) / 8))
+		__lt25 = max(1, (int(px) / 8))
 	}
-	return __lt22
+	return __lt25
 }
 
 func RowsOf(m__r1 *Measurement) int {
-	var __lt23 float64
+	var __lt26 float64
 	if m__r1 == nil {
-		__lt23 = 0.0
+		__lt26 = 0.0
 	} else {
-		__lt23 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt26 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	var px float64 = __lt23
-	var __lt24 int
+	var px float64 = __lt26
+	var __lt27 int
 	if px <= 0.0 {
-		__lt24 = 0
+		__lt27 = 0
 	} else {
-		__lt24 = max(1, (int(px) / 16))
+		__lt27 = max(1, (int(px) / 16))
 	}
-	return __lt24
+	return __lt27
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt26 int
+	var __lt29 int
 	if height__r0 == 0 {
-		__lt26 = lines
+		__lt29 = lines
 	} else {
-		var __lt25 int
+		var __lt28 int
 		if lines == 0 {
-			__lt25 = height__r0
+			__lt28 = height__r0
 		} else {
-			__lt25 = min(height__r0, lines)
+			__lt28 = min(height__r0, lines)
 		}
-		__lt26 = __lt25
+		__lt29 = __lt28
 	}
-	return __lt26
+	return __lt29
 }
 
 func (m *Model) __focusNext() {
@@ -523,6 +535,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b694ed5486b59667cc128ad61540d99e
+pass sha256:4835570814ef336513f4a707d29397f2
 -- run/none/html --
 pass sha256:a9aa352b4c660b34ab8290f194b46544

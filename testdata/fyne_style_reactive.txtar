@@ -198,7 +198,7 @@ func LookOf(s Style) fynelayout.Look {
 	} else {
 		__lt0 = float32((*(s.Flex)))
 	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Cursor: CursorOf(s.Cursor), Hidden: (s.Display == "none")}
 	return look
 }
 
@@ -298,6 +298,29 @@ func WrapOf(w string) int {
 		__lt8 = 0
 	}
 	return __lt8
+}
+
+func CursorOf(name string) int {
+	var __lt9 int
+	switch name {
+	case "", "auto":
+		__lt9 = 0
+	case "text", "vertical-text":
+		__lt9 = 2
+	case "crosshair", "cell":
+		__lt9 = 3
+	case "pointer":
+		__lt9 = 4
+	case "ew-resize", "col-resize", "e-resize", "w-resize":
+		__lt9 = 5
+	case "ns-resize", "row-resize", "n-resize", "s-resize":
+		__lt9 = 6
+	case "none":
+		__lt9 = 7
+	default:
+		__lt9 = 1
+	}
+	return __lt9
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -422,13 +445,13 @@ func (m *Model) __n2_visible_handler(__visible bool) {
 
 func (m *Model) __n7_click_handler() {
 	m.active = 1
-	var __lt15 snglcolor.Color
+	var __lt16 snglcolor.Color
 	if m.active == 0 {
-		__lt15 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
+		__lt16 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
 	} else {
-		__lt15 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
+		__lt16 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
 	}
-	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt15), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt16), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	m.__n4__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 16, G: 16, B: 16, A: 255}), BorderRadius: snglSome(Measurement{Px: Measurement{Px: 2}.Px * float64(m.active), Em: Measurement{Px: 2}.Em * float64(m.active), Rem: Measurement{Px: 2}.Rem * float64(m.active)}), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	for __inst1_live_ui, _ := range m.__inst1_live {
 		m.__inst1_live[__inst1_live_ui].Set__p1(m.active)
@@ -482,16 +505,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n8.SetText("more")
 	m.__n8.OnTapped = m.__n8_click_handler
 	m.__n2.Add(m.__n8)
-	var __lt16 snglcolor.Color
+	var __lt17 snglcolor.Color
 	if m.active == 0 {
-		__lt16 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
+		__lt17 = snglcolor.Color{R: 255, G: 255, B: 255, A: 255}
 	} else {
-		__lt16 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
+		__lt17 = snglcolor.Color{R: 51, G: 51, B: 51, A: 128}
 	}
 	m.__n3 = widget.NewLabel("")
 	m.__n3__box = fynelayout.NewBox(m.__n3)
 	m.__n3.SetText("hint")
-	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt16), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	m.__n3__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt17), FontSize: snglSome(Measurement{Px: Measurement{Px: 1}.Px * float64(((m.active * 4) + 12)), Em: Measurement{Px: 1}.Em * float64(((m.active * 4) + 12)), Rem: Measurement{Px: 1}.Rem * float64(((m.active * 4) + 12))}), FontWeight: "unset", FontStyle: "italic", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	m.__n2.Add(m.__n3__box)
 	m.__n4 = fynelayout.NewVBox()
 	m.__n4__box = fynelayout.NewBox(m.__n4)
@@ -531,37 +554,37 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt9 string
+	var __lt10 string
 	if c.on {
-		__lt9 = "bold"
+		__lt10 = "bold"
 	} else {
-		__lt9 = "normal"
+		__lt10 = "normal"
 	}
-	var __lt10 snglcolor.Color
+	var __lt11 snglcolor.Color
 	if c.on {
-		__lt10 = snglcolor.Color{R: 255, A: 255}
+		__lt11 = snglcolor.Color{R: 255, A: 255}
 	} else {
-		__lt10 = snglcolor.Color{B: 255, A: 255}
+		__lt11 = snglcolor.Color{B: 255, A: 255}
 	}
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(c.__prop_label)
-	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt9, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt10), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt10, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt11), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	c.__n0.OnTapped = func() {
 		c.on = !c.on
-		var __lt11 string
+		var __lt12 string
 		if c.on {
-			__lt11 = "bold"
+			__lt12 = "bold"
 		} else {
-			__lt11 = "normal"
+			__lt12 = "normal"
 		}
-		var __lt12 snglcolor.Color
+		var __lt13 snglcolor.Color
 		if c.on {
-			__lt12 = snglcolor.Color{R: 255, A: 255}
+			__lt13 = snglcolor.Color{R: 255, A: 255}
 		} else {
-			__lt12 = snglcolor.Color{B: 255, A: 255}
+			__lt13 = snglcolor.Color{B: 255, A: 255}
 		}
-		c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt11, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt12), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+		c.__n0__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: __lt12, FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt13), BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	}
 	c.Root = c.__n0__box
 	return c
@@ -597,16 +620,16 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt14 snglcolor.Color
+	var __lt15 snglcolor.Color
 	if c.__prop___p1 == 0 {
-		__lt14 = snglcolor.Color{R: 255, A: 255}
+		__lt15 = snglcolor.Color{R: 255, A: 255}
 	} else {
-		__lt14 = snglcolor.Color{G: 255, A: 255}
+		__lt15 = snglcolor.Color{G: 255, A: 255}
 	}
 	c.__n1 = widget.NewLabel("")
 	c.__n1__box = fynelayout.NewBox(c.__n1)
 	c.__n1.SetText(c.__prop___p0)
-	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt14), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt15), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 	c.Root = c.__n1__box
 	return c
 }
@@ -618,13 +641,13 @@ func (c *__child0Instance) Set__p0(__v string) {
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt13 snglcolor.Color
+	var __lt14 snglcolor.Color
 	if c.__prop___p1 == 0 {
-		__lt13 = snglcolor.Color{R: 255, A: 255}
+		__lt14 = snglcolor.Color{R: 255, A: 255}
 	} else {
-		__lt13 = snglcolor.Color{G: 255, A: 255}
+		__lt14 = snglcolor.Color{G: 255, A: 255}
 	}
-	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt13), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
+	c.__n1__box.SetLook(LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt14), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}))
 }
 
 func (c *__child0Instance) Destroy() {}
@@ -638,4 +661,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:b149c67d145b799b1f6b8e5081631283
+pass sha256:610214069bfd9d9b2e358b75c394b92b

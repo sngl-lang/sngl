@@ -227,7 +227,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt5 bool
+	if s.BorderWidth != nil {
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -251,111 +257,111 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt4 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt4 = 0
+			__lt6 = 0
 		} else {
-			__lt4 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt4))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
+	var __lt7 lipgloss.Position
 	switch a {
 	case "center":
-		__lt5 = lipgloss.Center
+		__lt7 = lipgloss.Center
 	case "right":
-		__lt5 = lipgloss.Right
+		__lt7 = lipgloss.Right
 	default:
-		__lt5 = lipgloss.Left
+		__lt7 = lipgloss.Left
 	}
-	return __lt5
+	return __lt7
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt8 float64
+	if m__r0 == nil {
+		__lt8 = 0.0
+	} else {
+		__lt8 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt8
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt6 lipgloss.Border
+	var __lt9 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt6 = lipgloss.DoubleBorder()
+		__lt9 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt6 = tui.DashedBorder()
+		__lt9 = tui.DashedBorder()
 	default:
-		var __lt7 lipgloss.Border
+		var __lt10 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt7 = lipgloss.RoundedBorder()
+			__lt10 = lipgloss.RoundedBorder()
 		} else {
-			__lt7 = lipgloss.NormalBorder()
+			__lt10 = lipgloss.NormalBorder()
 		}
-		__lt6 = __lt7
+		__lt9 = __lt10
 	}
-	return __lt6
+	return __lt9
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt9 *Measurement
+	var __lt12 *Measurement
 	if own != nil {
-		__lt9 = own
+		__lt12 = own
 	} else {
-		var __lt8 *Measurement
+		var __lt11 *Measurement
 		if axis != nil {
-			__lt8 = axis
+			__lt11 = axis
 		} else {
-			__lt8 = all
+			__lt11 = all
 		}
-		__lt9 = __lt8
+		__lt12 = __lt11
 	}
-	return CellsOf(__lt9)
+	return CellsOf(__lt12)
 }
 
-func CellsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt10 int
-	if px <= 0.0 {
-		__lt10 = 0
-	} else {
-		__lt10 = max(1, (int(px) / 8))
-	}
-	return __lt10
-}
-
-func RowsOf(m__r1 *Measurement) int {
+func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt11 int
-	if px <= 0.0 {
-		__lt11 = 0
-	} else {
-		__lt11 = max(1, (int(px) / 16))
-	}
-	return __lt11
-}
-
-func LineCap(height__r0 int, lines int) int {
 	var __lt13 int
-	if height__r0 == 0 {
-		__lt13 = lines
+	if px <= 0.0 {
+		__lt13 = 0
 	} else {
-		var __lt12 int
-		if lines == 0 {
-			__lt12 = height__r0
-		} else {
-			__lt12 = min(height__r0, lines)
-		}
-		__lt13 = __lt12
+		__lt13 = max(1, (int(px) / 8))
 	}
 	return __lt13
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt14 float64
-	if m__r2 == nil {
-		__lt14 = 0.0
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt14 int
+	if px <= 0.0 {
+		__lt14 = 0
 	} else {
-		__lt14 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt14 = max(1, (int(px) / 16))
 	}
 	return __lt14
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt16 int
+	if height__r0 == 0 {
+		__lt16 = lines
+	} else {
+		var __lt15 int
+		if lines == 0 {
+			__lt15 = height__r0
+		} else {
+			__lt15 = min(height__r0, lines)
+		}
+		__lt16 = __lt15
+	}
+	return __lt16
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -514,23 +520,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						_ = __copy1
 						_ = c
 						if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-							var __lt15 string
-							_ = __lt15
+							var __lt17 string
+							_ = __lt17
 							if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-								__lt15 = "showing"
+								__lt17 = "showing"
 							} else {
-								__lt15 = "hidden"
+								__lt17 = "hidden"
 							}
 							if m.__focusLoop0_cursor == __focusPos0 {
 								m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
 								m.cell__params__inst0 = Sel{Pick: "x"}
-								var __lt16 string
+								var __lt18 string
 								if c == "3" {
-									__lt16 = "/"
+									__lt18 = "/"
 								} else {
-									__lt16 = ((("/" + r.Name) + "/") + c)
+									__lt18 = ((("/" + r.Name) + "/") + c)
 								}
-								m.pages__current__inst0 = _page__value{Href: __lt16, Title: (r.Name + c), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Href: __lt18, Title: (r.Name + c), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								return
 							}
 							__focusPos0++
@@ -572,12 +578,12 @@ func (m *Model) pickClick() {
 				_ = __copy1
 				_ = c
 				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-					var __lt15 string
-					_ = __lt15
+					var __lt17 string
+					_ = __lt17
 					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt15 = "showing"
+						__lt17 = "showing"
 					} else {
-						__lt15 = "hidden"
+						__lt17 = "hidden"
 					}
 					__at = append(__at, struct {
 						key string
@@ -649,14 +655,14 @@ func (m Model) View() tea.View {
 					var contentPart_0ItemItemPart_0 string
 					contentPart_0ItemItemPart_0 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(((((r.Name + " ") + c) + " picked ") + m.cell__params__inst0.Pick)))
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_0)
-					var __lt15 string
+					var __lt17 string
 					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt15 = "showing"
+						__lt17 = "showing"
 					} else {
-						__lt15 = "hidden"
+						__lt17 = "hidden"
 					}
 					var contentPart_0ItemItemPart_3 string
-					contentPart_0ItemItemPart_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt15))
+					contentPart_0ItemItemPart_3 = BoxLook(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", Overflow: "unset", ListStyleType: "unset"}, true).Render(fmt.Sprint(__lt17))
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_3)
 					var contentPart_0ItemItemPart_4 string
 					contentPart_0ItemItemPart_4Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
@@ -875,13 +881,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								for __inst0_live_ui, _ := range m.__inst0_live {
 									m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 								}
-								var __lt12 string
+								var __lt13 string
 								if c__r1 == "3" {
-									__lt12 = "/"
+									__lt13 = "/"
 								} else {
-									__lt12 = ((("/" + r.Name) + "/") + c__r1)
+									__lt13 = ((("/" + r.Name) + "/") + c__r1)
 								}
-								m.pages__current__inst0 = _page__value{Href: __lt12, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Href: __lt13, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								m.heading.SetText(m.pages__current__inst0.Title)
 								m.__renderSlot0(m.__n1.Container)
 								m.__renderSlot1(m.__n1.Container)
@@ -1135,31 +1141,20 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt16 string
+	var __lt17 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt16 = "showing"
+		__lt17 = "showing"
 	} else {
-		__lt16 = "hidden"
+		__lt17 = "hidden"
 	}
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(__lt16)
+	c.__n0.SetText(__lt17)
 	c.Root = c.__n0
 	return c
 }
 
 func (c *__child1Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	var __lt13 string
-	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt13 = "showing"
-	} else {
-		__lt13 = "hidden"
-	}
-	c.__n0.SetText(__lt13)
-}
-
-func (c *__child1Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
 	var __lt14 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt14 = "showing"
@@ -1169,8 +1164,8 @@ func (c *__child1Instance) Set__p1(__v int) {
 	c.__n0.SetText(__lt14)
 }
 
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
+func (c *__child1Instance) Set__p1(__v int) {
+	c.__prop___p1 = __v
 	var __lt15 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt15 = "showing"
@@ -1178,6 +1173,17 @@ func (c *__child1Instance) Set__p2(__v int) {
 		__lt15 = "hidden"
 	}
 	c.__n0.SetText(__lt15)
+}
+
+func (c *__child1Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt16 string
+	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
+		__lt16 = "showing"
+	} else {
+		__lt16 = "hidden"
+	}
+	c.__n0.SetText(__lt16)
 }
 
 func (c *__child1Instance) Destroy() {}
@@ -1353,13 +1359,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								for __inst0_live_ui, _ := range m.__inst0_live {
 									m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 								}
-								var __lt21 string
+								var __lt22 string
 								if c__r1 == "3" {
-									__lt21 = "/"
+									__lt22 = "/"
 								} else {
-									__lt21 = ((("/" + r.Name) + "/") + c__r1)
+									__lt22 = ((("/" + r.Name) + "/") + c__r1)
 								}
-								m.pages__current__inst0 = _page__value{Href: __lt21, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Href: __lt22, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 								m.__renderSlot0(m.__n1)
 								m.__renderSlot1(m.__n1)
@@ -1544,14 +1550,14 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__prop___p2 = __a___p2
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt25 string
+	var __lt26 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt25 = "showing"
+		__lt26 = "showing"
 	} else {
-		__lt25 = "hidden"
+		__lt26 = "hidden"
 	}
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(c.__n0, __lt25)
+	gtk4rt.LabelSetLabel(c.__n0, __lt26)
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -1560,17 +1566,6 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 
 func (c *__child1Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	var __lt22 string
-	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt22 = "showing"
-	} else {
-		__lt22 = "hidden"
-	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt22)
-}
-
-func (c *__child1Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
 	var __lt23 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt23 = "showing"
@@ -1580,8 +1575,8 @@ func (c *__child1Instance) Set__p1(__v int) {
 	gtk4rt.LabelSetLabel(c.__n0, __lt23)
 }
 
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
+func (c *__child1Instance) Set__p1(__v int) {
+	c.__prop___p1 = __v
 	var __lt24 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
 		__lt24 = "showing"
@@ -1589,6 +1584,17 @@ func (c *__child1Instance) Set__p2(__v int) {
 		__lt24 = "hidden"
 	}
 	gtk4rt.LabelSetLabel(c.__n0, __lt24)
+}
+
+func (c *__child1Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt25 string
+	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
+		__lt25 = "showing"
+	} else {
+		__lt25 = "hidden"
+	}
+	gtk4rt.LabelSetLabel(c.__n0, __lt25)
 }
 
 func (c *__child1Instance) Destroy() {
@@ -1854,10 +1860,10 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:703b52a0ed79103519d8389f9eeca040
+pass sha256:0a375d1160c78b245512f86522b7e3c6
 -- run/go/fyne --
-pass sha256:6f2d0824f88013f5b71b307a37e3b649
+pass sha256:51dbefaf8c070c97ed64c68906157d26
 -- run/go/gtk4 --
-pass sha256:90fada9261b6876d6c62bdce825f740c
+pass sha256:e395dbf03d8be8c4093e254f21e801f5
 -- run/kotlin/android --
 pass sha256:403f095b2b2c06b798c8b7db24141d4e

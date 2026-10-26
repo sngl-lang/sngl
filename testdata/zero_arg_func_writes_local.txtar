@@ -180,7 +180,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt2 bool
+	if s.BorderWidth != nil {
+		__lt2 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt2 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt2 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -204,111 +210,111 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt1 int
+		var __lt3 int
 		if s.MaxLines == nil {
-			__lt1 = 0
+			__lt3 = 0
 		} else {
-			__lt1 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt1))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
 	}
 	return l
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt2 lipgloss.Position
+	var __lt4 lipgloss.Position
 	switch a {
 	case "center":
-		__lt2 = lipgloss.Center
+		__lt4 = lipgloss.Center
 	case "right":
-		__lt2 = lipgloss.Right
+		__lt4 = lipgloss.Right
 	default:
-		__lt2 = lipgloss.Left
+		__lt4 = lipgloss.Left
 	}
-	return __lt2
+	return __lt4
+}
+
+func PxOf(m__r0 *Measurement) float64 {
+	var __lt5 float64
+	if m__r0 == nil {
+		__lt5 = 0.0
+	} else {
+		__lt5 = ((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem)))
+	}
+	return __lt5
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt3 lipgloss.Border
+	var __lt6 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt3 = lipgloss.DoubleBorder()
+		__lt6 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt3 = tui.DashedBorder()
+		__lt6 = tui.DashedBorder()
 	default:
-		var __lt4 lipgloss.Border
+		var __lt7 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt4 = lipgloss.RoundedBorder()
+			__lt7 = lipgloss.RoundedBorder()
 		} else {
-			__lt4 = lipgloss.NormalBorder()
+			__lt7 = lipgloss.NormalBorder()
 		}
-		__lt3 = __lt4
+		__lt6 = __lt7
 	}
-	return __lt3
+	return __lt6
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt6 *Measurement
+	var __lt9 *Measurement
 	if own != nil {
-		__lt6 = own
+		__lt9 = own
 	} else {
-		var __lt5 *Measurement
+		var __lt8 *Measurement
 		if axis != nil {
-			__lt5 = axis
+			__lt8 = axis
 		} else {
-			__lt5 = all
+			__lt8 = all
 		}
-		__lt6 = __lt5
+		__lt9 = __lt8
 	}
-	return CellsOf(__lt6)
+	return CellsOf(__lt9)
 }
 
-func CellsOf(m__r0 *Measurement) int {
-	var px float64 = PxOf(m__r0)
-	var __lt7 int
-	if px <= 0.0 {
-		__lt7 = 0
-	} else {
-		__lt7 = max(1, (int(px) / 8))
-	}
-	return __lt7
-}
-
-func RowsOf(m__r1 *Measurement) int {
+func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt8 int
-	if px <= 0.0 {
-		__lt8 = 0
-	} else {
-		__lt8 = max(1, (int(px) / 16))
-	}
-	return __lt8
-}
-
-func LineCap(height__r0 int, lines int) int {
 	var __lt10 int
-	if height__r0 == 0 {
-		__lt10 = lines
+	if px <= 0.0 {
+		__lt10 = 0
 	} else {
-		var __lt9 int
-		if lines == 0 {
-			__lt9 = height__r0
-		} else {
-			__lt9 = min(height__r0, lines)
-		}
-		__lt10 = __lt9
+		__lt10 = max(1, (int(px) / 8))
 	}
 	return __lt10
 }
 
-func PxOf(m__r2 *Measurement) float64 {
-	var __lt11 float64
-	if m__r2 == nil {
-		__lt11 = 0.0
+func RowsOf(m__r2 *Measurement) int {
+	var px float64 = PxOf(m__r2)
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
 	} else {
-		__lt11 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt11 = max(1, (int(px) / 16))
 	}
 	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusNext() {
@@ -524,6 +530,6 @@ func newTestComponent() *Model {
 	return m
 }
 -- run/go/bubbletea --
-pass sha256:64c30716547a943bf639d7ab4beb1cde
+pass sha256:a3eec408ebbc9eff49f266534e851ebb
 -- run/go/fyne --
 pass sha256:4ae8fb7d2035de2955ffd684c427c39a

@@ -256,7 +256,7 @@ sha256:3b93692b528957bbe72b51af4499b813
   ]
 }
 -- testrun/bubbletea/go/recursion.sngl/main/1 --
-sha256:682bbc797a4579025c07cc89c7c96252
+sha256:9b0699ecb6ca68ec00ebdd75df373538
 {
   "results": [
     {
@@ -296,7 +296,7 @@ sha256:073615d53203cbf44b1a667d02ba1e91
   ]
 }
 -- testrun/gtk4/go/buttons.sngl/main/1 --
-sha256:ad00a2c1c3d3cfa3a2776ddf6eb23780
+sha256:2a53cda6799854a3e916aa85d78931ab
 {
   "results": [
     {
@@ -306,7 +306,7 @@ sha256:ad00a2c1c3d3cfa3a2776ddf6eb23780
   ]
 }
 -- testrun/gtk4/go/counters.sngl/main/1 --
-sha256:58d3f71ba7063e3fe53aae26d2b39ca4
+sha256:ebaac940d01c05a0548bd333673482e7
 {
   "results": [
     {
@@ -316,7 +316,7 @@ sha256:58d3f71ba7063e3fe53aae26d2b39ca4
   ]
 }
 -- testrun/gtk4/go/recursion.sngl/main/1 --
-sha256:689a0b45a03785308e46ddf3cc6612a2
+sha256:9b6fc6aa02a9cfb403aec2b798bbad8b
 {
   "results": [
     {

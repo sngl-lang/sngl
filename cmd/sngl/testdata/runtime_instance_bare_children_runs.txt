@@ -434,7 +434,7 @@ sha256:f29594ebdfcf4b436a874df1616f6347
   ]
 }
 -- testrun/gtk4/go/nestnosnap.sngl/main/1 --
-sha256:4f80362278e31f3b42e789514d5d61ce
+sha256:9b9f7f3edde14242fc3b12d1ac063c8e
 {
   "results": [
     {
@@ -444,7 +444,7 @@ sha256:4f80362278e31f3b42e789514d5d61ce
   ]
 }
 -- testrun/gtk4/go/nosnap.sngl/main/1 --
-sha256:760bfdf819b93af75244e3fdaa6793c6
+sha256:cfa9f2d14d02ba303ac4e09310a356b8
 {
   "results": [
     {
@@ -454,7 +454,7 @@ sha256:760bfdf819b93af75244e3fdaa6793c6
   ]
 }
 -- testrun/gtk4/go/recnosnap.sngl/main/1 --
-sha256:b68ca6efb4bbf02ede87ec6d35b115fc
+sha256:a654075afa350de0427a5f69c139ae9e
 {
   "results": [
     {

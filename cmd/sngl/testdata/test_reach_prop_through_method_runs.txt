@@ -65,7 +65,7 @@ func testReadsThroughAMethodReadingAContext(t test.Test, c host) {
     t.assert(c.g.noisy[1][0].value == "c!")
 }
 -- testrun/android/kotlin/app.sngl/host/1 --
-sha256:cb161f0b57ea3f3478cb5c9865f25aca
+sha256:edec0dbb8af197b82ba017bbc54eece5
 {
   "results": [
     {
@@ -79,7 +79,7 @@ sha256:cb161f0b57ea3f3478cb5c9865f25aca
   ]
 }
 -- testrun/bubbletea/go/app.sngl/host/1 --
-sha256:9dc3e37b26ce61c5cd8b9e01fa02e645
+sha256:a1849f0d956d01e7f7b007295e30a7c9
 {
   "results": [
     {
@@ -93,7 +93,7 @@ sha256:9dc3e37b26ce61c5cd8b9e01fa02e645
   ]
 }
 -- testrun/fyne/go/app.sngl/host/1 --
-sha256:164b2f6a8b62558ee2925c475dfc4684
+sha256:49e1017094e9b9b583901e56128e6178
 {
   "results": [
     {
@@ -107,7 +107,7 @@ sha256:164b2f6a8b62558ee2925c475dfc4684
   ]
 }
 -- testrun/gtk4/go/app.sngl/host/1 --
-sha256:dc3dd608f20322bc5627e50f09b2c54c
+sha256:403467a0505cf2ad25e05499f2ec5542
 {
   "results": [
     {

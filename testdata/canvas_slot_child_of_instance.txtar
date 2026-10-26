@@ -745,7 +745,7 @@ func newFrame__slot0Instance(__model *Model, __a___p0 float64) *Frame__slot0Inst
 	c.__slot0 = nil
 	__n3 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n3)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n3)), C.int(6))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n3)), gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	__ctmp0 := C.CString(("hits " + fmt.Sprint(c.hits)))
 	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n0)), __ctmp0)
@@ -814,7 +814,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot0(m.__n2)
 	m.add = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.add)), __cstr0)
@@ -1062,6 +1062,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:b8c89789109d7c29b3d5b0f4ec0fe43c
 -- run/go/gtk4 --
-pass sha256:9fb95b7efef2af6e4ac0c4d5b0dbf326
+pass sha256:3723aba49f7eeba940d11fc5e4e0c266
 -- run/none/html --
 pass sha256:0379f8e991f94369ba67c108245c5e40

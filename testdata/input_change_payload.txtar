@@ -555,7 +555,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__slot0 = nil
 	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n4, 6)
+	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.entry = gtk4rt.EntryNew()
 	gtk4rt.Connect(c.entry, "changed", func() {
 		if gtk4rt.EditableGetText(c.entry) != c.value__inst1 {
@@ -717,7 +717,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n3, 6)
+	gtk4rt.SetLook(__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.entry = gtk4rt.EntryNew()
 	gtk4rt.Connect(m.entry, "changed", m.entry_changed_handler)
 	gtk4rt.Connect(m.entry, "activate", m.entry_activate_handler)
@@ -766,4 +766,4 @@ func (m *Model) entry__1Change(v string) {
 -- run/go/fyne --
 pass sha256:86ff63a6776e1f9424cfdfca99827b46
 -- run/go/gtk4 --
-pass sha256:0fce8778a23a499864d74866bb66054a
+pass sha256:574d1c6f69b2f36b4fdd692e0c8baaf0

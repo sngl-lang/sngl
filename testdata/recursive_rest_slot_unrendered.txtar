@@ -194,7 +194,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n0 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n0, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n0, 6)
+	gtk4rt.SetLook(__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.deeper = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.deeper, "deeper")
 	gtk4rt.Connect(m.deeper, "clicked", m.deeper_clicked_handler)
@@ -268,6 +268,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:8b8098e891318e0ae3958306702ed173
 -- run/go/gtk4 --
-pass sha256:87387ada000f1a468ac6df2925821b39
+pass sha256:7831645acc7ce4be159b7f67578d2858
 -- run/none/html --
 pass sha256:03c97ac12720adf0393c81f84f747afa

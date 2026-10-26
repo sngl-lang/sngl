@@ -1091,13 +1091,13 @@ func (m *Model) __n10_click_handler() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
-				var __lt9 string
+				var __lt10 string
 				if r.ParentBreed != nil {
-					__lt9 = (*(r.ParentBreed)).Name
+					__lt10 = (*(r.ParentBreed)).Name
 				} else {
-					__lt9 = "nothing"
+					__lt10 = "nothing"
 				}
-				m.from__inst0 = __lt9
+				m.from__inst0 = __lt10
 				m.__n3.SetText(m.from__inst0)
 			default:
 				r := __match0.Failed
@@ -2289,13 +2289,13 @@ func (m *Model) __n10_clicked_handler() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
-				var __lt18 string
+				var __lt19 string
 				if r.ParentBreed != nil {
-					__lt18 = (*(r.ParentBreed)).Name
+					__lt19 = (*(r.ParentBreed)).Name
 				} else {
-					__lt18 = "nothing"
+					__lt19 = "nothing"
 				}
-				m.from__inst0 = __lt18
+				m.from__inst0 = __lt19
 				__ctmp3 := C.CString(m.from__inst0)
 				C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), __ctmp3)
 				C.free(unsafe.Pointer(__ctmp3))
@@ -4387,9 +4387,9 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:c246345c1e75e6ffd82b3d0d843078d2
+pass sha256:15cf70c176a165fa6b55545893595cdc
 -- run/go/gtk4 --
-pass sha256:ac4c7e3f6341afa3b108fab7930bc6c8
+pass sha256:b5df5692d0bc604a2b25f66dfd7371e2
 -- run/kotlin/android --
 pass sha256:722da441572e44be3df5fc00f30b9460
 -- run/none/html --

@@ -341,13 +341,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt2 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt4
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -373,7 +373,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt8 bool
+	if s.BorderWidth != nil {
+		__lt8 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt8 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt8 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -397,100 +403,100 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt6 int
+		var __lt9 int
 		if s.MaxLines == nil {
-			__lt6 = 0
+			__lt9 = 0
 		} else {
-			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt9 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt9))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt7 float64
+	var __lt10 float64
 	if m__r1 == nil {
-		__lt7 = 0.0
+		__lt10 = 0.0
 	} else {
-		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt10 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt7
+	return __lt10
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt8 lipgloss.Position
+	var __lt11 lipgloss.Position
 	switch a {
 	case "center":
-		__lt8 = lipgloss.Center
+		__lt11 = lipgloss.Center
 	case "right":
-		__lt8 = lipgloss.Right
+		__lt11 = lipgloss.Right
 	default:
-		__lt8 = lipgloss.Left
+		__lt11 = lipgloss.Left
 	}
-	return __lt8
+	return __lt11
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt9 lipgloss.Border
+	var __lt12 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt9 = lipgloss.DoubleBorder()
+		__lt12 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt9 = tui.DashedBorder()
+		__lt12 = tui.DashedBorder()
 	default:
-		var __lt10 lipgloss.Border
+		var __lt13 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt10 = lipgloss.RoundedBorder()
+			__lt13 = lipgloss.RoundedBorder()
 		} else {
-			__lt10 = lipgloss.NormalBorder()
+			__lt13 = lipgloss.NormalBorder()
 		}
-		__lt9 = __lt10
+		__lt12 = __lt13
 	}
-	return __lt9
+	return __lt12
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt12 *Measurement
+	var __lt15 *Measurement
 	if own != nil {
-		__lt12 = own
+		__lt15 = own
 	} else {
-		var __lt11 *Measurement
+		var __lt14 *Measurement
 		if axis != nil {
-			__lt11 = axis
+			__lt14 = axis
 		} else {
-			__lt11 = all
+			__lt14 = all
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
-	return CellsOf(__lt12)
+	return CellsOf(__lt15)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt13 int
+	var __lt16 int
 	if px <= 0.0 {
-		__lt13 = 0
+		__lt16 = 0
 	} else {
-		__lt13 = max(1, (int(px) / 8))
+		__lt16 = max(1, (int(px) / 8))
 	}
-	return __lt13
+	return __lt16
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt15 int
+	var __lt18 int
 	if height__r0 == 0 {
-		__lt15 = lines
+		__lt18 = lines
 	} else {
-		var __lt14 int
+		var __lt17 int
 		if lines == 0 {
-			__lt14 = height__r0
+			__lt17 = height__r0
 		} else {
-			__lt14 = min(height__r0, lines)
+			__lt17 = min(height__r0, lines)
 		}
-		__lt15 = __lt14
+		__lt18 = __lt17
 	}
-	return __lt15
+	return __lt18
 }
 
 func (m Model) Visible__inst0() bool {
@@ -908,7 +914,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n0, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n0, 6)
+	gtk4rt.SetLook(m.__n0, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n1, true)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
@@ -1438,11 +1444,11 @@ and a newline</span></p>
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2be836d14ab1dacaa84ee4e267f9b9ed
+pass sha256:1eba0a075214747b0233228632df2860
 -- run/go/fyne --
 pass sha256:df897aaadae788893c50d9ac94ca8e8a
 -- run/go/gtk4 --
-pass sha256:52536ea0d73496d2c2e746de60b37ef2
+pass sha256:f34fe69743b1947efe43c1668110f16e
 -- run/go/html --
 pass sha256:328880014bc8c516d6a37bd4a84e3643
 -- run/kotlin/android --

@@ -256,24 +256,24 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt2 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt4
 }
 
 func CellsOf(m__r1 *Measurement) int {
 	var px float64 = PxOf(m__r1)
-	var __lt3 int
+	var __lt5 int
 	if px <= 0.0 {
-		__lt3 = 0
+		__lt5 = 0
 	} else {
-		__lt3 = max(1, (int(px) / 8))
+		__lt5 = max(1, (int(px) / 8))
 	}
-	return __lt3
+	return __lt5
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -299,7 +299,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt6 bool
+	if s.BorderWidth != nil {
+		__lt6 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt6 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt6 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -323,89 +329,89 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt4 int
+		var __lt7 int
 		if s.MaxLines == nil {
-			__lt4 = 0
+			__lt7 = 0
 		} else {
-			__lt4 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt7 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt4))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt7))
 	}
 	return l
 }
 
 func PxOf(m__r2 *Measurement) float64 {
-	var __lt5 float64
+	var __lt8 float64
 	if m__r2 == nil {
-		__lt5 = 0.0
+		__lt8 = 0.0
 	} else {
-		__lt5 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
+		__lt8 = ((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem)))
 	}
-	return __lt5
+	return __lt8
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt6 lipgloss.Position
+	var __lt9 lipgloss.Position
 	switch a {
 	case "center":
-		__lt6 = lipgloss.Center
+		__lt9 = lipgloss.Center
 	case "right":
-		__lt6 = lipgloss.Right
+		__lt9 = lipgloss.Right
 	default:
-		__lt6 = lipgloss.Left
+		__lt9 = lipgloss.Left
 	}
-	return __lt6
+	return __lt9
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt7 lipgloss.Border
+	var __lt10 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt7 = lipgloss.DoubleBorder()
+		__lt10 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt7 = tui.DashedBorder()
+		__lt10 = tui.DashedBorder()
 	default:
-		var __lt8 lipgloss.Border
+		var __lt11 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt8 = lipgloss.RoundedBorder()
+			__lt11 = lipgloss.RoundedBorder()
 		} else {
-			__lt8 = lipgloss.NormalBorder()
+			__lt11 = lipgloss.NormalBorder()
 		}
-		__lt7 = __lt8
+		__lt10 = __lt11
 	}
-	return __lt7
+	return __lt10
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt10 *Measurement
+	var __lt13 *Measurement
 	if own != nil {
-		__lt10 = own
+		__lt13 = own
 	} else {
-		var __lt9 *Measurement
+		var __lt12 *Measurement
 		if axis != nil {
-			__lt9 = axis
+			__lt12 = axis
 		} else {
-			__lt9 = all
+			__lt12 = all
 		}
-		__lt10 = __lt9
+		__lt13 = __lt12
 	}
-	return CellsOf(__lt10)
+	return CellsOf(__lt13)
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt15 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt15 = lines
 	} else {
-		var __lt11 int
+		var __lt14 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt14 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt14 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
-	return __lt12
+	return __lt15
 }
 
 func (m *Model) __effect0_enter() {
@@ -2350,7 +2356,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				for __copy0, row := range m.rows {
 					__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 					gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
-					gtk4rt.BoxSetSpacing(__n1, 6)
+					gtk4rt.SetLook(__n1, gtk4rt.Look{Spaced: true, Spacing: 6})
 					for __copy1, it := range row {
 						m.cell = gtk4rt.ButtonNew()
 						gtk4rt.ButtonSetLabel(m.cell, it)
@@ -2607,7 +2613,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n3, 6)
+	gtk4rt.SetLook(m.__n3, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.swap = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.swap, "swap")
 	gtk4rt.Connect(m.swap, "clicked", m.swap_clicked_handler)
@@ -2616,7 +2622,7 @@ func (m *Model) buildWidgetTree() {
 	for __copy0, row := range m.grid {
 		__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 		gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationHorizontal)
-		gtk4rt.BoxSetSpacing(__n5, 6)
+		gtk4rt.SetLook(__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
 		for __copy1, it := range row {
 			m.pin = gtk4rt.ButtonNew()
 			gtk4rt.ButtonSetLabel(m.pin, it)
@@ -2631,7 +2637,7 @@ func (m *Model) buildWidgetTree() {
 	for __copy0, r := range []int{0, 1} {
 		__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 		gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationHorizontal)
-		gtk4rt.BoxSetSpacing(__n6, 6)
+		gtk4rt.SetLook(__n6, gtk4rt.Look{Spaced: true, Spacing: 6})
 		for __copy1, k := range []int{0, 1} {
 			m.tick = gtk4rt.ButtonNew()
 			gtk4rt.ButtonSetLabel(m.tick, (fmt.Sprint(r) + fmt.Sprint(k)))
@@ -2645,7 +2651,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationHorizontal)
-	gtk4rt.BoxSetSpacing(__n4, 6)
+	gtk4rt.SetLook(__n4, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.__renderSlot1(__n4)
 	m.__renderSlot2(__n4)
 	gtk4rt.BoxAppend(m.__n3, __n4)
@@ -3602,11 +3608,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5e1d97330746ab3d21f7ec9eb0913642
+pass sha256:81b5a4e57059dc987388398e41f80bab
 -- run/go/fyne --
 pass sha256:564d62318b92a75fd51bb95f914fdb9f
 -- run/go/gtk4 --
-pass sha256:a178771ae5b6023bc004ed2d9c4067e3
+pass sha256:544ac9adb6b83516c2cbddd65374090c
 -- run/kotlin/android --
 pass sha256:31bfc3c5fd228b5cd808be2c49a0575a
 -- run/none/html --

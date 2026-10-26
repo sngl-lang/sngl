@@ -289,25 +289,39 @@ func LookOf(s Style) lipgloss.Style {
 	return BoxLook(s, true)
 }
 
-func GrowOf(flex *float64) float64 {
-	var __lt0 float64
-	if flex == nil {
-		__lt0 = 0.0
-	} else {
-		__lt0 = (*(flex))
+func FitOf(whiteSpace string, overflow string, display string) tui.Fit {
+	var __lt0 int
+	switch whiteSpace {
+	case "nowrap":
+		__lt0 = 1
+	case "pre":
+		__lt0 = 2
+	default:
+		__lt0 = 0
 	}
-	return __lt0
+	fit := tui.Fit{Wrap: __lt0, Clip: (((overflow == "hidden") || (overflow == "scroll")) || (overflow == "auto")), Hidden: (display == "none")}
+	return fit
+}
+
+func GrowOf(flex *float64, display string) float64 {
+	var __lt1 float64
+	if (flex == nil) || (display == "none") {
+		__lt1 = 0.0
+	} else {
+		__lt1 = (*(flex))
+	}
+	return __lt1
 }
 
 func RowsOf(m__r0 *Measurement) int {
 	var px float64 = PxOf(m__r0)
-	var __lt2 int
+	var __lt4 int
 	if px <= 0.0 {
-		__lt2 = 0
+		__lt4 = 0
 	} else {
-		__lt2 = max(1, (int(px) / 16))
+		__lt4 = max(1, (int(px) / 16))
 	}
-	return __lt2
+	return __lt4
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -333,7 +347,13 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 	if (s.TextAlign == "center") || (s.TextAlign == "right") {
 		l = l.AlignHorizontal(AlignOf(s.TextAlign))
 	}
-	if (s.BorderWidth != nil) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+	var __lt5 bool
+	if s.BorderWidth != nil {
+		__lt5 = (PxOf(s.BorderWidth) > 0.0)
+	} else {
+		__lt5 = ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double"))
+	}
+	if __lt5 {
 		l = l.Border(BorderOf(s))
 		if s.BorderColor != nil {
 			l = l.BorderForeground(lipgloss.Color((*(s.BorderColor)).Hex()))
@@ -357,100 +377,100 @@ func BoxLook(s Style, words bool) lipgloss.Style {
 		l = l.MaxWidth(CellsOf(s.MaxWidth))
 	}
 	if (s.MaxHeight != nil) || (s.MaxLines != nil) {
-		var __lt3 int
+		var __lt6 int
 		if s.MaxLines == nil {
-			__lt3 = 0
+			__lt6 = 0
 		} else {
-			__lt3 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
+			__lt6 = ((*(s.MaxLines)) + l.GetVerticalFrameSize())
 		}
-		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt3))
+		l = l.MaxHeight(LineCap(RowsOf(s.MaxHeight), __lt6))
 	}
 	return l
 }
 
 func PxOf(m__r1 *Measurement) float64 {
-	var __lt4 float64
+	var __lt7 float64
 	if m__r1 == nil {
-		__lt4 = 0.0
+		__lt7 = 0.0
 	} else {
-		__lt4 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
+		__lt7 = ((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem)))
 	}
-	return __lt4
+	return __lt7
 }
 
 func AlignOf(a string) lipgloss.Position {
-	var __lt5 lipgloss.Position
+	var __lt8 lipgloss.Position
 	switch a {
 	case "center":
-		__lt5 = lipgloss.Center
+		__lt8 = lipgloss.Center
 	case "right":
-		__lt5 = lipgloss.Right
+		__lt8 = lipgloss.Right
 	default:
-		__lt5 = lipgloss.Left
+		__lt8 = lipgloss.Left
 	}
-	return __lt5
+	return __lt8
 }
 
 func BorderOf(s Style) lipgloss.Border {
-	var __lt6 lipgloss.Border
+	var __lt9 lipgloss.Border
 	switch s.BorderStyle {
 	case "double":
-		__lt6 = lipgloss.DoubleBorder()
+		__lt9 = lipgloss.DoubleBorder()
 	case "dashed", "dotted":
-		__lt6 = tui.DashedBorder()
+		__lt9 = tui.DashedBorder()
 	default:
-		var __lt7 lipgloss.Border
+		var __lt10 lipgloss.Border
 		if s.BorderRadius != nil {
-			__lt7 = lipgloss.RoundedBorder()
+			__lt10 = lipgloss.RoundedBorder()
 		} else {
-			__lt7 = lipgloss.NormalBorder()
+			__lt10 = lipgloss.NormalBorder()
 		}
-		__lt6 = __lt7
+		__lt9 = __lt10
 	}
-	return __lt6
+	return __lt9
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt9 *Measurement
+	var __lt12 *Measurement
 	if own != nil {
-		__lt9 = own
+		__lt12 = own
 	} else {
-		var __lt8 *Measurement
+		var __lt11 *Measurement
 		if axis != nil {
-			__lt8 = axis
+			__lt11 = axis
 		} else {
-			__lt8 = all
+			__lt11 = all
 		}
-		__lt9 = __lt8
+		__lt12 = __lt11
 	}
-	return CellsOf(__lt9)
+	return CellsOf(__lt12)
 }
 
 func CellsOf(m__r2 *Measurement) int {
 	var px float64 = PxOf(m__r2)
-	var __lt10 int
+	var __lt13 int
 	if px <= 0.0 {
-		__lt10 = 0
+		__lt13 = 0
 	} else {
-		__lt10 = max(1, (int(px) / 8))
+		__lt13 = max(1, (int(px) / 8))
 	}
-	return __lt10
+	return __lt13
 }
 
 func LineCap(height__r0 int, lines int) int {
-	var __lt12 int
+	var __lt15 int
 	if height__r0 == 0 {
-		__lt12 = lines
+		__lt15 = lines
 	} else {
-		var __lt11 int
+		var __lt14 int
 		if lines == 0 {
-			__lt11 = height__r0
+			__lt14 = height__r0
 		} else {
-			__lt11 = min(height__r0, lines)
+			__lt14 = min(height__r0, lines)
 		}
-		__lt12 = __lt11
+		__lt15 = __lt14
 	}
-	return __lt12
+	return __lt15
 }
 
 func (m *Model) check__inst0(n string) {
@@ -1118,7 +1138,7 @@ func LookOf(s Style) fynelayout.Look {
 	} else {
 		__lt0 = float32((*(s.Flex)))
 	}
-	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: Inset(s.Width), Height: Inset(s.Height), MinWidth: Inset(s.MinWidth), MaxWidth: Inset(s.MaxWidth), MaxHeight: Inset(s.MaxHeight), Grow: __lt0, Gap: Inset(s.Gap), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: Inset(s.BorderWidth), Radius: Inset(s.BorderRadius), TextColor: Paint(s.Color), TextSize: Inset(s.FontSize), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Cursor: CursorOf(s.Cursor), Hidden: (s.Display == "none")}
 	return look
 }
 
@@ -1218,6 +1238,29 @@ func WrapOf(w string) int {
 		__lt8 = 0
 	}
 	return __lt8
+}
+
+func CursorOf(name string) int {
+	var __lt9 int
+	switch name {
+	case "", "auto":
+		__lt9 = 0
+	case "text", "vertical-text":
+		__lt9 = 2
+	case "crosshair", "cell":
+		__lt9 = 3
+	case "pointer":
+		__lt9 = 4
+	case "ew-resize", "col-resize", "e-resize", "w-resize":
+		__lt9 = 5
+	case "ns-resize", "row-resize", "n-resize", "s-resize":
+		__lt9 = 6
+	case "none":
+		__lt9 = 7
+	default:
+		__lt9 = 1
+	}
+	return __lt9
 }
 
 func (m *Model) check__inst0(n string) {
@@ -2338,46 +2381,46 @@ func (m *Model) shout__inst0() string {
 }
 
 func LookOf(s Style) gtk4rt.Look {
-	look := LookHidden(s, (s.Display == "none"))
+	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
 }
 
-func Inset(m__r0 *Measurement) float64 {
-	var __lt1 float64
-	if m__r0 == nil {
-		__lt1 = 0.0
-	} else {
-		__lt1 = max(((*(m__r0)).Px + (11.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
-	}
-	return __lt1
-}
-
-func LookHidden(s Style, hidden bool) gtk4rt.Look {
-	var __lt2 float64
+func LookHidden(s Style, hidden bool, spaced bool, spacing int) gtk4rt.Look {
+	var __lt0 float64
 	if s.Flex == nil {
-		__lt2 = 0.0
+		__lt0 = 0.0
 	} else {
-		__lt2 = (*(s.Flex))
+		__lt0 = (*(s.Flex))
 	}
-	var __lt3 int
+	var __lt1 int
 	if s.MaxLines == nil {
-		__lt3 = 0
+		__lt1 = 0
 	} else {
-		__lt3 = (*(s.MaxLines))
+		__lt1 = (*(s.MaxLines))
 	}
-	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt2, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt3, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	look := gtk4rt.Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
 func CssOf(s Style) string {
-	var __lt4 string
+	var __lt3 string
 	if s.Opacity == nil {
-		__lt4 = ""
+		__lt3 = ""
 	} else {
-		__lt4 = fmt.Sprint((*(s.Opacity)))
+		__lt3 = fmt.Sprint((*(s.Opacity)))
 	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt4))
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt3))
 	return css
+}
+
+func Inset(m__r0 *Measurement) float64 {
+	var __lt4 float64
+	if m__r0 == nil {
+		__lt4 = 0.0
+	} else {
+		__lt4 = max(((*(m__r0)).Px + (11.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
+	}
+	return __lt4
 }
 
 func CrossOf(a string) int {
@@ -2438,117 +2481,136 @@ func ClipOf(o string) bool {
 	return __lt8
 }
 
-func Decl(name string, value string) string {
-	var __lt9 string
-	if value == "" {
-		__lt9 = ""
-	} else {
-		__lt9 = (((name + ": ") + value) + "; ")
+func JustifyOf(j string) int {
+	var __lt9 int
+	switch j {
+	case "center":
+		__lt9 = 1
+	case "end":
+		__lt9 = 2
+	case "spaceBetween":
+		__lt9 = 3
+	case "spaceAround":
+		__lt9 = 4
+	case "spaceEvenly":
+		__lt9 = 5
+	default:
+		__lt9 = 0
 	}
 	return __lt9
 }
 
+func Decl(name string, value string) string {
+	var __lt10 string
+	if value == "" {
+		__lt10 = ""
+	} else {
+		__lt10 = (((name + ": ") + value) + "; ")
+	}
+	return __lt10
+}
+
 func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt11 *Measurement
+	var __lt12 *Measurement
 	if own != nil {
-		__lt11 = own
+		__lt12 = own
 	} else {
-		var __lt10 *Measurement
+		var __lt11 *Measurement
 		if axis != nil {
-			__lt10 = axis
+			__lt11 = axis
 		} else {
-			__lt10 = all
+			__lt11 = all
 		}
-		__lt11 = __lt10
+		__lt12 = __lt11
 	}
-	return Length(__lt11)
+	return Length(__lt12)
 }
 
-func Length(m__r2 *Measurement) string {
-	var __lt12 string
-	if m__r2 == nil {
-		__lt12 = ""
-	} else {
-		__lt12 = (fmt.Sprint(Inset(m__r2)) + "px")
-	}
-	return __lt12
-}
-
-func CssColor(c__r0 *snglcolor.Color) string {
+func Length(m__r1 *Measurement) string {
 	var __lt13 string
-	if c__r0 == nil {
+	if m__r1 == nil {
 		__lt13 = ""
 	} else {
-		__lt13 = (*(c__r0)).Hex()
+		__lt13 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt13
 }
 
-func Points(m__r3 *Measurement) string {
+func CssColor(c__r0 *snglcolor.Color) string {
 	var __lt14 string
-	if m__r3 == nil {
+	if c__r0 == nil {
 		__lt14 = ""
 	} else {
-		__lt14 = (fmt.Sprint(Inset(m__r3)) + "pt")
+		__lt14 = (*(c__r0)).Hex()
 	}
 	return __lt14
 }
 
-func WeightOf(w string) string {
+func Points(m__r2 *Measurement) string {
 	var __lt15 string
-	switch w {
-	case "normal":
-		__lt15 = "normal"
-	case "bold":
-		__lt15 = "bold"
-	case "bolder":
-		__lt15 = "bolder"
-	case "lighter":
-		__lt15 = "lighter"
-	default:
+	if m__r2 == nil {
 		__lt15 = ""
+	} else {
+		__lt15 = (fmt.Sprint(Inset(m__r2)) + "pt")
 	}
 	return __lt15
 }
 
-func SlantOf(s string) string {
+func WeightOf(w string) string {
 	var __lt16 string
-	switch s {
+	switch w {
 	case "normal":
 		__lt16 = "normal"
-	case "italic":
-		__lt16 = "italic"
-	case "oblique":
-		__lt16 = "oblique"
+	case "bold":
+		__lt16 = "bold"
+	case "bolder":
+		__lt16 = "bolder"
+	case "lighter":
+		__lt16 = "lighter"
 	default:
 		__lt16 = ""
 	}
 	return __lt16
 }
 
-func LineOf(s Style) string {
+func SlantOf(s string) string {
 	var __lt17 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt17 = "solid"
-	case "dashed":
-		__lt17 = "dashed"
-	case "dotted":
-		__lt17 = "dotted"
-	case "double":
-		__lt17 = "double"
-	case "none":
-		__lt17 = "none"
+	switch s {
+	case "normal":
+		__lt17 = "normal"
+	case "italic":
+		__lt17 = "italic"
+	case "oblique":
+		__lt17 = "oblique"
 	default:
-		var __lt18 string
-		if s.BorderWidth != nil {
-			__lt18 = "solid"
-		} else {
-			__lt18 = ""
-		}
-		__lt17 = __lt18
+		__lt17 = ""
 	}
 	return __lt17
+}
+
+func LineOf(s Style) string {
+	var __lt18 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt18 = "solid"
+	case "dashed":
+		__lt18 = "dashed"
+	case "dotted":
+		__lt18 = "dotted"
+	case "double":
+		__lt18 = "double"
+	case "none":
+		__lt18 = "none"
+	default:
+		var __lt19 string
+		if s.BorderWidth != nil {
+			__lt19 = "solid"
+		} else {
+			__lt19 = ""
+		}
+		__lt18 = __lt19
+	}
+	return __lt18
 }
 
 func (m *Model) check__inst0(n string) {
@@ -2788,7 +2850,7 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 	c.__slot4 = nil
 	c.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(c.__n5, 6)
+	gtk4rt.SetLook(c.__n5, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
 	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
@@ -3220,7 +3282,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 string, __a__
 	c.__slot4 = nil
 	__n15 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n15, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n15, 6)
+	gtk4rt.SetLook(__n15, gtk4rt.Look{Spaced: true, Spacing: 6})
 	c.__n2 = new__block_state0Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
 	})
@@ -3515,7 +3577,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n10 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n10, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n10, 6)
+	gtk4rt.SetLook(m.__n10, gtk4rt.Look{Spaced: true, Spacing: 6})
 	m.move = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.move, "m")
 	gtk4rt.Connect(m.move, "clicked", m.move_clicked_handler)
@@ -3659,6 +3721,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.padding
@@ -4000,6 +4063,12 @@ fun __block_state0(n: String, skip: String, __ctx_flexShare: (Float) -> androidx
 fun modifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, true)), s.flex, share)
 
 fun textStyle(s: Style): androidx.compose.ui.text.TextStyle = (if (!((((((s.color != null) || (s.fontSize != null)) || (s.fontWeight != SnglFontWeight.UNSET)) || (s.fontStyle != SnglFontStyle.UNSET)) || (s.fontFamily != "")) || (s.textAlign != SnglTextAlign.UNSET))) TextStyle.Default else TextStyle(color = (if ((s.color == null)) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = s.color!!.r.toInt(), green = s.color!!.g.toInt(), blue = s.color!!.b.toInt(), alpha = s.color!!.a.toInt())), fontSize = (if ((s.fontSize == null)) TextUnit.Unspecified else TextUnit((s.fontSize!!.px + (16.0 * (s.fontSize!!.em + s.fontSize!!.rem))).toFloat(), TextUnitType.Sp)), fontWeight = (when (s.fontWeight) { SnglFontWeight.UNSET -> null; SnglFontWeight.NORMAL -> FontWeight.Normal; SnglFontWeight.BOLD -> FontWeight.Bold; SnglFontWeight.LIGHTER -> FontWeight.Light; SnglFontWeight.BOLDER -> FontWeight.ExtraBold }), fontStyle = (when (s.fontStyle) { SnglFontStyle.UNSET -> null; SnglFontStyle.NORMAL -> FontStyle.Normal; SnglFontStyle.ITALIC, SnglFontStyle.OBLIQUE -> FontStyle.Italic }), fontFamily = (when (s.fontFamily) { "" -> null; "monospace" -> FontFamily.Monospace; "serif" -> FontFamily.Serif; "sans-serif" -> FontFamily.SansSerif; "cursive" -> FontFamily.Cursive; else -> FontFamily.Default }), textAlign = (when (s.textAlign) { SnglTextAlign.UNSET -> TextAlign.Unspecified; SnglTextAlign.LEFT -> TextAlign.Start; SnglTextAlign.CENTER -> TextAlign.Center; SnglTextAlign.RIGHT -> TextAlign.End; SnglTextAlign.JUSTIFY -> TextAlign.Justify })))
+
+fun clampOverflow(lines: Int?): androidx.compose.ui.text.style.TextOverflow = (if ((lines == null)) TextOverflow.Clip else TextOverflow.Ellipsis)
+
+fun softWrapOf(w: SnglWhiteSpace): Boolean = (when (w) { SnglWhiteSpace.NOWRAP, SnglWhiteSpace.PRE -> false; SnglWhiteSpace.UNSET, SnglWhiteSpace.NORMAL, SnglWhiteSpace.PREWRAP, SnglWhiteSpace.PRELINE -> true })
+
+fun linesOf(lines: Int?): Int = (if ((lines == null)) Int.MAX_VALUE else lines!!)
 
 fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = flexed((if ((s == Style())) Modifier else styleModifier(s, false)), s.flex, share)
 
@@ -5012,12 +5081,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:210c8f14a91745486ee023aeddfa121f
+pass sha256:7195e4789394730476bd6fd35733663e
 -- run/go/fyne --
-pass sha256:97fe73b99a80b753f0d5a3b800d30986
+pass sha256:24dcc4c77fa4d540f750b62b944e5c73
 -- run/go/gtk4 --
-pass sha256:8e0d91139f12f2d4edbaf999032ab890
+pass sha256:84712a1c77c0f4f7151daf4b07e575d6
 -- run/kotlin/android --
-pass sha256:3190b43edf78eb2deec9ced4ad326ed9
+pass sha256:32c8520d4d521bf8709cd0a1b00698b4
 -- run/none/html --
 pass sha256:4c4754ef4b624b490c95c65d0cedf324
