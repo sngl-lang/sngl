@@ -1375,6 +1375,10 @@ const component nav.link[platform](to, params, text, style, @click) {
 // what only the page knows is written where the page runs, a declaration at a
 // time. An empty value writes nothing, which is what an unset field is.
 
+// What a Style may say that a page does not answer: nothing, since each field
+// is a CSS property or the shorthand of one.
+const unstyled list[string] = []
+
 // One declaration of an element's inline CSS.
 struct Declaration {
     property string

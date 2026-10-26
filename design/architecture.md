@@ -37,7 +37,28 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 ## Platform Details
 
-- **html** — two modes selected by `--lang`. Its overrides of `ui.badge`, `ui.chip` and `ui.avatar` render what sngl:ui's bodies do and carry `sngl-<name>` classes, with a modifier per choice (`sngl-badge-success`, `sngl-avatar-large`), so a page's stylesheet reaches every one: A constant loop's copies of a node carrying an `#id` are elements of their own, each with its own variable (`nodeID`, `testdata/html_loop_node_id.txtar`).
+**A platform translates a `ui.Style` in SNGL.** Each override passes its
+`style` to a `const func` of its own package -- `lookOf` in
+`lib/platform/<name>/style.sngl` on bubbletea, fyne and gtk4, `modifierOf`,
+`textStyle` and the arrangements on android, `css` in `html.sngl` on html --
+over the host declarations the package already has, and the Go generator
+names no Style field. One function serves a literal Style and a held one: a
+literal holds only the fields written (design/types.md), so a literal's
+translation folds to what it sets. `flex` is read by the parent: a context
+on android, the Layout on bubbletea, the Box on fyne, the box the widget lands
+in on gtk4, CSS on html.
+
+**A field a platform cannot express is listed, with a reason**, in its
+`const unstyled list[string]`, html's empty. `lib`'s
+`TestEveryPlatformAnswersEveryStyleField` holds the fields each platform's
+package reads off a Style, together with that list, to every field of
+`ui.Style`, so a field added there fails each platform until it reads it or
+says why not, and a listed field read is a stale reason. `none` draws
+nothing and is not held to it. A program's write of a listed field does not
+warn: only a literal shows the write, and a multi-target build would warn per
+target with no way to say a field is meant for one.
+
+- **html** — two modes selected by `--lang`. Every element's `style` is the `list[Declaration]` `css` answers for a Style, so an override writes `style=css({…, ...style})` and a program writing a raw element writes `style=html.css({…})`; the fold reduces each declaration the build can read to text in the markup, and one only the page knows is a `setProperty`, grouped so a shorthand written empty clears no longhand set beside it (`_snglSetStyles`). Its overrides of `ui.badge`, `ui.chip` and `ui.avatar` render what sngl:ui's bodies do and carry `sngl-<name>` classes, with a modifier per choice (`sngl-badge-success`, `sngl-avatar-large`), so a page's stylesheet reaches every one: A constant loop's copies of a node carrying an `#id` are elements of their own, each with its own variable (`nodeID`, `testdata/html_loop_node_id.txtar`).
   - A style's `flex` is written with `min-width:0;min-height:0`: a flex item's minimum is its content's in CSS, so a box given a share grew with what it held, a scroll in it never scrolled, and a grid loading a page at its end loaded them all (`testdata/html_flex_child_bounded.txtar`).
   - JavaScript's `===` is an object's identity, so `==` between structs, colors included, and payload enums is written out field by field from the type (`jsEqualExpr`); written as `===`, two colors alike were unequal (`cmd/sngl/testdata/struct_equality_runs.txt`). A test runs in a module beside the page and finds the page's funcs and consts on window, where a test build publishes both.
   - `--lang none` (default): static site — one document per page of the `nav.stack` a window holds, written at the page's href with inline JS, or one `index.html` for a window that holds none (see *Navigation*). Every window after the first one that is always there is a `<dialog>` in its document, in every page's (see *html writes its document from a Window* in design/windows.md).
