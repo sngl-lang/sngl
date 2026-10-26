@@ -392,7 +392,7 @@ sha256:467783759f138b033d0d1f4b5f96c54e
   ]
 }
 -- testrun/html/none/sites.sngl/main/1 --
-sha256:a26d96a5389481be2f90d25db070e68e
+sha256:c287b4b4ca0fe074f2ebadeaed41458f
 {
   "results": [
     {
