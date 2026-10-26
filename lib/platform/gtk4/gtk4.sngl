@@ -299,7 +299,7 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
 // --- Layout ---
 
 const component ui.spacer[platform](style) {
-    gtk.GtkBox(hexpand=true, vexpand=true, look=lookOf(style)) {}
+    gtk.GtkBox(look=lookOf({flex=1, ...style})) {}
 }
 
 // The same shape html uses: a wrapper carrying the tooltip text, with the

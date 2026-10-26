@@ -59,7 +59,7 @@ const component ui.stack[platform](style, layers) {
 }
 
 const component ui.spacer[platform](style) {
-    Spacer(modifier=modifierOf(style, flexShare)) {}
+    Spacer(modifier=modifierOf({flex=1, ...style}, flexShare)) {}
 }
 
 const component ui.scroll[platform](style, @reachEnd, content) {

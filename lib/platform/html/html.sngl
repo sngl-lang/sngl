@@ -300,7 +300,7 @@ const component ui.stack[platform](style, layers) {
 }
 
 const component ui.spacer[platform](style) {
-    html.div(style=css({...style, flex=1})) {}
+    html.div(style=css({flex=1, ...style})) {}
 }
 
 // `@scrollEnd` is the standard library's name for the event the DOM calls

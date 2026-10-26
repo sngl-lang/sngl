@@ -146,10 +146,10 @@ static int sngl_box_spacing(GtkWidget *box) {
 }
 
 // The share of the spare room a child takes: its look's flex, or one share
-// where it expands itself, as a spacer does and as html's is `flex: 1`. An
-// expand GTK carries up from something the child holds is no share: a CSS
-// flex item grows by its own flex, never by what is inside it, so a scroll
-// holding a spacer is its content's size.
+// where it expands itself, as a GIR widget given `hexpand` does. An expand
+// GTK carries up from something the child holds is no share: a CSS flex item
+// grows by its own flex, never by what is inside it, so a box holding such a
+// widget is its content's size.
 static double sngl_weight(GtkWidget *c, GtkOrientation o) {
     SnglLook *cl = sngl_look_of(c);
     if (cl && cl->grow > 0) return cl->grow;

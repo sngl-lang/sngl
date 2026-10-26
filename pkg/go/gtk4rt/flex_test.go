@@ -73,10 +73,10 @@ func TestLookSharesByWeight(t *testing.T) {
 }
 
 // Beside weighted children, one with no look of its own takes a share where
-// it expands itself, as `ui.spacer` does and as html's `flex: 1` spacer
-// does, and none where GTK carries the expand up from something it holds: a
-// CSS flex item grows by its own flex, never by what is inside it, so a
-// scroll holding a spacer is its content's size, as it is on html.
+// it expands itself, as a GIR widget given `hexpand` does, and none where GTK
+// carries the expand up from something it holds: a CSS flex item grows by its
+// own flex, never by what is inside it, so a box holding such a widget is its
+// content's size, as it is on html.
 func TestLookSharesNoneForAnExpandItHolds(t *testing.T) {
 	if !hasDisplay() {
 		t.Skip("gtk4 needs an X11/Wayland display")
@@ -88,18 +88,18 @@ func TestLookSharesNoneForAnExpandItHolds(t *testing.T) {
 	a, b := BoxNew(OrientationHorizontal, 0), BoxNew(OrientationHorizontal, 0)
 	SetLook(a, Look{Grow: 1})
 	SetLook(b, Look{Grow: 3})
-	spacer := BoxNew(OrientationHorizontal, 0)
-	setHExpand(spacer, true)
+	expander := BoxNew(OrientationHorizontal, 0)
+	setHExpand(expander, true)
 	holder, inner := BoxNew(OrientationHorizontal, 0), BoxNew(OrientationHorizontal, 0)
 	setHExpand(inner, true)
 	BoxAppend(holder, inner)
-	for _, c := range []Handle{a, b, spacer, holder} {
+	for _, c := range []Handle{a, b, expander, holder} {
 		BoxAppend(row, c)
 	}
 	allocate(row, 530, 10)
-	got := [4]int{allocatedWidth(a), allocatedWidth(b), allocatedWidth(spacer), allocatedWidth(holder)}
+	got := [4]int{allocatedWidth(a), allocatedWidth(b), allocatedWidth(expander), allocatedWidth(holder)}
 	if want := [4]int{100, 300, 100, 0}; got != want {
-		t.Errorf("weights 1, 3, a spacer and a box holding one, of 500: widths %v, want %v", got, want)
+		t.Errorf("weights 1, 3, a widget expanding and a box holding one, of 500: widths %v, want %v", got, want)
 	}
 }
 
