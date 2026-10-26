@@ -27,7 +27,7 @@ func TestSpacedLeavesOutWhatDrawsNothing(t *testing.T) {
 func TestJoinLinesColumnsUp(t *testing.T) {
 	row := func(count, name, kind string) string {
 		grow := Grow(1, func(cells int) string { return lipgloss.NewStyle().Width(cells).Render(name) })
-		return Join(true, lipgloss.Top, 1, 20, []Part{Fixed(count), Fixed(""), grow, Fixed(kind)})
+		return Join(true, lipgloss.Top, 0, 1, 20, []Part{Fixed(count), Fixed(""), grow, Fixed(kind)})
 	}
 	if got, want := row("01", "Tackle", "Normal"), "01 Tackle     Normal"; got != want {
 		t.Errorf("first row %q, want %q", got, want)
@@ -46,5 +46,30 @@ func TestPictureBoxIsTheLooksInside(t *testing.T) {
 	}
 	if cols, rows := PictureBox(lipgloss.NewStyle(), 24, 12); cols != 24 || rows != 12 {
 		t.Errorf("PictureBox of no size = %dx%d, want the default 24x12", cols, rows)
+	}
+}
+
+// Where nothing grows, justify places the parts in what they and the gaps
+// leave of the extent, as CSS's justify-content; a column's free space is
+// blank lines.
+func TestJoinJustifies(t *testing.T) {
+	parts := []Part{Fixed("a"), Fixed("b")}
+	for _, c := range []struct {
+		justify int
+		want    string
+	}{
+		{0, "a b"},
+		{1, "    a b"},
+		{2, "        a b"},
+		{3, "a         b"},
+		{4, "  a     b"},
+		{5, "  a   b"},
+	} {
+		if got := Join(true, lipgloss.Top, c.justify, 1, 11, parts); got != c.want {
+			t.Errorf("justify %d = %q, want %q", c.justify, got, c.want)
+		}
+	}
+	if got, want := Join(false, lipgloss.Left, 2, 0, 4, parts), " \n \na\nb"; got != want {
+		t.Errorf("a column's end = %q, want %q", got, want)
 	}
 }

@@ -164,6 +164,9 @@ platform's `unstyled` list in the same commit.
    `alignItems` and `justifyContent` were answered already, as the Column's
    and Row's Arrangement and Alignment.
 2. bubbletea: `whiteSpace`, `display=none`, `overflow`, `justifyContent`.
+   Done: a `tui.Fit` beside the look, and `tui.Join`'s justify
+   (`cmd/sngl/testdata/style_bubbletea_fit_runs.txt`). Not `nowrap` as
+   lipgloss's Inline, which also drops the box's padding, border and margin.
 3. gtk4: `justifyContent` and `flex` weights, a layout of gtk4rt's own.
 4. fyne: `cursor`, through a desktop.Cursorable box.
 
@@ -183,8 +186,15 @@ platform's `unstyled` list in the same commit.
 - On bubbletea a `flex` child is joined at its own size under an `if` or a
   `for`, being part of what that statement renders, and where it holds a
   loop's focus stop or canvas, whose count would come after its later
-  siblings'. `justifyContent`, `overflow`, `whiteSpace` and `display` are
-  listed as not answered yet.
+  siblings'. A focusable node displayed none is still a focus stop, and a
+  component whose root is displayed none still takes a line in its parent.
+- An `if`'s or a `for`'s head ending in a ternary reads the operand after the
+  `:` as an Expr, so `if c ? x : b {` takes `b {` for a struct literal and
+  fails to parse; `(b)` parses. The grammar's CondExpr could take a CondExpr
+  there.
+- A zero `borderWidth` drew a border on bubbletea, and
+  `TestReactiveStyleRunsInTheEmittedProgram` said so on the branch; fixed,
+  but how verify passed over it is not known.
 - On clean main, `ui.select` does not compile on bubbletea under a `for`
   (`too many arguments in call to m.widget0Copy`), nor on fyne or gtk4 under
   a reactive `if` (`undefined: o`; a missing `c.__n1`).

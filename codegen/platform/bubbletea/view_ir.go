@@ -226,16 +226,40 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
+	n, isNode := child.(*ir.NodeInst)
 	switch child.(type) {
 	case *ir.If, *ir.Match, *ir.For:
 		// A branch not taken or a loop over nothing renders nothing, and
-		// joining its empty string would put a blank line in the box.
+		// joining its empty string would put a blank line in the box. So
+		// does a node its Style displays none.
 		vc.line("if %s != \"\" {", childVar)
 		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 		vc.line("}")
 	default:
+		if isNode && hides(n) {
+			vc.line("if %s != \"\" {", childVar)
+			vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+			vc.line("}")
+			return
+		}
 		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 	}
+}
+
+// hides reports whether n's fit may hide it: a literal setting `hidden`, or
+// one the build cannot read.
+func hides(n *ir.NodeInst) bool {
+	f := codegen.NodeProp(n, "fit")
+	lit, ok := f.(*ir.StructLit)
+	if !ok {
+		return f != nil
+	}
+	for _, fi := range lit.Fields {
+		if zero, known := ir.ZeroKnown(fi.Value); fi.Spread || fi.Name == "hidden" && (!zero || !known) {
+			return true
+		}
+	}
+	return false
 }
 
 // renderBody emits a body as one value in `single`, or as a list of parts
@@ -679,9 +703,9 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			vc.line(`%sFocused := %s`, resultVar, vc.gc.EvalExpr(fp))
 			vc.line(`%sPrefix := " "`, resultVar)
 			vc.line(`if %sFocused { %sPrefix = ">" }`, resultVar, resultVar)
-			vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
+			vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar+`Prefix + " " + fmt.Sprint(`+content+`)`))
 		} else {
-			vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
+			vc.line(`%s = %s`, resultVar, vc.render(n, style, "fmt.Sprint("+content+")"))
 		}
 
 	case bpWidget:
@@ -703,8 +727,8 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		if w.loop != nil {
 			view = copyCall(w, vc.gc) + w.model.View
 		}
-		if style != plainLook {
-			view = style + ".Render(" + view + ")"
+		if style != plainLook || vc.fits(n) {
+			view = vc.render(n, style, view)
 		}
 		vc.line(`%s = %s`, resultVar, view)
 	}
@@ -712,6 +736,36 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 
 // plainLook is the look of a primitive whose override handed it none.
 const plainLook = "lipgloss.NewStyle()"
+
+// fits reports whether n's override handed it a tui.Fit that may say anything:
+// one the build cannot read, or a literal setting a field. tui.Fit is the
+// host's struct, which ir.ZeroKnown does not answer for, but its literal's
+// fields left out are Go's zero.
+func (vc *irViewContext) fits(n *ir.NodeInst) bool {
+	lit, ok := codegen.NodeProp(n, "fit").(*ir.StructLit)
+	if !ok {
+		return codegen.NodeProp(n, "fit") != nil
+	}
+	for _, f := range lit.Fields {
+		if zero, known := ir.ZeroKnown(f.Value); f.Spread || !zero || !known {
+			return true
+		}
+	}
+	return false
+}
+
+// render is the Go rendering text, a Go string, in look as n's fit says:
+// look's own Render where the fit says nothing.
+func (vc *irViewContext) render(n *ir.NodeInst, look, text string) string {
+	if !vc.fits(n) {
+		if f := codegen.NodeProp(n, "fit"); f != nil {
+			vc.discard(f)
+		}
+		return look + ".Render(" + text + ")"
+	}
+	vc.requireImport(tuiImportPath)
+	return fmt.Sprintf("tui.Render(%s, %s, %s)", look, vc.gc.EvalExpr(codegen.NodeProp(n, "fit")), text)
+}
 
 // look is the lipgloss style a primitive renders with: what its override built
 // from the node's Style, sized to the share of its parent it grows into.
@@ -799,7 +853,15 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	savedW, savedH := vc.availW, vc.availH
 	inner := ""
 	outer := vc.buf
-	if slices.ContainsFunc(n.Children, growsWithin) {
+	justify := "0"
+	if v := codegen.NodeProp(n, "justify"); v != nil {
+		if c, ok := codegen.IRLiteralNumber(v); !ok || c != 0 {
+			justify = vc.gc.EvalExpr(v)
+		}
+	}
+	// A box placing its children along it needs its extent, as one whose
+	// child grows does: what they leave of it is what it places them in.
+	if justify != "0" || slices.ContainsFunc(n.Children, growsWithin) {
 		vc.requireImport(tuiImportPath)
 		look := resultVar + "Look"
 		vc.line("%s := %s", look, style)
@@ -841,7 +903,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	prevGap, prevAt := vc.joinGap, vc.joinAt
 	vc.joinGap, vc.joinAt = spacing, pos
-	parts := slices.ContainsFunc(n.Children, vc.directlyGrows)
+	parts := justify != "0" || slices.ContainsFunc(n.Children, vc.directlyGrows)
 	childrenVar := resultVar + "Children"
 	if parts {
 		vc.line("var %s []tui.Part", childrenVar)
@@ -888,7 +950,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	switch {
 	case parts:
-		vc.line(`%s = tui.Join(%t, %s, %s, %s, %s)`, resultVar, horizontal, pos, spacing, extent(main), childrenVar)
+		vc.line(`%s = tui.Join(%t, %s, %s, %s, %s, %s)`, resultVar, horizontal, pos, justify, spacing, extent(main), childrenVar)
 	case spacing != "0":
 		vc.requireImport(tuiImportPath)
 		vc.line(`%s = tui.Spaced(%t, %s, %s, %s...)`, resultVar, horizontal, pos, spacing, childrenVar)
@@ -923,8 +985,8 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 			style += ".AlignHorizontal(" + pos + ")"
 		}
 	}
-	if style != plainLook {
-		vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
+	if style != plainLook || vc.fits(n) {
+		vc.line(`%s = %s`, resultVar, vc.render(n, style, resultVar))
 	}
 }
 
