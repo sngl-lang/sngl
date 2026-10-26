@@ -96,6 +96,9 @@ type reactivityState struct {
 	// walks opened them: the package body's and those of a component the
 	// build spliced into it, whose vars are the page's.
 	pageHeld []pageRegistry
+	// refresh is how a write to page state reaches the instances reading it
+	// (page_refresh.go).
+	refresh *pageRefresh
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR
@@ -224,6 +227,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
 	st.collectFromStmts(pkg.Body)
 	st.typeSlots()
+	st.planPageRefresh(rootComponent(pkg, opts))
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
 
@@ -280,6 +284,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	// After the walks, because a registry only exists once the slot render
 	// that opened it has been built.
+	st.fillPageRefresh()
 	st.destroyHeld()
 	return st.err
 }
@@ -1315,6 +1320,11 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 		}
 		out = append(out[:n:n], append(live, out[n:]...)...)
 	}
+	// Last, so every instance reading v is handed it after the writer's own
+	// view has settled.
+	if call := st.refreshCall(v); call != nil {
+		out = append(out, call)
+	}
 	return out
 }
 
@@ -1325,8 +1335,9 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 // elsewhere has no way to them: one instance writing page state another reads
 // named the other's nodes and panel instances from its own record, which has
 // none, and a window's handler named them from the Model
-// (`testdata/page_write_kept_instance.txtar`). Such a reader shows what it
-// read when it was built (design/instances.md).
+// (`testdata/page_write_kept_instance.txtar`). Such a reader is reached
+// through what holds it instead, by the refresh updatersFor ends with
+// (page_refresh.go).
 func (st *reactivityState) reachable(v *ir.Var) ([]reactiveProp, []reactiveSlot, []liveProp) {
 	// A package func may be any body's code -- a lambda lifted out of one --
 	// so only a component's own body, and the package body, which is walked

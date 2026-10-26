@@ -568,6 +568,10 @@ func (m *Model) describe(d int) string {
 	return (fmt.Sprint(d) + m.mark)
 }
 
+func (m *Model) __refreshPage_mark() {
+	m.__n3.Set__page_mark(true)
+}
+
 func (m *Model) __n2_closed_handler() {
 }
 
@@ -685,6 +689,13 @@ func (c *Frame__slot2Instance) Set__p0(__v int) {
 	c.__n0.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
+	}
+}
+
+func (c *Frame__slot2Instance) Set__page_mark(__v bool) {
+	c.__n0.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].Set__page_mark(true)
 	}
 }
 
@@ -807,6 +818,13 @@ func (c *Frame__slot0Instance) Set__p0(__v int) {
 	c.__n1.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	for __inst1_live_ui, _ := range c.__inst1_live {
 		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
+}
+
+func (c *Frame__slot0Instance) Set__page_mark(__v bool) {
+	c.__n1.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__page_mark(true)
 	}
 }
 
@@ -935,6 +953,10 @@ func (m *Model) describe(d int) string {
 	return (fmt.Sprint(d) + m.mark)
 }
 
+func (m *Model) __refreshPage_mark() {
+	m.__n3.Set__page_mark(true)
+}
+
 func (m *Model) __n2_closed_handler() {
 }
 
@@ -1008,6 +1030,13 @@ func (c *Frame__slot2Instance) Set__p0(__v int) {
 	gtk4rt.LabelSetLabel(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
+	}
+}
+
+func (c *Frame__slot2Instance) Set__page_mark(__v bool) {
+	gtk4rt.LabelSetLabel(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].Set__page_mark(true)
 	}
 }
 
@@ -1147,6 +1176,13 @@ func (c *Frame__slot0Instance) Set__p0(__v int) {
 	gtk4rt.LabelSetLabel(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	for __inst1_live_ui, _ := range c.__inst1_live {
 		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
+}
+
+func (c *Frame__slot0Instance) Set__page_mark(__v bool) {
+	gtk4rt.LabelSetLabel(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__page_mark(true)
 	}
 }
 
@@ -1417,6 +1453,12 @@ body { font-family: system-ui, sans-serif; }
         __inst1_live[__inst1_live_ui].__set___p0(__prop___p0);
       }
     }
+    function __set___page_mark(__v) {
+      __n0.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        __inst1_live[__inst1_live_ui].__set___page_mark(true);
+      }
+    }
     function __renderSlot0(parent) {
       if (__rendering0) {
         __renderAgain0 = true;
@@ -1505,7 +1547,8 @@ body { font-family: system-ui, sans-serif; }
       },
       __set_n,
       __set___depth,
-      __set___p0
+      __set___p0,
+      __set___page_mark
     };
   }
   function __cf_frame__slot0(props) {
@@ -1536,6 +1579,12 @@ body { font-family: system-ui, sans-serif; }
       __n1.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
       for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
         __inst3_live[__inst3_live_ui].__set___p0(__prop___p0);
+      }
+    }
+    function __set___page_mark(__v) {
+      __n1.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
+      for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+        __inst3_live[__inst3_live_ui].__set___page_mark(true);
       }
     }
     function __renderSlot1(parent) {
@@ -1626,7 +1675,8 @@ body { font-family: system-ui, sans-serif; }
       },
       __set_n,
       __set___depth,
-      __set___p0
+      __set___p0,
+      __set___page_mark
     };
   }
   function String(v) {
@@ -1647,10 +1697,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e7297e12fccf5e92083cd91bc31da549
 -- run/go/fyne --
-pass sha256:eb14973e23969b7b4484506c8b8f707f
+pass sha256:1f7611f9db26efd2fd581142ea501495
 -- run/go/gtk4 --
-pass sha256:299ea00d86644c057d1034c2b720c6f0
+pass sha256:3a0b197fbda3eaf6a8b913b7e8afa70f
 -- run/kotlin/android --
 pass sha256:6ba464b9a29cd20be14744f9ccc73a23
 -- run/none/html --
-pass sha256:d423233ad93aac58c66295e99b1fafe6
+pass sha256:e992fc0269d0743693213bd5dfba38cc

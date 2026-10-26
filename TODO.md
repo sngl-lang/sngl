@@ -244,9 +244,13 @@ platform's `unstyled` list in the same commit.
   `for` (#263), fixed (`table_under_for_runs.txt`). On the way: a window's
   handler writing page state a looped instance reads named the instance's
   nodes as the Model's on fyne and gtk4, fixed by giving it no update of them
-  (`page_write_kept_instance.txtar`) -- so the instance shows what it read
-  when it was built, design/instances.md's missing direction, which the
-  interpreter does not share.
+  (`page_write_kept_instance.txtar`) -- so the instance showed what it read
+  when it was built, which the interpreter did not share. A write reaches
+  every live instance reading it now, through a refresh each carries and the
+  page's `__refreshPage_<v>` (`page_write_reaches_instance_runs.txt`,
+  Jonathan's call over a hidden prop per page var). A writer that is itself
+  such an instance updates its own readers twice, once by its own write's
+  updates and once through the page.
 - A test reading a looped `#id` whole, `c.title.length()`, did not build on
   any compiled target (`c.title undefined` on Go, `undefined.length` on
   html); `c.title[1]` did. A count is the loop's own now, and any other whole

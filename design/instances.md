@@ -649,16 +649,29 @@ is written through a context requiring its imports of the file
 `cmd/sngl/testdata/i18n_test_state_class_runs.txt`). A composable built on
 its own that reads the page's state reads the class the test made, which the
 file holds (`lateinit var state`) and each new one replaces
-(`cmd/sngl/testdata/instance_reads_page_state_runs.txt`). What is still
-missing on the three mutation targets is the other direction: a write to page
-state updates the nodes of the scope that wrote it and of the page, and not
-those of *other* live instances reading it, so their views go stale until they
-are rebuilt. A write in a component's body is given no update of another
-component's nodes at all (`reachable` in passReactivity): it named them, and
-the other's panel instances, through its own record, and fyne and gtk4 did not
-build (`cmd/sngl/testdata/page_state_other_instance_runs.txt`). Nor is a write
-in the package body, a window's handler, which named a looped row's nodes and
-render slot as the Model's (`testdata/page_write_kept_instance.txtar`).
+(`cmd/sngl/testdata/instance_reads_page_state_runs.txt`). The other direction, a write to page state reaching
+every live instance reading it, goes through what holds each one too
+(`internal/lower/page_refresh.go`). A write's own updates name only the
+nodes of the scope that wrote it and of the page (`reachable` in
+passReactivity): a component's nodes and panel instances are fields of its
+record, which a write elsewhere named through its own record or the Model,
+and fyne and gtk4 did not build
+(`cmd/sngl/testdata/page_state_other_instance_runs.txt`,
+`testdata/page_write_kept_instance.txtar`). So each component built at run
+time that reads a page var `v`, in its own body or through an instance it
+holds, carries a refresh for it, `__set___page_<v>`: a setter with no prop
+behind it, reached through UpdateComponent as a prop's is, which runs the
+updates a write of `v` in its own body would and hands the call on to every
+instance it holds that has one -- those its slots' registries keep, and one
+at a position of its own, a recursion's, by its handle. The page's
+`__refreshPage_<v>` starts it from the page's own, the root component's in a
+build rooted at one, and every write of `v` calls it after its own updates.
+The instance reads `v` where it stands, so a handler of its own sees what was
+written, and what a registry holds is what is reached: an instance destroyed
+has left it. A row's own state survives, being patched rather than rebuilt
+(`cmd/sngl/testdata/page_write_reaches_instance_runs.txt`). A writer that is
+itself such an instance is reached by both routes, and updates its own
+readers twice.
 
 **An html instance is a closure, and its body is laid out the way the page's
 markup is.** Its component's own `func`s are closures beside its vars, called

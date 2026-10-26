@@ -752,6 +752,12 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __refreshPage_total() {
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__page_total(true)
+	}
+}
+
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -911,6 +917,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 		c.__model.total = (c.__model.total + 10)
 		c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 		c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
+		c.__model.__refreshPage_total()
 	}
 	c.__effects0_settle()
 	c.Root = c.__n0
@@ -921,12 +928,14 @@ func (c *RowInstance) __effect0_mount() {
 	c.__model.total = (c.__model.total + 1)
 	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 	c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
+	c.__model.__refreshPage_total()
 }
 
 func (c *RowInstance) __effect0_unmount() {
 	c.__model.total = (c.__model.total - 1)
 	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
 	c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
+	c.__model.__refreshPage_total()
 }
 
 func (c *RowInstance) __effect0_down() {
@@ -1001,6 +1010,10 @@ func (c *RowInstance) SetName(__v string) {
 	c.__effects0_settle()
 }
 
+func (c *RowInstance) Set__page_total(__v bool) {
+	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
+}
+
 func main() {
 	a := app.New()
 	m := New()
@@ -1070,6 +1083,12 @@ func New() *Model {
 	m.__rendering0 = false
 	m.__renderAgain0 = false
 	return m
+}
+
+func (m *Model) __refreshPage_total() {
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__page_total(true)
+	}
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -1175,6 +1194,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 		c.__model.total = (c.__model.total + 10)
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 		gtk4rt.LabelSetLabel(c.__model.__n2, fmt.Sprint(c.__model.total))
+		c.__model.__refreshPage_total()
 	})
 	c.__effects0_settle()
 	c.Root = c.__n0
@@ -1186,12 +1206,14 @@ func (c *RowInstance) __effect0_mount() {
 	c.__model.total = (c.__model.total + 1)
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 	gtk4rt.LabelSetLabel(c.__model.__n2, fmt.Sprint(c.__model.total))
+	c.__model.__refreshPage_total()
 }
 
 func (c *RowInstance) __effect0_unmount() {
 	c.__model.total = (c.__model.total - 1)
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 	gtk4rt.LabelSetLabel(c.__model.__n2, fmt.Sprint(c.__model.total))
+	c.__model.__refreshPage_total()
 }
 
 func (c *RowInstance) __effect0_down() {
@@ -1264,6 +1286,10 @@ func (c *RowInstance) teardown() {
 func (c *RowInstance) SetName(__v string) {
 	c.__prop_name = __v
 	c.__effects0_settle()
+}
+
+func (c *RowInstance) Set__page_total(__v bool) {
+	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
 }
 
 func (c *RowInstance) Destroy() {
@@ -1470,11 +1496,13 @@ body { font-family: system-ui, sans-serif; }
       state.total = state.total + 1;
       __n0.textContent = label + " " + String(state.total);
       __n2.textContent = String(state.total);
+      __refreshPage_total();
     }
     function __effect0_unmount() {
       state.total = state.total - 1;
       __n0.textContent = label + " " + String(state.total);
       __n2.textContent = String(state.total);
+      __refreshPage_total();
     }
     function __effect0_down() {
       __effect0_desired = [];
@@ -1542,12 +1570,16 @@ body { font-family: system-ui, sans-serif; }
       __prop_name = __v;
       __effects0_settle();
     }
+    function __set___page_total(__v) {
+      __n0.textContent = label + " " + String(state.total);
+    }
     let __n6 = document.createElement("button");
     __n6.disabled = false;
     __n6.addEventListener("click", () => {
       state.total = state.total + 10;
       __n0.textContent = label + " " + String(state.total);
       __n2.textContent = String(state.total);
+      __refreshPage_total();
     });
     __n6.addEventListener("contextmenu", () => {
     });
@@ -1561,13 +1593,19 @@ body { font-family: system-ui, sans-serif; }
       __destroy() {
         __snglTeardown2();
       },
-      __set_name
+      __set_name,
+      __set___page_total
     };
   }
   var __slot0 = [];
   var __inst1_live = [];
   var __rendering0 = false;
   var __renderAgain0 = false;
+  function __refreshPage_total() {
+    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+      __inst1_live[__inst1_live_ui].__set___page_total(true);
+    }
+  }
   function __renderSlot0(parent) {
     if (__rendering0) {
       __renderAgain0 = true;
@@ -1645,10 +1683,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3994762ec90eff835cf841c249402d76
 -- run/go/fyne --
-pass sha256:335e36d677451f809224302ec9081a14
+pass sha256:c308623bcfd14d2a67d548ef2d793865
 -- run/go/gtk4 --
-pass sha256:53961a1befa1aa0a82e9d4b8cb222311
+pass sha256:a31e31d3394aa1bc45d7c17d0167b14e
 -- run/kotlin/android --
 pass sha256:24c9e2d370ed6a2d1cbe6c004fd1623f
 -- run/none/html --
-pass sha256:f57b1ff058fccf32bd3ff24216085fa9
+pass sha256:0c6eddb25a02c5339a3267196aa40007

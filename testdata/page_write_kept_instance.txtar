@@ -6,9 +6,11 @@ body already left another component's alone (`reachable` in passReactivity),
 but one from the package body still spliced an update for every reader: the
 window's `@click { shown = !shown }` called the row's `__renderSlot0` and set
 its `__n0` as if they were the Model's, and fyne and gtk4 did not build
-(`undefined: __renderSlot0`, `m.__n0 undefined`). The row shows what it read
-when it was built, as one written to from another instance does
-(design/instances.md).
+(`undefined: __renderSlot0`, `m.__n0 undefined`). The write reaches the
+row through what holds it instead: the page's `__refreshPage_shown` calls the
+refresh each row carries for `shown`, which sets its text and re-renders its
+`if` from the row's own record (design/instances.md,
+`cmd/sngl/testdata/page_write_reaches_instance_runs.txt`).
 
 deny out/go/fyne/model.go `^\s*__renderSlot0\(m\.__root\)` -- the row's slot is no Model method
 deny out/go/gtk4/model.go `^\s*__renderSlot0\(m\.__root\)` -- as above, on gtk4
@@ -86,6 +88,12 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __refreshPage_shown() {
+	for __inst1_live_ui, _ := range m.__inst1_live {
+		m.__inst1_live[__inst1_live_ui].Set__page_shown(true)
+	}
+}
+
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	if m.__rendering1 {
 		m.__renderAgain1 = true
@@ -153,6 +161,7 @@ func (m *Model) __n3_visible_handler(__visible bool) {
 
 func (m *Model) __n6_click_handler() {
 	m.shown = !m.shown
+	m.__refreshPage_shown()
 }
 
 func (m *Model) Shown() bool {
@@ -251,6 +260,11 @@ func (c *RowInstance) SetName(__v string) {
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop_name)
 	}
+}
+
+func (c *RowInstance) Set__page_shown(__v bool) {
+	c.__n1.SetText(((c.__prop_name + " ") + fmt.Sprint(c.__model.shown)))
+	c.__renderSlot0(c.__root)
 }
 
 func (c *RowInstance) __renderSlot0(__parent *fyne.Container) {
@@ -413,6 +427,12 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __refreshPage_shown() {
+	for __inst1_live_ui, _ := range m.__inst1_live {
+		m.__inst1_live[__inst1_live_ui].Set__page_shown(true)
+	}
+}
+
 func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	if m.__rendering1 {
 		m.__renderAgain1 = true
@@ -480,6 +500,7 @@ func (m *Model) __n3_visible_handler(__visible bool) {
 
 func (m *Model) __n6_clicked_handler() {
 	m.shown = !m.shown
+	m.__refreshPage_shown()
 }
 
 // RowInstance is one live instance of the row component.
@@ -537,6 +558,11 @@ func (c *RowInstance) SetName(__v string) {
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop_name)
 	}
+}
+
+func (c *RowInstance) Set__page_shown(__v bool) {
+	gtk4rt.LabelSetLabel(c.__n1, ((c.__prop_name + " ") + fmt.Sprint(c.__model.shown)))
+	c.__renderSlot0(c.__root)
 }
 
 func (c *RowInstance) __renderSlot0(parent gtk4rt.Handle) {
@@ -711,6 +737,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n3)
 }
 -- run/go/fyne --
-pass sha256:9cd7f522788347a6022a0f4205a37fc1
+pass sha256:e7ada5f69f865a5c2ef51a40ba142e2a
 -- run/go/gtk4 --
-pass sha256:7dcca55335f109729d369f4f907824e5
+pass sha256:72a272801908605707ba6d5d371cc3ff
