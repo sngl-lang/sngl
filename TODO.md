@@ -220,12 +220,8 @@ the first user.
 
 ### Where it stands
 
-- **No app bar.** `Pokedex` puts `ui.select #languagePick` in an hbox above
-  the stack, and `homePage` puts `#dexPick` above the search box. android's
-  `ui.window` is a bare `Screen`: `title` and `favicon` are not read there,
-  and `output(icon=…)` goes only to the launcher. There is no Scaffold and
-  no TopAppBar. `detailPage` draws its own `#backButton`, though the system
-  back already pops the NavHost.
+- ~~**No app bar.**~~ Done in step 4: the window draws the page's title,
+  its way back and its menu, which chooses the language and the dex.
 - ~~**No setting outlives the process.**~~ Done in step 2: `sngl:settings`
   keeps `language` and `dexName` from one run to the next.
 - ~~**Tabs do not swipe.**~~ Done in step 3: every panel stays mounted, and
@@ -476,14 +472,83 @@ session.
    the post queue `sngl test` declares, `undefined: __snglRunPosts`), so the
    query case is a script.
 
-   Write the `ui.window` prop and slot in the spec, then
-   implement android, gtk4, html, fyne and bubbletea, and the up arrow. In
-   the Pokédex, move the language and the dex choice into the window's `menu`, delete
-   `#backButton`, and set the title to `pages.current.title`; detail's
-   title should be the species' name rather than "Pokémon", which needs a
-   page title that can be computed from its params. The six
-   `#languagePick`/`#dexPick`/`#backButton` uses in `pokedex_test.sngl`
-   move with them.
+   Done. `ui.window` has a `menu` slot of `ui.menuItem`s, which gained
+   `checked`, and `canGoBack` and `@back`; `sngl:ui/nav`'s stack has
+   `canGoBack()` and a page `titleOf`, a function of its params that
+   `pages.current.title` returns while it is current. A window draws a bar
+   only where its call site binds `canGoBack` or populates the menu, so no
+   program written before moved. android draws a Material3 Scaffold and
+   TopAppBar (appbar.kt: the favicon or the launcher's icon, the title, an
+   up arrow, an action per top-level entry opening a DropdownMenu), and the
+   system back runs `@back` while `canGoBack` holds, ahead of a NavHost's own
+   pop; gtk4 a GMenu behind a header bar's menu button, with a back button;
+   fyne its main menu, with a back button over the content; html a `<header>`
+   over a `ui.menubar` of `<details>`, the browser's back popping an entry
+   `sngl-back` keeps; bubbletea a title line, esc its back, and no menu.
+   `ui.menu` and `ui.menubar` are real on android and fyne. `sngl:test/mobile`
+   has `back()`, on android and html. The Pokédex's `Pokedex` is its window:
+   the menu chooses the language and the dex, detail's title is the
+   species' name from its params, and `#backButton` is gone. design/
+   windows.md's *A window draws a bar*, navigation.md's *`canGoBack` and
+   `titleOf`* and nodes.md's *A menu entry is picked* say how. Pinned by
+   `testdata/window_menu.{sngl,txtar}`, `nav_can_go_back.{sngl,txtar}`,
+   `nav_page_title_from_params.{sngl,txtar}` and its `_html` route golden,
+   `cmd/sngl/testdata/window_app_bar_runs.txt` (android opens a submenu,
+   chooses a checked entry and presses back, over a NavHost too; html the
+   same) and fynelayout's `TestAWindowsMenuIsItsEntries`. Found:
+   - A prop holding a record whose handler writes what the prop reads loops
+     the lowering: passReactivity puts the prop's updater inside the
+     handler, and the updater holds the expression the handler is in
+     (`MatchLate` overflowed the stack). So the menu is drawn as nodes, never
+     handed to a primitive as a list. Not fixed: it wants such a handler
+     hoisted to a function the updater can name.
+   - An `if` whose condition reads a data slot's records, `menu.length() > 0`,
+     inlines the records, handlers and all, into the condition, which fyne
+     then translated outside the slot's scope (`shown.Text`, `m.main`).
+     `dropEmptyLoops` now reads a list literal's length as its count and
+     settles an `if` its literals decide, so the window's bar is decided
+     where it is written.
+   - A test picking a record through a node's data slot ran, on a compiled
+     target, the record's handler off the call site's list re-evaluated in
+     the test: its write landed and none of the window's updates ran, and
+     Go spelled the write exported (`c.Size`, fixed in `MutTargetField`).
+     It now presses what the window drew (`lower.NameRecordPresses`); a test
+     reading a record's `checked` still re-evaluates the list, and where the
+     handlers write state an instance built at run time reads, that drags
+     `UpdateComponent` into the test, which no test emitter has. The
+     Pokédex's tests check the state an entry writes.
+   - A data slot handed on in a platform override's body,
+     `ui.menubar { menu }`, reached nothing: DataFamilies reads the program's
+     populations, not a library body's, so the menubar iterated `[]`. The
+     override writes `ui.menubar(items=menu)`.
+   - The fyne host's constructor table took only each override's first
+     primitive; it takes every one now (`WidgetSpecsFrom`).
+   - A document's `<title>` on html was written only where the window's
+     title folds to a literal; one that reads anything else is now set as
+     the script starts, once, which covers a title from a route's params.
+     A route-mode server still renders no `<title>` for it, and a title
+     reading state does not follow the state.
+   - On html a test page for a component that is not a window cannot read
+     `pages.current` (`current` is undefined), with or without `titleOf`; a
+     window's documents answer it.
+   - `navigation.canGoBack` on html is the browser's, so a test page, which
+     is never at the start of its history, can go back: the Pokédex's tests
+     assert the window's title, not its `canGoBack`.
+   - A press of a copy drawn under a reactive `if` on html (the header,
+     before its condition was settled) ran nothing, with no error. Not
+     traced.
+   - The interpreter mounted a window's props before its body, so one
+     reading a handle the body declares (`title=pages.current.title`) was
+     missing from the mounted node; it is evaluated again after the body.
+   - android's showcase test lowered without DataFamilies, so a radio's
+     loop walked the empty default; it runs it now, as a build does.
+   - gtk4's recorded Go builds (`TestABlockingCallCompilesIntoAPostedUpdate`
+     and two more), gtk4rt's `test_run` and every fyne and gtk4 run digest
+     moved with the runtimes, and were recorded again.
+   - The detail page's title is the species' name as the slug spells it
+     (`display(p.name)`), in every language: what the page fetches comes
+     after the title is asked for.
+
 5. **Tabs that look like tabs.** gtk4, fyne and bubbletea override
    `ui.tabs` with their own widgets, a fixture holding each one's look --
    gtk4's and fyne's from a snapshot -- and `tabs_runs.txt` and
