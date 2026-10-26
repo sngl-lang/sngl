@@ -154,14 +154,24 @@ function of the list's package that makes one (`html.css`,
 `testdata/error_raw_element_style_literal.sngl`). **Left:** nothing of the
 order; what follows was found on the way.
 
+### Fields listed only because they were not done yet
+
+Each answered where its host can express it, with the field off the
+platform's `unstyled` list in the same commit.
+
+1. android: `maxLines` and `whiteSpace`, Text's `maxLines`, `overflow` and
+   `softWrap` (`testdata/android_text_lines.txtar`). Done. `gap`,
+   `alignItems` and `justifyContent` were answered already, as the Column's
+   and Row's Arrangement and Alignment.
+2. bubbletea: `whiteSpace`, `display=none`, `overflow`, `justifyContent`.
+3. gtk4: `justifyContent` and `flex` weights, a layout of gtk4rt's own.
+4. fyne: `cursor`, through a desktop.Cursorable box.
+
 ### Found on the way, not yet fixed
 
 - A literal Style's Modifier is built at run time on android,
   `styleModifier(Style(…))`: the optimizer splices single-expression
   functions only, and the Modifier builder is a block.
-- android's `unstyled` still lists fields Compose can express: `gap`,
-  `alignItems` and `justifyContent` (Column and Row arguments), `maxLines` and
-  `whiteSpace` (Text arguments). Each would put an argument on every node.
 - On android a Column the Go writes rather than an override -- a window's
   content arriving through a slot, a nav page of several nodes -- provides no
   `flexShare`, so a `flex` child there fills the screen; a page under an hbox

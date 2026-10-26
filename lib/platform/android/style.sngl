@@ -21,7 +21,6 @@ const blank ui.Style = {}
 //   - flexDirection: vbox and hbox are the axis.
 //   - position, top, bottom, left, right: Compose has no flow to take a node
 //     out of, nor CSS's offsets from one.
-//   - maxLines, whiteSpace: Text's own arguments, not passed yet.
 //   - border, borderBottom, borderLeft, borderCollapse: CSS shorthand text and
 //     table borders.
 //   - borderStyle: Compose draws a solid border only.
@@ -36,8 +35,6 @@ const unstyled list[string] = [
     "bottom",
     "left",
     "right",
-    "maxLines",
-    "whiteSpace",
     "border",
     "borderBottom",
     "borderLeft",
@@ -294,6 +291,21 @@ const func textStyle(s ui.Style) TextStyle {
         textAlign = textAlignOf(s.textAlign),
     )
 }
+
+// Text's `softWrap`, `overflow` and `maxLines`. Each answers Text's own
+// default where the Style leaves the field unset, which the call then leaves
+// out. `nowrap` and `pre` keep a paragraph on its lines, and a clamped text
+// ends in an ellipsis, as CSS's line clamp does.
+const func softWrapOf(w ui.WhiteSpace) bool {
+    return match w {
+        nowrap, pre => false
+        unset, normal, preWrap, preLine => wrapsLines
+    }
+}
+
+const func clampOverflow(lines option[int]) => lines == null ? overflowClip : overflowEllipsis
+
+const func linesOf(lines option[int]) => lines == null ? unboundedLines : lines
 
 // A Material button is a stadium -- its shape token is CornerFull, which no
 // theme changes -- unless the Style names its corners.

@@ -424,6 +424,25 @@ const familyCursive FontFamily
 #[kt.native("TextAlign.Unspecified", "androidx.compose.ui.text.style.TextAlign")]
 const alignUnspecified TextAlign
 
+#[kt.native("androidx.compose.ui.text.style.TextOverflow")]
+struct TextOverflow {}
+
+#[kt.native("TextOverflow.Clip", "androidx.compose.ui.text.style.TextOverflow")]
+const overflowClip TextOverflow
+
+#[kt.native("TextOverflow.Ellipsis", "androidx.compose.ui.text.style.TextOverflow")]
+const overflowEllipsis TextOverflow
+
+// Text's `softWrap` where nothing keeps a paragraph on its lines. A host
+// value rather than `true`: an argument is left to Compose where it names the
+// host value the prop's default names.
+#[kt.native("true", "")]
+const wrapsLines bool
+
+// Text's `maxLines` where nothing clamps it.
+#[kt.native("Int.MAX_VALUE", "")]
+const unboundedLines int
+
 #[kt.native("TextAlign.Start", "androidx.compose.ui.text.style.TextAlign")]
 const alignStartText TextAlign
 
@@ -493,6 +512,9 @@ component Text(
     modifier Modifier,
     style    TextStyle,
     color    ComposeColor,
+    overflow TextOverflow = overflowClip,
+    softWrap bool = wrapsLines,
+    maxLines int = unboundedLines,
 ) ui.node
 
 #[gen.renders(identity)]

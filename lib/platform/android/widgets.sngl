@@ -73,7 +73,14 @@ const component ui.scroll[platform](style, @reachEnd, content) {
 // --- Core Text & Media ---
 
 const component ui.text[platform](value, style) {
-    Text(text=value, modifier=modifierOf(style, flexShare), style=mergeTextStyle(localTextStyle, textStyle(style))) {}
+    Text(
+        text = value,
+        modifier = modifierOf(style, flexShare),
+        style = mergeTextStyle(localTextStyle, textStyle(style)),
+        overflow = clampOverflow(style.maxLines),
+        softWrap = softWrapOf(style.whiteSpace),
+        maxLines = linesOf(style.maxLines),
+    ) {}
 }
 
 const component ui.button[platform](text, style, @click) {
