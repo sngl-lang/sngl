@@ -1351,9 +1351,12 @@ its type's zero value where the declaration gives none: an `option` is
 its own fields' defaults. A literal leaving a field out and one writing that
 value are the same value, and nothing can tell them apart. A value whose
 absence means something is an `option`, or an enum leading with a member that
-says so (`ui.Style`'s `unset`). Fields are written in order, so a spread
-writes every field its operand holds over what came before it, the operand's
-defaults included:
+says so (`ui.Style`'s `unset`). Fields are written in order, and a spread
+writes each field of its operand that does not hold its type's zero value over
+what came before it, a declared default other than the zero included. A field
+written after a spread is the literal's own whatever it holds. So
+`{display=flex, ...style}` lays a caller's Style over a component's look: what
+the caller left unset leaves the look's.
 
 ```sngl
 struct Box {
@@ -1361,9 +1364,11 @@ struct Box {
     h int
 }
 
-var a = Box{h=1}       // {w = 4, h = 1}
-var b = Box{w=2, ...a} // {w = 4, h = 1}: the spread writes w too
-var c = Box{...a, w=2} // {w = 2, h = 1}
+var a = Box{h=1}            // {w = 4, h = 1}
+var b = Box{w=2, ...a}      // {w = 4, h = 1}: a's w is 4, not int's zero
+var z = Box{w=0}            // {w = 0, h = 0}
+var c = Box{w=2, h=3, ...z} // {w = 2, h = 3}: z holds both at their zero
+var d = Box{...a, w=0}      // {w = 0, h = 1}
 ```
 
 ### Selectors, indexing, and calls

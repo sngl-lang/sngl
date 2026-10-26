@@ -447,10 +447,19 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// folder has its own implementation of the id, and most of those bodies
 	// are placeholders a backend is expected to replace.
 	if canFoldBody(call.Func) && call.Func.Intrinsic == "" {
+		key := interpretKey(call.Func, args, ctx)
+		if key != "" {
+			if res, ok := ctx.evalCache().load(key); ok {
+				return interp.CloneValue(res.value), true
+			}
+		}
 		ctx.interpDepth++
 		v, ok := interpretFunc(call.Func, args, ctx, ctx.interpDepth)
 		ctx.interpDepth--
 		if ok {
+			if key != "" {
+				ctx.evalCache().store(key, constResult{value: interp.CloneValue(v)})
+			}
 			return v, true
 		}
 	}
@@ -472,6 +481,16 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		}
 	}
 
+	// One the folder has no answer of its own for, the interpreter's, where
+	// the declaration says the answer is the arguments' alone: `color.hex` of
+	// a constant color, reached once a function reading a Style is spliced
+	// where its node is.
+	if call.Func != nil && call.Func.Intrinsic != "" && call.Func.Purity == ir.PurityPure {
+		if v, ok, err := interp.RunIntrinsic(call.Func.Intrinsic, args); ok && err == nil {
+			return v, true
+		}
+	}
+
 	// An intrinsic the folder does not implement. A body it still has is one
 	// the declaration said computes the right answer; the placeholders were
 	// dropped after type checking.
@@ -486,6 +505,19 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 
 	// Native import pure function.
 	return evalNativeCall(call, args, ctx)
+}
+
+// interpretKey is what a pure function's interpreted answer is kept under: the
+// function and the arguments it was handed, which are the whole of what a
+// pure body answers from. html folds the same Style through css on node after
+// node, and interpreted each time that was the cost that sank translating it
+// in SNGL. Empty, and nothing kept, where the fold answers an intrinsic of its
+// own -- a document's page -- which the arguments do not say.
+func interpretKey(fn *ir.Func, args []any, ctx *evalCtx) string {
+	if fn.Purity != ir.PurityPure || len(ctx.answers) > 0 {
+		return ""
+	}
+	return fmt.Sprintf("interpret\x00%p\x00%v", fn, args)
 }
 
 // maxFoldedSequence bounds what a sequence folds to on a target that does not
@@ -1527,10 +1559,8 @@ func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
 }
 
 // fillOmittedFields gives each field a literal left out what the declaration
-// means by omitting it, so a read of one folds and two literals compare. The
-// checker has written every field of a literal a program wrote; what is left
-// out here was built by a pass. It reports whether every field now has a
-// value.
+// means by omitting it (ir.StructLit.Field), so a read of one folds and two
+// literals compare. It reports whether every field now has a value.
 func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
 	if def == nil {
 		def = expectedStructDef(s.Type)

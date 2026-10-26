@@ -6,7 +6,7 @@ The places to read first: `codegen/iterate.go` (`NodeStyleFieldsOf`, which
 decides literal vs held), `codegen/measurement.go`, the platforms'
 `lib/platform/<name>/style.sngl`, fyne's `spec.go`, `layout.go`, `theme.go`
 and `pkg/go/fynetheme`, `pkg/go/gtk4rt/look.go`, and html's
-`internal/htmlutil/style.go` and `codegen/platform/html/stylewrite.go`.
+`css` in `lib/platform/html/html.sngl` and `codegen/platform/html/stylewrite.go`.
 
 ### The design
 
@@ -89,27 +89,67 @@ Each is a commit series on the branch; one MR, so CI runs once.
    when the widget lands there, and GTK splits the free space evenly: a
    weighted share is a layout of gtk4rt's own. A box's `alignItems` is put
    on each child it holds, later ones included.
-5. **html**, now that a Style can say "unset" (step 7). The css translation
-   moves into SNGL, replacing `internal/htmlutil/style.go`: a written `0px`
-   is kept, and a style reading state still ships its static CSS in the
-   markup. Measured against the docs site's allocation, which sank the last
-   try (12.6 GB against 9.3): folding a function per node per page was most
-   of it, the interpreter rebinding an environment per call.
+5. **html**. Done: every element's `style` (and a flow's `classStyle`) is
+   the `list[Declaration]` html.sngl's `css` answers for a ui.Style; each
+   override writes `style=css({…, ...style})` and a program writing a raw
+   element writes `style=html.css({…})`. The fold reduces each declaration
+   the build can read to text in the markup; one only the page knows is a
+   setProperty, and a list held whole goes through `_snglCSSText`.
 6. The coverage test across all six, and CLAUDE.md's platform sections.
-7. **A Style that can say "unset".** Done. The checker writes every field a
-   struct literal leaves out (`ir.FillOmittedFields`), so nothing after it
-   reads a field's presence. `ui.Style`'s lengths, colors and `flex`,
-   `opacity`, `zIndex` and `maxLines` are options, null when unset; each of
-   its enums leads with `unset`; a string is unset empty. Each platform's
-   style.sngl takes a side as the first of its own field, its axis's and the
-   whole box's that is set, so `{padding=16px, paddingTop=0px}` is 0 on top
-   everywhere, and `alignItems=start`, `textAlign=left`, `fontWeight=normal`
-   and `#000000` each mean what they say. A component that takes the
-   caller's Style on top of its own writes `style.over({…})`, since a spread
-   writes the caller's unset fields too.
+7. **A Style that can say "unset".** Committed on `style-unset`
+   (`da4a62b84`, `8232b1be9`), with two things since decided against: see
+   *Next session*. `ui.Style`'s lengths, colors and `flex`, `opacity`,
+   `zIndex` and `maxLines` are options, null when unset; each of its enums
+   leads with `unset`; a string is unset empty. Each platform's style.sngl
+   takes a side as the first of its own field, its axis's and the whole box's
+   that is set, so `{padding=16px, paddingTop=0px}` is 0 on top everywhere
+   (`cmd/sngl/testdata/style_side_zero_runs.txt`), and `alignItems=start`,
+   `textAlign=left`, `fontWeight=normal` and `#000000` each mean what they
+   say. An omitted struct field reads its default on every language
+   (`struct_omitted_fields_runs.txt`).
+
+### Next session
+
+Branch `style-unset`, the primary checkout, uncommitted on top of
+`8232b1be9`. Done in the tree:
+
+- **A struct literal holds only the fields written** (`ir.StructLit.Field`,
+  `EachField`, `HoldsOmitted`); the checker fill is gone, each language fills
+  where it spells a literal (`irwalk`), and a folded literal leaves out each
+  field at what it would hold left out.
+- **A spread writes each field of its operand not at its zero**: the
+  interpreter (`Env.mergeSpread`), `NoStructSpread`'s `__merge_*` helpers and
+  its flattening of a literal operand (`ir.ZeroKnown`); a field written after
+  a spread the build cannot read goes through a `__set_<Struct>_<field>`.
+  `ui.Style.over` is gone. `cmd/sngl/testdata/struct_spread_zero_runs.txt`.
+- **html calls `css`** (step 5 above).
+- The inliner copies a computed argument read more than once where it is
+  cheap (`cheapToCopy`: a path, a little arithmetic, a struct literal of a
+  few such fields) and retries a call once its arguments have folded; lower's
+  `substituteParams` reads a struct literal argument's field directly.
+
+**Measured** (`SNGL_MEMPROFILE` on the docs site's generate, warm, total
+alloc_space): main 10.17 GB; `8232b1be9` 11.49 GB; now 9.97 GB, after
+`ir.FieldZero` shares one null and one empty string (a library struct is not
+normalized, so every read of a Style field it left out built a fresh zero).
+
+The first `go tool verify -update` failed five ways, all fixed: html
+declared `String` for a library function no page called (now a pruned
+declaration); a Style the page computes was written one setProperty per
+declaration, so an empty `border-bottom` took what `border-width` set (now
+grouped by `styleGroup`, `_snglSetStyles`); the tour's raw elements wanted
+`html.css`; `int.parse` of constants now folds (`generate_int_parse.txt`
+reads state); a dumped `PageParams{}` holds no `id`.
+
+**Left:** rerun `go tool verify -update` with
+`ANDROID_HOME=/home/claude/Android/Sdk`, its exit status and FAIL rows, the
+commits, then step 6.
 
 ### Found on the way, not yet fixed
 
+- A Style literal written where a raw html element's `style` wants
+  `list[Declaration]` is refused as "6px needs a unit type here", which
+  names neither the prop nor `html.css`.
 - A literal Style's Modifier is built at run time on android,
   `styleModifier(Style(…))`: the optimizer splices single-expression
   functions only, and the Modifier builder is a block.

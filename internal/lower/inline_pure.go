@@ -900,8 +900,24 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 // substituteParams walks stmts replacing every *ir.Ident whose Sym is a
 // *ir.Param matched by name in bindings with a clone of the bound
 // argument expression.
+//
+// A field read off a param bound to a struct literal is that field's value:
+// copied whole, the literal stood where only one field was read, and a
+// ternary in another of its fields was hoisted by NoTernary into a temp
+// nothing read (`grow=growOf(style.flex)` beside a `fontWeight=on ? …`).
 func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		if sel, ok := e.(*ir.Select); ok {
+			if id, ok := sel.Operand.(*ir.Ident); ok {
+				if _, isParam := id.Sym.(*ir.Param); isParam {
+					if lit, ok := bindings[id.Name].(*ir.StructLit); ok {
+						if v := literalFieldRead(lit, sel.Field); v != nil {
+							return deepCloneExpr(v)
+						}
+					}
+				}
+			}
+		}
 		id, ok := e.(*ir.Ident)
 		if !ok {
 			return e
@@ -915,6 +931,35 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 		return e
 	})
 	return w.stmts(stmts)
+}
+
+// literalFieldRead is what lit holds in field name (ir.StructLit.Field),
+// where reading it alone drops nothing with an effect: no spread, and no call
+// but a pure one in the fields not read.
+func literalFieldRead(lit *ir.StructLit, name string) ir.Expr {
+	if lit.Def == nil {
+		return nil
+	}
+	for _, f := range lit.Fields {
+		if f.Spread {
+			return nil
+		}
+		if f.Name == name {
+			continue
+		}
+		impure := false
+		_ = ir.WalkExprs(f.Value, func(x ir.Expr) error {
+			if c, ok := x.(*ir.Call); ok && (c.Func == nil || c.Func.Purity != ir.PurityPure) {
+				impure = true
+				return ir.SkipAll
+			}
+			return nil
+		})
+		if impure {
+			return nil
+		}
+	}
+	return lit.Field(name)
 }
 
 // substituteSlots replaces every *ir.SlotInst with what the call site supplied.
@@ -1481,6 +1526,9 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 		clone := *n
 		return &clone
 	case *ir.Literal:
+		if ir.SharedLiteral(n) {
+			return n
+		}
 		clone := *n
 		return &clone
 	case *ir.Binary:

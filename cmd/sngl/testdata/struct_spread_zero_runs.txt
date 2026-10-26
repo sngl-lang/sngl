@@ -1,0 +1,163 @@
+# A struct spread writes each field of its operand that is not its zero value,
+# on every language alike, whether the build folds the spread or merges it at
+# run time.
+#
+# With a Style's unset fields at their zero, `{display=flex, ...style}` lays a
+# caller's Style over a component's look: the caller's unset fields leave the
+# look's. A field written after the spread is the literal's own.
+
+mkdir none html bubbletea android
+
+cp app.sngl none/app.sngl
+sngl test --platform=none none/app.sngl
+stdout 'ok +5 tests, 0 failures'
+
+cp app.sngl html/app.sngl
+sngl test --platform=html html/app.sngl
+stdout 'ok +5 tests, 0 failures'
+
+cp app.sngl bubbletea/app.sngl
+sngl test --platform=bubbletea bubbletea/app.sngl
+stdout 'ok +5 tests, 0 failures'
+
+cp app.sngl android/app.sngl
+sngl test --platform=android android/app.sngl
+stdout 'ok +5 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+enum Tone { unset, calm, loud }
+
+struct Look {
+    pad  option[int]
+    w    int = 4
+    tone Tone
+    name string
+}
+
+var held Look = {w=0, tone=Tone.loud}
+
+func over(o Look) Look {
+    return {pad=8, w=9, tone=Tone.calm, name="look", ...o}
+}
+
+func testLiteralOperand(t test.Test) {
+    var p Look = {pad=8, w=9, tone=Tone.calm, name="look", ...Look{w=0, name=""}}
+    t.assert(p.pad == 8)
+    t.assert(p.w == 9)
+    t.assert(p.tone == Tone.calm)
+    t.assert(p.name == "look")
+}
+
+func testOmittedDefault(t test.Test) {
+    // w's declared default is 4, which is not int's zero: the spread writes it.
+    var p Look = {pad=8, w=9, ...Look{}}
+    t.assert(p.pad == 8)
+    t.assert(p.w == 4)
+}
+
+func testHeldOperand(t test.Test) {
+    var p = over(held)
+    t.assert(p.pad == 8)
+    t.assert(p.w == 9)
+    t.assert(p.tone == Tone.loud)
+    t.assert(p.name == "look")
+}
+
+func testSetFieldsWin(t test.Test) {
+    var p = over({pad=2, w=3, name="mine"})
+    t.assert(p.pad == 2)
+    t.assert(p.w == 3)
+    t.assert(p.tone == Tone.calm)
+    t.assert(p.name == "mine")
+}
+
+func testWrittenAfter(t test.Test) {
+    var p Look = {...held, w=5, tone=Tone.unset}
+    t.assert(p.w == 5)
+    t.assert(p.tone == Tone.unset)
+}
+
+ui.window {
+    ui.text(value="{over(held).w}")
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:c89ef4854a110f85188d72ee16dee54a
+{
+  "results": [
+    {
+      "Desc": "HeldOperand",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralOperand",
+      "Passed": true
+    },
+    {
+      "Desc": "OmittedDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "SetFieldsWin",
+      "Passed": true
+    },
+    {
+      "Desc": "WrittenAfter",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:532d43868aecd414db156eb4bbb6baee
+{
+  "results": [
+    {
+      "Desc": "HeldOperand",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralOperand",
+      "Passed": true
+    },
+    {
+      "Desc": "OmittedDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "SetFieldsWin",
+      "Passed": true
+    },
+    {
+      "Desc": "WrittenAfter",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:4beb546d57c4cd32fb3f4e9c910b054d
+{
+  "results": [
+    {
+      "Desc": "HeldOperand",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralOperand",
+      "Passed": true
+    },
+    {
+      "Desc": "OmittedDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "SetFieldsWin",
+      "Passed": true
+    },
+    {
+      "Desc": "WrittenAfter",
+      "Passed": true
+    }
+  ]
+}

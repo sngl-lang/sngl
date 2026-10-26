@@ -1,6 +1,7 @@
 package javascript
 
 import (
+	"strconv"
 	"strings"
 	"sync"
 
@@ -30,6 +31,16 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 	switch n := e.(type) {
 	case *ir.Literal:
 		return translateIRLiteral(n)
+	case *ir.Ident:
+		if n.Member != "" {
+			if ir.PayloadEnum(n.Type) != nil {
+				return enumLitJS(n.Member, "")
+			}
+			if src, ok := nativeEnumMemberJS(n.Type, n.Member); ok {
+				return src
+			}
+			return strconv.Quote(n.Member)
+		}
 	case *ir.ListLit:
 		parts := make([]string, len(n.Elems))
 		for i, el := range n.Elems {
@@ -52,13 +63,16 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 		b.WriteString("])")
 		return b.String()
 	case *ir.StructLit:
+		if member, payload, ok := ir.EnumLitMember(n); ok {
+			return enumLitJS(member, t.TranslateIRLiteral(payload))
+		}
 		parts := make([]string, 0, len(n.Fields))
-		for _, f := range n.Fields {
+		n.EachField(func(f ir.FieldInit) {
 			if f.Spread {
 				panic("javascript: struct spread must be lowered by flatten_struct_spread")
 			}
 			parts = append(parts, f.Name+": "+t.TranslateIRLiteral(f.Value))
-		}
+		})
 		return "{" + strings.Join(parts, ", ") + "}"
 	}
 	// Best-effort fallback for non-literal Expr shapes (computed defaults,

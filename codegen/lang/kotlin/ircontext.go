@@ -1905,12 +1905,11 @@ func IRLiteralToKt(e ir.Expr) string {
 			name = exportName(n.Def.Name)
 		}
 		var parts []string
-		for _, f := range n.Fields {
-			if atDeclaredDefault(n.Def, f) {
-				continue
+		n.EachField(func(f ir.FieldInit) {
+			if !atDeclaredDefault(n.Def, f) {
+				parts = append(parts, f.Name+" = "+IRLiteralToKt(f.Value))
 			}
-			parts = append(parts, f.Name+" = "+IRLiteralToKt(f.Value))
-		}
+		})
 		return name + "(" + strings.Join(parts, ", ") + ")"
 	case *ir.Lambda:
 		return irLambdaLiteralToKt(n)

@@ -195,17 +195,6 @@ func (s *Struct) Set(name string, v any) {
 	s.Fields = append(s.Fields, Field{Name: name, Value: v})
 }
 
-// Merge assigns every field of src, which is how a spread supplies fields it
-// holds at runtime.
-func (s *Struct) Merge(src *Struct) {
-	if src == nil {
-		return
-	}
-	for _, f := range src.Fields {
-		s.Set(f.Name, f.Value)
-	}
-}
-
 // String renders the value the way a struct literal is written. A value gets
 // stringified by interpolation and by the equality test, so the form has to be
 // deterministic; the field order is the checker's, which is the order every

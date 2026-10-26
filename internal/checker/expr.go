@@ -2427,9 +2427,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
 			typ = c.expected
 		}
-		lit := &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
-		c.fillOmittedFields(lit)
-		return lit
+		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
 	// Nothing named a type, so the literal's own values do.
 	anonFields, ok := c.anonFieldsFromInits(fields)
@@ -4730,73 +4728,6 @@ func structDeclOf(t *ir.Type) (*ir.StructDef, bool) {
 		return nil, false
 	}
 	return sd, true
-}
-
-// fillOmittedFields writes every field lit omits as the declaration means
-// it (ir.FillOmittedFields), so the value is complete before anything reads
-// it and nothing after the check can tell an omitted field from a written
-// one. Doing it here rather than in each evaluator is what makes
-// `color{r=255}` carry its alpha, and an omitted enum field its first member,
-// in the interpreter, the const folder and all four backends alike -- they
-// had disagreed, and the two that agreed were both wrong.
-func (c *checker) fillOmittedFields(lit *ir.StructLit) {
-	n := len(lit.Fields)
-	ir.FillOmittedFields(lit)
-	for _, f := range lit.Fields[n:] {
-		if c.holdsPlaceholder(f.Value) {
-			c.placeholderLits = append(c.placeholderLits, lit)
-			return
-		}
-	}
-}
-
-// holdsPlaceholder reports whether e is, or a struct literal of e holds, a
-// field default not yet checked: a zero filled into a nested struct copies
-// its fields' defaults as the outer literal copies its own.
-func (c *checker) holdsPlaceholder(e ir.Expr) bool {
-	if _, ok := c.defaultPlaceholders[e]; ok {
-		return true
-	}
-	if lit, ok := e.(*ir.StructLit); ok {
-		return slices.ContainsFunc(lit.Fields, func(f ir.FieldInit) bool { return c.holdsPlaceholder(f.Value) })
-	}
-	return false
-}
-
-// resolvePlaceholderLits gives every literal that copied a default before it
-// was checked the default that replaced it, keeping the ones whose struct is
-// still unfilled for a later call.
-func (c *checker) resolvePlaceholderLits() {
-	kept := c.placeholderLits[:0]
-	for _, lit := range c.placeholderLits {
-		if c.resolvePlaceholders(lit) {
-			kept = append(kept, lit)
-		}
-	}
-	c.placeholderLits = kept
-}
-
-// resolvePlaceholders gives each field of lit, and of each struct literal it
-// holds, the default that replaced its placeholder, and reports whether one
-// is still waiting for its struct to be filled.
-func (c *checker) resolvePlaceholders(lit *ir.StructLit) bool {
-	pending := false
-	for i, fi := range lit.Fields {
-		if inner, ok := fi.Value.(*ir.StructLit); ok {
-			pending = c.resolvePlaceholders(inner) || pending
-			continue
-		}
-		field, ok := c.defaultPlaceholders[fi.Value]
-		if !ok {
-			continue
-		}
-		if field.Default == fi.Value {
-			pending = true
-			continue
-		}
-		lit.Fields[i].Value = field.Default
-	}
-	return pending
 }
 
 func componentPropType(comp *ir.Component, name string) *ir.Type {

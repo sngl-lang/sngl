@@ -94,6 +94,14 @@ enum ListStyle { unset, none, disc, circle, square, decimal }
 // `padding=16px` is 0 on top, `color=#000000` is black and
 // `alignItems=start` starts. Length-typed fields accept any `measurement`
 // literal (`px`, `em`, `rem`).
+//
+// A component with a look of its own takes its caller's Style on top of it
+// with a spread, which writes each field not at its zero: the caller's unset
+// fields leave the look's.
+//
+// ```sngl
+// text(value=value, style={display=inlineBlock, paddingX=8px, ...style})
+// ```
 struct Style {
     // Spacing
     padding       option[measurement]
@@ -160,67 +168,4 @@ struct Style {
     display       Display
     overflow      Overflow
     listStyleType ListStyle
-}
-
-// The Style a component draws with when it has a look of its own and takes
-// the caller's on top of it: each field `s` sets, else `base`'s. A spread
-// cannot say this, since a Style holds every field and the later spread
-// writes all of them, the unset ones included.
-//
-// ```sngl
-// text(value=value, style=style.over({display=inlineBlock, paddingX=8px}))
-// ```
-const func Style.over(s Style, base Style) => Style{
-    padding = s.padding != null ? s.padding : base.padding,
-    paddingTop = s.paddingTop != null ? s.paddingTop : base.paddingTop,
-    paddingRight = s.paddingRight != null ? s.paddingRight : base.paddingRight,
-    paddingBottom = s.paddingBottom != null ? s.paddingBottom : base.paddingBottom,
-    paddingLeft = s.paddingLeft != null ? s.paddingLeft : base.paddingLeft,
-    paddingX = s.paddingX != null ? s.paddingX : base.paddingX,
-    paddingY = s.paddingY != null ? s.paddingY : base.paddingY,
-    margin = s.margin != null ? s.margin : base.margin,
-    marginTop = s.marginTop != null ? s.marginTop : base.marginTop,
-    marginRight = s.marginRight != null ? s.marginRight : base.marginRight,
-    marginBottom = s.marginBottom != null ? s.marginBottom : base.marginBottom,
-    marginLeft = s.marginLeft != null ? s.marginLeft : base.marginLeft,
-    marginX = s.marginX != null ? s.marginX : base.marginX,
-    marginY = s.marginY != null ? s.marginY : base.marginY,
-    gap = s.gap != null ? s.gap : base.gap,
-    width = s.width != null ? s.width : base.width,
-    minWidth = s.minWidth != null ? s.minWidth : base.minWidth,
-    height = s.height != null ? s.height : base.height,
-    maxWidth = s.maxWidth != null ? s.maxWidth : base.maxWidth,
-    maxHeight = s.maxHeight != null ? s.maxHeight : base.maxHeight,
-    flex = s.flex != null ? s.flex : base.flex,
-    flexDirection = s.flexDirection != FlexDirection.unset ? s.flexDirection : base.flexDirection,
-    alignItems = s.alignItems != Alignment.unset ? s.alignItems : base.alignItems,
-    justifyContent = s.justifyContent != Justification.unset ? s.justifyContent : base.justifyContent,
-    position = s.position != Position.unset ? s.position : base.position,
-    top = s.top != null ? s.top : base.top,
-    bottom = s.bottom != null ? s.bottom : base.bottom,
-    left = s.left != null ? s.left : base.left,
-    right = s.right != null ? s.right : base.right,
-    zIndex = s.zIndex != null ? s.zIndex : base.zIndex,
-    color = s.color != null ? s.color : base.color,
-    fontSize = s.fontSize != null ? s.fontSize : base.fontSize,
-    fontFamily = s.fontFamily != "" ? s.fontFamily : base.fontFamily,
-    fontWeight = s.fontWeight != FontWeight.unset ? s.fontWeight : base.fontWeight,
-    fontStyle = s.fontStyle != FontStyle.unset ? s.fontStyle : base.fontStyle,
-    textAlign = s.textAlign != TextAlign.unset ? s.textAlign : base.textAlign,
-    maxLines = s.maxLines != null ? s.maxLines : base.maxLines,
-    whiteSpace = s.whiteSpace != WhiteSpace.unset ? s.whiteSpace : base.whiteSpace,
-    background = s.background != null ? s.background : base.background,
-    borderRadius = s.borderRadius != null ? s.borderRadius : base.borderRadius,
-    borderColor = s.borderColor != null ? s.borderColor : base.borderColor,
-    borderWidth = s.borderWidth != null ? s.borderWidth : base.borderWidth,
-    border = s.border != "" ? s.border : base.border,
-    borderBottom = s.borderBottom != "" ? s.borderBottom : base.borderBottom,
-    borderLeft = s.borderLeft != "" ? s.borderLeft : base.borderLeft,
-    borderCollapse = s.borderCollapse != "" ? s.borderCollapse : base.borderCollapse,
-    borderStyle = s.borderStyle != BorderStyle.unset ? s.borderStyle : base.borderStyle,
-    opacity = s.opacity != null ? s.opacity : base.opacity,
-    cursor = s.cursor != "" ? s.cursor : base.cursor,
-    display = s.display != Display.unset ? s.display : base.display,
-    overflow = s.overflow != Overflow.unset ? s.overflow : base.overflow,
-    listStyleType = s.listStyleType != ListStyle.unset ? s.listStyleType : base.listStyleType,
 }

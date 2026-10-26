@@ -2299,12 +2299,11 @@ func IRLiteralToGo(e ir.Expr) string {
 			}
 		}
 		var parts []string
-		for _, f := range n.Fields {
-			if atGoZero(f) {
-				continue
+		n.EachField(func(f ir.FieldInit) {
+			if !atGoZero(f) {
+				parts = append(parts, ExportName(f.Name)+": "+IRLiteralToGo(f.Value))
 			}
-			parts = append(parts, ExportName(f.Name)+": "+IRLiteralToGo(f.Value))
-		}
+		})
 		return name + "{" + strings.Join(parts, ", ") + "}"
 	case *ir.Lambda:
 		return irLambdaLiteralToGo(n)

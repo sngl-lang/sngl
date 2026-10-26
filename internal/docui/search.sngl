@@ -59,7 +59,7 @@ component SearchHit(entry docs.SearchEntry, query = "") node {
     func matches() => query != "" && string.contains(string.lower(entry.title + " " + entry.crumb + " " + entry.blurb), string.lower(query))
 
     if PLATFORM == html.platform {
-        html.a(href=entry.href, class="search-hit", style={display=matches ? block : none}) {
+        html.a(href=entry.href, class="search-hit", style=html.css({display=matches ? block : none})) {
             html.div(innerText=entry.title, class="hit-title")
             if entry.crumb != "" {
                 html.div(innerText=entry.crumb, class="hit-crumb")

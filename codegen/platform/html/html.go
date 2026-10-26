@@ -20,7 +20,6 @@ import (
 	snglI18n "duckfam.us/sngl/codegen/i18n"
 	"duckfam.us/sngl/codegen/lang/javascript"
 	"duckfam.us/sngl/internal/asset"
-	"duckfam.us/sngl/internal/htmlutil"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/ir"
 )
@@ -716,8 +715,6 @@ type htmlGen struct {
 	nodeSites map[string]ast.Stmt
 
 	initWrites []updateFunc
-
-	styleValueDef *ir.StructDef
 
 	handlers []eventHandler
 	// quiet are the events a test fires that an element handles with an
@@ -1721,24 +1718,14 @@ func (g *htmlGen) rootFlexes() bool {
 		if !ok {
 			continue
 		}
-		for _, sf := range codegen.NodeStyleFields(n) {
-			if sf.Name != "flex" {
-				continue
+		// A share is the static text the build read, or a declaration the
+		// page writes, which may ask for one at runtime: handing over the
+		// viewport costs a page that does not.
+		decls, _ := declarationsOf(codegen.NodeProp(n, "style"))
+		for _, d := range decls {
+			if d.property == "flex" && (!d.static || d.text != "" && d.text != "0") {
+				return true
 			}
-			v := sf.Value
-			if conv, ok := v.(*ir.Conversion); ok && ir.IsOptionWrap(conv) {
-				v = conv.Operand
-			}
-			if v == nil || ir.IsNullLiteral(v) {
-				continue
-			}
-			// `flex` is a float, so the question is numeric. An expression
-			// nobody can read at build time may ask for a share at runtime,
-			// and handing over the viewport costs a page that does not.
-			if n, ok := codegen.IRLiteralNumber(v); ok && n == 0 {
-				continue
-			}
-			return true
 		}
 	}
 	return false
@@ -2342,8 +2329,20 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
-	if mf := javascript.EmitMergeFuncs(g.pkg.MergeStructs); mf != "" {
+	if mf := javascript.EmitMergeFuncs(g.pkg.MergeStructs, g.pkg.MergeSets); mf != "" {
 		b.WriteString(mf)
+		// A test body spreading a struct calls these too, from the module
+		// bundled beside the page.
+		if g.testMode {
+			var names []string
+			for _, sd := range g.pkg.MergeStructs {
+				names = append(names, "__merge_"+sd.Name)
+			}
+			for _, set := range g.pkg.MergeSets {
+				names = append(names, ir.MergeSetName(set))
+			}
+			fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(names, ", "))
+		}
 	}
 
 	emittedFuncs := false
@@ -2431,8 +2430,12 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// g.ctx.Helpers is the unified map, so it also carries flags written by
 	// the JsIRContext path during emitScript.
+	// Flagged by any translated string conversion, a library function's
+	// included, and that function may be one no document calls in the end.
 	if g.ctx.Helpers["String"] {
+		openDecl(b, "String")
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
+		closeDecl(b)
 	}
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
@@ -2440,13 +2443,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.pkg != nil && rendersReachEnd(g.pkg) {
 		b.WriteString(reachEndHelper + "\n")
 	}
-	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
-		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
+	if g.ctx.Helpers[cssTextHelper] {
+		b.WriteString(cssTextHelperJS + "\n")
 	}
-	for _, h := range []string{styleColorHelper, styleLengthHelper, styleKeywordHelper} {
-		if g.ctx.Helpers[h] {
-			b.WriteString(styleHelperJS[h] + "\n")
-		}
+	if g.ctx.Helpers[setStylesHelper] {
+		b.WriteString(setStylesHelperJS + "\n")
 	}
 	if g.ctx.Helpers[dialogHelper] {
 		b.WriteString(dialogHelperJS + "\n")
@@ -3445,7 +3446,7 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 	if n == nil {
 		return ""
 	}
-	return htmlutil.BuildCSSStyleIR(n.Props)
+	return staticCSS(codegen.NodeProp(n, "style"))
 }
 
 // receiverParamName is what a component method's receiver is called in its

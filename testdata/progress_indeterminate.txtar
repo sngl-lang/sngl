@@ -28,7 +28,7 @@ a lambda cannot carry. And the fraction still folds to a constant through the
 option: `float(option[float](2.0)) / 10.0` is 0.2 before any target sees it.
 
 deny out/none/html/index.html `value=""` -- an absent value leaves the attribute off; it is not an empty one
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `null` -- both call sites are settled at build time, so no null test and no nullable Double survive into Kotlin
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `ProgressIndicator\(.*null` -- both call sites are settled at build time, so no null test and no nullable Double survive into the bar (a Style's own unset fields are null)
 deny out/go/gtk4/model.go `set_fraction\(.* / ` -- the fraction folds to a constant; cgo is handed a number, not a division to do
 deny out/go/gtk4/model.go `snglSome` -- a value put into an option and read straight back out is neither boxed nor dereferenced
 -- app.sngl --

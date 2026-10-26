@@ -83,6 +83,9 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 			accErr <- err
 			return
 		}
+		// A snapshot is the page's whole document, script included, which
+		// passes the library's 32KB default for any page of size.
+		c.SetReadLimit(snapshotReadLimit)
 		accepted <- newWSChannel(ctx, c)
 	}
 	wsL, err := net.Listen("tcp", "127.0.0.1:0")
@@ -139,6 +142,10 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 		return fail(fmt.Errorf("wait for agent: the page did not connect within %v", cdpSteps.agentConnect))
 	}
 }
+
+// snapshotReadLimit bounds one message from the page: a snapshot, the
+// largest thing it sends.
+const snapshotReadLimit = 64 << 20
 
 // closeBrowser closes the browser, waits for it to exit and removes its
 // profile directory, killing it where it was never connected to or either

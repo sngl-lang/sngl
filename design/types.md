@@ -25,31 +25,46 @@ with a `v` and a `T` constrained to one bind alike), and `HasTypeParam` reads
 its fields; `Type.Equal` needed nothing, comparing anonymous structs by
 fields already.
 
-**A struct literal comes out of the check holding every field**
-(`ir.FillOmittedFields`, called by the checker's `fillOmittedFields` on every
-literal of a named struct and by `ir.ZeroExpr` for a struct's zero): each
-field the literal neither writes nor takes from a spread is its declared
-default, else its type's zero. Nothing after the check can tell an omitted
-field from a written one, so no backend, fold or host reads a field's
-presence; only the value says anything. Before, JavaScript wrote only the
-fields named, so an omitted one read undefined, and Go left an omitted enum
-field `""`, which no member is (`cmd/sngl/testdata/struct_omitted_fields_runs.txt`).
-And `ui.Style` read a field at its type's zero as unset everywhere but html,
-which read presence instead, so `{padding=16px, paddingTop=0px}` was 16 on top
-on four targets and 0 on the fifth (`style_side_zero_runs.txt`). A field whose
-absence means something is an option, or an enum leading with a member saying
-so: `ui.Style`'s lengths, colors and numbers are options and each of its enums
-leads with `unset`. A host's own struct keeps the fields its literal names,
-the host deciding what the rest hold.
+**A struct literal holds the fields the program wrote, and every reader asks
+`ir.StructLit.Field`** (the written value, else the declared default, else
+the type's zero at the literal's type arguments: `ir.FieldZero`) or walks
+`EachField`, which hands over every field in declaration order as `Field`
+answers it. Nothing reads a field's presence, so an omitted field and one
+written at that value are one value everywhere. Before, JavaScript wrote only
+the fields named, so an omitted one read undefined, and Go left an omitted
+enum field `""`, which no member is
+(`cmd/sngl/testdata/struct_omitted_fields_runs.txt`); and `ui.Style` read a
+field at its type's zero as unset everywhere but html, which read presence
+instead, so `{padding=16px, paddingTop=0px}` was 16 on top on four targets and
+0 on the fifth (`style_side_zero_runs.txt`). A field whose absence means
+something is an option, or an enum leading with a member saying so:
+`ui.Style`'s lengths, colors and numbers are options and each of its enums
+leads with `unset`. A host's own struct holds what its host gives a field
+left out, so `Field` does not answer for one.
 
-Two things follow. A spread writes every field its operand holds, the unset
-ones included, so `{display=flex, ...style}` hands the caller's nulls over the
-component's defaults; a component taking a caller's Style on top of its own
-writes `style.over({display=flex})` (`ui.Style.over`). And the generated code
-need not spell every field: Go leaves out a field holding Go's own zero for it
-(`atGoZero`, nil for an option) and Kotlin one holding the default its data
-class declares (`atDeclaredDefault`), each being what the host gives a field
-left out; JavaScript has no such default and writes them all.
+The fields left out are not written into the IR. The checker did that for a
+while, and it was what the docs site's build cost: every Style literal became
+52 fields, copied by every splice and unroll. Each backend fills where it
+spells a literal instead (`irwalk`, the literal spellers): JavaScript writes
+every field, Go leaves out a field holding Go's own zero for it (`atGoZero`,
+nil for an option) and Kotlin one holding the default its data class declares
+(`atDeclaredDefault`). A literal the fold spells from a value leaves out each
+field at what it would hold left out (`StructLit.HoldsOmitted`), so a folded
+Style is the fields it sets.
+
+**A spread writes each field of its operand that is not at its type's
+zero**, a declared default other than the zero included, and a field written
+after the spread is the literal's own. With Style's unset fields at their
+zero, `{display=flex, ...style}` lays a caller's Style over a component's
+look. Only the running value knows which fields those are, so the
+interpreter (`Env.mergeSpread`), the merge helpers `NoStructSpread` writes
+(`__merge_<Struct>`, each field compared with its zero as `==` compares it)
+and the folding of a literal operand (`spreadWrites`, by `ir.ZeroKnown`) all
+ask the value. A field written after a spread the build cannot read goes
+through a `__set_<Struct>_<field>` rather than the merge, which would skip
+it at zero (`cmd/sngl/testdata/struct_spread_zero_runs.txt`). html withholds
+`structSpread` under any language, since JavaScript's own `{...s}` writes a
+null over what came before it.
 
 **A type is walked by `ir.Type.Any` and rebuilt by `ir.Type.MapChildren`**
 (`ir/typewalk.go`), and nothing else restates which types are inside one:
@@ -202,12 +217,11 @@ magnitude with whatever that target already spells a bare float with —
 `fmt.Sprint`, `String`, `_snglFloatStr` — so unit display inherits the float
 agreement instead of restating it and drifting from it.
 
-**The CSS path is not this path**, which is what made unifying it cheap rather
-than a trade against html. A style prop is spelled by `internal/htmlutil`:
-`UnitLiteralToCSS` off an `ir.Literal`, the base name being the CSS unit. It
-shares `ir.UnitMagnitude` with the above and nothing else, reaches
-`interpolateStringify` nowhere, and `7px` in a stylesheet is unchanged by any
-of this.
+**html spells a length for CSS in SNGL**, with the display above:
+`lib/platform/html/html.sngl`'s `cssLength` writes a measurement in the one
+unit it carries, `"{m.px}px"`, or a `calc()` summing the bases it does, so
+`7px` in a stylesheet and `7px` interpolated are one spelling, and a length
+the build folds is that text in the markup.
 
 **A measurement means one length on every target.** `px` is a
 device-independent pixel and `em` and `rem` are font sizes: html hands all

@@ -33,7 +33,7 @@ output {
 window {
     var rows list[string] = ["a"]
 
-    html.div(style={
+    html.div(style=html.css({
         display = Display.inlineBlock,
         flexDirection = FlexDirection.rowReverse,
         justifyContent = Justification.spaceBetween,
@@ -45,9 +45,9 @@ window {
         borderCollapse = "collapse",
         borderStyle = BorderStyle.dashed,
         cursor = "pointer",
-    })
+    }))
     for var r = rows {
-        html.span(textContent=r, style={display=Display.inlineBlock, cursor="pointer"})
+        html.span(textContent=r, style=html.css({display=Display.inlineBlock, cursor="pointer"}))
     }
 }
 -- out/none/html/index.html --
@@ -63,7 +63,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="align-items:stretch;border-collapse:collapse;border-style:dashed;cursor:pointer;display:inline-block;flex-direction:row-reverse;font-family:Iosevka, monospace;justify-content:space-between;min-width:120px;border-bottom:1px solid #ccc;border-left:2px solid #000">
+<div style="display:inline-block;flex-direction:row-reverse;align-items:stretch;justify-content:space-between;min-width:120px;font-family:Iosevka, monospace;border-style:dashed;border-collapse:collapse;cursor:pointer;border-bottom:1px solid #ccc;border-left:2px solid #000">
 </div>
 <span data-sngl-slot="0" style="display:contents"></span>
 
@@ -92,7 +92,7 @@ body { font-family: system-ui, sans-serif; }
     }
     let __n0 = document.createElement("span");
     __n0.textContent = __prop___p0;
-    __n0.setAttribute("style", "cursor:pointer;display:inline-block");
+    __n0.setAttribute("style", "display:inline-block;cursor:pointer");
     __root.appendChild(__n0);
     return {
       __root,
@@ -170,4 +170,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:22b44c9345afc2414b4cd9b9f38d6d84
+pass sha256:ef1ff4ec6fbb21e3b1a1f36aad117078

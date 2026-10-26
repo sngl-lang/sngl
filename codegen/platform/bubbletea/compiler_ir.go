@@ -448,7 +448,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		gc.RequireImport(imp)
 	}
 	b.WriteString(helpers.Emit())
-	b.WriteString(golang.EmitMergeFuncs(ctx.Pkg.MergeStructs))
+	b.WriteString(golang.EmitMergeFuncs(ctx.Pkg.MergeStructs, ctx.Pkg.MergeSets))
 
 	b.WriteString(golang.EmitUnitTypeDecls(info.Units))
 	b.WriteString(golang.EmitEnumTypeDecls(info.Enums))

@@ -2,304 +2,243 @@ package html
 
 import (
 	"fmt"
-	"slices"
-	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
-	"duckfam.us/sngl/internal/htmlutil"
 	"duckfam.us/sngl/ir"
 )
 
-// The page's functions from a SNGL value to the CSS text for it, written when
-// a style field is only known at run time. Each spells its value the way
-// htmlutil spells the same value when the build can read it, and an unset
-// one -- null, or an enum's `unset` -- as nothing, which setProperty reads as
-// removing the declaration.
-const (
-	styleColorHelper   = "_snglStyleColor"
-	styleLengthHelper  = "_snglStyleLength"
-	styleKeywordHelper = "_snglStyleKeyword"
-)
+// A ui.Style reaches this platform as the declarations html.sngl's `css`
+// answers for it, which every element's style is: a list of
+// `Declaration{property, value}`, an empty value writing nothing. The fold
+// has reduced each one whose field the build can read to text, which is
+// written in the markup; one reading what only the page knows is written
+// where the page runs, with setProperty, which removes the property for an
+// empty value. A list the fold could not spell out -- a Style held in state
+// and handed through whole -- is written as a whole, through cssText.
+//
+// Two declarations can write the same longhand -- `border-width` and an empty
+// `border-bottom` after it, `display` twice -- and written one setProperty
+// apiece the later one's removal took what the earlier one wrote. So the
+// declarations are grouped by what they can share (styleGroup), and a group
+// of several the page writes is written as one: every property removed, then
+// the ones with a value set in order.
 
-var styleHelperJS = map[string]string{
-	styleColorHelper: `function _snglStyleColor(c) {
-  if (c == null) return "";
-  if (typeof c === "string") return c;
-  if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
-  return "#" + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, "0")).join("");
-}
-`,
-	styleLengthHelper: `function _snglStyleLength(v) {
-  if (v == null) return "";
-  if (typeof v === "number") return v + "px";
-  const t = Object.keys(v).filter(k => v[k] !== 0).map(k => v[k] + k);
-  if (t.length === 0) return "0px";
-  return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
-}
-`,
-	styleKeywordHelper: `function _snglStyleKeyword(m) {
-  if (m == null || m === "unset") return "";
-  return m.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
-}
-`,
+// declaration is one CSS declaration a style writes. text is its value when
+// the build knows it.
+type declaration struct {
+	lit      *ir.StructLit
+	property string
+	value    ir.Expr
+	text     string
+	static   bool
 }
 
-// styleWrite is one CSS declaration a style field writes where the page runs.
-// A declaration beside it that the field always writes (borderWidth's
-// border-style) carries its text in fixed.
-type styleWrite struct {
-	field  string
-	css    string
-	fixed  string
-	value  ir.Expr
-	helper string
-}
-
-// dynamicStyleWrites is what htmlutil.BuildCSSStyleIR leaves out of a style
-// literal: the fields whose value the build cannot read.
-func dynamicStyleWrites(sl *ir.StructLit) []styleWrite {
-	// A fixed declaration is a default, so a field that names the same
-	// property (borderStyle beside borderWidth) wins; written after the
-	// static attribute, the default would otherwise replace it on every write.
-	named := map[string]bool{}
-	for _, f := range sl.Fields {
-		for _, d := range htmlutil.StylePropDecls(f.Name) {
-			if d.Dynamic {
-				named[d.Name] = true
-			}
-		}
+// declarationsOf reads the declarations of a style that write something --
+// every one but those the build knows are empty -- and false for a value that
+// is no list literal of them.
+func declarationsOf(style ir.Expr) ([]declaration, bool) {
+	list, ok := style.(*ir.ListLit)
+	if !ok {
+		return nil, false
 	}
-	var out []styleWrite
-	for _, f := range sl.Fields {
-		if f.Name == "" || f.Value == nil || staticStyleValue(f.Value) {
+	var out []declaration
+	for _, el := range list.Elems {
+		sl, ok := el.(*ir.StructLit)
+		if !ok {
+			return nil, false
+		}
+		d := declaration{lit: sl}
+		p, ok := codegen.IRLiteralString(sl.Field("property"))
+		if !ok {
+			return nil, false
+		}
+		d.property = p
+		d.value = sl.Field("value")
+		d.text, d.static = codegen.IRLiteralString(d.value)
+		if d.static && d.text == "" {
 			continue
 		}
-		for _, d := range htmlutil.StylePropDecls(f.Name) {
-			w := styleWrite{field: f.Name, css: d.Name}
-			if d.Dynamic {
-				w.value = f.Value
-				w.helper = styleHelperFor(styleFieldType(sl, f), d.Name)
-			} else if named[d.Name] {
-				continue
-			} else {
-				w.fixed = d.Value
-			}
-			out = append(out, w)
+		out = append(out, d)
+	}
+	return out, true
+}
+
+// styleGroup is what a property can share a longhand with: a CSS shorthand
+// and its longhands share their first word (`border`, `border-width`,
+// `border-bottom`), and a group wider than what it shares costs only a
+// rewrite.
+func styleGroup(property string) string {
+	group, _, _ := strings.Cut(strings.TrimPrefix(property, "-"), "-")
+	return group
+}
+
+// styleWrite is what the page writes for a style: one declaration, or a
+// group of several written together.
+type styleWrite struct {
+	decls []declaration
+}
+
+// splitStyle parts a style's declarations into the text the build writes
+// into the markup and what the page writes: every declaration of a group one
+// of whose values only the page knows.
+func splitStyle(style ir.Expr) (static []declaration, writes []styleWrite) {
+	decls, _ := declarationsOf(style)
+	dynamic := map[string]bool{}
+	for _, d := range decls {
+		if !d.static && d.value != nil {
+			dynamic[styleGroup(d.property)] = true
 		}
 	}
-	return out
-}
-
-func staticStyleValue(e ir.Expr) bool {
-	if htmlutil.ExprToStaticValueIR(e) != "" {
-		return true
-	}
-	switch x := e.(type) {
-	// A literal with no CSS spelling (null, "") writes nothing, statically or here.
-	case *ir.Literal:
-		return true
-	case *ir.Ident:
-		return x.Member != ""
-	}
-	return false
-}
-
-func styleFieldType(sl *ir.StructLit, f ir.FieldInit) *ir.Type {
-	if sl.Def != nil {
-		for _, sf := range sl.Def.Fields {
-			if sf.Name == f.Name {
-				return sf.Type
-			}
+	at := map[string]int{}
+	for _, d := range decls {
+		g := styleGroup(d.property)
+		if !dynamic[g] {
+			static = append(static, d)
+			continue
 		}
+		if d.value == nil {
+			continue
+		}
+		i, ok := at[g]
+		if !ok {
+			i = len(writes)
+			at[g] = i
+			writes = append(writes, styleWrite{})
+		}
+		writes[i].decls = append(writes[i].decls, d)
 	}
-	return f.Value.ExprType()
+	return static, writes
 }
 
-func styleHelperFor(t *ir.Type, css string) string {
-	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
-		t = t.Elems[0]
+// staticCSS is the text of every declaration of style the build writes,
+// into the element's style attribute.
+func staticCSS(style ir.Expr) string {
+	static, _ := splitStyle(style)
+	var parts []string
+	for _, d := range static {
+		parts = append(parts, d.property+":"+d.text)
 	}
-	switch {
-	case t != nil && ir.IsColorStruct(t):
-		return styleColorHelper
-	case t != nil && t.Kind == ir.TypeEnum:
-		return styleKeywordHelper
-	case t != nil && t.Kind == ir.TypeUnit, htmlutil.IsSizeProp(css):
-		return styleLengthHelper
-	}
-	return ""
+	return strings.Join(parts, ";")
 }
 
-// styleWriteStmts is the writes as IR, for a node the translator reaches
-// through its handle: a handler's assignment or a factory's creation.
-func (t *htmlTranslator) styleWriteStmts(node ir.Expr, writes []styleWrite) []ir.Stmt {
-	style := &ir.Select{Operand: node, Field: "style", Type: ir.NativeNamed("CSSStyleDeclaration")}
+// cssTextHelper is the page's function from a style's declarations, held
+// whole, to the text of the ones that write something.
+const cssTextHelper = "_snglCSSText"
+
+const cssTextHelperJS = `function _snglCSSText(ds) {
+  return ds.filter(d => d.value !== "").map(d => d.property + ":" + d.value).join(";");
+}
+`
+
+// setStylesHelper is the page's function writing a group of declarations
+// as one.
+const setStylesHelper = "_snglSetStyles"
+
+const setStylesHelperJS = `function _snglSetStyles(st, ds) {
+  for (const d of ds) st.removeProperty(d.property);
+  for (const d of ds) if (d.value !== "") st.setProperty(d.property, d.value);
+}
+`
+
+// group is the declarations of w as the list the page's helper takes.
+func (w styleWrite) group(style ir.Expr) *ir.ListLit {
+	list := &ir.ListLit{Type: style.(*ir.ListLit).Type}
+	for _, d := range w.decls {
+		list.Elems = append(list.Elems, d.lit)
+	}
+	return list
+}
+
+// styleWriteStmts is a style written to a node the translator reaches
+// through its handle -- a handler's assignment or a factory's creation: the
+// attribute for what the build knows, and a setProperty per declaration only
+// the page does. A list held whole is written through cssText.
+func (t *htmlTranslator) styleWriteStmts(node, style ir.Expr) []ir.Stmt {
+	decl := &ir.Select{Operand: node, Field: "style", Type: ir.NativeNamed("CSSStyleDeclaration")}
+	if _, ok := declarationsOf(style); !ok {
+		t.jc.Ctx.Helpers[cssTextHelper] = true
+		return []ir.Stmt{&ir.Assign{
+			Target: &ir.Select{Operand: decl, Field: "cssText", Type: ir.TypString},
+			Op:     ast.AssignSet,
+			Value:  &ir.Call{Type: ir.TypString, Func: &ir.Func{Name: cssTextHelper}, Args: []ir.CallArg{{Value: style}}},
+		}}
+	}
 	var out []ir.Stmt
-	for _, w := range writes {
-		var v ir.Expr = &ir.Literal{Type: ir.TypString, Value: w.fixed}
-		if w.value != nil {
-			v = w.value
-			if w.helper != "" {
-				t.jc.Ctx.Helpers[w.helper] = true
-				v = &ir.Call{Type: ir.TypString, Func: &ir.Func{Name: w.helper}, Args: []ir.CallArg{{Value: v}}}
-			}
-		}
+	if css := staticCSS(style); css != "" {
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type:     ir.TypVoid,
-			Receiver: style,
+			Receiver: node,
+			Func:     &ir.Func{Name: "setAttribute"},
+			Args: []ir.CallArg{
+				{Value: &ir.Literal{Type: ir.TypString, Value: "style"}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: css}},
+			},
+		}})
+	}
+	_, writes := splitStyle(style)
+	for _, w := range writes {
+		if len(w.decls) > 1 {
+			t.jc.Ctx.Helpers[setStylesHelper] = true
+			out = append(out, &ir.CallStmt{Call: &ir.Call{
+				Type: ir.TypVoid,
+				Func: &ir.Func{Name: setStylesHelper},
+				Args: []ir.CallArg{{Value: decl}, {Value: w.group(style)}},
+			}})
+			continue
+		}
+		d := w.decls[0]
+		out = append(out, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: decl,
 			Func:     &ir.Func{Name: "setProperty"},
 			Args: []ir.CallArg{
-				{Value: &ir.Literal{Type: ir.TypString, Value: w.css}},
-				{Value: v},
+				{Value: &ir.Literal{Type: ir.TypString, Value: d.property}},
+				{Value: d.value},
 			},
 		}})
 	}
 	return out
 }
 
-// styleWriteUpdaters writes a page node's run-time style fields on first
+// styleWriteUpdaters writes a page node's run-time declarations on first
 // render and, unless lowering already put the writes in the handlers, again
-// whenever what they read changes. One updater per field, so a change
+// whenever what each reads changes: one updater per declaration, so a change
 // rewrites only the declarations that read it.
 func (g *htmlGen) styleWriteUpdaters(id string, style ir.Expr, lowered bool) {
-	sl, ok := style.(*ir.StructLit)
-	if !ok {
-		if sd := styleValueDecl(style); sd != nil {
-			g.useStyleValue(sd)
-			js, requires := g.exprToJSReactiveCollect(style)
-			g.initWrites = append(g.initWrites, updateFunc{
-				funcName: fmt.Sprintf("$u_%s_style", id[1:]),
-				body:     fmt.Sprintf(`%s.style.cssText = %s(%s);`, id, styleValueHelper, js),
-				deps:     g.exprDeps(style),
-				initOnly: lowered,
-				requires: requires,
-			})
-		}
+	if _, ok := declarationsOf(style); !ok {
+		g.ctx.Helpers[cssTextHelper] = true
+		js, requires := g.exprToJSReactiveCollect(style)
+		g.initWrites = append(g.initWrites, updateFunc{
+			funcName: fmt.Sprintf("$u_%s_style", id[1:]),
+			body:     fmt.Sprintf(`%s.style.cssText = %s(%s);`, id, cssTextHelper, js),
+			deps:     g.exprDeps(style),
+			initOnly: lowered,
+			requires: requires,
+		})
 		return
 	}
-	byField := map[string][]styleWrite{}
-	var order []string
-	for _, w := range dynamicStyleWrites(sl) {
-		if _, seen := byField[w.field]; !seen {
-			order = append(order, w.field)
+	_, writes := splitStyle(style)
+	for i, w := range writes {
+		var body string
+		value := w.decls[0].value
+		if len(w.decls) > 1 {
+			g.ctx.Helpers[setStylesHelper] = true
+			value = w.group(style)
 		}
-		byField[w.field] = append(byField[w.field], w)
-	}
-	for _, field := range order {
-		var body strings.Builder
-		var deps map[string]bool
-		var requires codegen.Requirement
-		for _, w := range byField[field] {
-			val := strconv.Quote(w.fixed)
-			if w.value != nil {
-				js, req := g.exprToJSReactiveCollect(w.value)
-				requires = req
-				deps = g.exprDeps(w.value)
-				val = js
-				if w.helper != "" {
-					g.ctx.Helpers[w.helper] = true
-					val = w.helper + "(" + js + ")"
-				}
-			}
-			body.WriteString(fmt.Sprintf(`%s.style.setProperty(%q, %s);`, id, w.css, val))
+		js, requires := g.exprToJSReactiveCollect(value)
+		if len(w.decls) > 1 {
+			body = fmt.Sprintf(`%s(%s.style, %s);`, setStylesHelper, id, js)
+		} else {
+			body = fmt.Sprintf(`%s.style.setProperty(%q, %s);`, id, w.decls[0].property, js)
 		}
 		g.initWrites = append(g.initWrites, updateFunc{
-			funcName: fmt.Sprintf("$u_%s_style_%s", id[1:], field),
-			body:     body.String(),
-			deps:     deps,
+			funcName: fmt.Sprintf("$u_%s_style_%d", id[1:], i),
+			body:     body,
+			deps:     g.exprDeps(value),
 			initOnly: lowered,
 			requires: requires,
 		})
 	}
-}
-
-// styleValueHelper is the page's function from a whole Style value -- one held
-// in state rather than written as a literal -- to the CSS text for it.
-const styleValueHelper = "_snglStyleCSS"
-
-func styleValueDecl(e ir.Expr) *ir.StructDef {
-	t := e.ExprType()
-	if t == nil || t.Kind != ir.TypeStruct {
-		return nil
-	}
-	sd, _ := t.Decl.(*ir.StructDef)
-	return sd
-}
-
-// styleValueWrite sets the node's inline style from a whole Style value.
-// Through cssText rather than the attribute, so the browser parses the text
-// and drops a declaration it refuses instead of keeping it verbatim.
-func styleValueWrite(node, v ir.Expr) ir.Stmt {
-	return &ir.Assign{
-		Target: &ir.Select{Operand: &ir.Select{Operand: node, Field: "style", Type: ir.NativeNamed("CSSStyleDeclaration")}, Field: "cssText", Type: ir.TypString},
-		Op:     ast.AssignSet,
-		Value:  &ir.Call{Type: ir.TypString, Func: &ir.Func{Name: styleValueHelper}, Args: []ir.CallArg{{Value: v}}},
-	}
-}
-
-// unsetJS is the test that a Style field read off a value at run time is
-// unset: null, an empty string, or an enum's `unset`.
-func unsetJS(v string) string {
-	return "(" + v + ` == null || ` + v + ` === "" || ` + v + ` === "unset")`
-}
-
-func (g *htmlGen) useStyleValue(sd *ir.StructDef) {
-	g.styleValueDef = sd
-	g.ctx.Helpers[styleValueHelper] = true
-}
-
-// styleValueJS writes styleValueHelper for sd, one declaration per field the
-// value sets. A field is unset when the object lacks it, which is how a
-// literal the page builds leaves one, and a fixed declaration yields to a
-// field naming the same property as dynamicStyleWrites' does.
-func styleValueJS(sd *ir.StructDef, helpers map[string]bool) string {
-	named := map[string]string{}
-	for _, f := range sd.Fields {
-		for _, d := range htmlutil.StylePropDecls(f.Name) {
-			if d.Dynamic {
-				named[d.Name] = f.Name
-			}
-		}
-	}
-	var b strings.Builder
-	fields := slices.Clone(sd.Fields)
-	slices.SortStableFunc(fields, func(a, b *ir.StructField) int {
-		return htmlutil.CascadeRank(a.Name) - htmlutil.CascadeRank(b.Name)
-	})
-	fmt.Fprintf(&b, "function %s(s) {\n  const d = [];\n", styleValueHelper)
-	for _, f := range fields {
-		for _, d := range htmlutil.StylePropDecls(f.Name) {
-			var cond strings.Builder
-			cond.WriteString("s." + f.Name + " != null")
-			if f.Type != nil && f.Type.Kind == ir.TypeEnum {
-				cond.WriteString(" && s." + f.Name + ` !== "unset"`)
-			}
-			var val string
-			switch {
-			case d.Dynamic:
-				val = strconv.Quote(d.Name+":") + " + "
-				if h := styleHelperFor(f.Type, d.Name); h != "" {
-					helpers[h] = true
-					val += h + "(s." + f.Name + ")"
-				} else {
-					val += "s." + f.Name
-				}
-			case f.Name == "borderWidth" && d.Name == "border-style":
-				for _, l := range htmlutil.BorderLineFields {
-					cond.WriteString(" && " + unsetJS("s."+l))
-				}
-				val = strconv.Quote(d.Name + ":" + d.Value)
-			case named[d.Name] != "":
-				cond.WriteString(" && " + unsetJS("s."+named[d.Name]))
-				val = strconv.Quote(d.Name + ":" + d.Value)
-			default:
-				val = strconv.Quote(d.Name + ":" + d.Value)
-			}
-			fmt.Fprintf(&b, "  if (%s) d.push(%s);\n", cond.String(), val)
-		}
-	}
-	b.WriteString("  return d.join(\";\");\n}\n")
-	return b.String()
 }

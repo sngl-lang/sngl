@@ -1,6 +1,10 @@
 package ir
 
-import "duckfam.us/sngl/ast"
+import (
+	"slices"
+
+	"duckfam.us/sngl/ast"
+)
 
 // Expr is a type-checked expression node. Every Expr carries its resolved
 // type. Concrete types have an AST field for source positions.
@@ -332,12 +336,84 @@ type Index struct {
 	Idx     Expr
 }
 
-// StructLit is a resolved struct literal.
+// StructLit is a resolved struct literal. Fields are the ones the program
+// wrote, in the order written: a field the literal leaves out is not in it,
+// and holds what Field answers for it. A reader asking a field's value asks
+// Field, and one spelling the whole value asks EachField, so nothing reads a
+// field's presence and nothing writes the omitted ones into the IR.
 type StructLit struct {
 	AST    *ast.StructExpr
 	Type   *Type
 	Def    *StructDef // resolved struct definition (nil if anonymous/unresolved)
 	Fields []FieldInit
+}
+
+// Field is what lit holds in the field named name: the value it writes, else
+// the field's declared default, else its type's zero (FieldZero). nil where
+// the literal does not say: a spread after the last write of name may write
+// it, a host's own struct holds what the host gives a field left out, and a
+// field typed by a type parameter nothing binds has no zero.
+func (lit *StructLit) Field(name string) Expr {
+	for _, f := range slices.Backward(lit.Fields) {
+		if f.Spread {
+			return nil
+		}
+		if f.Name == name {
+			return f.Value
+		}
+	}
+	if !lit.declared() {
+		return nil
+	}
+	d := FieldNamed(lit.Def.Fields, name)
+	if d == nil {
+		return nil
+	}
+	return FieldZero(lit.Type, d)
+}
+
+// EachField calls fn with every field lit holds, in its declaration's order,
+// each as Field answers it: what a backend spells where a host has no default
+// of the declaration's own. A literal holding a spread, of no declaration or
+// of a host's own struct is handed over as written.
+func (lit *StructLit) EachField(fn func(FieldInit)) {
+	if !lit.declared() || slices.ContainsFunc(lit.Fields, func(f FieldInit) bool { return f.Spread }) {
+		for _, f := range lit.Fields {
+			fn(f)
+		}
+		return
+	}
+	for _, d := range lit.Def.Fields {
+		if i := slices.IndexFunc(lit.Fields, func(f FieldInit) bool { return f.Name == d.Name }); i >= 0 {
+			fn(lit.Fields[i])
+			continue
+		}
+		if v := FieldZero(lit.Type, d); v != nil {
+			fn(FieldInit{Name: d.Name, Value: v})
+		}
+	}
+	// A field the declaration does not name, which the checker reported.
+	for _, f := range lit.Fields {
+		if FieldNamed(lit.Def.Fields, f.Name) == nil {
+			fn(f)
+		}
+	}
+}
+
+// HoldsOmitted reports whether f, a field of lit, holds what lit would hold
+// with f left out, so that a literal spelled from a value need not write it.
+func (lit *StructLit) HoldsOmitted(f FieldInit) bool {
+	if f.Spread || !lit.declared() {
+		return false
+	}
+	d := FieldNamed(lit.Def.Fields, f.Name)
+	return d != nil && SameConstant(f.Value, FieldZero(lit.Type, d))
+}
+
+// declared reports whether lit's declaration says what a field it leaves out
+// holds: not a host's own struct, whose host does.
+func (lit *StructLit) declared() bool {
+	return lit.Def != nil && (lit.Def.Foreign.Name == "" || lit.Def.Foreign.Marked)
 }
 
 // FieldInit is a field in a struct literal. NamePos records the source

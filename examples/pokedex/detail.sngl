@@ -305,13 +305,13 @@ component typeBadge(kind string, value string) ui.node {
 // line up. The type is a slot, so a move's can be its badge.
 component moveLine(level string, name string, power string, accuracy string, style = ui.Style{}, kind ...component ui.node) ui.node {
     ui.hbox(style={gap=8px, alignItems=center}) {
-        ui.text(value=level, style=style.over({width=48px}))
-        ui.text(value=name, style=style.over({flex=1}))
+        ui.text(value=level, style={width=48px, ...style})
+        ui.text(value=name, style={flex=1, ...style})
         ui.hbox(style={width=88px}) {
             kind
         }
-        ui.text(value=power, style=style.over({width=56px}))
-        ui.text(value=accuracy, style=style.over({width=80px}))
+        ui.text(value=power, style={width=56px, ...style})
+        ui.text(value=accuracy, style={width=80px, ...style})
     }
 }
 
