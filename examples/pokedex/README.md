@@ -112,7 +112,11 @@ and genus, its national number as `#001` -- but for its types, which wait for
 the Pokémon and are asked for by name (see [Languages](#languages)). A type
 is a `typeBadge`, a `ui.badge` in the type's own color (`typeColors` in
 `names.sngl`), its name dark over the light types and white over the rest.
-Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves.
+Under it is a `ui.tabs`: About, Stats, Evolution, Sprites and Moves. Every
+panel is mounted as the page opens and kept while another shows, so a panel
+left and come back to is as it was, and on a phone the panels swipe. Moves is
+the one that waits: its rows ask for a move each and for their types, so they
+ask the first time its tab is shown (`movesShown`).
 
 **About** is the species' newest description in the reader's language on one
 line (the games

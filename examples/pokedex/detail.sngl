@@ -25,6 +25,10 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
     var monFailure option[async.Failure] = null
     var evolution option[poke.EvolutionChainDetail] = null
     var tab = 0
+    // Whether the Moves tab has been shown: its rows ask for a move each, and
+    // their types, so they wait for it, where every other panel asks as the
+    // page opens. Its panel is mounted all the same and keeps what it got.
+    var movesShown = false
     var method = "level-up"
     var methodLabel = $"Level"
     var names map[string, list[Named]] = {}
@@ -125,7 +129,11 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                             }
                         }
                     }
-                    ui.tabs #tabs(:selected=tab) {
+                    ui.tabs #tabs(:selected=tab, @change(i) {
+                        if i == 4 {
+                            movesShown = true
+                        }
+                    }) {
                         ui.tab(label=$"About") {
                             ui.vbox(style={gap=6px, padding=8px}) {
                                 ui.text #flavor(value=latestFlavor(about.flavorTextEntries))
@@ -261,14 +269,16 @@ component detailPage(name string, form = "", @back(), @open(name string, form st
                         }
                         ui.tab(label=$"Moves") {
                             ui.vbox(style={gap=8px, padding=8px}) {
-                                for var slug = moveSlugs() {
-                                    poke.moveRetrieve(id=slug, @load(got) {
-                                        names["move/{got.name}"] = moveNamed(got.names)
-                                        moveFacts[got.name] = moveFactOf(got)
-                                    })
-                                }
-                                for var slug = moveTypes() {
-                                    poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                if movesShown {
+                                    for var slug = moveSlugs() {
+                                        poke.moveRetrieve(id=slug, @load(got) {
+                                            names["move/{got.name}"] = moveNamed(got.names)
+                                            moveFacts[got.name] = moveFactOf(got)
+                                        })
+                                    }
+                                    for var slug = moveTypes() {
+                                        poke.typeRetrieve(id=slug, @load(got) { names["type/{got.name}"] = typeNamed(got.names) })
+                                    }
                                 }
                                 // The way is PokéAPI's name, and the select
                                 // shows its label in the reader's language,
