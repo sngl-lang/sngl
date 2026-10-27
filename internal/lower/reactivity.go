@@ -1326,8 +1326,17 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 }
 
 // updatesOf is what a write of v runs after it, from the body being walked.
+//
+// A writer built at run time that reads v itself is reached by the page's
+// refresh as every other reader is, so its own readers are left to that: run
+// here as well, each was updated twice.
 func (st *reactivityState) updatesOf(v *ir.Var, fieldRewrite map[ir.Symbol]ir.Expr) []ir.Stmt {
 	props, slots, live := st.reachable(v)
+	if o, ok := st.owner.(compOwner); ok && st.refresh.reaches(o.c, v) {
+		props = slices.DeleteFunc(props, func(p reactiveProp) bool { return p.owner == o })
+		slots = slices.DeleteFunc(slots, func(s reactiveSlot) bool { return st.slotOwners[s.SlotID] == o })
+		live = slices.DeleteFunc(live, func(p liveProp) bool { return p.owner == o })
+	}
 	out := st.updaterStmts(props, slots, fieldRewrite)
 	if live := st.liveUpdaters(live, slots, fieldRewrite); len(live) > 0 {
 		// Ahead of the slot re-fires, which a render reading a sibling

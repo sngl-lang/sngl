@@ -670,8 +670,10 @@ The instance reads `v` where it stands, so a handler of its own sees what was
 written, and what a registry holds is what is reached: an instance destroyed
 has left it. A row's own state survives, being patched rather than rebuilt
 (`cmd/sngl/testdata/page_write_reaches_instance_runs.txt`). A writer that is
-itself such an instance is reached by both routes, and updates its own
-readers twice.
+itself such an instance runs none of its own updates beside the refresh,
+which reaches it as it reaches every other reader (`pageRefresh.reaches`):
+it updated each of its readers twice, once by its write's own updates and
+once through the page (`testdata/page_write_by_reader_once.txtar`).
 
 **An html instance is a closure, and its body is laid out the way the page's
 markup is.** Its component's own `func`s are closures beside its vars, called

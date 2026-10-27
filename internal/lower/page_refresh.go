@@ -200,6 +200,33 @@ func (st *reactivityState) heldInstances(stmts []ir.Stmt) []*ir.NodeInst {
 	return out
 }
 
+// reaches reports whether the page's refresh for v reaches every instance of
+// c: each site holding one is the page's, or a component's the refresh
+// reaches in turn.
+func (pr *pageRefresh) reaches(c *ir.Component, v *ir.Var) bool {
+	if pr == nil || pr.page[v] == nil || pr.comps[c][v] == nil {
+		return false
+	}
+	reached := map[*ir.Component]bool{}
+	queue := []*ir.Component{nil}
+	for len(queue) > 0 {
+		h := queue[0]
+		queue = queue[1:]
+		for _, n := range pr.held[h] {
+			if k := n.Component; pr.comps[k][v] != nil && !reached[k] {
+				reached[k] = true
+				queue = append(queue, k)
+			}
+		}
+	}
+	for h, ns := range pr.held {
+		if h != nil && !reached[h] && slices.ContainsFunc(ns, func(n *ir.NodeInst) bool { return n.Component == c }) {
+			return false
+		}
+	}
+	return reached[c]
+}
+
 // refreshCall is the call a write of v makes after its own updates, or nil
 // where no instance the page holds reads v.
 func (st *reactivityState) refreshCall(v *ir.Var) ir.Stmt {

@@ -247,8 +247,9 @@ platform's `unstyled` list in the same commit.
   every live instance reading it now, through a refresh each carries and the
   page's `__refreshPage_<v>` (`page_write_reaches_instance_runs.txt`,
   Jonathan's call over a hidden prop per page var). A writer that is itself
-  such an instance updates its own readers twice, once by its own write's
-  updates and once through the page.
+  such an instance updated its own readers twice, once by its own write's
+  updates and once through the page; the refresh alone reaches it now
+  (`page_write_by_reader_once.txtar`).
 - A test reading a looped `#id` whole, `c.title.length()`, did not build on
   any compiled target (`c.title undefined` on Go, `undefined.length` on
   html); `c.title[1]` did. A count is the loop's own now, and any other whole
