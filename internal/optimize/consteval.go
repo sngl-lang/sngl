@@ -260,16 +260,29 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		}
 		return result, true
 	case *ir.StructLit:
+		// Every field the literal holds, those it leaves out as their
+		// defaults, as the interpreter fills them: the optimizer drops a
+		// field written as its default, so `#336699` reached a partly
+		// constant Style without its `a`, and its hex read 0 there.
 		result := interp.NewStruct(x.Def, x.Type)
-		for _, f := range x.Fields {
-			if f.Spread || f.Name == "" || f.Value == nil {
-				return nil, false
-			}
-			v, ok := evalExpr(f.Value, ctx)
+		ok := true
+		x.EachField(func(f ir.FieldInit) {
 			if !ok {
-				return nil, false
+				return
+			}
+			if f.Spread || f.Name == "" || f.Value == nil {
+				ok = false
+				return
+			}
+			v, evaluated := evalExpr(f.Value, ctx)
+			if !evaluated {
+				ok = false
+				return
 			}
 			result.Set(f.Name, v)
+		})
+		if !ok {
+			return nil, false
 		}
 		return result, true
 	case *ir.MapLitIR:
