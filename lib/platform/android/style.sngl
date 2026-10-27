@@ -10,8 +10,8 @@ import ui "sngl:ui"
 // What a child's `flex` is a share of. A vbox or an hbox provides a closure
 // written in its Column's or Row's content, where `weight` is in scope, so it
 // is the parent's share even where the child is a composable of its own,
-// called with the closure. Anywhere else it is the screen.
-context #flexShare(func(w float32) => modifier.fillMaxSize())
+// called with the closure. Anywhere else it is screenShare's.
+context #flexShare(screenShare)
 
 // A Style that writes nothing.
 const blank ui.Style = {}

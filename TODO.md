@@ -210,9 +210,13 @@ platform's `unstyled` list in the same commit.
   call in the const interpreter, or an inliner that folds a block body to
   one expression.
 - On android a Column the Go writes rather than an override -- a window's
-  content arriving through a slot, a nav page of several nodes -- provides no
-  `flexShare`, so a `flex` child there fills the screen; a page under an hbox
-  inherits the Row's closure. Both took a Column weight before.
+  content arriving through a slot, a nav page of several nodes -- provided no
+  `flexShare`, so a `flex` child there filled the screen. It provides one
+  through Compose's `LocalFlexShare` now, which the default reads
+  (`android_flex_written_column_runs.txt`). Still open: a child a caller
+  writes into the slot of a vbox inside a component built at run time reads
+  the caller's share, not the vbox's -- the composable is handed the
+  caller's `__ctx_flexShare`, and the slot's content is the caller's lambda.
 - The interpreter, and the fold, printed a color as
   `{r = 51, g = 102, b = 153, a = 255}`, html as `[object Object]`, and Go as
   `rgba(…)` where translucent. A color's string is its `hex()` everywhere now

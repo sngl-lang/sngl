@@ -140,6 +140,15 @@ struct Modifier {}
 #[kt.native("Modifier", "androidx.compose.ui.Modifier")]
 const modifier Modifier
 
+// What a child's `flex` is a share of where no vbox or hbox provides one: the
+// share a Column the generated code writes provides through Compose -- a
+// window's nodes, a page's, a window's content arriving through a slot --
+// else the screen (codegen/platform/android/flexshare.kt, which the platform
+// ships). Compose's, because a slot's content is composed where the slot is
+// invoked, which no closure its caller wrote could name.
+#[kt.native("snglFlexShare", "")]
+const screenShare func(float32) Modifier
+
 #[kt.native("fillMaxSize", "androidx.compose.foundation.layout.fillMaxSize", method)]
 const func Modifier.fillMaxSize() Modifier
 
