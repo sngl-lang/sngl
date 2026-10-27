@@ -192,8 +192,12 @@ func focusShownExprs(stmts []ir.Stmt, slots []focusSlot) []ir.Expr {
 						shown[i] = andAll(own)
 					}
 				}
+				inner := conds
+				if h := fitHidden(n); h != nil && readable(h) {
+					inner = append(slices.Clip(conds), notExpr(deepCloneExpr(h)))
+				}
 				for _, b := range suppliedBodies(n) {
-					walk(b, conds)
+					walk(b, inner)
 				}
 			case *ir.If:
 				if n.FromTernary || !readable(n.Cond) {
@@ -517,8 +521,14 @@ func injectFocusedProps(stmts []ir.Stmt, slots []focusSlot, focusIDIdent func() 
 			staticSlots[s.node] = s
 		}
 	}
-	walkInjectFocused(stmts, focusIDIdent, loopSlots, staticSlots, nil)
+	walkInjectFocused(stmts, focusIDIdent, loopSlots, staticSlots, nil, nil)
 }
+
+// focusCountedProp is the condition under which a loop slot's stop is one:
+// its own record enabled and every box between it and the loop drawing what
+// it holds. The loop counts it, and the view and Update number it, only
+// while the condition holds; with none it always is.
+const focusCountedProp = "__focusCounted"
 
 func walkInjectFocused(
 	stmts []ir.Stmt,
@@ -526,10 +536,22 @@ func walkInjectFocused(
 	loopSlots map[*ir.For]*focusSlot,
 	staticSlots map[*ir.NodeInst]*focusSlot,
 	inLoop *focusSlot,
+	shown []ir.Expr,
 ) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			if inLoop != nil && nodeEffectiveFocusable(n) {
+				own := shown
+				if e := focusEnabledField(n); e != nil {
+					if _, known := foldedBool(e.Value); !known {
+						own = append(slices.Clip(shown), e.Value)
+					}
+				}
+				if len(own) > 0 {
+					n.Props = append(n.Props, ir.Arg{Name: focusCountedProp, Value: andAll(own)})
+				}
+			}
 			if slot, ok := staticSlots[n]; ok {
 				n.Props = append(n.Props, ir.Arg{
 					Name:  "__focused",
@@ -552,27 +574,31 @@ func walkInjectFocused(
 					},
 				})
 			}
+			inner := shown
+			if h := fitHidden(n); h != nil && inLoop != nil {
+				inner = append(slices.Clip(shown), notExpr(h))
+			}
 			for _, b := range suppliedBodies(n) {
-				walkInjectFocused(b, focusIDIdent, loopSlots, staticSlots, inLoop)
+				walkInjectFocused(b, focusIDIdent, loopSlots, staticSlots, inLoop, inner)
 			}
 
 		case *ir.For:
-			slot := inLoop
+			slot, within := inLoop, shown
 			if s, ok := loopSlots[n]; ok {
-				slot = s
+				slot, within = s, nil
 			}
-			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot)
-			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, slot)
+			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot, within)
+			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, slot, within)
 
 		case *ir.If, *ir.Match:
 			for _, b := range ir.TransparentBlocks(n) {
-				walkInjectFocused(*b, focusIDIdent, loopSlots, staticSlots, inLoop)
+				walkInjectFocused(*b, focusIDIdent, loopSlots, staticSlots, inLoop, shown)
 			}
 
 		case *ir.SlotInst:
-			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
+			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop, shown)
 		case *ir.ErrorBoundary:
-			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
+			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop, shown)
 		}
 	}
 }
@@ -611,11 +637,15 @@ func focusCountStmts(stmts []ir.Stmt, count func() *ir.Ident) []ir.Stmt {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			if nodeEffectiveFocusable(n) {
-				out = append(out, &ir.Assign{
+				var inc ir.Stmt = &ir.Assign{
 					Target: count(),
 					Op:     ast.AssignSet,
 					Value:  &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: count(), Right: intLiteralLit(1)},
-				})
+				}
+				if c := n.Prop(focusCountedProp); c != nil {
+					inc = &ir.If{Cond: deepCloneExpr(c), Body: []ir.Stmt{inc}}
+				}
+				out = append(out, inc)
 			}
 			for _, b := range suppliedBodies(n) {
 				out = append(out, focusCountStmts(b, count)...)
@@ -915,6 +945,59 @@ func nodeEffectiveFocusable(n *ir.NodeInst) bool {
 		}
 	}
 	return false
+}
+
+// fitHidden is whether n hides what it holds, as its `fit` record says on
+// bubbletea -- a box displayed none draws none of its children -- or nil
+// where it has none, or the build can read that it does not.
+func fitHidden(n *ir.NodeInst) ir.Expr {
+	e := recordField(n.Prop("fit"), "hidden")
+	if e == nil {
+		return nil
+	}
+	if on, known := foldedBool(e); known && !on {
+		return nil
+	}
+	return deepCloneExpr(e)
+}
+
+// recordField is what record e holds in field name: a literal's, or the
+// literal a function returning one returns, its parameters bound to the call's
+// arguments -- a call the optimizer left standing, its argument a ternary. Nil
+// where neither says.
+func recordField(e ir.Expr, name string) ir.Expr {
+	switch x := e.(type) {
+	case *ir.StructLit:
+		return x.Field(name)
+	case *ir.Call:
+		f := x.Func
+		if f == nil || len(f.Block) != 1 || len(x.Args) != len(f.Params) {
+			return nil
+		}
+		ret, ok := f.Block[0].(*ir.Return)
+		if !ok {
+			return nil
+		}
+		lit, ok := ret.Value.(*ir.StructLit)
+		if !ok {
+			return nil
+		}
+		v := lit.Field(name)
+		if v == nil {
+			return nil
+		}
+		bindings := map[string]ir.Expr{}
+		for i, a := range x.Args {
+			p := f.Params[i].Name
+			if a.Name != "" {
+				p = a.Name
+			}
+			bindings[p] = a.Value
+		}
+		out := substituteParams([]ir.Stmt{&ir.Return{Value: deepCloneExpr(v)}}, bindings)
+		return out[0].(*ir.Return).Value
+	}
+	return nil
 }
 
 // focusEnabledField is the `enabled` field of n's `focus` record, nil where n

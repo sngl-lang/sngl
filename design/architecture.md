@@ -113,7 +113,15 @@ target with no way to say a field is meant for one.
   `alignItems` also places the joined block in a box wider or taller than it
   (`AlignHorizontal`), so a card's names sit in its middle
   (`cmd/sngl/testdata/layout_bubbletea_rendered_runs.txt`,
-  `cmd/sngl/testdata/layout_bubbletea_aligned_runs.txt`).
+  `cmd/sngl/testdata/layout_bubbletea_aligned_runs.txt`). A growing child
+  under an `if` or a `for` is a part of the Layout as one written directly
+  is: the statement is written around the parts, each node it renders one of
+  its own (`renderIfParts`, `renderForParts`), where joined as one part the
+  grower took only its own size
+  (`cmd/sngl/testdata/style_bubbletea_flex_under_if_runs.txt`). One holding a
+  loop's focus stop or canvas is still joined at its own size, since the
+  closure it is rendered in would count its copies after its later
+  siblings'.
 
   What a lipgloss style cannot say is a `tui.Fit` beside the look, which
   `fitOf` builds from a Style's `whiteSpace`, `overflow` and `display` and

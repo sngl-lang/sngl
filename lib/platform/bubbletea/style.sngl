@@ -73,19 +73,24 @@ const func growOf(flex option[float], display ui.Display) => flex == null || dis
 // that is not visible clips the box at its height, where lipgloss grows it
 // past one; a terminal has no scrollbar to draw, so `scroll` and `auto` clip
 // too. Handed the three fields rather than the Style, so a Style written with
-// a field the build cannot read still folds to the Fit it says here.
-const func fitOf(whiteSpace ui.WhiteSpace, overflow ui.Overflow, display ui.Display) Fit {
-    var fit Fit = {
-        wrap = match whiteSpace {
-            nowrap => 1
-            pre => 2
-            unset, normal, preWrap, preLine => 0
-        },
-        clip = overflow == ui.Overflow.hidden || overflow == ui.Overflow.scroll || overflow == ui.Overflow.auto,
-        hidden = display == ui.Display.none,
-    }
-    return fit
+// a field the build cannot read still folds to the Fit it says here; and one
+// expression, so the inliner writes the record at each node, where focus
+// order reads whether a box hides what it holds.
+const func fitOf(whiteSpace ui.WhiteSpace, overflow ui.Overflow, display ui.Display) => Fit{
+    wrap = wrapOf(whiteSpace),
+    clip = clips(overflow),
+    hidden = display == ui.Display.none,
 }
+
+const func wrapOf(whiteSpace ui.WhiteSpace) int {
+    return match whiteSpace {
+        nowrap => 1
+        pre => 2
+        unset, normal, preWrap, preLine => 0
+    }
+}
+
+const func clips(overflow ui.Overflow) => overflow == ui.Overflow.hidden || overflow == ui.Overflow.scroll || overflow == ui.Overflow.auto
 
 // Where a vbox's or an hbox's children sit along it in the space they leave,
 // as tui.Join's justify.

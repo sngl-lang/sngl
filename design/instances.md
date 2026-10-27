@@ -607,7 +607,14 @@ stop with nothing drawn, and Enter there ran a hidden button's handler. The
 pass runs before NoTernary, so a condition is still an expression over state
 rather than a temp the view declared; one naming a loop's variable or a local
 is left out (`bubbletea/focus_run_test.go`'s
-`TestFocusPassesOverStopsNotDrawn`). A canvas under a loop is the same shape: its
+`TestFocusPassesOverStopsNotDrawn`). A box displayed none is a branch around
+what it holds, its `fit` record's `hidden` read as the condition (`fitHidden`,
+through the `fitOf` call the optimizer leaves standing where an argument is a
+ternary), and a stop a loop renders is one only while its own record is
+enabled and no box between it and the loop hides it: passFocusOrder puts that
+condition on the node (`__focusCounted`), and the loop's count, the view's
+ordinal and Update's walk each number the stop only while it holds. Before,
+both were stops with nothing drawn (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
 rasterizer View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy

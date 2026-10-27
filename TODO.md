@@ -230,12 +230,13 @@ platform's `unstyled` list in the same commit.
   after NoStructSpread had run. Fixed by running NoStructSpread after it
   (`internal/lower/lib_funcs_test.go`). Every other pass before LibFuncs still
   never sees a library helper's body; nothing in `lib/` needs one of them yet.
-- On bubbletea a `flex` child is joined at its own size under an `if` or a
-  `for`, being part of what that statement renders, and where it holds a
-  loop's focus stop or canvas, whose count would come after its later
-  siblings'. A focusable node displayed none in a loop slot is still
-  counted as a stop (Tab passes over a static one), and so is one inside a
-  container displayed none, whose own `focus` record says nothing of it.
+- On bubbletea a `flex` child was joined at its own size under an `if` or a
+  `for`, being part of what that statement renders; each node the statement
+  renders is a part of the Layout now (`style_bubbletea_flex_under_if_runs.txt`).
+  Still so where it holds a loop's focus stop or canvas, whose count would
+  come after its later siblings'. A focusable node displayed none in a loop
+  slot, and one inside a container displayed none, was still counted as a
+  stop; neither is now (`TestFocusPassesOverHiddenStopsInLoopsAndBoxes`).
 - A zero `borderWidth` drew a border on bubbletea, and
   `TestReactiveStyleRunsInTheEmittedProgram` said so on the branch; fixed,
   but how verify passed over it is not known.

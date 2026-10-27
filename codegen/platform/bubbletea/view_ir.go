@@ -855,13 +855,40 @@ func (vc *irViewContext) directlyGrows(s ir.Stmt) bool {
 	return !ordered
 }
 
+// growsAsPart reports whether s is, or holds, a child its Layout renders once
+// the fixed ones are done: a node that grows, or an `if` or a `for` rendering
+// one, whose nodes are each a part of the Layout, as CSS has them.
+func (vc *irViewContext) growsAsPart(s ir.Stmt) bool {
+	var blocks [][]ir.Stmt
+	switch x := s.(type) {
+	case *ir.If:
+		if ir.ComputesValue(x) {
+			return false
+		}
+		blocks = [][]ir.Stmt{x.Body, x.Else}
+	case *ir.For:
+		if computesOnly(x) {
+			return false
+		}
+		blocks = [][]ir.Stmt{x.Body, x.Else}
+	default:
+		return vc.directlyGrows(s)
+	}
+	for _, b := range blocks {
+		if slices.ContainsFunc(b, vc.growsAsPart) {
+			return true
+		}
+	}
+	return false
+}
+
 // renderLayout joins a Layout's children along its axis.
 //
 // A child that grows is rendered in a closure once the fixed ones have said
 // how much of the Layout they leave, which needs the Layout's own extent: its
-// look's, or what its parent gave it, the terminal's at the top. A child that
-// grows under an `if` or a `for` is joined at its own size, being one of the
-// parts that statement renders rather than a part of its own.
+// look's, or what its parent gave it, the terminal's at the top. An `if` or a
+// `for` holding one renders each of its nodes as a part of the Layout: joined
+// as one part, the grower took only its own size.
 func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, style string) {
 	horizontal := bp.Join != joinVertical
 	savedW, savedH := vc.availW, vc.availH
@@ -917,7 +944,7 @@ func (vc *irViewContext) renderLayout(n *ir.NodeInst, bp blueprint, resultVar, s
 	}
 	prevGap, prevAt := vc.joinGap, vc.joinAt
 	vc.joinGap, vc.joinAt = spacing, pos
-	parts := justify != "0" || slices.ContainsFunc(n.Children, vc.directlyGrows)
+	parts := justify != "0" || slices.ContainsFunc(n.Children, vc.growsAsPart)
 	childrenVar := resultVar + "Children"
 	if parts {
 		vc.line("var %s []tui.Part", childrenVar)
@@ -1059,6 +1086,18 @@ func isIdentByte(c byte) bool {
 
 // renderPart is renderChild for a Layout one of whose children grows.
 func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, horizontal bool) {
+	switch x := child.(type) {
+	case *ir.If:
+		if vc.growsAsPart(x) {
+			vc.renderIfParts(x, childVar, partsVar, horizontal)
+			return
+		}
+	case *ir.For:
+		if vc.growsAsPart(x) {
+			vc.renderForParts(x, childVar, partsVar, horizontal)
+			return
+		}
+	}
 	if !vc.directlyGrows(child) {
 		if !rendersPart(child) {
 			vc.renderStmt(child, "")
@@ -1094,6 +1133,62 @@ func (vc *irViewContext) renderPart(child ir.Stmt, childVar, partsVar string, ho
 	vc.line("return %s", childVar)
 	vc.indent--
 	vc.line("}))")
+}
+
+// renderIfParts writes an `if` among a Layout's parts: each node the branch
+// taken renders is a part of its own.
+func (vc *irViewContext) renderIfParts(s *ir.If, childVar, partsVar string, horizontal bool) {
+	vc.line("%s", vc.gc.IfHead(s, vc.gc.EvalExpr(s.Cond)))
+	vc.indent++
+	vc.renderParts(s.Body, childVar+"_t", partsVar, horizontal)
+	vc.indent--
+	if len(s.Else) > 0 {
+		vc.line("%s", vc.gc.ElseHead())
+		vc.indent++
+		vc.renderParts(s.Else, childVar+"_e", partsVar, horizontal)
+		vc.indent--
+	}
+	vc.line("%s", vc.gc.BlockEnd())
+}
+
+// renderForParts writes a `for` among a Layout's parts, as renderFor writes
+// one: each node a copy renders is a part of its own.
+func (vc *irViewContext) renderForParts(s *ir.For, childVar, partsVar string, horizontal bool) {
+	vc.declareLoopCounters(s)
+	iterExpr := vc.gc.EvalExpr(s.Iter)
+	savedGC := vc.gc
+	if s.Key != "" && s.Key != "_" {
+		vc.gc = vc.gc.WithLocal(s.Key)
+	}
+	if s.Value != "" && s.Value != "_" {
+		vc.gc = vc.gc.WithLocal(s.Value)
+	}
+	vc.line("%s", vc.gc.ForHead(s, iterExpr))
+	vc.indent++
+	kept := golang.WithUnreadVarsDropped(s)
+	if kept.Key != "" && kept.Key != "_" {
+		vc.line("_ = %s", kept.Key)
+	}
+	if kept.Value != "" && kept.Value != "_" {
+		vc.line("_ = %s", kept.Value)
+	}
+	vc.renderParts(s.Body, childVar+"_b", partsVar, horizontal)
+	vc.indent--
+	vc.line("}")
+	vc.gc = savedGC
+	if len(s.Else) > 0 {
+		vc.line("if len(%s) == 0 {", iterExpr)
+		vc.indent++
+		vc.renderParts(s.Else, childVar+"_e", partsVar, horizontal)
+		vc.indent--
+		vc.line("}")
+	}
+}
+
+func (vc *irViewContext) renderParts(stmts []ir.Stmt, prefix, partsVar string, horizontal bool) {
+	for i, c := range stmts {
+		vc.renderPart(c, fmt.Sprintf("%s%d", prefix, i), partsVar, horizontal)
+	}
 }
 
 // position is where a Layout's children sit across its axis.
