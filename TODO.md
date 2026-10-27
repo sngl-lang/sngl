@@ -269,8 +269,15 @@ platform's `unstyled` list in the same commit.
   was answered already. What failed was a test reading the bound one through
   the instance, `c.p.a`, which no compiled target named; it reads what the call
   site bound now.
-- android's select honors none of `disabled`, `multiple`, `@focus`,
-  `@blur`.
+- android's select was noted honoring none of `disabled`, `multiple`,
+  `@focus`, `@blur`. `disabled` it honors (the field and the click, since
+  `8577daae0`), and a test's `change` chooses on a disabled select on every
+  target, the interpreter included. The rest is no gap of android's
+  (Jonathan's call, left for a part of its own): `multiple` is honored by no
+  target, the interpreter included, and a select's `@focus` and `@blur`
+  reach a handler only on html -- a test's `c.pick.focus()` fails on the
+  interpreter and android, and does not build on bubbletea, fyne or gtk4
+  (`c.pickFocus undefined`).
 - On fyne a widget added to a container already under a Box's theme keeps
   the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
   render slot appending into a styled vbox meets it.
