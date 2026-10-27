@@ -289,12 +289,16 @@ platform's `unstyled` list in the same commit.
   pins it now (it fails on main). On the way: a node carrying the program's own
   `#id` was updated twice per handler write on html
   (`html_handler_updates_named_node_once.txtar`).
-- A test's own write of its instance's state, `c.p = 8px`, redraws nothing on
-  fyne, gtk4 or html: it is a field write on the Model or the page's `state`,
-  where a handler's is followed by its readers' updates (fyne's Model has a
-  `SetP` the test does not call). A write reaching a spliced instance's
-  `for` re-renders it, and reads through the instance are answered from state,
-  so only what a test snapshots or asks the browser shows it.
+- A test's own write of its instance's state, `c.p = 8px`, redrew nothing on
+  fyne, gtk4 or html: a field write on the Model or the page's `state`, where
+  a handler's is followed by its readers' updates. It calls the page's
+  `__wrote_<v>` after it now, the updates a handler's write runs, written
+  where a handler's are (Jonathan's call over the Model's setter;
+  `test_write_redraws_runs.txt`). On the way: a test writing a page var a
+  node reads did not build on fyne or gtk4, the updates spliced into the test
+  file naming a node it has none of; and a color literal in a Style the build
+  can read only part of folded without its `a`, so html's static style said
+  `#33669900` for `#336699` (`testdata/style_partly_held_color.txtar`).
 - On Go, `==` between two structs holding a list did not compile
   (`struct containing []string cannot be compared`), where the interpreter
   compares them field by field. Fixed, with two lists, and two options --

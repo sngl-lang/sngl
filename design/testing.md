@@ -225,6 +225,18 @@ These rules keep them agreeing:
   statement as well as on each read through the instance, since a read of
   package state goes through none -- a click that unmounted and remounted a
   branch left `asked.length()` unsettled (`testdata/async_query_loop.sngl`).
+- **A test's write redraws what reads it**, as a handler's does: a write of
+  the page's state or its instance's -- `page = "q"`, `c.label = "b"`,
+  `c.items.push(x)` -- is followed by a call of `__wrote_<v>`, a function
+  of the page (the root component in a build rooted at one) whose body is
+  the updates a handler's write of v runs there, and which the test calls
+  through its instance as it calls a method (`testWriteUpdates` in
+  passReactivity). The write alone landed on the Model's field or html's
+  `state`, and nothing drew it on fyne, gtk4 or html; and the updates spliced
+  into the test named nodes the test file has none of, so a test writing a
+  page var a node reads did not build on fyne or gtk4
+  (`cmd/sngl/testdata/test_write_redraws_runs.txt`). bubbletea and android
+  draw from state and need no call.
 - **A test waiting lets time pass as the program's loop would**: `t.wait`
   asks its predicate between turns of whatever runs the target's schedules.
   bubbletea's test build runs no program, so each turn settles the Model the
